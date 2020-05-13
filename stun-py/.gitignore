@@ -1,0 +1,6 @@
+.DS_Store
+/.idea
+/build
+/dist
+/stun.egg-info
+*.pyc
