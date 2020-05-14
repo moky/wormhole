@@ -28,6 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
+from .protocol import *
+from .attributes import *
+from .service import *
+
 name = "STUN"
 
 __author__ = 'Albert Moky'
