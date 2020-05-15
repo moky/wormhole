@@ -156,6 +156,13 @@ class Client:
             assert isinstance(value, MappedAddressValue), 'mapped address value error: %s' % value
             result.external_ip = value.ip
             result.external_port = value.port
+        elif attribute.type == XorMappedAddress2:
+            if not isinstance(value, XorMappedAddressValue2):
+                # XOR and parse again
+                data = XorMappedAddressValue2.xor(data=value.data, factor=trans_id.data)
+                value = XorMappedAddressValue2.parse(data=data, length=len(data))
+            result.external_ip = value.ip
+            result.external_port = value.port
         elif attribute.type == XorMappedAddress:
             if not isinstance(value, XorMappedAddressValue):
                 # XOR and parse again
@@ -171,8 +178,10 @@ class Client:
             assert isinstance(value, SourceAddressValue), 'source address value error: %s' % value
             result.source_ip = value.ip
             result.source_port = value.port
-        else:
-            assert False, 'unknown attribute type: %s' % attribute.type
+        elif attribute.type == Software:
+            assert isinstance(value, SoftwareValue), 'software value error: %s' % value
+        # else:
+        #     print('unknown attribute type: %s' % attribute.type)
         return result
 
     def __bind_request(self, remote_host: str, remote_port: int, body: bytes) -> Optional[Result]:
@@ -189,7 +198,8 @@ class Client:
                 return None
             res, address = self.delegate.receive()
             if res is None:
-                if --count < 0:
+                count -= 1
+                if count <= 0:
                     # failed to receive data
                     return None
         # 3. parse response

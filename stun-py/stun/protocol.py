@@ -36,7 +36,7 @@
 """
 
 from .data import Data, UInt16Data
-from .data import random_bytes, uint32_to_bytes
+from .data import random_bytes, uint32_to_bytes, bytes_to_int
 
 
 """
@@ -54,6 +54,15 @@ from .data import random_bytes, uint32_to_bytes
 
 class MessageType(UInt16Data):
 
+    def __init__(self, value: int, data: bytes=None, name: str='Unknown Type'):
+        super().__init__(value=value, data=data)
+        self.__name = name
+        s_message_types[value] = self
+
+    def __str__(self):
+        clazz = self.__class__.__name__
+        return '<%s: %d "%s" />' % (clazz, self.value, self.__name)
+
     @classmethod
     def parse(cls, data: bytes):
         data_len = len(data)
@@ -62,16 +71,22 @@ class MessageType(UInt16Data):
             return None
         elif data_len > 2:
             data = data[:2]
-        return super().from_bytes(data=data)
+        value = bytes_to_int(data=data)
+        t = s_message_types.get(value)
+        if t is None:
+            return cls(value=value, data=data)
+        else:
+            return t
 
 
 # types for a STUN message
-BindRequest = MessageType(0x0001)
-BindResponse = MessageType(0x0101)
-BindErrorResponse = MessageType(0x0111)
-SharedSecretRequest = MessageType(0x0002)
-SharedSecretResponse = MessageType(0x0102)
-SharedSecretErrorResponse = MessageType(0x0112)
+s_message_types = {}
+BindRequest = MessageType(0x0001, name='BindRequest')
+BindResponse = MessageType(0x0101, name='BindResponse')
+BindErrorResponse = MessageType(0x0111, name='BindErrorResponse')
+SharedSecretRequest = MessageType(0x0002, name='SharedSecretRequest')
+SharedSecretResponse = MessageType(0x0102, name='SharedSecretResponse')
+SharedSecretErrorResponse = MessageType(0x0112, name='SharedSecretErrorResponse')
 
 
 class MessageLength(UInt16Data):
@@ -150,7 +165,7 @@ MagicCookie = uint32_to_bytes(0x2112A442)
 class Header:
 
     def __init__(self, data: bytes, msg_type: MessageType, msg_len: MessageLength, trans_id: TransactionID):
-        super().__init__(self)
+        super().__init__()
         self.__data = data
         self.__type = msg_type
         self.__length = msg_len

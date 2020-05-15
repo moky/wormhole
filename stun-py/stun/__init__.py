@@ -35,7 +35,6 @@ from .protocol import SharedSecretRequest, SharedSecretResponse, SharedSecretErr
 
 from .attributes import Attribute, AttributeType, AttributeLength, AttributeValue
 from .attributes import MappedAddress, MappedAddressValue
-from .attributes import XorMappedAddress, XorMappedAddressValue
 from .attributes import ResponseAddress, ResponseAddressValue
 from .attributes import ChangeRequest, ChangeRequestValue, ChangeIP, ChangePort, ChangeIPAndPort
 from .attributes import ChangedAddress, ChangedAddressValue
@@ -46,9 +45,13 @@ from .attributes import MessageIntegrity
 from .attributes import ErrorCode
 from .attributes import UnknownAttribute
 from .attributes import ReflectedFrom
+from .attributes import Realm
+from .attributes import Nonce
+from .attributes import XorMappedAddress, XorMappedAddressValue
 from .attributes import XorOnly
-from .attributes import ServerName
-from .attributes import SecondaryAddress
+from .attributes import Software
+from .attributes import AlternateServer
+from .attributes import Fingerprint
 
 from .service import Delegate, Result, Server, Client
 
@@ -72,9 +75,11 @@ __all__ = [
     #
     'Attribute', 'AttributeType', 'AttributeLength', 'AttributeValue',
     # attribute types
-    'MappedAddress', 'ResponseAddress', 'ChangeRequest', 'SourceAddress', 'ChangedAddress',
+    'MappedAddress', 'ResponseAddress', 'ChangeRequest',
+    'SourceAddress', 'ChangedAddress',
     'Username', 'Password', 'MessageIntegrity', 'ErrorCode', 'UnknownAttribute', 'ReflectedFrom',
-    'XorOnly', 'XorMappedAddress', 'ServerName', 'SecondaryAddress',
+    'Realm', 'Nonce', 'XorMappedAddress', 'XorOnly',
+    'Software', 'AlternateServer', 'Fingerprint',
     # attribute values
     'MappedAddressValue', 'ResponseAddressValue',
     'ChangeRequestValue', 'ChangeIP', 'ChangePort', 'ChangeIPAndPort',

@@ -80,6 +80,9 @@ class Data:
         if isinstance(other, bytes):
             return self.data == other
 
+    def __hash__(self) -> int:
+        return hash(self.__data)
+
     @property
     def data(self) -> bytes:
         return self.__data
@@ -208,7 +211,7 @@ class Value(Data):
 class TLV:
 
     def __init__(self, data: bytes, t: Type, v: Value):
-        super().__init__(self)
+        super().__init__()
         self.__data = data
         self.__type = t
         self.__value = v
@@ -261,7 +264,7 @@ class TLV:
             data += _len.data
         if _value is not None:
             data += _value.data
-        return cls(data, _type, _value)
+        return cls(data=data, t=_type, v=_value)
 
     @classmethod
     def parse_type(cls, data: bytes) -> Optional[Type]:

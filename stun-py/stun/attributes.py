@@ -78,6 +78,18 @@ class AttributeLength(UInt16Data, Length):
 
 class AttributeType(UInt16Data, Type):
 
+    def __init__(self, value: int, data: bytes=None, name: str='Unknown Type'):
+        super().__init__(value=value, data=data)
+        self.__name = name
+        s_attribute_types[value] = self
+
+    def __str__(self):
+        clazz = self.__class__.__name__
+        return '<%s: 0x%04X "%s" />' % (clazz, self.value, self.__name)
+
+    def __hash__(self) -> int:
+        return self.value
+
     @classmethod
     def parse(cls, data: bytes, length: int=2):
         data_len = len(data)
@@ -85,33 +97,51 @@ class AttributeType(UInt16Data, Type):
             return None
         elif data_len > length:
             data = data[:length]
-        return super().from_bytes(data=data)
+        value = bytes_to_int(data=data)
+        t = s_attribute_types.get(value)
+        if t is None:
+            return cls(value=value, data=data)
+        else:
+            return t
 
 
-# attribute types in STUN message
-MappedAddress = AttributeType(0x0001)
-ResponseAddress = AttributeType(0x0002)
-ChangeRequest = AttributeType(0x0003)
-SourceAddress = AttributeType(0x0004)
-ChangedAddress = AttributeType(0x0005)
-Username = AttributeType(0x0006)
-Password = AttributeType(0x0007)
-MessageIntegrity = AttributeType(0x0008)
-ErrorCode = AttributeType(0x0009)
-UnknownAttribute = AttributeType(0x000A)
-ReflectedFrom = AttributeType(0x000B)
+# Attribute Types in STUN message
+s_attribute_types = {}
 
-XorOnly = AttributeType(0x0021)
-XorMappedAddress = AttributeType(0x8020)
-ServerName = AttributeType(0x8022)
-SecondaryAddress = AttributeType(0x8050)  # Non standard extension
+# Comprehension-required range (0x0000-0x7FFF)
+# Comprehension-optional range (0x8000-0xFFFF)
+
+# [RFC-3489]
+MappedAddress = AttributeType(0x0001, name='Mapped Address')
+ResponseAddress = AttributeType(0x0002, name='Response Address')
+ChangeRequest = AttributeType(0x0003, name='Change Request')
+SourceAddress = AttributeType(0x0004, name='Source Address')
+ChangedAddress = AttributeType(0x0005, name='Changed Address')
+Username = AttributeType(0x0006, name='Username')
+Password = AttributeType(0x0007, name='Password')
+MessageIntegrity = AttributeType(0x0008, name='Message Integrity')
+ErrorCode = AttributeType(0x0009, name='Error Code')
+UnknownAttribute = AttributeType(0x000A, name='Unknown Attribute')
+ReflectedFrom = AttributeType(0x000B, name='Reflected From')
+
+# [RFC-5389]
+Realm = AttributeType(0x0014, name='Realm')
+Nonce = AttributeType(0x0015, name='Nonce')
+XorMappedAddress = AttributeType(0x0020, name='Xor Mapped Address')
+
+XorMappedAddress2 = AttributeType(0x8020, name='(Xor?) Mapped Address')
+XorOnly = AttributeType(0x8021, name='XOR Only')
+Software = AttributeType(0x8022, name='Software')
+AlternateServer = AttributeType(0x8023, name='Alternate Server')
+Fingerprint = AttributeType(0x8028, name='Fingerprint')
 
 
 class Attribute(TLV):
 
-    def __init__(self, t: AttributeType, v: AttributeValue):
-        l_data = uint16_to_bytes(len(v.data))
-        data = t.data + l_data + v.data
+    def __init__(self, t: AttributeType, v: AttributeValue, data: bytes=None):
+        if data is None:
+            l_data = uint16_to_bytes(len(v.data))
+            data = t.data + l_data + v.data
         super().__init__(data=data, t=t, v=v)
 
     @classmethod
@@ -211,7 +241,7 @@ class MappedAddressValue(AttributeValue):
 
     @classmethod
     def parse(cls, data: bytes, length: int):
-        if data[0] != b'\0':
+        if data[0] != 0:
             return None
         family = bytes_to_int(data[1:2])
         port = bytes_to_int(data[2:4])
@@ -312,7 +342,7 @@ class XorMappedAddressValue(MappedAddressValue):
 
     @classmethod
     def xor(cls, data: bytes, factor: bytes) -> Optional[bytes]:
-        if data[0] != b'\0':
+        if data[0] != 0:
             return None
         assert len(data) == 8 or len(data) == 20, 'address error: %s' % data
         assert len(factor) == 16, 'factor should be the "magic code" + "(96-bits) transaction ID"'
@@ -326,6 +356,65 @@ class XorMappedAddressValue(MappedAddressValue):
         while a_pos >= 4:
             array[a_pos] ^= factor[f_pos]
             a_pos -= 1
+            f_pos += 1
+        return array
+
+
+class XorMappedAddressValue2(MappedAddressValue):
+    """ https://tools.ietf.org/id/draft-ietf-behave-rfc3489bis-02.txt
+
+    10.2.12  XOR-MAPPED-ADDRESS
+
+        The XOR-MAPPED-ADDRESS attribute is only present in Binding
+        Responses.  It provides the same information that is present in the
+        MAPPED-ADDRESS attribute.  However, the information is encoded by
+
+        performing an exclusive or (XOR) operation between the mapped address
+        and the transaction ID.  Unfortunately, some NAT devices have been
+        found to rewrite binary encoded IP addresses and ports that are
+        present in protocol payloads.  This behavior interferes with the
+        operation of STUN.  By providing the mapped address in an obfuscated
+        form, STUN can continue to operate through these devices.
+
+        The format of the XOR-MAPPED-ADDRESS is:
+
+        0                   1                   2                   3
+        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |x x x x x x x x|    Family     |         X-Port                |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                X-Address (Variable)
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+        The Family represents the IP address family, and is encoded
+        identically to the Family in MAPPED-ADDRESS.
+
+        X-Port is equal to the port in MAPPED-ADDRESS, exclusive or'ed with
+        most significant 16 bits of the transaction ID.  If the IP address
+        family is IPv4, X-Address is equal to the IP address in MAPPED-
+        ADDRESS, exclusive or'ed with the most significant 32 bits of the
+        transaction ID.  If the IP address family is IPv6, the X-Address is
+        equal to the IP address in MAPPED-ADDRESS, exclusive or'ed with the
+        entire 128 bit transaction ID.
+    """
+
+    @classmethod
+    def xor(cls, data: bytes, factor: bytes) -> Optional[bytes]:
+        if data[0] != 0:
+            return None
+        assert len(data) == 8 or len(data) == 20, 'address error: %s' % data
+        assert len(factor) == 16, 'factor should be the "magic code" + "(96-bits) transaction ID"'
+        array = bytearray(data)
+        # X-Port
+        array[2] ^= factor[0]
+        array[3] ^= factor[1]
+        # X-Address
+        length = len(array)
+        a_pos = 4
+        f_pos = 0
+        while a_pos < length:
+            array[a_pos] ^= factor[f_pos]
+            a_pos += 1
             f_pos += 1
         return array
 
@@ -421,14 +510,51 @@ class SourceAddressValue(MappedAddressValue):
     pass
 
 
+class SoftwareValue(AttributeValue):
+    """
+    15.10.  SOFTWARE
+
+        The SOFTWARE attribute contains a textual description of the software
+        being used by the agent sending the message.  It is used by clients
+        and servers.  Its value SHOULD include manufacturer and version
+        number.  The attribute has no impact on operation of the protocol,
+        and serves only as a tool for diagnostic and debugging purposes.  The
+        value of SOFTWARE is variable length.  It MUST be a UTF-8 [RFC3629]
+        encoded sequence of less than 128 characters (which can be as long as
+        763 bytes).
+    """
+
+    def __init__(self, data: bytes, description: str):
+        super().__init__(data=data)
+        self.__desc = description
+
+    @property
+    def description(self) -> str:
+        return self.__desc
+
+    @classmethod
+    def parse(cls, data: bytes, length: int):
+        data_len = len(data)
+        if data_len < length:
+            return None
+        elif data_len > length:
+            data = data[:length]
+        desc = data.rstrip(b'\0').decode('utf-8')
+        return cls(data=data, description=desc)
+
+
 #
 #  Register attribute parsers
 #
 s_attribute_parsers = {
     MappedAddress: MappedAddressValue,
     # XorMappedAddress: XorMappedAddressValue,
+    # XorMappedAddress2: XorMappedAddressValue2,
+
     ResponseAddress: ResponseAddressValue,
-    ChangedAddress: ChangedAddressValue,
     ChangeRequest: ChangeRequestValue,
     SourceAddress: SourceAddressValue,
+    ChangedAddress: ChangedAddressValue,
+
+    Software: SoftwareValue,
 }
