@@ -79,6 +79,10 @@ class Delegate(ABC):
     def receive(self, buffer_size: int = 2048) -> (bytes, tuple):
         raise NotImplemented
 
+    @abstractmethod
+    def feedback(self, message: str):
+        raise NotImplemented
+
 
 class Server:
 
@@ -147,15 +151,19 @@ class Client:
     def __init__(self):
         super().__init__()
         self.delegate = None
+        self.retries = 3
 
-    @staticmethod
-    def _process(attribute: Attribute, trans_id: TransactionID, result: Result) -> Result:
+    def __log(self, msg: str):
+        self.delegate.feedback(message=msg)
+
+    def _process(self, attribute: Attribute, trans_id: TransactionID, result: Result) -> Result:
         value = attribute.value
         # check attributes
         if attribute.type == MappedAddress:
             assert isinstance(value, MappedAddressValue), 'mapped address value error: %s' % value
             result.external_ip = value.ip
             result.external_port = value.port
+            self.__log('MappedAddress:\t(%s:%d)' % (value.ip, value.port))
         elif attribute.type == XorMappedAddress2:
             if not isinstance(value, XorMappedAddressValue2):
                 # XOR and parse again
@@ -163,6 +171,7 @@ class Client:
                 value = XorMappedAddressValue2.parse(data=data, length=len(data))
             result.external_ip = value.ip
             result.external_port = value.port
+            self.__log('XorMappedAddress2:\t(%s:%d)' % (value.ip, value.port))
         elif attribute.type == XorMappedAddress:
             if not isinstance(value, XorMappedAddressValue):
                 # XOR and parse again
@@ -170,18 +179,22 @@ class Client:
                 value = XorMappedAddressValue.parse(data=data, length=len(data))
             result.external_ip = value.ip
             result.external_port = value.port
+            self.__log('XorMappedAddress:\t(%s:%d)' % (value.ip, value.port))
         elif attribute.type == ChangedAddress:
             assert isinstance(value, ChangedAddressValue), 'changed address value error: %s' % value
             result.changed_ip = value.ip
             result.changed_port = value.port
+            self.__log('ChangedAddress:\t(%s:%d)' % (value.ip, value.port))
         elif attribute.type == SourceAddress:
             assert isinstance(value, SourceAddressValue), 'source address value error: %s' % value
             result.source_ip = value.ip
             result.source_port = value.port
+            self.__log('SourceAddress:\t(%s:%d)' % (value.ip, value.port))
         elif attribute.type == Software:
             assert isinstance(value, SoftwareValue), 'software value error: %s' % value
-        # else:
-        #     print('unknown attribute type: %s' % attribute.type)
+            self.__log(('Software: %s' % value.description))
+        else:
+            self.__log('unknown attribute type: %s' % attribute.type)
         return result
 
     def __bind_request(self, remote_host: str, remote_port: int, body: bytes) -> Optional[Result]:
@@ -189,19 +202,23 @@ class Client:
         req = Package.new(msg_type=BindRequest, body=body)
         trans_id = req.head.trans_id
         # 2. send and get response
-        count = 3
-        res: bytes = None
-        while res is None:
+        count = 0
+        while True:
             size = self.delegate.send(data=req.data, remote_host=remote_host, remote_port=remote_port)
             if size != len(req.data):
                 # failed to send data
                 return None
             res, address = self.delegate.receive()
             if res is None:
-                count -= 1
-                if count <= 0:
+                if count < self.retries:
+                    count += 1
+                    self.__log('(%d/%d) receive nothing from %s' % (count, self.retries, address))
+                else:
                     # failed to receive data
                     return None
+            else:
+                self.__log('received %d bytes from %s' % (len(res), address))
+                break
         # 3. parse response
         pack = Package.parse(data=res)
         if pack.head.type != BindResponse or pack.head.trans_id != trans_id:
@@ -233,14 +250,17 @@ class Client:
     """
 
     def __test_1(self, stun_host: str, stun_port: int) -> Optional[Result]:
+        self.__log('[Test 1] sending empty request ... (%s:%d)' % (stun_host, stun_port))
         body = b''
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
     def __test_2(self, stun_host: str, stun_port: int) -> Optional[Result]:
+        self.__log('[Test 2] sending "ChangeIPAmdPort" ... (%s:%d)' % (stun_host, stun_port))
         body = Attribute(ChangeRequest, ChangeIPAndPort).data
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
     def __test_3(self, stun_host: str, stun_port: int) -> Optional[Result]:
+        self.__log('[Test 3] sending "ChangePort" ... (%s:%d)' % (stun_host, stun_port))
         body = Attribute(ChangeRequest, ChangePort).data
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
@@ -256,7 +276,6 @@ class Client:
             connectivity.
             """
             return Result.UDPBlocked
-        same_address = (res1.external_ip == local_ip) and (res1.external_port == local_port)
         """
         If the test produces a response, the client examines the MAPPED-ADDRESS
         attribute.  If this address and port are the same as the local IP
@@ -265,7 +284,7 @@ class Client:
         """
         # 2. Test II
         res2 = self.__test_2(stun_host=stun_host, stun_port=stun_port)
-        if same_address:
+        if (res1.external_ip == local_ip) and (res1.external_port == local_port):
             """
             If a response is received, the client knows that it has open access
             to the Internet (or, at least, its behind a firewall that behaves
@@ -292,9 +311,9 @@ class Client:
         # 3. Test I'
         res11 = self.__test_1(stun_host=res1.changed_ip, stun_port=res1.changed_port)
         if res11 is None:
-            raise AssertionError('network error')
-        same_address = (res11.external_ip == local_ip and res11.external_port == local_port)
-        if not same_address:
+            # raise AssertionError('network error')
+            return 'Change-Address error on (%s:%d)' % (res1.changed_ip, res1.changed_port)
+        if (res11.external_ip != res1.external_ip) or (res11.external_port != res1.external_port):
             """
             If the IP address and port returned in the MAPPED-ADDRESS attribute
             are not the same as the ones from the first test I, the client
