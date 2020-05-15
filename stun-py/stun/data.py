@@ -29,6 +29,7 @@
 # ==============================================================================
 
 import binascii
+import random
 from typing import Optional
 
 
@@ -36,20 +37,32 @@ def hex_decode(string: str) -> bytes:
     return binascii.a2b_hex(string)
 
 
-def uint8_to_bytes(value: int) -> bytes:
-    return IntData.from_int(value, length=1).data
+# noinspection PyUnusedLocal
+def random_bytes(length: int) -> bytes:
+    r = range(length << 1)
+    a = ''.join([random.choice('0123456789ABCDEF') for i in r])
+    return hex_decode(a)
+    # return bytes(numpy.random.bytes(length))
 
 
-def uint16_to_bytes(value: int) -> bytes:
-    return IntData.from_int(value, length=2).data
+def bytes_to_int(data: bytes, byteorder: str='big', signed: bool=False) -> int:
+    return int.from_bytes(bytes=data, byteorder=byteorder, signed=signed)
 
 
-def uint32_to_bytes(value: int) -> bytes:
-    return IntData.from_int(value, length=4).data
+def int_to_bytes(value: int, length: int, byteorder: str='big', signed: bool=False) -> bytes:
+    return value.to_bytes(length=length, byteorder=byteorder, signed=signed)
 
 
-def bytes_to_int(data: bytes) -> int:
-    return IntData.from_bytes(data).value
+def uint8_to_bytes(value: int, byteorder: str='big') -> bytes:
+    return int_to_bytes(value=value, length=1, byteorder=byteorder)
+
+
+def uint16_to_bytes(value: int, byteorder: str='big') -> bytes:
+    return int_to_bytes(value=value, length=2, byteorder=byteorder)
+
+
+def uint32_to_bytes(value: int, byteorder: str='big') -> bytes:
+    return int_to_bytes(value=value, length=4, byteorder=byteorder)
 
 
 class Data:
@@ -80,6 +93,11 @@ class Data:
         data = hex_decode(string)
         return cls(data=data)
 
+    @classmethod
+    def random(cls, length: int):
+        data = random_bytes(length=length)
+        return cls(data=data)
+
 
 class IntData(Data):
     """
@@ -101,12 +119,12 @@ class IntData(Data):
 
     @classmethod
     def from_bytes(cls, data: bytes, byteorder: str='big', signed: bool=False):
-        value = int.from_bytes(bytes=data, byteorder=byteorder, signed=signed)
+        value = bytes_to_int(data=data, byteorder=byteorder, signed=signed)
         return cls(data=data, value=value)
 
     @classmethod
     def from_int(cls, value: int, length: int, byteorder: str='big', signed: bool=False):
-        data = value.to_bytes(length=length, byteorder=byteorder, signed=signed)
+        data = int_to_bytes(value=value, length=length, byteorder=byteorder, signed=signed)
         return cls(data=data, value=value)
 
 
@@ -154,31 +172,36 @@ class UInt32Data(IntData):
 class Type(Data):
 
     @classmethod
-    def parse(cls, data: bytes):
+    def parse(cls, data: bytes, length: int=2):
         data_len = len(data)
-        if data_len < 2:
+        if data_len < length:
             return None
-        elif data_len > 2:
-            data = data[:2]
+        elif data_len > length:
+            data = data[:length]
         return cls(data=data)
 
 
 class Length(IntData):
 
     @classmethod
-    def parse(cls, data: bytes):
+    def parse(cls, data: bytes, length: int=2):
         data_len = len(data)
-        if data_len < 2:
+        if data_len < length:
             return None
-        elif data_len > 2:
-            data = data[:2]
+        elif data_len > length:
+            data = data[:length]
         return super().from_bytes(data=data)
 
 
 class Value(Data):
 
     @classmethod
-    def parse(cls, data: bytes):
+    def parse(cls, data: bytes, length: int):
+        data_len = len(data)
+        if data_len < length:
+            return None
+        elif data_len > length:
+            data = data[:length]
         return cls(data=data)
 
 
@@ -246,12 +269,12 @@ class TLV:
 
     # noinspection PyUnusedLocal
     @classmethod
-    def parse_length(cls, data: bytes, t: Type=None) -> Optional[Length]:
+    def parse_length(cls, data: bytes, t: Type) -> Optional[Length]:
         return Length.parse(data=data)
 
     # noinspection PyUnusedLocal
     @classmethod
-    def parse_value(cls, data: bytes, t: Type=None, length: Length=None) -> Optional[Value]:
+    def parse_value(cls, data: bytes, t: Type, length: Length=None) -> Optional[Value]:
         if length is None or length.value <= 0:
             return None
         else:
@@ -262,4 +285,4 @@ class TLV:
             return None
         if data_len > length:
             data = data[:length]
-        return Value.parse(data=data)
+        return Value.parse(data=data, length=length)

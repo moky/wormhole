@@ -34,51 +34,10 @@
 
 """
 
-import socket
+from abc import ABC, abstractmethod
 
 from .protocol import *
 from .attributes import *
-
-
-class UDPSocket:
-
-    def __init__(self):
-        super().__init__()
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.__socket = s
-        # local host & port
-        self.__ip = '0.0.0.0'
-        self.__port = 0
-
-    @property
-    def ip(self) -> str:
-        return self.__ip
-
-    @property
-    def port(self) -> int:
-        return self.__port
-
-    def bind(self, ip: str, port: int):
-        address = (ip, port)
-        self.__socket.bind(address)
-        self.__ip = ip
-        self.__port = port
-
-    def settimeout(self, value: Optional[float]):
-        self.__socket.settimeout(value=value)
-
-    def send(self, data: bytes, remote_host: str, remote_port: int) -> int:
-        try:
-            return self.__socket.sendto(data, (remote_host, remote_port))
-        except socket.error:
-            return -1
-
-    def receive(self, buffer_size: int=2048) -> (bytes, tuple):
-        try:
-            return self.__socket.recvfrom(buffer_size)
-        except socket.error:
-            return None, None
 
 
 class Result:
@@ -98,14 +57,34 @@ class Result:
         self.external_port = 0
         self.changed_ip = None
         self.changed_port = 0
+        self.source_ip = None
+        self.source_port = 0
 
 
-class Server(UDPSocket):
+class Delegate(ABC):
 
-    def __init__(self, local_host: str='0.0.0.0', local_port: int=3478):
+    @abstractmethod
+    def local_ip(self) -> str:
+        raise NotImplemented
+
+    @abstractmethod
+    def local_port(self) -> int:
+        raise NotImplemented
+
+    @abstractmethod
+    def send(self, data: bytes, remote_host: str, remote_port: int) -> int:
+        raise NotImplemented
+
+    @abstractmethod
+    def receive(self, buffer_size: int = 2048) -> (bytes, tuple):
+        raise NotImplemented
+
+
+class Server:
+
+    def __init__(self):
         super().__init__()
-        self.bind(local_host, local_port)
-        self.settimeout(20)
+        self.delegate = None
 
 
 """
@@ -163,28 +142,40 @@ RFC 3489                          STUN                        March 2003
 """
 
 
-class Client(UDPSocket):
+class Client:
 
-    def __init__(self, local_host: str='0.0.0.0', local_port: int=9394):
+    def __init__(self):
         super().__init__()
-        self.bind(local_host, local_port)
-        self.settimeout(2)
+        self.delegate = None
 
     @staticmethod
     def _process(attribute: Attribute, trans_id: TransactionID, result: Result) -> Result:
         value = attribute.value
         # check attributes
-        if attribute.type == XorMappedAddress and isinstance(value, MappedAddressValue):
-            # XOR and parse again
-            data = XorMappedAddressValue.xor(data=value.data, factor=trans_id.data)
-            value = MappedAddressValue.parse(data=data)
-        # get values
-        if isinstance(value, MappedAddressValue):
+        if attribute.type == MappedAddress:
+            assert isinstance(value, MappedAddressValue), 'mapped address value error: %s' % value
             result.external_ip = value.ip
             result.external_port = value.port
+        elif attribute.type == XorMappedAddress:
+            if not isinstance(value, XorMappedAddressValue):
+                # XOR and parse again
+                data = XorMappedAddressValue.xor(data=value.data, factor=trans_id.data)
+                value = XorMappedAddressValue.parse(data=data, length=len(data))
+            result.external_ip = value.ip
+            result.external_port = value.port
+        elif attribute.type == ChangedAddress:
+            assert isinstance(value, ChangedAddressValue), 'changed address value error: %s' % value
+            result.changed_ip = value.ip
+            result.changed_port = value.port
+        elif attribute.type == SourceAddress:
+            assert isinstance(value, SourceAddressValue), 'source address value error: %s' % value
+            result.source_ip = value.ip
+            result.source_port = value.port
+        else:
+            assert False, 'unknown attribute type: %s' % attribute.type
         return result
 
-    def __bind_request(self, remote_host: str, remote_port: int=3478, body: bytes=b''):
+    def __bind_request(self, remote_host: str, remote_port: int, body: bytes) -> Optional[Result]:
         # 1. create STUN message package
         req = Package.new(msg_type=BindRequest, body=body)
         trans_id = req.head.trans_id
@@ -192,11 +183,11 @@ class Client(UDPSocket):
         count = 3
         res: bytes = None
         while res is None:
-            size = self.send(data=req.data, remote_host=remote_host, remote_port=remote_port)
+            size = self.delegate.send(data=req.data, remote_host=remote_host, remote_port=remote_port)
             if size != len(req.data):
                 # failed to send data
                 return None
-            res, address = self.receive()
+            res, address = self.delegate.receive()
             if res is None:
                 if --count < 0:
                     # failed to receive data
@@ -210,7 +201,7 @@ class Client(UDPSocket):
         ret = Result()
         attributes = Attribute.parse_all(data=pack.body)
         for item in attributes:
-            ret = self._process(trans_id=trans_id, attribute=item, result=ret)
+            ret = self._process(attribute=item, trans_id=trans_id, result=ret)
         return ret
 
     """
@@ -231,19 +222,21 @@ class Client(UDPSocket):
     a Binding Request with only the "change port" flag set.
     """
 
-    def __test_1(self, stun_host: str, stun_port: int=3478) -> Optional[Result]:
+    def __test_1(self, stun_host: str, stun_port: int) -> Optional[Result]:
         body = b''
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
-    def __test_2(self, stun_host: str, stun_port: int=3478) -> Optional[Result]:
+    def __test_2(self, stun_host: str, stun_port: int) -> Optional[Result]:
         body = Attribute(ChangeRequest, ChangeIPAndPort).data
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
-    def __test_3(self, stun_host: str, stun_port: int=3478) -> Optional[Result]:
+    def __test_3(self, stun_host: str, stun_port: int) -> Optional[Result]:
         body = Attribute(ChangeRequest, ChangePort).data
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
     def get_nat_type(self, stun_host: str, stun_port: int=3478) -> str:
+        local_ip = self.delegate.local_ip()
+        local_port = self.delegate.local_port()
         # 1. Test I
         res1 = self.__test_1(stun_host=stun_host, stun_port=stun_port)
         if res1 is None:
@@ -253,7 +246,7 @@ class Client(UDPSocket):
             connectivity.
             """
             return Result.UDPBlocked
-        same_address = (res1.external_ip == self.ip and res1.external_port == self.port)
+        same_address = (res1.external_ip == local_ip) and (res1.external_port == local_port)
         """
         If the test produces a response, the client examines the MAPPED-ADDRESS
         attribute.  If this address and port are the same as the local IP
@@ -287,10 +280,10 @@ class Client(UDPSocket):
         from the response to test I.
         """
         # 3. Test I'
-        res11 = self.__test_1(stun_host=stun_host, stun_port=stun_port)
+        res11 = self.__test_1(stun_host=res1.changed_ip, stun_port=res1.changed_port)
         if res11 is None:
             raise AssertionError('network error')
-        same_address = (res11.external_ip == self.ip and res11.external_port == self.port)
+        same_address = (res11.external_ip == local_ip and res11.external_port == local_port)
         if not same_address:
             """
             If the IP address and port returned in the MAPPED-ADDRESS attribute

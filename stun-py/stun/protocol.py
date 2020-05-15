@@ -35,10 +35,8 @@
     [RFC] https://www.ietf.org/rfc/rfc5389.txt
 """
 
-import numpy
-
 from .data import Data, UInt16Data
-from .data import uint32_to_bytes
+from .data import random_bytes, uint32_to_bytes
 
 
 """
@@ -98,12 +96,12 @@ class TransactionID(Data):
             return None
         elif data_len > 16:
             data = data[:16]
-        assert data[:4] == MagicCookie
+        assert data[:4] == MagicCookie, 'transaction ID not starts with magic cookie'
         return cls(data=data)
 
     @classmethod
     def new(cls):
-        data = MagicCookie + bytes(numpy.random.bytes(12))
+        data = MagicCookie + random_bytes(12)
         return cls(data=data)
 
 

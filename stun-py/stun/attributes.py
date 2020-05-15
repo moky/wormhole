@@ -42,7 +42,6 @@ from .data import bytes_to_int
 from .data import uint8_to_bytes, uint16_to_bytes
 from .data import TLV, Type, Length, Value
 
-
 """
     STUN Attributes
     ~~~~~~~~~~~~~~~
@@ -80,12 +79,12 @@ class AttributeLength(UInt16Data, Length):
 class AttributeType(UInt16Data, Type):
 
     @classmethod
-    def parse(cls, data: bytes):
+    def parse(cls, data: bytes, length: int=2):
         data_len = len(data)
-        if data_len < 2:
+        if data_len < length:
             return None
-        elif data_len > 2:
-            data = data[:2]
+        elif data_len > length:
+            data = data[:length]
         return super().from_bytes(data=data)
 
 
@@ -116,22 +115,32 @@ class Attribute(TLV):
         super().__init__(data=data, t=t, v=v)
 
     @classmethod
-    def parse_type(cls, data: bytes) -> AttributeType:
+    def parse_type(cls, data: bytes) -> Optional[AttributeType]:
         return AttributeType.parse(data=data)
 
     @classmethod
-    def parse_length(cls, data: bytes, t: Type=None) -> AttributeLength:
+    def parse_length(cls, data: bytes, t: AttributeType) -> Optional[AttributeLength]:
         length = AttributeLength.parse(data=data)
         assert (length.value & 0x0003) == 0, 'attribute length error: %s' % data
         return length
 
     @classmethod
-    def parse_value(cls, data: bytes, t: Type=None, length: Length=None) -> AttributeValue:
-        if t == MappedAddress:
-            return MappedAddressValue.parse(data=data)
-        # other types
-        value = super().parse_value(data=data, t=t, length=length)
-        return AttributeValue(data=value)
+    def parse_value(cls, data: bytes, t: AttributeType, length: AttributeLength = None) -> Optional[Value]:
+        if length is None or length.value <= 0:
+            return None
+        else:
+            length = length.value
+        # check length
+        data_len = len(data)
+        if data_len < length:
+            return None
+        if data_len > length:
+            data = data[:length]
+        # get attribute parser with type
+        parser = s_attribute_parsers.get(t)
+        if parser is None:
+            parser = AttributeValue
+        return parser.parse(data=data, length=length)
 
 
 """
@@ -169,7 +178,16 @@ RFC 5389                          STUN                      October 2008
 
 
 class MappedAddressValue(AttributeValue):
+    """
+    15.1.  MAPPED-ADDRESS
 
+        The MAPPED-ADDRESS attribute indicates a reflexive transport address
+        of the client.  It consists of an 8-bit address family and a 16-bit
+        port, followed by a fixed-length value representing the IP address.
+        If the address family is IPv4, the address MUST be 32 bits.  If the
+        address family is IPv6, the address MUST be 128 bits.  All fields
+        must be in network byte order.
+    """
     family_ipv4 = 0x01
     family_ipv6 = 0x02
 
@@ -192,7 +210,7 @@ class MappedAddressValue(AttributeValue):
         return self.__ip
 
     @classmethod
-    def parse(cls, data: bytes):
+    def parse(cls, data: bytes, length: int):
         if data[0] != b'\0':
             return None
         family = bytes_to_int(data[1:2])
@@ -200,7 +218,7 @@ class MappedAddressValue(AttributeValue):
         address = data[4:]
         # check address family
         if family == cls.family_ipv4:
-            assert len(address) == 4, 'IPv4 address error: %s' % address
+            assert length == 8, 'IPv4 data error: %d' % length
             # IPv4
             ip = '.'.join([
                 str(bytes_to_int(address[0:1])),
@@ -209,7 +227,7 @@ class MappedAddressValue(AttributeValue):
                 str(bytes_to_int(address[3:4])),
             ])
         elif family == cls.family_ipv6:
-            assert len(address) == 16, 'IPv6 address error: %s' % address
+            assert length == 20, 'IPv6 data error: %d' % length
             # TODO: IPv6
             assert False, 'implement me!'
         else:
@@ -217,7 +235,7 @@ class MappedAddressValue(AttributeValue):
         return cls(data=data, ip=ip, port=port, family=family)
 
     @classmethod
-    def new(cls, ip: str, port: int, family: int=family_ipv4):
+    def new(cls, ip: str, port: int, family: int = family_ipv4):
         if family == cls.family_ipv4:
             # IPv4
             array = ip.split('.')
@@ -234,12 +252,6 @@ class MappedAddressValue(AttributeValue):
 
 
 """
-15.2.  XOR-MAPPED-ADDRESS
-
-   The XOR-MAPPED-ADDRESS attribute is identical to the MAPPED-ADDRESS
-   attribute, except that the reflexive transport address is obfuscated
-   through the XOR function.
-
    The format of the XOR-MAPPED-ADDRESS is:
 
       0                   1                   2                   3
@@ -251,21 +263,51 @@ class MappedAddressValue(AttributeValue):
      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
              Figure 6: Format of XOR-MAPPED-ADDRESS Attribute
+
+   The Family represents the IP address family, and is encoded
+   identically to the Family in MAPPED-ADDRESS.
+
+
+Rosenberg, et al.           Standards Track                    [Page 33]
+
+RFC 5389                          STUN                      October 2008
 """
 
 
 class XorMappedAddressValue(MappedAddressValue):
     """
-    X-Port is computed by taking the mapped port in host byte order,
-    XOR'ing it with the most significant 16 bits of the magic cookie, and
-    then the converting the result to network byte order.  If the IP
-    address family is IPv4, X-Address is computed by taking the mapped IP
-    address in host byte order, XOR'ing it with the magic cookie, and
-    converting the result to network byte order.  If the IP address
-    family is IPv6, X-Address is computed by taking the mapped IP address
-    in host byte order, XOR'ing it with the concatenation of the magic
-    cookie and the 96-bit transaction ID, and converting the result to
-    network byte order.
+    15.2.  XOR-MAPPED-ADDRESS
+
+        The XOR-MAPPED-ADDRESS attribute is identical to the MAPPED-ADDRESS
+        attribute, except that the reflexive transport address is obfuscated
+        through the XOR function.
+
+        X-Port is computed by taking the mapped port in host byte order,
+        XOR'ing it with the most significant 16 bits of the magic cookie, and
+        then the converting the result to network byte order.  If the IP
+        address family is IPv4, X-Address is computed by taking the mapped IP
+        address in host byte order, XOR'ing it with the magic cookie, and
+        converting the result to network byte order.  If the IP address
+        family is IPv6, X-Address is computed by taking the mapped IP address
+        in host byte order, XOR'ing it with the concatenation of the magic
+        cookie and the 96-bit transaction ID, and converting the result to
+        network byte order.
+
+        The rules for encoding and processing the first 8 bits of the
+        attribute's value, the rules for handling multiple occurrences of the
+        attribute, and the rules for processing address families are the same
+        as for MAPPED-ADDRESS.
+
+        Note: XOR-MAPPED-ADDRESS and MAPPED-ADDRESS differ only in their
+        encoding of the transport address.  The former encodes the transport
+        address by exclusive-or'ing it with the magic cookie.  The latter
+        encodes it directly in binary.  RFC 3489 originally specified only
+        MAPPED-ADDRESS.  However, deployment experience found that some NATs
+        rewrite the 32-bit binary payloads containing the NAT's public IP
+        address, such as STUN's MAPPED-ADDRESS attribute, in the well-meaning
+        but misguided attempt at providing a generic ALG function.  Such
+        behavior interferes with the operation of STUN and also causes
+        failure of STUN's message-integrity checking.
     """
 
     @classmethod
@@ -288,42 +330,66 @@ class XorMappedAddressValue(MappedAddressValue):
         return array
 
 
-"""
-11.2.4 CHANGE-REQUEST
+class ResponseAddressValue(MappedAddressValue):
+    """
+    11.2.2 RESPONSE-ADDRESS
 
-   The CHANGE-REQUEST attribute is used by the client to request that
-   the server use a different address and/or port when sending the
-   response.  The attribute is 32 bits long, although only two bits (A
-   and B) are used:
+        The RESPONSE-ADDRESS attribute indicates where the response to a
+        Binding Request should be sent.  Its syntax is identical to MAPPED-
+        ADDRESS.
 
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 A B 0|
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    (Defined in RFC-3489, removed from RFC-5389)
+    """
+    pass
 
-   The meaning of the flags is:
 
-   A: This is the "change IP" flag.  If true, it requests the server
-      to send the Binding Response with a different IP address than the
-      one the Binding Request was received on.
+class ChangedAddressValue(MappedAddressValue):
+    """
+    11.2.3  CHANGED-ADDRESS
 
-   B: This is the "change port" flag.  If true, it requests the
-      server to send the Binding Response with a different port than the
-      one the Binding Request was received on.
-"""
+        The CHANGED-ADDRESS attribute indicates the IP address and port where
+        responses would have been sent from if the "change IP" and "change
+        port" flags had been set in the CHANGE-REQUEST attribute of the
+        Binding Request.  The attribute is always present in a Binding
+        Response, independent of the value of the flags.  Its syntax is
+        identical to MAPPED-ADDRESS.
+
+    (Defined in RFC-3489, removed from RFC-5389)
+    """
+    pass
 
 
 class ChangeRequestValue(UInt32Data, AttributeValue):
+    """
+    11.2.4 CHANGE-REQUEST
+
+       The CHANGE-REQUEST attribute is used by the client to request that
+       the server use a different address and/or port when sending the
+       response.  The attribute is 32 bits long, although only two bits (A
+       and B) are used:
+
+        0                   1                   2                   3
+        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 A B 0|
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+       The meaning of the flags is:
+
+       A: This is the "change IP" flag.  If true, it requests the server
+          to send the Binding Response with a different IP address than the
+          one the Binding Request was received on.
+
+       B: This is the "change port" flag.  If true, it requests the
+          server to send the Binding Response with a different port than the
+          one the Binding Request was received on.
+
+    (Defined in RFC-3489, removed from RFC-5389)
+    """
 
     @classmethod
-    def parse(cls, data: bytes):
-        data_len = len(data)
-        if data_len < 4:
-            assert False, 'Change-Request value error: %s' % data
-            # return None
-        elif data_len > 4:
-            data = data[:4]
+    def parse(cls, data: bytes, length: int):
+        assert length == 4, 'Change-Request value error: %d' % length
         value = bytes_to_int(data)
         if value == ChangeIPAndPort.value:
             return ChangeIPAndPort
@@ -339,3 +405,30 @@ class ChangeRequestValue(UInt32Data, AttributeValue):
 ChangeIP = ChangeRequestValue(0x00000004)
 ChangePort = ChangeRequestValue(0x00000002)
 ChangeIPAndPort = ChangeRequestValue(0x00000006)
+
+
+class SourceAddressValue(MappedAddressValue):
+    """
+    11.2.5 SOURCE-ADDRESS
+
+        The SOURCE-ADDRESS attribute is present in Binding Responses.  It
+        indicates the source IP address and port that the server is sending
+        the response from.  Its syntax is identical to that of MAPPED-
+        ADDRESS.
+
+    (Defined in RFC-3489, removed from RFC-5389)
+    """
+    pass
+
+
+#
+#  Register attribute parsers
+#
+s_attribute_parsers = {
+    MappedAddress: MappedAddressValue,
+    # XorMappedAddress: XorMappedAddressValue,
+    ResponseAddress: ResponseAddressValue,
+    ChangedAddress: ChangedAddressValue,
+    ChangeRequest: ChangeRequestValue,
+    SourceAddress: SourceAddressValue,
+}
