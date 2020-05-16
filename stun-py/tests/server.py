@@ -5,24 +5,14 @@ import socket
 
 import stun
 
+import sys
+import os
 
-SERVER_ANY = '0.0.0.0'
-SERVER_GZ1 = '134.175.87.98'
-SERVER_GZ2 = '203.195.224.155'
-SERVER_GZ3 = '129.204.94.164'
+curPath = os.path.abspath(os.path.dirname(__file__))
+rootPath = os.path.split(curPath)[0]
+sys.path.append(rootPath)
 
-NEIGHBOR_SERVERS = [
-    # (SERVER_GZ1, 3478),
-    # (SERVER_GZ2, 3478),
-    (SERVER_GZ3, 3478),
-]
-
-LOCAL_IP = SERVER_GZ1
-# LOCAL_IP = SERVER_ANY
-
-LOCAL_PORT = 3478
-ANOTHER_PORT = 3480
-REDIRECTED_PORT = 3479
+from tests.srv_cnf import *
 
 
 class UDPServer(stun.Server):
@@ -41,13 +31,23 @@ class UDPServer(stun.Server):
         sock2.settimeout(2)
         sock2.bind(('0.0.0.0', ANOTHER_PORT))
         self.__socket2 = sock2
+        # socket 3 for "change IP & port"
+        sock3 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock3.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock3.settimeout(2)
+        sock3.bind(('0.0.0.0', REDIRECTED_PORT))
+        self.__socket3 = sock3
 
     def send(self, data: bytes, remote_host: str, remote_port: int, local_port: int=0) -> int:
         try:
-            if local_port == ANOTHER_PORT:
+            if local_port == LOCAL_PORT:
+                return self.__socket1.sendto(data, (remote_host, remote_port))
+            elif local_port == ANOTHER_PORT:
                 return self.__socket2.sendto(data, (remote_host, remote_port))
+            elif local_port == REDIRECTED_PORT:
+                return self.__socket3.sendto(data, (remote_host, remote_port))
             else:
-                assert local_port is 0 or local_port == LOCAL_PORT, 'local port error: %d' % local_port
+                assert local_port is 0, 'local port error: %d' % local_port
                 return self.__socket1.sendto(data, (remote_host, remote_port))
         except socket.error:
             return -1

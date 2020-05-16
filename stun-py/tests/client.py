@@ -10,13 +10,9 @@ SERVER_GZ2 = '203.195.224.155'
 SERVER_GZ3 = '129.204.94.164'
 
 STUN_SERVERS = [
-    # SERVER_GZ1,
-    'stun.ekiga.net',
-    'stun.ideasip.com',
-    'stun.voiparound.com',
-    'stun.voipbuster.com',
-    'stun.voipstunt.com',
-    'stun.voxgratia.org',
+    SERVER_GZ1,
+    SERVER_GZ2,
+    SERVER_GZ3,
 ]
 STUN_PORT = 3478
 
