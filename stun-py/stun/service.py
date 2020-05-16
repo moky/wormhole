@@ -183,12 +183,9 @@ class Server(Node, ABC):
         :param remote_port: Client's mapped address port
         :return:
         """
-        if self.neighbour_address is None:
-            neighbour_ip = self.changed_address[0]
-            neighbour_port = self.changed_address[1]
-        else:
-            neighbour_ip = self.neighbour_address[0]
-            neighbour_port = self.neighbour_address[1]
+        assert self.neighbour_address is not None, 'neighbour address not set'
+        neighbour_ip = self.neighbour_address[0]
+        neighbour_port = self.neighbour_address[1]
         # create attributes
         value = MappedAddressValue.new(ip=remote_ip, port=remote_port)
         data1 = Attribute(MappedAddress, value).data
@@ -198,15 +195,13 @@ class Server(Node, ABC):
         self.send(data=pack.data, remote_host=neighbour_ip, remote_port=neighbour_port)
 
     def _respond(self, head: Header, remote_ip: str, remote_port: int, local_port: int=0):
+        assert self.source_address is not None, 'source address not set'
         local_ip = self.source_address[0]
         if local_port is 0:
             local_port = self.source_address[1]
-        if self.changed_address is None:
-            changed_ip = self.neighbour_address[0]
-            changed_port = self.neighbour_address[1]
-        else:
-            changed_ip = self.changed_address[0]
-            changed_port = self.changed_address[1]
+        assert self.changed_address is not None, 'changed address not set'
+        changed_ip = self.changed_address[0]
+        changed_port = self.changed_address[1]
         # create attributes
         value = MappedAddressValue.new(ip=remote_ip, port=remote_port)
         data1 = Attribute(MappedAddress, value).data
@@ -419,7 +414,7 @@ class Client(Node, ABC):
         body = Attribute(ChangeRequest, ChangePort).data
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
-    def get_nat_type(self, stun_host: str, stun_port: int=3478) -> str:
+    def get_nat_type(self, stun_host: str, stun_port: int=3478) -> (str, Optional[Info]):
         # 1. Test I
         res1 = self.__test_1(stun_host=stun_host, stun_port=stun_port)
         if res1 is None:
@@ -428,7 +423,7 @@ class Client(Node, ABC):
             response, the client knows right away that it is not capable of UDP
             connectivity.
             """
-            return Info.UDPBlocked
+            return Info.UDPBlocked, None
         """
         If the test produces a response, the client examines the MAPPED-ADDRESS
         attribute.  If this address and port are the same as the local IP
@@ -445,17 +440,17 @@ class Client(Node, ABC):
             is received, the client knows its behind a symmetric UDP firewall.
             """
             if res2 is None:
-                return Info.SymmetricFirewall
+                return Info.SymmetricFirewall, res1
             else:
-                return Info.OpenInternet
-        if res2 is not None:
+                return Info.OpenInternet, res2
+        elif res2 is not None:
             """
             In the event that the IP address and port of the socket did not match
             the MAPPED-ADDRESS attribute in the response to test I, the client
             knows that it is behind a NAT.  It performs test II.  If a response
             is received, the client knows that it is behind a full-cone NAT.
             """
-            return Info.FullConeNAT
+            return Info.FullConeNAT, res2
         """
         If no response is received, it performs test I again, but this time,
         does so to the address and port from the CHANGED-ADDRESS attribute
@@ -463,20 +458,20 @@ class Client(Node, ABC):
         """
         # 3. Test I'
         if res1.changed_address is None:
-            return 'Change-Address not found'
+            return 'Change-Address not found', res1
         changed_ip = res1.changed_address[0]
         changed_port = res1.changed_address[1]
         res11 = self.__test_1(stun_host=changed_ip, stun_port=changed_port)
         if res11 is None:
             # raise AssertionError('network error')
-            return 'Change-Address error on (%s:%d)' % (changed_ip, changed_port)
+            return 'Change address failed', res1
         if res11.mapped_address != res1.mapped_address:
             """
             If the IP address and port returned in the MAPPED-ADDRESS attribute
             are not the same as the ones from the first test I, the client
             knows its behind a symmetric NAT.
             """
-            return Info.SymmetricNAT
+            return Info.SymmetricNAT, res11
         """
         If the address and port are the same, the client is either behind a
         restricted or port restricted NAT.  To make a determination about
@@ -487,6 +482,6 @@ class Client(Node, ABC):
         # 4. Test III
         res3 = self.__test_3(stun_host=stun_host, stun_port=stun_port)
         if res3 is None:
-            return Info.PortRestrictedNAT
+            return Info.PortRestrictedNAT, res11
         else:
-            return Info.RestrictedNAT
+            return Info.RestrictedNAT, res3
