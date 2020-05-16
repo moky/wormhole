@@ -26,7 +26,7 @@ class UDPClient(stun.Client):
         super().__init__()
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.settimeout(5)
+        sock.settimeout(2)
         sock.bind(('0.0.0.0', LOCAL_PORT))
         self.__socket = sock
 
@@ -52,5 +52,6 @@ if __name__ == '__main__':
         print('-- Detection starts from: %s ...' % host)
         msg, res = client.get_nat_type(stun_host=host, stun_port=STUN_PORT)
         print('-- Detection Result:', msg)
-        print('-- External Address:', res.mapped_address)
+        if res is not None:
+            print('-- External Address:', res.mapped_address)
         print('--------------------------------')
