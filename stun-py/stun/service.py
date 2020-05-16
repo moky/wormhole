@@ -120,7 +120,7 @@ class Server(Node, ABC):
 
     def __init__(self):
         super().__init__()
-        self.software = 'stun.dim.chat'
+        self.software = 'stun.dim.chat 0.1'
         """
         11.2.3  CHANGED-ADDRESS
 
@@ -206,13 +206,11 @@ class Server(Node, ABC):
         value = MappedAddressValue.new(ip=remote_ip, port=remote_port)
         data1 = Attribute(MappedAddress, value).data
         # Xor
-        value = XorMappedAddressValue.new(ip=remote_ip, port=remote_port)
+        value = XorMappedAddressValue.new(ip=remote_ip, port=remote_port, factor=head.trans_id.data)
         data4 = Attribute(XorMappedAddress, value).data
-        data4 = XorMappedAddressValue.xor(data=data4, factor=head.trans_id.data)
         # Xor2
-        value = XorMappedAddressValue2.new(ip=remote_ip, port=remote_port)
+        value = XorMappedAddressValue2.new(ip=remote_ip, port=remote_port, factor=head.trans_id.data)
         data5 = Attribute(XorMappedAddress2, value).data
-        data5 = XorMappedAddressValue2.xor(data=data5, factor=head.trans_id.data)
         # source address
         value = SourceAddressValue.new(ip=local_ip, port=local_port)
         data2 = Attribute(SourceAddress, value).data
@@ -224,7 +222,7 @@ class Server(Node, ABC):
         data6 = Attribute(Software, value).data
         # pack
         body = data1 + data2 + data3 + data4 + data5 + data6
-        pack = Package.new(msg_type=head.type, trans_id=head.trans_id, body=body)
+        pack = Package.new(msg_type=BindResponse, trans_id=head.trans_id, body=body)
         self.send(data=pack.data, remote_host=remote_ip, remote_port=remote_port, local_port=local_port)
 
     def handle(self, data: bytes, remote_ip: str, remote_port: int):
@@ -237,6 +235,7 @@ class Server(Node, ABC):
         if head is None or head.type != BindRequest:
             # received package error
             return None
+        self.info('received message type: %s' % head.type)
         if result.change_request == ChangeIPAndPort:
             # redirect for "change IP" and "change port" flags
             self._redirect(head=head, remote_ip=remote_ip, remote_port=remote_port)

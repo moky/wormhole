@@ -240,43 +240,52 @@ class MappedAddressValue(AttributeValue):
         return self.__ip
 
     @classmethod
-    def parse(cls, data: bytes, length: int):
-        if data[0] != 0:
-            return None
-        family = bytes_to_int(data[1:2])
-        port = bytes_to_int(data[2:4])
-        address = data[4:]
-        # check address family
-        if family == cls.family_ipv4:
-            assert length == 8, 'IPv4 data error: %d' % length
-            # IPv4
-            ip = '.'.join([
-                str(bytes_to_int(address[0:1])),
-                str(bytes_to_int(address[1:2])),
-                str(bytes_to_int(address[2:3])),
-                str(bytes_to_int(address[3:4])),
-            ])
-        elif family == cls.family_ipv6:
-            assert length == 20, 'IPv6 data error: %d' % length
-            # TODO: IPv6
-            assert False, 'implement me!'
-        else:
-            raise ValueError('unknown address family: %d' % family)
-        return cls(data=data, ip=ip, port=port, family=family)
-
-    @classmethod
-    def new(cls, ip: str, port: int, family: int = family_ipv4):
+    def ip_to_bytes(cls, ip: str, family: int) -> bytes:
         if family == cls.family_ipv4:
             # IPv4
             array = ip.split('.')
             assert len(array) == 4, 'IP address error: %s' % ip
-            address = bytes([int(x) for x in array])
+            return bytes([int(x) for x in array])
             pass
         elif family == cls.family_ipv6:
             # TODO: IPv6
             assert False, 'implement me!'
         else:
             raise ValueError('unknown address family: %d' % family)
+
+    @classmethod
+    def bytes_to_ip(cls, address: bytes, family: int) -> str:
+        # check address family
+        if family == cls.family_ipv4:
+            assert len(address) == 4, 'IPv4 data error: %s' % address
+            # IPv4
+            return '.'.join([
+                str(bytes_to_int(address[0:1])),
+                str(bytes_to_int(address[1:2])),
+                str(bytes_to_int(address[2:3])),
+                str(bytes_to_int(address[3:4])),
+            ])
+        elif family == cls.family_ipv6:
+            assert len(address) == 16, 'IPv6 data error: %s' % address
+            # TODO: IPv6
+            assert False, 'implement me!'
+        else:
+            raise ValueError('unknown address family: %d' % family)
+
+    @classmethod
+    def parse(cls, data: bytes, length: int):
+        if data[0] != 0:
+            return None
+        family = bytes_to_int(data[1:2])
+        port = bytes_to_int(data[2:4])
+        ip = cls.bytes_to_ip(address=data[4:], family=family)
+        return cls(data=data, ip=ip, port=port, family=family)
+
+    @classmethod
+    def new(cls, ip: str, port: int, family: int=None):
+        if family is None:
+            family = cls.family_ipv4
+        address = cls.ip_to_bytes(ip=ip, family=family)
         data = b'\0' + uint8_to_bytes(family) + uint16_to_bytes(port) + address
         return cls(data=data, ip=ip, port=port, family=family)
 
@@ -359,6 +368,16 @@ class XorMappedAddressValue(MappedAddressValue):
             f_pos += 1
         return array
 
+    @classmethod
+    def new(cls, ip: str, port: int, family: int=None, factor: bytes=None):
+        if family is None:
+            family = cls.family_ipv4
+        address = cls.ip_to_bytes(ip=ip, family=family)
+        data = b'\0' + uint8_to_bytes(family) + uint16_to_bytes(port) + address
+        assert factor is not None, 'missing factor'
+        data = cls.xor(data=data, factor=factor)
+        return cls(data=data, ip=ip, port=port, family=family)
+
 
 class XorMappedAddressValue2(MappedAddressValue):
     """ https://tools.ietf.org/id/draft-ietf-behave-rfc3489bis-02.txt
@@ -417,6 +436,16 @@ class XorMappedAddressValue2(MappedAddressValue):
             a_pos += 1
             f_pos += 1
         return array
+
+    @classmethod
+    def new(cls, ip: str, port: int, family: int=None, factor: bytes=None):
+        if family is None:
+            family = cls.family_ipv4
+        address = cls.ip_to_bytes(ip=ip, family=family)
+        data = b'\0' + uint8_to_bytes(family) + uint16_to_bytes(port) + address
+        assert factor is not None, 'missing factor'
+        data = cls.xor(data=data, factor=factor)
+        return cls(data=data, ip=ip, port=port, family=family)
 
 
 class ResponseAddressValue(MappedAddressValue):

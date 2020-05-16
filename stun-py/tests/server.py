@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 import socket
 
@@ -10,12 +12,14 @@ SERVER_GZ2 = '203.195.224.155'
 SERVER_GZ3 = '129.204.94.164'
 
 NEIGHBOR_SERVERS = [
-    (SERVER_GZ1, 3478),
+    # (SERVER_GZ1, 3478),
     # (SERVER_GZ2, 3478),
     (SERVER_GZ3, 3478),
 ]
 
-LOCAL_IP = SERVER_ANY
+LOCAL_IP = SERVER_GZ1
+# LOCAL_IP = SERVER_ANY
+
 LOCAL_PORT = 3478
 ANOTHER_PORT = 3479
 
@@ -42,7 +46,7 @@ class UDPServer(stun.Server):
             if local_port == ANOTHER_PORT:
                 return self.__socket2.sendto(data, (remote_host, remote_port))
             else:
-                assert local_port is 0, 'local port error: %d' % local_port
+                assert local_port is 0 or local_port == LOCAL_PORT, 'local port error: %d' % local_port
                 return self.__socket1.sendto(data, (remote_host, remote_port))
         except socket.error:
             return -1
@@ -66,6 +70,7 @@ def main():
         server.neighbour_address = NEIGHBOR_SERVERS[1]
     server.another_port = ANOTHER_PORT
     # GO!
+    server.info('STUN server started')
     while True:
         try:
             data, address = server.receive()

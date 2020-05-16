@@ -61,7 +61,7 @@ class MessageType(UInt16Data):
 
     def __str__(self):
         clazz = self.__class__.__name__
-        return '<%s: %d "%s" />' % (clazz, self.value, self.__name)
+        return '<%s: 0x%04X "%s" />' % (clazz, self.value, self.__name)
 
     @classmethod
     def parse(cls, data: bytes):
