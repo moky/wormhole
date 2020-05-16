@@ -1,38 +1,32 @@
 
 import socket
-from typing import Optional
 
 import stun
 
 
-STUN_SERVERS = (
+STUN_SERVERS = [
     'stun.ekiga.net',
     'stun.ideasip.com',
     'stun.voiparound.com',
     'stun.voipbuster.com',
     'stun.voipstunt.com',
-    'stun.voxgratia.org'
-)
-
+    'stun.voxgratia.org',
+]
 STUN_PORT = 3478
 
+LOCAL_IP = '0.0.0.0'
+LOCAL_PORT = 9394
 
-class UDPSocket(stun.Delegate):
+
+class UDPClient(stun.Client):
 
     def __init__(self):
         super().__init__()
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.__socket = s
-        # local host & port
-        self.__ip = '0.0.0.0'
-        self.__port = 0
-
-    def local_ip(self) -> str:
-        return self.__ip
-
-    def local_port(self) -> int:
-        return self.__port
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.settimeout(5)
+        sock.bind(('0.0.0.0', LOCAL_PORT))
+        self.__socket = sock
 
     def send(self, data: bytes, remote_host: str, remote_port: int) -> int:
         try:
@@ -46,32 +40,15 @@ class UDPSocket(stun.Delegate):
         except socket.error:
             return None, None
 
-    def bind(self, ip: str, port: int):
-        address = (ip, port)
-        self.__socket.bind(address)
-        self.__ip = ip
-        self.__port = port
 
-    def settimeout(self, value: Optional[float]):
-        self.__socket.settimeout(value)
-
-    def feedback(self, message: str):
-        print('::', message)
-
-
-def main(ip: str='0.0.0.0', port: int=9394):
-    # create socket
-    sock = UDPSocket()
-    sock.bind(ip=ip, port=port)
-    sock.settimeout(5)
+def main():
     # create client
-    client = stun.Client()
-    client.delegate = sock
-    port = STUN_PORT
+    client = UDPClient()
+    client.source_address = (LOCAL_IP, LOCAL_PORT)
     for host in STUN_SERVERS:
         print('--------------------------------')
         print('-- Querying: %s ...' % host)
-        ret = client.get_nat_type(stun_host=host, stun_port=port)
+        ret = client.get_nat_type(stun_host=host, stun_port=STUN_PORT)
         print('-- Result:', ret)
         print('--------------------------------')
 

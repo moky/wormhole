@@ -43,7 +43,7 @@ from .attributes import Username
 from .attributes import Password
 from .attributes import MessageIntegrity
 from .attributes import ErrorCode
-from .attributes import UnknownAttribute
+from .attributes import UnknownAttributes
 from .attributes import ReflectedFrom
 from .attributes import Realm
 from .attributes import Nonce
@@ -53,7 +53,7 @@ from .attributes import Software
 from .attributes import AlternateServer
 from .attributes import Fingerprint
 
-from .service import Delegate, Result, Server, Client
+from .service import Client, Server
 
 name = "STUN"
 
@@ -77,7 +77,7 @@ __all__ = [
     # attribute types
     'MappedAddress', 'ResponseAddress', 'ChangeRequest',
     'SourceAddress', 'ChangedAddress',
-    'Username', 'Password', 'MessageIntegrity', 'ErrorCode', 'UnknownAttribute', 'ReflectedFrom',
+    'Username', 'Password', 'MessageIntegrity', 'ErrorCode', 'UnknownAttributes', 'ReflectedFrom',
     'Realm', 'Nonce', 'XorMappedAddress', 'XorOnly',
     'Software', 'AlternateServer', 'Fingerprint',
     # attribute values
@@ -89,5 +89,5 @@ __all__ = [
     #
     #  Service
     #
-    'Delegate', 'Server', 'Client', 'Result',
+    'Client', 'Server',
 ]

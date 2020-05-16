@@ -112,28 +112,28 @@ s_attribute_types = {}
 # Comprehension-optional range (0x8000-0xFFFF)
 
 # [RFC-3489]
-MappedAddress = AttributeType(0x0001, name='Mapped Address')
-ResponseAddress = AttributeType(0x0002, name='Response Address')
-ChangeRequest = AttributeType(0x0003, name='Change Request')
-SourceAddress = AttributeType(0x0004, name='Source Address')
-ChangedAddress = AttributeType(0x0005, name='Changed Address')
-Username = AttributeType(0x0006, name='Username')
-Password = AttributeType(0x0007, name='Password')
-MessageIntegrity = AttributeType(0x0008, name='Message Integrity')
-ErrorCode = AttributeType(0x0009, name='Error Code')
-UnknownAttribute = AttributeType(0x000A, name='Unknown Attribute')
-ReflectedFrom = AttributeType(0x000B, name='Reflected From')
+MappedAddress = AttributeType(0x0001, name='MAPPED-ADDRESS')
+ResponseAddress = AttributeType(0x0002, name='RESPONSE-ADDRESS')
+ChangeRequest = AttributeType(0x0003, name='CHANGE-REQUEST')
+SourceAddress = AttributeType(0x0004, name='SOURCE-ADDRESS')
+ChangedAddress = AttributeType(0x0005, name='CHANGED-ADDRESS')
+Username = AttributeType(0x0006, name='USERNAME')
+Password = AttributeType(0x0007, name='PASSWORD')
+MessageIntegrity = AttributeType(0x0008, name='MESSAGE-INTEGRITY')
+ErrorCode = AttributeType(0x0009, name='ERROR-CODE')
+UnknownAttributes = AttributeType(0x000A, name='UNKNOWN-ATTRIBUTES')
+ReflectedFrom = AttributeType(0x000B, name='REFLECTED-FROM')
 
 # [RFC-5389]
-Realm = AttributeType(0x0014, name='Realm')
-Nonce = AttributeType(0x0015, name='Nonce')
-XorMappedAddress = AttributeType(0x0020, name='Xor Mapped Address')
+Realm = AttributeType(0x0014, name='REALM')
+Nonce = AttributeType(0x0015, name='NONCE')
+XorMappedAddress = AttributeType(0x0020, name='XOR-MAPPED-ADDRESS(0020)')
 
-XorMappedAddress2 = AttributeType(0x8020, name='(Xor?) Mapped Address')
-XorOnly = AttributeType(0x8021, name='XOR Only')
-Software = AttributeType(0x8022, name='Software')
-AlternateServer = AttributeType(0x8023, name='Alternate Server')
-Fingerprint = AttributeType(0x8028, name='Fingerprint')
+XorMappedAddress2 = AttributeType(0x8020, name='XOR-MAPPED-ADDRESS(8020)')
+XorOnly = AttributeType(0x8021, name='XOR-ONLY')
+Software = AttributeType(0x8022, name='SOFTWARE')
+AlternateServer = AttributeType(0x8023, name='ALTERNATE-SERVER')
+Fingerprint = AttributeType(0x8028, name='FINGERPRINT')
 
 
 class Attribute(TLV):
@@ -541,6 +541,17 @@ class SoftwareValue(AttributeValue):
             data = data[:length]
         desc = data.rstrip(b'\0').decode('utf-8')
         return cls(data=data, description=desc)
+
+    @classmethod
+    def new(cls, description: str):
+        data = description.encode('utf-8')
+        # padding with '\0'
+        length = len(data)
+        tail = length & 3
+        while tail < 4:
+            data += b'\0'
+            tail += 1
+        return cls(data=data, description=description)
 
 
 #

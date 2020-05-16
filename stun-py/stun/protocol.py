@@ -81,12 +81,12 @@ class MessageType(UInt16Data):
 
 # types for a STUN message
 s_message_types = {}
-BindRequest = MessageType(0x0001, name='BindRequest')
-BindResponse = MessageType(0x0101, name='BindResponse')
-BindErrorResponse = MessageType(0x0111, name='BindErrorResponse')
-SharedSecretRequest = MessageType(0x0002, name='SharedSecretRequest')
-SharedSecretResponse = MessageType(0x0102, name='SharedSecretResponse')
-SharedSecretErrorResponse = MessageType(0x0112, name='SharedSecretErrorResponse')
+BindRequest = MessageType(0x0001, name='Binding Request')
+BindResponse = MessageType(0x0101, name='Binding Response')
+BindErrorResponse = MessageType(0x0111, name='Binding Error Response')
+SharedSecretRequest = MessageType(0x0002, name='Shared Secret Request')
+SharedSecretResponse = MessageType(0x0102, name='Shared Secret Response')
+SharedSecretErrorResponse = MessageType(0x0112, name='Shared Secret Error Response')
 
 
 class MessageLength(UInt16Data):
