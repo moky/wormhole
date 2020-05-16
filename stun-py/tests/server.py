@@ -21,7 +21,8 @@ LOCAL_IP = SERVER_GZ1
 # LOCAL_IP = SERVER_ANY
 
 LOCAL_PORT = 3478
-ANOTHER_PORT = 3479
+ANOTHER_PORT = 3480
+REDIRECTED_PORT = 3479
 
 
 class UDPServer(stun.Server):
@@ -69,6 +70,7 @@ def main():
         server.changed_address = NEIGHBOR_SERVERS[0]
         server.neighbour_address = NEIGHBOR_SERVERS[1]
     server.another_port = ANOTHER_PORT
+    server.redirected_port = REDIRECTED_PORT
     # GO!
     server.info('STUN server started')
     while True:

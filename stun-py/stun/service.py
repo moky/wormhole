@@ -144,12 +144,17 @@ class Server(Node, ABC):
         """
         self.neighbour_address: tuple = None
         """
+            If the request is redirected by another server ("change IP" and
+            "change port"), then use this port to respond the client.
+        """
+        self.redirected_port: int = 3479
+        """
             "Change Port"
             
             When this server received ChangeRequest with "change port" flag set,
             it should respond the client with another port.
         """
-        self.another_port: int = 3479
+        self.another_port: int = 3480
 
     @abstractmethod
     def send(self, data: bytes, remote_host: str, remote_port: int, local_port: int=0) -> int:
@@ -249,7 +254,7 @@ class Server(Node, ABC):
             # respond redirected request
             remote_ip = result.mapped_address[0]
             remote_port = result.mapped_address[1]
-            self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port)
+            self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port, local_port=self.redirected_port)
 
 
 """

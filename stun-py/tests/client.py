@@ -5,8 +5,12 @@ import socket
 
 import stun
 
+SERVER_GZ1 = '134.175.87.98'
+SERVER_GZ2 = '203.195.224.155'
+SERVER_GZ3 = '129.204.94.164'
 
 STUN_SERVERS = [
+    # SERVER_GZ1,
     'stun.ekiga.net',
     'stun.ideasip.com',
     'stun.voiparound.com',
