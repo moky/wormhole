@@ -32,6 +32,10 @@ import binascii
 import random
 
 
+def hex_encode(data: bytes) -> str:
+    return binascii.b2a_hex(data).decode('utf-8')
+
+
 def hex_decode(string: str) -> bytes:
     return binascii.a2b_hex(string)
 

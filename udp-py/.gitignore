@@ -2,5 +2,5 @@
 /.idea
 /build
 /dist
-/stun.egg-info
+/udp.egg-info
 *.pyc
