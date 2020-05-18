@@ -77,15 +77,17 @@ def uint32_to_bytes(value: int, byteorder: str='big') -> bytes:
 
 
 def bytes_to_varint(data: bytes) -> (int, int):
-    pos = 0
     value = 0
+    index = 0
+    offset = 0
     while True:
-        ch = data[pos]
-        value |= (ch & 0x7F) << (7 * pos)
-        pos += 1
+        ch = data[index]
+        value |= (ch & 0x7F) << offset
+        index += 1
+        offset += 7
         if (ch & 0x80) == 0:
             break
-    return value, pos
+    return value, index
 
 
 def varint_to_bytes(value: int) -> bytes:

@@ -37,9 +37,9 @@
 
 from typing import Optional
 
-from .data import Data, UInt8Data, UInt32Data
+from .data import Data
 from .data import random_bytes
-from .data import uint8_to_bytes, uint32_to_bytes
+from .data import bytes_to_int, uint8_to_bytes, uint32_to_bytes
 
 """
     Data Type:
@@ -151,25 +151,41 @@ class TransactionID(Data):
 """
 
 
-class Header:
+class Header(Data):
 
-    def __init__(self, data: bytes, version: int, length: int, data_type: DataType, sn: TransactionID,
-                 pages: int=1, offset: int=0):
+    def __init__(self, data_type: DataType, sn: TransactionID=None,
+                 version: int=0, pages: int=1, offset: int=0):
         """
         Create package header
 
-        :param data:      package data
         :param version:   package version
-        :param length:    package header length (in bytes)
         :param data_type: package body data type
         :param sn:        transaction ID
         :param pages:     fragment count [OPTIONAL], default is 1
         :param offset:    fragment index [OPTIONAL], default is 0
         """
-        super().__init__()
-        self.__data = data
+        if data_type == MessageFragment:
+            # fragments
+            assert pages > 1 and pages > offset, 'pages error: %d, %d' % (pages, offset)
+            options = uint32_to_bytes(value=pages) + uint32_to_bytes(value=offset)
+            head_len = 20  # in bytes
+        else:
+            assert pages == 1 and offset == 0, 'pages error: %d, %d' % (pages, offset)
+            options = b''
+            head_len = 12  # in bytes
+        if sn is None:
+            # generate transaction ID
+            sn = TransactionID.new()
+        # version
+        ver_data = uint8_to_bytes(value=version)
+        # generate header data
+        hl_ty = (head_len << 2) & (data_type.value & 0x0F)
+        hl_ty = uint8_to_bytes(hl_ty & 0xFF)
+        data = b'WH' + ver_data + hl_ty + sn.data + options
+        # init
+        super().__init__(data=data)
         self.__version = version
-        self.__length = length
+        self.__length = head_len
         self.__type = data_type
         self.__sn = sn
         self.__pages = pages
@@ -186,10 +202,6 @@ class Header:
             return '<%s: %s "%s" pages=%d offset=%d />' % (clazz, ver, dt, pages, offset)
         else:
             return '<%s: %s "%s" />' % (clazz, ver, dt)
-
-    @property
-    def data(self) -> bytes:
-        return self.__data
 
     @property
     def version(self) -> int:
@@ -229,11 +241,10 @@ class Header:
             return ValueError('version error: %d' % version)
         # get header length & data type
         ch = data[3]
-        prefix = data[:4]
-        data = data[4:]
         head_len = (ch & 0xF0) >> 2  # in bytes
         data_type = ch & 0x0F
         _type = DataType.new(value=data_type)
+        data = data[4:]
         # get transaction ID
         _sn = TransactionID.parse(data=data)
         if _sn is None:
@@ -244,41 +255,17 @@ class Header:
         if _type == MessageFragment:
             assert head_len == 20, 'head length error: %d' % head_len
             assert data_len > head_len, 'fragment package error: %s' % data
-            _pages = UInt32Data.from_bytes(data=data[:4])
-            _offset = UInt32Data.from_bytes(data=data[4:8])
-            # build data
-            data = prefix + _sn.data + _pages.data + _offset.data
-            return cls(data=data, version=version, length=head_len, data_type=_type, sn=_sn,
-                       pages=_pages.value, offset=_offset.value)
+            pages = bytes_to_int(data[:4])
+            offset = bytes_to_int(data[4:8])
+            assert pages > 1 and pages > offset, 'pages error: %d, %d' % (pages, offset)
         else:
             assert head_len == 12, 'head length error: %d' % head_len
-            # build data
-            data = prefix + _sn.data
-            return cls(data=data, version=version, length=head_len, data_type=_type, sn=_sn,
-                       pages=1, offset=0)
-
-    @classmethod
-    def new(cls, data_type: DataType, sn: TransactionID, version: int=0, pages: int=1, offset: int=0):
-        if data_type == MessageFragment:
-            # fragments
-            assert pages > 1 and pages > offset, 'pages error: %d, %d' % (pages, offset)
-            options = uint32_to_bytes(value=pages) + uint32_to_bytes(value=offset)
-            head_len = 20  # in bytes
-        else:
-            assert pages == 1 and offset == 0, 'pages error: %d, %d' % (pages, offset)
-            options = b''
-            head_len = 12  # in bytes
-        # version
-        ver = UInt8Data.from_uint8(value=version)
-        # header length & data type
-        hl_ty = (head_len << 2) & (data_type.value & 0x0F)
-        hl_ty = uint8_to_bytes(hl_ty & 0xFF)
-        data = b'WH' + ver.data + hl_ty + sn.data + options
-        return cls(data=data, version=version, length=head_len, data_type=data_type, sn=sn,
-                   pages=pages, offset=offset)
+            pages = 1
+            offset = 0
+        return cls(version=version, data_type=_type, sn=_sn, pages=pages, offset=offset)
 
 
-class Package:
+class Package(Data):
 
     """
         Max length for package body
@@ -291,9 +278,9 @@ class Package:
     """
     MAX_BODY_LEN = 512
 
-    def __init__(self, data: bytes, head: Header, body: bytes):
-        super().__init__()
-        self.__data = data
+    def __init__(self, head: Header, body: bytes):
+        data = head.data + body
+        super().__init__(data=data)
         self.__head = head
         self.__body = body
 
@@ -301,14 +288,6 @@ class Package:
         clazz = self.__class__.__name__
         body_len = len(self.body)
         return '<%s: head=%s body_len=%d />' % (clazz, self.head, body_len)
-
-    @property
-    def data(self) -> bytes:
-        if self.__data is None:
-            head = self.head.data
-            body = self.body
-            self.__data = head + body
-        return self.__data
 
     @property
     def head(self) -> Header:
@@ -327,25 +306,14 @@ class Package:
             return None
         # get package body
         body = data[head.length:]
-        return Package(data=data, head=head, body=body)
+        return cls(head=head, body=body)
 
     @classmethod
-    def new(cls, data_type: DataType, sn: TransactionID=None, body: bytes=b'', version: int=0):
-        assert data_type != MessageFragment, 'data type error: %s' % data_type
-        if sn is None:
-            # generate sequence number
-            sn = TransactionID.new()
+    def new(cls, data_type: DataType, sn: TransactionID=None, body: bytes=b'', version: int=0,
+            pages: int=1, offset: int=0):
         # create package with header
-        head = Header.new(version=version, data_type=data_type, sn=sn)
-        data = head.data + body
-        pack = cls(data=data, head=head, body=body)
-        # check body length
-        body_len = len(body)
-        if body_len <= cls.MAX_BODY_LEN or data_type in [Command, CommandRespond]:
-            # command package will never be split
-            return pack
-        assert data_type in [Message, MessageRespond], 'data type error: %s' % data_type
-        return cls.split(package=pack)
+        head = Header(version=version, data_type=data_type, sn=sn, pages=pages, offset=offset)
+        return cls(head=head, body=body)
 
     @classmethod
     def split(cls, package) -> list:
@@ -370,9 +338,8 @@ class Package:
         index = 0
         array = []
         while index < count:
-            head = Header.new(version=version, data_type=data_type, sn=sn, pages=count, offset=index)
-            data = head.data + body
-            pack = cls(data=data, head=head, body=body)
+            body = fragments[index]
+            pack = cls.new(version=version, data_type=data_type, sn=sn, body=body, pages=count, offset=index)
             array.append(pack)
             index += 1
         return array
@@ -385,22 +352,21 @@ class Package:
     @classmethod
     def join(cls, packages: list) -> Optional[bytes]:
         """
-        Join all packages' body data together
+        Join sorted packages' body data together
 
-        :param packages: packages will be sort by offset
+        :param packages: packages sorted by offset
         :return: original message data
         """
-        # 1. sort it first
-        packages = cls.sort(packages)
+        assert len(packages) > 1, 'packages count error: %d' % len(packages)
         first = packages[0]
         sn = first.head.sequence_number
-        # 2. get fragments count
+        # get fragments count
         pages = first.head.pages
         if pages != len(packages):
             raise ValueError('pages error: %d, %d' % (pages, len(packages)))
-        # 3. add one by one
+        # add message fragments part by part
         offset = 0
-        data = bytearray()
+        array = bytearray()
         for item in packages:
             assert item.head.data_type == MessageFragment, 'data type not fragment: %s' % item
             assert item.head.sequence_number == sn, 'sequence number not match: %s' % item
@@ -408,9 +374,9 @@ class Package:
             # check offset
             if item.head.offset != offset:
                 raise LookupError('fragment missed: %d' % offset)
-            data.append(item.body)
+            array.append(item.body)
             offset += 1
         if offset != pages:
             raise LookupError('fragment error: %d/%d' % (offset, pages))
         # OK
-        return bytes(data)
+        return bytes(array)
