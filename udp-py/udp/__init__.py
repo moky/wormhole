@@ -29,6 +29,7 @@
 # ==============================================================================
 
 from .protocol import *
+from .task import *
 from .peer import *
 
 name = "UDP"
@@ -44,6 +45,11 @@ __all__ = [
     'Message', 'MessageRespond', 'MessageFragment',
     'TransactionID',
     'Header', 'Package',
+
+    #
+    #  Task
+    #
+    'Departure', 'Arrival', 'Pool',
 
     #
     #  Peer

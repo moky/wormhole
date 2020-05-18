@@ -121,9 +121,9 @@ class TransactionID(Data):
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                              Transaction ID (64 bits)                   |
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        |               Fragment count (32 bits) OPTIONAL               |
+        |               Fragment Count (32 bits) OPTIONAL               |
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        |               Fragment index (32 bits) OPTIONAL               |
+        |               Fragment Index (32 bits) OPTIONAL               |
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         
         ** Magic Code **:
@@ -234,23 +234,22 @@ class Header(Data):
     def parse(cls, data: bytes):
         data_len = len(data)
         if data_len < 12 or data[0] != 'W' or data[1] != 'H':
-            return AssertionError('package error: %s' % data)
+            raise AssertionError('package error: %s' % data)
         # get version
         version = data[2]
         if version != 0:
-            return ValueError('version error: %d' % version)
+            raise ValueError('version error: %d' % version)
         # get header length & data type
         ch = data[3]
         head_len = (ch & 0xF0) >> 2  # in bytes
         data_type = ch & 0x0F
         _type = DataType.new(value=data_type)
+        assert _type is not None, 'data type error'
         data = data[4:]
         # get transaction ID
         _sn = TransactionID.parse(data=data)
-        if _sn is None:
-            return None
-        else:
-            data = data[_sn.length:]
+        assert _sn is not None, 'transaction ID error'
+        data = data[_sn.length:]
         # get fragments count & offset
         if _type == MessageFragment:
             assert head_len == 20, 'head length error: %d' % head_len
@@ -268,13 +267,13 @@ class Header(Data):
 class Package(Data):
 
     """
-        Max length for package body
+        Max Length for Package Body
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        MTU     : 576 bytes
-        IP      : 20 bytes
-        UDP     : 8 bytes
-        Header  : 8-16 bytes (includes 'pages' and 'offset')
-        Reserved: 20-28 bytes (includes 'pages' and 'offset')
+        MTU      : 576 bytes
+        IP Head  : 20 bytes
+        UDP Head : 8 bytes
+        Header   : 12 bytes (excludes 'pages' and 'offset')
+        Reserved : 24 bytes (includes 'pages' and 'offset')
     """
     MAX_BODY_LEN = 512
 
@@ -301,9 +300,7 @@ class Package(Data):
     def parse(cls, data: bytes):
         # get package head
         head = Header.parse(data=data)
-        if head is None:
-            # package head error
-            return None
+        assert head is not None, 'package head error'
         # get package body
         body = data[head.length:]
         return cls(head=head, body=body)
