@@ -28,32 +28,9 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .protocol import MessageType, MessageLength, TransactionID
-from .protocol import Header, Package
-from .protocol import BindRequest, BindResponse, BindErrorResponse
-from .protocol import SharedSecretRequest, SharedSecretResponse, SharedSecretErrorResponse
-
-from .attributes import Attribute, AttributeType, AttributeLength, AttributeValue
-from .attributes import MappedAddress, MappedAddressValue
-from .attributes import ResponseAddress, ResponseAddressValue
-from .attributes import ChangeRequest, ChangeRequestValue, ChangeIP, ChangePort, ChangeIPAndPort
-from .attributes import ChangedAddress, ChangedAddressValue
-from .attributes import SourceAddress, SourceAddressValue
-from .attributes import Username
-from .attributes import Password
-from .attributes import MessageIntegrity
-from .attributes import ErrorCode
-from .attributes import UnknownAttributes
-from .attributes import ReflectedFrom
-from .attributes import Realm
-from .attributes import Nonce
-from .attributes import XorMappedAddress, XorMappedAddressValue
-from .attributes import XorOnly
-from .attributes import Software
-from .attributes import AlternateServer
-from .attributes import Fingerprint
-
-from .service import Client, Server
+from .protocol import *
+from .attributes import *
+from .service import *
 
 name = "STUN"
 
@@ -75,16 +52,23 @@ __all__ = [
     #
     'Attribute', 'AttributeType', 'AttributeLength', 'AttributeValue',
     # attribute types
-    'MappedAddress', 'ResponseAddress', 'ChangeRequest',
+    'MappedAddress', 'ResponseAddress',
+    'ChangeRequest',
     'SourceAddress', 'ChangedAddress',
-    'Username', 'Password', 'MessageIntegrity', 'ErrorCode', 'UnknownAttributes', 'ReflectedFrom',
-    'Realm', 'Nonce', 'XorMappedAddress', 'XorOnly',
+    'Username', 'Password', 'MessageIntegrity',
+    'ErrorCode', 'UnknownAttributes',
+    'ReflectedFrom', 'Realm', 'Nonce',
+    'XorMappedAddress', 'XorMappedAddress2', 'XorOnly',
     'Software', 'AlternateServer', 'Fingerprint',
     # attribute values
     'MappedAddressValue', 'ResponseAddressValue',
     'ChangeRequestValue', 'ChangeIP', 'ChangePort', 'ChangeIPAndPort',
     'SourceAddressValue', 'ChangedAddressValue',
-    'XorMappedAddressValue',
+    # 'UsernameValue', 'PasswordValue', 'MessageIntegrityValue',
+    # 'ErrorCodeValue', 'UnknownAttributesValue',
+    # 'ReflectedFromValue', 'RealmValue', 'NonceValue',
+    'XorMappedAddressValue', 'XorMappedAddressValue2',  # 'XorOnlyValue',
+    'SoftwareValue',  # 'AlternateServerValue', 'FingerprintValue',
 
     #
     #  Service

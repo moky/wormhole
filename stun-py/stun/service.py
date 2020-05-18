@@ -405,7 +405,7 @@ class Client(Node, ABC):
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
     def __test_2(self, stun_host: str, stun_port: int) -> Optional[Info]:
-        self.info('[Test 2] sending "ChangeIPAmdPort" ... (%s:%d)' % (stun_host, stun_port))
+        self.info('[Test 2] sending "ChangeIPAndPort" ... (%s:%d)' % (stun_host, stun_port))
         body = Attribute(ChangeRequest, ChangeIPAndPort).data
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 

@@ -203,6 +203,8 @@ class Header:
             data = data[_len.length:]
         # get transaction ID
         _id = TransactionID.parse(data=data)
+        if _id is None:
+            return None
         # build data
         data = _type.data + _len.data + _id.data
         return cls(data=data, msg_type=_type, msg_len=_len, trans_id=_id)
@@ -214,7 +216,7 @@ class Header:
             trans_id = TransactionID.new()
         # build data
         data = msg_type.data + msg_len.data + trans_id.data
-        return Header(data, msg_type, msg_len, trans_id)
+        return Header(data=data, msg_type=msg_type, msg_len=msg_len, trans_id=trans_id)
 
 
 class Package:
