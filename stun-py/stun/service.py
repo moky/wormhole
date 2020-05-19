@@ -41,11 +41,7 @@ from .protocol import *
 from .attributes import *
 
 
-class Info(dict):
-    """
-        1. Parameters from request
-        2. Result info from response
-    """
+class NatType:
 
     UDPBlocked = 'UDP Blocked'
     OpenInternet = 'Open Internet'
@@ -55,14 +51,21 @@ class Info(dict):
     RestrictedNAT = 'Restricted Cone NAT'
     PortRestrictedNAT = 'Port Restricted Cone NAT'
 
+
+class Info(dict):
+    """
+        1. Parameters from request
+        2. Result info from response
+    """
+
     def __init__(self):
         super().__init__()
         # Bind Request
         self.change_request: ChangeRequestValue = None
         # Bind Response
-        self.mapped_address: tuple = None
-        self.changed_address: tuple = None
-        self.source_address: tuple = None
+        self.mapped_address: (str, int) = None
+        self.changed_address: (str, int) = None
+        self.source_address: (str, int) = None
 
 
 class Node(ABC):
@@ -81,7 +84,7 @@ class Node(ABC):
             Whether it's a server or a client, this indicates the current node's
             local address: (ip, port)
         """
-        self.source_address: tuple = None
+        self.source_address: (str, int) = None
 
     @staticmethod
     def info(msg: str):
@@ -91,17 +94,46 @@ class Node(ABC):
 
     @abstractmethod
     def send(self, data: bytes, remote_host: str, remote_port: int) -> int:
+        """
+        Send data to remote address
+
+        :param data:
+        :param remote_host:
+        :param remote_port:
+        :return: count of sent bytes
+        """
         raise NotImplemented
 
     @abstractmethod
-    def receive(self, buffer_size: int = 2048) -> (bytes, tuple):
+    def receive(self, buffer_size: int = 2048) -> (bytes, (str, int)):
+        """
+        Received data from local port
+
+        :param buffer_size:
+        :return: data and remote address
+        """
         raise NotImplemented
 
     @abstractmethod
     def parse_attribute(self, attribute: Attribute, context: dict, result: Info) -> Info:
+        """
+        Parse attribute
+
+        :param attribute:
+        :param context:
+        :param result:
+        :return:
+        """
         raise NotImplemented
 
-    def parse_data(self, data: bytes, context: dict) -> tuple:
+    def parse_data(self, data: bytes, context: dict) -> (Optional[Header], Optional[Info]):
+        """
+        Parse package data
+
+        :param data:
+        :param context:
+        :return: package head and results from body
+        """
         # 1. parse STUN package
         pack = Package.parse(data=data)
         if pack is None:
@@ -131,7 +163,7 @@ class Server(Node, ABC):
             Response, independent of the value of the flags.  Its syntax is
             identical to MAPPED-ADDRESS.
         """
-        self.changed_address: tuple = None
+        self.changed_address: (str, int) = None
         """
             "Change IP and Port"
             
@@ -142,7 +174,7 @@ class Server(Node, ABC):
             This address will be the same as CHANGED-ADDRESS by default, but
             offer another different IP address here will be better.
         """
-        self.neighbour_address: tuple = None
+        self.neighbour_address: (str, int) = None
         """
             If the request is redirected by another server ("change IP" and
             "change port"), then use this port to respond the client.
@@ -423,7 +455,7 @@ class Client(Node, ABC):
             response, the client knows right away that it is not capable of UDP
             connectivity.
             """
-            return Info.UDPBlocked, None
+            return NatType.UDPBlocked, None
         """
         If the test produces a response, the client examines the MAPPED-ADDRESS
         attribute.  If this address and port are the same as the local IP
@@ -440,9 +472,9 @@ class Client(Node, ABC):
             is received, the client knows its behind a symmetric UDP firewall.
             """
             if res2 is None:
-                return Info.SymmetricFirewall, res1
+                return NatType.SymmetricFirewall, res1
             else:
-                return Info.OpenInternet, res2
+                return NatType.OpenInternet, res2
         elif res2 is not None:
             """
             In the event that the IP address and port of the socket did not match
@@ -450,7 +482,7 @@ class Client(Node, ABC):
             knows that it is behind a NAT.  It performs test II.  If a response
             is received, the client knows that it is behind a full-cone NAT.
             """
-            return Info.FullConeNAT, res2
+            return NatType.FullConeNAT, res2
         """
         If no response is received, it performs test I again, but this time,
         does so to the address and port from the CHANGED-ADDRESS attribute
@@ -471,7 +503,7 @@ class Client(Node, ABC):
             are not the same as the ones from the first test I, the client
             knows its behind a symmetric NAT.
             """
-            return Info.SymmetricNAT, res11
+            return NatType.SymmetricNAT, res11
         """
         If the address and port are the same, the client is either behind a
         restricted or port restricted NAT.  To make a determination about
@@ -482,6 +514,6 @@ class Client(Node, ABC):
         # 4. Test III
         res3 = self.__test_3(stun_host=stun_host, stun_port=stun_port)
         if res3 is None:
-            return Info.PortRestrictedNAT, res11
+            return NatType.PortRestrictedNAT, res11
         else:
-            return Info.RestrictedNAT, res3
+            return NatType.RestrictedNAT, res3

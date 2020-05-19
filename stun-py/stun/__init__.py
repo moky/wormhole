@@ -73,5 +73,6 @@ __all__ = [
     #
     #  Service
     #
+    'NatType',
     'Client', 'Server',
 ]

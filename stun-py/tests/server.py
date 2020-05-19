@@ -52,7 +52,7 @@ class UDPServer(stun.Server):
         except socket.error:
             return -1
 
-    def receive(self, buffer_size: int=2048) -> (bytes, tuple):
+    def receive(self, buffer_size: int=2048) -> (bytes, (str, int)):
         try:
             return self.__socket1.recvfrom(buffer_size)
         except socket.error:
