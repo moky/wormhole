@@ -37,6 +37,7 @@
 
 import threading
 import time
+from abc import ABC, abstractmethod
 from typing import Union, Optional
 
 from .data import uint32_to_bytes
@@ -44,10 +45,49 @@ from .protocol import Package
 from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment
 from .task import Departure, Arrival, Pool
-from .delegate import SocketDelegate, PeerDelegate
+from .connection import HubDelegate
 
 
-class Peer(threading.Thread, SocketDelegate):
+class PeerDelegate(ABC):
+
+    @abstractmethod
+    def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int]=None) -> int:
+        """
+        Send data to destination address
+
+        :param data:        data package to send
+        :param destination: remote address
+        :param source:      local address or port number
+        :return: -1 on error
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
+        """
+        Received command data from source address
+
+        :param cmd:         command data (package body) received
+        :param source:      remote address
+        :param destination: local address
+        :return: False on error
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def received_message(self, msg: bytes, source: tuple, destination: tuple) -> bool:
+        """
+        Received message data from source address
+
+        :param msg:         message data (package body) received
+        :param source:      remote address
+        :param destination: local address
+        :return: False on error
+        """
+        raise NotImplemented
+
+
+class Peer(threading.Thread, HubDelegate):
 
     def __init__(self):
         super().__init__()
@@ -169,7 +209,7 @@ class Peer(threading.Thread, SocketDelegate):
         self.__send(task=task)
 
     #
-    #   SocketDelegate
+    #   HubDelegate
     #
     def received(self, data: bytes, source: tuple, destination: tuple) -> Optional[Arrival]:
         task = Arrival(payload=data, source=source, destination=destination)

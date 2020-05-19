@@ -29,7 +29,6 @@
 # ==============================================================================
 
 from .protocol import *
-from .delegate import *
 from .connection import *
 from .peer import *
 from .task import *
@@ -51,7 +50,8 @@ __all__ = [
     #
     #   Socket Connection
     #
-    'SocketDelegate', 'Socket', 'Connection',
+    'Connection', 'Socket',
+    'HubDelegate', 'Hub',
 
     #
     #   Peer

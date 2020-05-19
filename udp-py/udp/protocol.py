@@ -319,6 +319,7 @@ class Package(Data):
 
     @classmethod
     def split(cls, package) -> list:
+        assert isinstance(package, Package), 'package error: %s' % package
         head = package.head
         body = package.body
         # change data type
@@ -335,7 +336,7 @@ class Package(Data):
         fragments.append(body)  # the tail
         # create packages with fragments
         data_type = MessageFragment
-        sn = head.sequence_number
+        sn = head.trans_id
         index = 0
         array = []
         while index < count:
@@ -360,24 +361,26 @@ class Package(Data):
         """
         assert len(packages) > 1, 'packages count error: %d' % len(packages)
         first = packages[0]
-        sn = first.head.sequence_number
+        assert isinstance(first, Package), 'first package error: %s' % first
+        sn = first.head.trans_id
         # get fragments count
         pages = first.head.pages
         if pages != len(packages):
             raise ValueError('pages error: %d, %d' % (pages, len(packages)))
         # add message fragments part by part
         offset = 0
-        array = bytearray()
+        data = bytearray()
         for item in packages:
+            assert isinstance(item, Package), 'package error: %s' % item
             assert item.head.data_type == MessageFragment, 'data type not fragment: %s' % item
-            assert item.head.sequence_number == sn, 'sequence number not match: %s' % item
+            assert item.head.trans_id == sn, 'transaction ID not match: %s' % item
             assert item.head.pages == pages, 'pages error: %s' % item
             # check offset
             if item.head.offset != offset:
                 raise LookupError('fragment missed: %d' % offset)
-            array.append(item.body)
+            data += item.body
             offset += 1
         if offset != pages:
             raise LookupError('fragment error: %d/%d' % (offset, pages))
         # OK
-        return bytes(array)
+        return data

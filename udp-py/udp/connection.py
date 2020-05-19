@@ -31,9 +31,30 @@
 import socket
 import threading
 import time
-from typing import Optional
+from abc import ABC, abstractmethod
+from typing import Optional, Union
 
-from .delegate import SocketDelegate
+"""
+    Topology:
+    
+                        +---------------+
+                        |      APP      |
+                        +---------------+
+                                |
+                                V
+        +-----------------------------------------------+
+        |                                               |
+        |     +----------+     HUB     +----------+     |
+        |     |  socket  |             |  socket  |     |
+        +-----+----------+-------------+----------+-----+
+                 |    |                   |  |  |
+                 |    |   (connections)   |  |  |
+                 |    |                   |  |  |
+        ~~~~~~~~~|~~~~|~~~~~~~~~~~~~~~~~~~|~~|~~|~~~~~~~~
+        ~~~~~~~~~|~~~~|~~~~~~~~~~~~~~~~~~~|~~|~~|~~~~~~~~
+                 |    |                   |  |  |
+                 V    V                   V  V  V
+"""
 
 
 class Connection:
@@ -48,37 +69,49 @@ class Connection:
 
     @property
     def host(self) -> str:
+        """ remote host """
         return self.__host
 
     @property
     def port(self) -> int:
+        """ remote port """
         return self.__port
 
     @property
     def is_expired(self):
+        """ long time no see """
         return time.time() > self.__expired
 
-    def update_expired_time(self):
+    def update_time(self):
+        """ update last communicate time """
         self.__expired = time.time() + self.EXPIRES
+
+
+class Cargo:
+
+    def __init__(self, data: bytes, source: tuple):
+        super().__init__()
+        self.data = data
+        self.source = source
 
 
 class Socket(threading.Thread):
 
-    def __init__(self, host: str='0.0.0.0', port: int=9527):
+    def __init__(self, port: int, host: str='0.0.0.0'):
         super().__init__()
+        self.running = True
         self.__local_address = (host, port)
-        self.delegate: SocketDelegate = None
         # create socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(self.__local_address)
         self.__socket = sock
-        self.running = True
         # connection list
         self.__connections = []
         self.__connections_lock = threading.Lock()
-        # background thread
-        self.__heartbeat_thread = None
+        # received packages
+        self.__cargoes = []
+        self.__cargoes_lock = threading.Lock()
 
     @property
     def local_address(self) -> (str, int):
@@ -87,10 +120,15 @@ class Socket(threading.Thread):
     def settimeout(self, timeout: Optional[float]):
         self.__socket.settimeout(timeout)
 
+    def close(self):
+        self.running = False
+        self.__socket.close()
+
     def connect(self, remote_host: str, remote_port: int):
         """ add remote address to keep connected with heartbeat """
         with self.__connections_lock:
             for conn in self.__connections:
+                assert isinstance(conn, Connection), 'connection error: %s' % conn
                 if conn.host == remote_host and conn.port == remote_port:
                     # already connected
                     return
@@ -104,6 +142,7 @@ class Socket(threading.Thread):
             while pos > 0:
                 pos -= 1
                 conn = self.__connections[pos]
+                assert isinstance(conn, Connection), 'connection error: %s' % conn
                 if conn.host == remote_host and conn.port == remote_port:
                     # got one
                     self.__connections.pop(pos)
@@ -112,6 +151,7 @@ class Socket(threading.Thread):
         """ get any expired connection """
         with self.__connections_lock:
             for conn in self.__connections:
+                assert isinstance(conn, Connection), 'connection error: %s' % conn
                 if conn.is_expired:
                     return conn
 
@@ -119,12 +159,30 @@ class Socket(threading.Thread):
         """ update connection's expired time """
         with self.__connections_lock:
             for conn in self.__connections:
+                assert isinstance(conn, Connection), 'connection error: %s' % conn
                 if conn.host == remote_host and conn.port == remote_port:
                     # refresh time
-                    conn.update_expired_time()
+                    conn.update_time()
                     return True
 
+    def ping(self):
+        """ send heartbeat to all expired connections """
+        while True:
+            conn = self.__expired_connection()
+            if conn is None:
+                # no more expired connection
+                break
+            self.send(data=b'PING', remote_host=conn.host, remote_port=conn.port)
+
     def send(self, data: bytes, remote_host: str, remote_port: int) -> int:
+        """
+        Send data to remote address
+
+        :param data:
+        :param remote_host:
+        :param remote_port:
+        :return: how many bytes have been sent
+        """
         try:
             res = self.__socket.sendto(data, (remote_host, remote_port))
             if res == len(data):
@@ -145,36 +203,172 @@ class Socket(threading.Thread):
             print('Failed to receive data: %s' % error)
             return None, None
 
+    def receive(self) -> (bytes, (str, int)):
+        """
+        Get received data package from buffer, non-blocked
+
+        :return: received data and source address
+        """
+        with self.__cargoes_lock:
+            if len(self.__cargoes) > 0:
+                cargo = self.__cargoes.pop(0)
+                assert isinstance(cargo, Cargo), 'cargo error: %s' % cargo
+                return cargo.data, cargo.source
+        return None, None
+
     def run(self):
         while self.running:
-            data, address = self.__receive()
+            try:
+                data, address = self.__receive()
+                if data is None:
+                    # receive nothing
+                    time.sleep(0.1)
+                elif len(data) == 4:
+                    # heartbeat
+                    if data == b'PING':
+                        # respond heartbeat
+                        self.send(data=b'PONG', remote_host=address[0], remote_port=address[1])
+                    else:
+                        # ignore it
+                        assert data == b'PONG', 'drop package: %s' % data
+                else:
+                    # cache the data received
+                    with self.__cargoes_lock:
+                        self.__cargoes.append(Cargo(data=data, source=address))
+            except Exception as error:
+                print('socket error: %s' % error)
+
+
+class HubDelegate(ABC):
+
+    @abstractmethod
+    def received(self, data: bytes, source: tuple, destination: tuple):
+        """
+        New data package arrived
+
+        :param data:        UDP data received
+        :param source:      remote ip and port
+        :param destination: local ip and port
+        :return:
+        """
+        raise NotImplemented
+
+
+class Hub(threading.Thread):
+
+    def __init__(self):
+        super().__init__()
+        self.delegate: HubDelegate = None
+        self.running = True
+        self.__sockets = []
+        self.__sockets_lock = threading.Lock()
+
+    def open(self, port: int, host: str='0.0.0.0'):
+        """ create a socket on this port """
+        with self.__sockets_lock:
+            address = (host, port)
+            for sock in self.__sockets:
+                assert isinstance(sock, Socket), 'socket error: %s' % sock
+                if sock.local_address == address:
+                    # already exists
+                    return False
+            sock = Socket(host=host, port=port)
+            sock.start()
+            self.__sockets.append(sock)
+            return True
+
+    def close(self, port: int, host: str='0.0.0.0'):
+        """ remove the socket on this port """
+        with self.__sockets_lock:
+            address = (host, port)
+            pos = len(self.__sockets)
+            while pos > 0:
+                pos -= 1
+                sock = self.__sockets[pos]
+                assert isinstance(sock, Socket), 'socket error: %s' % sock
+                if sock.local_address == address:
+                    # close & remove
+                    sock.close()
+                    self.__sockets.pop(pos)
+
+    def send(self, data: bytes, destination: tuple, source: Union[tuple, int]=None) -> int:
+        """
+        Send data from source address(port) to destination address
+
+        :param data:        data package
+        :param destination: remote address
+        :param source:      local address
+        :return:
+        """
+        with self.__sockets_lock:
+            sock = None
+            assert len(self.__sockets) > 0, 'sockets empty'
+            if source is None:
+                # any socket
+                sock = self.__sockets[0]
+            elif isinstance(source, tuple):
+                # get socket by local address
+                for item in self.__sockets:
+                    assert isinstance(item, Socket), 'socket error: %s' % item
+                    if item.local_address == source:
+                        sock = item
+                        break
+            else:
+                # get socket by local port
+                assert isinstance(source, int), 'source port error: %s' % source
+                for item in self.__sockets:
+                    assert isinstance(item, Socket), 'socket error: %s' % item
+                    if item.local_address[1] == source:
+                        sock = item
+                        break
+            assert isinstance(sock, Socket), 'no socket (%d) matched: %s' % (len(self.__sockets), source)
+            return sock.send(data=data, remote_host=destination[0], remote_port=destination[1])
+
+    def receive(self) -> (bytes, (str, int), (str, int)):
+        """
+        Block to receive data
+
+        :return: received data, source address(remote), destination address(local)
+        """
+        while True:
+            data, source, destination = self.__receive()
             if data is None:
                 time.sleep(0.1)
-                continue
-            assert len(address) == 2, 'address error' + address
-            if len(data) == 4:
-                # check heartbeat
-                if data == b'PING':
-                    self.send(data=b'PONG', remote_host=address[0], remote_port=address[1])
-                    continue
-                elif data == b'PONG':
-                    # do nothing
-                    continue
-            self.delegate.received(data=data, source=address, destination=self.__local_address)
+            else:
+                return data, source, destination
 
-    def start(self):
-        super().start()
-        assert self.__heartbeat_thread is None, 'heartbeat thread already exists'
-        t = threading.Thread(target=Socket.heartbeat, args=(self,))
-        t.start()
-        self.__heartbeat_thread = t
+    def __receive(self) -> (bytes, (str, int), (str, int)):
+        with self.__sockets_lock:
+            for sock in self.__sockets:
+                assert isinstance(sock, Socket), 'socket error: %s' % sock
+                data, remote = sock.receive()
+                if data is not None:
+                    # got one
+                    return data, remote, sock.local_address
+        return None, None, None
 
-    def heartbeat(self):
+    def __ping(self):
+        with self.__sockets_lock:
+            for sock in self.__sockets:
+                sock.ping()
+
+    def run(self):
+        """ thread for heartbeat """
+        heartbeat_time = 0
         while self.running:
-            time.sleep(2)
-            while True:
-                conn = self.__expired_connection()
-                if conn is None:
-                    # no expired connection now
-                    break
-                self.send(data=b'PING', remote_host=conn.host, remote_port=conn.port)
+            try:
+                now = time.time()
+                data, source, destination = self.__receive()
+                if data is None:
+                    # idling, try heartbeat
+                    self.__ping()
+                    heartbeat_time = now + 2
+                    time.sleep(0.1)
+                else:
+                    self.delegate.received(data=data, source=source, destination=destination)
+                    if heartbeat_time < now:
+                        # try heart beat each 2 seconds
+                        self.__ping()
+                        heartbeat_time = now + 2
+            except Exception as error:
+                print('run error: %s' % error)
