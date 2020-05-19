@@ -61,6 +61,7 @@ class PeerDelegate(ABC):
         """
         raise NotImplemented
 
+    @abstractmethod
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
         """
         Received command data from source address
@@ -72,6 +73,7 @@ class PeerDelegate(ABC):
         """
         raise NotImplemented
 
+    @abstractmethod
     def received_message(self, msg: bytes, source: tuple, destination: tuple) -> bool:
         """
         Received message data from source address

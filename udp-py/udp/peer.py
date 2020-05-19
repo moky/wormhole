@@ -71,7 +71,7 @@ class Peer(threading.Thread, SocketDelegate):
                 # redo this departure task
                 self.__send(task=task)
 
-    def __clean_arrivals(self) -> bool:
+    def __clean_arrivals(self) -> int:
         """
         Process the received packages in waiting list
 
@@ -86,7 +86,7 @@ class Peer(threading.Thread, SocketDelegate):
                 break
             self.__handle(task=task)
             done += 1
-        return done > 0
+        return done
 
     def __handle(self, task: Arrival):
         pack = Package.parse(data=task.payload)
@@ -98,18 +98,21 @@ class Peer(threading.Thread, SocketDelegate):
             self.__pool.del_departure(response=pack)
             return None
         elif data_type == Command:
-            self.delegate.received_command(cmd=body, source=task.source, destination=task.destination)
+            ack = self.delegate.received_command(cmd=body, source=task.source, destination=task.destination)
         elif data_type == Message:
-            self.delegate.received_message(msg=body, source=task.source, destination=task.destination)
+            ack = self.delegate.received_message(msg=body, source=task.source, destination=task.destination)
         else:
             assert data_type == MessageFragment, 'data type error: %s' % data_type
             # assemble fragments
             msg = self.__pool.add_fragment(fragment=pack)
-            if msg is not None:
+            if msg is None:
+                ack = True
+            else:
                 # all fragments received
-                self.delegate.received_message(msg=msg, source=task.source, destination=task.destination)
+                ack = self.delegate.received_message(msg=msg, source=task.source, destination=task.destination)
         # respond to the sender
-        self.__respond(pack=pack, remote=task.source, local=task.destination)
+        if ack:
+            self.__respond(pack=pack, remote=task.source, local=task.destination)
 
     def __respond(self, pack: Package, remote: tuple, local: tuple):
         head = pack.head

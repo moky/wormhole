@@ -70,7 +70,7 @@ class DataType:
 
     def __str__(self):
         clazz = self.__class__.__name__
-        return '<%s: 0x%04X "%s" />' % (clazz, self.value, self.__name)
+        return '<%s: 0x%02X "%s" />' % (clazz, self.value, self.__name)
 
     @property
     def value(self) -> int:
@@ -190,7 +190,7 @@ class Header(Data):
             # generate transaction ID
             sn = TransactionID.new()
         # generate header data
-        hl_ty = (head_len << 2) & (data_type.value & 0x0F)
+        hl_ty = (head_len << 2) | (data_type.value & 0x0F)
         hl_ty = uint8_to_bytes(hl_ty & 0xFF)
         data = b'DIM' + hl_ty + sn.data + options
         # init
@@ -208,9 +208,9 @@ class Header(Data):
             # fragment
             pages = self.pages
             offset = self.offset
-            return '<%s: "%s" pages=%d offset=%d />' % (clazz, dt, pages, offset)
+            return '<%s: %d, "%s" pages=%d offset=%d />' % (clazz, self.length, dt, pages, offset)
         else:
-            return '<%s: "%s" />' % (clazz, dt)
+            return '<%s: %d, "%s" />' % (clazz, self.length, dt)
 
     @property
     def length(self) -> int:
@@ -238,7 +238,7 @@ class Header(Data):
     @classmethod
     def parse(cls, data: bytes):
         data_len = len(data)
-        if data_len < 12 or data[0] != 'W' or data[1] != 'H':
+        if data_len < 12:
             raise AssertionError('package error: %s' % data)
         if data[:3] != b'DIM':
             # raise AssertionError('not a DIM package: %s' % data)

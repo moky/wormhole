@@ -80,6 +80,10 @@ class Socket(threading.Thread):
         # background thread
         self.__heartbeat_thread = None
 
+    @property
+    def local_address(self) -> (str, int):
+        return self.__local_address
+
     def settimeout(self, timeout: Optional[float]):
         self.__socket.settimeout(timeout)
 
@@ -126,17 +130,19 @@ class Socket(threading.Thread):
             if res == len(data):
                 self.__refresh(remote_host=remote_host, remote_port=remote_port)
             return res
-        except socket.error:
+        except socket.error as error:
+            print('Failed to send data: %s' % error)
             return -1
 
-    def __receive(self, buffer_size: int=2048) -> (bytes, tuple):
+    def __receive(self, buffer_size: int=2048) -> (bytes, (str, int)):
         try:
             data, address = self.__socket.recvfrom(buffer_size)
             if data is not None:
                 assert len(address) == 2, 'remote address error: %s, data length: %d' % (address, len(data))
                 self.__refresh(remote_host=address[0], remote_port=address[1])
             return data, address
-        except socket.error:
+        except socket.error as error:
+            print('Failed to receive data: %s' % error)
             return None, None
 
     def run(self):
@@ -159,7 +165,7 @@ class Socket(threading.Thread):
     def start(self):
         super().start()
         assert self.__heartbeat_thread is None, 'heartbeat thread already exists'
-        t = threading.Thread(target=self.heartbeat, args=(self,))
+        t = threading.Thread(target=Socket.heartbeat, args=(self,))
         t.start()
         self.__heartbeat_thread = t
 
