@@ -30,6 +30,7 @@
 
 import binascii
 import random
+from typing import Optional
 
 
 def hex_encode(data: bytes) -> str:
@@ -125,47 +126,6 @@ class Data:
     def length(self) -> int:
         return len(self.__data)
 
-    @classmethod
-    def from_hex(cls, string: str):
-        data = hex_decode(string)
-        return cls(data=data)
-
-    @classmethod
-    def random(cls, length: int):
-        data = random_bytes(length=length)
-        return cls(data=data)
-
-
-class VarIntData(Data):
-    """
-        Variable Integer
-    """
-
-    def __init__(self, data: bytes, value: int):
-        super().__init__(data=data)
-        self.__value = value
-
-    def __eq__(self, other) -> bool:
-        if isinstance(other, int):
-            return self.value == other
-        return super().__eq__(other=other)
-
-    @property
-    def value(self) -> int:
-        return self.__value
-
-    @classmethod
-    def from_bytes(cls, data: bytes):
-        value, length = bytes_to_varint(data=data)
-        if len(data) > length:
-            data = data[:length]
-        return cls(data=data, value=value)
-
-    @classmethod
-    def from_int(cls, value: int):
-        data = varint_to_bytes(value=value)
-        return cls(data=data, value=value)
-
 
 class IntData(Data):
     """
@@ -185,30 +145,26 @@ class IntData(Data):
     def value(self) -> int:
         return self.__value
 
-    @classmethod
-    def from_bytes(cls, data: bytes, byteorder: str='big', signed: bool=False):
-        value = bytes_to_int(data=data, byteorder=byteorder, signed=signed)
-        return cls(data=data, value=value)
-
-    @classmethod
-    def from_int(cls, value: int, length: int, byteorder: str='big', signed: bool=False):
-        data = int_to_bytes(value=value, length=length, byteorder=byteorder, signed=signed)
-        return cls(data=data, value=value)
-
 
 class UInt8Data(IntData):
     """
         Unsigned Char (8-bytes)
     """
 
-    def __init__(self, value: int, data: bytes=None):
-        if data is None:
-            data = uint8_to_bytes(value)
-        super().__init__(data=data, value=value)
+    @classmethod
+    def from_bytes(cls, data: bytes, byteorder: str='big'):
+        data_len = len(data)
+        if data_len < 1:
+            return None
+        elif data_len > 1:
+            data = data[:1]
+        value = bytes_to_int(data=data, byteorder=byteorder)
+        return cls(data=data, value=value)
 
     @classmethod
-    def from_uint8(cls, value: int, byteorder: str='big', signed: bool=False):
-        return cls.from_int(value=value, length=1, byteorder=byteorder, signed=signed)
+    def from_uint8(cls, value: int, byteorder: str='big'):
+        data = uint8_to_bytes(value=value, byteorder=byteorder)
+        return cls(data=data, value=value)
 
 
 class UInt16Data(IntData):
@@ -216,14 +172,20 @@ class UInt16Data(IntData):
         Unsigned Short Integer (16-bytes)
     """
 
-    def __init__(self, value: int, data: bytes=None):
-        if data is None:
-            data = uint16_to_bytes(value)
-        super().__init__(data=data, value=value)
+    @classmethod
+    def from_bytes(cls, data: bytes, byteorder: str='big'):
+        data_len = len(data)
+        if data_len < 2:
+            return None
+        elif data_len > 2:
+            data = data[:2]
+        value = bytes_to_int(data=data, byteorder=byteorder)
+        return cls(data=data, value=value)
 
     @classmethod
-    def from_uint16(cls, value: int, byteorder: str='big', signed: bool=False):
-        return cls.from_int(value=value, length=2, byteorder=byteorder, signed=signed)
+    def from_uint16(cls, value: int, byteorder: str='big'):
+        data = uint16_to_bytes(value=value, byteorder=byteorder)
+        return cls(data=data, value=value)
 
 
 class UInt32Data(IntData):
@@ -231,11 +193,157 @@ class UInt32Data(IntData):
         Unsigned Integer (32-bytes)
     """
 
-    def __init__(self, value: int, data: bytes=None):
-        if data is None:
-            data = uint32_to_bytes(value)
-        super().__init__(data=data, value=value)
+    @classmethod
+    def from_bytes(cls, data: bytes, byteorder: str='big'):
+        data_len = len(data)
+        if data_len < 4:
+            return None
+        elif data_len > 4:
+            data = data[:4]
+        value = bytes_to_int(data=data, byteorder=byteorder)
+        return cls(data=data, value=value)
 
     @classmethod
-    def from_uint32(cls, value: int, byteorder: str='big', signed: bool=False):
-        return cls.from_int(value=value, length=4, byteorder=byteorder, signed=signed)
+    def from_uint32(cls, value: int, byteorder: str='big'):
+        data = uint32_to_bytes(value=value, byteorder=byteorder)
+        return cls(data=data, value=value)
+
+
+class VarIntData(IntData):
+    """
+        Variable Integer
+    """
+
+    @classmethod
+    def from_bytes(cls, data: bytes):
+        value, length = bytes_to_varint(data=data)
+        if len(data) > length:
+            data = data[:length]
+        return cls(data=data, value=value)
+
+    @classmethod
+    def from_int(cls, value: int):
+        data = varint_to_bytes(value=value)
+        return cls(data=data, value=value)
+
+
+"""
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |         Type                  |            Length             |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                         Value (variable)                ....
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+"""
+
+
+class Type(Data):
+
+    @classmethod
+    def parse(cls, data: bytes):
+        data_len = len(data)
+        if data_len < 2:
+            return None
+        elif data_len > 2:
+            data = data[:2]
+        return cls(data=data)
+
+
+class Length(IntData):
+
+    # noinspection PyUnusedLocal
+    @classmethod
+    def parse(cls, data: bytes, t: Type):
+        data_len = len(data)
+        if data_len < 2:
+            return None
+        elif data_len > 2:
+            data = data[:2]
+        value = bytes_to_int(data=data)
+        return cls(data=data, value=value)
+
+
+class Value(Data):
+
+    # noinspection PyUnusedLocal
+    @classmethod
+    def parse(cls, data: bytes, t: Type, length: Length=None):
+        if length is None or length.value == 0:
+            return None
+        else:
+            length = length.value
+        data_len = len(data)
+        if data_len < length:
+            return None
+        elif data_len > length:
+            data = data[:length]
+        return cls(data=data)
+
+
+class TLV(Data):
+
+    def __init__(self, data: bytes, t: Type, v: Optional[Value]):
+        super().__init__(data=data)
+        self.__type = t
+        self.__value = v
+
+    @property
+    def type(self) -> Type:
+        return self.__type
+
+    @property
+    def value(self) -> Optional[Value]:
+        return self.__value
+
+    @classmethod
+    def parse_all(cls, data: bytes) -> list:
+        array = []
+        remaining = len(data)
+        while remaining > 0:
+            item = cls.parse(data=data)
+            if item is None:
+                # data error
+                break
+            array.append(item)
+            # next item
+            pos = len(item.data)
+            data = data[pos:]
+            remaining -= pos
+        return array
+
+    @classmethod
+    def parse(cls, data: bytes):
+        # get type
+        _type = cls.parse_type(data=data)
+        if _type is None:
+            return None
+        offset = _type.length
+        # get length
+        _len = cls.parse_length(data=data[offset:], t=_type)
+        if _len is not None:
+            offset += _len.length
+        # get value
+        _value = cls.parse_value(data=data[offset:], t=_type, length=_len)
+        if _value is not None:
+            offset += _value.length
+        # create
+        if offset < len(data):
+            return cls(data=data[:offset], t=_type, v=_value)
+        else:
+            assert offset == len(data), 'offset error: %d > %d' % (offset, len(data))
+            return cls(data=data, t=_type, v=_value)
+
+    @classmethod
+    def parse_type(cls, data: bytes) -> Optional[Type]:
+        return Type.parse(data=data)
+
+    # noinspection PyUnusedLocal
+    @classmethod
+    def parse_length(cls, data: bytes, t: Type) -> Optional[Length]:
+        return Length.parse(data=data, t=t)
+
+    # noinspection PyUnusedLocal
+    @classmethod
+    def parse_value(cls, data: bytes, t: Type, length: Length=None) -> Optional[Value]:
+        return Value.parse(data=data, t=t, length=length)
