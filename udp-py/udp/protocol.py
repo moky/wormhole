@@ -133,7 +133,7 @@ class TransactionID(Data):
          0                   1                   2                   3
          0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        |      'W'      |      'H'      |    Version    | H-Len |  Type |
+        |      'D'      |      'I'      |      'M'      | H-Len |  Type |
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         |                    Transaction ID (64 bits)                    
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -145,10 +145,7 @@ class TransactionID(Data):
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         
         ** Magic Code **:
-            Always be 'WH' (wormhole)
-            
-        ** Version **:
-            Now is 0 (0x00)
+            Always be 'DIM'
             
         ** Header Length **:
             4 bits header length is the length of the header in 32 bit words.
@@ -171,12 +168,10 @@ class TransactionID(Data):
 
 class Header(Data):
 
-    def __init__(self, data_type: DataType, sn: TransactionID=None,
-                 version: int=0, pages: int=1, offset: int=0):
+    def __init__(self, data_type: DataType, sn: TransactionID=None, pages: int=1, offset: int=0):
         """
         Create package header
 
-        :param version:   package version
         :param data_type: package body data type
         :param sn:        transaction ID
         :param pages:     fragment count [OPTIONAL], default is 1
@@ -194,15 +189,12 @@ class Header(Data):
         if sn is None:
             # generate transaction ID
             sn = TransactionID.new()
-        # version
-        ver_data = uint8_to_bytes(value=version)
         # generate header data
         hl_ty = (head_len << 2) & (data_type.value & 0x0F)
         hl_ty = uint8_to_bytes(hl_ty & 0xFF)
-        data = b'WH' + ver_data + hl_ty + sn.data + options
+        data = b'DIM' + hl_ty + sn.data + options
         # init
         super().__init__(data=data)
-        self.__version = version
         self.__length = head_len
         self.__type = data_type
         self.__sn = sn
@@ -211,19 +203,14 @@ class Header(Data):
 
     def __str__(self):
         clazz = self.__class__.__name__
-        ver = '0x%02X' % self.version
         dt = self.data_type
         if dt == MessageFragment:
             # fragment
             pages = self.pages
             offset = self.offset
-            return '<%s: %s "%s" pages=%d offset=%d />' % (clazz, ver, dt, pages, offset)
+            return '<%s: "%s" pages=%d offset=%d />' % (clazz, dt, pages, offset)
         else:
-            return '<%s: %s "%s" />' % (clazz, ver, dt)
-
-    @property
-    def version(self) -> int:
-        return self.__version
+            return '<%s: "%s" />' % (clazz, dt)
 
     @property
     def length(self) -> int:
@@ -253,10 +240,9 @@ class Header(Data):
         data_len = len(data)
         if data_len < 12 or data[0] != 'W' or data[1] != 'H':
             raise AssertionError('package error: %s' % data)
-        # get version
-        version = data[2]
-        if version != 0:
-            raise ValueError('version error: %d' % version)
+        if data[:3] != b'DIM':
+            # raise AssertionError('not a DIM package: %s' % data)
+            return None
         # get header length & data type
         ch = data[3]
         head_len = (ch & 0xF0) >> 2  # in bytes
@@ -279,7 +265,7 @@ class Header(Data):
             assert head_len == 12, 'head length error: %d' % head_len
             pages = 1
             offset = 0
-        return cls(version=version, data_type=_type, sn=_sn, pages=pages, offset=offset)
+        return cls(data_type=_type, sn=_sn, pages=pages, offset=offset)
 
 
 class Package(Data):
@@ -318,16 +304,17 @@ class Package(Data):
     def parse(cls, data: bytes):
         # get package head
         head = Header.parse(data=data)
-        assert head is not None, 'package head error'
+        if head is None:
+            # raise AssertionError('package head error')
+            return None
         # get package body
         body = data[head.length:]
         return cls(head=head, body=body)
 
     @classmethod
-    def new(cls, data_type: DataType, sn: TransactionID=None, body: bytes=b'', version: int=0,
-            pages: int=1, offset: int=0):
+    def new(cls, data_type: DataType, sn: TransactionID=None, pages: int=1, offset: int=0, body: bytes=b''):
         # create package with header
-        head = Header(version=version, data_type=data_type, sn=sn, pages=pages, offset=offset)
+        head = Header(data_type=data_type, sn=sn, pages=pages, offset=offset)
         return cls(head=head, body=body)
 
     @classmethod
@@ -347,14 +334,13 @@ class Package(Data):
             count += 1
         fragments.append(body)  # the tail
         # create packages with fragments
-        version = head.version
         data_type = MessageFragment
         sn = head.sequence_number
         index = 0
         array = []
         while index < count:
             body = fragments[index]
-            pack = cls.new(version=version, data_type=data_type, sn=sn, body=body, pages=count, offset=index)
+            pack = cls.new(data_type=data_type, sn=sn, pages=count, offset=index, body=body)
             array.append(pack)
             index += 1
         return array

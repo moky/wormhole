@@ -162,10 +162,6 @@ class Pool:
             self.__departures.append(task)
         return task
 
-    def new_departure(self, payload: Union[Package, list], destination: tuple, source: Union[tuple, int]) -> Departure:
-        task = Departure(payload=payload, destination=destination, source=source)
-        return self.add_departure(task)
-
     def del_departure(self, response: Package) -> int:
         count = 0
         head = response.head
@@ -255,10 +251,6 @@ class Pool:
             self.__arrivals.append(task)
         return task
 
-    def new_arrival(self, data: bytes, source: tuple, destination: tuple) -> Arrival:
-        task = Arrival(payload=data, source=source, destination=destination)
-        return self.add_arrival(task)
-
     #
     #   Fragments Assembling
     #
@@ -274,12 +266,13 @@ class Pool:
                 self.__fragments.pop(trans_id)
         return data
 
-    def purge_fragments(self):
+    def discard_fragments(self) -> int:
         """
-        Remove expired fragments
+        Remove all expired fragments
 
         :return:
         """
+        count = 0
         with self.__fragments_lock:
             keys = list(self.__fragments.keys())
             for trans_id in keys:
@@ -287,6 +280,9 @@ class Pool:
                 if assemble is None:
                     # error
                     self.__fragments.pop(trans_id)
+                    count += 1
                 elif assemble.is_expired:
                     # remove expired fragments
                     self.__fragments.pop(trans_id)
+                    count += 1
+        return count

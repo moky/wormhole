@@ -29,8 +29,10 @@
 # ==============================================================================
 
 from .protocol import *
-from .task import *
+from .delegate import *
+from .connection import *
 from .peer import *
+from .task import *
 
 name = "UDP"
 
@@ -39,7 +41,7 @@ __author__ = 'Albert Moky'
 __all__ = [
 
     #
-    #  Protocol
+    #   Protocol
     #
     'DataType', 'Command', 'CommandRespond',
     'Message', 'MessageRespond', 'MessageFragment',
@@ -47,12 +49,17 @@ __all__ = [
     'Header', 'Package',
 
     #
-    #  Task
+    #   Socket Connection
     #
-    'Departure', 'Arrival', 'Pool',
+    'SocketDelegate', 'Socket', 'Connection',
 
     #
-    #  Peer
+    #   Peer
     #
-    'Delegate', 'Peer',
+    'PeerDelegate', 'Peer',
+
+    #
+    #   Task
+    #
+    'Departure', 'Arrival', 'Assemble', 'Pool',
 ]

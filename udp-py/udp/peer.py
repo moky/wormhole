@@ -35,8 +35,8 @@
     Network Node
 """
 
+import threading
 import time
-from abc import ABC, abstractmethod
 from typing import Union, Optional
 
 from .data import uint32_to_bytes
@@ -44,73 +44,34 @@ from .protocol import Package
 from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment
 from .task import Departure, Arrival, Pool
+from .delegate import SocketDelegate, PeerDelegate
 
 
-class Delegate(ABC):
-
-    @abstractmethod
-    def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int]=None) -> int:
-        """
-        Send data to destination address
-
-        :param data:        data package to send
-        :param destination: remote address
-        :param source:      local address or port number
-        :return: -1 on error
-        """
-        raise NotImplemented
-
-    def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
-        """
-        Received command data from source address
-
-        :param cmd:         command data (package body) received
-        :param source:      remote address
-        :param destination: local address
-        :return: False on error
-        """
-        raise NotImplemented
-
-    def received_message(self, msg: bytes, source: tuple, destination: tuple) -> bool:
-        """
-        Received message data from source address
-
-        :param msg:         message data (package body) received
-        :param source:      remote address
-        :param destination: local address
-        :return: False on error
-        """
-        raise NotImplemented
-
-
-class Peer:
+class Peer(threading.Thread, SocketDelegate):
 
     def __init__(self):
         super().__init__()
-        self.delegate: Delegate = None
+        self.delegate: PeerDelegate = None
+        self.running = True
         self.__pool = Pool()
 
-    def purge_departures(self) -> bool:
-        """
-        Redo the sending tasks in waiting list
-
-        :return: False on no task
-        """
-        total = self.__pool.departures_count()
-        done = 0
-        while done < total:
+    def run(self):
+        while self.running:
+            # first, process all arrivals
+            done = self.__clean_arrivals()
+            # second, get one departure task
             task = self.__pool.get_departure()
             if task is None:
-                # no task or task not expired
-                break
-            task = self.__send(task=task)
-            if task is not None:
-                # push the task back to waiting list for responding or retrying
-                self.__pool.add_departure(task)
-            done += 1
-        return done > 0
+                # if no departure task, remove expired fragments
+                self.__pool.discard_fragments()
+                if done == 0:
+                    # all jobs done, have a rest. ^_^
+                    time.sleep(0.1)
+            else:
+                # redo this departure task
+                self.__send(task=task)
 
-    def purge_arrivals(self) -> bool:
+    def __clean_arrivals(self) -> bool:
         """
         Process the received packages in waiting list
 
@@ -126,20 +87,6 @@ class Peer:
             self.__handle(task=task)
             done += 1
         return done > 0
-
-    #
-    #   Received
-    #
-    def received(self, data: bytes, source: tuple, destination: tuple) -> Arrival:
-        """
-        New data package arrived
-
-        :param data:        UDP data received
-        :param source:      remote ip and port
-        :param destination: local ip and port
-        :return:
-        """
-        return self.__pool.new_arrival(data=data, source=source, destination=destination)
 
     def __handle(self, task: Arrival):
         pack = Package.parse(data=task.payload)
@@ -178,10 +125,9 @@ class Peer:
             body = uint32_to_bytes(head.pages) + uint32_to_bytes(head.offset)
         else:
             raise TypeError('data type error: %s' % data_type)
-        version = head.version
         sn = head.trans_id
-        response = Package.new(data_type=data_type, sn=sn, body=body, version=version)
-        # send response directly, don't at this task to waiting list
+        response = Package.new(data_type=data_type, sn=sn, body=body)
+        # send response directly, don't add this task to waiting list
         res = self.delegate.send_data(data=response.data, destination=remote, source=local)
         if res < 0:
             raise IOError('failed to respond %s: %s' % (data_type, remote))
@@ -203,11 +149,12 @@ class Peer:
         if task.max_retries > 0:
             task.last_time = time.time()
             task.max_retries -= 1
+            self.__pool.add_departure(task=task)
             return task
 
     def send_command(self, data: bytes, destination: tuple, source: Union[tuple, int]=None):
         pack = Package.new(data_type=Command, body=data)
-        task = self.__pool.new_departure(payload=pack, destination=destination, source=source)
+        task = Departure(payload=pack, destination=destination, source=source)
         self.__send(task=task)
 
     def send_message(self, data: bytes, destination: tuple, source: Union[tuple, int]=None):
@@ -215,5 +162,12 @@ class Peer:
         # check body length
         if len(data) > Package.MAX_BODY_LEN:
             pack = Package.split(package=pack)
-        task = self.__pool.new_departure(payload=pack, destination=destination, source=source)
+        task = Departure(payload=pack, destination=destination, source=source)
         self.__send(task=task)
+
+    #
+    #   SocketDelegate
+    #
+    def received(self, data: bytes, source: tuple, destination: tuple) -> Optional[Arrival]:
+        task = Arrival(payload=data, source=source, destination=destination)
+        return self.__pool.add_arrival(task=task)
