@@ -35,12 +35,11 @@
     [RFC] https://www.ietf.org/rfc/rfc5389.txt
     [RFC] https://www.ietf.org/rfc/rfc3489.txt
 """
-from typing import Optional, Union
+from typing import Optional
 
-from .data import UInt16Data, UInt32Data
-from .data import bytes_to_int
-from .data import uint8_to_bytes, uint16_to_bytes
-from .data import TLV, Type, Length, Value
+from udp.data import UInt16Data, UInt32Data
+from udp.data import bytes_to_int, uint8_to_bytes, uint16_to_bytes, uint32_to_bytes
+from udp.data import TLV, Type, Length, Value
 
 """
     STUN Attributes
@@ -65,20 +64,22 @@ from .data import TLV, Type, Length, Value
 
 
 class AttributeValue(Value):
-
-    def __init__(self, data: Union[Value, bytes]):
-        if isinstance(data, Value):
-            data = data.data
-        super().__init__(data=data)
+    pass
 
 
 class AttributeLength(UInt16Data, Length):
-    pass
+
+    def __init__(self, value: int, data: bytes=None):
+        if data is None:
+            data = uint16_to_bytes(value)
+        super().__init__(data=data, value=value)
 
 
 class AttributeType(UInt16Data, Type):
 
     def __init__(self, value: int, data: bytes=None, name: str='Unknown Type'):
+        if data is None:
+            data = uint16_to_bytes(value)
         super().__init__(value=value, data=data)
         self.__name = name
         s_attribute_types[value] = self
@@ -88,15 +89,15 @@ class AttributeType(UInt16Data, Type):
         return '<%s: 0x%04X "%s" />' % (clazz, self.value, self.__name)
 
     def __hash__(self) -> int:
-        return self.value
+        return hash(self.value)
 
     @classmethod
-    def parse(cls, data: bytes, length: int=2):
+    def parse(cls, data: bytes):
         data_len = len(data)
-        if data_len < length:
+        if data_len < 2:
             return None
-        elif data_len > length:
-            data = data[:length]
+        elif data_len > 2:
+            data = data[:2]
         value = bytes_to_int(data=data)
         t = s_attribute_types.get(value)
         if t is None:
@@ -140,8 +141,7 @@ class Attribute(TLV):
 
     def __init__(self, t: AttributeType, v: AttributeValue, data: bytes=None):
         if data is None:
-            l_data = uint16_to_bytes(len(v.data))
-            data = t.data + l_data + v.data
+            data = t.data + uint16_to_bytes(len(v.data)) + v.data
         super().__init__(data=data, t=t, v=v)
 
     @classmethod
@@ -150,27 +150,24 @@ class Attribute(TLV):
 
     @classmethod
     def parse_length(cls, data: bytes, t: AttributeType) -> Optional[AttributeLength]:
-        length = AttributeLength.parse(data=data)
+        length = AttributeLength.parse(data=data, t=t)
         assert (length.value & 0x0003) == 0, 'attribute length error: %s' % data
         return length
 
     @classmethod
     def parse_value(cls, data: bytes, t: AttributeType, length: AttributeLength = None) -> Optional[Value]:
-        if length is None or length.value <= 0:
-            return None
-        else:
-            length = length.value
-        # check length
-        data_len = len(data)
-        if data_len < length:
-            return None
-        if data_len > length:
-            data = data[:length]
+        if length is not None:
+            # check length
+            data_len = len(data)
+            if data_len > length.value:
+                data = data[:length.value]
+            else:
+                assert data_len == length.value, 'data length not enough: %d < %d' % (data_len, length.value)
         # get attribute parser with type
         parser = s_attribute_parsers.get(t)
         if parser is None:
             parser = AttributeValue
-        return parser.parse(data=data, length=length)
+        return parser.parse(data=data, t=t, length=length)
 
 
 """
@@ -273,7 +270,8 @@ class MappedAddressValue(AttributeValue):
             raise ValueError('unknown address family: %d' % family)
 
     @classmethod
-    def parse(cls, data: bytes, length: int):
+    def parse(cls, data: bytes, t: Type, length: Length=None):
+        assert len(data) >= 8, 'mapped-address value error: %s' % data
         if data[0] != 0:
             return None
         family = bytes_to_int(data[1:2])
@@ -505,9 +503,14 @@ class ChangeRequestValue(UInt32Data, AttributeValue):
     (Defined in RFC-3489, removed from RFC-5389)
     """
 
+    def __init__(self, value: int, data: bytes=None):
+        if data is None:
+            data = uint32_to_bytes(value)
+        super().__init__(data=data, value=value)
+
     @classmethod
-    def parse(cls, data: bytes, length: int):
-        assert length == 4, 'Change-Request value error: %d' % length
+    def parse(cls, data: bytes, t: Type, length: Length=None):
+        assert length.value == 4, 'Change-Request value error: %s' % length
         value = bytes_to_int(data)
         if value == ChangeIPAndPort.value:
             return ChangeIPAndPort
@@ -562,7 +565,11 @@ class SoftwareValue(AttributeValue):
         return self.__desc
 
     @classmethod
-    def parse(cls, data: bytes, length: int):
+    def parse(cls, data: bytes, t: Type, length: Length=None):
+        if length is None or length.value == 0:
+            return None
+        else:
+            length = length.value
         data_len = len(data)
         if data_len < length:
             return None

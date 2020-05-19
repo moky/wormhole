@@ -35,8 +35,8 @@
     [RFC] https://www.ietf.org/rfc/rfc5389.txt
 """
 
-from .data import Data, UInt16Data
-from .data import random_bytes, uint32_to_bytes, bytes_to_int
+from udp.data import Data, UInt16Data
+from udp.data import random_bytes, bytes_to_int, uint16_to_bytes, uint32_to_bytes
 
 
 """
@@ -55,6 +55,8 @@ from .data import random_bytes, uint32_to_bytes, bytes_to_int
 class MessageType(UInt16Data):
 
     def __init__(self, value: int, data: bytes=None, name: str='Unknown Type'):
+        if data is None:
+            data = uint16_to_bytes(value)
         super().__init__(value=value, data=data)
         self.__name = name
         s_message_types[value] = self
@@ -90,6 +92,11 @@ SharedSecretErrorResponse = MessageType(0x0112, name='Shared Secret Error Respon
 
 
 class MessageLength(UInt16Data):
+
+    def __init__(self, value: int, data: bytes=None):
+        if data is None:
+            data = uint16_to_bytes(value)
+        super().__init__(data=data, value=value)
 
     @classmethod
     def parse(cls, data: bytes):

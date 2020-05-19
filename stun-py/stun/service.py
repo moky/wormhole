@@ -346,39 +346,42 @@ class Client(Node, ABC):
         self.retries = 3
 
     def parse_attribute(self, attribute: Attribute, context: dict, result: Info) -> Info:
-        value = attribute.value
+        a_type = attribute.type
+        a_value = attribute.value
         # check attributes
-        if attribute.type == MappedAddress:
-            assert isinstance(value, MappedAddressValue), 'mapped address value error: %s' % value
-            result.mapped_address = (value.ip, value.port)
-            self.info('MappedAddress:\t(%s:%d)' % (value.ip, value.port))
-        elif attribute.type == XorMappedAddress:
-            if not isinstance(value, XorMappedAddressValue):
+        if a_type == MappedAddress:
+            assert isinstance(a_value, MappedAddressValue), 'mapped address value error: %s' % a_value
+            result.mapped_address = (a_value.ip, a_value.port)
+            self.info('MappedAddress:\t(%s:%d)' % (a_value.ip, a_value.port))
+        elif a_type == XorMappedAddress:
+            if not isinstance(a_value, XorMappedAddressValue):
                 # XOR and parse again
-                data = XorMappedAddressValue.xor(data=value.data, factor=context['trans_id'])
-                value = XorMappedAddressValue.parse(data=data, length=len(data))
-            result.mapped_address = (value.ip, value.port)
-            self.info('XorMappedAddress:\t(%s:%d)' % (value.ip, value.port))
-        elif attribute.type == XorMappedAddress2:
-            if not isinstance(value, XorMappedAddressValue2):
+                data = XorMappedAddressValue.xor(data=a_value.data, factor=context['trans_id'])
+                a_len = AttributeLength(len(data))
+                a_value = XorMappedAddressValue.parse(data=data, t=a_type, length=a_len)
+            result.mapped_address = (a_value.ip, a_value.port)
+            self.info('XorMappedAddress:\t(%s:%d)' % (a_value.ip, a_value.port))
+        elif a_type == XorMappedAddress2:
+            if not isinstance(a_value, XorMappedAddressValue2):
                 # XOR and parse again
-                data = XorMappedAddressValue2.xor(data=value.data, factor=context['trans_id'])
-                value = XorMappedAddressValue2.parse(data=data, length=len(data))
-            result.mapped_address = (value.ip, value.port)
-            self.info('XorMappedAddress2:\t(%s:%d)' % (value.ip, value.port))
-        elif attribute.type == ChangedAddress:
-            assert isinstance(value, ChangedAddressValue), 'changed address value error: %s' % value
-            result.changed_address = (value.ip, value.port)
-            self.info('ChangedAddress:\t(%s:%d)' % (value.ip, value.port))
-        elif attribute.type == SourceAddress:
-            assert isinstance(value, SourceAddressValue), 'source address value error: %s' % value
-            result.source_address = (value.ip, value.port)
-            self.info('SourceAddress:\t(%s:%d)' % (value.ip, value.port))
-        elif attribute.type == Software:
-            assert isinstance(value, SoftwareValue), 'software value error: %s' % value
-            self.info(('Software: %s' % value.description))
+                data = XorMappedAddressValue2.xor(data=a_value.data, factor=context['trans_id'])
+                a_len = AttributeLength(len(data))
+                a_value = XorMappedAddressValue2.parse(data=data, t=a_type, length=a_len)
+            result.mapped_address = (a_value.ip, a_value.port)
+            self.info('XorMappedAddress2:\t(%s:%d)' % (a_value.ip, a_value.port))
+        elif a_type == ChangedAddress:
+            assert isinstance(a_value, ChangedAddressValue), 'changed address value error: %s' % a_value
+            result.changed_address = (a_value.ip, a_value.port)
+            self.info('ChangedAddress:\t(%s:%d)' % (a_value.ip, a_value.port))
+        elif a_type == SourceAddress:
+            assert isinstance(a_value, SourceAddressValue), 'source address value error: %s' % a_value
+            result.source_address = (a_value.ip, a_value.port)
+            self.info('SourceAddress:\t(%s:%d)' % (a_value.ip, a_value.port))
+        elif a_type == Software:
+            assert isinstance(a_value, SoftwareValue), 'software value error: %s' % a_value
+            self.info(('Software: %s' % a_value.description))
         else:
-            self.info('unknown attribute type: %s' % attribute.type)
+            self.info('unknown attribute type: %s' % a_type)
         return result
 
     def __bind_request(self, remote_host: str, remote_port: int, body: bytes) -> Optional[Info]:
