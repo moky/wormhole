@@ -50,7 +50,7 @@ class Departure:
         Package(s) to sent out (waiting response)
     """
 
-    EXPIRES = 60  # 2 minutes
+    EXPIRES = 60  # 1 minute
 
     def __init__(self, payload: Union[Package, list], destination: tuple, source: Union[tuple, int]=0):
         super().__init__()
@@ -77,17 +77,70 @@ class Arrival:
         self.destination = destination
 
 
+class Assemble:
+    """
+        Message fragments received (waiting assemble)
+    """
+
+    EXPIRES = 60  # 1 minutes
+
+    def __init__(self, fragment: Package):
+        super().__init__()
+        self.__fragments = [fragment]
+        self.pages = fragment.head.pages
+        assert self.pages > 1, 'fragment pages error: %s' % fragment.head
+        self.last_time = time.time()
+
+    @property
+    def fragments(self) -> list:
+        return self.__fragments
+
+    @property
+    def is_expired(self) -> bool:
+        count = len(self.__fragments)
+        assert count > 0, 'fragments error'
+        return (self.last_time + self.EXPIRES * self.pages) < time.time()
+
+    @property
+    def is_completed(self) -> bool:
+        return len(self.__fragments) == self.pages
+
+    def insert(self, fragment: Package) -> bool:
+        count = len(self.__fragments)
+        assert count > 0, 'fragments error'
+        head = fragment.head
+        offset = head.offset
+        assert head.data_type == MessageFragment, 'data type error: %s' % head
+        assert head.trans_id == self.__fragments[0].head.trans_id, 'transaction ID not match: %s' % head
+        assert head.pages == self.pages, 'pages error: %s' % head
+        assert head.pages > offset, 'offset error: %s' % head
+        index = count
+        while index > 0:
+            index -= 1
+            item = self.__fragments[index]
+            if offset < item.head.offset:
+                continue
+            elif offset == item.head.offset:
+                # assert False, 'duplicated: %s' % head
+                return False
+            self.__fragments.insert(index, fragment)
+            self.last_time = time.time()
+            return True
+
+
 class Pool:
 
     def __init__(self):
         super().__init__()
         # waiting list for responding
         self.__departures = []
+        self.__departures_lock = threading.Lock()
         # waiting list for processing
         self.__arrivals = []
-        # thread locks
-        self.__departures_lock = threading.RLock()
-        self.__arrivals_lock = threading.RLock()
+        self.__arrivals_lock = threading.Lock()
+        # waiting list for assembling
+        self.__fragments = {}  # TransactionID -> Assemble
+        self.__fragments_lock = threading.Lock()
 
     #
     #   Departures
@@ -205,3 +258,35 @@ class Pool:
     def new_arrival(self, data: bytes, source: tuple, destination: tuple) -> Arrival:
         task = Arrival(payload=data, source=source, destination=destination)
         return self.add_arrival(task)
+
+    #
+    #   Fragments Assembling
+    #
+    def add_fragment(self, fragment: Package) -> Optional[bytes]:
+        data = None
+        with self.__fragments_lock:
+            trans_id = fragment.head.trans_id
+            assemble = self.__fragments.get(trans_id)
+            if assemble is None:
+                self.__fragments[trans_id] = Assemble(fragment=fragment)
+            elif assemble.insert(fragment=fragment) and assemble.is_completed:
+                data = Package.join(packages=assemble.fragments)
+                self.__fragments.pop(trans_id)
+        return data
+
+    def purge_fragments(self):
+        """
+        Remove expired fragments
+
+        :return:
+        """
+        with self.__fragments_lock:
+            keys = list(self.__fragments.keys())
+            for trans_id in keys:
+                assemble = self.__fragments.get(trans_id)
+                if assemble is None:
+                    # error
+                    self.__fragments.pop(trans_id)
+                elif assemble.is_expired:
+                    # remove expired fragments
+                    self.__fragments.pop(trans_id)

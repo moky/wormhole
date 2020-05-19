@@ -156,15 +156,13 @@ class Peer:
             self.delegate.received_message(msg=body, source=task.source, destination=task.destination)
         else:
             assert data_type == MessageFragment, 'data type error: %s' % data_type
-            msg = self.__assemble(fragment=pack, source=task.source, destination=task.destination)
+            # assemble fragments
+            msg = self.__pool.add_fragment(fragment=pack)
             if msg is not None:
+                # all fragments received
                 self.delegate.received_message(msg=msg, source=task.source, destination=task.destination)
         # respond to the sender
         self.__respond(pack=pack, remote=task.source, local=task.destination)
-
-    def __assemble(self, fragment: Package, source: tuple, destination: tuple) -> Optional[bytes]:
-        # TODO: assembling fragments
-        pass
 
     def __respond(self, pack: Package, remote: tuple, local: tuple):
         head = pack.head

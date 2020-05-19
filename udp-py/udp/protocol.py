@@ -35,6 +35,7 @@
     Data format in UDP payload
 """
 
+import threading
 from typing import Optional
 
 from .data import Data
@@ -94,6 +95,10 @@ MessageFragment = DataType(10, name='Message Fragment')
 
 class TransactionID(Data):
 
+    def __str__(self):
+        clazz = self.__class__.__name__
+        return '<%s: %s />' % (clazz, self.data)
+
     @classmethod
     def parse(cls, data: bytes):
         data_len = len(data)
@@ -103,9 +108,22 @@ class TransactionID(Data):
             data = data[:8]
         return cls(data=data)
 
+    __number_lock = threading.Lock()
+    __number_high = bytes_to_int(random_bytes(4))
+    __number_low = bytes_to_int(random_bytes(4))
+
     @classmethod
     def new(cls):
-        data = random_bytes(8)
+        with cls.__number_lock:
+            if cls.__number_low < 0xFFFFFFFF:
+                cls.__number_low += 1
+            else:
+                cls.__number_low = 0
+                if cls.__number_high < 0xFFFFFFFF:
+                    cls.__number_high += 1
+                else:
+                    cls.__number_high = 0
+            data = uint32_to_bytes(cls.__number_high) + uint32_to_bytes(cls.__number_low)
         return cls(data=data)
 
 
