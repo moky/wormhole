@@ -3,7 +3,9 @@
 
 import socket
 
+import udp
 import stun
+
 
 SERVER_GZ1 = '134.175.87.98'
 SERVER_GZ2 = '203.195.224.155'
@@ -19,31 +21,32 @@ STUN_PORT = 3478
 LOCAL_IP = '0.0.0.0'
 LOCAL_PORT = 9394
 
+# create a hub for sockets
+g_hub = udp.Hub()
+g_hub.open(host=LOCAL_IP, port=LOCAL_PORT)
+g_hub.start()
+
 
 class UDPClient(stun.Client):
 
     def __init__(self):
         super().__init__()
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.settimeout(2)
-        sock.bind(('0.0.0.0', LOCAL_PORT))
-        self.__socket = sock
 
     def send(self, data: bytes, remote_host: str, remote_port: int) -> int:
         try:
-            return self.__socket.sendto(data, (remote_host, remote_port))
+            return g_hub.send(data=data, destination=(remote_host, remote_port))
         except socket.error:
             return -1
 
-    def receive(self, buffer_size: int=2048) -> (bytes, (str, int)):
+    def receive(self) -> (bytes, (str, int)):
         try:
-            return self.__socket.recvfrom(buffer_size)
+            data, source, destination = g_hub.receive(timeout=2)
+            return data, source
         except socket.error:
             return None, None
 
 
-if __name__ == '__main__':
+def main():
     # create client
     client = UDPClient()
     client.source_address = (LOCAL_IP, LOCAL_PORT)
@@ -55,3 +58,9 @@ if __name__ == '__main__':
         if res is not None:
             print('-- External Address:', res.mapped_address)
         print('--------------------------------')
+    # exit
+    g_hub.stop()
+
+
+if __name__ == '__main__':
+    main()

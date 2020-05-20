@@ -105,11 +105,10 @@ class Node(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def receive(self, buffer_size: int = 2048) -> (bytes, (str, int)):
+    def receive(self) -> (bytes, (str, int)):
         """
         Received data from local port
 
-        :param buffer_size:
         :return: data and remote address
         """
         raise NotImplemented

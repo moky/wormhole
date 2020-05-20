@@ -3,6 +3,7 @@
 
 import socket
 
+import udp
 import stun
 
 import sys
@@ -19,44 +20,27 @@ class UDPServer(stun.Server):
 
     def __init__(self):
         super().__init__()
-        # socket 1 for normal request
-        sock1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock1.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock1.settimeout(2)
-        sock1.bind(('0.0.0.0', LOCAL_PORT))
-        self.__socket1 = sock1
-        # socket 2 for "change port"
-        sock2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock2.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock2.settimeout(2)
-        sock2.bind(('0.0.0.0', ANOTHER_PORT))
-        self.__socket2 = sock2
-        # socket 3 for "change IP & port"
-        sock3 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock3.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock3.settimeout(2)
-        sock3.bind(('0.0.0.0', REDIRECTED_PORT))
-        self.__socket3 = sock3
 
     def send(self, data: bytes, remote_host: str, remote_port: int, local_port: int=0) -> int:
         try:
-            if local_port == LOCAL_PORT:
-                return self.__socket1.sendto(data, (remote_host, remote_port))
-            elif local_port == ANOTHER_PORT:
-                return self.__socket2.sendto(data, (remote_host, remote_port))
-            elif local_port == REDIRECTED_PORT:
-                return self.__socket3.sendto(data, (remote_host, remote_port))
-            else:
-                assert local_port is 0, 'local port error: %d' % local_port
-                return self.__socket1.sendto(data, (remote_host, remote_port))
+            return g_hub.send(data=data, destination=(remote_host, remote_port), source=local_port)
         except socket.error:
             return -1
 
-    def receive(self, buffer_size: int=2048) -> (bytes, (str, int)):
+    def receive(self) -> (bytes, (str, int)):
         try:
-            return self.__socket1.recvfrom(buffer_size)
+            data, source, destination = g_hub.receive()
+            return data, source
         except socket.error:
             return None, None
+
+
+# create a hub for sockets
+g_hub = udp.Hub()
+g_hub.open(port=LOCAL_PORT)
+g_hub.open(port=ANOTHER_PORT)
+g_hub.open(port=REDIRECTED_PORT)
+g_hub.start()
 
 
 def main():

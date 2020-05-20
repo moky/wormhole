@@ -95,7 +95,6 @@ class Socket(threading.Thread):
 
     def __init__(self, port: int, host: str='0.0.0.0'):
         super().__init__()
-        self.running = True
         self.__local_address = (host, port)
         # create socket
         sock = self._create_socket()
@@ -111,6 +110,10 @@ class Socket(threading.Thread):
     @property
     def local_address(self) -> (str, int):
         return self.__local_address
+
+    @property
+    def running(self) -> bool:
+        return not getattr(self.__socket, '_closed', False)
 
     @staticmethod
     def _create_socket() -> socket.socket:
@@ -209,7 +212,8 @@ class Socket(threading.Thread):
                             conn.update_received_time()
             return data, address
         except socket.error as error:
-            print('Failed to receive data: %s' % error)
+            if not isinstance(error, socket.timeout):
+                print('Failed to receive data: %s' % error)
             return None, None
 
     def receive(self) -> (bytes, (str, int)):
@@ -226,6 +230,7 @@ class Socket(threading.Thread):
         return None, None
 
     def run(self):
+        self.settimeout(2)
         while self.running:
             try:
                 data, address = self.__receive()
@@ -249,7 +254,6 @@ class Socket(threading.Thread):
                 print('socket error: %s' % error)
 
     def close(self):
-        self.running = False
         self.__socket.close()
 
     def stop(self):

@@ -147,12 +147,12 @@ class Hub(threading.Thread):
 
     def stop(self):
         self.running = False
-        time.sleep(0.5)
         # close all sockets
         pos = len(self.__sockets)
         while pos > 0:
             pos -= 1
             sock = self.__sockets[pos]
+            assert isinstance(sock, Socket), 'socket error: %s' % sock
             sock.stop()
 
     def get_connection(self, destination: tuple, source: Union[tuple, int] = None) -> Optional[Connection]:
@@ -204,18 +204,25 @@ class Hub(threading.Thread):
         assert isinstance(sock, Socket), 'no socket (%d) matched: %s' % (len(self.__sockets), source)
         return sock.send(data=data, remote_host=destination[0], remote_port=destination[1])
 
-    def receive(self) -> (bytes, (str, int), (str, int)):
+    def receive(self, timeout: Optional[float]=None) -> (bytes, (str, int), (str, int)):
         """
         Block to receive data
 
         :return: received data, source address(remote), destination address(local)
         """
-        while True:
+        now = time.time()
+        if timeout is None:
+            timeout = now + 3600 * 24
+        else:
+            timeout = now + timeout
+        while now <= timeout:
             data, source, destination = self.__receive()
             if data is None:
                 time.sleep(0.1)
+                now = time.time()
             else:
                 return data, source, destination
+        return None, None, None
 
     def __receive(self) -> (bytes, (str, int), (str, int)):
         for sock in self.__sockets:

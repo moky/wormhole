@@ -39,7 +39,7 @@ from typing import Optional
 
 from udp.data import UInt16Data, UInt32Data
 from udp.data import bytes_to_int, uint8_to_bytes, uint16_to_bytes, uint32_to_bytes
-from udp.data import TLV, Type, Length, Value
+from udp.tlv import TLV, Type, Length, Value
 
 """
     STUN Attributes
