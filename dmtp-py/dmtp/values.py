@@ -28,122 +28,73 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Union
+from typing import Union
 
-from udp.data import Data, VarIntData
-from udp.data import bytes_to_varint, bytes_to_int
-from udp.data import varint_to_bytes, uint8_to_bytes, uint16_to_bytes
-from udp.tlv import TLV, Type, Length, Value
+from udp.data import Data
+from udp.data import bytes_to_int, uint8_to_bytes, uint16_to_bytes
 
-
-class VarName(Type):
-
-    def __init__(self, name: str, data: bytes=None):
-        if data is None:
-            data = name.encode('utf-8') + b'\0'
-        super().__init__(data=data)
-        self.__name = name
-
-    def __str__(self):
-        return self.__name
-
-    @property
-    def name(self) -> str:
-        return self.__name
-
-    @classmethod
-    def parse(cls, data: bytes):
-        pos = data.find(b'\0')
-        if pos < 1:
-            return None
-        data = data[:pos+1]
-        name = data.rstrip(b'\0').decode('utf-8')
-        return cls(name=name, data=data)
+from .tlv import *
 
 
-class VarLength(VarIntData, Length):
+"""
+    Commands
+    ~~~~~~~~
 
-    def __init__(self, value: int, data: bytes=None):
-        if data is None:
-            data = varint_to_bytes(value)
-        super().__init__(data=data, value=value)
+    HI
+        send 'ID' to the receiver at first time;
+        if got a 'SIGN' command with MAPPED-ADDRESS responds from a server,
+        sign it and send back to the server for login.
 
-    def __str__(self):
-        return self.value
+        Fields:
+            ID - current user's identifier
+            ADDR - current user's public IP and port
+            SIGN - signature of ADDR
 
-    # noinspection PyUnusedLocal
-    @classmethod
-    def parse(cls, data: bytes, t: Type):
-        value, length = bytes_to_varint(data=data)
-        return cls(data=data[:length], value=value)
+    PROFILE
+        if only contains a field 'ID', means asking you to offer your profile;
+        respond your profile with the same command but fill with profile data.
+
+        Fields:
+            ID - user identifier
+            META - user's meta info
+            PROFILE - user's profile info
+
+    SIGN
+        Server-Client command: respond the user's MAPPED-ADDRESS to ask signing.
+
+        Fields:
+            ID - user identifier
+            ADDR - user's public IP and port
+
+    CALL
+        Client-Server command: ask the server to help connecting with someone.
+
+        Field:
+            ID - contact identifier
+
+    FROM
+        Server-Client command: deliver the request for a user
+
+        Fields:
+            ID - sender identifier
+            ADDR - sender's public IP and port
+"""
 
 
-class Field(TLV):
+class Command(Field):
 
-    def __init__(self, t: Type, v: Value, data: bytes=None):
-        if data is None:
-            data = t.data + varint_to_bytes(len(v.data)) + v.data
+    def __init__(self, t: Type, v: Union[Value, Data, bytes], data: bytes = None):
+        if v is not None:
+            if isinstance(v, bytes):
+                v = Value(data=v)
+            elif not isinstance(v, Value):
+                assert isinstance(v, Data), 'value error: %s' % v
+                v = Value(data=v.data)
         super().__init__(data=data, t=t, v=v)
 
-    @classmethod
-    def parse_type(cls, data: bytes) -> Optional[VarName]:
-        return VarName.parse(data=data)
-
-    @classmethod
-    def parse_length(cls, data: bytes, t: Type) -> Optional[VarLength]:
-        return VarLength.parse(data=data, t=t)
-
-    @classmethod
-    def parse_value(cls, data: bytes, t: Type, length: Length = None) -> Optional[Value]:
-        if length is not None:
-            # check length
-            data_len = len(data)
-            if data_len > length.value:
-                data = data[:length.value]
-            else:
-                assert data_len == length.value, 'data length not enough: %d < %d' % (data_len, length.value)
-        # get attribute parser with type
-        parser = s_value_parsers.get(t)
-        if parser is None:
-            parser = Value
-        return parser.parse(data=data, t=t, length=length)
-
-
-class FieldsValue(Value):
-
-    def __init__(self, fields: list, data: bytes=None):
-        if data is None:
-            data = b''
-            for item in fields:
-                assert isinstance(item, Field), 'field item error: %s' % item
-                data += item.data
-        super().__init__(data=data)
-        # set fields
-        self.__fields = fields
-        for item in fields:
-            self._set_field(item)
-
-    @property
-    def fields(self) -> list:
-        return self.__fields
-
-    def _set_field(self, field: Field):
-        pass
-
-    @classmethod
-    def parse(cls, data: bytes, t: Type, length: Length=None):
-        if length is None or length.value == 0:
-            return None
-        else:
-            length = length.value
-        data_len = len(data)
-        if data_len < length:
-            return None
-        elif data_len > length:
-            data = data[:length]
-        # parse fields
-        fields = Field.parse_all(data=data)
-        return cls(fields=fields, data=data)
+    def __str__(self):
+        clazz = self.__class__.__name__
+        return '<%s: %s=%s />' % (clazz, self.type, self.data)
 
 
 class StringValue(Value):
@@ -175,43 +126,6 @@ class StringValue(Value):
         # parse string value
         value = data.decode('utf-8')
         return cls(value=value, data=data)
-
-
-"""
-    Commands
-    ~~~~~~~~
-    
-    LOGIN
-        send 'ID' to a server
-        
-    SIGN
-        respond the user's public address to ask signing
-        
-    CALL
-        request for binding with someone
-"""
-
-
-class Command(Field):
-
-    def __init__(self, t: Type, v: Union[Value, Data, bytes], data: bytes=None):
-        if v is not None:
-            if isinstance(v, bytes):
-                v = Value(data=v)
-            elif not isinstance(v, Value):
-                assert isinstance(v, Data), 'value error: %s' % v
-                v = Value(data=v.data)
-        super().__init__(data=data, t=t, v=v)
-
-    def __str__(self):
-        clazz = self.__class__.__name__
-        return '<%s: %s=%s />' % (clazz, self.type, self.data)
-
-
-# command names
-Login = VarName(name='LOGIN')
-Sign = VarName(name='SIGN')
-Call = VarName(name='CALL')
 
 
 class LoginValue(FieldsValue):
@@ -321,17 +235,6 @@ class CallValue(FieldsValue):
             print('unknown field: %s -> %s' % (f_type, f_value))
 
 
-"""
-    Fields in Command Value
-    ~~~~~~~~~~~~~~~~~~~~~~~
-"""
-
-# field names
-ID = VarName(name='ID')
-Address = VarName(name='ADDR')
-Signature = VarName(name='SIGN')
-
-
 class MappedAddressValue(Value):
 
     family_ipv4 = 0x01
@@ -402,12 +305,21 @@ class MappedAddressValue(Value):
         return cls(data=data, ip=ip, port=port, family=family)
 
 
-# classes for parsing value
-s_value_parsers = {
-    Login: LoginValue,
-    Sign: SignValue,
-    Call: CallValue,
+# command names
+Login = VarName(name='HI')
+Sign = VarName(name='SIGN')
+Call = VarName(name='CALL')
 
-    ID: StringValue,
-    Address: MappedAddressValue,
-}
+# field names
+ID = VarName(name='ID')
+Address = VarName(name='ADDR')
+Signature = VarName(name='SIGN')
+
+
+# classes for parsing value
+s_value_parsers[Login] = LoginValue
+s_value_parsers[Sign] = SignValue
+s_value_parsers[Call] = CallValue
+
+s_value_parsers[ID] = StringValue
+s_value_parsers[Address] = MappedAddressValue

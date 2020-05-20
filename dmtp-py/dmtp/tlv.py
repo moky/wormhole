@@ -1,0 +1,150 @@
+# -*- coding: utf-8 -*-
+#
+#   DMTP: Direct Message Transfer Protocol
+#
+#                                Written in 2020 by Moky <albert.moky@gmail.com>
+#
+# ==============================================================================
+# MIT License
+#
+# Copyright (c) 2019 Albert Moky
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+# ==============================================================================
+
+from typing import Optional
+
+from udp.data import VarIntData
+from udp.data import bytes_to_varint
+from udp.data import varint_to_bytes
+from udp.tlv import TLV, Type, Length, Value
+
+
+class VarName(Type):
+
+    def __init__(self, name: str, data: bytes = None):
+        if data is None:
+            data = name.encode('utf-8') + b'\0'
+        super().__init__(data=data)
+        self.__name = name
+
+    def __str__(self):
+        return self.__name
+
+    @property
+    def name(self) -> str:
+        return self.__name
+
+    @classmethod
+    def parse(cls, data: bytes):
+        pos = data.find(b'\0')
+        if pos < 1:
+            return None
+        data = data[:pos + 1]
+        name = data.rstrip(b'\0').decode('utf-8')
+        return cls(name=name, data=data)
+
+
+class VarLength(VarIntData, Length):
+
+    def __init__(self, value: int, data: bytes = None):
+        if data is None:
+            data = varint_to_bytes(value)
+        super().__init__(data=data, value=value)
+
+    def __str__(self):
+        return self.value
+
+    # noinspection PyUnusedLocal
+    @classmethod
+    def parse(cls, data: bytes, t: Type):
+        value, length = bytes_to_varint(data=data)
+        return cls(data=data[:length], value=value)
+
+
+class Field(TLV):
+
+    def __init__(self, t: Type, v: Value, data: bytes = None):
+        if data is None:
+            data = t.data + varint_to_bytes(len(v.data)) + v.data
+        super().__init__(data=data, t=t, v=v)
+
+    @classmethod
+    def parse_type(cls, data: bytes) -> Optional[VarName]:
+        return VarName.parse(data=data)
+
+    @classmethod
+    def parse_length(cls, data: bytes, t: Type) -> Optional[VarLength]:
+        return VarLength.parse(data=data, t=t)
+
+    @classmethod
+    def parse_value(cls, data: bytes, t: Type, length: Length = None) -> Optional[Value]:
+        if length is not None:
+            # check length
+            data_len = len(data)
+            if data_len > length.value:
+                data = data[:length.value]
+            else:
+                assert data_len == length.value, 'data length not enough: %d < %d' % (data_len, length.value)
+        # get attribute parser with type
+        parser = s_value_parsers.get(t)
+        if parser is None:
+            parser = Value
+        return parser.parse(data=data, t=t, length=length)
+
+
+# classes for parsing value
+s_value_parsers = {}
+
+
+class FieldsValue(Value):
+
+    def __init__(self, fields: list, data: bytes = None):
+        if data is None:
+            data = b''
+            for item in fields:
+                assert isinstance(item, Field), 'field item error: %s' % item
+                data += item.data
+        super().__init__(data=data)
+        # set fields
+        self.__fields = fields
+        for item in fields:
+            self._set_field(item)
+
+    @property
+    def fields(self) -> list:
+        return self.__fields
+
+    def _set_field(self, field: Field):
+        pass
+
+    @classmethod
+    def parse(cls, data: bytes, t: Type, length: Length = None):
+        if length is None or length.value == 0:
+            return None
+        else:
+            length = length.value
+        data_len = len(data)
+        if data_len < length:
+            return None
+        elif data_len > length:
+            data = data[:length]
+        # parse fields
+        fields = Field.parse_all(data=data)
+        return cls(fields=fields, data=data)

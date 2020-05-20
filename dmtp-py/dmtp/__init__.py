@@ -28,7 +28,8 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .command import *
+from .tlv import *
+from .values import *
 
 name = "DMTP"
 
