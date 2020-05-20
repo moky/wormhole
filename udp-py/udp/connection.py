@@ -32,6 +32,7 @@ import socket
 import threading
 import time
 from abc import ABC, abstractmethod
+from enum import IntEnum
 from typing import Optional, Union
 
 """
@@ -58,6 +59,13 @@ from typing import Optional, Union
 """
 
 
+class ConnectionStatus(IntEnum):
+
+    NotConnect = 0
+    Connecting = 1
+    Connected = 2
+
+
 class Connection:
 
     EXPIRES = 28  # seconds
@@ -66,7 +74,9 @@ class Connection:
         super().__init__()
         self.__host = remote_host
         self.__port = remote_port
-        self.__expired = 0
+        # connecting time
+        self.__send_expired = 0
+        self.__receive_expired = 0
 
     @property
     def host(self) -> str:
@@ -79,13 +89,22 @@ class Connection:
         return self.__port
 
     @property
-    def is_expired(self):
-        """ long time no see """
-        return time.time() > self.__expired
+    def status(self) -> ConnectionStatus:
+        now = time.time()
+        if now < self.__receive_expired:
+            return ConnectionStatus.Connected
+        elif now < self.__send_expired:
+            return ConnectionStatus.Connecting
+        else:
+            return ConnectionStatus.NotConnect
 
-    def update_time(self):
-        """ update last communicate time """
-        self.__expired = time.time() + self.EXPIRES
+    def update_sent_time(self):
+        """ update last send time """
+        self.__send_expired = time.time() + self.EXPIRES
+
+    def update_received_time(self):
+        """ update last send time """
+        self.__receive_expired = time.time() + self.EXPIRES
 
 
 class Cargo:
@@ -103,8 +122,7 @@ class Socket(threading.Thread):
         self.running = True
         self.__local_address = (host, port)
         # create socket
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock = self._create_socket()
         sock.bind(self.__local_address)
         self.__socket = sock
         # connection list
@@ -118,12 +136,22 @@ class Socket(threading.Thread):
     def local_address(self) -> (str, int):
         return self.__local_address
 
+    @staticmethod
+    def _create_socket() -> socket.socket:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        return sock
+
     def settimeout(self, timeout: Optional[float]):
         self.__socket.settimeout(timeout)
 
-    def close(self):
-        self.running = False
-        self.__socket.close()
+    def get_connection(self, remote_host: str, remote_port: int) -> Optional[Connection]:
+        with self.__connections_lock:
+            for conn in self.__connections:
+                assert isinstance(conn, Connection), 'connection error: %s' % conn
+                if conn.host == remote_host and conn.port == remote_port:
+                    # got it
+                    return conn
 
     def connect(self, remote_host: str, remote_port: int):
         """ add remote address to keep connected with heartbeat """
@@ -153,18 +181,8 @@ class Socket(threading.Thread):
         with self.__connections_lock:
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
-                if conn.is_expired:
+                if conn.status == ConnectionStatus.NotConnect:
                     return conn
-
-    def __refresh(self, remote_host: str, remote_port: int) -> bool:
-        """ update connection's expired time """
-        with self.__connections_lock:
-            for conn in self.__connections:
-                assert isinstance(conn, Connection), 'connection error: %s' % conn
-                if conn.host == remote_host and conn.port == remote_port:
-                    # refresh time
-                    conn.update_time()
-                    return True
 
     def ping(self):
         """ send heartbeat to all expired connections """
@@ -186,8 +204,14 @@ class Socket(threading.Thread):
         """
         try:
             res = self.__socket.sendto(data, (remote_host, remote_port))
-            if res == len(data):
-                self.__refresh(remote_host=remote_host, remote_port=remote_port)
+            assert res == len(data), 'send failed: %d, %d' % (res, len(data))
+            # update connection's expired time
+            with self.__connections_lock:
+                for conn in self.__connections:
+                    assert isinstance(conn, Connection), 'connection error: %s' % conn
+                    if conn.host == remote_host and conn.port == remote_port:
+                        # refresh time
+                        conn.update_sent_time()
             return res
         except socket.error as error:
             print('Failed to send data: %s' % error)
@@ -198,7 +222,15 @@ class Socket(threading.Thread):
             data, address = self.__socket.recvfrom(buffer_size)
             if data is not None:
                 assert len(address) == 2, 'remote address error: %s, data length: %d' % (address, len(data))
-                self.__refresh(remote_host=address[0], remote_port=address[1])
+                # update connection's expired time
+                with self.__connections_lock:
+                    remote_host = address[0]
+                    remote_port = address[1]
+                    for conn in self.__connections:
+                        assert isinstance(conn, Connection), 'connection error: %s' % conn
+                        if conn.host == remote_host and conn.port == remote_port:
+                            # refresh time
+                            conn.update_received_time()
             return data, address
         except socket.error as error:
             print('Failed to receive data: %s' % error)
@@ -224,20 +256,28 @@ class Socket(threading.Thread):
                 if data is None:
                     # receive nothing
                     time.sleep(0.1)
-                elif len(data) == 4:
-                    # heartbeat
+                    continue
+                if len(data) == 4:
+                    # check heartbeat
                     if data == b'PING':
                         # respond heartbeat
                         self.send(data=b'PONG', remote_host=address[0], remote_port=address[1])
-                    else:
+                        continue
+                    elif data == b'PONG':
                         # ignore it
-                        assert data == b'PONG', 'drop package: %s' % data
-                else:
-                    # cache the data received
-                    with self.__cargoes_lock:
-                        self.__cargoes.append(Cargo(data=data, source=address))
+                        continue
+                # cache the data received
+                with self.__cargoes_lock:
+                    self.__cargoes.append(Cargo(data=data, source=address))
             except Exception as error:
                 print('socket error: %s' % error)
+
+    def close(self):
+        self.running = False
+        self.__socket.close()
+
+    def stop(self):
+        self.close()
 
 
 class HubFilter(ABC):
@@ -289,31 +329,69 @@ class Hub(threading.Thread):
         assert listener in self.__listeners, 'listener not exists: %s' % listener
         self.__listeners.remove(listener)
 
+    def __get_socket(self, source: Union[tuple, int]=None) -> Optional[Socket]:
+        if source is None:
+            return self.__sockets[0]
+        elif isinstance(source, int):
+            source = ('0.0.0.0', source)
+        for sock in self.__sockets:
+            assert isinstance(sock, Socket), 'socket error: %s' % sock
+            if sock.local_address == source:
+                # already exists
+                return sock
+
+    @staticmethod
+    def _create_socket(host: str, port: int) -> Optional[Socket]:
+        return Socket(host=host, port=port)
+
     def open(self, port: int, host: str='0.0.0.0'):
         """ create a socket on this port """
         address = (host, port)
-        for sock in self.__sockets:
-            assert isinstance(sock, Socket), 'socket error: %s' % sock
-            if sock.local_address == address:
-                # already exists
-                return False
-        sock = Socket(host=host, port=port)
-        sock.start()
-        self.__sockets.append(sock)
-        return True
+        sock = self.__get_socket(source=address)
+        if sock is None:
+            sock = self._create_socket(host=host, port=port)
+            sock.start()
+            self.__sockets.append(sock)
 
-    def close(self, port: int, host: str='0.0.0.0'):
+    def close(self, port: int, host: str='0.0.0.0') -> bool:
         """ remove the socket on this port """
+        count = 0
         address = (host, port)
+        while True:
+            sock = self.__get_socket(source=address)
+            if sock is None:
+                break
+            sock.close()
+            self.__sockets.remove(sock)
+            count += 1
+        return count > 0
+
+    def stop(self):
+        self.running = False
+        time.sleep(0.5)
+        # close all sockets
         pos = len(self.__sockets)
         while pos > 0:
             pos -= 1
             sock = self.__sockets[pos]
-            assert isinstance(sock, Socket), 'socket error: %s' % sock
-            if sock.local_address == address:
-                # close & remove
-                sock.close()
-                self.__sockets.pop(pos)
+            sock.stop()
+
+    def get_connection(self, destination: tuple, source: Union[tuple, int]=None) -> Optional[Connection]:
+        sock = self.__get_socket(source=source)
+        if sock is not None:
+            return sock.get_connection(remote_host=destination[0], remote_port=destination[1])
+
+    def connect(self, destination: tuple, source: Union[tuple, int]=None) -> bool:
+        sock = self.__get_socket(source=source)
+        if sock is not None:
+            sock.connect(remote_host=destination[0], remote_port=destination[1])
+            return True
+
+    def disconnect(self, destination: tuple, source: Union[tuple, int]=None) -> bool:
+        sock = self.__get_socket(source=source)
+        if sock is not None:
+            sock.disconnect(remote_host=destination[0], remote_port=destination[1])
+            return True
 
     def send(self, data: bytes, destination: tuple, source: Union[tuple, int]=None) -> int:
         """

@@ -95,6 +95,9 @@ class Peer(threading.Thread, HubListener):
         self.running = True
         self.__pool = Pool()
 
+    def stop(self):
+        self.running = False
+
     def run(self):
         while self.running:
             # first, process all arrivals
