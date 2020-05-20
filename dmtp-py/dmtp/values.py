@@ -28,6 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
+import base64
 from typing import Union
 
 from udp.data import Data
@@ -95,6 +96,26 @@ class Command(Field):
     def __str__(self):
         clazz = self.__class__.__name__
         return '<%s: %s=%s />' % (clazz, self.type, self.data)
+
+
+def base64_encode(data: bytes) -> str:
+    return base64.b64encode(data).decode('utf-8')
+
+
+def base64_decode(string: str) -> bytes:
+    return base64.b64decode(string)
+
+
+class DataValue(Value):
+
+    def __init__(self, data: bytes):
+        super().__init__(data=data)
+
+    def __str__(self):
+        return '"%s"' % base64_encode(self.data)
+
+    def __repr__(self):
+        return '"%s"' % base64_encode(self.data)
 
 
 class StringValue(Value):
@@ -318,8 +339,8 @@ Call = VarName(name='CALL')
 
 # field names
 ID = VarName(name='ID')
-Address = VarName(name='ADDR')
-Signature = VarName(name='SIGN')
+Address = VarName(name='ADDRESS')
+Signature = VarName(name='SIGNATURE')
 
 
 # classes for parsing value
@@ -329,3 +350,4 @@ s_value_parsers[Call] = CallValue
 
 s_value_parsers[ID] = StringValue
 s_value_parsers[Address] = MappedAddressValue
+s_value_parsers[Signature] = DataValue

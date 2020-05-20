@@ -35,7 +35,7 @@ class Client(udp.Peer, udp.PeerDelegate):
         _addr = dmtp.Field(t=dmtp.Address,
                            v=dmtp.MappedAddressValue(ip=value.ip, port=value.port))
         _s = dmtp.Field(t=dmtp.Signature,
-                        v=dmtp.Value(data=b'{signature:base64}'))
+                        v=dmtp.Value(data=b'BASE64(signature)'))
         # command with fields
         _login = dmtp.Command(t=dmtp.Login,
                               v=dmtp.FieldsValue(fields=[_id, _addr, _s]))
