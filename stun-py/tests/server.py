@@ -40,7 +40,6 @@ g_hub = udp.Hub()
 g_hub.open(port=LOCAL_PORT)
 g_hub.open(port=ANOTHER_PORT)
 g_hub.open(port=REDIRECTED_PORT)
-g_hub.start()
 
 
 def main():
