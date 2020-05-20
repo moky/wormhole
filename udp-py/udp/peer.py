@@ -45,7 +45,7 @@ from .protocol import Package
 from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment
 from .task import Departure, Arrival, Pool
-from .connection import HubDelegate
+from .connection import HubListener
 
 
 class PeerDelegate(ABC):
@@ -87,7 +87,7 @@ class PeerDelegate(ABC):
         raise NotImplemented
 
 
-class Peer(threading.Thread, HubDelegate):
+class Peer(threading.Thread, HubListener):
 
     def __init__(self):
         super().__init__()
@@ -209,8 +209,9 @@ class Peer(threading.Thread, HubDelegate):
         self.__send(task=task)
 
     #
-    #   HubDelegate
+    #   HubListener
     #
-    def received(self, data: bytes, source: tuple, destination: tuple) -> Optional[Arrival]:
+    def received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
         task = Arrival(payload=data, source=source, destination=destination)
-        return self.__pool.add_arrival(task=task)
+        self.__pool.add_arrival(task=task)
+        return None

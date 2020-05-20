@@ -51,7 +51,7 @@ __all__ = [
     #   Socket Connection
     #
     'Connection', 'Socket',
-    'HubDelegate', 'Hub',
+    'Hub', 'HubFilter', 'HubListener',
 
     #
     #   Peer

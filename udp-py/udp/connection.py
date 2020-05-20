@@ -40,20 +40,21 @@ from typing import Optional, Union
                         +---------------+
                         |      APP      |
                         +---------------+
-                                |
-                                V
+                            |       A
+                            |       |  (filter)
+                            V       |
         +-----------------------------------------------+
         |                                               |
         |     +----------+     HUB     +----------+     |
         |     |  socket  |             |  socket  |     |
         +-----+----------+-------------+----------+-----+
-                 |    |                   |  |  |
+                 |    A                   |  |  A
                  |    |   (connections)   |  |  |
                  |    |                   |  |  |
         ~~~~~~~~~|~~~~|~~~~~~~~~~~~~~~~~~~|~~|~~|~~~~~~~~
         ~~~~~~~~~|~~~~|~~~~~~~~~~~~~~~~~~~|~~|~~|~~~~~~~~
                  |    |                   |  |  |
-                 V    V                   V  V  V
+                 V    |                   V  V  |
 """
 
 
@@ -239,17 +240,35 @@ class Socket(threading.Thread):
                 print('socket error: %s' % error)
 
 
-class HubDelegate(ABC):
+class HubFilter(ABC):
 
     @abstractmethod
-    def received(self, data: bytes, source: tuple, destination: tuple):
+    def matched(self, data: bytes, source: tuple, destination: tuple) -> bool:
+        """
+        Check
+        :param data:
+        :param source:
+        :param destination:
+        :return:
+        """
+        pass
+
+
+class HubListener(ABC):
+
+    @property
+    def filter(self) -> Optional[HubFilter]:
+        return None
+
+    @abstractmethod
+    def received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
         """
         New data package arrived
 
         :param data:        UDP data received
         :param source:      remote ip and port
         :param destination: local ip and port
-        :return:
+        :return: response to the source address
         """
         raise NotImplemented
 
@@ -258,38 +277,43 @@ class Hub(threading.Thread):
 
     def __init__(self):
         super().__init__()
-        self.delegate: HubDelegate = None
         self.running = True
         self.__sockets = []
-        self.__sockets_lock = threading.Lock()
+        self.__listeners = []
+
+    def add_listener(self, listener: HubListener):
+        assert listener not in self.__listeners, 'listener already added: %s' % listener
+        self.__listeners.append(listener)
+
+    def remove_listener(self, listener: HubListener):
+        assert listener in self.__listeners, 'listener not exists: %s' % listener
+        self.__listeners.remove(listener)
 
     def open(self, port: int, host: str='0.0.0.0'):
         """ create a socket on this port """
-        with self.__sockets_lock:
-            address = (host, port)
-            for sock in self.__sockets:
-                assert isinstance(sock, Socket), 'socket error: %s' % sock
-                if sock.local_address == address:
-                    # already exists
-                    return False
-            sock = Socket(host=host, port=port)
-            sock.start()
-            self.__sockets.append(sock)
-            return True
+        address = (host, port)
+        for sock in self.__sockets:
+            assert isinstance(sock, Socket), 'socket error: %s' % sock
+            if sock.local_address == address:
+                # already exists
+                return False
+        sock = Socket(host=host, port=port)
+        sock.start()
+        self.__sockets.append(sock)
+        return True
 
     def close(self, port: int, host: str='0.0.0.0'):
         """ remove the socket on this port """
-        with self.__sockets_lock:
-            address = (host, port)
-            pos = len(self.__sockets)
-            while pos > 0:
-                pos -= 1
-                sock = self.__sockets[pos]
-                assert isinstance(sock, Socket), 'socket error: %s' % sock
-                if sock.local_address == address:
-                    # close & remove
-                    sock.close()
-                    self.__sockets.pop(pos)
+        address = (host, port)
+        pos = len(self.__sockets)
+        while pos > 0:
+            pos -= 1
+            sock = self.__sockets[pos]
+            assert isinstance(sock, Socket), 'socket error: %s' % sock
+            if sock.local_address == address:
+                # close & remove
+                sock.close()
+                self.__sockets.pop(pos)
 
     def send(self, data: bytes, destination: tuple, source: Union[tuple, int]=None) -> int:
         """
@@ -300,29 +324,28 @@ class Hub(threading.Thread):
         :param source:      local address
         :return:
         """
-        with self.__sockets_lock:
-            sock = None
-            assert len(self.__sockets) > 0, 'sockets empty'
-            if source is None:
-                # any socket
-                sock = self.__sockets[0]
-            elif isinstance(source, tuple):
-                # get socket by local address
-                for item in self.__sockets:
-                    assert isinstance(item, Socket), 'socket error: %s' % item
-                    if item.local_address == source:
-                        sock = item
-                        break
-            else:
-                # get socket by local port
-                assert isinstance(source, int), 'source port error: %s' % source
-                for item in self.__sockets:
-                    assert isinstance(item, Socket), 'socket error: %s' % item
-                    if item.local_address[1] == source:
-                        sock = item
-                        break
-            assert isinstance(sock, Socket), 'no socket (%d) matched: %s' % (len(self.__sockets), source)
-            return sock.send(data=data, remote_host=destination[0], remote_port=destination[1])
+        sock = None
+        assert len(self.__sockets) > 0, 'sockets empty'
+        if source is None:
+            # any socket
+            sock = self.__sockets[0]
+        elif isinstance(source, tuple):
+            # get socket by local address
+            for item in self.__sockets:
+                assert isinstance(item, Socket), 'socket error: %s' % item
+                if item.local_address == source:
+                    sock = item
+                    break
+        else:
+            # get socket by local port
+            assert isinstance(source, int), 'source port error: %s' % source
+            for item in self.__sockets:
+                assert isinstance(item, Socket), 'socket error: %s' % item
+                if item.local_address[1] == source:
+                    sock = item
+                    break
+        assert isinstance(sock, Socket), 'no socket (%d) matched: %s' % (len(self.__sockets), source)
+        return sock.send(data=data, remote_host=destination[0], remote_port=destination[1])
 
     def receive(self) -> (bytes, (str, int), (str, int)):
         """
@@ -338,37 +361,48 @@ class Hub(threading.Thread):
                 return data, source, destination
 
     def __receive(self) -> (bytes, (str, int), (str, int)):
-        with self.__sockets_lock:
-            for sock in self.__sockets:
-                assert isinstance(sock, Socket), 'socket error: %s' % sock
-                data, remote = sock.receive()
-                if data is not None:
-                    # got one
-                    return data, remote, sock.local_address
+        for sock in self.__sockets:
+            assert isinstance(sock, Socket), 'socket error: %s' % sock
+            data, remote = sock.receive()
+            if data is not None:
+                # got one
+                return data, remote, sock.local_address
         return None, None, None
 
-    def __ping(self):
-        with self.__sockets_lock:
-            for sock in self.__sockets:
-                sock.ping()
+    def __dispatch(self, data: bytes, source: tuple, destination: tuple) -> list:
+        responses = []
+        for listener in self.__listeners:
+            assert isinstance(listener, HubListener), 'listener error: %s' % listener
+            f = listener.filter
+            if f and not f.matched(data=data, source=source, destination=destination):
+                continue
+            res = listener.received(data=data, source=source, destination=destination)
+            if res is None:
+                continue
+            responses.append(res)
+        return responses
 
     def run(self):
-        """ thread for heartbeat """
-        heartbeat_time = 0
+        last_time = time.time() + Connection.EXPIRES
         while self.running:
             try:
-                now = time.time()
+                # try to receive data
                 data, source, destination = self.__receive()
                 if data is None:
-                    # idling, try heartbeat
-                    self.__ping()
-                    heartbeat_time = now + 2
+                    # received nothing, have a rest
                     time.sleep(0.1)
                 else:
-                    self.delegate.received(data=data, source=source, destination=destination)
-                    if heartbeat_time < now:
-                        # try heart beat each 2 seconds
-                        self.__ping()
-                        heartbeat_time = now + 2
+                    # dispatch data and got responses
+                    responses = self.__dispatch(data=data, source=source, destination=destination)
+                    for res in responses:
+                        self.send(data=res, destination=source, source=destination)
+                # check time for next heartbeat
+                now = time.time()
+                if last_time < now:
+                    last_time = now + 2
+                    # try heart beat for all connections in all sockets
+                    for sock in self.__sockets:
+                        assert isinstance(sock, Socket), 'socket error: %s' % sock
+                        sock.ping()
             except Exception as error:
                 print('run error: %s' % error)
