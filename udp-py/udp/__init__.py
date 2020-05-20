@@ -30,6 +30,7 @@
 
 from .protocol import *
 from .connection import *
+from .hub import *
 from .peer import *
 from .task import *
 
@@ -50,7 +51,7 @@ __all__ = [
     #
     #   Socket Connection
     #
-    'Connection', 'Socket',
+    'Socket', 'Connection', 'ConnectionStatus',
     'Hub', 'HubFilter', 'HubListener',
 
     #

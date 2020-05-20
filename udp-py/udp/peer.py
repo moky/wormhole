@@ -45,7 +45,7 @@ from .protocol import Package
 from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment
 from .task import Departure, Arrival, Pool
-from .connection import HubListener
+from .hub import HubListener
 
 
 class PeerDelegate(ABC):
