@@ -106,7 +106,10 @@ class StringValue(Value):
         self.__value = value
 
     def __str__(self):
-        return self.__value
+        return '"%s"' % self.__value
+
+    def __repr__(self):
+        return '"%s"' % self.__value
 
     @property
     def value(self) -> str:
@@ -251,7 +254,10 @@ class MappedAddressValue(Value):
         self.__port = port
 
     def __str__(self):
-        return '%s:%d' % (self.ip, self.port)
+        return '"%s:%d"' % (self.ip, self.port)
+
+    def __repr__(self):
+        return '"%s:%d"' % (self.ip, self.port)
 
     @property
     def ip(self) -> str:

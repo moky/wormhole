@@ -45,7 +45,10 @@ class VarName(Type):
         self.__name = name
 
     def __str__(self):
-        return self.__name
+        return '"%s"' % self.__name
+
+    def __repr__(self):
+        return '"%s"' % self.__name
 
     @property
     def name(self) -> str:
@@ -69,7 +72,10 @@ class VarLength(VarIntData, Length):
         super().__init__(data=data, value=value)
 
     def __str__(self):
-        return self.value
+        return '%d' % self.__value
+
+    def __repr__(self):
+        return '%d' % self.__value
 
     # noinspection PyUnusedLocal
     @classmethod
@@ -107,6 +113,13 @@ class Field(TLV):
         if parser is None:
             parser = Value
         return parser.parse(data=data, t=t, length=length)
+
+    def to_dict(self) -> dict:
+        name = self.type
+        value = self.value
+        if isinstance(value, FieldsValue):
+            value = value.to_dict()
+        return {name: value}
 
 
 # classes for parsing value
@@ -148,3 +161,23 @@ class FieldsValue(Value):
         # parse fields
         fields = Field.parse_all(data=data)
         return cls(fields=fields, data=data)
+
+    def to_dict(self) -> dict:
+        dictionary = {}
+        array = self.__fields
+        for item in array:
+            assert isinstance(item, Field), 'field item error: %s' % item
+            name = item.type
+            value = item.value
+            if isinstance(value, FieldsValue):
+                value = value.to_dict()
+            same = dictionary.get(name)
+            if same is None:
+                dictionary[name] = value
+            elif isinstance(same, list):
+                # add value to the array with the same name
+                same.append(value)
+            else:
+                # convert values with the same name to an array
+                dictionary[name] = [same, value]
+        return dictionary
