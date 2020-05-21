@@ -16,7 +16,12 @@ import udp
 import dmtp
 
 
-SERVER_HOST = '127.0.0.1'
+SERVER_GZ1 = '134.175.87.98'
+SERVER_GZ2 = '203.195.224.155'
+SERVER_GZ3 = '129.204.94.164'
+
+# SERVER_HOST = '127.0.0.1'
+SERVER_HOST = SERVER_GZ1
 SERVER_PORT = 9394
 
 CLIENT_PORT = random.choice(range(9900, 9999))
@@ -31,7 +36,6 @@ class Client(dmtp.Client):
         self.__locations = {}
 
     def location(self, uid: str = None, source: tuple = None) -> Optional[dmtp.LocationValue]:
-        print('getting location: %s, %s' % (uid, source))
         if uid is None:
             return self.__locations.get(source)
         else:
@@ -71,7 +75,7 @@ class Client(dmtp.Client):
             super().process_command(cmd=cmd, source=source, destination=destination)
 
     def process_message(self, msg: dmtp.Message, source: tuple, destination: tuple) -> bool:
-        print('received msg: %s' % msg)
+        print('received msg from %s:\n\t%s' % (source, msg.to_dict()))
         return True
 
 
@@ -86,10 +90,6 @@ g_hub.start()
 g_client = Client(hub=g_hub)
 
 
-def try_login():
-    g_client.say_hi(destination=server_address)
-
-
 def try_call(uid: str):
     f_id = dmtp.Field(t=dmtp.ID, v=dmtp.StringValue(string=uid))
     cmd = dmtp.Command(t=dmtp.Call, v=f_id)
@@ -97,28 +97,38 @@ def try_call(uid: str):
     g_client.send_command(cmd=cmd, destination=server_address)
 
 
-def send_text(uid: str, msg: str):
-    location = g_client.location(uid=uid)
+def send_text(sender: str, receiver: str, msg: str):
+    location = g_client.location(uid=receiver)
     if location is None or location.ip is None:
-        print('cannot locate user: %s, %s' % (uid, location))
+        print('cannot locate user: %s, %s' % (receiver, location))
         return False
     address = (location.ip, location.port)
     content = msg.encode('utf-8')
-    f_sender = dmtp.Field(t=dmtp.MsgSender, v=dmtp.StringValue(string=g_client.identifier))
+    f_sender = dmtp.Field(t=dmtp.MsgSender, v=dmtp.StringValue(string=sender))
+    f_receiver = dmtp.Field(t=dmtp.MsgReceiver, v=dmtp.StringValue(string=receiver))
     f_content = dmtp.Field(t=dmtp.MsgContent, v=dmtp.BinaryValue(data=content))
-    msg = dmtp.Message(fields=[f_sender, f_content])
-    print('sending msg: %s' % msg)
+    msg = dmtp.Message(fields=[f_sender, f_receiver, f_content])
+    print('sending msg to %s:\n\t%s' % (address, msg.to_dict()))
     g_client.send_message(msg=msg, destination=address)
 
 
 if __name__ == '__main__':
 
-    if len(sys.argv) == 2:
+    g_client.identifier = 'hulk'
+    friend = 'moky'
+
+    if len(sys.argv) == 3:
         g_client.identifier = sys.argv[1]
+        friend = sys.argv[2]
+
+    # login
+    g_client.say_hi(destination=server_address)
+    time.sleep(2)
 
     # test send
-    try_login()
-    time.sleep(2)
-    try_call(uid='albert')
-    time.sleep(2)
-    send_text(uid='albert', msg='Hello world!')
+    text = 'Hello %s' % friend
+    try_call(uid=friend)
+    while True:
+        time.sleep(5)
+        print('----')
+        send_text(sender=g_client.identifier, receiver=friend, msg=text)

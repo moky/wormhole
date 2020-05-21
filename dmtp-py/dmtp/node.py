@@ -85,7 +85,6 @@ class Node(PeerDelegate):
         return self.__hub.send(data=data, destination=destination, source=source)
 
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
-        print('received cmd %s from %s' % (cmd, source))
         commands = Command.parse_all(data=cmd)
         for pack in commands:
             assert isinstance(pack, Command), 'command error: %s' % pack
@@ -93,7 +92,6 @@ class Node(PeerDelegate):
         return True
 
     def received_message(self, msg: bytes, source: tuple, destination: tuple) -> bool:
-        print('received msg %s from %s' % (msg, source))
         fields = Field.parse_all(data=msg)
         assert len(fields) > 0, 'message error: %s' % msg
         pack = Message(fields=fields, data=msg)
@@ -126,7 +124,6 @@ class Server(Node):
     def __process_login(self, value: LocationValue, source: tuple) -> bool:
         if (value.ip, value.port) == source:
             return self.accept_login(value=value)
-        print('user %s from %s: %s' % (value.id, source, value.to_dict()))
         # response 'SIGN' command with 'ID' and 'ADDR'
         loc = LocationValue.new(uid=value.id, ip=source[0], port=source[1])
         cmd = Command(t=Sign, v=loc)
