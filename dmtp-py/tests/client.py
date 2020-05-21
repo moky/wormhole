@@ -45,7 +45,7 @@ class Client(dmtp.Client):
         f_id = dmtp.Field(t=dmtp.ID, v=dmtp.StringValue(string=self.identifier))
         cmd = dmtp.Command(t=dmtp.Login, v=f_id)
         print('sending cmd: %s' % cmd)
-        self.send_command(cmd=cmd, destination=server_address)
+        self.send_command(cmd=cmd, destination=destination)
 
     def sign_in(self, value: dmtp.LocationValue, destination: tuple) -> bool:
         uid = value.id
@@ -61,8 +61,10 @@ class Client(dmtp.Client):
 
     def __process_from(self, value: dmtp.LocationValue) -> bool:
         print('caller: %s' % value.to_dict())
+        address = (value.ip, value.port)
+        self.say_hi(destination=address)
         self.__locations[value.id] = value
-        self.__locations[(value.ip, value.port)] = value
+        self.__locations[address] = value
         return True
 
     def process_command(self, cmd: dmtp.Command, source: tuple, destination: tuple) -> bool:
@@ -76,6 +78,9 @@ class Client(dmtp.Client):
 
     def process_message(self, msg: dmtp.Message, source: tuple, destination: tuple) -> bool:
         print('received msg from %s:\n\t%s' % (source, msg.to_dict()))
+        content = msg.to_dict().get(dmtp.MsgContent)
+        if isinstance(content, dmtp.BinaryValue):
+            print('msg content: "%s"' % content.data.decode('utf-8'))
         return True
 
 
@@ -126,7 +131,7 @@ if __name__ == '__main__':
     time.sleep(2)
 
     # test send
-    text = 'Hello %s' % friend
+    text = '你好 %s！' % friend
     try_call(uid=friend)
     while True:
         time.sleep(5)
