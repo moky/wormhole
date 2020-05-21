@@ -31,7 +31,7 @@ class Client(udp.Peer, udp.PeerDelegate):
         print('server ask sign for ID: %s, address: (%s:%d)' % (value.id, value.ip, value.port))
         # response
         _id = dmtp.Field(t=dmtp.ID,
-                         v=dmtp.StringValue(value=value.id))
+                         v=dmtp.StringValue(string=value.id))
         _addr = dmtp.Field(t=dmtp.Address,
                            v=dmtp.MappedAddressValue(ip=value.ip, port=value.port))
         _s = dmtp.Field(t=dmtp.Signature,
@@ -86,7 +86,7 @@ g_hub.add_listener(listener=g_client)
 
 def try_login():
     identifier = 'moky'
-    _id = dmtp.StringValue(value=identifier)
+    _id = dmtp.StringValue(string=identifier)
     field = dmtp.Field(dmtp.ID, _id)
     cmd = dmtp.Command(dmtp.Login, field)
     print('sending cmd: %s' % cmd)

@@ -28,12 +28,21 @@
 # SOFTWARE.
 # ==============================================================================
 
+import base64
 from typing import Optional
 
-from udp.data import VarIntData
+from udp.data import VarIntData, UInt32Data, uint32_to_bytes
 from udp.data import bytes_to_varint
 from udp.data import varint_to_bytes
 from udp.tlv import TLV, Type, Length, Value
+
+
+def base64_encode(data: bytes) -> str:
+    return base64.b64encode(data).decode('utf-8')
+
+
+def base64_decode(string: str) -> bytes:
+    return base64.b64decode(string)
 
 
 class VarName(Type):
@@ -181,3 +190,66 @@ class FieldsValue(Value):
                 # convert values with the same name to an array
                 dictionary[name] = [same, value]
         return dictionary
+
+
+class BinaryValue(Value):
+
+    def __init__(self, data: bytes):
+        super().__init__(data=data)
+
+    def __str__(self):
+        return '"%s"' % base64_encode(self.data)
+
+    def __repr__(self):
+        return '"%s"' % base64_encode(self.data)
+
+
+class TimestampValue(UInt32Data, Value):
+
+    def __init__(self, value: int, data: bytes=None):
+        if data is None:
+            data = uint32_to_bytes(value=value)
+        super().__init__(data=data, value=value)
+
+    def __str__(self):
+        return '"%d"' % self.value
+
+    def __repr__(self):
+        return '"%d"' % self.value
+
+    @classmethod
+    def parse(cls, data: bytes, t: Type, length: Length=None):
+        return super().from_bytes(data=data)
+
+
+class StringValue(Value):
+
+    def __init__(self, string: str, data: bytes=None):
+        if data is None:
+            data = string.encode('utf-8')
+        super().__init__(data=data)
+        self.__string = string
+
+    def __str__(self):
+        return '"%s"' % self.__string
+
+    def __repr__(self):
+        return '"%s"' % self.__string
+
+    @property
+    def string(self) -> str:
+        return self.__string
+
+    @classmethod
+    def parse(cls, data: bytes, t: Type, length: Length=None):
+        if length is None or length.value == 0:
+            return None
+        else:
+            length = length.value
+        data_len = len(data)
+        if data_len < length:
+            return None
+        elif data_len > length:
+            data = data[:length]
+        # parse string value
+        return cls(string=data.decode('utf-8'), data=data)

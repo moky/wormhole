@@ -28,7 +28,6 @@
 # SOFTWARE.
 # ==============================================================================
 
-import base64
 from typing import Union
 
 from udp.data import Data
@@ -98,60 +97,6 @@ class Command(Field):
         return '<%s: %s=%s />' % (clazz, self.type, self.data)
 
 
-def base64_encode(data: bytes) -> str:
-    return base64.b64encode(data).decode('utf-8')
-
-
-def base64_decode(string: str) -> bytes:
-    return base64.b64decode(string)
-
-
-class DataValue(Value):
-
-    def __init__(self, data: bytes):
-        super().__init__(data=data)
-
-    def __str__(self):
-        return '"%s"' % base64_encode(self.data)
-
-    def __repr__(self):
-        return '"%s"' % base64_encode(self.data)
-
-
-class StringValue(Value):
-
-    def __init__(self, value: str, data: bytes=None):
-        if data is None:
-            data = value.encode('utf-8')
-        super().__init__(data=data)
-        self.__value = value
-
-    def __str__(self):
-        return '"%s"' % self.__value
-
-    def __repr__(self):
-        return '"%s"' % self.__value
-
-    @property
-    def value(self) -> str:
-        return self.__value
-
-    @classmethod
-    def parse(cls, data: bytes, t: Type, length: Length=None):
-        if length is None or length.value == 0:
-            return None
-        else:
-            length = length.value
-        data_len = len(data)
-        if data_len < length:
-            return None
-        elif data_len > length:
-            data = data[:length]
-        # parse string value
-        value = data.decode('utf-8')
-        return cls(value=value, data=data)
-
-
 class LoginValue(FieldsValue):
 
     def __init__(self, fields: list, data: bytes=None):
@@ -187,7 +132,7 @@ class LoginValue(FieldsValue):
         f_value = field.value
         if f_type == ID:
             assert isinstance(f_value, StringValue), 'ID value error: %s' % f_value
-            self.__id = field.value.value
+            self.__id = f_value.string
         elif f_type == Address:
             assert isinstance(f_value, MappedAddressValue), 'Address value error: %s' % f_value
             self.__ip = f_value.ip
@@ -340,7 +285,7 @@ Call = VarName(name='CALL')
 # field names
 ID = VarName(name='ID')
 Address = VarName(name='ADDRESS')
-Signature = VarName(name='SIGNATURE')
+Signature = VarName(name='S')
 
 
 # classes for parsing value
@@ -350,4 +295,4 @@ s_value_parsers[Call] = CallValue
 
 s_value_parsers[ID] = StringValue
 s_value_parsers[Address] = MappedAddressValue
-s_value_parsers[Signature] = DataValue
+s_value_parsers[Signature] = BinaryValue

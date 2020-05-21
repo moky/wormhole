@@ -32,7 +32,7 @@ class Server(udp.Peer, udp.PeerDelegate):
         print('user %s from %s' % (value.id, source))
         # response
         _id = dmtp.Field(t=dmtp.ID,
-                         v=dmtp.StringValue(value=value.id))
+                         v=dmtp.StringValue(string=value.id))
         _addr = dmtp.Field(t=dmtp.Address,
                            v=dmtp.MappedAddressValue(ip=source[0], port=source[1]))
         # command with fields

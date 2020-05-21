@@ -29,7 +29,7 @@
 # ==============================================================================
 
 from .tlv import *
-from .values import *
+from .command import *
 
 name = "DMTP"
 
@@ -37,19 +37,18 @@ __author__ = 'Albert Moky'
 
 __all__ = [
 
-    # 'VarName', 'VarLength', 'Field',
-
-    'Command',
-
-    'FieldsValue',
-    'StringValue',
+    # TLV
+    'VarName', 'VarLength',
+    'Field', 'FieldsValue',
+    'BinaryValue', 'TimestampValue', 'StringValue',
 
     # commands
+    'Command',
     'Login', 'LoginValue',
     'Sign', 'SignValue',
     'Call', 'CallValue',
 
-    # fields
+    # command fields
     'ID',
     'Address', 'MappedAddressValue',
     'Signature',
