@@ -43,6 +43,10 @@ from .tlv import s_value_parsers
 """
     Commands
     ~~~~~~~~
+    
+    WHO
+        Ask the receiver 'Who are you?' for user ID. The receiver should respond
+        a 'HI' command with user ID.
 
     HI, HELLO
         Send 'ID', 'ADDR', 'S' to the server to tell it where you are from;
@@ -93,7 +97,7 @@ from .tlv import s_value_parsers
 
 class Command(Field):
 
-    def __init__(self, t: Type, v: Union[Value, Data, bytes], data: bytes = None):
+    def __init__(self, t: Type, v: Union[Value, Data, bytes, None], data: bytes = None):
         if v is not None:
             if isinstance(v, bytes):
                 v = Value(data=v)
@@ -269,6 +273,7 @@ class MappedAddressValue(Value):
 
 
 # command names
+Who = VarName(name='WHO')
 Login = VarName(name='HI')
 Sign = VarName(name='SIGN')
 Call = VarName(name='CALL')

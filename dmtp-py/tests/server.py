@@ -40,9 +40,9 @@ class Server(dmtp.Server):
     def location(self, uid: str = None, source: tuple = None) -> Optional[LocationValue]:
         print('getting location: %s, %s' % (uid, source))
         if uid is None:
-            return self.__locations[source]
+            return self.__locations.get(source)
         else:
-            return self.__locations[uid]
+            return self.__locations.get(uid)
 
     def process_message(self, msg: dmtp.Message, source: tuple, destination: tuple) -> bool:
         print('received msg: %s' % msg.to_dict())

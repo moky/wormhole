@@ -96,7 +96,10 @@ class Field(TLV):
 
     def __init__(self, t: Type, v: Value, data: bytes = None):
         if data is None:
-            data = t.data + varint_to_bytes(len(v.data)) + v.data
+            if v is None:
+                data = t.data + varint_to_bytes(0)
+            else:
+                data = t.data + varint_to_bytes(len(v.data)) + v.data
         super().__init__(data=data, t=t, v=v)
 
     @classmethod

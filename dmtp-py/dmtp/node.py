@@ -48,14 +48,6 @@ class Node(PeerDelegate):
         self.__peer = peer
         self.__hub = hub
 
-    @property
-    def _peer(self) -> Peer:
-        return self.__peer
-
-    @property
-    def _hub(self) -> Hub:
-        return self.__hub
-
     def send_command(self, cmd: Command, destination: tuple, source: Union[tuple, int] = None):
         self.__peer.send_command(data=cmd.data, destination=destination, source=source)
 
@@ -90,7 +82,7 @@ class Node(PeerDelegate):
     #   PeerDelegate
     #
     def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
-        return self._hub.send(data=data, destination=destination, source=source)
+        return self.__hub.send(data=data, destination=destination, source=source)
 
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
         print('received cmd %s from %s' % (cmd, source))
@@ -138,7 +130,7 @@ class Server(Node):
         # response 'SIGN' command with 'ID' and 'ADDR'
         loc = LocationValue.new(uid=value.id, ip=source[0], port=source[1])
         cmd = Command(t=Sign, v=loc)
-        self._peer.send_command(data=cmd.data, destination=source)
+        self.send_command(cmd=cmd, destination=source)
         return True
 
     def __process_call(self, value: CommandValue, source: tuple) -> bool:
@@ -148,20 +140,22 @@ class Server(Node):
             # respond an empty 'FROM' command to the sender
             loc = LocationValue.new(uid=value.id)
             cmd = Command(t=From, v=loc)
-            self._peer.send_command(data=cmd.data, destination=source)
+            self.send_command(cmd=cmd, destination=source)
         else:
             assert receiver.port > 0, 'error port: %s' % receiver
             # receiver is online
             sender = self.location(source=source)
             if sender is None:
-                # TODO: ask sender to login again
-                assert False, 'sender (%s, %d) not login yet' % (source[0], source[1])
-            # forward the request to the receiver with sender's location info
-            cmd = Command(t=From, v=sender)
-            self._peer.send_command(data=cmd.data, destination=(receiver.ip, receiver.port))
-            # respond 'FROM' command with receiver's location info
-            cmd = Command(t=From, v=receiver)
-            self._peer.send_command(data=cmd.data, destination=source)
+                # ask sender to login again
+                cmd = Command(t=Who, v=None)
+                self.send_command(cmd=cmd, destination=source)
+            else:
+                # forward the request to the receiver with sender's location info
+                cmd = Command(t=From, v=sender)
+                self.send_command(cmd=cmd, destination=(receiver.ip, receiver.port))
+                # respond 'FROM' command with receiver's location info
+                cmd = Command(t=From, v=receiver)
+                self.send_command(cmd=cmd, destination=source)
         return True
 
     def process_command(self, cmd: Command, source: tuple, destination: tuple) -> bool:
@@ -180,12 +174,22 @@ class Server(Node):
 class Client(Node, ABC):
 
     @abstractmethod
-    def sign_in(self, value: LocationValue, source: tuple) -> bool:
+    def say_hi(self, destination: tuple):
+        """
+        Send 'HI' command for login
+
+        :param destination: server address
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def sign_in(self, value: LocationValue, destination: tuple) -> bool:
         """
         Sign the MAPPED-ADDRESS in the location value with private key
 
-        :param value:  LocationValue contains ID, IP, port
-        :param source: server's address
+        :param value:       LocationValue contains ID, IP, port
+        :param destination: server's address
         :return: False on error
         """
         pass
@@ -193,8 +197,10 @@ class Client(Node, ABC):
     def process_command(self, cmd: Command, source: tuple, destination: tuple) -> bool:
         cmd_type = cmd.type
         cmd_value = cmd.value
-        if cmd_type == Sign:
+        if cmd_type == Who:
+            return self.say_hi(destination=source)
+        elif cmd_type == Sign:
             assert isinstance(cmd_value, LocationValue), 'sign cmd error: %s' % cmd_value
-            return self.sign_in(value=cmd_value, source=source)
+            return self.sign_in(value=cmd_value, destination=source)
         else:
             print('unknown command: %s' % cmd)
