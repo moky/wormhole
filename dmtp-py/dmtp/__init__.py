@@ -30,6 +30,7 @@
 
 from .tlv import *
 from .command import *
+from .message import *
 
 name = "DMTP"
 
@@ -40,7 +41,7 @@ __all__ = [
     # TLV
     'VarName', 'VarLength',
     'Field', 'FieldsValue',
-    'BinaryValue', 'TimestampValue', 'StringValue',
+    'BinaryValue', 'ByteValue', 'TimestampValue', 'StringValue',
 
     # commands
     'Command',
@@ -52,4 +53,7 @@ __all__ = [
     'Address', 'MappedAddressValue',
     'Signature',
     'NAT',
+
+    # message
+    'Message',
 ]

@@ -31,7 +31,7 @@
 from typing import Union
 
 from udp.data import Data
-from udp.data import bytes_to_int, uint8_to_bytes, uint16_to_bytes
+from udp.data import bytes_to_int, uint16_to_bytes
 
 from .tlv import *
 

@@ -31,9 +31,8 @@
 import base64
 from typing import Optional
 
-from udp.data import VarIntData, UInt32Data, uint32_to_bytes
-from udp.data import bytes_to_varint
-from udp.data import varint_to_bytes
+from udp.data import VarIntData, UInt8Data, UInt32Data
+from udp.data import bytes_to_varint, varint_to_bytes, uint8_to_bytes, uint32_to_bytes
 from udp.tlv import TLV, Type, Length, Value
 
 
@@ -202,6 +201,24 @@ class BinaryValue(Value):
 
     def __repr__(self):
         return '"%s"' % base64_encode(self.data)
+
+
+class ByteValue(UInt8Data, Value):
+
+    def __init__(self, value: int, data: bytes=None):
+        if data is None:
+            data = uint8_to_bytes(value=value)
+        super().__init__(data=data, value=value)
+
+    def __str__(self):
+        return '"%d"' % self.value
+
+    def __repr__(self):
+        return '"%d"' % self.value
+
+    @classmethod
+    def parse(cls, data: bytes, t: Type, length: Length=None):
+        return super().from_bytes(data=data)
 
 
 class TimestampValue(UInt32Data, Value):
