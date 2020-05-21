@@ -1,6 +1,7 @@
+#! /usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-import time
-from typing import Union
+import random
 
 import sys
 import os
@@ -16,13 +17,14 @@ import dmtp
 SERVER_HOST = '127.0.0.1'
 SERVER_PORT = 9394
 
-CLIENT_PORT = 9527
+CLIENT_PORT = random.choice(range(9900, 9999))
 
 
 class Client(dmtp.Client):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, hub: udp.Hub):
+        super().__init__(hub=hub)
+        self.identifier = 'moky-%d' % CLIENT_PORT
         self.nat = 'Port Restricted Cone NAT'
 
     def sign_in(self, value: dmtp.LocationValue, source: tuple) -> bool:
@@ -34,22 +36,12 @@ class Client(dmtp.Client):
         loc = dmtp.LocationValue.new(uid=value.id, ip=mapped_ip, port=mapped_port, signature=s, nat=self.nat)
         cmd = dmtp.Command(t=dmtp.Login, v=loc)
         # send command
-        self.send_command(data=cmd.data, destination=source)
+        self._peer.send_command(data=cmd.data, destination=source)
         return True
 
     def process_message(self, msg: dmtp.Message, source: tuple, destination: tuple) -> bool:
-        print('received msg: %s' % msg.to_dict())
+        print('received msg: %s' % msg)
         return True
-
-    def process_file(self, file: dmtp.Message, source: tuple, destination: tuple) -> bool:
-        print('received file: %s' % file.filename)
-        return True
-
-    #
-    #   PeerDelegate
-    #
-    def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
-        return g_hub.send(data=data, destination=destination, source=source)
 
 
 # create a hub for sockets
@@ -60,34 +52,26 @@ g_hub.connect(destination=server_address)
 g_hub.start()
 
 # create client
-g_client = Client()
-g_client.start()
-g_hub.add_listener(listener=g_client)
+g_client = Client(hub=g_hub)
 
 
 def try_login():
-    identifier = 'moky'
-    f_id = dmtp.Field(t=dmtp.ID, v=dmtp.StringValue(string=identifier))
+    f_id = dmtp.Field(t=dmtp.ID, v=dmtp.StringValue(string=g_client.identifier))
     cmd = dmtp.Command(t=dmtp.Login, v=f_id)
     print('sending cmd: %s' % cmd)
-    g_client.send_command(data=cmd.data, destination=server_address)
+    g_client.send_command(cmd=cmd, destination=server_address)
 
 
 def send_text(msg: str):
-    sender = 'moky'
     content = msg.encode('utf-8')
-    f_sender = dmtp.Field(t=dmtp.VarName('S'), v=dmtp.StringValue(string=sender))
+    f_sender = dmtp.Field(t=dmtp.VarName('S'), v=dmtp.StringValue(string=g_client.identifier))
     f_content = dmtp.Field(t=dmtp.VarName('D'), v=dmtp.BinaryValue(data=content))
     msg = dmtp.Message(fields=[f_sender, f_content])
     print('sending msg: %s' % msg)
-    g_client.send_message(data=msg.data, destination=('127.0.0.1', 8888))
+    g_client.send_message(msg=msg, destination=('127.0.0.1', 9901))
 
 
 if __name__ == '__main__':
     # test send
     try_login()
     send_text(msg='Hello world!')
-    # exit
-    g_client.stop()
-    time.sleep(2)
-    g_hub.stop()

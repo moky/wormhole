@@ -30,24 +30,44 @@
 
 from abc import ABC, abstractmethod
 
-from udp import Peer, PeerDelegate
+from udp import Peer, PeerDelegate, Hub
 
 from .command import *
 from .message import *
 
 
-class Node(Peer, PeerDelegate, ABC):
+class Node(PeerDelegate):
 
-    def __init__(self):
+    def __init__(self, hub: Hub):
         super().__init__()
-        self.delegate = self
+        # create peer
+        peer = Peer()
+        peer.delegate = self
+        peer.start()
+        hub.add_listener(peer)
+        self.__peer = peer
+        self.__hub = hub
+
+    @property
+    def _peer(self) -> Peer:
+        return self.__peer
+
+    @property
+    def _hub(self) -> Hub:
+        return self.__hub
+
+    def send_command(self, cmd: Command, destination: tuple, source: Union[tuple, int] = None):
+        self.__peer.send_command(data=cmd.data, destination=destination, source=source)
+
+    def send_message(self, msg: Message, destination: tuple, source: Union[tuple, int] = None):
+        self.__peer.send_message(data=msg.data, destination=destination, source=source)
 
     @abstractmethod
     def process_command(self, cmd: Command, source: tuple, destination: tuple) -> bool:
         """
         Process received command
 
-        :param cmd:         command with name ('type') and fields ('value')
+        :param cmd:         command info
         :param source:      remote address
         :param destination: local address
         :return: False on error
@@ -59,51 +79,36 @@ class Node(Peer, PeerDelegate, ABC):
         """
         Process received message
 
-        :param msg:         reliable message
+        :param msg:         message info
         :param source:      remote address
         :param destination: local address
         :return: False on error
         """
         pass
-
-    @abstractmethod
-    def process_file(self, file: Message, source: tuple, destination: tuple) -> bool:
-        """
-        Process received message
-
-        :param file:        binary file
-        :param source:      remote address
-        :param destination: local address
-        :return: False on error
-        """
-        pass
-
-    def send_file(self, filename: str, content: bytes, destination: tuple, source: Union[tuple, int]=None):
-        f_name = Field(t=MsgFilename, v=StringValue(string=filename))
-        f_content = Field(t=MsgContent, v=BinaryValue(data=content))
-        msg = Message(fields=[f_name, f_content])
-        return self.send_message(data=msg.data, destination=destination, source=source)
 
     #
     #   PeerDelegate
     #
+    def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
+        return self._hub.send(data=data, destination=destination, source=source)
+
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
+        print('received cmd %s from %s' % (cmd, source))
         commands = Command.parse_all(data=cmd)
         for pack in commands:
+            assert isinstance(pack, Command), 'command error: %s' % pack
             self.process_command(cmd=pack, source=source, destination=destination)
         return True
 
     def received_message(self, msg: bytes, source: tuple, destination: tuple) -> bool:
+        print('received msg %s from %s' % (msg, source))
         fields = Field.parse_all(data=msg)
         assert len(fields) > 0, 'message error: %s' % msg
         pack = Message(fields=fields, data=msg)
-        if pack.filename is None:
-            return self.process_message(msg=pack, source=source, destination=destination)
-        else:
-            return self.process_file(file=pack, source=source, destination=destination)
+        return self.process_message(msg=pack, source=source, destination=destination)
 
 
-class Server(Node, ABC):
+class Server(Node):
 
     @abstractmethod
     def accept_login(self, value: LocationValue) -> bool:
@@ -133,7 +138,7 @@ class Server(Node, ABC):
         # response 'SIGN' command with 'ID' and 'ADDR'
         loc = LocationValue.new(uid=value.id, ip=source[0], port=source[1])
         cmd = Command(t=Sign, v=loc)
-        self.send_command(data=cmd.data, destination=source)
+        self._peer.send_command(data=cmd.data, destination=source)
         return True
 
     def __process_call(self, value: CommandValue, source: tuple) -> bool:
@@ -143,7 +148,7 @@ class Server(Node, ABC):
             # respond an empty 'FROM' command to the sender
             loc = LocationValue.new(uid=value.id)
             cmd = Command(t=From, v=loc)
-            self.send_command(data=cmd.data, destination=source)
+            self._peer.send_command(data=cmd.data, destination=source)
         else:
             assert receiver.port > 0, 'error port: %s' % receiver
             # receiver is online
@@ -153,10 +158,10 @@ class Server(Node, ABC):
                 assert False, 'sender (%s, %d) not login yet' % (source[0], source[1])
             # forward the request to the receiver with sender's location info
             cmd = Command(t=From, v=sender)
-            self.send_command(data=cmd.data, destination=(receiver.ip, receiver.port))
+            self._peer.send_command(data=cmd.data, destination=(receiver.ip, receiver.port))
             # respond 'FROM' command with receiver's location info
             cmd = Command(t=From, v=receiver)
-            self.send_command(data=cmd.data, destination=source)
+            self._peer.send_command(data=cmd.data, destination=source)
         return True
 
     def process_command(self, cmd: Command, source: tuple, destination: tuple) -> bool:
@@ -170,15 +175,6 @@ class Server(Node, ABC):
             return self.__process_call(value=cmd_value, source=source)
         else:
             print('unknown command: %s' % cmd)
-
-    # def process_message(self, msg: Message, source: tuple, destination: tuple) -> bool:
-    #     pass
-
-    #
-    #   PeerDelegate
-    #
-    # def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
-    #     pass
 
 
 class Client(Node, ABC):
@@ -202,12 +198,3 @@ class Client(Node, ABC):
             return self.sign_in(value=cmd_value, source=source)
         else:
             print('unknown command: %s' % cmd)
-
-    # def process_message(self, msg: Message, source: tuple, destination: tuple) -> bool:
-    #     pass
-
-    #
-    #   PeerDelegate
-    #
-    # def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
-    #     pass

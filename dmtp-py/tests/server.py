@@ -1,4 +1,7 @@
-from typing import Union, Optional
+#! /usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+from typing import Optional
 
 import sys
 import os
@@ -24,8 +27,8 @@ g_hub.start()
 
 class Server(dmtp.Server):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, hub: udp.Hub):
+        super().__init__(hub=hub)
         self.__locations = {}
 
     def accept_login(self, value: LocationValue) -> bool:
@@ -45,19 +48,7 @@ class Server(dmtp.Server):
         print('received msg: %s' % msg.to_dict())
         return True
 
-    def process_file(self, file: dmtp.Message, source: tuple, destination: tuple) -> bool:
-        print('received file: %s' % file.filename)
-        return True
-
-    #
-    #   PeerDelegate
-    #
-    def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
-        return g_hub.send(data=data, destination=destination, source=source)
-
 
 if __name__ == '__main__':
     # create server
-    server = Server()
-    server.start()
-    g_hub.add_listener(listener=server)
+    server = Server(hub=g_hub)
