@@ -61,6 +61,8 @@ class Client(dmtp.Client):
 
     def __process_from(self, value: dmtp.LocationValue) -> bool:
         print('caller: %s' % value.to_dict())
+        if value.ip is None or value.port == 0:
+            return False
         address = (value.ip, value.port)
         self.say_hi(destination=address)
         self.__locations[value.id] = value

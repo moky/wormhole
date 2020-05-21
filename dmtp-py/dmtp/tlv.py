@@ -31,7 +31,7 @@
 import base64
 from typing import Optional
 
-from udp.data import VarIntData, UInt8Data, UInt32Data
+from udp.data import Data, VarIntData, UInt8Data, UInt32Data
 from udp.data import bytes_to_varint, varint_to_bytes, uint8_to_bytes, uint32_to_bytes
 from udp.tlv import TLV, Type, Length, Value
 
@@ -51,6 +51,17 @@ class VarName(Type):
             data = name.encode('utf-8') + b'\0'
         super().__init__(data=data)
         self.__name = name
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Data):
+            return self.data == other.data
+        if isinstance(other, bytes):
+            return self.data == other
+        if isinstance(other, str):
+            return self.name == other
+
+    def __hash__(self) -> int:
+        return hash(self.__name)
 
     def __str__(self):
         return '"%s"' % self.__name
@@ -125,13 +136,6 @@ class Field(TLV):
             parser = Value
         return parser.parse(data=data, t=t, length=length)
 
-    def to_dict(self) -> dict:
-        name = self.type
-        value = self.value
-        if isinstance(value, FieldsValue):
-            value = value.to_dict()
-        return {name: value}
-
 
 # classes for parsing value
 s_value_parsers = {}
@@ -192,6 +196,32 @@ class FieldsValue(Value):
                 # convert values with the same name to an array
                 dictionary[name] = [same, value]
         return dictionary
+
+    @classmethod
+    def from_dict(cls, dictionary: dict):
+        fields = []
+        keys = list(dictionary.keys())
+        for name in keys:
+            value = dictionary.get(name)
+            f_type = VarName(name=name)
+            parser = s_value_parsers.get(f_type)
+            cls.__parse_value(t=f_type, value=value, parser=parser, fields=fields)
+        return cls(fields=fields)
+
+    @classmethod
+    def __parse_value(cls, t: Type, value, parser, fields: list):
+        if isinstance(value, list):
+            for item in value:
+                cls.__parse_value(t=t, value=item, parser=parser, fields=fields)
+        elif isinstance(value, dict):
+            assert issubclass(parser, FieldsValue), 'parser error: %s' % parser
+            f_value = parser.from_dict(dictionary=value)
+            fields.append(Field(t=t, v=f_value))
+        else:
+            if parser is None:
+                parser = Value
+            f_value = parser.parse(data=value, t=t)
+            fields.append(Field(t=t, v=f_value))
 
 
 class BinaryValue(Value):
