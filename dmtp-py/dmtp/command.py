@@ -40,24 +40,17 @@ from .tlv import *
     Commands
     ~~~~~~~~
 
-    HI
-        send 'ID' to the receiver at first time;
-        if got a 'SIGN' command with MAPPED-ADDRESS responds from a server,
-        sign it and send back to the server for login.
+    HI, HELLO
+        Send 'ID', 'ADDR', 'S' to the server to tell it where you are from;
+        When connecting to the network, send only 'ID' to the server, if got a
+        'SIGN' command with MAPPED-ADDRESS responds from a server, sign it and
+        send back to the server as login.
 
         Fields:
             ID - current user's identifier
-            ADDR - current user's public IP and port
-            SIGN - signature of ADDR
-
-    PROFILE
-        if only contains a field 'ID', means asking you to offer your profile;
-        respond your profile with the same command but fill with profile data.
-
-        Fields:
-            ID - user identifier
-            META - user's meta info
-            PROFILE - user's profile info
+            ADDR - current user's public IP and port (OPTIONAL)
+            S - signature of ADDR (OPTIONAL)
+            NAT - current user's NAT type (OPTIONAL)
 
     SIGN
         Server-Client command: respond the user's MAPPED-ADDRESS to ask signing.
@@ -73,11 +66,27 @@ from .tlv import *
             ID - contact identifier
 
     FROM
-        Server-Client command: deliver the request for a user
+        Server-Client command: deliver the user's location info;
+        When the server received a 'CALL' command from user(A), it will check
+        whether another user(B) being called is online,
+        if YES, send a 'FROM' command to user(B) with the user(A)'s location,
+        at the same time, respond to user(A) with the user(B)'s location;
+        if NO, respond an empty 'FROM' command with only one field 'ID'.
 
         Fields:
-            ID - sender identifier
-            ADDR - sender's public IP and port
+            ID - user identifier
+            ADDR - user's public IP and port (OPTIONAL)
+            S - signature of ADDR which signed by user (OPTIONAL)
+            NAT - user's NAT type (OPTIONAL)
+
+    PROFILE
+        If only contains a field 'ID', means asking you to offer profile info;
+        Respond the profile with the same command but filled with profile info.
+
+        Fields:
+            ID - user identifier
+            M - user's meta info (OPTIONAL)
+            P - user's profile info (OPTIONAL)
 """
 
 
@@ -97,7 +106,10 @@ class Command(Field):
         return '<%s: %s=%s />' % (clazz, self.type, self.data)
 
 
-class LoginValue(FieldsValue):
+class LocationValue(FieldsValue):
+    """
+        Defined for 'HI', 'SIGN', 'FROM' commands to show the user's location
+    """
 
     def __init__(self, fields: list, data: bytes=None):
         self.__id: str = None
@@ -112,19 +124,19 @@ class LoginValue(FieldsValue):
         return self.__id
 
     @property
-    def ip(self) -> str:
+    def ip(self) -> Optional[str]:
         return self.__ip
 
     @property
-    def port(self) -> int:
+    def port(self) -> Optional[int]:
         return self.__port
 
     @property
-    def address(self) -> bytes:
+    def address(self) -> Optional[bytes]:
         return self.__address
 
     @property
-    def signature(self) -> bytes:
+    def signature(self) -> Optional[bytes]:
         return self.__signature
 
     def _set_field(self, field: Field):
@@ -144,13 +156,15 @@ class LoginValue(FieldsValue):
             print('unknown field: %s -> %s' % (f_type, f_value))
 
 
-class SignValue(FieldsValue):
+class ProfileValue(FieldsValue):
+    """
+        Defined for 'PROFILE' command to request/respond the user's profile
+    """
 
     def __init__(self, fields: list, data: bytes=None):
         self.__id: str = None
-        self.__ip: str = None
-        self.__port: int = 0
-        self.__address: bytes = None
+        self.__meta: bytes = None
+        self.__profile: bytes = None
         super().__init__(fields=fields, data=data)
 
     @property
@@ -158,48 +172,23 @@ class SignValue(FieldsValue):
         return self.__id
 
     @property
-    def ip(self) -> str:
-        return self.__ip
+    def meta(self) -> Optional[bytes]:
+        return self.__meta
 
     @property
-    def port(self) -> int:
-        return self.__port
-
-    @property
-    def address(self) -> bytes:
-        return self.__address
+    def profile(self) -> Optional[bytes]:
+        return self.__profile
 
     def _set_field(self, field: Field):
         f_type = field.type
         f_value = field.value
         if f_type == ID:
             assert isinstance(f_value, StringValue), 'ID value error: %s' % f_value
-            self.__id = field.value.value
-        elif f_type == Address:
-            assert isinstance(f_value, MappedAddressValue), 'Address value error: %s' % f_value
-            self.__ip = f_value.ip
-            self.__port = f_value.port
-            self.__address = f_value.data
-        else:
-            print('unknown field: %s -> %s' % (f_type, f_value))
-
-
-class CallValue(FieldsValue):
-
-    def __init__(self, fields: list, data: bytes=None):
-        self.__id: str = None
-        super().__init__(fields=fields, data=data)
-
-    @property
-    def id(self) -> str:
-        return self.__id
-
-    def _set_field(self, field: Field):
-        f_type = field.type
-        f_value = field.value
-        if f_type == ID:
-            assert isinstance(f_value, StringValue), 'ID value error: %s' % f_value
-            self.__id = field.value.value
+            self.__id = f_value.string
+        elif f_type == 'M':
+            self.__meta = f_value.data
+        elif f_type == 'P':
+            self.__profile = f_value.data
         else:
             print('unknown field: %s -> %s' % (f_type, f_value))
 
@@ -281,18 +270,24 @@ class MappedAddressValue(Value):
 Login = VarName(name='HI')
 Sign = VarName(name='SIGN')
 Call = VarName(name='CALL')
+From = VarName(name='FROM')
+Profile = VarName(name='PROFILE')
 
 # field names
 ID = VarName(name='ID')
-Address = VarName(name='ADDRESS')
-Signature = VarName(name='S')
+Address = VarName(name='ADDR')  # mapped-address
+Signature = VarName(name='V')   # verify with 'ADDR' and meta.key
+NAT = VarName(name='NAT')       # NAT type
 
 
 # classes for parsing value
-s_value_parsers[Login] = LoginValue
-s_value_parsers[Sign] = SignValue
-s_value_parsers[Call] = CallValue
+s_value_parsers[Login] = LocationValue
+s_value_parsers[Sign] = LocationValue
+s_value_parsers[Call] = LocationValue
+s_value_parsers[From] = LocationValue
+s_value_parsers[Profile] = ProfileValue
 
 s_value_parsers[ID] = StringValue
 s_value_parsers[Address] = MappedAddressValue
 s_value_parsers[Signature] = BinaryValue
+s_value_parsers[NAT] = StringValue

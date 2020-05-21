@@ -24,11 +24,12 @@ class Client(udp.Peer, udp.PeerDelegate):
     def __init__(self):
         super().__init__()
         self.delegate = self
+        self.nat = 'Port Restricted Cone NAT'
 
-    def __process_sign(self, value: dmtp.SignValue, context: dict) -> bool:
+    def __process_sign(self, value: dmtp.LocationValue, context: dict) -> bool:
         source = context['source']
         assert source is not None, 'source address error: %s' % context
-        print('server ask sign for ID: %s, address: (%s:%d)' % (value.id, value.ip, value.port))
+        print('server ask sign for ID: %s, %s' % (value.id, value.to_dict()))
         # response
         _id = dmtp.Field(t=dmtp.ID,
                          v=dmtp.StringValue(string=value.id))
@@ -36,9 +37,11 @@ class Client(udp.Peer, udp.PeerDelegate):
                            v=dmtp.MappedAddressValue(ip=value.ip, port=value.port))
         _s = dmtp.Field(t=dmtp.Signature,
                         v=dmtp.Value(data=b'BASE64(signature)'))
+        _nat = dmtp.Field(t=dmtp.NAT,
+                          v=dmtp.StringValue(string=self.nat))
         # command with fields
         _login = dmtp.Command(t=dmtp.Login,
-                              v=dmtp.FieldsValue(fields=[_id, _addr, _s]))
+                              v=dmtp.FieldsValue(fields=[_id, _addr, _s, _nat]))
         # send command
         self.send_command(data=_login.data, destination=source)
         return True
@@ -47,7 +50,7 @@ class Client(udp.Peer, udp.PeerDelegate):
         cmd_type = cmd.type
         cmd_value = cmd.value
         if cmd_type == dmtp.Sign:
-            assert isinstance(cmd_value, dmtp.SignValue), 'sign value error: %s' % cmd_value
+            assert isinstance(cmd_value, dmtp.LocationValue), 'sign value error: %s' % cmd_value
             self.__process_sign(value=cmd_value, context=context)
 
     #

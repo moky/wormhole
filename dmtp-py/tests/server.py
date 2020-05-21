@@ -26,10 +26,10 @@ class Server(udp.Peer, udp.PeerDelegate):
         super().__init__()
         self.delegate = self
 
-    def __send_sign(self, value: dmtp.LoginValue, context: dict) -> bool:
+    def __send_sign(self, value: dmtp.LocationValue, context: dict) -> bool:
         source = context['source']
         assert source is not None, 'source address error: %s' % context
-        print('user %s from %s' % (value.id, source))
+        print('user %s from %s: %s' % (value.id, source, value.to_dict()))
         # response
         _id = dmtp.Field(t=dmtp.ID,
                          v=dmtp.StringValue(string=value.id))
@@ -42,16 +42,16 @@ class Server(udp.Peer, udp.PeerDelegate):
         self.send_command(data=_sign.data, destination=source)
         return True
 
-    def __accept_signature(self, value: dmtp.LoginValue) -> bool:
+    def __accept_signature(self, value: dmtp.LocationValue) -> bool:
         uid = value.id
         ip = value.ip
         port = value.port
         s = value.signature
-        print('user %s login to (%s:%d) with signature: %s' % (uid, ip, port, s))
+        print('user %s login from (%s:%d): %s' % (uid, ip, port, value.to_dict()))
         # TODO: save login info
         return True
 
-    def __process_login(self, value: dmtp.LoginValue, context: dict) -> bool:
+    def __process_login(self, value: dmtp.LocationValue, context: dict) -> bool:
         if value.ip is None:
             return self.__send_sign(value=value, context=context)
         else:
@@ -61,7 +61,7 @@ class Server(udp.Peer, udp.PeerDelegate):
         cmd_type = cmd.type
         cmd_value = cmd.value
         if cmd_type == dmtp.Login:
-            assert isinstance(cmd_value, dmtp.LoginValue), 'login value error: %s' % cmd_value
+            assert isinstance(cmd_value, dmtp.LocationValue), 'login value error: %s' % cmd_value
             self.__process_login(value=cmd_value, context=context)
 
     #

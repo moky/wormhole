@@ -44,12 +44,12 @@ __all__ = [
 
     # commands
     'Command',
-    'Login', 'LoginValue',
-    'Sign', 'SignValue',
-    'Call', 'CallValue',
+    'Login', 'Sign', 'Call', 'From', 'LocationValue',
+    'Profile', 'ProfileValue',
 
     # command fields
     'ID',
     'Address', 'MappedAddressValue',
     'Signature',
+    'NAT',
 ]
