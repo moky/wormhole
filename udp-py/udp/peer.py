@@ -37,6 +37,7 @@
 
 import threading
 import time
+import weakref
 from abc import ABC, abstractmethod
 from typing import Union, Optional
 
@@ -91,9 +92,18 @@ class Peer(threading.Thread, HubListener):
 
     def __init__(self):
         super().__init__()
-        self.delegate: PeerDelegate = None
         self.running = True
         self.__pool = Pool()
+        self.__delegate: weakref.ReferenceType = None
+
+    @property
+    def delegate(self) -> Optional[PeerDelegate]:
+        if self.__delegate is not None:
+            return self.__delegate()
+
+    @delegate.setter
+    def delegate(self, value: Optional[PeerDelegate]):
+        self.__delegate = weakref.ref(value)
 
     def stop(self):
         self.running = False
