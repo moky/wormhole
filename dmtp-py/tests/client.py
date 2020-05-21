@@ -67,15 +67,27 @@ g_hub.add_listener(listener=g_client)
 
 def try_login():
     identifier = 'moky'
-    _id = dmtp.StringValue(string=identifier)
-    field = dmtp.Field(dmtp.ID, _id)
-    cmd = dmtp.Command(dmtp.Login, field)
+    f_id = dmtp.Field(t=dmtp.ID, v=dmtp.StringValue(string=identifier))
+    cmd = dmtp.Command(t=dmtp.Login, v=f_id)
     print('sending cmd: %s' % cmd)
     g_client.send_command(data=cmd.data, destination=server_address)
 
 
+def send_text(msg: str):
+    sender = 'moky'
+    content = msg.encode('utf-8')
+    f_sender = dmtp.Field(t=dmtp.VarName('S'), v=dmtp.StringValue(string=sender))
+    f_content = dmtp.Field(t=dmtp.VarName('D'), v=dmtp.BinaryValue(data=content))
+    msg = dmtp.Message(fields=[f_sender, f_content])
+    print('sending msg: %s' % msg)
+    g_client.send_message(data=msg.data, destination=('127.0.0.1', 8888))
+
+
 if __name__ == '__main__':
     # test send
-    while True:
-        try_login()
-        time.sleep(5)
+    try_login()
+    send_text(msg='Hello world!')
+    # exit
+    g_client.stop()
+    time.sleep(2)
+    g_hub.stop()

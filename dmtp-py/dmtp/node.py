@@ -79,8 +79,8 @@ class Node(Peer, PeerDelegate, ABC):
         pass
 
     def send_file(self, filename: str, content: bytes, destination: tuple, source: Union[tuple, int]=None):
-        f_name = Field(t=VarName('F'), v=StringValue(string=filename))
-        f_content = Field(t=VarName('D'), v=BinaryValue(data=content))
+        f_name = Field(t=MsgFilename, v=StringValue(string=filename))
+        f_content = Field(t=MsgContent, v=BinaryValue(data=content))
         msg = Message(fields=[f_name, f_content])
         return self.send_message(data=msg.data, destination=destination, source=source)
 

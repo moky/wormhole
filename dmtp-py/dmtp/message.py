@@ -31,7 +31,7 @@
 from typing import Optional
 
 from .tlv import Field, FieldsValue
-from .tlv import BinaryValue, ByteValue, TimestampValue, StringValue
+from .tlv import VarName, BinaryValue, ByteValue, TimestampValue, StringValue
 from .tlv import s_value_parsers
 
 
@@ -140,55 +140,71 @@ class Message(FieldsValue):
     def _set_field(self, field: Field):
         f_type = field.type
         f_value = field.value
-        if f_type == 'S':
+        if f_type == MsgSender:
             assert isinstance(f_value, StringValue), 'sender ID error: %s' % f_value
             self.__sender = f_value.string
-        elif f_type == 'R':
+        elif f_type == MsgReceiver:
             assert isinstance(f_value, StringValue), 'receiver ID error: %s' % f_value
             self.__receiver = f_value.string
-        elif f_type == 'W':
+        elif f_type == MsgTime:
             assert isinstance(f_value, TimestampValue), 'time error: %s' % f_value
             self.__time = f_value.value
-        elif f_type == 'T':
+        elif f_type == MsgType:
             assert isinstance(f_value, ByteValue), 'content type error: %s' % f_value
             self.__type = f_value.value
-        elif f_type == 'G':
+        elif f_type == MsgGroup:
             assert isinstance(f_value, StringValue), 'group ID error: %s' % f_value
             self.__group = f_value.string
-        elif f_type == 'D':
+        elif f_type == MsgContent:
             assert isinstance(f_value, BinaryValue), 'content data error: %s' % f_value
             self.__content = f_value.data
-        elif f_type == 'V':
+        elif f_type == MsgSignature:
             assert isinstance(f_value, BinaryValue), 'signature error: %s' % f_value
             self.__signature = f_value.data
-        elif f_type == 'K':
+        elif f_type == MsgKey:
             assert isinstance(f_value, BinaryValue), 'symmetric key error: %s' % f_value
             self.__key = f_value.data
-        elif f_type == 'M':
+        elif f_type == MsgMeta:
             assert isinstance(f_value, BinaryValue), 'meta error: %s' % f_value
             self.__meta = f_value.data
-        elif f_type == 'P':
+        elif f_type == MsgProfile:
             assert isinstance(f_value, BinaryValue), 'profile error: %s' % f_value
             self.__profile = f_value.data
-        elif f_type == 'F':
+        elif f_type == MsgFilename:
             assert isinstance(f_value, StringValue), 'filename error: %s' % f_value
             self.__filename = f_value.string
         else:
             print('unknown field: %s -> %s' % (f_type, f_value))
 
 
+# message file names
+MsgSender = VarName('S')
+MsgReceiver = VarName('R')
+MsgTime = VarName('W')
+MsgType = VarName('T')
+MsgGroup = VarName('G')
+
+MsgContent = VarName('D')    # message content Data; or file content Data
+MsgSignature = VarName('V')  # signature for Verify content data with sender's meta.key
+MsgKey = VarName('K')
+
+MsgMeta = VarName('M')
+MsgProfile = VarName('P')
+
+MsgFilename = VarName('F')   # Filename
+
 # classes for parsing message
-s_value_parsers['S'] = StringValue     # Sender
-s_value_parsers['R'] = StringValue     # Receiver
-s_value_parsers['W'] = TimestampValue  # When
-s_value_parsers['T'] = ByteValue       # content Type
-s_value_parsers['G'] = StringValue     # Group ID
+s_value_parsers[MsgSender] = StringValue
+s_value_parsers[MsgReceiver] = StringValue
+s_value_parsers[MsgTime] = TimestampValue
+s_value_parsers[MsgType] = ByteValue
+s_value_parsers[MsgGroup] = StringValue
 
-s_value_parsers['D'] = BinaryValue     # content Data
-s_value_parsers['V'] = BinaryValue     # signature for Verify content data with sender's meta.key
-s_value_parsers['K'] = BinaryValue     # Key
+s_value_parsers[MsgContent] = BinaryValue
+s_value_parsers[MsgSignature] = BinaryValue
+s_value_parsers[MsgKey] = BinaryValue
 
-s_value_parsers['M'] = BinaryValue     # Meta info
-s_value_parsers['P'] = BinaryValue     # Profile info
+s_value_parsers[MsgMeta] = BinaryValue
+s_value_parsers[MsgProfile] = BinaryValue
 
-s_value_parsers['F'] = StringValue     # Filename
+s_value_parsers[MsgFilename] = StringValue

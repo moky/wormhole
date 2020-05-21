@@ -26,14 +26,20 @@ class Server(dmtp.Server):
 
     def __init__(self):
         super().__init__()
+        self.__locations = {}
 
     def accept_login(self, value: LocationValue) -> bool:
         print('login accepted: %s' % value.to_dict())
+        self.__locations[value.id] = value
+        self.__locations[(value.ip, value.port)] = value
         return True
 
     def location(self, uid: str = None, source: tuple = None) -> Optional[LocationValue]:
         print('getting location: %s, %s' % (uid, source))
-        return None
+        if uid is None:
+            return self.__locations[source]
+        else:
+            return self.__locations[uid]
 
     def process_message(self, msg: dmtp.Message, source: tuple, destination: tuple) -> bool:
         print('received msg: %s' % msg.to_dict())
