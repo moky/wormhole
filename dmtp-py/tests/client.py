@@ -19,59 +19,33 @@ SERVER_PORT = 9394
 CLIENT_PORT = 9527
 
 
-class Client(udp.Peer, udp.PeerDelegate):
+class Client(dmtp.Client):
 
     def __init__(self):
         super().__init__()
-        self.delegate = self
         self.nat = 'Port Restricted Cone NAT'
 
-    def __process_sign(self, value: dmtp.LocationValue, context: dict) -> bool:
-        source = context['source']
-        assert source is not None, 'source address error: %s' % context
-        print('server ask sign for ID: %s, %s' % (value.id, value.to_dict()))
-        # response
-        _id = dmtp.Field(t=dmtp.ID,
-                         v=dmtp.StringValue(string=value.id))
-        _addr = dmtp.Field(t=dmtp.Address,
-                           v=dmtp.MappedAddressValue(ip=value.ip, port=value.port))
-        _s = dmtp.Field(t=dmtp.Signature,
-                        v=dmtp.Value(data=b'BASE64(signature)'))
-        _nat = dmtp.Field(t=dmtp.NAT,
-                          v=dmtp.StringValue(string=self.nat))
-        # command with fields
-        _login = dmtp.Command(t=dmtp.Login,
-                              v=dmtp.FieldsValue(fields=[_id, _addr, _s, _nat]))
+    def sign_in(self, value: dmtp.LocationValue, source: tuple) -> bool:
+        uid = value.id
+        mapped_ip = value.ip
+        mapped_port = value.port
+        print('server ask sign for ID: %s, %s' % (uid, value.to_dict()))
+        s = b'BASE64(signature)'
+        loc = dmtp.LocationValue.new(uid=value.id, ip=mapped_ip, port=mapped_port, signature=s, nat=self.nat)
+        cmd = dmtp.Command(t=dmtp.Login, v=loc)
         # send command
-        self.send_command(data=_login.data, destination=source)
+        self.send_command(data=cmd.data, destination=source)
         return True
 
-    def __process_cmd(self, cmd: dmtp.Command, context: dict):
-        cmd_type = cmd.type
-        cmd_value = cmd.value
-        if cmd_type == dmtp.Sign:
-            assert isinstance(cmd_value, dmtp.LocationValue), 'sign value error: %s' % cmd_value
-            self.__process_sign(value=cmd_value, context=context)
+    def process_message(self, msg: dmtp.Message, source: tuple, destination: tuple) -> bool:
+        print('received msg: %s' % msg.to_dict())
+        return True
 
     #
     #   PeerDelegate
     #
     def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
         return g_hub.send(data=data, destination=destination, source=source)
-
-    def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
-        context = {
-            'source': source,
-            'destination': destination,
-        }
-        commands = dmtp.Command.parse_all(data=cmd)
-        for cmd in commands:
-            self.__process_cmd(cmd=cmd, context=context)
-        return True
-
-    def received_message(self, msg: bytes, source: tuple, destination: tuple) -> bool:
-        print('received msg from %s to %s: %s' % (source, destination, msg))
-        return True
 
 
 # create a hub for sockets

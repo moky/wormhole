@@ -28,12 +28,16 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Union
+from typing import Union, Optional
 
 from udp.data import Data
-from udp.data import bytes_to_int, uint16_to_bytes
+from udp.data import bytes_to_int, uint8_to_bytes, uint16_to_bytes
+from udp.tlv import Type, Value, Length
 
-from .tlv import *
+from .tlv import VarName
+from .tlv import Field, FieldsValue
+from .tlv import BinaryValue, StringValue
+from .tlv import s_value_parsers
 
 
 """
@@ -80,13 +84,10 @@ from .tlv import *
             NAT - user's NAT type (OPTIONAL)
 
     PROFILE
-        If only contains a field 'ID', means asking you to offer profile info;
-        Respond the profile with the same command but filled with profile info.
+        Ask the receiver to offer user profile info (includes meta, via message)
 
-        Fields:
+        Field:
             ID - user identifier
-            M - user's meta info (OPTIONAL)
-            P - user's profile info (OPTIONAL)
 """
 
 
@@ -106,22 +107,38 @@ class Command(Field):
         return '<%s: %s=%s />' % (clazz, self.type, self.data)
 
 
-class LocationValue(FieldsValue):
-    """
-        Defined for 'HI', 'SIGN', 'FROM' commands to show the user's location
-    """
+class CommandValue(FieldsValue):
 
     def __init__(self, fields: list, data: bytes=None):
         self.__id: str = None
-        self.__ip: str = None
-        self.__port: int = 0
-        self.__address: bytes = None
-        self.__signature: bytes = None
         super().__init__(fields=fields, data=data)
 
     @property
     def id(self) -> str:
         return self.__id
+
+    def _set_field(self, field: Field):
+        if field.type == ID:
+            f_value = field.value
+            assert isinstance(f_value, StringValue), 'ID value error: %s' % f_value
+            self.__id = f_value.string
+        else:
+            clazz = self.__class__.__name__
+            print('%s: unknown field "%s" -> "%s"' % (clazz, field.type, field.value))
+
+
+class LocationValue(CommandValue):
+    """
+        Defined for 'HI', 'SIGN', 'FROM' commands to show the user's location
+    """
+
+    def __init__(self, fields: list, data: bytes=None):
+        self.__ip: str = None
+        self.__port: int = 0
+        self.__address: bytes = None
+        self.__signature: bytes = None
+        self.__nat: str = None
+        super().__init__(fields=fields, data=data)
 
     @property
     def ip(self) -> Optional[str]:
@@ -139,58 +156,43 @@ class LocationValue(FieldsValue):
     def signature(self) -> Optional[bytes]:
         return self.__signature
 
+    @property
+    def nat(self) -> Optional[str]:
+        return self.__nat
+
     def _set_field(self, field: Field):
         f_type = field.type
         f_value = field.value
-        if f_type == ID:
-            assert isinstance(f_value, StringValue), 'ID value error: %s' % f_value
-            self.__id = f_value.string
-        elif f_type == Address:
+        if f_type == Address:
             assert isinstance(f_value, MappedAddressValue), 'Address value error: %s' % f_value
             self.__ip = f_value.ip
             self.__port = f_value.port
             self.__address = f_value.data
         elif f_type == Signature:
             self.__signature = f_value.data
+        elif f_type == NAT:
+            assert isinstance(f_value, StringValue), 'NAT value error: %s' % f_value
+            self.__nat = f_value.string
         else:
-            print('unknown field: %s -> %s' % (f_type, f_value))
+            super()._set_field(field=field)
 
-
-class ProfileValue(FieldsValue):
-    """
-        Defined for 'PROFILE' command to request/respond the user's profile
-    """
-
-    def __init__(self, fields: list, data: bytes=None):
-        self.__id: str = None
-        self.__meta: bytes = None
-        self.__profile: bytes = None
-        super().__init__(fields=fields, data=data)
-
-    @property
-    def id(self) -> str:
-        return self.__id
-
-    @property
-    def meta(self) -> Optional[bytes]:
-        return self.__meta
-
-    @property
-    def profile(self) -> Optional[bytes]:
-        return self.__profile
-
-    def _set_field(self, field: Field):
-        f_type = field.type
-        f_value = field.value
-        if f_type == ID:
-            assert isinstance(f_value, StringValue), 'ID value error: %s' % f_value
-            self.__id = f_value.string
-        elif f_type == 'M':
-            self.__meta = f_value.data
-        elif f_type == 'P':
-            self.__profile = f_value.data
-        else:
-            print('unknown field: %s -> %s' % (f_type, f_value))
+    @classmethod
+    def new(cls, uid: str, ip: str=None, port: int=0, signature: bytes=None, nat: str=None):
+        f_id = Field(t=ID, v=StringValue(string=uid))
+        fields = [f_id]
+        # append MAPPED-ADDRESS
+        if ip is not None and port > 0:
+            f_addr = Field(t=Address, v=MappedAddressValue(ip=ip, port=port))
+            fields.append(f_addr)
+        # append signature
+        if signature is not None:
+            f_sign = Field(t=Signature, v=BinaryValue(data=signature))
+            fields.append(f_sign)
+        # append NAT type
+        if nat is not None:
+            f_nat = Field(t=NAT, v=StringValue(string=nat))
+            fields.append(f_nat)
+        return cls(fields=fields)
 
 
 class MappedAddressValue(Value):
@@ -283,9 +285,9 @@ NAT = VarName(name='NAT')       # NAT type
 # classes for parsing value
 s_value_parsers[Login] = LocationValue
 s_value_parsers[Sign] = LocationValue
-s_value_parsers[Call] = LocationValue
+s_value_parsers[Call] = CommandValue
 s_value_parsers[From] = LocationValue
-s_value_parsers[Profile] = ProfileValue
+s_value_parsers[Profile] = CommandValue
 
 s_value_parsers[ID] = StringValue
 s_value_parsers[Address] = MappedAddressValue
