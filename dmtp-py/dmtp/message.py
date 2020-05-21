@@ -38,43 +38,59 @@ from .tlv import s_value_parsers
 """
     Message
     ~~~~~~~
-
-    Fields:
     
-        <Envelope>
-        S - Sender
-        R - Receiver
-        W - Time (OPTIONAL)
+        Fields:
         
-        T - content Type (OPTIONAL)
-        G - Group ID (OPTIONAL)
-        
-        <Body>
-        D - content Data
-        V - signature, Verify it with content data and sender's meta.key
-        K - symmetric Key for en/decrypt content data (OPTIONAL)
-        
-        <Attachments>
-        M - sender's Meta info (OPTIONAL)
-        P - sender's Profile info (OPTIONAL)
+            <Envelope>
+            S - Sender
+            R - Receiver
+            W - Time (OPTIONAL)
+            
+            T - msg Type (OPTIONAL)
+            G - Group ID (OPTIONAL)
+            
+            <Body>
+            D - content Data
+            V - signature, Verify it with content data and sender's meta.key
+            K - symmetric Key for en/decrypt content data (OPTIONAL)
+            
+            <Attachments>
+            M - sender's Meta info (OPTIONAL)
+            P - sender's Profile info (OPTIONAL)
+    
+    File
+    ~~~~
+    
+        Fields:
+            
+            F - Filename
+            D - file content Data
+            
+            S - Sender (OPTIONAL)
+            R - Receiver (OPTIONAL)
+            V - signature (OPTIONAL)
+            K - symmetric key (OPTIONAL)
 """
 
 
 class Message(FieldsValue):
 
     def __init__(self, fields: list, data: bytes=None):
+        # envelope
         self.__sender: str = None
         self.__receiver: str = None
         self.__time: int = 0
         self.__type: int = 0
         self.__group: str = None
-
-        self.__data: bytes = None
+        # body
+        self.__content: bytes = None
         self.__signature: bytes = None
         self.__key: bytes = None
-
+        # attachments
         self.__meta: bytes = None
         self.__profile: bytes = None
+        # file in message
+        self.__filename: str = None
         super().__init__(fields=fields, data=data)
 
     @property
@@ -86,7 +102,7 @@ class Message(FieldsValue):
         return self.__receiver
 
     @property
-    def time(self) -> int:
+    def time(self) -> Optional[int]:
         return self.__time
 
     @property
@@ -98,8 +114,8 @@ class Message(FieldsValue):
         return self.__group
 
     @property
-    def data(self) -> bytes:
-        return self.__data
+    def content(self) -> bytes:
+        return self.__content
 
     @property
     def signature(self) -> bytes:
@@ -116,6 +132,10 @@ class Message(FieldsValue):
     @property
     def profile(self) -> Optional[bytes]:
         return self.__profile
+
+    @property
+    def filename(self) -> Optional[str]:
+        return self.__filename
 
     def _set_field(self, field: Field):
         f_type = field.type
@@ -137,7 +157,7 @@ class Message(FieldsValue):
             self.__group = f_value.string
         elif f_type == 'D':
             assert isinstance(f_value, BinaryValue), 'content data error: %s' % f_value
-            self.__data = f_value.data
+            self.__content = f_value.data
         elif f_type == 'V':
             assert isinstance(f_value, BinaryValue), 'signature error: %s' % f_value
             self.__signature = f_value.data
@@ -150,6 +170,9 @@ class Message(FieldsValue):
         elif f_type == 'P':
             assert isinstance(f_value, BinaryValue), 'profile error: %s' % f_value
             self.__profile = f_value.data
+        elif f_type == 'F':
+            assert isinstance(f_value, StringValue), 'filename error: %s' % f_value
+            self.__filename = f_value.string
         else:
             print('unknown field: %s -> %s' % (f_type, f_value))
 
@@ -167,3 +190,5 @@ s_value_parsers['K'] = BinaryValue     # Key
 
 s_value_parsers['M'] = BinaryValue     # Meta info
 s_value_parsers['P'] = BinaryValue     # Profile info
+
+s_value_parsers['F'] = StringValue     # Filename

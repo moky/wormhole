@@ -39,6 +39,10 @@ class Server(dmtp.Server):
         print('received msg: %s' % msg.to_dict())
         return True
 
+    def process_file(self, file: dmtp.Message, source: tuple, destination: tuple) -> bool:
+        print('received file: %s' % file.filename)
+        return True
+
     #
     #   PeerDelegate
     #

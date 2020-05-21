@@ -66,20 +66,41 @@ class Node(Peer, PeerDelegate, ABC):
         """
         pass
 
+    @abstractmethod
+    def process_file(self, file: Message, source: tuple, destination: tuple) -> bool:
+        """
+        Process received message
+
+        :param file:        binary file
+        :param source:      remote address
+        :param destination: local address
+        :return: False on error
+        """
+        pass
+
+    def send_file(self, filename: str, content: bytes, destination: tuple, source: Union[tuple, int]=None):
+        f_name = Field(t=VarName('F'), v=StringValue(string=filename))
+        f_content = Field(t=VarName('D'), v=BinaryValue(data=content))
+        msg = Message(fields=[f_name, f_content])
+        return self.send_message(data=msg.data, destination=destination, source=source)
+
     #
     #   PeerDelegate
     #
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
         commands = Command.parse_all(data=cmd)
-        for cmd in commands:
-            self.process_command(cmd=cmd, source=source, destination=destination)
+        for pack in commands:
+            self.process_command(cmd=pack, source=source, destination=destination)
         return True
 
     def received_message(self, msg: bytes, source: tuple, destination: tuple) -> bool:
         fields = Field.parse_all(data=msg)
         assert len(fields) > 0, 'message error: %s' % msg
-        message = Message(fields=fields, data=msg)
-        return self.process_message(msg=message, source=source, destination=destination)
+        pack = Message(fields=fields, data=msg)
+        if pack.filename is None:
+            return self.process_message(msg=pack, source=source, destination=destination)
+        else:
+            return self.process_file(file=pack, source=source, destination=destination)
 
 
 class Server(Node, ABC):
