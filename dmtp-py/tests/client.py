@@ -31,6 +31,7 @@ class Client(dmtp.Client):
 
     def __init__(self, hub: udp.Hub):
         super().__init__(hub=hub)
+        self.server_address = None
         self.identifier = 'moky-%d' % CLIENT_PORT
         self.nat = 'Port Restricted Cone NAT'
         self.__locations = {}
@@ -38,8 +39,10 @@ class Client(dmtp.Client):
     def set_location(self, value: dmtp.LocationValue) -> bool:
         if value.ip is None or value.port == 0:
             return False
+        # TODO: verify mapped-address data with signature
         self.__locations[value.id] = value
         self.__locations[(value.ip, value.port)] = value
+        print('location updated: %s' % value.to_dict())
         return True
 
     def get_location(self, uid: str = None, source: tuple = None) -> Optional[dmtp.LocationValue]:
@@ -48,7 +51,7 @@ class Client(dmtp.Client):
         else:
             return self.__locations.get(uid)
 
-    def say_hi(self, destination: tuple):
+    def say_hi(self, destination: tuple) -> bool:
         uid = self.identifier
         location = self.get_location(uid=uid)
         if location is None:
@@ -57,6 +60,7 @@ class Client(dmtp.Client):
             cmd = dmtp.HelloCommand.new(location=location)
         print('sending cmd: %s' % cmd)
         self.send_command(cmd=cmd, destination=destination)
+        return True
 
     def sign_in(self, value: dmtp.LocationValue, destination: tuple) -> bool:
         uid = value.id
@@ -66,6 +70,7 @@ class Client(dmtp.Client):
         if mapped_ip is None or mapped_port == 0:
             return False
         address = dmtp.MappedAddressValue(ip=mapped_ip, port=mapped_port)
+        # TODO: sign mapped-address data
         s = b'sign(' + address.data + b')'
         location = dmtp.LocationValue.new(uid=value.id, address=address, signature=s, nat=self.nat)
         self.set_location(value=location)
@@ -74,21 +79,11 @@ class Client(dmtp.Client):
         self.send_command(cmd=cmd, destination=destination)
         return True
 
-    def __process_from(self, value: dmtp.LocationValue) -> bool:
-        print('caller: %s' % value.to_dict())
-        if not self.set_location(value=value):
-            return False
-        self.say_hi(destination=(value.ip, value.port))
+    def call(self, uid: str) -> bool:
+        cmd = dmtp.CallCommand.new(uid=uid)
+        print('sending cmd: %s' % cmd)
+        self.send_command(cmd=cmd, destination=self.server_address)
         return True
-
-    def process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
-        cmd_type = cmd.type
-        cmd_value = cmd.value
-        if cmd_type == dmtp.From:
-            assert isinstance(cmd_value, dmtp.LocationValue), 'call from cmd error: %s' % cmd_value
-            return self.__process_from(value=cmd_value)
-        else:
-            super().process_command(cmd=cmd, source=source)
 
     def process_message(self, msg: dmtp.Message, source: tuple) -> bool:
         print('received msg from %s:\n\t%s' % (source, msg.to_dict()))
@@ -99,31 +94,27 @@ class Client(dmtp.Client):
 
 
 # create a hub for sockets
-server_address = (SERVER_HOST, SERVER_PORT)
 g_hub = udp.Hub()
 g_hub.open(port=CLIENT_PORT)
-g_hub.connect(destination=server_address)
+g_hub.connect(destination=(SERVER_HOST, SERVER_PORT))
 g_hub.start()
 
 # create client
 g_client = Client(hub=g_hub)
+g_client.server_address = (SERVER_HOST, SERVER_PORT)
 
 
-def try_call(uid: str):
-    cmd = dmtp.CallCommand.new(uid=uid)
-    print('sending cmd: %s' % cmd)
-    g_client.send_command(cmd=cmd, destination=server_address)
-
-
-def send_text(sender: str, receiver: str, msg: str):
+def send_text(receiver: str, msg: str):
     location = g_client.get_location(uid=receiver)
     if location is None or location.ip is None:
         print('cannot locate user: %s, %s' % (receiver, location))
+        # ask the server to help building a connection
+        g_client.call(uid=receiver)
         return False
     address = (location.ip, location.port)
     content = msg.encode('utf-8')
     msg = dmtp.Message.new(info={
-        'sender': sender,
+        'sender': g_client.identifier,
         'receiver': receiver,
         'data': content,
     })
@@ -141,13 +132,11 @@ if __name__ == '__main__':
         friend = sys.argv[2]
 
     # login
-    g_client.say_hi(destination=server_address)
-    time.sleep(2)
+    g_client.say_hi(destination=g_client.server_address)
 
     # test send
     text = '你好 %s！' % friend
-    try_call(uid=friend)
     while True:
         time.sleep(5)
         print('----')
-        send_text(sender=g_client.identifier, receiver=friend, msg=text)
+        send_text(receiver=friend, msg=text)

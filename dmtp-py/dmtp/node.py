@@ -185,12 +185,12 @@ class Server(Node, ABC):
 class Client(Node):
 
     @abstractmethod
-    def say_hi(self, destination: tuple):
+    def say_hi(self, destination: tuple) -> bool:
         """
         Send 'HI' command to tell the server who you are
 
         :param destination: server address
-        :return:
+        :return: False on failed
         """
         pass
 
@@ -205,13 +205,26 @@ class Client(Node):
         """
         pass
 
+    def connect(self, destination: tuple) -> bool:
+        """ send something to punch a tunnel """
+        return self.say_hi(destination=destination)
+
     def process_command(self, cmd: Command, source: tuple) -> bool:
         cmd_type = cmd.type
+        cmd_value = cmd.value
         if cmd_type == Who:
+            # say hi when the sender asked 'Who ar
+            # e you?'
             return self.say_hi(destination=source)
         elif cmd_type == Sign:
-            cmd_value = cmd.value
             assert isinstance(cmd_value, LocationValue), 'sign cmd error: %s' % cmd_value
+            # sign your location (mapped-address) for login
             return self.sign_in(value=cmd_value, destination=source)
+        elif cmd_type == From:
+            assert isinstance(cmd_value, LocationValue), 'call from error: %s' % cmd_value
+            # when someone is calling you (with mapped-address signed)
+            # respond anything (say 'HI') to build the connection.
+            if self.set_location(value=cmd_value):
+                return self.connect(destination=(cmd_value.ip, cmd_value.port))
         else:
             print('unknown command: %s' % cmd)

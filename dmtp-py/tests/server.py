@@ -32,9 +32,10 @@ class Server(dmtp.Server):
     def set_location(self, value: dmtp.LocationValue) -> bool:
         if value.ip is None or value.port == 0:
             return False
-        print('update location: %s' % value.to_dict())
+        # TODO: verify mapped address with signature
         self.__locations[value.id] = value
         self.__locations[(value.ip, value.port)] = value
+        print('location updated: %s' % value.to_dict())
         return True
 
     def get_location(self, uid: str = None, source: tuple = None) -> Optional[dmtp.LocationValue]:
