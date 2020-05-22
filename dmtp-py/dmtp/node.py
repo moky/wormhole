@@ -141,7 +141,7 @@ class Server(Node, ABC):
                 # login accepted
                 return True
         # response 'SIGN' command with 'ID' and 'ADDR'
-        cmd = SignCommand.new(uid=value.id, ip=source[0], port=source[1])
+        cmd = SignCommand.new(uid=value.id, address=source)
         self.send_command(cmd=cmd, destination=source)
         return True
 

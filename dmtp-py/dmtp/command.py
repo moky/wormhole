@@ -111,18 +111,18 @@ class HelloCommand(Command):
 
     @classmethod
     def new(cls, location: Value=None, uid: str=None,
-            ip: str=None, port: int=0, signature: bytes=None, nat: str=None) -> Command:
+            address=None, signature: bytes=None, nat: str=None) -> Command:
         if location is None:
             assert uid is not None, 'user ID empty'
-            location = LocationValue.new(uid=uid, ip=ip, port=port, signature=signature, nat=nat)
+            location = LocationValue.new(uid=uid, address=address, signature=signature, nat=nat)
         return cls(t=Hello, v=location)
 
 
 class SignCommand(Command):
 
     @classmethod
-    def new(cls, uid: str, ip: str=None, port: int=0) -> Command:
-        value = LocationValue.new(uid=uid, ip=ip, port=port)
+    def new(cls, uid: str, address=None) -> Command:
+        value = LocationValue.new(uid=uid, address=address)
         return cls(t=Sign, v=value)
 
 
@@ -232,12 +232,17 @@ class LocationValue(CommandValue):
             super()._set_field(field=field)
 
     @classmethod
-    def new(cls, uid: str, ip: str=None, port: int=0, signature: bytes=None, nat: str=None):
+    def new(cls, uid: str, address=None, signature: bytes=None, nat: str=None):
         f_id = Field(t=ID, v=StringValue(string=uid))
         fields = [f_id]
         # append MAPPED-ADDRESS
-        if ip is not None and port > 0:
-            f_addr = Field(t=Address, v=MappedAddressValue(ip=ip, port=port))
+        if address is not None:
+            if isinstance(address, MappedAddressValue):
+                value = address
+            else:
+                assert isinstance(address, tuple), 'address error: %s' % address
+                value = MappedAddressValue(ip=address[0], port=address[1])
+            f_addr = Field(t=Address, v=value)
             fields.append(f_addr)
             # append signature
             if signature is not None:

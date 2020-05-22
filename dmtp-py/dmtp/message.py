@@ -176,6 +176,39 @@ class Message(FieldsValue):
         else:
             print('unknown field: %s -> %s' % (f_type, f_value))
 
+    @classmethod
+    def __fetch_msg_field(cls, array: list, info: dict, tag: str, name: str, t: VarName, clazz):
+        value = info.get(name)
+        if value is None:
+            value = info.get(tag)
+            if value is None:
+                # no this field
+                return None
+        if not isinstance(value, clazz):
+            value = clazz(value)
+        field = Field(t=t, v=value)
+        array.append(field)
+
+    @classmethod
+    def new(cls, info: dict):
+        fields = []
+        # envelope
+        cls.__fetch_msg_field(fields, info, 'S', 'sender', MsgSender, StringValue)
+        cls.__fetch_msg_field(fields, info, 'R', 'receiver', MsgReceiver, StringValue)
+        cls.__fetch_msg_field(fields, info, 'W', 'time', MsgTime, TimestampValue)
+        cls.__fetch_msg_field(fields, info, 'T', 'type', MsgType, ByteValue)
+        cls.__fetch_msg_field(fields, info, 'G', 'group', MsgGroup, StringValue)
+        # body
+        cls.__fetch_msg_field(fields, info, 'D', 'data', MsgContent, BinaryValue)
+        cls.__fetch_msg_field(fields, info, 'K', 'key', MsgKey, BinaryValue)
+        cls.__fetch_msg_field(fields, info, 'S', 'signature', MsgSignature, BinaryValue)
+        # attachments
+        cls.__fetch_msg_field(fields, info, 'M', 'meta', MsgMeta, BinaryValue)
+        cls.__fetch_msg_field(fields, info, 'P', 'profile', MsgProfile, BinaryValue)
+        # file
+        cls.__fetch_msg_field(fields, info, 'F', 'filename', MsgFilename, StringValue)
+        return cls(fields=fields)
+
 
 # message file names
 MsgSender = VarName('S')

@@ -65,8 +65,9 @@ class Client(dmtp.Client):
         print('server ask sign for ID: %s, %s' % (uid, value.to_dict()))
         if mapped_ip is None or mapped_port == 0:
             return False
-        s = b'__signature__bytes__'
-        location = dmtp.LocationValue.new(uid=value.id, ip=mapped_ip, port=mapped_port, signature=s, nat=self.nat)
+        address = dmtp.MappedAddressValue(ip=mapped_ip, port=mapped_port)
+        s = b'sign(' + address.data + b')'
+        location = dmtp.LocationValue.new(uid=value.id, address=address, signature=s, nat=self.nat)
         self.set_location(value=location)
         cmd = dmtp.HelloCommand.new(location=location)
         print('sending cmd: %s' % cmd)
@@ -121,10 +122,11 @@ def send_text(sender: str, receiver: str, msg: str):
         return False
     address = (location.ip, location.port)
     content = msg.encode('utf-8')
-    f_sender = dmtp.Field(t=dmtp.MsgSender, v=dmtp.StringValue(string=sender))
-    f_receiver = dmtp.Field(t=dmtp.MsgReceiver, v=dmtp.StringValue(string=receiver))
-    f_content = dmtp.Field(t=dmtp.MsgContent, v=dmtp.BinaryValue(data=content))
-    msg = dmtp.Message(fields=[f_sender, f_receiver, f_content])
+    msg = dmtp.Message.new(info={
+        'sender': sender,
+        'receiver': receiver,
+        'data': content,
+    })
     print('sending msg to %s:\n\t%s' % (address, msg.to_dict()))
     g_client.send_message(msg=msg, destination=address)
 
