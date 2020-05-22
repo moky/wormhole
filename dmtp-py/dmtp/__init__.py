@@ -46,7 +46,7 @@ __all__ = [
 
     # commands
     'Command',
-    'Login', 'Sign', 'From', 'LocationValue',
+    'Hello', 'Sign', 'From', 'LocationValue',
     'Call', 'Profile', 'CommandValue',
 
     # command fields

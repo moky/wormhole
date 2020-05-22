@@ -29,6 +29,7 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
+from typing import Union
 
 from udp import Peer, PeerDelegate, Hub
 
@@ -40,7 +41,7 @@ class Node(PeerDelegate):
 
     def __init__(self, hub: Hub):
         super().__init__()
-        # create peer
+        # create inner peer
         peer = Peer()
         peer.delegate = self
         peer.start()
@@ -48,32 +49,65 @@ class Node(PeerDelegate):
         self.__peer = peer
         self.__hub = hub
 
-    def send_command(self, cmd: Command, destination: tuple, source: Union[tuple, int] = None):
-        self.__peer.send_command(data=cmd.data, destination=destination, source=source)
-
-    def send_message(self, msg: Message, destination: tuple, source: Union[tuple, int] = None):
-        self.__peer.send_message(data=msg.data, destination=destination, source=source)
-
     @abstractmethod
-    def process_command(self, cmd: Command, source: tuple, destination: tuple) -> bool:
+    def set_location(self, value: LocationValue) -> bool:
         """
-        Process received command
+        Check signature for MAPPED-ADDRESS before accept it
 
-        :param cmd:         command info
-        :param source:      remote address
-        :param destination: local address
+        :param value:
         :return: False on error
         """
         pass
 
     @abstractmethod
-    def process_message(self, msg: Message, source: tuple, destination: tuple) -> bool:
+    def get_location(self, uid: str=None, source: tuple=None) -> Optional[LocationValue]:
         """
-        Process received message
+        Get online info by user ID or (ip, port)
+
+        :param uid:    user ID
+        :param source: public IP and port
+        :return: LocationValue when user's online now
+        """
+        pass
+
+    def send_command(self, cmd: Command, destination: tuple):
+        """
+        Send command to destination address
+
+        :param cmd:
+        :param destination: remote address
+        :return:
+        """
+        self.__peer.send_command(data=cmd.data, destination=destination)
+
+    def send_message(self, msg: Message, destination: tuple):
+        """
+        Send message to destination address
+
+        :param msg:
+        :param destination: remote address
+        :return:
+        """
+        self.__peer.send_message(data=msg.data, destination=destination)
+
+    @abstractmethod
+    def process_command(self, cmd: Command, source: tuple) -> bool:
+        """
+        Process received command from remote source address
+
+        :param cmd:         command info
+        :param source:      remote address
+        :return: False on error
+        """
+        pass
+
+    @abstractmethod
+    def process_message(self, msg: Message, source: tuple) -> bool:
+        """
+        Process received message from remote source address
 
         :param msg:         message info
         :param source:      remote address
-        :param destination: local address
         :return: False on error
         """
         pass
@@ -88,77 +122,57 @@ class Node(PeerDelegate):
         commands = Command.parse_all(data=cmd)
         for pack in commands:
             assert isinstance(pack, Command), 'command error: %s' % pack
-            self.process_command(cmd=pack, source=source, destination=destination)
+            self.process_command(cmd=pack, source=source)
         return True
 
     def received_message(self, msg: bytes, source: tuple, destination: tuple) -> bool:
         fields = Field.parse_all(data=msg)
         assert len(fields) > 0, 'message error: %s' % msg
         pack = Message(fields=fields, data=msg)
-        return self.process_message(msg=pack, source=source, destination=destination)
+        return self.process_message(msg=pack, source=source)
 
 
-class Server(Node):
-
-    @abstractmethod
-    def accept_login(self, value: LocationValue) -> bool:
-        """
-        Check signature for MAPPED-ADDRESS
-
-        :param value:
-        :return: False on error
-        """
-        pass
-
-    @abstractmethod
-    def location(self, uid: str=None, source: tuple=None) -> Optional[LocationValue]:
-        """
-        Get online info by user ID or (ip, port)
-
-        :param uid:    user ID
-        :param source: public IP and port
-        :return: LocationValue when user's online now
-        """
-        pass
+class Server(Node, ABC):
 
     def __process_login(self, value: LocationValue, source: tuple) -> bool:
         if (value.ip, value.port) == source:
-            return self.accept_login(value=value)
+            # check signature
+            if self.set_location(value=value):
+                # login accepted
+                return True
         # response 'SIGN' command with 'ID' and 'ADDR'
-        loc = LocationValue.new(uid=value.id, ip=source[0], port=source[1])
-        cmd = Command(t=Sign, v=loc)
+        cmd = SignCommand.new(uid=value.id, ip=source[0], port=source[1])
         self.send_command(cmd=cmd, destination=source)
         return True
 
     def __process_call(self, value: CommandValue, source: tuple) -> bool:
-        receiver = self.location(uid=value.id)
+        receiver = self.get_location(uid=value.id)
         if receiver is None or receiver.ip is None:
             # receiver not online
             # respond an empty 'FROM' command to the sender
-            loc = LocationValue.new(uid=value.id)
-            cmd = Command(t=From, v=loc)
+            cmd = FromCommand.new(uid=value.id)
             self.send_command(cmd=cmd, destination=source)
         else:
-            assert receiver.port > 0, 'error port: %s' % receiver
+            assert receiver.port > 0, 'receiver port error: %s' % receiver
             # receiver is online
-            sender = self.location(source=source)
+            sender = self.get_location(source=source)
             if sender is None:
                 # ask sender to login again
-                cmd = Command(t=Who, v=None)
+                cmd = WhoCommand.new()
                 self.send_command(cmd=cmd, destination=source)
             else:
-                # forward the request to the receiver with sender's location info
-                cmd = Command(t=From, v=sender)
+                # send 'fROM' command with sender's location info to the receiver
+                cmd = FromCommand.new(location=sender)
                 self.send_command(cmd=cmd, destination=(receiver.ip, receiver.port))
-                # respond 'FROM' command with receiver's location info
-                cmd = Command(t=From, v=receiver)
+                # respond 'FROM' command with receiver's location info to sender
+                cmd = FromCommand.new(location=receiver)
                 self.send_command(cmd=cmd, destination=source)
         return True
 
-    def process_command(self, cmd: Command, source: tuple, destination: tuple) -> bool:
+    def process_command(self, cmd: Command, source: tuple) -> bool:
         cmd_type = cmd.type
         cmd_value = cmd.value
-        if cmd_type == Login:
+        if cmd_type == Hello:
             assert isinstance(cmd_value, LocationValue), 'login cmd error: %s' % cmd_value
             return self.__process_login(value=cmd_value, source=source)
         elif cmd_type == Call:
@@ -168,12 +182,12 @@ class Server(Node):
             print('unknown command: %s' % cmd)
 
 
-class Client(Node, ABC):
+class Client(Node):
 
     @abstractmethod
     def say_hi(self, destination: tuple):
         """
-        Send 'HI' command for login
+        Send 'HI' command to tell the server who you are
 
         :param destination: server address
         :return:
@@ -191,12 +205,12 @@ class Client(Node, ABC):
         """
         pass
 
-    def process_command(self, cmd: Command, source: tuple, destination: tuple) -> bool:
+    def process_command(self, cmd: Command, source: tuple) -> bool:
         cmd_type = cmd.type
-        cmd_value = cmd.value
         if cmd_type == Who:
             return self.say_hi(destination=source)
         elif cmd_type == Sign:
+            cmd_value = cmd.value
             assert isinstance(cmd_value, LocationValue), 'sign cmd error: %s' % cmd_value
             return self.sign_in(value=cmd_value, destination=source)
         else:

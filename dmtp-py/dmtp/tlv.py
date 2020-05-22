@@ -105,13 +105,29 @@ class VarLength(VarIntData, Length):
 
 class Field(TLV):
 
-    def __init__(self, t: Type, v: Value, data: bytes = None):
+    def __init__(self, t: Type, v: Value=None, data: bytes = None):
         if data is None:
             if v is None:
                 data = t.data + varint_to_bytes(0)
             else:
                 data = t.data + varint_to_bytes(len(v.data)) + v.data
         super().__init__(data=data, t=t, v=v)
+
+    def __str__(self):
+        clazz = self.__class__.__name__
+        value = self.value
+        if value is None:
+            return '<%s type="%s" />' % (clazz, self.type)
+        else:
+            return '<%s type="%s" value="%s" />' % (clazz, self.type, value.data)
+
+    def __repr__(self):
+        clazz = self.__class__.__name__
+        value = self.value
+        if value is None:
+            return '<%s type="%s" />' % (clazz, self.type)
+        else:
+            return '<%s type="%s" value="%s" />' % (clazz, self.type, value.data)
 
     @classmethod
     def parse_type(cls, data: bytes) -> Optional[VarName]:
@@ -196,32 +212,6 @@ class FieldsValue(Value):
                 # convert values with the same name to an array
                 dictionary[name] = [same, value]
         return dictionary
-
-    @classmethod
-    def from_dict(cls, dictionary: dict):
-        fields = []
-        keys = list(dictionary.keys())
-        for name in keys:
-            value = dictionary.get(name)
-            f_type = VarName(name=name)
-            parser = s_value_parsers.get(f_type)
-            cls.__parse_value(t=f_type, value=value, parser=parser, fields=fields)
-        return cls(fields=fields)
-
-    @classmethod
-    def __parse_value(cls, t: Type, value, parser, fields: list):
-        if isinstance(value, list):
-            for item in value:
-                cls.__parse_value(t=t, value=item, parser=parser, fields=fields)
-        elif isinstance(value, dict):
-            assert issubclass(parser, FieldsValue), 'parser error: %s' % parser
-            f_value = parser.from_dict(dictionary=value)
-            fields.append(Field(t=t, v=f_value))
-        else:
-            if parser is None:
-                parser = Value
-            f_value = parser.parse(data=value, t=t)
-            fields.append(Field(t=t, v=f_value))
 
 
 class BinaryValue(Value):

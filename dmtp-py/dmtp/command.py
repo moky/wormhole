@@ -28,9 +28,8 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Union, Optional
+from typing import Optional
 
-from udp.data import Data
 from udp.data import bytes_to_int, uint8_to_bytes, uint16_to_bytes
 from udp.tlv import Type, Value, Length
 
@@ -49,10 +48,12 @@ from .tlv import s_value_parsers
         a 'HI' command with user ID.
 
     HI, HELLO
-        Send 'ID', 'ADDR', 'S' to the server to tell it where you are from;
+        Send 'ID' to tell the receiver who you are;
+        Send 'ID', 'ADDR', 'S' and 'NAT' to the server for login.
+        
         When connecting to the network, send only 'ID' to the server, if got a
         'SIGN' command with MAPPED-ADDRESS responds from a server, sign it and
-        send back to the server as login.
+        send back to the server for login.
 
         Fields:
             ID - current user's identifier
@@ -96,19 +97,64 @@ from .tlv import s_value_parsers
 
 
 class Command(Field):
+    pass
 
-    def __init__(self, t: Type, v: Union[Value, Data, bytes, None], data: bytes = None):
-        if v is not None:
-            if isinstance(v, bytes):
-                v = Value(data=v)
-            elif not isinstance(v, Value):
-                assert isinstance(v, Data), 'value error: %s' % v
-                v = Value(data=v.data)
-        super().__init__(data=data, t=t, v=v)
 
-    def __str__(self):
-        clazz = self.__class__.__name__
-        return '<%s: %s=%s />' % (clazz, self.type, self.data)
+class WhoCommand(Command):
+
+    @classmethod
+    def new(cls) -> Command:
+        return cls(t=Who)
+
+
+class HelloCommand(Command):
+
+    @classmethod
+    def new(cls, location: Value=None, uid: str=None,
+            ip: str=None, port: int=0, signature: bytes=None, nat: str=None) -> Command:
+        if location is None:
+            assert uid is not None, 'user ID empty'
+            location = LocationValue.new(uid=uid, ip=ip, port=port, signature=signature, nat=nat)
+        return cls(t=Hello, v=location)
+
+
+class SignCommand(Command):
+
+    @classmethod
+    def new(cls, uid: str, ip: str=None, port: int=0) -> Command:
+        value = LocationValue.new(uid=uid, ip=ip, port=port)
+        return cls(t=Sign, v=value)
+
+
+class CallCommand(Command):
+
+    @classmethod
+    def new(cls, uid: str) -> Command:
+        value = LocationValue.new(uid=uid)
+        return cls(t=Call, v=value)
+
+
+class FromCommand(Command):
+
+    @classmethod
+    def new(cls, location: Value=None, uid: str=None) -> Command:
+        if location is None:
+            location = LocationValue.new(uid=uid)
+        return cls(t=From, v=location)
+
+
+class ProfileCommand(Command):
+
+    @classmethod
+    def new(cls, uid: str) -> Command:
+        value = LocationValue.new(uid=uid)
+        return cls(t=Profile, v=value)
+
+
+"""
+    Command Values
+    ~~~~~~~~~~~~~~
+"""
 
 
 class CommandValue(FieldsValue):
@@ -129,6 +175,11 @@ class CommandValue(FieldsValue):
         else:
             clazz = self.__class__.__name__
             print('%s: unknown field "%s" -> "%s"' % (clazz, field.type, field.value))
+
+    @classmethod
+    def new(cls, uid: str):
+        f_id = Field(t=ID, v=StringValue(string=uid))
+        return cls(fields=[f_id])
 
 
 class LocationValue(CommandValue):
@@ -188,15 +239,21 @@ class LocationValue(CommandValue):
         if ip is not None and port > 0:
             f_addr = Field(t=Address, v=MappedAddressValue(ip=ip, port=port))
             fields.append(f_addr)
-        # append signature
-        if signature is not None:
-            f_sign = Field(t=Signature, v=BinaryValue(data=signature))
-            fields.append(f_sign)
-        # append NAT type
-        if nat is not None:
-            f_nat = Field(t=NAT, v=StringValue(string=nat))
-            fields.append(f_nat)
+            # append signature
+            if signature is not None:
+                f_sign = Field(t=Signature, v=BinaryValue(data=signature))
+                fields.append(f_sign)
+            # append NAT type
+            if nat is not None:
+                f_nat = Field(t=NAT, v=StringValue(string=nat))
+                fields.append(f_nat)
         return cls(fields=fields)
+
+
+"""
+    Attribute Values
+    ~~~~~~~~~~~~~~~~
+"""
 
 
 class MappedAddressValue(Value):
@@ -273,22 +330,23 @@ class MappedAddressValue(Value):
 
 
 # command names
-Who = VarName(name='WHO')
-Login = VarName(name='HI')
-Sign = VarName(name='SIGN')
-Call = VarName(name='CALL')
-From = VarName(name='FROM')
-Profile = VarName(name='PROFILE')
+Who = VarName(name='WHO')          # (S) location not found, ask receiver to say 'HI'
+Hello = VarName(name='HI')         # (C) login with ID
+Sign = VarName(name='SIGN')        # (S) ask client to login
+Call = VarName(name='CALL')        # (C) ask server to help connecting with another user
+From = VarName(name='FROM')        # (S) help users connecting
+Profile = VarName(name='PROFILE')  # (S,C) ask receiver for profile with ID
 
 # field names
-ID = VarName(name='ID')
-Address = VarName(name='ADDR')  # mapped-address
-Signature = VarName(name='V')   # verify with 'ADDR' and meta.key
-NAT = VarName(name='NAT')       # NAT type
+ID = VarName(name='ID')            # user ID
+Address = VarName(name='ADDR')     # mapped-address (public IP and port)
+# AddressX = VarName(name='ADDR-X')
+Signature = VarName(name='V')      # verify with 'ADDR' and meta.key
+NAT = VarName(name='NAT')          # NAT type
 
 
 # classes for parsing value
-s_value_parsers[Login] = LocationValue
+s_value_parsers[Hello] = LocationValue
 s_value_parsers[Sign] = LocationValue
 s_value_parsers[Call] = CommandValue
 s_value_parsers[From] = LocationValue
@@ -296,5 +354,6 @@ s_value_parsers[Profile] = CommandValue
 
 s_value_parsers[ID] = StringValue
 s_value_parsers[Address] = MappedAddressValue
+# s_value_parsers[AddressX] = XorMappedAddressValue
 s_value_parsers[Signature] = BinaryValue
 s_value_parsers[NAT] = StringValue

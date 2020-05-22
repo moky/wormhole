@@ -68,10 +68,24 @@ class Connection:
     def status(self) -> ConnectionStatus:
         now = time.time()
         if now < self.__receive_expired:
+            """
+            When received a package from remote address, this node must respond
+            a package, so 'send expired' is always late than 'receive expired'.
+            So, if received anything (normal package or just 'PING') from this
+            connection, this indicates 'Connected'.
+            """
             return ConnectionStatus.Connected
         elif now < self.__send_expired:
+            """
+            If sent package through this connection recently but not received
+            anything yet (includes 'PONG'), this indicates 'Connecting'.
+            """
             return ConnectionStatus.Connecting
         else:
+            """
+            It's too long to send/receive nothing, this connection maybe lost,
+            needs to send something immediately (e.g.: 'PING') to keep it alive.
+            """
             return ConnectionStatus.NotConnect
 
     def update_sent_time(self):
@@ -163,14 +177,23 @@ class Socket(threading.Thread):
                 if conn.status == ConnectionStatus.NotConnect:
                     return conn
 
-    def ping(self):
-        """ send heartbeat to all expired connections """
-        while True:
-            conn = self.__expired_connection()
-            if conn is None:
-                # no more expired connection
-                break
-            self.send(data=b'PING', remote_host=conn.host, remote_port=conn.port)
+    def __update_sent_time(self, remote_host: str, remote_port: int):
+        with self.__connections_lock:
+            for conn in self.__connections:
+                assert isinstance(conn, Connection), 'connection error: %s' % conn
+                if conn.host == remote_host and conn.port == remote_port:
+                    # refresh time
+                    conn.update_sent_time()
+                    # return True
+
+    def __update_received_time(self, remote_host: str, remote_port: int):
+        with self.__connections_lock:
+            for conn in self.__connections:
+                assert isinstance(conn, Connection), 'connection error: %s' % conn
+                if conn.host == remote_host and conn.port == remote_port:
+                    # refresh time
+                    conn.update_received_time()
+                    # return True
 
     def send(self, data: bytes, remote_host: str, remote_port: int) -> int:
         """
@@ -184,13 +207,7 @@ class Socket(threading.Thread):
         try:
             res = self.__socket.sendto(data, (remote_host, remote_port))
             assert res == len(data), 'send failed: %d, %d' % (res, len(data))
-            # update connection's expired time
-            with self.__connections_lock:
-                for conn in self.__connections:
-                    assert isinstance(conn, Connection), 'connection error: %s' % conn
-                    if conn.host == remote_host and conn.port == remote_port:
-                        # refresh time
-                        conn.update_sent_time()
+            self.__update_sent_time(remote_host=remote_host, remote_port=remote_port)
             return res
         except socket.error as error:
             print('Failed to send data: %s' % error)
@@ -201,15 +218,7 @@ class Socket(threading.Thread):
             data, address = self.__socket.recvfrom(buffer_size)
             if data is not None:
                 assert len(address) == 2, 'remote address error: %s, data length: %d' % (address, len(data))
-                # update connection's expired time
-                with self.__connections_lock:
-                    remote_host = address[0]
-                    remote_port = address[1]
-                    for conn in self.__connections:
-                        assert isinstance(conn, Connection), 'connection error: %s' % conn
-                        if conn.host == remote_host and conn.port == remote_port:
-                            # refresh time
-                            conn.update_received_time()
+                self.__update_received_time(remote_host=address[0], remote_port=address[1])
             return data, address
         except socket.error as error:
             if not isinstance(error, socket.timeout):
@@ -252,6 +261,15 @@ class Socket(threading.Thread):
                     self.__cargoes.append(Cargo(data=data, source=address))
             except Exception as error:
                 print('socket error: %s' % error)
+
+    def ping(self):
+        """ send heartbeat to all expired connections """
+        while True:
+            conn = self.__expired_connection()
+            if conn is None:
+                # no more expired connection
+                break
+            self.send(data=b'PING', remote_host=conn.host, remote_port=conn.port)
 
     def close(self):
         self.__socket.close()

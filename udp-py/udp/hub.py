@@ -212,7 +212,7 @@ class Hub(threading.Thread):
         """
         now = time.time()
         if timeout is None:
-            timeout = now + 3600 * 24
+            timeout = now + 31558150  # 3600 * 24 * 365.25636 (365d 6h 9m 10s)
         else:
             timeout = now + timeout
         while now <= timeout:
