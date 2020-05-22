@@ -115,19 +115,11 @@ class Field(TLV):
 
     def __str__(self):
         clazz = self.__class__.__name__
-        value = self.value
-        if value is None:
-            return '<%s type="%s" />' % (clazz, self.type)
-        else:
-            return '<%s type="%s" value="%s" />' % (clazz, self.type, value.data)
+        return '/* %s */ %s: %s' % (clazz, self.type, self.value)
 
     def __repr__(self):
         clazz = self.__class__.__name__
-        value = self.value
-        if value is None:
-            return '<%s type="%s" />' % (clazz, self.type)
-        else:
-            return '<%s type="%s" value="%s" />' % (clazz, self.type, value.data)
+        return '/* %s */ %s: %s' % (clazz, self.type, self.value)
 
     @classmethod
     def parse_type(cls, data: bytes) -> Optional[VarName]:
@@ -170,6 +162,12 @@ class FieldsValue(Value):
         self.__fields = fields
         for item in fields:
             self._set_field(item)
+
+    def __str__(self):
+        return '%s' % self.to_dict()
+
+    def __repr__(self):
+        return '%s' % self.to_dict()
 
     @property
     def fields(self) -> list:
@@ -234,10 +232,10 @@ class ByteValue(UInt8Data, Value):
         super().__init__(data=data, value=value)
 
     def __str__(self):
-        return '"%d"' % self.value
+        return '%d' % self.value
 
     def __repr__(self):
-        return '"%d"' % self.value
+        return '%d' % self.value
 
     @classmethod
     def parse(cls, data: bytes, t: Type, length: Length=None):
@@ -252,10 +250,10 @@ class TimestampValue(UInt32Data, Value):
         super().__init__(data=data, value=value)
 
     def __str__(self):
-        return '"%d"' % self.value
+        return '%d' % self.value
 
     def __repr__(self):
-        return '"%d"' % self.value
+        return '%d' % self.value
 
     @classmethod
     def parse(cls, data: bytes, t: Type, length: Length=None):

@@ -29,25 +29,14 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
-from typing import Union
 
-from udp import Peer, PeerDelegate, Hub
+from udp import PeerDelegate
 
 from .command import *
 from .message import *
 
 
 class Node(PeerDelegate):
-
-    def __init__(self, hub: Hub):
-        super().__init__()
-        # create inner peer
-        peer = Peer()
-        peer.delegate = self
-        peer.start()
-        hub.add_listener(peer)
-        self.__peer = peer
-        self.__hub = hub
 
     @abstractmethod
     def set_location(self, value: LocationValue) -> bool:
@@ -70,6 +59,7 @@ class Node(PeerDelegate):
         """
         pass
 
+    @abstractmethod
     def send_command(self, cmd: Command, destination: tuple):
         """
         Send command to destination address
@@ -78,8 +68,9 @@ class Node(PeerDelegate):
         :param destination: remote address
         :return:
         """
-        self.__peer.send_command(data=cmd.data, destination=destination)
+        pass
 
+    @abstractmethod
     def send_message(self, msg: Message, destination: tuple):
         """
         Send message to destination address
@@ -88,7 +79,7 @@ class Node(PeerDelegate):
         :param destination: remote address
         :return:
         """
-        self.__peer.send_message(data=msg.data, destination=destination)
+        pass
 
     @abstractmethod
     def process_command(self, cmd: Command, source: tuple) -> bool:
@@ -115,9 +106,6 @@ class Node(PeerDelegate):
     #
     #   PeerDelegate
     #
-    def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
-        return self.__hub.send(data=data, destination=destination, source=source)
-
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
         commands = Command.parse_all(data=cmd)
         for pack in commands:

@@ -6,7 +6,7 @@ import random
 import sys
 import os
 import time
-from typing import Optional
+from typing import Optional, Union
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
@@ -24,25 +24,30 @@ SERVER_GZ3 = '129.204.94.164'
 SERVER_HOST = SERVER_GZ1
 SERVER_PORT = 9394
 
+CLIENT_HOST = '0.0.0.0'
 CLIENT_PORT = random.choice(range(9900, 9999))
 
 
 class Client(dmtp.Client):
 
-    def __init__(self, hub: udp.Hub):
-        super().__init__(hub=hub)
+    def __init__(self, peer: udp.Peer, hub: udp.Hub):
+        super().__init__()
+        peer.delegate = self
+        self.__peer = peer
+        self.__hub = hub
+        self.__locations = {}
         self.server_address = None
         self.identifier = 'moky-%d' % CLIENT_PORT
         self.nat = 'Port Restricted Cone NAT'
-        self.__locations = {}
 
     def set_location(self, value: dmtp.LocationValue) -> bool:
         if value.ip is None or value.port == 0:
+            print('location error: %s' % value)
             return False
         # TODO: verify mapped-address data with signature
         self.__locations[value.id] = value
         self.__locations[(value.ip, value.port)] = value
-        print('location updated: %s' % value.to_dict())
+        print('location updated: %s' % value)
         return True
 
     def get_location(self, uid: str = None, source: tuple = None) -> Optional[dmtp.LocationValue]:
@@ -66,17 +71,17 @@ class Client(dmtp.Client):
         uid = value.id
         mapped_ip = value.ip
         mapped_port = value.port
-        print('server ask sign for ID: %s, %s' % (uid, value.to_dict()))
+        print('server ask signing: %s' % value)
         if mapped_ip is None or mapped_port == 0:
             return False
         address = dmtp.MappedAddressValue(ip=mapped_ip, port=mapped_port)
         # TODO: sign mapped-address data
         s = b'sign(' + address.data + b')'
-        location = dmtp.LocationValue.new(uid=value.id, address=address, signature=s, nat=self.nat)
-        self.set_location(value=location)
+        location = dmtp.LocationValue.new(uid=uid, address=address, signature=s, nat=self.nat)
         cmd = dmtp.HelloCommand.new(location=location)
         print('sending cmd: %s' % cmd)
         self.send_command(cmd=cmd, destination=destination)
+        self.set_location(value=location)
         return True
 
     def call(self, uid: str) -> bool:
@@ -86,22 +91,43 @@ class Client(dmtp.Client):
         return True
 
     def process_message(self, msg: dmtp.Message, source: tuple) -> bool:
-        print('received msg from %s:\n\t%s' % (source, msg.to_dict()))
-        content = msg.to_dict().get(dmtp.MsgContent)
-        if isinstance(content, dmtp.BinaryValue):
-            print('msg content: "%s"' % content.data.decode('utf-8'))
+        print('received msg from %s:\n\t%s' % (source, msg))
+        content = msg.content
+        if content is not None:
+            print('msg content: "%s"' % content.decode('utf-8'))
         return True
 
+    def send_command(self, cmd: dmtp.Command, destination: tuple):
+        self.__peer.send_command(data=cmd.data, destination=destination)
 
-# create a hub for sockets
-g_hub = udp.Hub()
-g_hub.open(port=CLIENT_PORT)
-g_hub.connect(destination=(SERVER_HOST, SERVER_PORT))
-g_hub.start()
+    def send_message(self, msg: dmtp.Message, destination: tuple):
+        self.__peer.send_message(data=msg.data, destination=destination)
 
-# create client
-g_client = Client(hub=g_hub)
-g_client.server_address = (SERVER_HOST, SERVER_PORT)
+    #
+    #   PeerDelegate
+    #
+    def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
+        self.__hub.send(data=data, destination=destination, source=source)
+        return 0
+
+
+def create_client(local_address: tuple, server_address: tuple):
+    # create a peer
+    peer = udp.Peer()
+
+    # create a hub for sockets
+    hub = udp.Hub()
+    hub.open(host=local_address[0], port=local_address[1])
+    hub.add_listener(peer)
+
+    # create client
+    client = Client(peer=peer, hub=hub)
+    client.server_address = server_address
+
+    # starting
+    peer.start()
+    hub.start()
+    return client
 
 
 def send_text(receiver: str, msg: str):
@@ -118,11 +144,14 @@ def send_text(receiver: str, msg: str):
         'receiver': receiver,
         'data': content,
     })
-    print('sending msg to %s:\n\t%s' % (address, msg.to_dict()))
+    print('sending msg to %s:\n\t%s' % (address, msg))
     g_client.send_message(msg=msg, destination=address)
 
 
 if __name__ == '__main__':
+
+    g_client = create_client(local_address=(CLIENT_HOST, CLIENT_PORT),
+                             server_address=(SERVER_HOST, SERVER_PORT))
 
     g_client.identifier = 'hulk'
     friend = 'moky'
