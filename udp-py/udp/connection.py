@@ -46,23 +46,23 @@ class Connection:
 
     EXPIRES = 28  # seconds
 
-    def __init__(self, remote_host: str, remote_port: int):
+    def __init__(self, local_address: tuple, remote_address: tuple):
         super().__init__()
-        self.__host = remote_host
-        self.__port = remote_port
+        self.__local_address = local_address
+        self.__remote_address = remote_address
         # connecting time
         self.__send_expired = 0
         self.__receive_expired = 0
 
     @property
-    def host(self) -> str:
-        """ remote host """
-        return self.__host
+    def local_address(self) -> tuple:
+        """ local ip, port """
+        return self.__local_address
 
     @property
-    def port(self) -> int:
-        """ remote port """
-        return self.__port
+    def remote_address(self) -> tuple:
+        """ remote ip, port """
+        return self.__remote_address
 
     @property
     def status(self) -> ConnectionStatus:
@@ -138,26 +138,26 @@ class Socket(threading.Thread):
     def settimeout(self, timeout: Optional[float]):
         self.__socket.settimeout(timeout)
 
-    def get_connection(self, remote_host: str, remote_port: int) -> Optional[Connection]:
+    def get_connection(self, remote_address: tuple) -> Optional[Connection]:
         with self.__connections_lock:
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
-                if conn.host == remote_host and conn.port == remote_port:
+                if conn.remote_address == remote_address:
                     # got it
                     return conn
 
-    def connect(self, remote_host: str, remote_port: int):
+    def connect(self, remote_address: tuple):
         """ add remote address to keep connected with heartbeat """
         with self.__connections_lock:
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
-                if conn.host == remote_host and conn.port == remote_port:
+                if conn.remote_address == remote_address:
                     # already connected
                     return
-            conn = Connection(remote_host=remote_host, remote_port=remote_port)
+            conn = Connection(local_address=self.local_address, remote_address=remote_address)
             self.__connections.append(conn)
 
-    def disconnect(self, remote_host: str, remote_port: int):
+    def disconnect(self, remote_address: tuple):
         """ remove remote address from heartbeat tasks """
         with self.__connections_lock:
             pos = len(self.__connections)
@@ -165,7 +165,7 @@ class Socket(threading.Thread):
                 pos -= 1
                 conn = self.__connections[pos]
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
-                if conn.host == remote_host and conn.port == remote_port:
+                if conn.remote_address == remote_address:
                     # got one
                     self.__connections.pop(pos)
 
@@ -177,37 +177,36 @@ class Socket(threading.Thread):
                 if conn.status == ConnectionStatus.NotConnect:
                     return conn
 
-    def __update_sent_time(self, remote_host: str, remote_port: int):
+    def __update_sent_time(self, remote_address: tuple):
         with self.__connections_lock:
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
-                if conn.host == remote_host and conn.port == remote_port:
+                if conn.remote_address == remote_address:
                     # refresh time
                     conn.update_sent_time()
                     # return True
 
-    def __update_received_time(self, remote_host: str, remote_port: int):
+    def __update_received_time(self, remote_address: tuple):
         with self.__connections_lock:
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
-                if conn.host == remote_host and conn.port == remote_port:
+                if conn.remote_address == remote_address:
                     # refresh time
                     conn.update_received_time()
                     # return True
 
-    def send(self, data: bytes, remote_host: str, remote_port: int) -> int:
+    def send(self, data: bytes, remote_address: tuple) -> int:
         """
         Send data to remote address
 
         :param data:
-        :param remote_host:
-        :param remote_port:
+        :param remote_address:
         :return: how many bytes have been sent
         """
         try:
-            res = self.__socket.sendto(data, (remote_host, remote_port))
+            res = self.__socket.sendto(data, remote_address)
             assert res == len(data), 'send failed: %d, %d' % (res, len(data))
-            self.__update_sent_time(remote_host=remote_host, remote_port=remote_port)
+            self.__update_sent_time(remote_address=remote_address)
             return res
         except socket.error as error:
             print('Failed to send data: %s' % error)
@@ -218,7 +217,7 @@ class Socket(threading.Thread):
             data, address = self.__socket.recvfrom(buffer_size)
             if data is not None:
                 assert len(address) == 2, 'remote address error: %s, data length: %d' % (address, len(data))
-                self.__update_received_time(remote_host=address[0], remote_port=address[1])
+                self.__update_received_time(remote_address=address)
             return data, address
         except socket.error as error:
             if not isinstance(error, socket.timeout):
@@ -251,7 +250,7 @@ class Socket(threading.Thread):
                     # check heartbeat
                     if data == b'PING':
                         # respond heartbeat
-                        self.send(data=b'PONG', remote_host=address[0], remote_port=address[1])
+                        self.send(data=b'PONG', remote_address=address)
                         continue
                     elif data == b'PONG':
                         # ignore it
@@ -269,7 +268,7 @@ class Socket(threading.Thread):
             if conn is None:
                 # no more expired connection
                 break
-            self.send(data=b'PING', remote_host=conn.host, remote_port=conn.port)
+            self.send(data=b'PING', remote_address=conn.remote_address)
 
     def close(self):
         self.__socket.close()

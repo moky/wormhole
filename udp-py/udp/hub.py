@@ -158,18 +158,18 @@ class Hub(threading.Thread):
     def get_connection(self, destination: tuple, source: Union[tuple, int] = None) -> Optional[Connection]:
         sock = self.__get_socket(source=source)
         if sock is not None:
-            return sock.get_connection(remote_host=destination[0], remote_port=destination[1])
+            return sock.get_connection(remote_address=destination)
 
     def connect(self, destination: tuple, source: Union[tuple, int] = None) -> bool:
         sock = self.__get_socket(source=source)
         if sock is not None:
-            sock.connect(remote_host=destination[0], remote_port=destination[1])
+            sock.connect(remote_address=destination)
             return True
 
     def disconnect(self, destination: tuple, source: Union[tuple, int] = None) -> bool:
         sock = self.__get_socket(source=source)
         if sock is not None:
-            sock.disconnect(remote_host=destination[0], remote_port=destination[1])
+            sock.disconnect(remote_address=destination)
             return True
 
     def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
@@ -202,7 +202,7 @@ class Hub(threading.Thread):
                     sock = item
                     break
         assert isinstance(sock, Socket), 'no socket (%d) matched: %s' % (len(self.__sockets), source)
-        return sock.send(data=data, remote_host=destination[0], remote_port=destination[1])
+        return sock.send(data=data, remote_address=destination)
 
     def receive(self, timeout: Optional[float]=None) -> (bytes, (str, int), (str, int)):
         """
