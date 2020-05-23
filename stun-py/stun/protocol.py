@@ -54,7 +54,7 @@ from udp.data import random_bytes, bytes_to_int, uint16_to_bytes, uint32_to_byte
 
 class MessageType(UInt16Data):
 
-    def __init__(self, value: int, data: bytes=None, name: str='Unknown Type'):
+    def __init__(self, value: int, data: bytes=None, name: str=None):
         if data is None:
             data = uint16_to_bytes(value)
         super().__init__(value=value, data=data)
@@ -62,8 +62,18 @@ class MessageType(UInt16Data):
         s_message_types[value] = self
 
     def __str__(self):
-        clazz = self.__class__.__name__
-        return '<%s: 0x%04X "%s" />' % (clazz, self.value, self.__name)
+        # clazz = self.__class__.__name__
+        if self.__name is None:
+            return '"MessageType-0x%04X"' % self.value
+        else:
+            return '"%s"' % self.__name
+
+    def __repr__(self):
+        # clazz = self.__class__.__name__
+        if self.__name is None:
+            return '"MessageType-0x%04X"' % self.value
+        else:
+            return '"%s"' % self.__name
 
     @classmethod
     def parse(cls, data: bytes):

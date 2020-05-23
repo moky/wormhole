@@ -36,6 +36,7 @@
 
 import time
 from abc import ABC, abstractmethod
+from typing import Union
 
 from .protocol import *
 from .attributes import *
@@ -93,13 +94,13 @@ class Node(ABC):
         print('[%s] %s' % (time_string, msg))
 
     @abstractmethod
-    def send(self, data: bytes, remote_host: str, remote_port: int) -> int:
+    def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
         """
         Send data to remote address
 
         :param data:
-        :param remote_host:
-        :param remote_port:
+        :param destination: remote address
+        :param source:      local address
         :return: count of sent bytes
         """
         raise NotImplemented
@@ -187,10 +188,6 @@ class Server(Node, ABC):
         """
         self.another_port: int = 3479
 
-    @abstractmethod
-    def send(self, data: bytes, remote_host: str, remote_port: int, local_port: int=0) -> int:
-        raise NotImplemented
-
     def parse_attribute(self, attribute: Attribute, context: dict, result: Info) -> Info:
         value = attribute.value
         # check attributes
@@ -215,15 +212,13 @@ class Server(Node, ABC):
         :return:
         """
         assert self.neighbour_address is not None, 'neighbour address not set'
-        neighbour_ip = self.neighbour_address[0]
-        neighbour_port = self.neighbour_address[1]
         # create attributes
         value = MappedAddressValue.new(ip=remote_ip, port=remote_port)
         data1 = Attribute(MappedAddress, value).data
         # pack
         body = data1
         pack = Package.new(msg_type=head.type, trans_id=head.trans_id, body=body)
-        self.send(data=pack.data, remote_host=neighbour_ip, remote_port=neighbour_port)
+        self.send(data=pack.data, destination=self.neighbour_address)
 
     def _respond(self, head: Header, remote_ip: str, remote_port: int, local_port: int=0):
         assert self.source_address is not None, 'source address not set'
@@ -254,7 +249,7 @@ class Server(Node, ABC):
         # pack
         body = data1 + data2 + data3 + data4 + data5 + data6
         pack = Package.new(msg_type=BindResponse, trans_id=head.trans_id, body=body)
-        self.send(data=pack.data, remote_host=remote_ip, remote_port=remote_port, local_port=local_port)
+        self.send(data=pack.data, destination=(remote_ip, remote_port), source=(local_ip, local_port))
 
     def handle(self, data: bytes, remote_ip: str, remote_port: int):
         # 1. parse request
@@ -390,7 +385,7 @@ class Client(Node, ABC):
         # 2. send and get response
         count = 0
         while True:
-            size = self.send(data=req.data, remote_host=remote_host, remote_port=remote_port)
+            size = self.send(data=req.data, destination=(remote_host, remote_port))
             if size != len(req.data):
                 # failed to send data
                 return None

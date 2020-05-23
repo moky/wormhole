@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import socket
+from typing import Union
 
 import udp
 import stun
@@ -21,9 +22,9 @@ class UDPServer(stun.Server):
     def __init__(self):
         super().__init__()
 
-    def send(self, data: bytes, remote_host: str, remote_port: int, local_port: int=0) -> int:
+    def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
         try:
-            return g_hub.send(data=data, destination=(remote_host, remote_port), source=local_port)
+            return g_hub.send(data=data, destination=destination, source=source)
         except socket.error:
             return -1
 

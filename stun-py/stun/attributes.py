@@ -77,7 +77,7 @@ class AttributeLength(UInt16Data, Length):
 
 class AttributeType(UInt16Data, Type):
 
-    def __init__(self, value: int, data: bytes=None, name: str='Unknown Type'):
+    def __init__(self, value: int, data: bytes=None, name: str=None):
         if data is None:
             data = uint16_to_bytes(value)
         super().__init__(value=value, data=data)
@@ -85,8 +85,18 @@ class AttributeType(UInt16Data, Type):
         s_attribute_types[value] = self
 
     def __str__(self):
-        clazz = self.__class__.__name__
-        return '<%s: 0x%04X "%s" />' % (clazz, self.value, self.__name)
+        # clazz = self.__class__.__name__
+        if self.__name is None:
+            return '"AttributeType-0x%04X"' % self.value
+        else:
+            return '"%s"' % self.__name
+
+    def __repr__(self):
+        # clazz = self.__class__.__name__
+        if self.__name is None:
+            return '"AttributeType-0x%04X"' % self.value
+        else:
+            return '"%s"' % self.__name
 
     def __hash__(self) -> int:
         return hash(self.value)
@@ -143,6 +153,14 @@ class Attribute(TLV):
         if data is None:
             data = t.data + uint16_to_bytes(len(v.data)) + v.data
         super().__init__(data=data, t=t, v=v)
+
+    def __str__(self):
+        clazz = self.__class__.__name__
+        return '/* %s */ %s: %s' % (clazz, self.type, self.value)
+
+    def __repr__(self):
+        clazz = self.__class__.__name__
+        return '/* %s */ %s: %s' % (clazz, self.type, self.value)
 
     @classmethod
     def parse_type(cls, data: bytes) -> Optional[AttributeType]:
@@ -223,6 +241,12 @@ class MappedAddressValue(AttributeValue):
         self.__family = family
         self.__port = port
         self.__ip = ip
+
+    def __str__(self):
+        return '"%s:%d"' % (self.ip, self.port)
+
+    def __repr__(self):
+        return '"%s:%d"' % (self.ip, self.port)
 
     @property
     def family(self) -> int:
@@ -508,6 +532,12 @@ class ChangeRequestValue(UInt32Data, AttributeValue):
             data = uint32_to_bytes(value)
         super().__init__(data=data, value=value)
 
+    def __str__(self):
+        return '%d' % self.value
+
+    def __repr__(self):
+        return '%d' % self.value
+
     @classmethod
     def parse(cls, data: bytes, t: Type, length: Length=None):
         assert length.value == 4, 'Change-Request value error: %s' % length
@@ -559,6 +589,12 @@ class SoftwareValue(AttributeValue):
     def __init__(self, data: bytes, description: str):
         super().__init__(data=data)
         self.__desc = description
+
+    def __str__(self):
+        return '"%s"' % self.__desc
+
+    def __repr__(self):
+        return '"%s"' % self.__desc
 
     @property
     def description(self) -> str:

@@ -2,17 +2,20 @@
 # -*- coding: utf-8 -*-
 
 import socket
+from typing import Union
 
 import udp
 import stun
 
 
+SERVER_LOC = '127.0.0.1'
 SERVER_GZ1 = '134.175.87.98'
 SERVER_GZ2 = '203.195.224.155'
 SERVER_GZ3 = '129.204.94.164'
 
 STUN_SERVERS = [
-    SERVER_GZ1,
+    SERVER_LOC,
+    # SERVER_GZ1,
     # SERVER_GZ2,
     # SERVER_GZ3,
 ]
@@ -21,20 +24,15 @@ STUN_PORT = 3478
 LOCAL_IP = '0.0.0.0'
 LOCAL_PORT = 9394
 
-# create a hub for sockets
-g_hub = udp.Hub()
-g_hub.open(host=LOCAL_IP, port=LOCAL_PORT)
-g_hub.start()
-
 
 class UDPClient(stun.Client):
 
     def __init__(self):
         super().__init__()
 
-    def send(self, data: bytes, remote_host: str, remote_port: int) -> int:
+    def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
         try:
-            return g_hub.send(data=data, destination=(remote_host, remote_port))
+            return g_hub.send(data=data, destination=destination, source=source)
         except socket.error:
             return -1
 
@@ -44,6 +42,12 @@ class UDPClient(stun.Client):
             return data, source
         except socket.error:
             return None, None
+
+
+# create a hub for sockets
+g_hub = udp.Hub()
+g_hub.open(host=LOCAL_IP, port=LOCAL_PORT)
+g_hub.start()
 
 
 def main():
