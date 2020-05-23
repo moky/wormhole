@@ -35,7 +35,7 @@ from udp.tlv import Type, Value, Length
 
 from .tlv import VarName
 from .tlv import Field, FieldsValue
-from .tlv import BinaryValue, StringValue
+from .tlv import BinaryValue, StringValue, TimestampValue
 from .tlv import s_value_parsers
 
 
@@ -58,7 +58,8 @@ from .tlv import s_value_parsers
         Fields:
             ID - current user's identifier
             ADDR - current user's public IP and port (OPTIONAL)
-            S - signature of ADDR (OPTIONAL)
+            TIME - current time (OPTIONAL)
+            S - signature of 'ADDR+TIME' (OPTIONAL)
             NAT - current user's NAT type (OPTIONAL)
 
     SIGN
@@ -85,7 +86,8 @@ from .tlv import s_value_parsers
         Fields:
             ID - user identifier
             ADDR - user's public IP and port (OPTIONAL)
-            S - signature of ADDR which signed by user (OPTIONAL)
+            TIME - signed time (OPTIONAL)
+            S - signature of 'ADDR+TIME' signed by this user (OPTIONAL)
             NAT - user's NAT type (OPTIONAL)
 
     PROFILE
@@ -111,10 +113,10 @@ class HelloCommand(Command):
 
     @classmethod
     def new(cls, location: Value=None, uid: str=None,
-            address=None, signature: bytes=None, nat: str=None) -> Command:
+            address=None, timestamp: int=0, signature: bytes=None, nat: str=None) -> Command:
         if location is None:
             assert uid is not None, 'user ID empty'
-            location = LocationValue.new(uid=uid, address=address, signature=signature, nat=nat)
+            location = LocationValue.new(uid=uid, address=address, timestamp=timestamp, signature=signature, nat=nat)
         return cls(t=Hello, v=location)
 
 
@@ -190,8 +192,9 @@ class LocationValue(CommandValue):
     def __init__(self, fields: list, data: bytes=None):
         self.__ip: str = None
         self.__port: int = 0
-        self.__address: bytes = None
-        self.__signature: bytes = None
+        self.__address: bytes = None    # public IP and port
+        self.__timestamp: int = None    # time for signature
+        self.__signature: bytes = None  # sign(address + timestamp)
         self.__nat: str = None
         super().__init__(fields=fields, data=data)
 
@@ -206,6 +209,10 @@ class LocationValue(CommandValue):
     @property
     def address(self) -> Optional[bytes]:
         return self.__address
+
+    @property
+    def timestamp(self) -> int:
+        return self.__timestamp
 
     @property
     def signature(self) -> Optional[bytes]:
@@ -223,6 +230,9 @@ class LocationValue(CommandValue):
             self.__ip = f_value.ip
             self.__port = f_value.port
             self.__address = f_value.data
+        elif f_type == Time:
+            assert isinstance(f_value, TimestampValue), 'time value error: %s' % f_value
+            self.__timestamp = f_value.value
         elif f_type == Signature:
             self.__signature = f_value.data
         elif f_type == NAT:
@@ -232,7 +242,7 @@ class LocationValue(CommandValue):
             super()._set_field(field=field)
 
     @classmethod
-    def new(cls, uid: str, address=None, signature: bytes=None, nat: str=None):
+    def new(cls, uid: str, address=None, timestamp: int=0, signature: bytes=None, nat: str=None):
         f_id = Field(t=ID, v=StringValue(string=uid))
         fields = [f_id]
         # append MAPPED-ADDRESS
@@ -244,6 +254,10 @@ class LocationValue(CommandValue):
                 value = MappedAddressValue(ip=address[0], port=address[1])
             f_addr = Field(t=Address, v=value)
             fields.append(f_addr)
+            # append sign time
+            if timestamp > 0:
+                f_time = Field(t=Time, v=TimestampValue(value=timestamp))
+                fields.append(f_time)
             # append signature
             if signature is not None:
                 f_sign = Field(t=Signature, v=BinaryValue(data=signature))
@@ -258,6 +272,28 @@ class LocationValue(CommandValue):
 """
     Attribute Values
     ~~~~~~~~~~~~~~~~
+
+
+    The format of the MAPPED-ADDRESS attribute is:
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |0 0 0 0 0 0 0 0|    Family     |           Port                |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                                                               |
+      |                 Address (32 bits or 128 bits)                 |
+      |                                                               |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+    The address family can take on the following values:
+
+    0x01:IPv4
+    0x02:IPv6
+
+    The first 8 bits of the MAPPED-ADDRESS MUST be set to 0 and MUST be
+    ignored by receivers.  These bits are present for aligning parameters
+    on natural 32-bit boundaries.
 """
 
 
@@ -346,7 +382,8 @@ Profile = VarName(name='PROFILE')  # (S,C) ask receiver for profile with ID
 ID = VarName(name='ID')            # user ID
 Address = VarName(name='ADDR')     # mapped-address (public IP and port)
 # AddressX = VarName(name='ADDR-X')
-Signature = VarName(name='V')      # verify with 'ADDR' and meta.key
+Time = VarName(name='TIME')        # timestamp (uint32) stored in network order (big endian)
+Signature = VarName(name='V')      # verify with ('ADDR' + 'TIME') and meta.key
 NAT = VarName(name='NAT')          # NAT type
 
 
@@ -360,5 +397,6 @@ s_value_parsers[Profile] = CommandValue
 s_value_parsers[ID] = StringValue
 s_value_parsers[Address] = MappedAddressValue
 # s_value_parsers[AddressX] = XorMappedAddressValue
+s_value_parsers[Time] = TimestampValue
 s_value_parsers[Signature] = BinaryValue
 s_value_parsers[NAT] = StringValue

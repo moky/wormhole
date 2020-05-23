@@ -74,9 +74,11 @@ class Client(dmtp.Client):
         if mapped_ip is None or mapped_port == 0:
             return False
         address = dmtp.MappedAddressValue(ip=mapped_ip, port=mapped_port)
+        timestamp = int(time.time())
+        s_data = address.data + dmtp.TimestampValue(value=timestamp).data
         # TODO: sign mapped-address data
-        s = b'sign(' + address.data + b')'
-        location = dmtp.LocationValue.new(uid=uid, address=address, signature=s, nat=self.nat)
+        s = b'sign(' + s_data + b')'
+        location = dmtp.LocationValue.new(uid=uid, address=address, timestamp=timestamp, signature=s, nat=self.nat)
         cmd = dmtp.HelloCommand.new(location=location)
         print('sending cmd: %s' % cmd)
         self.send_command(cmd=cmd, destination=destination)
