@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import random
 import time
 from typing import Union
 
@@ -17,27 +18,41 @@ import udp
 SERVER_HOST = '127.0.0.1'
 SERVER_PORT = 9394
 
-CLIENT_PORT = 9527
-
-# create a hub for sockets
-server_address = (SERVER_HOST, SERVER_PORT)
-g_hub = udp.Hub()
-g_hub.open(port=CLIENT_PORT)
-g_hub.connect(destination=server_address)
-g_hub.start()
+CLIENT_HOST = '0.0.0.0'
+CLIENT_PORT = random.choice(range(9900, 9999))
 
 
-class Client(udp.Peer, udp.PeerDelegate):
+class Client(udp.PeerDelegate):
 
-    def __init__(self):
+    def __init__(self, hub: udp.Hub):
         super().__init__()
-        self.delegate = self
+        self.__peer: udp.Peer = None
+        hub.add_listener(self.peer)
+        self.__hub = hub
+        self.server_address = None
+
+    @property
+    def peer(self) -> udp.Peer:
+        if self.__peer is None:
+            peer = udp.Peer()
+            peer.delegate = self
+            peer.start()
+            self.__peer = peer
+        return self.__peer
+
+    def stop(self):
+        self.__peer.stop()
+        self.__hub.remove_listener(self.__peer)
+        self.__hub.stop()
+
+    def send_message(self, msg: bytes, destination: tuple):
+        self.peer.send_message(data=msg, destination=destination)
 
     #
     #   PeerDelegate
     #
     def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
-        return g_hub.send(data=data, destination=destination, source=source)
+        return self.__hub.send(data=data, destination=destination, source=source)
 
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
         print('received cmd from %s to %s: %s' % (source, destination, cmd))
@@ -48,21 +63,38 @@ class Client(udp.Peer, udp.PeerDelegate):
         return True
 
 
-if __name__ == '__main__':
+def create_udp_client(local_address: tuple, server_address: tuple):
+
+    # create a hub for sockets
+    hub = udp.Hub()
+    hub.open(host=local_address[0], port=local_address[1])
+    hub.start()
+
     # create client
-    client = Client()
-    client.start()
-    g_hub.add_listener(listener=client)
+    print('UDP client %s -> %s starting ...' % (local_address, server_address))
+    client = Client(hub=hub)
+    client.server_address = server_address
+    return client
+
+
+def send_msg(msg: str, client: Client):
+    data = msg.encode('utf-8')
+    address = g_client.server_address
+    print('sending msg "%s" to %s' % (msg, address))
+    client.send_message(msg=data, destination=address)
+
+
+if __name__ == '__main__':
+
+    g_client = create_udp_client(local_address=(CLIENT_HOST, CLIENT_PORT),
+                                 server_address=(SERVER_HOST, SERVER_PORT))
     # test send
     counter = 0
-    while client.running:
+    while True:
         counter += 2
         if counter > 32:
             break
-        text = '%d sheep' % counter
-        print('sending msg "%s" to %s' % (text, server_address))
-        client.send_message(data=text.encode('utf-8'), destination=server_address)
+        send_msg(msg='%d sheep' % counter, client=g_client)
         time.sleep(2)
     # exit
-    client.stop()
-    g_hub.stop()
+    g_client.stop()

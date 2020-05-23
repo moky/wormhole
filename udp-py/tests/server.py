@@ -16,23 +16,29 @@ import udp
 SERVER_HOST = '0.0.0.0'
 SERVER_PORT = 9394
 
-# create a hub for sockets
-g_hub = udp.Hub()
-g_hub.open(host=SERVER_HOST, port=SERVER_PORT)
-g_hub.start()
 
+class Server(udp.PeerDelegate):
 
-class Server(udp.Peer, udp.PeerDelegate):
-
-    def __init__(self):
+    def __init__(self, hub: udp.Hub):
         super().__init__()
-        self.delegate = self
+        self.__peer: udp.Peer = None
+        hub.add_listener(self.peer)
+        self.__hub = hub
+
+    @property
+    def peer(self) -> udp.Peer:
+        if self.__peer is None:
+            peer = udp.Peer()
+            peer.delegate = self
+            peer.start()
+            self.__peer = peer
+        return self.__peer
 
     #
     #   PeerDelegate
     #
     def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
-        return g_hub.send(data=data, destination=destination, source=source)
+        return self.__hub.send(data=data, destination=destination, source=source)
 
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
         print('received cmd from %s to %s: %s' % (source, destination, cmd))
@@ -43,8 +49,17 @@ class Server(udp.Peer, udp.PeerDelegate):
         return True
 
 
-if __name__ == '__main__':
+def create_udp_server(port: int, host='0.0.0.0') -> Server:
+    # create a hub for sockets
+    hub = udp.Hub()
+    hub.open(host=host, port=port)
+    hub.start()
+
     # create server
-    server = Server()
-    server.start()
-    g_hub.add_listener(listener=server)
+    print('UDP server (%s:%d) starting ...' % (host, port))
+    return Server(hub=hub)
+
+
+if __name__ == '__main__':
+
+    g_server = create_udp_server(host=SERVER_HOST, port=SERVER_PORT)

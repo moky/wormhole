@@ -30,6 +30,7 @@
 
 import threading
 import time
+from weakref import WeakSet
 from abc import ABC, abstractmethod
 from typing import Optional, Union
 
@@ -98,15 +99,18 @@ class Hub(threading.Thread):
         super().__init__()
         self.running = True
         self.__sockets = []
-        self.__listeners = []
+        self.__listeners = WeakSet()
+        self.__listeners_lock = threading.Lock()
 
     def add_listener(self, listener: HubListener):
-        assert listener not in self.__listeners, 'listener already added: %s' % listener
-        self.__listeners.append(listener)
+        with self.__listeners_lock:
+            assert listener not in self.__listeners, 'listener already added: %s' % listener
+            self.__listeners.add(listener)
 
     def remove_listener(self, listener: HubListener):
-        assert listener in self.__listeners, 'listener not exists: %s' % listener
-        self.__listeners.remove(listener)
+        with self.__listeners_lock:
+            assert listener in self.__listeners, 'listener not exists: %s' % listener
+            self.__listeners.remove(listener)
 
     def __get_socket(self, source: Union[tuple, int] = None) -> Optional[Socket]:
         if source is None:
@@ -235,15 +239,16 @@ class Hub(threading.Thread):
 
     def __dispatch(self, data: bytes, source: tuple, destination: tuple) -> list:
         responses = []
-        for listener in self.__listeners:
-            assert isinstance(listener, HubListener), 'listener error: %s' % listener
-            f = listener.filter
-            if f and not f.matched(data=data, source=source, destination=destination):
-                continue
-            res = listener.received(data=data, source=source, destination=destination)
-            if res is None:
-                continue
-            responses.append(res)
+        with self.__listeners_lock:
+            for listener in self.__listeners:
+                assert isinstance(listener, HubListener), 'listener error: %s' % listener
+                f = listener.filter
+                if f and not f.matched(data=data, source=source, destination=destination):
+                    continue
+                res = listener.received(data=data, source=source, destination=destination)
+                if res is None:
+                    continue
+                responses.append(res)
         return responses
 
     def run(self):
