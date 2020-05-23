@@ -30,13 +30,26 @@
 
 from abc import ABC, abstractmethod
 
-from udp import PeerDelegate
+from udp import Peer, PeerDelegate
 
 from .command import *
 from .message import *
 
 
 class Node(PeerDelegate):
+
+    def __init__(self):
+        super().__init__()
+        self.__peer: Peer = None
+
+    @property
+    def peer(self) -> Peer:
+        if self.__peer is None:
+            peer = Peer()
+            peer.delegate = self
+            peer.start()
+            self.__peer = peer
+        return self.__peer
 
     @abstractmethod
     def set_location(self, value: LocationValue) -> bool:
@@ -59,7 +72,6 @@ class Node(PeerDelegate):
         """
         pass
 
-    @abstractmethod
     def send_command(self, cmd: Command, destination: tuple):
         """
         Send command to destination address
@@ -68,9 +80,8 @@ class Node(PeerDelegate):
         :param destination: remote address
         :return:
         """
-        pass
+        self.peer.send_command(data=cmd.data, destination=destination)
 
-    @abstractmethod
     def send_message(self, msg: Message, destination: tuple):
         """
         Send message to destination address
@@ -79,7 +90,7 @@ class Node(PeerDelegate):
         :param destination: remote address
         :return:
         """
-        pass
+        self.peer.send_message(data=msg.data, destination=destination)
 
     @abstractmethod
     def process_command(self, cmd: Command, source: tuple) -> bool:

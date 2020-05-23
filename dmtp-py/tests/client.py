@@ -30,10 +30,9 @@ CLIENT_PORT = random.choice(range(9900, 9999))
 
 class Client(dmtp.Client):
 
-    def __init__(self, peer: udp.Peer, hub: udp.Hub):
+    def __init__(self, hub: udp.Hub):
         super().__init__()
-        peer.delegate = self
-        self.__peer = peer
+        hub.add_listener(self.peer)
         self.__hub = hub
         self.__locations = {}
         self.server_address = None
@@ -97,36 +96,26 @@ class Client(dmtp.Client):
             print('msg content: "%s"' % content.decode('utf-8'))
         return True
 
-    def send_command(self, cmd: dmtp.Command, destination: tuple):
-        self.__peer.send_command(data=cmd.data, destination=destination)
-
-    def send_message(self, msg: dmtp.Message, destination: tuple):
-        self.__peer.send_message(data=msg.data, destination=destination)
-
     #
     #   PeerDelegate
     #
     def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
+        print('sending data to (%s): %s' % (destination, data))
         self.__hub.send(data=data, destination=destination, source=source)
         return 0
 
 
 def create_client(local_address: tuple, server_address: tuple):
-    # create a peer
-    peer = udp.Peer()
 
     # create a hub for sockets
     hub = udp.Hub()
     hub.open(host=local_address[0], port=local_address[1])
-    hub.add_listener(peer)
+    hub.start()
 
     # create client
-    client = Client(peer=peer, hub=hub)
+    print('UDP client %s -> %s starting ...' % (local_address, server_address))
+    client = Client(hub=hub)
     client.server_address = server_address
-
-    # starting
-    peer.start()
-    hub.start()
     return client
 
 

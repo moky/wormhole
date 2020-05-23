@@ -20,10 +20,9 @@ SERVER_PORT = 9394
 
 class Server(dmtp.Server):
 
-    def __init__(self, peer: udp.Peer, hub: udp.Hub):
+    def __init__(self, hub: udp.Hub):
         super().__init__()
-        peer.delegate = self
-        self.__peer = peer
+        hub.add_listener(self.peer)
         self.__hub = hub
         self.__locations = {}
 
@@ -46,12 +45,6 @@ class Server(dmtp.Server):
         print('received msg: %s' % msg)
         return True
 
-    def send_command(self, cmd: dmtp.Command, destination: tuple):
-        self.__peer.send_command(data=cmd.data, destination=destination)
-
-    def send_message(self, msg: dmtp.Message, destination: tuple):
-        self.__peer.send_message(data=msg.data, destination=destination)
-
     #
     #   PeerDelegate
     #
@@ -61,22 +54,14 @@ class Server(dmtp.Server):
 
 
 def create_udp_server(port: int, host='0.0.0.0') -> Server:
-    # create a peer
-    peer = udp.Peer()
-
     # create a hub for sockets
     hub = udp.Hub()
     hub.open(host=host, port=port)
-    hub.add_listener(peer)
+    hub.start()
 
     # create server
-    server = Server(peer=peer, hub=hub)
-
-    # starting
     print('UDP server (%s:%d) starting ...' % (host, port))
-    peer.start()
-    hub.start()
-    return server
+    return Server(hub=hub)
 
 
 if __name__ == '__main__':
