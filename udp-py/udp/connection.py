@@ -37,7 +37,8 @@ from typing import Optional
 
 class ConnectionStatus(IntEnum):
 
-    NotConnect = 0
+    Error = -1
+    Default = 0
     Connecting = 1
     Connected = 2
 
@@ -51,8 +52,10 @@ class Connection:
         self.__local_address = local_address
         self.__remote_address = remote_address
         # connecting time
-        self.__send_expired = 0
-        self.__receive_expired = 0
+        now = time.time()
+        self.__connection_lost = now + (self.EXPIRES << 2)
+        self.__receive_expired = now + self.EXPIRES
+        self.__send_expired = now + self.EXPIRES
 
     @property
     def local_address(self) -> tuple:
@@ -75,6 +78,12 @@ class Connection:
             connection, this indicates 'Connected'.
             """
             return ConnectionStatus.Connected
+        elif now > self.__connection_lost:
+            """
+            It's a long time to receive nothing (even a 'PONG'), this connection
+            may be already lost, needs to reconnect again.
+            """
+            return ConnectionStatus.Error
         elif now < self.__send_expired:
             """
             If sent package through this connection recently but not received
@@ -83,10 +92,10 @@ class Connection:
             return ConnectionStatus.Connecting
         else:
             """
-            It's too long to send/receive nothing, this connection maybe lost,
-            needs to send something immediately (e.g.: 'PING') to keep it alive.
+            It's a long time to send nothing, this connection needs maintaining,
+            send something immediately (e.g.: 'PING') to keep it alive.
             """
-            return ConnectionStatus.NotConnect
+            return ConnectionStatus.Default
 
     def update_sent_time(self):
         """ update last send time """
@@ -94,7 +103,9 @@ class Connection:
 
     def update_received_time(self):
         """ update last send time """
-        self.__receive_expired = time.time() + self.EXPIRES
+        now = time.time()
+        self.__connection_lost = now + (self.EXPIRES << 2)
+        self.__receive_expired = now + self.EXPIRES
 
 
 class Cargo:
@@ -168,13 +179,22 @@ class Socket(threading.Thread):
                 if conn.remote_address == remote_address:
                     # got one
                     self.__connections.pop(pos)
+                    # break
 
     def __expired_connection(self) -> Optional[Connection]:
         """ get any expired connection """
         with self.__connections_lock:
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
-                if conn.status == ConnectionStatus.NotConnect:
+                if conn.status == ConnectionStatus.Default:
+                    return conn
+
+    def __error_connection(self) -> Optional[Connection]:
+        """ get any error connection """
+        with self.__connections_lock:
+            for conn in self.__connections:
+                assert isinstance(conn, Connection), 'connection error: %s' % conn
+                if conn.status == ConnectionStatus.Error:
                     return conn
 
     def __update_sent_time(self, remote_address: tuple):
@@ -269,6 +289,16 @@ class Socket(threading.Thread):
                 # no more expired connection
                 break
             self.send(data=b'PING', remote_address=conn.remote_address)
+
+    def purge(self):
+        """ remove error connections """
+        while True:
+            conn = self.__error_connection()
+            if conn is None:
+                # no more error connection
+                break
+            # remove error connection (long time to receive nothing)
+            self.disconnect(remote_address=conn.remote_address)
 
     def close(self):
         self.__socket.close()

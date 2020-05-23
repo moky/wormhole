@@ -267,6 +267,7 @@ class Hub(threading.Thread):
                     # try heart beat for all connections in all sockets
                     for sock in self.__sockets:
                         assert isinstance(sock, Socket), 'socket error: %s' % sock
-                        sock.ping()
+                        sock.ping()   # try to keep all connections alive
+                        sock.purge()  # remove error connections
             except Exception as error:
                 print('run error: %s' % error)
