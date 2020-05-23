@@ -30,7 +30,7 @@
 
 from abc import ABC, abstractmethod
 
-from udp import Peer, PeerDelegate
+from udp import Peer, PeerDelegate, Departure
 
 from .command import *
 from .message import *
@@ -72,25 +72,25 @@ class Node(PeerDelegate):
         """
         pass
 
-    def send_command(self, cmd: Command, destination: tuple):
+    def send_command(self, cmd: Command, destination: tuple) -> Departure:
         """
         Send command to destination address
 
         :param cmd:
         :param destination: remote address
-        :return:
+        :return: departure task
         """
-        self.peer.send_command(data=cmd.data, destination=destination)
+        return self.peer.send_command(data=cmd.data, destination=destination)
 
-    def send_message(self, msg: Message, destination: tuple):
+    def send_message(self, msg: Message, destination: tuple) -> Departure:
         """
         Send message to destination address
 
         :param msg:
         :param destination: remote address
-        :return:
+        :return: departure task
         """
-        self.peer.send_message(data=msg.data, destination=destination)
+        return self.peer.send_message(data=msg.data, destination=destination)
 
     @abstractmethod
     def process_command(self, cmd: Command, source: tuple) -> bool:

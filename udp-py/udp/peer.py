@@ -208,18 +208,20 @@ class Peer(threading.Thread, HubListener):
             self.__pool.add_departure(task=task)
             return task
 
-    def send_command(self, data: bytes, destination: tuple, source: Union[tuple, int]=None):
+    def send_command(self, data: bytes, destination: tuple, source: Union[tuple, int]=None) -> Departure:
         pack = Package.new(data_type=Command, body=data)
         task = Departure(payload=pack, destination=destination, source=source)
         self.__send(task=task)
+        return task
 
-    def send_message(self, data: bytes, destination: tuple, source: Union[tuple, int]=None):
+    def send_message(self, data: bytes, destination: tuple, source: Union[tuple, int]=None) -> Departure:
         pack = Package.new(data_type=Message, body=data)
         # check body length
         if len(data) > Package.MAX_BODY_LEN:
             pack = Package.split(package=pack)
         task = Departure(payload=pack, destination=destination, source=source)
         self.__send(task=task)
+        return task
 
     #
     #   HubListener
