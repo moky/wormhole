@@ -78,7 +78,7 @@ class Node(PeerDelegate):
 
         :param cmd:
         :param destination: remote address
-        :return: departure task
+        :return: departure task with 'trans_id' in the payload
         """
         return self.peer.send_command(data=cmd.data, destination=destination)
 
@@ -88,7 +88,7 @@ class Node(PeerDelegate):
 
         :param msg:
         :param destination: remote address
-        :return: departure task
+        :return: departure task with 'trans_id' in the payload
         """
         return self.peer.send_message(data=msg.data, destination=destination)
 

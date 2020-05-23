@@ -45,7 +45,7 @@ from .data import uint32_to_bytes
 from .protocol import Package
 from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment
-from .task import Departure, Arrival, Pool
+from .task import Departure, Arrival, Pool, MemPool
 from .hub import HubListener
 
 
@@ -93,8 +93,14 @@ class Peer(threading.Thread, HubListener):
     def __init__(self):
         super().__init__()
         self.running = True
-        self.__pool = Pool()
+        self.__pool = None
         self.__delegate: weakref.ReferenceType = None
+
+    @property
+    def pool(self) -> Pool:
+        if self.__pool is None:
+            self.__pool = MemPool()
+        return self.__pool
 
     @property
     def delegate(self) -> Optional[PeerDelegate]:
@@ -113,10 +119,10 @@ class Peer(threading.Thread, HubListener):
             # first, process all arrivals
             done = self.__clean_arrivals()
             # second, get one departure task
-            task = self.__pool.get_departure()
+            task = self.pool.get_departure()
             if task is None:
                 # if no departure task, remove expired fragments
-                self.__pool.discard_fragments()
+                self.pool.discard_fragments()
                 if done == 0:
                     # all jobs done, have a rest. ^_^
                     time.sleep(0.1)
@@ -130,10 +136,10 @@ class Peer(threading.Thread, HubListener):
 
         :return: False on no data
         """
-        total = self.__pool.arrivals_count()
+        total = self.pool.arrivals_count()
         done = 0
         while done < total:
-            task = self.__pool.get_arrival()
+            task = self.pool.get_arrival()
             if task is None:
                 # no data now
                 break
@@ -148,7 +154,7 @@ class Peer(threading.Thread, HubListener):
         body = pack.body
         data_type = head.data_type
         if data_type == CommandRespond or data_type == MessageRespond:
-            self.__pool.del_departure(response=pack)
+            self.pool.del_departure(response=pack)
             return None
         elif data_type == Command:
             ack = self.delegate.received_command(cmd=body, source=task.source, destination=task.destination)
@@ -157,7 +163,7 @@ class Peer(threading.Thread, HubListener):
         else:
             assert data_type == MessageFragment, 'data type error: %s' % data_type
             # assemble fragments
-            msg = self.__pool.add_fragment(fragment=pack)
+            msg = self.pool.add_fragment(fragment=pack)
             if msg is None:
                 ack = True
             else:
@@ -205,7 +211,7 @@ class Peer(threading.Thread, HubListener):
         if task.max_retries > 0:
             task.last_time = time.time()
             task.max_retries -= 1
-            self.__pool.add_departure(task=task)
+            self.pool.add_departure(task=task)
             return task
 
     def send_command(self, data: bytes, destination: tuple, source: Union[tuple, int]=None) -> Departure:
@@ -228,5 +234,5 @@ class Peer(threading.Thread, HubListener):
     #
     def received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
         task = Arrival(payload=data, source=source, destination=destination)
-        self.__pool.add_arrival(task=task)
+        self.pool.add_arrival(task=task)
         return None

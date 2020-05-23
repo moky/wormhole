@@ -37,6 +37,7 @@
 
 import threading
 import time
+from abc import ABC, abstractmethod
 from typing import Union, Optional
 
 from .data import bytes_to_int
@@ -128,7 +129,107 @@ class Assemble:
             return True
 
 
-class Pool:
+class Pool(ABC):
+
+    #
+    #   Departures
+    #
+
+    @abstractmethod
+    def get_departure(self) -> Optional[Departure]:
+        """
+        Gat one departure task from the pool for sending.
+
+        :return: any task
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def add_departure(self, task: Departure) -> Departure:
+        """
+        Append a departure task into the pool after sent.
+        This should be removed after its response received; if timeout, send it
+        again and check it's retries counter, when it's still greater than 0,
+        put it back to the pool for resending.
+
+        :param task: departure task
+        :return: same task
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def del_departure(self, response: Package) -> int:
+        """
+        Delete the departure task with 'trans_id' in the response.
+        If it's a message fragment, check the page offset too.
+
+        :param response:
+        :return: 0 on task not found
+        """
+        raise NotImplemented
+
+    #
+    #   Arrivals
+    #
+
+    @abstractmethod
+    def arrivals_count(self) -> int:
+        """
+        Check how many arrivals waiting in the pool
+
+        :return: arrivals count
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def get_arrival(self) -> Optional[Arrival]:
+        """
+        Get one arrival task from the pool for processing
+
+        :return: any task
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def add_arrival(self, task: Arrival) -> Arrival:
+        """
+        Append an arrival task into the pool after received something
+
+        :param task: arrival task
+        :return: same task
+        """
+        raise NotImplemented
+
+    #
+    #   Fragments Assembling
+    #
+
+    @abstractmethod
+    def add_fragment(self, fragment: Package) -> Optional[bytes]:
+        """
+        Add a fragment package into the pool for MessageFragment received.
+        This will just wait until all fragments with the same 'trans_id' received.
+        When all fragments received, they will be sorted and combined to the
+        original message, and then return the message's data; if there are still
+        some fragments missed, return None.
+
+        :param fragment: message fragment
+        :return: message data when all fragments received
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def discard_fragments(self) -> int:
+        """
+        Remove all expired fragments that belong to the incomplete messages,
+        which had waited a long time but still some fragments missed.
+
+        :return: removed message count
+        """
+        raise NotImplemented
+
+
+class MemPool(Pool):
 
     def __init__(self):
         super().__init__()
@@ -145,10 +246,6 @@ class Pool:
     #
     #   Departures
     #
-    def departures_count(self) -> int:
-        with self.__departures_lock:
-            return len(self.__departures)
-
     def get_departure(self) -> Optional[Departure]:
         with self.__departures_lock:
             if len(self.__departures) > 0:
@@ -170,7 +267,7 @@ class Pool:
         data_type = head.data_type
         trans_id = head.trans_id
         if data_type == CommandRespond:
-            assert body_len == 0, 'CommandRespond should has no body'
+            assert body_len == 0 or body == b'OK', 'CommandRespond error: %s' % body
             with self.__departures_lock:
                 pos = len(self.__departures)
                 while pos > 0:
@@ -186,10 +283,12 @@ class Pool:
                     self.__departures.pop(pos)
                     count += 1
         elif data_type == MessageRespond:
-            if body_len == 8:
+            if body_len >= 8:
+                # respond for message fragment
+                assert body_len == 8 or body[8:] == b'OK', 'MessageRespond error: %s' % body
                 # Message Fragment Response
                 pages = bytes_to_int(body[:4])
-                offset = bytes_to_int(body[4:])
+                offset = bytes_to_int(body[4:8])
                 assert pages > 1 and pages > offset, 'pages error: %d, %d' % (pages, offset)
                 with self.__departures_lock:
                     pos = len(self.__departures)
@@ -214,8 +313,8 @@ class Pool:
                         if len(packages) == 0:
                             # all fragment sent, remove this task
                             self.__departures.pop(pos)
-            else:
-                assert body_len == 0, 'MessageRespond body error: %s' % body
+            elif body_len == 0 or body == b'OK':
+                # respond for entire message
                 with self.__departures_lock:
                     pos = len(self.__departures)
                     while pos > 0:
@@ -230,6 +329,10 @@ class Pool:
                         # Got it!
                         self.__departures.pop(pos)
                         count += 1
+            else:
+                # respond for split message
+                assert body == b'AGAIN', 'MessageRespond error: %s' % body
+                # TODO: resend all fragments of this message
         else:
             assert False, 'data type should be a Respond: %s' % response
         return count
