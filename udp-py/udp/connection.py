@@ -117,6 +117,16 @@ class Cargo:
 
 
 class Socket(threading.Thread):
+    
+    """
+        Max count for caching packages
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        
+        Each UDP data package is limited to no more than 576 bytes, so set the
+        MAX_CACHE_SPACES to about 2,000,000 means it would take up to 1GB memory
+        for the caching.
+    """
+    MAX_CACHE_SPACES = 1024 * 1024 * 2
 
     def __init__(self, port: int, host: str='0.0.0.0'):
         super().__init__()
@@ -257,6 +267,14 @@ class Socket(threading.Thread):
                 return cargo.data, cargo.source
         return None, None
 
+    def __cache(self, data: bytes, source: tuple):
+        with self.__cargoes_lock:
+            if len(self.__cargoes) >= self.MAX_CACHE_SPACES:
+                # drop the first package
+                self.__cargoes.pop(0)
+            # append the new package to the end
+            self.__cargoes.append(Cargo(data=data, source=source))
+
     def run(self):
         self.settimeout(2)
         while self.running:
@@ -276,8 +294,7 @@ class Socket(threading.Thread):
                         # ignore it
                         continue
                 # cache the data received
-                with self.__cargoes_lock:
-                    self.__cargoes.append(Cargo(data=data, source=address))
+                self.__cache(data=data, source=address)
             except Exception as error:
                 print('socket error: %s' % error)
 

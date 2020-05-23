@@ -178,13 +178,13 @@ class Peer(threading.Thread, HubListener):
         data_type = head.data_type
         if data_type == Command:
             data_type = CommandRespond
-            body = b''
+            body = b'OK'
         elif data_type == Message:
             data_type = MessageRespond
-            body = b''
+            body = b'OK'
         elif data_type == MessageFragment:
             data_type = MessageRespond
-            body = uint32_to_bytes(head.pages) + uint32_to_bytes(head.offset)
+            body = uint32_to_bytes(head.pages) + uint32_to_bytes(head.offset) + b'OK'
         else:
             raise TypeError('data type error: %s' % data_type)
         sn = head.trans_id
