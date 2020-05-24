@@ -41,7 +41,7 @@ from abc import ABC, abstractmethod
 from typing import Union, Optional
 
 from .data import bytes_to_int
-from .protocol import Package
+from .protocol import Package, TransactionID, DataType
 from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment
 
@@ -51,19 +51,38 @@ class Departure:
         Package(s) to sent out (waiting response)
     """
 
-    EXPIRES = 60  # 1 minute
+    """
+        Each fragment should wait 1 minute for response
+    """
+    EXPIRES = 60  # seconds
 
-    def __init__(self, payload: Union[Package, list], destination: tuple, source: Union[tuple, int]=0):
+    def __init__(self, packages: list, destination: tuple, source: Union[tuple, int]=0):
         super().__init__()
-        self.payload = payload
+        self.packages = packages
         self.destination = destination
         self.source = source
         self.max_retries = 5
         self.last_time = 0
 
     @property
+    def trans_id(self) -> Optional[TransactionID]:
+        if len(self.packages) > 0:
+            first = self.packages[0]
+            assert isinstance(first, Package), 'first package error: %s' % first
+            return first.head.trans_id
+
+    @property
+    def data_type(self) -> Optional[DataType]:
+        if len(self.packages) > 0:
+            first = self.packages[0]
+            assert isinstance(first, Package), 'first package error: %s' % first
+            return first.head.data_type
+
+    @property
     def is_expired(self) -> bool:
-        return (self.last_time + self.EXPIRES) < time.time()
+        count = len(self.packages)
+        expires = self.EXPIRES * (count + 1)
+        return (self.last_time + expires) < time.time()
 
 
 class Arrival:
@@ -83,7 +102,10 @@ class Assemble:
         Message fragments received (waiting assemble)
     """
 
-    EXPIRES = 60  # 1 minutes
+    """
+        Each fragment should wait 1 minute for receiving
+    """
+    EXPIRES = 60  # seconds
 
     def __init__(self, fragment: Package):
         super().__init__()
@@ -100,7 +122,10 @@ class Assemble:
     def is_expired(self) -> bool:
         count = len(self.__fragments)
         assert count > 0, 'fragments error'
-        return (self.last_time + self.EXPIRES * self.pages) < time.time()
+        pages = self.pages
+        assert pages >= count, 'pages error: %d, %d' % (pages, count)
+        expires = self.EXPIRES * (pages - count + 1)
+        return (self.last_time + expires) < time.time()
 
     @property
     def is_completed(self) -> bool:
@@ -259,83 +284,86 @@ class MemPool(Pool):
             self.__departures.append(task)
         return task
 
-    def del_departure(self, response: Package) -> int:
+    def __del_entire_task(self, trans_id: TransactionID) -> int:
         count = 0
+        with self.__departures_lock:
+            pos = len(self.__departures)
+            while pos > 0:
+                pos -= 1
+                task = self.__departures[pos]
+                assert isinstance(task, Departure), 'departure task error: %s' % task
+                if task.trans_id != trans_id:
+                    # transaction ID not match
+                    continue
+                assert task.data_type in [Command, Message], 'task error: %s' % task
+                # Got it!
+                self.__departures.pop(pos)
+                count += 1
+                # break
+        return count
+
+    def __del_task_fragment(self, trans_id: TransactionID, pages: int, offset: int) -> bool:
+        count = 0
+        with self.__departures_lock:
+            pos = len(self.__departures)
+            while pos > 0:
+                pos -= 1
+                task = self.__departures[pos]
+                assert isinstance(task, Departure), 'departure task error: %s' % task
+                if task.trans_id != trans_id:
+                    # transaction ID not match
+                    continue
+                assert task.data_type == MessageFragment, 'task error: %s' % task
+                packages = task.packages
+                index = len(packages)
+                while index > 0:
+                    index -= 1
+                    pack = packages[index]
+                    assert isinstance(pack, Package), 'package error: %s' % packages
+                    assert pack.head.trans_id == trans_id, 'task fragment error: %s' % pack.head
+                    assert pack.head.data_type == MessageFragment, 'task error: %s' % pack.head
+                    assert pack.head.pages == pages, 'pages not match: %d, %s' % (pages, pack.head)
+                    if pack.head.offset == offset:
+                        # Got it!
+                        packages.pop(index)
+                        count += 1
+                        # break
+                if len(packages) == 0:
+                    # all fragment sent, remove this task
+                    self.__departures.pop(pos)
+                # break
+        return count
+
+    def del_departure(self, response: Package) -> int:
         head = response.head
         body = response.body
         body_len = len(body)
         data_type = head.data_type
         trans_id = head.trans_id
         if data_type == CommandRespond:
+            # response for Command
             assert body_len == 0 or body == b'OK', 'CommandRespond error: %s' % body
-            with self.__departures_lock:
-                pos = len(self.__departures)
-                while pos > 0:
-                    pos -= 1
-                    pack = self.__departures[pos].payload
-                    if not isinstance(pack, Package):
-                        continue
-                    head = pack.head
-                    if head.trans_id != trans_id:
-                        continue
-                    assert head.data_type == Command, 'task payload not a Command: %s' % pack
-                    # Got it!
-                    self.__departures.pop(pos)
-                    count += 1
+            return self.__del_entire_task(trans_id=trans_id)
         elif data_type == MessageRespond:
+            # response for Message or Fragment
             if body_len >= 8:
-                # respond for message fragment
+                # MessageFragment
                 assert body_len == 8 or body[8:] == b'OK', 'MessageRespond error: %s' % body
-                # Message Fragment Response
+                # get pages count and index
                 pages = bytes_to_int(body[:4])
                 offset = bytes_to_int(body[4:8])
                 assert pages > 1 and pages > offset, 'pages error: %d, %d' % (pages, offset)
-                with self.__departures_lock:
-                    pos = len(self.__departures)
-                    while pos > 0:
-                        pos -= 1
-                        packages = self.__departures[pos].payload
-                        if not isinstance(packages, list):
-                            continue
-                        index = len(packages)
-                        while index > 0:
-                            index -= 1
-                            pack = packages[index]
-                            head = pack.head
-                            if head.trans_id != trans_id:
-                                break
-                            assert head.data_type == MessageFragment, 'data type should be a Fragment: %s' % pack
-                            assert head.pages == pages, 'pages not match: %d, %s' % (pages, head)
-                            if head.offset == offset:
-                                # Got it!
-                                packages.pop(index)
-                                count += 1
-                        if len(packages) == 0:
-                            # all fragment sent, remove this task
-                            self.__departures.pop(pos)
+                return self.__del_task_fragment(trans_id=trans_id, pages=pages, offset=offset)
             elif body_len == 0 or body == b'OK':
-                # respond for entire message
-                with self.__departures_lock:
-                    pos = len(self.__departures)
-                    while pos > 0:
-                        pos -= 1
-                        pack = self.__departures[pos].payload
-                        if not isinstance(pack, Package):
-                            continue
-                        head = pack.head
-                        if head.trans_id != trans_id:
-                            continue
-                        assert head.data_type == Message, 'task payload not a Message: %s' % pack
-                        # Got it!
-                        self.__departures.pop(pos)
-                        count += 1
+                # Message
+                return self.__del_entire_task(trans_id=trans_id)
             else:
                 # respond for split message
                 assert body == b'AGAIN', 'MessageRespond error: %s' % body
                 # TODO: resend all fragments of this message
+                return 0
         else:
-            assert False, 'data type should be a Respond: %s' % response
-        return count
+            assert False, 'data type should be a Respond: %s' % data_type
 
     #
     #   Arrivals

@@ -199,15 +199,12 @@ class Peer(threading.Thread, HubListener):
     #
     def __send(self, task: Departure) -> Optional[Departure]:
         # treat the task as a bundle of packages
-        if isinstance(task.payload, Package):
-            pack = [task.payload]
-        else:
-            assert isinstance(task.payload, list), 'pack error: %s' % task.payload
-            pack = task.payload
-        for item in pack:
+        packages = task.packages
+        for item in packages:
+            assert isinstance(item, Package), 'package error: %s' % item
             res = self.delegate.send_data(data=item.data, destination=task.destination, source=task.source)
             if res < 0:
-                raise IOError('failed to resend task (%d packages) to: %s' % (len(pack), task.destination))
+                raise IOError('failed to resend task (%d packages) to: %s' % (len(packages), task.destination))
         if task.max_retries > 0:
             task.last_time = time.time()
             task.max_retries -= 1
@@ -216,7 +213,7 @@ class Peer(threading.Thread, HubListener):
 
     def send_command(self, data: bytes, destination: tuple, source: Union[tuple, int]=None) -> Departure:
         pack = Package.new(data_type=Command, body=data)
-        task = Departure(payload=pack, destination=destination, source=source)
+        task = Departure(packages=[pack], destination=destination, source=source)
         self.__send(task=task)
         return task
 
@@ -225,7 +222,7 @@ class Peer(threading.Thread, HubListener):
         # check body length
         if len(data) > Package.MAX_BODY_LEN:
             pack = Package.split(package=pack)
-        task = Departure(payload=pack, destination=destination, source=source)
+        task = Departure(packages=[pack], destination=destination, source=source)
         self.__send(task=task)
         return task
 
