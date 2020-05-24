@@ -1,14 +1,39 @@
 # -*- coding: utf-8 -*-
 
+import socket
 import time
 from abc import abstractmethod
 from typing import Optional, Union
 
-import dmtp
 import udp
+import stun
+import dmtp
 
 
-class ClientDelegate:
+"""
+    DMTP Client
+    ~~~~~~~~~~~
+"""
+
+
+class DMTPPeer(udp.Peer, udp.HubFilter):
+
+    @property
+    def filter(self) -> Optional[udp.HubFilter]:
+        return self
+
+    #
+    #   HubFilter
+    #
+    def matched(self, data: bytes, source: tuple, destination: tuple) -> bool:
+        if len(data) < 12:
+            return False
+        if data[:3] != b'DIM':
+            return False
+        return True
+
+
+class DMTPClientDelegate:
 
     @abstractmethod
     def process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
@@ -19,17 +44,27 @@ class ClientDelegate:
         pass
 
 
-class Client(dmtp.Client):
+class DMTPClient(dmtp.Client):
 
     def __init__(self, hub: udp.Hub):
         super().__init__()
-        self.delegate: ClientDelegate = None
+        self.__peer: udp.Peer = None
+        self.delegate: DMTPClientDelegate = None
         hub.add_listener(self.peer)
         self.__hub = hub
         self.__locations = {}
         self.server_address = None
         self.identifier = 'moky'
         self.nat = 'Port Restricted Cone NAT'
+
+    @property
+    def peer(self) -> udp.Peer:
+        if self.__peer is None:
+            peer = DMTPPeer()
+            peer.delegate = self
+            peer.start()
+            self.__peer = peer
+        return self.__peer
 
     def set_location(self, value: dmtp.LocationValue) -> bool:
         if value.ip is None or value.port == 0:
@@ -110,3 +145,46 @@ class Client(dmtp.Client):
         print('sending data to (%s): %s' % (destination, data))
         self.__hub.send(data=data, destination=destination, source=source)
         return 0
+
+
+"""
+    STUN Client
+    ~~~~~~~~~~~
+"""
+
+
+class STUNClientDelegate:
+
+    @abstractmethod
+    def feedback(self, msg: str):
+        pass
+
+
+class STUNClient(stun.Client):
+
+    def __init__(self, hub: udp.Hub):
+        super().__init__()
+        self.__hub = hub
+        self.server_address = None
+        self.delegate: STUNClientDelegate = None
+
+    def info(self, msg: str):
+        time_array = time.localtime(int(time.time()))
+        time_string = time.strftime('%y-%m-%d %H:%M:%S', time_array)
+        message = '[%s] %s' % (time_string, msg)
+        print(message)
+        if self.delegate is not None:
+            self.delegate.feedback(msg=message)
+
+    def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
+        try:
+            return self.__hub.send(data=data, destination=destination, source=source)
+        except socket.error:
+            return -1
+
+    def receive(self) -> (bytes, (str, int)):
+        try:
+            data, source, destination = self.__hub.receive(timeout=2)
+            return data, source
+        except socket.error:
+            return None, None

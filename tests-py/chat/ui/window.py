@@ -1,56 +1,103 @@
 # -*- coding: utf-8 -*-
 
-from PyQt5.QtCore import Qt, pyqtSignal
+import time
+from typing import Optional
+
+from PyQt5.QtCore import Qt, pyqtSignal, QThread
 from PyQt5.QtGui import QPalette, QTextCursor
 from PyQt5.QtWidgets import QWidget, QTextEdit, QLabel, QPushButton
 
 import dmtp
 
-from ..client import ClientDelegate, Client
+from ..client import STUNClient, STUNClientDelegate
+from ..client import DMTPClientDelegate, DMTPClient
 
 
-class Window(QWidget, ClientDelegate):
+def time_string(timestamp: int) -> str:
+    time_array = time.localtime(timestamp)
+    return time.strftime('%y-%m-%d %H:%M:%S', time_array)
+
+
+class NATTestThread(QThread, STUNClientDelegate):
+    sig = pyqtSignal(int)
+
+    def __init__(self, window, stun_client: STUNClient):
+        super().__init__()
+        self.__window = window
+        stun_client.delegate = self
+        self.__stun_client = stun_client
+
+    def run(self):
+        client = self.__stun_client
+        address = client.server_address
+        msg, res = client.get_nat_type(stun_host=address[0], stun_port=address[1])
+        window = self.__window
+        window.display('Detection Result: %s' % msg)
+        if res is not None:
+            window.display('External Address: %s' % str(res.mapped_address))
+        window.update_nat(msg, res)
+
+    #
+    #   STUNClientDelegate
+    #
+    def feedback(self, msg: str):
+        self.__window.display(message=msg)
+
+
+class Window(QWidget, DMTPClientDelegate):
     update_sig = pyqtSignal(str)
 
-    def __init__(self, client: Client):
+    def __init__(self, dmtp_client: DMTPClient, stun_client: STUNClient):
         super().__init__(flags=Qt.WindowFlags())
+
+        # NAT type
+        label = QLabel('Please check your router type', self)
+        # label.move(130, 10)
+        label.setGeometry(166, 6, 400, 24)
+        self.__nat = label
+        # nat button
+        button = QPushButton('Detect NAT type', self)
+        button.clicked[bool].connect(self.test)
+        button.setGeometry(10, 4, 150, 24)
+        self.__test = button
+
         # sender
         label = QLabel('Sender:', self)
-        label.move(10, 12)
-        edit = QTextEdit(client.identifier, self)
-        edit.setGeometry(60, 8, 120, 24)
+        label.move(16, 42)
+        edit = QTextEdit(dmtp_client.identifier, self)
+        edit.setGeometry(70, 40, 120, 24)
         self.__sender = edit
         # login button
         button = QPushButton('login', self)
         button.clicked[bool].connect(self.login)
-        button.setGeometry(180, 4, 80, 24)
+        button.setGeometry(190, 38, 80, 24)
         self.__login = button
 
         # receiver
         label = QLabel('Receiver:', self)
-        label.move(350, 12)
+        label.move(350, 42)
         edit = QTextEdit('hulk', self)
-        edit.setGeometry(420, 8, 120, 24)
+        edit.setGeometry(420, 40, 120, 24)
         self.__receiver = edit
         # call button
         button = QPushButton('call', self)
         button.clicked[bool].connect(self.call)
-        button.setGeometry(550, 4, 80, 24)
+        button.setGeometry(550, 38, 80, 24)
         self.__call = button
 
         # input text
         edit = QTextEdit('Input text', self)
-        edit.setGeometry(10, 40, 480, 32)
+        edit.setGeometry(10, 72, 480, 30)
         self.__text = edit
         # send button
         button = QPushButton('send', self)
         button.clicked[bool].connect(self.send)
-        button.setGeometry(500, 36, 130, 40)
+        button.setGeometry(500, 70, 130, 36)
         self.__send = button
 
         # info box
         box = QTextEdit('Messages:', self)
-        box.setGeometry(10, 80, 620, 390)
+        box.setGeometry(10, 110, 620, 360)
         box.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         p: QPalette = box.palette()
         p.setColor(QPalette.Window, Qt.lightGray)
@@ -60,8 +107,11 @@ class Window(QWidget, ClientDelegate):
         self.__info_box = box
 
         self.update_sig.connect(self.__display)
-        client.delegate = self
-        self.__client = client
+
+        dmtp_client.delegate = self
+        stun_client.delegate = self
+        self.__dmtp_client = dmtp_client
+        self.__stun_client = stun_client
 
     @property
     def sender(self) -> str:
@@ -76,9 +126,9 @@ class Window(QWidget, ClientDelegate):
         return self.__text.toPlainText()
 
     def show(self):
-        self.setGeometry(300, 200, 640, 480)
+        self.setGeometry(10, 200, 640, 480)
         self.setMinimumSize(640, 480)
-        self.setWindowTitle('Sechat')
+        self.setWindowTitle('P2P Chat')
         super().show()
 
     def __display(self, message: str):
@@ -87,47 +137,68 @@ class Window(QWidget, ClientDelegate):
             text = message
         else:
             text = text + '\n' + message
-        # print('message text: %s' % text)
         self.__info_box.setText(text)
         self.__info_box.moveCursor(QTextCursor.End)
 
     def display(self, message: str):
         self.update_sig.emit(message)
 
+    def test(self):
+        self.__nat.setText('Detecting NAT type ...')
+        t = NATTestThread(window=self, stun_client=self.__stun_client)
+        t.start()
+
+    def update_nat(self, nat: str, info):
+        if nat is None:
+            return
+        self.__dmtp_client.nat = nat
+        if info is None:
+            text = '%s' % nat
+        else:
+            text = '%s %s' % (nat, info.mapped_address)
+        self.__nat.setText(text)
+
     def login(self):
         self.__display('try to login: %s' % self.sender)
-        self.__client.identifier = self.sender
-        self.__client.say_hi(destination=self.__client.server_address)
+        self.__dmtp_client.identifier = self.sender
+        self.__dmtp_client.say_hi(destination=self.__dmtp_client.server_address)
 
     def call(self):
         self.__display('calling: %s' % self.receiver)
-        self.__client.call(uid=self.receiver)
+        self.__dmtp_client.call(uid=self.receiver)
 
-    def send(self):
+    def send(self) -> Optional[dmtp.Message]:
         receiver = self.receiver
-        msg = self.text
-        self.__display('sending to %s: %s' % (receiver, msg))
-        self.send_text(receiver=receiver, msg=msg)
+        text = self.text
+        msg = self.send_text(receiver=receiver, msg=text)
+        if msg is None:
+            self.__display('failed to send message "%s" to %s' % (text, receiver))
+        else:
+            when = time_string(msg.time)
+            self.__display('[%s] sent to %s: "%s"' % (when, receiver, text))
+        return msg
 
-    def send_text(self, receiver: str, msg: str):
-        location = self.__client.get_location(uid=receiver)
+    def send_text(self, receiver: str, msg: str) -> Optional[dmtp.Message]:
+        location = self.__dmtp_client.get_location(uid=receiver)
         if location is None or location.ip is None:
             print('cannot locate user: %s, %s' % (receiver, location))
             # ask the server to help building a connection
-            self.__client.call(uid=receiver)
-            return False
+            self.__dmtp_client.call(uid=receiver)
+            return None
         address = (location.ip, location.port)
         content = msg.encode('utf-8')
         msg = dmtp.Message.new(info={
-            'sender': self.__client.identifier,
+            'sender': self.__dmtp_client.identifier,
             'receiver': receiver,
+            'time': int(time.time()),
             'data': content,
         })
         print('sending msg to %s:\n\t%s' % (address, msg))
-        self.__client.send_message(msg=msg, destination=address)
+        self.__dmtp_client.send_message(msg=msg, destination=address)
+        return msg
 
     #
-    #   ClientDelegate
+    #   DMTPClientDelegate
     #
     def process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
         cmd_type = cmd.type
@@ -152,5 +223,6 @@ class Window(QWidget, ClientDelegate):
             text = ''
         else:
             text = content.decode('utf-8')
-        message = '%s %s: %s' % (source, sender, text)
-        self.display(message)
+        when = time_string(msg.time)
+        message = '[%s] %s %s: "%s"' % (when, source, sender, text)
+        self.display(message=message)

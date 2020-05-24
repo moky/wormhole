@@ -3,5 +3,6 @@
 from .client import *
 
 __all__ = [
-    'Client', 'ClientDelegate',
+    'STUNClient', 'STUNClientDelegate',
+    'DMTPClient', 'DMTPClientDelegate',
 ]
