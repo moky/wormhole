@@ -27,11 +27,12 @@ class Server(dmtp.Server):
         self.__locations = {}
 
     def set_location(self, value: dmtp.LocationValue) -> bool:
-        if value.ip is None or value.port == 0:
+        if value.mapped_address is None:
             return False
         # TODO: verify mapped address with signature
+        address = value.mapped_address
         self.__locations[value.id] = value
-        self.__locations[(value.ip, value.port)] = value
+        self.__locations[(address.ip, address.port)] = value
         print('location updated: %s' % value)
         return True
 

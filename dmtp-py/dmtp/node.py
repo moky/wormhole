@@ -54,7 +54,7 @@ class Node(PeerDelegate):
     @abstractmethod
     def set_location(self, value: LocationValue) -> bool:
         """
-        Check signature for MAPPED-ADDRESS before accept it
+        Check signature before accept it
 
         :param value:
         :return: False on error
@@ -134,25 +134,25 @@ class Node(PeerDelegate):
 class Server(Node, ABC):
 
     def __process_login(self, value: LocationValue, source: tuple) -> bool:
-        if (value.ip, value.port) == source:
+        mapped_address = value.mapped_address
+        if mapped_address is not None and (mapped_address.ip, mapped_address.port) == source:
             # check signature
             if self.set_location(value=value):
                 # login accepted
                 return True
         # response 'SIGN' command with 'ID' and 'ADDR'
-        cmd = SignCommand.new(uid=value.id, address=source)
+        cmd = SignCommand.new(uid=value.id, mapped_address=source)
         self.send_command(cmd=cmd, destination=source)
         return True
 
     def __process_call(self, value: CommandValue, source: tuple) -> bool:
         receiver = self.get_location(uid=value.id)
-        if receiver is None or receiver.ip is None:
+        if receiver is None or receiver.mapped_address is None:
             # receiver not online
             # respond an empty 'FROM' command to the sender
             cmd = FromCommand.new(uid=value.id)
             self.send_command(cmd=cmd, destination=source)
         else:
-            assert receiver.port > 0, 'receiver port error: %s' % receiver
             # receiver is online
             sender = self.get_location(source=source)
             if sender is None:
@@ -162,7 +162,8 @@ class Server(Node, ABC):
             else:
                 # send 'fROM' command with sender's location info to the receiver
                 cmd = FromCommand.new(location=sender)
-                self.send_command(cmd=cmd, destination=(receiver.ip, receiver.port))
+                address = receiver.mapped_address
+                self.send_command(cmd=cmd, destination=(address.ip, address.port))
                 # respond 'FROM' command with receiver's location info to sender
                 cmd = FromCommand.new(location=receiver)
                 self.send_command(cmd=cmd, destination=source)
@@ -196,7 +197,7 @@ class Client(Node):
     @abstractmethod
     def sign_in(self, value: LocationValue, destination: tuple) -> bool:
         """
-        Sign the MAPPED-ADDRESS in the location value with private key
+        Sign the addresses and time in the location value with private key
 
         :param value:       LocationValue contains ID, IP, port
         :param destination: server's address
@@ -217,13 +218,14 @@ class Client(Node):
             return self.say_hi(destination=source)
         elif cmd_type == Sign:
             assert isinstance(cmd_value, LocationValue), 'sign cmd error: %s' % cmd_value
-            # sign your location (mapped-address) for login
+            # sign your location for login
             return self.sign_in(value=cmd_value, destination=source)
         elif cmd_type == From:
             assert isinstance(cmd_value, LocationValue), 'call from error: %s' % cmd_value
-            # when someone is calling you (with mapped-address signed)
+            # when someone is calling you
             # respond anything (say 'HI') to build the connection.
             if self.set_location(value=cmd_value):
-                return self.connect(destination=(cmd_value.ip, cmd_value.port))
+                address = cmd_value.mapped_address
+                return self.connect(destination=(address.ip, address.port))
         else:
             print('unknown command: %s' % cmd)

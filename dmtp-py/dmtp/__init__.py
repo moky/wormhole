@@ -41,7 +41,6 @@ __all__ = [
     # TLV
     'VarName', 'Field', 'FieldsValue',
     'BinaryValue', 'ByteValue', 'TimestampValue', 'StringValue',
-    'MappedAddressValue',
 
     # commands
     'Command',
@@ -50,7 +49,9 @@ __all__ = [
 
     # command fields
     'ID',
-    'Address',
+    'SourceAddress', 'SourceAddressValue',
+    'MappedAddress', 'MappedAddressValue',
+    'Time',
     'Signature',
     'NAT',
 

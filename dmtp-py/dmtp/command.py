@@ -37,7 +37,7 @@ from .tlv import Field, FieldsValue
 from .tlv import BinaryValue, StringValue, TimestampValue
 from .tlv import s_value_parsers
 
-from .address import MappedAddressValue
+from .address import SourceAddressValue, MappedAddressValue
 
 
 """
@@ -114,18 +114,20 @@ class HelloCommand(Command):
 
     @classmethod
     def new(cls, location: Value=None, uid: str=None,
-            address=None, timestamp: int=0, signature: bytes=None, nat: str=None) -> Command:
+            source_address=None, mapped_address=None,
+            timestamp: int=0, signature: bytes=None, nat: str=None) -> Command:
         if location is None:
             assert uid is not None, 'user ID empty'
-            location = LocationValue.new(uid=uid, address=address, timestamp=timestamp, signature=signature, nat=nat)
+            location = LocationValue.new(uid=uid, source_address=source_address, mapped_address=mapped_address,
+                                         timestamp=timestamp, signature=signature, nat=nat)
         return cls(t=Hello, v=location)
 
 
 class SignCommand(Command):
 
     @classmethod
-    def new(cls, uid: str, address=None) -> Command:
-        value = LocationValue.new(uid=uid, address=address)
+    def new(cls, uid: str, source_address=None, mapped_address=None) -> Command:
+        value = LocationValue.new(uid=uid, source_address=source_address, mapped_address=mapped_address)
         return cls(t=Sign, v=value)
 
 
@@ -191,25 +193,20 @@ class LocationValue(CommandValue):
     """
 
     def __init__(self, fields: list, data: bytes=None):
-        self.__ip: str = None
-        self.__port: int = 0
-        self.__address: bytes = None    # public IP and port
-        self.__timestamp: int = None    # time for signature
-        self.__signature: bytes = None  # sign(address + timestamp)
+        self.__source_address: SourceAddressValue = None  # local IP and port
+        self.__mapped_address: MappedAddressValue = None  # public IP and port
+        self.__timestamp: int = None                      # time for signature
+        self.__signature: bytes = None                    # sign(addresses + timestamp)
         self.__nat: str = None
         super().__init__(fields=fields, data=data)
 
     @property
-    def ip(self) -> Optional[str]:
-        return self.__ip
+    def source_address(self) -> Optional[SourceAddressValue]:
+        return self.__source_address
 
     @property
-    def port(self) -> Optional[int]:
-        return self.__port
-
-    @property
-    def address(self) -> Optional[bytes]:
-        return self.__address
+    def mapped_address(self) -> Optional[MappedAddressValue]:
+        return self.__mapped_address
 
     @property
     def timestamp(self) -> int:
@@ -226,15 +223,17 @@ class LocationValue(CommandValue):
     def _set_field(self, field: Field):
         f_type = field.type
         f_value = field.value
-        if f_type == Address:
-            assert isinstance(f_value, MappedAddressValue), 'Address value error: %s' % f_value
-            self.__ip = f_value.ip
-            self.__port = f_value.port
-            self.__address = f_value.data
+        if f_type == SourceAddress:
+            assert isinstance(f_value, SourceAddressValue), 'source address error: %s' % f_value
+            self.__source_address = f_value
+        elif f_type == MappedAddress:
+            assert isinstance(f_value, MappedAddressValue), 'mapped address error: %s' % f_value
+            self.__mapped_address = f_value
         elif f_type == Time:
             assert isinstance(f_value, TimestampValue), 'time value error: %s' % f_value
             self.__timestamp = f_value.value
         elif f_type == Signature:
+            assert isinstance(f_value, BinaryValue), 'signature value error: %s' % f_value
             self.__signature = f_value.data
         elif f_type == NAT:
             assert isinstance(f_value, StringValue), 'NAT value error: %s' % f_value
@@ -243,18 +242,29 @@ class LocationValue(CommandValue):
             super()._set_field(field=field)
 
     @classmethod
-    def new(cls, uid: str, address=None, timestamp: int=0, signature: bytes=None, nat: str=None):
+    def new(cls, uid: str, source_address=None, mapped_address=None,
+            timestamp: int=0, signature: bytes=None, nat: str=None):
         f_id = Field(t=ID, v=StringValue(string=uid))
         fields = [f_id]
-        # append MAPPED-ADDRESS
-        if address is not None:
-            if isinstance(address, MappedAddressValue):
-                value = address
+        # append SOURCE-ADDRESS
+        if source_address is not None:
+            if isinstance(source_address, SourceAddressValue):
+                value = source_address
             else:
-                assert isinstance(address, tuple), 'address error: %s' % address
-                value = MappedAddressValue(ip=address[0], port=address[1])
-            f_addr = Field(t=Address, v=value)
-            fields.append(f_addr)
+                assert isinstance(source_address, tuple), 'source address error: %s' % source_address
+                value = SourceAddressValue(ip=source_address[0], port=source_address[1])
+            f_src = Field(t=SourceAddress, v=value)
+            fields.append(f_src)
+        # append MAPPED-ADDRESS
+        if mapped_address is not None:
+            if isinstance(mapped_address, MappedAddressValue):
+                value = mapped_address
+            else:
+                assert isinstance(mapped_address, tuple), 'mapped address error: %s' % source_address
+                value = MappedAddressValue(ip=mapped_address[0], port=mapped_address[1])
+            f_src = Field(t=MappedAddress, v=value)
+            fields.append(f_src)
+        if source_address is not None or mapped_address is not None:
             # append sign time
             if timestamp > 0:
                 f_time = Field(t=Time, v=TimestampValue(value=timestamp))
@@ -279,12 +289,12 @@ From = VarName(name='FROM')        # (S) help users connecting
 Profile = VarName(name='PROFILE')  # (S,C) ask receiver for profile with ID
 
 # field names
-ID = VarName(name='ID')            # user ID
-Address = VarName(name='ADDR')     # mapped-address (public IP and port)
-# AddressX = VarName(name='ADDR-X')
-Time = VarName(name='TIME')        # timestamp (uint32) stored in network order (big endian)
-Signature = VarName(name='V')      # verify with ('ADDR' + 'TIME') and meta.key
-NAT = VarName(name='NAT')          # NAT type
+ID = VarName(name='ID')                         # user ID
+SourceAddress = VarName(name='SOURCE-ADDRESS')  # source-address (local IP and port)
+MappedAddress = VarName(name='MAPPED-ADDRESS')  # mapped-address (public IP and port)
+Time = VarName(name='TIME')                     # timestamp (uint32) stored in network order (big endian)
+Signature = VarName(name='SIGNATURE')           # verify with ('ADDR' + 'TIME') and meta.key
+NAT = VarName(name='NAT')                       # NAT type
 
 
 # classes for parsing value
@@ -295,7 +305,8 @@ s_value_parsers[From] = LocationValue
 s_value_parsers[Profile] = CommandValue
 
 s_value_parsers[ID] = StringValue
-s_value_parsers[Address] = MappedAddressValue
+s_value_parsers[SourceAddress] = SourceAddressValue
+s_value_parsers[MappedAddress] = MappedAddressValue
 # s_value_parsers[AddressX] = XorMappedAddressValue
 s_value_parsers[Time] = TimestampValue
 s_value_parsers[Signature] = BinaryValue

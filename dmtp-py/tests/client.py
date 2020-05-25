@@ -40,12 +40,13 @@ class Client(dmtp.Client):
         self.nat = 'Port Restricted Cone NAT'
 
     def set_location(self, value: dmtp.LocationValue) -> bool:
-        if value.ip is None or value.port == 0:
+        if value.mapped_address is None:
             print('location error: %s' % value)
             return False
         # TODO: verify mapped-address data with signature
+        address = value.mapped_address
         self.__locations[value.id] = value
-        self.__locations[(value.ip, value.port)] = value
+        self.__locations[(address.ip, address.port)] = value
         print('location updated: %s' % value)
         return True
 
@@ -68,17 +69,18 @@ class Client(dmtp.Client):
 
     def sign_in(self, value: dmtp.LocationValue, destination: tuple) -> bool:
         uid = value.id
-        mapped_ip = value.ip
-        mapped_port = value.port
         print('server ask signing: %s' % value)
-        if mapped_ip is None or mapped_port == 0:
+        if value.mapped_address is None:
             return False
-        address = dmtp.MappedAddressValue(ip=mapped_ip, port=mapped_port)
+        mapped_address = value.mapped_address
         timestamp = int(time.time())
-        s_data = address.data + dmtp.TimestampValue(value=timestamp).data
-        # TODO: sign mapped-address data
+        # TODO: sign ("source-address" + "mapped-address" + "time")
+        v_time = dmtp.TimestampValue(value=timestamp)
+        s_data = mapped_address.data + v_time.data
         s = b'sign(' + s_data + b')'
-        location = dmtp.LocationValue.new(uid=uid, address=address, timestamp=timestamp, signature=s, nat=self.nat)
+        # create location value
+        location = dmtp.LocationValue.new(uid=uid, mapped_address=mapped_address,
+                                          timestamp=timestamp, signature=s, nat=self.nat)
         cmd = dmtp.HelloCommand.new(location=location)
         print('sending cmd: %s' % cmd)
         self.send_command(cmd=cmd, destination=destination)
@@ -123,12 +125,13 @@ def create_client(local_address: tuple, server_address: tuple):
 
 def send_text(receiver: str, msg: str):
     location = g_client.get_location(uid=receiver)
-    if location is None or location.ip is None:
+    if location is None or location.mapped_address is None:
         print('cannot locate user: %s, %s' % (receiver, location))
         # ask the server to help building a connection
         g_client.call(uid=receiver)
         return False
-    address = (location.ip, location.port)
+    mapped_address = location.mapped_address
+    address = (mapped_address.ip, mapped_address.port)
     content = msg.encode('utf-8')
     msg = dmtp.Message.new(info={
         'sender': g_client.identifier,

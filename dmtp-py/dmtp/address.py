@@ -33,8 +33,8 @@ from udp.tlv import Type, Value, Length
 
 
 """
-    Attribute Values
-    ~~~~~~~~~~~~~~~~
+    Address Values
+    ~~~~~~~~~~~~~~
 
 
     The format of the MAPPED-ADDRESS attribute is:
@@ -61,6 +61,17 @@ from udp.tlv import Type, Value, Length
 
 
 class MappedAddressValue(Value):
+    """
+        MAPPED-ADDRESS
+        ~~~~~~~~~~~~~~
+
+        The MAPPED-ADDRESS attribute indicates a reflexive transport address
+        of the client.  It consists of an 8-bit address family and a 16-bit
+        port, followed by a fixed-length value representing the IP address.
+        If the address family is IPv4, the address MUST be 32 bits.  If the
+        address family is IPv6, the address MUST be 128 bits.  All fields
+        must be in network byte order.
+    """
     family_ipv4 = 0x01
     family_ipv6 = 0x02
 
@@ -130,3 +141,16 @@ class MappedAddressValue(Value):
         port = bytes_to_int(data[2:4])
         ip = cls.bytes_to_ip(address=data[4:], family=family)
         return cls(data=data, ip=ip, port=port, family=family)
+
+
+class SourceAddressValue(MappedAddressValue):
+    """
+        SOURCE-ADDRESS
+        ~~~~~~~~~~~~~~
+
+        The SOURCE-ADDRESS attribute is present in Binding Responses.  It
+        indicates the source IP address and port that the server is sending
+        the response from.  Its syntax is identical to that of MAPPED-
+        ADDRESS.
+    """
+    pass
