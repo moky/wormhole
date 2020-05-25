@@ -46,7 +46,7 @@ class Window(QWidget, DMTPClientDelegate):
         super().__init__(flags=Qt.WindowFlags())
 
         # NAT type
-        label = QLabel('Please check your router type', self)
+        label = QLabel('please check your router type', self)
         # label.move(130, 10)
         label.setGeometry(166, 6, 400, 24)
         self.__nat = label
@@ -71,7 +71,7 @@ class Window(QWidget, DMTPClientDelegate):
         # receiver
         label = QLabel('Receiver:', self)
         label.move(350, 42)
-        edit = QTextEdit('hulk', self)
+        edit = QTextEdit('moky', self)
         edit.setGeometry(420, 40, 120, 24)
         self.__receiver = edit
         # call button
@@ -91,7 +91,7 @@ class Window(QWidget, DMTPClientDelegate):
         self.__send = button
 
         # info box
-        box = QTextEdit('Messages:', self)
+        box = QTextEdit('---- logs ----', self)
         box.setGeometry(10, 110, 620, 360)
         box.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         p: QPalette = box.palette()
@@ -139,7 +139,7 @@ class Window(QWidget, DMTPClientDelegate):
         self.update_sig.emit(message)
 
     def test(self):
-        self.__nat.setText('Detecting NAT type ...')
+        self.__nat.setText('detecting NAT type ...')
         t = NATTestThread(window=self, stun_client=self.__stun_client)
         t.start()
 

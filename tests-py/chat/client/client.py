@@ -60,7 +60,7 @@ class DMTPClient(dmtp.Client):
         self.__hub = hub
         self.__locations = {}
         self.server_address = None
-        self.identifier = 'moky'
+        self.identifier = 'hulk'
         self.nat = 'Port Restricted Cone NAT'
         # punching threads
         self.__punching = {}
@@ -126,8 +126,8 @@ class DMTPClient(dmtp.Client):
         self.send_command(cmd=cmd, destination=self.server_address)
         return True
 
-    def ping(self, remote_address):
-        sock = self.__hub.get_socket()
+    def ping(self, remote_address: tuple, local_address: tuple=None):
+        sock = self.__hub.get_socket(source=local_address)
         if sock is not None:
             res = sock.send(data=b'PING', remote_address=remote_address)
             return res == 4
@@ -188,23 +188,28 @@ class DMTPClient(dmtp.Client):
 
 class PunchThread(threading.Thread):
 
-    def __init__(self, dmtp_client: DMTPClient, remote_address: tuple):
+    def __init__(self, dmtp_client: DMTPClient, remote_address: tuple, local_address: tuple=None):
         super().__init__()
         self.running = True
         self.__dmtp_client = dmtp_client
         self.__remote_address = remote_address
+        self.__local_address = local_address
 
     def stop(self):
         self.running = False
 
     def run(self):
         client = self.__dmtp_client
-        address = self.__remote_address
-        while self.running:
+        remote = self.__remote_address
+        local = self.__local_address
+        now = int(time.time())
+        timeout = now + 300
+        while self.running and now < timeout:
+            when = time_string(now)
+            print('[%s] sending "PING" to %s' % (when, remote))
+            client.ping(remote_address=remote, local_address=local)
             time.sleep(0.5)
-            when = time_string(int(time.time()))
-            print('[%s] sending "PING" to %s' % (when, address))
-            client.ping(remote_address=address)
+            now = int(time.time())
 
 
 """
