@@ -28,7 +28,6 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .tlv import *
 from .command import *
 from .message import *
 from .node import *
@@ -40,9 +39,9 @@ __author__ = 'Albert Moky'
 __all__ = [
 
     # TLV
-    'VarName', 'VarLength',
-    'Field', 'FieldsValue',
+    'VarName', 'Field', 'FieldsValue',
     'BinaryValue', 'ByteValue', 'TimestampValue', 'StringValue',
+    'MappedAddressValue',
 
     # commands
     'Command',
@@ -51,7 +50,7 @@ __all__ = [
 
     # command fields
     'ID',
-    'Address', 'MappedAddressValue',
+    'Address',
     'Signature',
     'NAT',
 
