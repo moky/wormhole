@@ -112,7 +112,7 @@ class Hub(threading.Thread):
             assert listener in self.__listeners, 'listener not exists: %s' % listener
             self.__listeners.remove(listener)
 
-    def __get_socket(self, source: Union[tuple, int] = None) -> Optional[Socket]:
+    def get_socket(self, source: Union[tuple, int] = None) -> Optional[Socket]:
         if source is None:
             return self.__sockets[0]
         elif isinstance(source, int):
@@ -130,7 +130,7 @@ class Hub(threading.Thread):
     def open(self, port: int, host: str = '0.0.0.0'):
         """ create a socket on this port """
         address = (host, port)
-        sock = self.__get_socket(source=address)
+        sock = self.get_socket(source=address)
         if sock is None:
             sock = self._create_socket(host=host, port=port)
             sock.start()
@@ -141,7 +141,7 @@ class Hub(threading.Thread):
         count = 0
         address = (host, port)
         while True:
-            sock = self.__get_socket(source=address)
+            sock = self.get_socket(source=address)
             if sock is None:
                 break
             sock.close()
@@ -159,19 +159,14 @@ class Hub(threading.Thread):
             assert isinstance(sock, Socket), 'socket error: %s' % sock
             sock.stop()
 
-    def get_connection(self, destination: tuple, source: Union[tuple, int] = None) -> Optional[Connection]:
-        sock = self.__get_socket(source=source)
-        if sock is not None:
-            return sock.get_connection(remote_address=destination)
-
     def connect(self, destination: tuple, source: Union[tuple, int] = None) -> bool:
-        sock = self.__get_socket(source=source)
+        sock = self.get_socket(source=source)
         if sock is not None:
             sock.connect(remote_address=destination)
             return True
 
     def disconnect(self, destination: tuple, source: Union[tuple, int] = None) -> bool:
-        sock = self.__get_socket(source=source)
+        sock = self.get_socket(source=source)
         if sock is not None:
             sock.disconnect(remote_address=destination)
             return True

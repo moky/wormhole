@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import socket
+import threading
 import time
 from abc import abstractmethod
 from typing import Optional, Union
@@ -8,6 +9,11 @@ from typing import Optional, Union
 import udp
 import stun
 import dmtp
+
+
+def time_string(timestamp: int) -> str:
+    time_array = time.localtime(timestamp)
+    return time.strftime('%y-%m-%d %H:%M:%S', time_array)
 
 
 """
@@ -56,6 +62,8 @@ class DMTPClient(dmtp.Client):
         self.server_address = None
         self.identifier = 'moky'
         self.nat = 'Port Restricted Cone NAT'
+        # punching threads
+        self.__punching = {}
 
     @property
     def peer(self) -> udp.Peer:
@@ -118,6 +126,28 @@ class DMTPClient(dmtp.Client):
         self.send_command(cmd=cmd, destination=self.server_address)
         return True
 
+    def ping(self, remote_address):
+        sock = self.__hub.get_socket()
+        if sock is not None:
+            res = sock.send(data=b'PING', remote_address=remote_address)
+            return res == 4
+
+    def __keep_punching(self, destination: tuple):
+        t = self.__punching.get(destination)
+        if t is None:
+            print('start punching for %s ...' % str(destination))
+            t = PunchThread(dmtp_client=self, remote_address=destination)
+            t.start()
+            self.__punching[destination] = t
+
+    def __stop_punching(self, destination: tuple):
+        t = self.__punching.get(destination)
+        if t is not None:
+            assert isinstance(t, PunchThread), 'punching thread error: %s' % t
+            print('stop punching for %s' % str(destination))
+            t.stop()
+            self.__punching.pop(destination)
+
     def process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
         if super().process_command(cmd=cmd, source=source):
             print('received cmd from %s:\n\t%s' % (source, cmd))
@@ -130,6 +160,7 @@ class DMTPClient(dmtp.Client):
                 address = (cmd_value.ip, cmd_value.port)
                 print('connecting with %s %s' % (cmd_value.id, address))
                 self.__hub.connect(destination=address)
+                self.__keep_punching(destination=address)
             return True
 
     def process_message(self, msg: dmtp.Message, source: tuple) -> bool:
@@ -145,6 +176,35 @@ class DMTPClient(dmtp.Client):
         print('sending data to (%s): %s' % (destination, data))
         self.__hub.send(data=data, destination=destination, source=source)
         return 0
+
+    def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
+        self.__stop_punching(destination=source)
+        return super().received_command(cmd=cmd, source=source, destination=destination)
+
+    def received_message(self, msg: bytes, source: tuple, destination: tuple) -> bool:
+        self.__stop_punching(destination=source)
+        return super().received_message(msg=msg, source=source, destination=destination)
+
+
+class PunchThread(threading.Thread):
+
+    def __init__(self, dmtp_client: DMTPClient, remote_address: tuple):
+        super().__init__()
+        self.running = True
+        self.__dmtp_client = dmtp_client
+        self.__remote_address = remote_address
+
+    def stop(self):
+        self.running = False
+
+    def run(self):
+        client = self.__dmtp_client
+        address = self.__remote_address
+        while self.running:
+            time.sleep(0.5)
+            when = time_string(int(time.time()))
+            print('[%s] sending "PING" to %s' % (when, address))
+            client.ping(remote_address=address)
 
 
 """
@@ -169,9 +229,8 @@ class STUNClient(stun.Client):
         self.delegate: STUNClientDelegate = None
 
     def info(self, msg: str):
-        time_array = time.localtime(int(time.time()))
-        time_string = time.strftime('%y-%m-%d %H:%M:%S', time_array)
-        message = '[%s] %s' % (time_string, msg)
+        when = time_string(int(time.time()))
+        message = '[%s] %s' % (when, msg)
         print(message)
         if self.delegate is not None:
             self.delegate.feedback(msg=message)

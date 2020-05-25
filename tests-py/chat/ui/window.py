@@ -9,17 +9,12 @@ from PyQt5.QtWidgets import QWidget, QTextEdit, QLabel, QPushButton
 
 import dmtp
 
+from ..client import time_string
 from ..client import STUNClient, STUNClientDelegate
 from ..client import DMTPClientDelegate, DMTPClient
 
 
-def time_string(timestamp: int) -> str:
-    time_array = time.localtime(timestamp)
-    return time.strftime('%y-%m-%d %H:%M:%S', time_array)
-
-
 class NATTestThread(QThread, STUNClientDelegate):
-    sig = pyqtSignal(int)
 
     def __init__(self, window, stun_client: STUNClient):
         super().__init__()
