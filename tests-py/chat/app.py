@@ -58,6 +58,7 @@ g_stun_client.server_address = (STUN_SERVER_HOST, STUN_SERVER_PORT)
 
 # DMTP client
 g_dmtp_client = DMTPClient(hub=g_hub)
+g_dmtp_client.source_address = (CLIENT_HOST, CLIENT_PORT)
 g_dmtp_client.server_address = (DMTP_SERVER_HOST, DMTP_SERVER_PORT)
 
 # keep connection alive

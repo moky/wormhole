@@ -121,7 +121,7 @@ class Window(QWidget, DMTPClientDelegate):
         return self.__text.toPlainText()
 
     def show(self):
-        self.setGeometry(10, 200, 640, 480)
+        self.setGeometry(300, 200, 640, 480)
         self.setMinimumSize(640, 480)
         self.setWindowTitle('P2P Chat')
         super().show()

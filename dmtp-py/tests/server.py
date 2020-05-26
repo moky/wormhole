@@ -26,10 +26,33 @@ class Server(dmtp.Server):
         self.__hub = hub
         self.__locations = {}
 
+    @staticmethod
+    def __analyze_location(location: dmtp.LocationValue) -> int:
+        if location is None:
+            return -1
+        if location.id is None:
+            # user ID error
+            return -2
+        if location.mapped_address is None:
+            # address error
+            return -3
+        if location.signature is None:
+            # not signed
+            return -4
+        # verify addresses and timestamp with signature
+        timestamp = dmtp.TimestampValue(value=location.timestamp)
+        data = location.mapped_address.data + timestamp.data
+        if location.source_address is not None:
+            # "source_address" + "mapped_address" + "time"
+            data = location.source_address.data + data
+        signature = location.signature
+        # TODO: verify data and signature with public key
+        assert data is not None and signature is not None
+        return 0
+
     def set_location(self, value: dmtp.LocationValue) -> bool:
-        if value.mapped_address is None:
+        if self.__analyze_location(location=value) < 0:
             return False
-        # TODO: verify mapped address with signature
         address = value.mapped_address
         self.__locations[value.id] = value
         self.__locations[(address.ip, address.port)] = value
