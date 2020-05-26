@@ -157,6 +157,12 @@ class DMTPClient(dmtp.Client):
         self.set_location(value=location)
         return True
 
+    def connect(self, destination: tuple) -> bool:
+        # keep connection alive
+        self.__hub.connect(destination=destination, source=self.source_address)
+        # say hi
+        return super().connect(destination=destination)
+
     def call(self, uid: str) -> bool:
         cmd = dmtp.CallCommand.new(uid=uid)
         print('sending cmd: %s' % cmd)

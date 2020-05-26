@@ -61,9 +61,6 @@ g_dmtp_client = DMTPClient(hub=g_hub)
 g_dmtp_client.source_address = (CLIENT_HOST, CLIENT_PORT)
 g_dmtp_client.server_address = (DMTP_SERVER_HOST, DMTP_SERVER_PORT)
 
-# keep connection alive
-g_hub.connect(destination=g_dmtp_client.server_address)
-
 
 if __name__ == '__main__':
     # create App

@@ -156,7 +156,7 @@ class Window(QWidget, DMTPClientDelegate):
     def login(self):
         self.__display('try to login: %s' % self.sender)
         self.__dmtp_client.identifier = self.sender
-        self.__dmtp_client.say_hi(destination=self.__dmtp_client.server_address)
+        self.__dmtp_client.connect(destination=self.__dmtp_client.server_address)
 
     def call(self):
         self.__display('calling: %s' % self.receiver)
