@@ -146,9 +146,9 @@ class DMTPClient(dmtp.Client):
         return dmtp.LocationValue.new(uid=location.id, source_address=source_address, mapped_address=mapped_address,
                                       timestamp=timestamp, signature=s, nat=self.nat)
 
-    def sign_in(self, value: dmtp.LocationValue, destination: tuple) -> bool:
-        print('server ask signing: %s' % value)
-        location = self.__sign_location(location=value)
+    def sign_in(self, location: dmtp.LocationValue, destination: tuple) -> bool:
+        print('server ask signing: %s' % location)
+        location = self.__sign_location(location=location)
         if location is None:
             return False
         cmd = dmtp.HelloCommand.new(location=location)
@@ -157,11 +157,19 @@ class DMTPClient(dmtp.Client):
         self.set_location(value=location)
         return True
 
-    def connect(self, destination: tuple) -> bool:
+    def connect(self, location: dmtp.LocationValue=None, remote_address: tuple=None) -> bool:
+        if location is None:
+            address = remote_address
+        elif location.mapped_address is not None:
+            address = (location.mapped_address.ip, location.mapped_address.port)
+        elif location.source_address is not None:
+            address = (location.source_address.ip, location.source_address.port)
+        else:
+            return False
         # keep connection alive
-        self.__hub.connect(destination=destination, source=self.source_address)
+        self.__hub.connect(destination=address, source=self.source_address)
         # say hi
-        return super().connect(destination=destination)
+        return super().connect(location=location, remote_address=remote_address)
 
     def call(self, uid: str) -> bool:
         cmd = dmtp.CallCommand.new(uid=uid)

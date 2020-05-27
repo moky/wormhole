@@ -195,19 +195,33 @@ class Client(Node):
         pass
 
     @abstractmethod
-    def sign_in(self, value: LocationValue, destination: tuple) -> bool:
+    def sign_in(self, location: LocationValue, destination: tuple) -> bool:
         """
         Sign the addresses and time in the location value with private key
 
-        :param value:       LocationValue contains ID, IP, port
+        :param location:    LocationValue contains ID, IP, port
         :param destination: server's address
         :return: False on error
         """
         pass
 
-    def connect(self, destination: tuple) -> bool:
-        """ send something to punch a tunnel """
-        return self.say_hi(destination=destination)
+    def connect(self, location: LocationValue=None, remote_address: tuple=None) -> bool:
+        """
+        Send something to punch a tunnel for that location
+
+        :param location:       LocationValue contains ID, IP, port
+        :param remote_address: server or remote user's address
+        :return:
+        """
+        if location is None:
+            address = remote_address
+        elif location.mapped_address is not None:
+            address = (location.mapped_address.ip, location.mapped_address.port)
+        elif location.source_address is not None:
+            address = (location.source_address.ip, location.source_address.port)
+        else:
+            return False
+        return self.say_hi(destination=address)
 
     def process_command(self, cmd: Command, source: tuple) -> bool:
         cmd_type = cmd.type
@@ -219,13 +233,12 @@ class Client(Node):
         elif cmd_type == Sign:
             assert isinstance(cmd_value, LocationValue), 'sign cmd error: %s' % cmd_value
             # sign your location for login
-            return self.sign_in(value=cmd_value, destination=source)
+            return self.sign_in(location=cmd_value, destination=source)
         elif cmd_type == From:
             assert isinstance(cmd_value, LocationValue), 'call from error: %s' % cmd_value
             # when someone is calling you
             # respond anything (say 'HI') to build the connection.
             if self.set_location(value=cmd_value):
-                address = cmd_value.mapped_address
-                return self.connect(destination=(address.ip, address.port))
+                return self.connect(location=cmd_value, remote_address=source)
         else:
             print('unknown command: %s' % cmd)
