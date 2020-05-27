@@ -52,9 +52,9 @@ class Departure:
     """
 
     """
-        Each fragment should wait 1 minute for response
+        Each fragment should wait about 2 minutes for response
     """
-    EXPIRES = 60  # seconds
+    EXPIRES = 120  # seconds
 
     def __init__(self, packages: list, destination: tuple, source: Union[tuple, int]=0):
         super().__init__()
@@ -78,12 +78,6 @@ class Departure:
             assert isinstance(first, Package), 'first package error: %s' % first
             return first.head.data_type
 
-    @property
-    def is_expired(self) -> bool:
-        count = len(self.packages)
-        expires = self.EXPIRES * (count + 1)
-        return (self.last_time + expires) < time.time()
-
 
 class Arrival:
     """
@@ -103,7 +97,7 @@ class Assemble:
     """
 
     """
-        Each fragment should wait 1 minute for receiving
+        Each fragment should wait about 1 minute for receiving
     """
     EXPIRES = 60  # seconds
 
@@ -129,15 +123,6 @@ class Assemble:
     def pages(self) -> int:
         assert len(self.__fragments) > 0, 'fragments should not empty'
         return self.__fragments[0].head.pages
-
-    @property
-    def is_expired(self) -> bool:
-        count = len(self.__fragments)
-        assert count > 0, 'fragments error'
-        pages = self.pages
-        assert pages >= count, 'pages error: %d, %d' % (pages, count)
-        expires = self.EXPIRES * (pages - count + 1)
-        return (self.last_time + expires) < time.time()
 
     @property
     def is_completed(self) -> bool:
@@ -287,6 +272,21 @@ class MemPool(Pool):
         self.__fragments = {}  # TransactionID -> Assemble
         self.__fragments_lock = threading.Lock()
 
+    @staticmethod
+    def is_departure_expired(task: Departure) -> bool:
+        count = len(task.packages)
+        expires = task.EXPIRES * (count + 1)
+        return (task.last_time + expires) < time.time()
+
+    @staticmethod
+    def is_assemble_expired(assemble: Assemble) -> bool:
+        count = len(assemble.fragments)
+        assert count > 0, 'fragments error'
+        pages = assemble.pages
+        assert pages >= count, 'pages error: %d, %d' % (pages, count)
+        expires = assemble.EXPIRES * (pages - count + 1)
+        return (assemble.last_time + expires) < time.time()
+
     #
     #   Departures
     #
@@ -295,7 +295,8 @@ class MemPool(Pool):
             if len(self.__departures) > 0:
                 # check last sent time
                 task = self.__departures[0]
-                if task.is_expired:
+                assert isinstance(task, Departure), 'task error: %s' % task
+                if self.is_departure_expired(task=task):
                     return self.__departures.pop(0)
 
     def add_departure(self, task: Departure) -> Departure:
@@ -434,7 +435,7 @@ class MemPool(Pool):
             for trans_id in keys:
                 assemble = self.__fragments.get(trans_id)
                 assert isinstance(assemble, Assemble), 'fragments error: %s' % assemble
-                if assemble.is_expired:
+                if self.is_assemble_expired(assemble=assemble):
                     # remove expired fragments
                     array.append(assemble)
                     self.__fragments.pop(trans_id)
