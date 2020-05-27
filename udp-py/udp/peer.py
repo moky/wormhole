@@ -112,9 +112,24 @@ class PeerDelegate(ABC):
         raise NotImplemented
 
     # @abstractmethod
-    def received_fragments(self, fragments: list, source: tuple, destination: tuple) -> bool:
+    # noinspection PyUnusedLocal, PyMethodMayBeStatic
+    def received_fragment(self, msg: bytes, source: tuple, destination: tuple) -> bool:
+        """
+        Received fragment data from source address
+        (Application can override this interface to check fragment and cache for resume)
+
+        :param msg:         fragment data (package body) received
+        :param source:      remote address
+        :param destination: local address
+        :return: False on error
+        """
+        return True
+
+    # @abstractmethod
+    def discard_fragments(self, fragments: list, source: tuple, destination: tuple):
         """
         Received incomplete message fragments from source address
+        (Application can override this interface for resume the transaction)
 
         :param fragments:   fragment packages
         :param source:      remote address
@@ -161,8 +176,8 @@ class Peer(threading.Thread, HubListener):
                 assembling = self.pool.discard_fragments()
                 for item in assembling:
                     assert isinstance(item, Assemble), 'assemble error: %s' % item
-                    self.delegate.received_fragments(fragments=item.fragments,
-                                                     source=item.source, destination=item.destination)
+                    self.delegate.discard_fragments(fragments=item.fragments,
+                                                    source=item.source, destination=item.destination)
                 if done == 0:
                     # all jobs done, have a rest. ^_^
                     time.sleep(0.1)
@@ -194,23 +209,27 @@ class Peer(threading.Thread, HubListener):
         body = pack.body
         data_type = head.data_type
         if data_type == CommandRespond or data_type == MessageRespond:
+            # handle response
             self.pool.del_departure(response=pack)
             return None
         elif data_type == Command:
-            ack = self.delegate.received_command(cmd=body, source=task.source, destination=task.destination)
+            # handle command
+            ok = self.delegate.received_command(cmd=body, source=task.source, destination=task.destination)
         elif data_type == Message:
-            ack = self.delegate.received_message(msg=body, source=task.source, destination=task.destination)
+            # handle message
+            ok = self.delegate.received_message(msg=body, source=task.source, destination=task.destination)
         else:
+            # handle message fragment
             assert data_type == MessageFragment, 'data type error: %s' % data_type
-            # assemble fragments
-            msg = self.pool.add_fragment(fragment=pack, source=task.source, destination=task.destination)
-            if msg is None:
-                ack = True
-            else:
-                # all fragments received
-                ack = self.delegate.received_message(msg=msg, source=task.source, destination=task.destination)
+            ok = self.delegate.received_fragment(msg=body, source=task.source, destination=task.destination)
+            if ok:
+                # assemble fragments
+                msg = self.pool.add_fragment(fragment=pack, source=task.source, destination=task.destination)
+                if msg is not None:
+                    # all fragments received
+                    self.delegate.received_message(msg=msg, source=task.source, destination=task.destination)
         # respond to the sender
-        if ack:
+        if ok:
             self.__respond(pack=pack, remote=task.source, local=task.destination)
 
     def __respond(self, pack: Package, remote: tuple, local: tuple):
