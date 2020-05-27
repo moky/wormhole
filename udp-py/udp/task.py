@@ -409,16 +409,17 @@ class MemPool(Pool):
         with self.__fragments_lock:
             trans_id = fragment.head.trans_id
             assemble = self.__fragments.get(trans_id)
-            assert isinstance(assemble, Assemble), 'fragments error: %s' % assemble
             if assemble is None:
                 # create new assemble
                 assemble = Assemble(fragment=fragment, source=source, destination=destination)
                 self.__fragments[trans_id] = assemble
-            elif assemble.insert(fragment=fragment, source=source, destination=destination):
+            else:
+                assert isinstance(assemble, Assemble), 'fragments error: %s' % assemble
                 # insert fragment and check whether completed
-                if assemble.is_completed:
-                    data = Package.join(packages=assemble.fragments)
-                    self.__fragments.pop(trans_id)
+                if assemble.insert(fragment=fragment, source=source, destination=destination):
+                    if assemble.is_completed:
+                        data = Package.join(packages=assemble.fragments)
+                        self.__fragments.pop(trans_id)
         return data
 
     def discard_fragments(self) -> list:

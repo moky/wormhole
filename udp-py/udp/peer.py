@@ -261,8 +261,10 @@ class Peer(threading.Thread, HubListener):
         pack = Package.new(data_type=Message, body=data)
         # check body length
         if len(data) > Package.MAX_BODY_LEN:
-            pack = Package.split(package=pack)
-        task = Departure(packages=[pack], destination=destination, source=source)
+            packages = Package.split(package=pack)
+        else:
+            packages = [pack]
+        task = Departure(packages=packages, destination=destination, source=source)
         self.__send(task=task)
         return task
 

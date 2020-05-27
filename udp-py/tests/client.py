@@ -55,11 +55,11 @@ class Client(udp.PeerDelegate):
         return self.__hub.send(data=data, destination=destination, source=source)
 
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
-        print('received cmd from %s to %s: %s' % (source, destination, cmd))
+        print('received cmd (%d bytes) from %s to %s: %s' % (len(cmd), source, destination, cmd))
         return True
 
     def received_message(self, msg: bytes, source: tuple, destination: tuple) -> bool:
-        print('received msg from %s to %s: %s' % (source, destination, msg))
+        print('received msg (%d bytes) from %s to %s: %s' % (len(msg), source, destination, msg))
         return True
 
 
@@ -80,7 +80,7 @@ def create_udp_client(local_address: tuple, server_address: tuple):
 def send_msg(msg: str, client: Client):
     data = msg.encode('utf-8')
     address = g_client.server_address
-    print('sending msg "%s" to %s' % (msg, address))
+    print('sending msg (%d bytes): "%s" to %s' % (len(data), msg, address))
     client.send_message(msg=data, destination=address)
 
 
@@ -88,13 +88,17 @@ if __name__ == '__main__':
 
     g_client = create_udp_client(local_address=(CLIENT_HOST, CLIENT_PORT),
                                  server_address=(SERVER_HOST, SERVER_PORT))
+    text = ''
+    for i in range(1024):
+        text += ' Hello!'
     # test send
     counter = 0
     while True:
         counter += 2
         if counter > 32:
             break
-        send_msg(msg='%d sheep' % counter, client=g_client)
+        s = '%d sheep:%s' % (counter, text)
+        send_msg(msg=s, client=g_client)
         time.sleep(2)
     # exit
     g_client.stop()

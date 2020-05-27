@@ -41,11 +41,11 @@ class Server(udp.PeerDelegate):
         return self.__hub.send(data=data, destination=destination, source=source)
 
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
-        print('received cmd from %s to %s: %s' % (source, destination, cmd))
+        print('received cmd (%d bytes) from %s to %s: %s' % (len(cmd), source, destination, cmd))
         return True
 
     def received_message(self, msg: bytes, source: tuple, destination: tuple) -> bool:
-        print('received msg from %s to %s: %s' % (source, destination, msg))
+        print('received msg (%d bytes) from %s to %s: %s' % (len(msg), source, destination, msg))
         return True
 
 

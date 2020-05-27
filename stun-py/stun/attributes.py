@@ -388,7 +388,7 @@ class XorMappedAddressValue(MappedAddressValue):
             array[a_pos] ^= factor[f_pos]
             a_pos -= 1
             f_pos += 1
-        return array
+        return bytes(array)
 
     @classmethod
     def new(cls, ip: str, port: int, family: int=None, factor: bytes=None):
@@ -457,7 +457,7 @@ class XorMappedAddressValue2(MappedAddressValue):
             array[a_pos] ^= factor[f_pos]
             a_pos += 1
             f_pos += 1
-        return array
+        return bytes(array)
 
     @classmethod
     def new(cls, ip: str, port: int, family: int=None, factor: bytes=None):

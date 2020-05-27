@@ -383,4 +383,4 @@ class Package(Data):
         if offset != pages:
             raise LookupError('fragment error: %d/%d' % (offset, pages))
         # OK
-        return data
+        return bytes(data)
