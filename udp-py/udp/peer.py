@@ -45,8 +45,32 @@ from .data import uint32_to_bytes
 from .protocol import Package
 from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment
-from .task import Departure, Arrival, Pool, MemPool
+from .task import Departure, Arrival, Assemble, Pool, MemPool
 from .hub import HubListener
+
+
+"""
+    Topology:
+
+        +-----------------------------------------------+
+        |                      APP                      |
+        |                (Peer Delegate)                |
+        +-----------------------------------------------+
+                            |       A
+                            |       |
+                            V       |
+        +---+--------+----------------------------------+
+        |   |  Pool  |                                  |        pool:
+        |   +--------+         Peer        +--------+   |          -> departures
+        |                (Hub Listener)    | Filter |   |          -> arrivals
+        +----------------------------------+--------+---+          -> assembling
+                            |       A
+                            |       |
+                            V       |
+        +-----------------------------------------------+
+        |                      HUB                      |
+        +-----------------------------------------------+
+"""
 
 
 class PeerDelegate(ABC):
@@ -87,6 +111,18 @@ class PeerDelegate(ABC):
         """
         raise NotImplemented
 
+    # @abstractmethod
+    def received_fragments(self, fragments: list, source: tuple, destination: tuple) -> bool:
+        """
+        Received incomplete message fragments from source address
+
+        :param fragments:   fragment packages
+        :param source:      remote address
+        :param destination: local address
+        :return:
+        """
+        pass
+
 
 class Peer(threading.Thread, HubListener):
 
@@ -121,8 +157,12 @@ class Peer(threading.Thread, HubListener):
             # second, get one departure task
             task = self.pool.get_departure()
             if task is None:
-                # if no departure task, remove expired fragments
-                self.pool.discard_fragments()
+                # third, if no departure task, remove expired fragments
+                assembling = self.pool.discard_fragments()
+                for item in assembling:
+                    assert isinstance(item, Assemble), 'assemble error: %s' % item
+                    self.delegate.received_fragments(fragments=item.fragments,
+                                                     source=item.source, destination=item.destination)
                 if done == 0:
                     # all jobs done, have a rest. ^_^
                     time.sleep(0.1)
@@ -163,7 +203,7 @@ class Peer(threading.Thread, HubListener):
         else:
             assert data_type == MessageFragment, 'data type error: %s' % data_type
             # assemble fragments
-            msg = self.pool.add_fragment(fragment=pack)
+            msg = self.pool.add_fragment(fragment=pack, source=task.source, destination=task.destination)
             if msg is None:
                 ack = True
             else:

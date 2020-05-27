@@ -107,16 +107,28 @@ class Assemble:
     """
     EXPIRES = 60  # seconds
 
-    def __init__(self, fragment: Package):
+    def __init__(self, fragment: Package, source: tuple, destination: tuple):
         super().__init__()
+        assert fragment.head.data_type == MessageFragment, 'fragment data type error: %s' % fragment
+        assert fragment.head.pages > 1, 'fragment pages error: %s' % fragment
         self.__fragments = [fragment]
-        self.pages = fragment.head.pages
-        assert self.pages > 1, 'fragment pages error: %s' % fragment.head
-        self.last_time = time.time()
+        self.source = source
+        self.destination = destination
+        self.last_time = time.time()  # last update time
 
     @property
     def fragments(self) -> list:
         return self.__fragments
+
+    @property
+    def trans_id(self) -> TransactionID:
+        assert len(self.__fragments) > 0, 'fragments should not empty'
+        return self.__fragments[0].head.trans_id
+
+    @property
+    def pages(self) -> int:
+        assert len(self.__fragments) > 0, 'fragments should not empty'
+        return self.__fragments[0].head.pages
 
     @property
     def is_expired(self) -> bool:
@@ -131,13 +143,15 @@ class Assemble:
     def is_completed(self) -> bool:
         return len(self.__fragments) == self.pages
 
-    def insert(self, fragment: Package) -> bool:
+    def insert(self, fragment: Package, source: tuple, destination: tuple) -> bool:
+        assert source == self.source, 'source error: %s -> %s' % (source, self.source)
+        assert destination == self.destination, 'destination error: %s -> %s' % (destination, self.destination)
         count = len(self.__fragments)
         assert count > 0, 'fragments error'
         head = fragment.head
         offset = head.offset
         assert head.data_type == MessageFragment, 'data type error: %s' % head
-        assert head.trans_id == self.__fragments[0].head.trans_id, 'transaction ID not match: %s' % head
+        assert head.trans_id == self.trans_id, 'transaction ID not match: %s' % head
         assert head.pages == self.pages, 'pages error: %s' % head
         assert head.pages > offset, 'offset error: %s' % head
         index = count
@@ -149,9 +163,12 @@ class Assemble:
             elif offset == item.head.offset:
                 # assert False, 'duplicated: %s' % head
                 return False
-            self.__fragments.insert(index, fragment)
-            self.last_time = time.time()
-            return True
+            # got the position, insert after it
+            index += 1
+            break
+        self.__fragments.insert(index, fragment)
+        self.last_time = time.time()
+        return True
 
 
 class Pool(ABC):
@@ -230,7 +247,7 @@ class Pool(ABC):
     #
 
     @abstractmethod
-    def add_fragment(self, fragment: Package) -> Optional[bytes]:
+    def add_fragment(self, fragment: Package, source: tuple, destination: tuple) -> Optional[bytes]:
         """
         Add a fragment package into the pool for MessageFragment received.
         This will just wait until all fragments with the same 'trans_id' received.
@@ -238,18 +255,20 @@ class Pool(ABC):
         original message, and then return the message's data; if there are still
         some fragments missed, return None.
 
-        :param fragment: message fragment
+        :param fragment:    message fragment
+        :param source:      remote address
+        :param destination: local address
         :return: message data when all fragments received
         """
         raise NotImplemented
 
     @abstractmethod
-    def discard_fragments(self) -> int:
+    def discard_fragments(self) -> list:
         """
         Remove all expired fragments that belong to the incomplete messages,
         which had waited a long time but still some fragments missed.
 
-        :return: removed message count
+        :return: assembling list
         """
         raise NotImplemented
 
@@ -385,35 +404,37 @@ class MemPool(Pool):
     #
     #   Fragments Assembling
     #
-    def add_fragment(self, fragment: Package) -> Optional[bytes]:
+    def add_fragment(self, fragment: Package, source: tuple, destination: tuple) -> Optional[bytes]:
         data = None
         with self.__fragments_lock:
             trans_id = fragment.head.trans_id
             assemble = self.__fragments.get(trans_id)
+            assert isinstance(assemble, Assemble), 'fragments error: %s' % assemble
             if assemble is None:
-                self.__fragments[trans_id] = Assemble(fragment=fragment)
-            elif assemble.insert(fragment=fragment) and assemble.is_completed:
-                data = Package.join(packages=assemble.fragments)
-                self.__fragments.pop(trans_id)
+                # create new assemble
+                assemble = Assemble(fragment=fragment, source=source, destination=destination)
+                self.__fragments[trans_id] = assemble
+            elif assemble.insert(fragment=fragment, source=source, destination=destination):
+                # insert fragment and check whether completed
+                if assemble.is_completed:
+                    data = Package.join(packages=assemble.fragments)
+                    self.__fragments.pop(trans_id)
         return data
 
-    def discard_fragments(self) -> int:
+    def discard_fragments(self) -> list:
         """
         Remove all expired fragments
 
         :return:
         """
-        count = 0
+        array = []
         with self.__fragments_lock:
             keys = list(self.__fragments.keys())
             for trans_id in keys:
                 assemble = self.__fragments.get(trans_id)
-                if assemble is None:
-                    # error
-                    self.__fragments.pop(trans_id)
-                    count += 1
-                elif assemble.is_expired:
+                assert isinstance(assemble, Assemble), 'fragments error: %s' % assemble
+                if assemble.is_expired:
                     # remove expired fragments
+                    array.append(assemble)
                     self.__fragments.pop(trans_id)
-                    count += 1
-        return count
+        return array
