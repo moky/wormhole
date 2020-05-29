@@ -80,7 +80,7 @@ class Node(PeerDelegate):
         :param destination: remote address
         :return: departure task with 'trans_id' in the payload
         """
-        return self.peer.send_command(data=cmd.data, destination=destination)
+        return self.peer.send_command(pack=cmd.data, destination=destination)
 
     def send_message(self, msg: Message, destination: tuple) -> Departure:
         """
@@ -90,7 +90,7 @@ class Node(PeerDelegate):
         :param destination: remote address
         :return: departure task with 'trans_id' in the payload
         """
-        return self.peer.send_message(data=msg.data, destination=destination)
+        return self.peer.send_message(pack=msg.data, destination=destination)
 
     @abstractmethod
     def process_command(self, cmd: Command, source: tuple) -> bool:

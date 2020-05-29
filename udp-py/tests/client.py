@@ -46,7 +46,7 @@ class Client(udp.PeerDelegate):
         self.__hub.stop()
 
     def send_message(self, msg: bytes, destination: tuple) -> udp.Departure:
-        return self.peer.send_message(data=msg, destination=destination)
+        return self.peer.send_message(pack=msg, destination=destination)
 
     #
     #   PeerDelegate

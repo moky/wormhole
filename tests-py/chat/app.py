@@ -4,6 +4,7 @@
 from PyQt5.QtWidgets import QApplication
 
 import udp
+import stun
 
 import sys
 import os
@@ -32,7 +33,7 @@ STUN_SERVER_PORT = 3478
 DMTP_SERVER_HOST = SERVER_GZ1
 DMTP_SERVER_PORT = 9395
 
-CLIENT_HOST = '0.0.0.0'
+CLIENT_HOST = stun.Client.get_local_ip()
 CLIENT_PORT = 9527  # random.choice(range(9900, 9999))
 
 

@@ -13,6 +13,7 @@ rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
 import udp
+import stun
 import dmtp
 
 
@@ -24,7 +25,7 @@ SERVER_GZ3 = '129.204.94.164'
 SERVER_HOST = SERVER_GZ1
 SERVER_PORT = 9395
 
-CLIENT_HOST = '0.0.0.0'
+CLIENT_HOST = stun.Client.get_local_ip()
 CLIENT_PORT = random.choice(range(9900, 9999))
 
 
@@ -168,6 +169,7 @@ def create_client(local_address: tuple, server_address: tuple):
     # create client
     print('UDP client %s -> %s starting ...' % (local_address, server_address))
     client = Client(hub=hub)
+    client.source_address = local_address
     client.server_address = server_address
     return client
 
