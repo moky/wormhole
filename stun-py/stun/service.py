@@ -34,6 +34,7 @@
 
 """
 
+import socket
 import time
 from abc import ABC, abstractmethod
 from typing import Union
@@ -514,3 +515,13 @@ class Client(Node, ABC):
             return NatType.PortRestrictedNAT, res11
         else:
             return NatType.RestrictedNAT, res3
+
+    @classmethod
+    def get_local_ip(cls, remote_host: str='8.8.8.8', remote_port: int=80) -> Optional[str]:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.connect((remote_host, remote_port))
+            return sock.getsockname()[0]
+        finally:
+            # noinspection PyUnboundLocalVariable
+            sock.close()

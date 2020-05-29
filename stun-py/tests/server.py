@@ -17,35 +17,37 @@ sys.path.append(rootPath)
 from tests.srv_cnf import *
 
 
-class UDPServer(stun.Server):
+class Server(stun.Server):
 
-    def __init__(self):
+    def __init__(self, hub: udp.Hub):
         super().__init__()
+        self.__hub = hub
 
     def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
         try:
-            return g_hub.send(data=data, destination=destination, source=source)
+            return self.__hub.send(data=data, destination=destination, source=source)
         except socket.error:
             return -1
 
     def receive(self) -> (bytes, (str, int)):
         try:
-            data, source, destination = g_hub.receive()
+            data, source, destination = self.__hub.receive()
             return data, source
         except socket.error:
             return None, None
 
 
-# create a hub for sockets
-g_hub = udp.Hub()
-g_hub.open(port=LOCAL_PORT)
-g_hub.open(port=ANOTHER_PORT)
-g_hub.open(port=REDIRECTED_PORT)
+def create_udp_server() -> Server:
+    # create a hub for sockets
+    hub = udp.Hub()
+    hub.open(port=LOCAL_PORT)
+    hub.open(port=ANOTHER_PORT)
+    hub.open(port=REDIRECTED_PORT)
+    hub.start()
 
-
-def main():
     # create server
-    server = UDPServer()
+    print('UDP server (%s:%d) starting ...' % (LOCAL_IP, LOCAL_PORT))
+    server = Server(hub=hub)
     server.source_address = (LOCAL_IP, LOCAL_PORT)
     if len(NEIGHBOR_SERVERS) == 1:
         server.changed_address = NEIGHBOR_SERVERS[0]
@@ -55,7 +57,10 @@ def main():
         server.neighbour_address = NEIGHBOR_SERVERS[1]
     server.another_port = ANOTHER_PORT
     server.redirected_port = REDIRECTED_PORT
-    # GO!
+    return server
+
+
+def run_forever(server: Server):
     server.info('STUN server started')
     while True:
         try:
@@ -69,4 +74,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+
+    run_forever(create_udp_server())

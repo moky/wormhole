@@ -21,50 +21,64 @@ STUN_SERVERS = [
 ]
 STUN_PORT = 3478
 
-LOCAL_IP = '0.0.0.0'
-LOCAL_PORT = 9394
+LOCAL_IP = stun.Client.get_local_ip()
+LOCAL_PORT = 9527
 
 
-class UDPClient(stun.Client):
+class Client(stun.Client):
 
-    def __init__(self):
+    def __init__(self, hub: udp.Hub):
         super().__init__()
+        self.__hub = hub
+
+    def stop(self):
+        self.__hub.stop()
 
     def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
         try:
-            return g_hub.send(data=data, destination=destination, source=source)
+            return self.__hub.send(data=data, destination=destination, source=source)
         except socket.error:
             return -1
 
     def receive(self) -> (bytes, (str, int)):
         try:
-            data, source, destination = g_hub.receive(timeout=2)
+            data, source, destination = self.__hub.receive(timeout=2)
             return data, source
         except socket.error:
             return None, None
 
 
-# create a hub for sockets
-g_hub = udp.Hub()
-g_hub.open(host=LOCAL_IP, port=LOCAL_PORT)
-g_hub.start()
+def create_udp_client(local_host: str='127.0.0.1', local_port: int=9527) -> Client:
+    # create a hub for sockets
+    hub = udp.Hub()
+    hub.open(host=local_host, port=local_port)
+    hub.start()
 
-
-def main():
     # create client
-    client = UDPClient()
-    client.source_address = (LOCAL_IP, LOCAL_PORT)
-    for host in STUN_SERVERS:
-        print('--------------------------------')
-        print('-- Detection starts from: %s ...' % host)
-        msg, res = client.get_nat_type(stun_host=host, stun_port=STUN_PORT)
-        print('-- Detection Result:', msg)
-        if res is not None:
-            print('-- External Address:', res.mapped_address)
-        print('--------------------------------')
-    # exit
-    g_hub.stop()
+    client = Client(hub=hub)
+    client.source_address = (local_host, local_port)
+    return client
+
+
+def detect(client: Client, stun_host, stun_port):
+    print('----------------------------------------------------------------')
+    print('-- Detection starts from: %s ...' % stun_host)
+    msg, res = client.get_nat_type(stun_host=stun_host, stun_port=stun_port)
+    print('-- Detection Result:', msg)
+    if res is not None:
+        print('-- External Address:', res.mapped_address)
+    print('----------------------------------------------------------------')
 
 
 if __name__ == '__main__':
-    main()
+
+    g_client = create_udp_client(local_host=LOCAL_IP, local_port=LOCAL_PORT)
+    print('----------------------------------------------------------------')
+    print('-- Local Address: (%s:%d)' % (LOCAL_IP, LOCAL_PORT))
+    # create client
+    for host in STUN_SERVERS:
+        detect(client=g_client, stun_host=host, stun_port=STUN_PORT)
+    # exit
+    print('-- Local Address: (%s:%d)' % (LOCAL_IP, LOCAL_PORT))
+    print('----------------------------------------------------------------')
+    g_client.stop()
