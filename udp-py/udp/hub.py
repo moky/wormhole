@@ -112,36 +112,60 @@ class Hub(threading.Thread):
             assert listener in self.__listeners, 'listener not exists: %s' % listener
             self.__listeners.remove(listener)
 
-    def get_socket(self, source: Union[tuple, int] = None) -> Optional[Socket]:
-        if source is None:
+    def __get_socket(self, host: str='0.0.0.0', port: int=0) -> Optional[Socket]:
+        if port is 0:
+            # any socket
+            assert host == '0.0.0.0', 'failed to get socket (%s:%d)' % (host, port)
+            assert len(self.__sockets) > 0, 'sockets empty'
             return self.__sockets[0]
-        elif isinstance(source, int):
-            source = ('0.0.0.0', source)
+        # 1. check address exactly
+        address = (host, port)
         for sock in self.__sockets:
             assert isinstance(sock, Socket), 'socket error: %s' % sock
-            if sock.local_address == source:
-                # already exists
+            if sock.local_address == address:
                 return sock
+        if host == '0.0.0.0':
+            # 2. check with port
+            for sock in self.__sockets:
+                assert isinstance(sock, Socket), 'socket error: %s' % sock
+                if sock.local_address[1] == port:
+                    return sock
+        else:
+            # 3. check sockets binding to '0.0.0.0'
+            for sock in self.__sockets:
+                assert isinstance(sock, Socket), 'socket error: %s' % sock
+                if sock.local_address[1] == port and sock.local_address[0] == '0.0.0.0':
+                    return sock
+
+    def _get_socket(self, source: Union[tuple, int]) -> Optional[Socket]:
+        if source is None:
+            # any socket
+            return self.__get_socket()
+        elif isinstance(source, int):
+            # get socket by port
+            return self.__get_socket(port=source)
+        else:
+            assert isinstance(source, tuple) and len(source) == 2, 'source address error: %s' % str(source)
+            # get socket by address
+            return self.__get_socket(host=source[0], port=source[1])
 
     @staticmethod
     def _create_socket(host: str, port: int) -> Optional[Socket]:
         return Socket(host=host, port=port)
 
-    def open(self, port: int, host: str = '0.0.0.0'):
+    def open(self, port: int, host: str='0.0.0.0'):
         """ create a socket on this port """
-        address = (host, port)
-        sock = self.get_socket(source=address)
+        sock = self.__get_socket(host=host, port=port)
         if sock is None:
             sock = self._create_socket(host=host, port=port)
             sock.start()
             self.__sockets.append(sock)
 
-    def close(self, port: int, host: str = '0.0.0.0') -> bool:
+    def close(self, port: int, host: str='0.0.0.0') -> bool:
         """ remove the socket on this port """
         count = 0
-        address = (host, port)
         while True:
-            sock = self.get_socket(source=address)
+            sock = self.__get_socket(host=host, port=port)
             if sock is None:
                 break
             sock.close()
@@ -159,19 +183,19 @@ class Hub(threading.Thread):
             assert isinstance(sock, Socket), 'socket error: %s' % sock
             sock.stop()
 
-    def connect(self, destination: tuple, source: Union[tuple, int] = None) -> bool:
-        sock = self.get_socket(source=source)
+    def connect(self, destination: tuple, source: Union[tuple, int]=None) -> bool:
+        sock = self._get_socket(source=source)
         if sock is not None:
             sock.connect(remote_address=destination)
             return True
 
-    def disconnect(self, destination: tuple, source: Union[tuple, int] = None) -> bool:
-        sock = self.get_socket(source=source)
+    def disconnect(self, destination: tuple, source: Union[tuple, int]=None) -> bool:
+        sock = self._get_socket(source=source)
         if sock is not None:
             sock.disconnect(remote_address=destination)
             return True
 
-    def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
+    def send(self, data: bytes, destination: tuple, source: Union[tuple, int]=None) -> int:
         """
         Send data from source address(port) to destination address
 
@@ -180,30 +204,11 @@ class Hub(threading.Thread):
         :param source:      local address
         :return:
         """
-        sock = None
-        assert len(self.__sockets) > 0, 'sockets empty'
-        if source is None:
-            # any socket
-            sock = self.__sockets[0]
-        elif isinstance(source, tuple):
-            # get socket by local address
-            for item in self.__sockets:
-                assert isinstance(item, Socket), 'socket error: %s' % item
-                if item.local_address == source:
-                    sock = item
-                    break
-        else:
-            # get socket by local port
-            assert isinstance(source, int), 'source port error: %s' % source
-            for item in self.__sockets:
-                assert isinstance(item, Socket), 'socket error: %s' % item
-                if item.local_address[1] == source:
-                    sock = item
-                    break
-        assert isinstance(sock, Socket), 'no socket (%d) matched: %s' % (len(self.__sockets), source)
-        return sock.send(data=data, remote_address=destination)
+        sock = self._get_socket(source=source)
+        if sock is not None:
+            return sock.send(data=data, remote_address=destination)
 
-    def receive(self, timeout: Optional[float]=None) -> (bytes, (str, int), (str, int)):
+    def receive(self, source: Union[tuple, int]=None, timeout: Optional[float]=None) -> (bytes, (str, int), (str, int)):
         """
         Block to receive data
 
@@ -215,7 +220,7 @@ class Hub(threading.Thread):
         else:
             timeout = now + timeout
         while now <= timeout:
-            data, source, destination = self.__receive()
+            data, source, destination = self.__receive(source=source)
             if data is None:
                 time.sleep(0.1)
                 now = time.time()
@@ -223,12 +228,21 @@ class Hub(threading.Thread):
                 return data, source, destination
         return None, None, None
 
-    def __receive(self) -> (bytes, (str, int), (str, int)):
-        for sock in self.__sockets:
-            assert isinstance(sock, Socket), 'socket error: %s' % sock
+    def __receive(self, source: Union[tuple, int]=None) -> (bytes, (str, int), (str, int)):
+        if source is None:
+            # receive data from any socket
+            for sock in self.__sockets:
+                assert isinstance(sock, Socket), 'socket error: %s' % sock
+                data, remote = sock.receive()
+                if data is not None:
+                    # got one
+                    return data, remote, sock.local_address
+        else:
+            # receive data from appointed socket
+            sock = self._get_socket(source=source)
             data, remote = sock.receive()
             if data is not None:
-                # got one
+                # got it
                 return data, remote, sock.local_address
         return None, None, None
 

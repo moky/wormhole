@@ -51,7 +51,7 @@ class Client(udp.PeerDelegate):
     #
     #   PeerDelegate
     #
-    def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
+    def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int]=None) -> int:
         return self.__hub.send(data=data, destination=destination, source=source)
 
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
