@@ -521,7 +521,8 @@ class Client(Node, ABC):
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.connect((remote_host, remote_port))
-            return sock.getsockname()[0]
+            ip = sock.getsockname()[0]
         finally:
             # noinspection PyUnboundLocalVariable
             sock.close()
+        return ip

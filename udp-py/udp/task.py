@@ -41,7 +41,7 @@ from abc import ABC, abstractmethod
 from typing import Union, Optional
 
 from .data import bytes_to_int
-from .protocol import Package, TransactionID, DataType
+from .protocol import Package, TransactionID
 from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment
 
@@ -51,32 +51,18 @@ class Departure:
         Package(s) to sent out (waiting response)
     """
 
-    """
-        Each fragment should wait about 2 minutes for response
-    """
-    EXPIRES = 120  # seconds
-
     def __init__(self, packages: list, destination: tuple, source: Union[tuple, int]=0):
         super().__init__()
         self.packages = packages
         self.destination = destination
         self.source = source
         self.max_retries = 5
-        self.last_time = 0
-
-    @property
-    def trans_id(self) -> Optional[TransactionID]:
-        if len(self.packages) > 0:
-            first = self.packages[0]
-            assert isinstance(first, Package), 'first package error: %s' % first
-            return first.head.trans_id
-
-    @property
-    def data_type(self) -> Optional[DataType]:
-        if len(self.packages) > 0:
-            first = self.packages[0]
-            assert isinstance(first, Package), 'first package error: %s' % first
-            return first.head.data_type
+        self.last_time = 0  # last send/receive time
+        # package header info
+        assert len(packages) > 0, 'departure packages should not be empty'
+        first = packages[0]
+        self.trans_id = first.head.trans_id
+        self.data_type = first.head.data_type
 
 
 class Arrival:
@@ -96,33 +82,21 @@ class Assemble:
         Message fragments received (waiting assemble)
     """
 
-    """
-        Each fragment should wait about 1 minute for receiving
-    """
-    EXPIRES = 60  # seconds
-
     def __init__(self, fragment: Package, source: tuple, destination: tuple):
         super().__init__()
-        assert fragment.head.data_type == MessageFragment, 'fragment data type error: %s' % fragment
-        assert fragment.head.pages > 1, 'fragment pages error: %s' % fragment
         self.__fragments = [fragment]
         self.source = source
         self.destination = destination
-        self.last_time = time.time()  # last update time
+        self.last_time = time.time()  # last receive time
+        # package header info
+        assert fragment.head.data_type == MessageFragment, 'fragment data type error: %s' % fragment
+        assert fragment.head.pages > 1, 'fragment pages error: %s' % fragment
+        self.trans_id = fragment.head.trans_id
+        self.pages = fragment.head.pages
 
     @property
     def fragments(self) -> list:
         return self.__fragments
-
-    @property
-    def trans_id(self) -> TransactionID:
-        assert len(self.__fragments) > 0, 'fragments should not empty'
-        return self.__fragments[0].head.trans_id
-
-    @property
-    def pages(self) -> int:
-        assert len(self.__fragments) > 0, 'fragments should not empty'
-        return self.__fragments[0].head.pages
 
     @property
     def is_completed(self) -> bool:
@@ -163,7 +137,7 @@ class Pool(ABC):
     #
 
     @abstractmethod
-    def get_departure(self) -> Optional[Departure]:
+    def any_departure(self) -> Optional[Departure]:
         """
         Gat one departure task from the pool for sending.
 
@@ -172,7 +146,7 @@ class Pool(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def add_departure(self, task: Departure) -> Departure:
+    def add_departure(self, task: Departure) -> bool:
         """
         Append a departure task into the pool after sent.
         This should be removed after its response received; if timeout, send it
@@ -180,18 +154,20 @@ class Pool(ABC):
         put it back to the pool for resending.
 
         :param task: departure task
-        :return: same task
+        :return: False on failed
         """
         raise NotImplemented
 
     @abstractmethod
-    def del_departure(self, response: Package) -> int:
+    def del_departure(self, response: Package, destination: tuple, source: tuple) -> bool:
         """
         Delete the departure task with 'trans_id' in the response.
         If it's a message fragment, check the page offset too.
 
         :param response:
-        :return: 0 on task not found
+        :param destination: remote address
+        :param source:      local address
+        :return: False on task not found/not finished yet
         """
         raise NotImplemented
 
@@ -209,7 +185,7 @@ class Pool(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def get_arrival(self) -> Optional[Arrival]:
+    def first_arrival(self) -> Optional[Arrival]:
         """
         Get one arrival task from the pool for processing
 
@@ -218,12 +194,12 @@ class Pool(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def add_arrival(self, task: Arrival) -> Arrival:
+    def add_arrival(self, task: Arrival) -> bool:
         """
         Append an arrival task into the pool after received something
 
         :param task: arrival task
-        :return: same task
+        :return: False on failed
         """
         raise NotImplemented
 
@@ -260,6 +236,12 @@ class Pool(ABC):
 
 class MemPool(Pool):
 
+    """
+        1. Departure task should be expired after 2 minutes when receive no response.
+        2. Assembling task should be expired after 2 minutes when receive nothing.
+    """
+    EXPIRES = 120  # seconds
+
     def __init__(self):
         super().__init__()
         # waiting list for responding
@@ -272,25 +254,16 @@ class MemPool(Pool):
         self.__fragments = {}  # TransactionID -> Assemble
         self.__fragments_lock = threading.Lock()
 
-    @staticmethod
-    def is_departure_expired(task: Departure) -> bool:
-        count = len(task.packages)
-        expires = task.EXPIRES * (count + 1)
-        return (task.last_time + expires) < time.time()
+    def is_departure_expired(self, task: Departure) -> bool:
+        return (task.last_time + self.EXPIRES) < time.time()
 
-    @staticmethod
-    def is_assemble_expired(assemble: Assemble) -> bool:
-        count = len(assemble.fragments)
-        assert count > 0, 'fragments error'
-        pages = assemble.pages
-        assert pages >= count, 'pages error: %d, %d' % (pages, count)
-        expires = assemble.EXPIRES * (pages - count + 1)
-        return (assemble.last_time + expires) < time.time()
+    def is_assemble_expired(self, assemble: Assemble) -> bool:
+        return (assemble.last_time + self.EXPIRES) < time.time()
 
     #
     #   Departures
     #
-    def get_departure(self) -> Optional[Departure]:
+    def any_departure(self) -> Optional[Departure]:
         with self.__departures_lock:
             if len(self.__departures) > 0:
                 # check last sent time
@@ -299,12 +272,16 @@ class MemPool(Pool):
                 if self.is_departure_expired(task=task):
                     return self.__departures.pop(0)
 
-    def add_departure(self, task: Departure) -> Departure:
+    def add_departure(self, task: Departure) -> bool:
+        if task.max_retries < 0:
+            return False
+        task.last_time = time.time()
+        task.max_retries -= 1
         with self.__departures_lock:
             self.__departures.append(task)
-        return task
+        return True
 
-    def __del_entire_task(self, trans_id: TransactionID) -> int:
+    def __del_entire_task(self, trans_id: TransactionID, destination: tuple) -> bool:
         count = 0
         with self.__departures_lock:
             pos = len(self.__departures)
@@ -315,14 +292,17 @@ class MemPool(Pool):
                 if task.trans_id != trans_id:
                     # transaction ID not match
                     continue
+                elif task.destination != destination:
+                    # destination not match
+                    continue
                 assert task.data_type in [Command, Message], 'task error: %s' % task
                 # Got it!
                 self.__departures.pop(pos)
                 count += 1
-                # break
-        return count
+                break
+        return count > 0
 
-    def __del_task_fragment(self, trans_id: TransactionID, pages: int, offset: int) -> bool:
+    def __del_task_fragment(self, trans_id: TransactionID, pages: int, offset: int, destination: tuple) -> bool:
         count = 0
         with self.__departures_lock:
             pos = len(self.__departures)
@@ -332,6 +312,9 @@ class MemPool(Pool):
                 assert isinstance(task, Departure), 'departure task error: %s' % task
                 if task.trans_id != trans_id:
                     # transaction ID not match
+                    continue
+                elif task.destination != destination:
+                    # destination not match
                     continue
                 assert task.data_type == MessageFragment, 'task error: %s' % task
                 packages = task.packages
@@ -346,15 +329,18 @@ class MemPool(Pool):
                     if pack.head.offset == offset:
                         # Got it!
                         packages.pop(index)
-                        count += 1
-                        # break
+                        break
                 if len(packages) == 0:
                     # all fragment sent, remove this task
                     self.__departures.pop(pos)
-                # break
-        return count
+                    count += 1
+                else:
+                    # update receive time
+                    task.last_time = time.time()
+                break
+        return count > 0
 
-    def del_departure(self, response: Package) -> int:
+    def del_departure(self, response: Package, destination: tuple, source: tuple) -> bool:
         head = response.head
         body = response.body
         body_len = len(body)
@@ -363,7 +349,7 @@ class MemPool(Pool):
         if data_type == CommandRespond:
             # response for Command
             assert body_len == 0 or body == b'OK', 'CommandRespond error: %s' % body
-            return self.__del_entire_task(trans_id=trans_id)
+            return self.__del_entire_task(trans_id=trans_id, destination=destination)
         elif data_type == MessageRespond:
             # response for Message or Fragment
             if body_len >= 8:
@@ -373,15 +359,14 @@ class MemPool(Pool):
                 pages = bytes_to_int(body[:4])
                 offset = bytes_to_int(body[4:8])
                 assert pages > 1 and pages > offset, 'pages error: %d, %d' % (pages, offset)
-                return self.__del_task_fragment(trans_id=trans_id, pages=pages, offset=offset)
+                return self.__del_task_fragment(trans_id=trans_id, pages=pages, offset=offset, destination=destination)
             elif body_len == 0 or body == b'OK':
                 # Message
-                return self.__del_entire_task(trans_id=trans_id)
+                return self.__del_entire_task(trans_id=trans_id, destination=destination)
             else:
                 # respond for split message
                 assert body == b'AGAIN', 'MessageRespond error: %s' % body
                 # TODO: resend all fragments of this message
-                return 0
         else:
             assert False, 'data type should be a Respond: %s' % data_type
 
@@ -392,15 +377,15 @@ class MemPool(Pool):
         with self.__arrivals_lock:
             return len(self.__arrivals)
 
-    def get_arrival(self) -> Optional[Arrival]:
+    def first_arrival(self) -> Optional[Arrival]:
         with self.__arrivals_lock:
             if len(self.__arrivals) > 0:
                 return self.__arrivals.pop(0)
 
-    def add_arrival(self, task: Arrival) -> Arrival:
+    def add_arrival(self, task: Arrival) -> bool:
         with self.__arrivals_lock:
             self.__arrivals.append(task)
-        return task
+        return True
 
     #
     #   Fragments Assembling

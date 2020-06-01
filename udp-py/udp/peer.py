@@ -42,7 +42,7 @@ from abc import ABC, abstractmethod
 from typing import Union, Optional
 
 from .data import uint32_to_bytes
-from .protocol import Package
+from .protocol import Package, TransactionID
 from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment
 from .task import Departure, Arrival, Assemble, Pool, MemPool
@@ -74,6 +74,50 @@ from .hub import HubListener
 
 
 class PeerDelegate(ABC):
+
+    # @abstractmethod
+    def send_command_success(self, trans_id: TransactionID, destination: tuple, source: tuple):
+        """
+        Callback for command success
+
+        :param trans_id:    transaction ID
+        :param destination: remote address
+        :param source:      local address
+        """
+        pass
+
+    # @abstractmethod
+    def send_command_timeout(self, trans_id: TransactionID, destination: tuple, source: tuple):
+        """
+        Callback for command failed
+
+        :param trans_id:    transaction ID
+        :param destination: remote address
+        :param source:      local address
+        """
+        pass
+
+    # @abstractmethod
+    def send_message_success(self, trans_id: TransactionID, destination: tuple, source: tuple):
+        """
+        Callback for message success
+
+        :param trans_id:    transaction ID
+        :param destination: remote address
+        :param source:      local address
+        """
+        pass
+
+    # @abstractmethod
+    def send_message_timeout(self, trans_id: TransactionID, destination: tuple, source: tuple):
+        """
+        Callback for message failed
+
+        :param trans_id:    transaction ID
+        :param destination: remote address
+        :param source:      local address
+        """
+        pass
 
     @abstractmethod
     def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int]=None) -> int:
@@ -170,7 +214,7 @@ class Peer(threading.Thread, HubListener):
             # first, process all arrivals
             done = self.__clean_arrivals()
             # second, get one departure task
-            task = self.pool.get_departure()
+            task = self.pool.any_departure()
             if task is None:
                 # third, if no departure task, remove expired fragments
                 assembling = self.pool.discard_fragments()
@@ -194,7 +238,7 @@ class Peer(threading.Thread, HubListener):
         total = self.pool.arrivals_count()
         done = 0
         while done < total:
-            task = self.pool.get_arrival()
+            task = self.pool.first_arrival()
             if task is None:
                 # no data now
                 break
@@ -208,9 +252,19 @@ class Peer(threading.Thread, HubListener):
         head = pack.head
         body = pack.body
         data_type = head.data_type
-        if data_type == CommandRespond or data_type == MessageRespond:
-            # handle response
-            self.pool.del_departure(response=pack)
+        if data_type == CommandRespond:
+            # command response
+            trans_id = head.trans_id
+            if self.pool.del_departure(response=pack, destination=task.source, source=task.destination):
+                # if departure task is deleted, means it's finished
+                self.delegate.send_command_success(trans_id=trans_id, destination=task.source, source=task.destination)
+            return None
+        elif data_type == MessageRespond:
+            # message response
+            trans_id = head.trans_id
+            if self.pool.del_departure(response=pack, destination=task.source, source=task.destination):
+                # if departure task is deleted, means it's finished
+                self.delegate.send_message_success(trans_id=trans_id, destination=task.source, source=task.destination)
             return None
         elif data_type == Command:
             # handle command
@@ -257,18 +311,25 @@ class Peer(threading.Thread, HubListener):
     #   Sending
     #
     def __send(self, task: Departure) -> Optional[Departure]:
-        # treat the task as a bundle of packages
-        packages = task.packages
-        for item in packages:
-            assert isinstance(item, Package), 'package error: %s' % item
-            res = self.delegate.send_data(data=item.data, destination=task.destination, source=task.source)
-            if res < 0:
-                raise IOError('failed to resend task (%d packages) to: %s' % (len(packages), task.destination))
-        if task.max_retries > 0:
-            task.last_time = time.time()
-            task.max_retries -= 1
-            self.pool.add_departure(task=task)
+        if self.pool.add_departure(task=task):
+            # treat the task as a bundle of packages
+            packages = task.packages
+            for item in packages:
+                assert isinstance(item, Package), 'package error: %s' % item
+                res = self.delegate.send_data(data=item.data, destination=task.destination, source=task.source)
+                if res < 0:
+                    raise IOError('failed to resend task (%d packages) to: %s' % (len(packages), task.destination))
             return task
+        else:
+            # mission failed
+            data_type = task.data_type
+            trans_id = task.trans_id
+            if data_type == Command:
+                self.delegate.send_command_timeout(trans_id=trans_id, destination=task.destination, source=task.source)
+            elif data_type == Message:
+                self.delegate.send_message_timeout(trans_id=trans_id, destination=task.destination, source=task.source)
+            else:
+                raise AssertionError('data type error: %s' % data_type)
 
     def send_command(self, pack: Union[Package, bytes],
                      destination: tuple, source: Union[tuple, int]=None) -> Departure:
