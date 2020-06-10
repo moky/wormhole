@@ -78,7 +78,7 @@ class PeerDelegate(ABC):
     # @abstractmethod
     def send_command_success(self, trans_id: TransactionID, destination: tuple, source: tuple):
         """
-        Callback for command success
+        Callback for command success.
 
         :param trans_id:    transaction ID
         :param destination: remote address
@@ -89,7 +89,7 @@ class PeerDelegate(ABC):
     # @abstractmethod
     def send_command_timeout(self, trans_id: TransactionID, destination: tuple, source: tuple):
         """
-        Callback for command failed
+        Callback for command failed.
 
         :param trans_id:    transaction ID
         :param destination: remote address
@@ -100,7 +100,7 @@ class PeerDelegate(ABC):
     # @abstractmethod
     def send_message_success(self, trans_id: TransactionID, destination: tuple, source: tuple):
         """
-        Callback for message success
+        Callback for message success.
 
         :param trans_id:    transaction ID
         :param destination: remote address
@@ -111,7 +111,7 @@ class PeerDelegate(ABC):
     # @abstractmethod
     def send_message_timeout(self, trans_id: TransactionID, destination: tuple, source: tuple):
         """
-        Callback for message failed
+        Callback for message failed.
 
         :param trans_id:    transaction ID
         :param destination: remote address
@@ -122,7 +122,7 @@ class PeerDelegate(ABC):
     @abstractmethod
     def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int]=None) -> int:
         """
-        Send data to destination address
+        Send data to destination address.
 
         :param data:        data package to send
         :param destination: remote address
@@ -134,7 +134,7 @@ class PeerDelegate(ABC):
     @abstractmethod
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
         """
-        Received command data from source address
+        Received command data from source address.
 
         :param cmd:         command data (package body) received
         :param source:      remote address
@@ -146,7 +146,7 @@ class PeerDelegate(ABC):
     @abstractmethod
     def received_message(self, msg: bytes, source: tuple, destination: tuple) -> bool:
         """
-        Received message data from source address
+        Received message data from source address.
 
         :param msg:         message data (package body) received
         :param source:      remote address
@@ -157,12 +157,12 @@ class PeerDelegate(ABC):
 
     # @abstractmethod
     # noinspection PyUnusedLocal, PyMethodMayBeStatic
-    def received_fragment(self, msg: bytes, source: tuple, destination: tuple) -> bool:
+    def check_fragment(self, fragment: Package, source: tuple, destination: tuple) -> bool:
         """
-        Received fragment data from source address
-        (Application can override this interface to check fragment and cache for resume)
+        Check message fragment from the source address, if too many incomplete tasks
+        from the same address, return False to reject it to avoid 'DDoS' attack.
 
-        :param msg:         fragment data (package body) received
+        :param fragment:    message fragment
         :param source:      remote address
         :param destination: local address
         :return: False on error
@@ -170,10 +170,10 @@ class PeerDelegate(ABC):
         return True
 
     # @abstractmethod
-    def discard_fragments(self, fragments: list, source: tuple, destination: tuple):
+    def recycle_fragments(self, fragments: list, source: tuple, destination: tuple):
         """
-        Received incomplete message fragments from source address
-        (Application can override this interface for resume the transaction)
+        Recycle incomplete message fragments from source address.
+        (Override for resuming the transaction)
 
         :param fragments:   fragment packages
         :param source:      remote address
@@ -220,7 +220,7 @@ class Peer(threading.Thread, HubListener):
                 assembling = self.pool.discard_fragments()
                 for item in assembling:
                     assert isinstance(item, Assemble), 'assemble error: %s' % item
-                    self.delegate.discard_fragments(fragments=item.fragments,
+                    self.delegate.recycle_fragments(fragments=item.fragments,
                                                     source=item.source, destination=item.destination)
                 if done == 0:
                     # all jobs done, have a rest. ^_^
@@ -250,7 +250,6 @@ class Peer(threading.Thread, HubListener):
         pack = Package.parse(data=task.payload)
         assert pack is not None, 'package error: %s' % task.payload
         head = pack.head
-        body = pack.body
         data_type = head.data_type
         if data_type == CommandRespond:
             # command response
@@ -268,14 +267,14 @@ class Peer(threading.Thread, HubListener):
             return None
         elif data_type == Command:
             # handle command
-            ok = self.delegate.received_command(cmd=body, source=task.source, destination=task.destination)
+            ok = self.delegate.received_command(cmd=pack.body, source=task.source, destination=task.destination)
         elif data_type == Message:
             # handle message
-            ok = self.delegate.received_message(msg=body, source=task.source, destination=task.destination)
+            ok = self.delegate.received_message(msg=pack.body, source=task.source, destination=task.destination)
         else:
             # handle message fragment
             assert data_type == MessageFragment, 'data type error: %s' % data_type
-            ok = self.delegate.received_fragment(msg=body, source=task.source, destination=task.destination)
+            ok = self.delegate.check_fragment(fragment=pack, source=task.source, destination=task.destination)
             if ok:
                 # assemble fragments
                 msg = self.pool.add_fragment(fragment=pack, source=task.source, destination=task.destination)

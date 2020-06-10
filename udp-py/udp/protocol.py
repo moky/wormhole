@@ -168,32 +168,17 @@ class TransactionID(Data):
 
 class Header(Data):
 
-    def __init__(self, data_type: DataType, sn: TransactionID=None, pages: int=1, offset: int=0):
+    def __init__(self, data: bytes, head_len: int, data_type: DataType, sn: TransactionID, pages: int=1, offset: int=0):
         """
         Create package header
 
+        :param data:      header data as bytes
+        :param head_len:  length of header (in bytes)
         :param data_type: package body data type
         :param sn:        transaction ID
         :param pages:     fragment count [OPTIONAL], default is 1
         :param offset:    fragment index [OPTIONAL], default is 0
         """
-        if data_type == MessageFragment:
-            # fragments
-            assert pages > 1 and pages > offset, 'pages error: %d, %d' % (pages, offset)
-            options = uint32_to_bytes(value=pages) + uint32_to_bytes(value=offset)
-            head_len = 20  # in bytes
-        else:
-            assert pages == 1 and offset == 0, 'pages error: %d, %d' % (pages, offset)
-            options = b''
-            head_len = 12  # in bytes
-        if sn is None:
-            # generate transaction ID
-            sn = TransactionID.new()
-        # generate header data
-        hl_ty = (head_len << 2) | (data_type.value & 0x0F)
-        hl_ty = uint8_to_bytes(hl_ty & 0xFF)
-        data = b'DIM' + hl_ty + sn.data + options
-        # init
         super().__init__(data=data)
         self.__length = head_len
         self.__type = data_type
@@ -239,7 +224,8 @@ class Header(Data):
     def parse(cls, data: bytes):
         data_len = len(data)
         if data_len < 12:
-            raise AssertionError('package error: %s' % data)
+            # raise AssertionError('package error: %s' % data)
+            return None
         if data[:3] != b'DIM':
             # raise AssertionError('not a DIM package: %s' % data)
             return None
@@ -247,15 +233,15 @@ class Header(Data):
         ch = data[3]
         head_len = (ch & 0xF0) >> 2  # in bytes
         data_type = ch & 0x0F
-        _type = DataType.new(value=data_type)
-        assert _type is not None, 'data type error'
+        data_type = DataType.new(value=data_type)
+        assert data_type is not None, 'data type error'
         data = data[4:]
         # get transaction ID
-        _sn = TransactionID.parse(data=data)
-        assert _sn is not None, 'transaction ID error'
-        data = data[_sn.length:]
+        sn = TransactionID.parse(data=data)
+        assert sn is not None, 'transaction ID error'
+        data = data[sn.length:]
         # get fragments count & offset
-        if _type == MessageFragment:
+        if data_type == MessageFragment:
             assert head_len == 20, 'head length error: %d' % head_len
             assert data_len > head_len, 'fragment package error: %s' % data
             pages = bytes_to_int(data[:4])
@@ -265,7 +251,27 @@ class Header(Data):
             assert head_len == 12, 'head length error: %d' % head_len
             pages = 1
             offset = 0
-        return cls(data_type=_type, sn=_sn, pages=pages, offset=offset)
+        return cls(data=data, head_len=head_len, data_type=data_type, sn=sn, pages=pages, offset=offset)
+
+    @classmethod
+    def new(cls, data_type: DataType, sn: TransactionID=None, pages: int=1, offset: int=0):
+        if data_type == MessageFragment:
+            # fragments
+            assert pages > 1 and pages > offset, 'pages error: %d, %d' % (pages, offset)
+            options = uint32_to_bytes(value=pages) + uint32_to_bytes(value=offset)
+            head_len = 20  # in bytes
+        else:
+            assert pages == 1 and offset == 0, 'pages error: %d, %d' % (pages, offset)
+            options = b''
+            head_len = 12  # in bytes
+        if sn is None:
+            # generate transaction ID
+            sn = TransactionID.new()
+        # generate header data
+        hl_ty = (head_len << 2) | (data_type.value & 0x0F)
+        hl_ty = uint8_to_bytes(hl_ty & 0xFF)
+        data = b'DIM' + hl_ty + sn.data + options
+        return cls(data=data, head_len=head_len, data_type=data_type, sn=sn, pages=pages, offset=offset)
 
 
 class Package(Data):
@@ -281,8 +287,7 @@ class Package(Data):
     """
     MAX_BODY_LEN = 512
 
-    def __init__(self, head: Header, body: bytes):
-        data = head.data + body
+    def __init__(self, data: bytes, head: Header, body: bytes):
         super().__init__(data=data)
         self.__head = head
         self.__body = body
@@ -309,13 +314,14 @@ class Package(Data):
             return None
         # get package body
         body = data[head.length:]
-        return cls(head=head, body=body)
+        return cls(data=data, head=head, body=body)
 
     @classmethod
     def new(cls, data_type: DataType, sn: TransactionID=None, pages: int=1, offset: int=0, body: bytes=b''):
         # create package with header
-        head = Header(data_type=data_type, sn=sn, pages=pages, offset=offset)
-        return cls(head=head, body=body)
+        head = Header.new(data_type=data_type, sn=sn, pages=pages, offset=offset)
+        data = head.data + body
+        return cls(data=data, head=head, body=body)
 
     @classmethod
     def split(cls, package) -> list:

@@ -88,8 +88,8 @@ class Node(ABC):
         """
         self.source_address: (str, int) = None
 
-    @staticmethod
-    def info(msg: str):
+    # noinspection PyMethodMayBeStatic
+    def info(self, msg: str):
         time_array = time.localtime(int(time.time()))
         time_string = time.strftime('%y-%m-%d %H:%M:%S', time_array)
         print('[%s] %s' % (time_string, msg))

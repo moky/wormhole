@@ -150,8 +150,8 @@ class Socket(threading.Thread):
     def running(self) -> bool:
         return not getattr(self.__socket, '_closed', False)
 
-    @staticmethod
-    def _create_socket() -> socket.socket:
+    # noinspection PyMethodMayBeStatic
+    def _create_socket(self) -> socket.socket:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         return sock

@@ -149,8 +149,8 @@ class Hub(threading.Thread):
             # get socket by address
             return self.__get_socket(host=source[0], port=source[1])
 
-    @staticmethod
-    def _create_socket(host: str, port: int) -> Optional[Socket]:
+    # noinspection PyMethodMayBeStatic
+    def _create_socket(self, host: str, port: int) -> Optional[Socket]:
         return Socket(host=host, port=port)
 
     def open(self, port: int, host: str='0.0.0.0'):

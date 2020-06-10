@@ -131,6 +131,12 @@ class Assemble:
 
 
 class Pool(ABC):
+    """
+        Task Pool
+        ~~~~~~~~~
+
+        Cache for departure, arrival tasks and message fragments
+    """
 
     #
     #   Departures
