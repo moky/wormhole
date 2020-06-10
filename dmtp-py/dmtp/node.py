@@ -56,7 +56,7 @@ class Node(PeerDelegate):
         """
         Check signature before accept it
 
-        :param value:
+        :param value: login address
         :return: False on error
         """
         pass
@@ -71,6 +71,17 @@ class Node(PeerDelegate):
         :return: LocationValue when user's online now
         """
         pass
+
+    # @abstractmethod
+    # noinspection PyUnusedLocal,PyMethodMayBeStatic
+    def clear_location(self, value: LocationValue) -> bool:
+        """
+        Check signature before clear location
+
+        :param value: logout address
+        :return:
+        """
+        return True
 
     def send_command(self, cmd: Command, destination: tuple) -> Departure:
         """
@@ -136,7 +147,7 @@ class Server(Node, ABC):
     def __process_login(self, value: LocationValue, source: tuple) -> bool:
         mapped_address = value.mapped_address
         if mapped_address is not None and (mapped_address.ip, mapped_address.port) == source:
-            # check signature
+            # check signature before update location
             if self.set_location(value=value):
                 # login accepted
                 return True
@@ -144,6 +155,12 @@ class Server(Node, ABC):
         cmd = SignCommand.new(uid=value.id, mapped_address=source)
         self.send_command(cmd=cmd, destination=source)
         return True
+
+    def __process_logout(self, value: LocationValue, source: tuple) -> bool:
+        mapped_address = value.mapped_address
+        if mapped_address is not None and (mapped_address.ip, mapped_address.port) == source:
+            # check signature before cleaning location
+            return self.clear_location(value=value)
 
     def __process_call(self, value: CommandValue, source: tuple) -> bool:
         receiver = self.get_location(uid=value.id)
@@ -178,6 +195,9 @@ class Server(Node, ABC):
         elif cmd_type == Call:
             assert isinstance(cmd_value, CommandValue), 'call cmd error: %s' % cmd_value
             return self.__process_call(value=cmd_value, source=source)
+        elif cmd_type == Bye:
+            assert isinstance(cmd_value, LocationValue), 'logout cmd error: %s' % cmd_value
+            return self.__process_logout(value=cmd_value, source=source)
         else:
             print('unknown command: %s' % cmd)
 
@@ -215,12 +235,16 @@ class Client(Node):
         """
         if location is None:
             address = remote_address
-        elif location.mapped_address is not None:
-            address = (location.mapped_address.ip, location.mapped_address.port)
-        elif location.source_address is not None:
-            address = (location.source_address.ip, location.source_address.port)
         else:
-            return False
+            if not self.set_location(value=location):
+                # location error
+                return False
+            if location.mapped_address is not None:
+                address = (location.mapped_address.ip, location.mapped_address.port)
+            elif location.source_address is not None:
+                address = (location.source_address.ip, location.source_address.port)
+            else:
+                return False
         return self.say_hi(destination=address)
 
     def process_command(self, cmd: Command, source: tuple) -> bool:
@@ -238,7 +262,6 @@ class Client(Node):
             assert isinstance(cmd_value, LocationValue), 'call from error: %s' % cmd_value
             # when someone is calling you
             # respond anything (say 'HI') to build the connection.
-            if self.set_location(value=cmd_value):
-                return self.connect(location=cmd_value, remote_address=source)
+            return self.connect(location=cmd_value, remote_address=source)
         else:
             print('unknown command: %s' % cmd)

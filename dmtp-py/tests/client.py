@@ -41,8 +41,8 @@ class Client(dmtp.Client):
         self.identifier = 'moky-%d' % CLIENT_PORT
         self.nat = 'Port Restricted Cone NAT'
 
-    @staticmethod
-    def __analyze_location(location: dmtp.LocationValue) -> int:
+    # noinspection PyMethodMayBeStatic
+    def __analyze_location(self, location: dmtp.LocationValue) -> int:
         if location is None:
             return -1
         if location.id is None:

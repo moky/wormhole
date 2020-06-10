@@ -96,6 +96,17 @@ from .address import SourceAddressValue, MappedAddressValue
 
         Field:
             ID - user identifier
+
+    BYE
+        When a client is offline, send this command to the server, or broadcast
+        this command to every contacts to logout.
+
+        Fields:
+            ID - user identifier
+            ADDR - user's public IP and port
+            TIME - signed time
+            S - signature of 'ADDR+TIME' signed by this user
+            NAT - user's NAT type (OPTIONAL)
 """
 
 
@@ -154,6 +165,13 @@ class ProfileCommand(Command):
     def new(cls, uid: str) -> Command:
         value = LocationValue.new(uid=uid)
         return cls(t=Profile, v=value)
+
+
+class ByeCommand(Command):
+
+    @classmethod
+    def new(cls, location: Value) -> Command:
+        return cls(t=Bye, v=location)
 
 
 """
@@ -287,6 +305,7 @@ Sign = VarName(name='SIGN')        # (S) ask client to login
 Call = VarName(name='CALL')        # (C) ask server to help connecting with another user
 From = VarName(name='FROM')        # (S) help users connecting
 Profile = VarName(name='PROFILE')  # (S,C) ask receiver for profile with ID
+Bye = VarName(name='BYE')          # (C) logout with ID and address
 
 # field names
 ID = VarName(name='ID')                         # user ID
@@ -303,6 +322,7 @@ s_value_parsers[Sign] = LocationValue
 s_value_parsers[Call] = CommandValue
 s_value_parsers[From] = LocationValue
 s_value_parsers[Profile] = CommandValue
+s_value_parsers[Bye] = LocationValue
 
 s_value_parsers[ID] = StringValue
 s_value_parsers[SourceAddress] = SourceAddressValue
