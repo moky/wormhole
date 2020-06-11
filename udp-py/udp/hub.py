@@ -34,7 +34,7 @@ from weakref import WeakSet
 from abc import ABC, abstractmethod
 from typing import Optional, Union
 
-from .connection import Socket, Connection
+from .connection import Socket, Connection, ConnectionDelegate, ConnectionStatus
 
 """
     Topology:
@@ -63,13 +63,24 @@ from .connection import Socket, Connection
 class HubFilter(ABC):
 
     @abstractmethod
-    def matched(self, data: bytes, source: tuple, destination: tuple) -> bool:
+    def check_data(self, data: bytes, source: tuple, destination: tuple) -> bool:
         """
-        Check
-        :param data:
-        :param source:
-        :param destination:
-        :return:
+        Check for observing message data
+
+        :param data:        UDP data received
+        :param source:      remote IP and port
+        :param destination: local IP and port
+        :return: False to ignore it
+        """
+        raise NotImplemented
+
+    # @abstractmethod
+    def check_connection(self, connection: Connection) -> bool:
+        """
+        Check for observing connection
+
+        :param connection:
+        :return: False to ignore it
         """
         pass
 
@@ -86,18 +97,29 @@ class HubListener(ABC):
         New data package arrived
 
         :param data:        UDP data received
-        :param source:      remote ip and port
-        :param destination: local ip and port
+        :param source:      remote IP and port
+        :param destination: local IP and port
         :return: response to the source address
         """
         raise NotImplemented
 
+    # @abstractmethod
+    def status_changed(self, connection: Connection, old_status: ConnectionStatus, new_status: ConnectionStatus):
+        """
+        Status changed
 
-class Hub(threading.Thread):
+        :param connection:
+        :param old_status:
+        :param new_status:
+        """
+        pass
+
+
+class Hub(threading.Thread, ConnectionDelegate):
 
     def __init__(self):
         super().__init__()
-        self.running = True
+        self.running = False
         self.__sockets = []
         self.__listeners = WeakSet()
         self.__listeners_lock = threading.Lock()
@@ -151,7 +173,9 @@ class Hub(threading.Thread):
 
     # noinspection PyMethodMayBeStatic
     def _create_socket(self, host: str, port: int) -> Optional[Socket]:
-        return Socket(host=host, port=port)
+        sock = Socket(host=host, port=port)
+        sock.connection_delegate = self
+        return sock
 
     def open(self, port: int, host: str='0.0.0.0'):
         """ create a socket on this port """
@@ -173,6 +197,10 @@ class Hub(threading.Thread):
             count += 1
         return count > 0
 
+    def start(self):
+        self.running = True
+        super().start()
+
     def stop(self):
         self.running = False
         # close all sockets
@@ -183,11 +211,10 @@ class Hub(threading.Thread):
             assert isinstance(sock, Socket), 'socket error: %s' % sock
             sock.stop()
 
-    def connect(self, destination: tuple, source: Union[tuple, int]=None) -> bool:
+    def connect(self, destination: tuple, source: Union[tuple, int]=None) -> Optional[Connection]:
         sock = self._get_socket(source=source)
         if sock is not None:
-            sock.connect(remote_address=destination)
-            return True
+            return sock.connect(remote_address=destination)
 
     def disconnect(self, destination: tuple, source: Union[tuple, int]=None) -> bool:
         sock = self._get_socket(source=source)
@@ -252,7 +279,7 @@ class Hub(threading.Thread):
             for listener in self.__listeners:
                 assert isinstance(listener, HubListener), 'listener error: %s' % listener
                 f = listener.filter
-                if f and not f.matched(data=data, source=source, destination=destination):
+                if f is not None and not f.check_data(data=data, source=source, destination=destination):
                     continue
                 res = listener.received(data=data, source=source, destination=destination)
                 if res is None:
@@ -285,3 +312,29 @@ class Hub(threading.Thread):
                         sock.purge()  # remove error connections
             except Exception as error:
                 print('run error: %s' % error)
+
+    #
+    #   ConnectionDelegate
+    #
+    def connection_status_changed(self, connection: Connection,
+                                  old_status: ConnectionStatus, new_status: ConnectionStatus):
+        with self.__listeners_lock:
+            for listener in self.__listeners:
+                assert isinstance(listener, HubListener), 'listener error: %s' % listener
+                f = listener.filter
+                if f is not None and not f.check_connection(connection=connection):
+                    continue
+                listener.status_changed(connection=connection, old_status=old_status, new_status=new_status)
+
+    def connection_received_data(self, connection: Connection):
+        if self.running:
+            # process by run()
+            return True
+        data, source, destination = self.__receive(source=connection.local_address)
+        if data is None:
+            # assert False
+            return False
+        # dispatch data and got responses
+        responses = self.__dispatch(data=data, source=source, destination=destination)
+        for res in responses:
+            self.send(data=res, destination=source, source=destination)

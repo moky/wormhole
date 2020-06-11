@@ -31,6 +31,7 @@
 import socket
 import threading
 import time
+from abc import ABC, abstractmethod
 from enum import IntEnum
 from typing import Optional
 
@@ -41,6 +42,35 @@ class ConnectionStatus(IntEnum):
     Default = 0
     Connecting = 1
     Connected = 2
+
+
+def connection_status(now: float, send_expired: float, receive_expired: float, connection_lost: float):
+    if now < receive_expired:
+        """
+        When received a package from remote address, this node must respond
+        a package, so 'send expired' is always late than 'receive expired'.
+        So, if received anything (normal package or just 'PING') from this
+        connection, this indicates 'Connected'.
+        """
+        return ConnectionStatus.Connected
+    elif now > connection_lost:
+        """
+        It's a long time to receive nothing (even a 'PONG'), this connection
+        may be already lost, needs to reconnect again.
+        """
+        return ConnectionStatus.Error
+    elif now < send_expired:
+        """
+        If sent package through this connection recently but not received
+        anything yet (includes 'PONG'), this indicates 'Connecting'.
+        """
+        return ConnectionStatus.Connecting
+    else:
+        """
+        It's a long time to send nothing, this connection needs maintaining,
+        send something immediately (e.g.: 'PING') to keep it alive.
+        """
+        return ConnectionStatus.Default
 
 
 class Connection:
@@ -69,43 +99,39 @@ class Connection:
 
     @property
     def status(self) -> ConnectionStatus:
-        now = time.time()
-        if now < self.__receive_expired:
-            """
-            When received a package from remote address, this node must respond
-            a package, so 'send expired' is always late than 'receive expired'.
-            So, if received anything (normal package or just 'PING') from this
-            connection, this indicates 'Connected'.
-            """
-            return ConnectionStatus.Connected
-        elif now > self.__connection_lost:
-            """
-            It's a long time to receive nothing (even a 'PONG'), this connection
-            may be already lost, needs to reconnect again.
-            """
-            return ConnectionStatus.Error
-        elif now < self.__send_expired:
-            """
-            If sent package through this connection recently but not received
-            anything yet (includes 'PONG'), this indicates 'Connecting'.
-            """
-            return ConnectionStatus.Connecting
-        else:
-            """
-            It's a long time to send nothing, this connection needs maintaining,
-            send something immediately (e.g.: 'PING') to keep it alive.
-            """
-            return ConnectionStatus.Default
+        return connection_status(now=time.time(),
+                                 send_expired=self.__send_expired,
+                                 receive_expired=self.__receive_expired,
+                                 connection_lost=self.__connection_lost)
 
-    def update_sent_time(self):
-        """ update last send time """
-        self.__send_expired = time.time() + self.EXPIRES
-
-    def update_received_time(self):
-        """ update last send time """
+    def update_sent_time(self) -> (ConnectionStatus, ConnectionStatus):
         now = time.time()
+        old_status = connection_status(now,
+                                       send_expired=self.__send_expired,
+                                       receive_expired=self.__receive_expired,
+                                       connection_lost=self.__connection_lost)
+        # update last send time
+        self.__send_expired = now + self.EXPIRES
+        new_status = connection_status(now,
+                                       send_expired=self.__send_expired,
+                                       receive_expired=self.__receive_expired,
+                                       connection_lost=self.__connection_lost)
+        return old_status, new_status
+
+    def update_received_time(self) -> (ConnectionStatus, ConnectionStatus):
+        now = time.time()
+        old_status = connection_status(now,
+                                       send_expired=self.__send_expired,
+                                       receive_expired=self.__receive_expired,
+                                       connection_lost=self.__connection_lost)
+        # update last receive time
         self.__connection_lost = now + (self.EXPIRES << 2)
         self.__receive_expired = now + self.EXPIRES
+        new_status = connection_status(now,
+                                       send_expired=self.__send_expired,
+                                       receive_expired=self.__receive_expired,
+                                       connection_lost=self.__connection_lost)
+        return old_status, new_status
 
 
 class Cargo:
@@ -114,6 +140,30 @@ class Cargo:
         super().__init__()
         self.data = data
         self.source = source
+
+
+class ConnectionDelegate(ABC):
+
+    @abstractmethod
+    def connection_status_changed(self, connection: Connection,
+                                  old_status: ConnectionStatus, new_status: ConnectionStatus):
+        """
+        Call when connection status changed
+
+        :param connection:
+        :param old_status:
+        :param new_status:
+        """
+        pass
+
+    @abstractmethod
+    def connection_received_data(self, connection: Connection):
+        """
+        Call when received data from a connection
+
+        :param connection:
+        """
+        pass
 
 
 class Socket(threading.Thread):
@@ -135,6 +185,8 @@ class Socket(threading.Thread):
         sock = self._create_socket()
         sock.bind(self.__local_address)
         self.__socket = sock
+        # delegate
+        self.connection_delegate: ConnectionDelegate = None
         # connection list
         self.__connections = []
         self.__connections_lock = threading.Lock()
@@ -167,16 +219,21 @@ class Socket(threading.Thread):
                     # got it
                     return conn
 
-    def connect(self, remote_address: tuple):
+    # noinspection PyMethodMayBeStatic
+    def _create_connection(self, local_address: tuple, remote_address: tuple) -> Connection:
+        return Connection(local_address=local_address, remote_address=remote_address)
+
+    def connect(self, remote_address: tuple) -> Connection:
         """ add remote address to keep connected with heartbeat """
         with self.__connections_lock:
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
                 if conn.remote_address == remote_address:
                     # already connected
-                    return
-            conn = Connection(local_address=self.local_address, remote_address=remote_address)
+                    return conn
+            conn = self._create_connection(local_address=self.local_address, remote_address=remote_address)
             self.__connections.append(conn)
+            return conn
 
     def disconnect(self, remote_address: tuple):
         """ remove remote address from heartbeat tasks """
@@ -208,22 +265,38 @@ class Socket(threading.Thread):
                     return conn
 
     def __update_sent_time(self, remote_address: tuple):
+        connection = None
+        old_status = None
+        new_status = None
         with self.__connections_lock:
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
                 if conn.remote_address == remote_address:
                     # refresh time
-                    conn.update_sent_time()
-                    # return True
+                    old_status, new_status = conn.update_sent_time()
+                    connection = conn
+        # callback
+        if self.connection_delegate is not None and old_status != new_status:
+            self.connection_delegate.connection_status_changed(connection=connection,
+                                                               old_status=old_status,
+                                                               new_status=new_status)
 
     def __update_received_time(self, remote_address: tuple):
+        connection = None
+        old_status = None
+        new_status = None
         with self.__connections_lock:
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
                 if conn.remote_address == remote_address:
                     # refresh time
-                    conn.update_received_time()
-                    # return True
+                    old_status, new_status = conn.update_received_time()
+                    connection = conn
+        # callback
+        if self.connection_delegate is not None and old_status != new_status:
+            self.connection_delegate.connection_status_changed(connection=connection,
+                                                               old_status=old_status,
+                                                               new_status=new_status)
 
     def send(self, data: bytes, remote_address: tuple) -> int:
         """
@@ -274,6 +347,11 @@ class Socket(threading.Thread):
                 self.__cargoes.pop(0)
             # append the new package to the end
             self.__cargoes.append(Cargo(data=data, source=source))
+        # callback
+        if self.connection_delegate is not None:
+            connection = self.get_connection(remote_address=source)
+            if connection is not None:
+                self.connection_delegate.connection_received_data(connection=connection)
 
     def run(self):
         self.settimeout(2)
