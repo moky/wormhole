@@ -211,7 +211,7 @@ class Message(FieldsValue):
         return cls(fields=fields)
 
 
-# message file names
+# message field names
 MsgSender = VarName('S')
 MsgReceiver = VarName('R')
 MsgTime = VarName('W')

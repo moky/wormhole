@@ -44,8 +44,17 @@ __all__ = [
 
     # commands
     'Command',
-    'Hello', 'Sign', 'From', 'Bye', 'LocationValue',
-    'Call', 'Profile', 'CommandValue',
+    'Who', 'WhoCommand',
+    'Hello', 'HelloCommand',
+    'Sign', 'SignCommand',
+    'Call', 'CallCommand',
+    'From', 'FromCommand',
+    'Profile', 'ProfileCommand',
+    'Bye', 'ByeCommand',
+
+    # command values
+    'CommandValue',
+    'LocationValue',
 
     # command fields
     'ID',
@@ -58,7 +67,12 @@ __all__ = [
 
     # message
     'Message',
+    'MsgSender', 'MsgReceiver', 'MsgTime', 'MsgType', 'MsgGroup',
+    'MsgContent', 'MsgSignature', 'MsgKey',
+    'MsgMeta', 'MsgProfile',
+    'MsgFilename',
 
-    # nodes
+    # node
+    'Contact',
     'Node', 'Server', 'Client',
 ]

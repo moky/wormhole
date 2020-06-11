@@ -237,12 +237,15 @@ class Node(PeerDelegate):
         return self.say_hi(destination=source)
 
     # noinspection PyUnusedLocal
-    def _process_login(self, location: LocationValue, source: tuple) -> bool:
+    def _process_hello(self, location: LocationValue, source: tuple) -> bool:
         # check signature before accept it
-        return self.set_location(location=location)
+        if self.set_location(location=location):
+            contact = self.contacts.get(location.identifier)
+            assert isinstance(contact, Contact), 'contact error: %s -> %s' % (location.identifier, contact)
+            return contact.update_address(address=source)
 
     # noinspection PyUnusedLocal
-    def _process_logout(self, location: LocationValue, source: tuple) -> bool:
+    def _process_bye(self, location: LocationValue, source: tuple) -> bool:
         # check signature before cleaning location
         return self.remove_location(location=location)
 
@@ -264,10 +267,10 @@ class Node(PeerDelegate):
             return self._process_who(source=source)
         elif cmd_type == Hello:
             assert isinstance(cmd_value, LocationValue), 'login cmd error: %s' % cmd_value
-            return self._process_login(location=cmd_value, source=source)
+            return self._process_hello(location=cmd_value, source=source)
         elif cmd_type == Bye:
             assert isinstance(cmd_value, LocationValue), 'logout cmd error: %s' % cmd_value
-            return self._process_logout(location=cmd_value, source=source)
+            return self._process_bye(location=cmd_value, source=source)
         else:
             clazz = self.__class__.__name__
             print('%s> unknown command: %s' % (clazz, cmd))
@@ -302,22 +305,22 @@ class Node(PeerDelegate):
 
 class Server(Node, ABC):
 
-    def _process_login(self, location: LocationValue, source: tuple) -> bool:
+    def _process_hello(self, location: LocationValue, source: tuple) -> bool:
         mapped_address = location.mapped_address
         if mapped_address is not None and (mapped_address.ip, mapped_address.port) == source:
-            if super()._process_login(location=location, source=source):
+            if super()._process_hello(location=location, source=source):
                 return True
         # response 'SIGN' command with 'ID' and 'ADDR'
         cmd = SignCommand.new(identifier=location.identifier, mapped_address=source)
         self.send_command(cmd=cmd, destination=source)
         return True
 
-    def __process_call(self, value: CommandValue, source: tuple) -> bool:
-        receiver = self.get_location(identifier=value.identifier)
-        if receiver is None or receiver.mapped_address is None:
+    def _process_call(self, receiver: str, source: tuple) -> bool:
+        location = self.get_location(identifier=receiver)
+        if location is None or location.mapped_address is None:
             # receiver not online
             # respond an empty 'FROM' command to the sender
-            cmd = FromCommand.new(identifier=value.identifier)
+            cmd = FromCommand.new(identifier=receiver)
             self.send_command(cmd=cmd, destination=source)
         else:
             # receiver is online
@@ -329,10 +332,10 @@ class Server(Node, ABC):
             else:
                 # send 'fROM' command with sender's location info to the receiver
                 cmd = FromCommand.new(location=sender)
-                address = receiver.mapped_address
+                address = location.mapped_address
                 self.send_command(cmd=cmd, destination=(address.ip, address.port))
                 # respond 'FROM' command with receiver's location info to sender
-                cmd = FromCommand.new(location=receiver)
+                cmd = FromCommand.new(location=location)
                 self.send_command(cmd=cmd, destination=source)
         return True
 
@@ -341,7 +344,7 @@ class Server(Node, ABC):
         cmd_value = cmd.value
         if cmd_type == Call:
             assert isinstance(cmd_value, CommandValue), 'call cmd error: %s' % cmd_value
-            return self.__process_call(value=cmd_value, source=source)
+            return self._process_call(receiver=cmd_value.identifier, source=source)
         else:
             return super().process_command(cmd=cmd, source=source)
 
@@ -359,26 +362,31 @@ class Client(Node):
         """
         pass
 
-    def connect(self, location: LocationValue=None, remote_address: tuple=None) -> bool:
+    def connect(self, remote_address: tuple) -> bool:
         """
         Send something to punch a tunnel for that location
 
-        :param location:       LocationValue contains ID, IP, port
         :param remote_address: server or remote user's address
         :return:
         """
-        if location is None:
-            assert len(remote_address) == 2, 'remote address error: %s' % str(remote_address)
-            return self.say_hi(destination=remote_address)
-        elif self.set_location(location=location):
+        return self.say_hi(destination=remote_address)
+
+    def _process_sign(self, location: LocationValue, destination: tuple) -> bool:
+        # sign your location for login
+        return self.sign_in(location=location, destination=destination)
+
+    def _process_from(self, location: LocationValue) -> bool:
+        # when someone is calling you
+        # respond anything (say 'HI') to build the connection.
+        if self.set_location(location=location):
             ok1 = False
             ok2 = False
             if location.source_address is not None:
                 address = (location.source_address.ip, location.source_address.port)
-                ok1 = self.say_hi(destination=address)
+                ok1 = self.connect(remote_address=address)
             if location.mapped_address is not None:
                 address = (location.mapped_address.ip, location.mapped_address.port)
-                ok2 = self.say_hi(destination=address)
+                ok2 = self.connect(remote_address=address)
             return ok1 or ok2
 
     def process_command(self, cmd: Command, source: tuple) -> bool:
@@ -386,12 +394,9 @@ class Client(Node):
         cmd_value = cmd.value
         if cmd_type == Sign:
             assert isinstance(cmd_value, LocationValue), 'sign cmd error: %s' % cmd_value
-            # sign your location for login
-            return self.sign_in(location=cmd_value, destination=source)
+            return self._process_sign(location=cmd_value, destination=source)
         elif cmd_type == From:
             assert isinstance(cmd_value, LocationValue), 'call from error: %s' % cmd_value
-            # when someone is calling you
-            # respond anything (say 'HI') to build the connection.
-            return self.connect(location=cmd_value, remote_address=source)
+            return self._process_from(location=cmd_value)
         else:
             return super().process_command(cmd=cmd, source=source)

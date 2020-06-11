@@ -37,7 +37,6 @@ class Client(dmtp.Client):
         self.__hub = hub
         self.source_address = None
         self.server_address = None
-        self.identifier = 'moky-%d' % CLIENT_PORT
         self.nat = 'Port Restricted Cone NAT'
 
     # noinspection PyMethodMayBeStatic
@@ -103,22 +102,9 @@ class Client(dmtp.Client):
         self.set_location(location=location)
         return True
 
-    def connect(self, location: dmtp.LocationValue=None, remote_address: tuple=None) -> bool:
-        if super().connect(location=location, remote_address=remote_address):
-            addresses = []
-            if location is None:
-                assert remote_address is not None, 'remote address should not be empty'
-                addresses.append(remote_address)
-            else:
-                if location.source_address is not None:
-                    addresses.append((location.mapped_address.ip, location.mapped_address.port))
-                if location.mapped_address is not None:
-                    addresses.append((location.mapped_address.ip, location.mapped_address.port))
-            # keep connection alive
-            source = self.source_address
-            for destination in addresses:
-                self.__hub.connect(destination=destination, source=source)
-            return True
+    def connect(self, remote_address: tuple) -> bool:
+        self.__hub.connect(destination=remote_address, source=self.source_address)
+        return super().connect(remote_address=remote_address)
 
     def call(self, identifier: str) -> bool:
         cmd = dmtp.CallCommand.new(identifier=identifier)
@@ -181,8 +167,8 @@ if __name__ == '__main__':
     g_client = create_client(local_address=(CLIENT_HOST, CLIENT_PORT),
                              server_address=(SERVER_HOST, SERVER_PORT))
 
-    g_client.identifier = 'hulk'
-    friend = 'moky'
+    g_client.identifier = 'moky-%d' % CLIENT_PORT
+    friend = 'moky@4DnqXWdTV8wuZgfqSCX9GjE2kNq7HJrUgQ'
 
     if len(sys.argv) == 3:
         g_client.identifier = sys.argv[1]
