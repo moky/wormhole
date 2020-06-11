@@ -125,6 +125,16 @@ class DMTPClient(dmtp.Client):
                                       source_address=source_address, mapped_address=mapped_address,
                                       timestamp=timestamp, signature=s, nat=self.nat)
 
+    def say_hi(self, destination: tuple) -> bool:
+        location = self.get_location(identifier=self.identifier)
+        if location is None:
+            cmd = dmtp.HelloCommand.new(identifier=self.identifier)
+        else:
+            cmd = dmtp.HelloCommand.new(location=location)
+        print('sending cmd: %s' % cmd)
+        self.send_command(cmd=cmd, destination=destination)
+        return True
+
     def sign_in(self, location: dmtp.LocationValue, destination: tuple) -> bool:
         print('server ask signing: %s' % location)
         location = self.__sign_location(location=location)

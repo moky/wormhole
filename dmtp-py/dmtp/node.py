@@ -115,8 +115,6 @@ class Node(PeerDelegate):
     def __init__(self):
         super().__init__()
         self.__peer: Peer = None
-        # user ID
-        self.identifier: str = None
         # online contacts
         self.__contacts: dict = {}  # ID -> Contact
         self.__map: dict = {}       # (IP, port) -> Contact
@@ -217,6 +215,7 @@ class Node(PeerDelegate):
     #
     #   Process
     #
+    @abstractmethod
     def say_hi(self, destination: tuple) -> bool:
         """
         Send 'HI' command to tell the server who you are
@@ -224,13 +223,7 @@ class Node(PeerDelegate):
         :param destination: server address
         :return: False on failed
         """
-        location = self.get_location(identifier=self.identifier)
-        if location is None:
-            cmd = HelloCommand.new(identifier=self.identifier)
-        else:
-            cmd = HelloCommand.new(location=location)
-        self.send_command(cmd=cmd, destination=destination)
-        return True
+        pass
 
     def _process_who(self, source: tuple) -> bool:
         # say hi when the sender asked 'Who are you?'

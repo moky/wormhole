@@ -37,6 +37,7 @@ class Client(dmtp.Client):
         self.__hub = hub
         self.source_address = None
         self.server_address = None
+        self.identifier = 'moky-%d' % CLIENT_PORT
         self.nat = 'Port Restricted Cone NAT'
 
     # noinspection PyMethodMayBeStatic
@@ -90,6 +91,16 @@ class Client(dmtp.Client):
                                       source_address=source_address,
                                       mapped_address=mapped_address,
                                       timestamp=timestamp, signature=s, nat=self.nat)
+
+    def say_hi(self, destination: tuple) -> bool:
+        location = self.get_location(identifier=self.identifier)
+        if location is None:
+            cmd = dmtp.HelloCommand.new(identifier=self.identifier)
+        else:
+            cmd = dmtp.HelloCommand.new(location=location)
+        print('sending cmd: %s' % cmd)
+        self.send_command(cmd=cmd, destination=destination)
+        return True
 
     def sign_in(self, location: dmtp.LocationValue, destination: tuple) -> bool:
         print('server ask signing: %s' % location)
@@ -167,7 +178,6 @@ if __name__ == '__main__':
     g_client = create_client(local_address=(CLIENT_HOST, CLIENT_PORT),
                              server_address=(SERVER_HOST, SERVER_PORT))
 
-    g_client.identifier = 'moky-%d' % CLIENT_PORT
     friend = 'moky@4DnqXWdTV8wuZgfqSCX9GjE2kNq7HJrUgQ'
 
     if len(sys.argv) == 3:
