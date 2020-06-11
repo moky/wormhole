@@ -34,7 +34,8 @@ from weakref import WeakSet
 from abc import ABC, abstractmethod
 from typing import Optional, Union
 
-from .connection import Socket, Connection, ConnectionDelegate, ConnectionStatus
+from .connection import ConnectionStatus, ConnectionDelegate, Connection
+from .socket import Socket
 
 """
     Topology:

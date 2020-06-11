@@ -30,6 +30,7 @@
 
 from .protocol import *
 from .connection import *
+from .socket import *
 from .hub import *
 from .peer import *
 from .task import *
