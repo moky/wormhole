@@ -172,19 +172,19 @@ class Hub(threading.Thread, ConnectionDelegate):
             # get socket by address
             return self.__get_socket(host=source[0], port=source[1])
 
-    # noinspection PyMethodMayBeStatic
-    def _create_socket(self, host: str, port: int) -> Optional[Socket]:
+    def _create_socket(self, host: str, port: int) -> Socket:
         sock = Socket(host=host, port=port)
         sock.connection_delegate = self
+        sock.start()
         return sock
 
-    def open(self, port: int, host: str='0.0.0.0'):
+    def open(self, port: int, host: str='0.0.0.0') -> Socket:
         """ create a socket on this port """
         sock = self.__get_socket(host=host, port=port)
         if sock is None:
             sock = self._create_socket(host=host, port=port)
-            sock.start()
             self.__sockets.append(sock)
+        return sock
 
     def close(self, port: int, host: str='0.0.0.0') -> bool:
         """ remove the socket on this port """

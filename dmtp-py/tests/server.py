@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from typing import Optional, Union
+from typing import Union
 
 import sys
 import os
@@ -24,13 +24,12 @@ class Server(dmtp.Server):
         super().__init__()
         hub.add_listener(self.peer)
         self.__hub = hub
-        self.__locations = {}
 
     # noinspection PyMethodMayBeStatic
     def __analyze_location(self, location: dmtp.LocationValue) -> int:
         if location is None:
             return -1
-        if location.id is None:
+        if location.identifier is None:
             # user ID error
             return -2
         if location.mapped_address is None:
@@ -50,20 +49,11 @@ class Server(dmtp.Server):
         assert data is not None and signature is not None
         return 0
 
-    def set_location(self, value: dmtp.LocationValue) -> bool:
-        if self.__analyze_location(location=value) < 0:
+    def set_location(self, location: dmtp.LocationValue) -> bool:
+        if self.__analyze_location(location=location) < 0:
+            print('location error: %s' % location)
             return False
-        address = value.mapped_address
-        self.__locations[value.id] = value
-        self.__locations[(address.ip, address.port)] = value
-        print('location updated: %s' % value)
-        return True
-
-    def get_location(self, uid: str = None, source: tuple = None) -> Optional[dmtp.LocationValue]:
-        if uid is None:
-            return self.__locations.get(source)
-        else:
-            return self.__locations.get(uid)
+        return super().set_location(location=location)
 
     def process_message(self, msg: dmtp.Message, source: tuple) -> bool:
         print('received msg: %s' % msg)

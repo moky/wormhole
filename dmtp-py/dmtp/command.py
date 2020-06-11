@@ -124,12 +124,12 @@ class WhoCommand(Command):
 class HelloCommand(Command):
 
     @classmethod
-    def new(cls, location: Value=None, uid: str=None,
+    def new(cls, location: Value=None, identifier: str=None,
             source_address=None, mapped_address=None, relayed_address=None,
             timestamp: int=0, signature: bytes=None, nat: str=None) -> Command:
         if location is None:
-            assert uid is not None, 'user ID empty'
-            location = LocationValue.new(uid=uid,
+            assert identifier is not None, 'user ID empty'
+            location = LocationValue.new(identifier=identifier,
                                          source_address=source_address,
                                          mapped_address=mapped_address,
                                          relayed_address=relayed_address,
@@ -140,8 +140,8 @@ class HelloCommand(Command):
 class SignCommand(Command):
 
     @classmethod
-    def new(cls, uid: str, source_address=None, mapped_address=None, relayed_address=None) -> Command:
-        value = LocationValue.new(uid=uid,
+    def new(cls, identifier: str, source_address=None, mapped_address=None, relayed_address=None) -> Command:
+        value = LocationValue.new(identifier=identifier,
                                   source_address=source_address,
                                   mapped_address=mapped_address,
                                   relayed_address=relayed_address)
@@ -151,26 +151,26 @@ class SignCommand(Command):
 class CallCommand(Command):
 
     @classmethod
-    def new(cls, uid: str) -> Command:
-        value = LocationValue.new(uid=uid)
+    def new(cls, identifier: str) -> Command:
+        value = LocationValue.new(identifier=identifier)
         return cls(t=Call, v=value)
 
 
 class FromCommand(Command):
 
     @classmethod
-    def new(cls, location: Value=None, uid: str=None) -> Command:
+    def new(cls, location: Value=None, identifier: str=None) -> Command:
         if location is None:
-            assert uid is not None, 'UID should not be empty'
-            location = LocationValue.new(uid=uid)
+            assert identifier is not None, 'UID should not be empty'
+            location = LocationValue.new(identifier=identifier)
         return cls(t=From, v=location)
 
 
 class ProfileCommand(Command):
 
     @classmethod
-    def new(cls, uid: str) -> Command:
-        value = LocationValue.new(uid=uid)
+    def new(cls, identifier: str) -> Command:
+        value = LocationValue.new(identifier=identifier)
         return cls(t=Profile, v=value)
 
 
@@ -194,7 +194,7 @@ class CommandValue(FieldsValue):
         super().__init__(fields=fields, data=data)
 
     @property
-    def id(self) -> str:
+    def identifier(self) -> str:
         return self.__id
 
     def _set_field(self, field: Field):
@@ -204,11 +204,11 @@ class CommandValue(FieldsValue):
             self.__id = f_value.string
         else:
             clazz = self.__class__.__name__
-            print('%s: unknown field "%s" -> "%s"' % (clazz, field.type, field.value))
+            print('%s> unknown field: %s -> %s' % (clazz, field.type, field.value))
 
     @classmethod
-    def new(cls, uid: str):
-        f_id = Field(t=ID, v=StringValue(string=uid))
+    def new(cls, identifier: str):
+        f_id = Field(t=ID, v=StringValue(string=identifier))
         return cls(fields=[f_id])
 
 
@@ -275,9 +275,9 @@ class LocationValue(CommandValue):
             super()._set_field(field=field)
 
     @classmethod
-    def new(cls, uid: str, source_address=None, mapped_address=None, relayed_address=None,
+    def new(cls, identifier: str, source_address=None, mapped_address=None, relayed_address=None,
             timestamp: int=0, signature: bytes=None, nat: str=None):
-        f_id = Field(t=ID, v=StringValue(string=uid))
+        f_id = Field(t=ID, v=StringValue(string=identifier))
         fields = [f_id]
         # append SOURCE-ADDRESS
         if source_address is not None:

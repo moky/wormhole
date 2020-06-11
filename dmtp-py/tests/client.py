@@ -35,7 +35,6 @@ class Client(dmtp.Client):
         super().__init__()
         hub.add_listener(self.peer)
         self.__hub = hub
-        self.__locations = {}
         self.source_address = None
         self.server_address = None
         self.identifier = 'moky-%d' % CLIENT_PORT
@@ -45,7 +44,7 @@ class Client(dmtp.Client):
     def __analyze_location(self, location: dmtp.LocationValue) -> int:
         if location is None:
             return -1
-        if location.id is None:
+        if location.identifier is None:
             # user ID error
             return -2
         if location.mapped_address is None:
@@ -65,35 +64,14 @@ class Client(dmtp.Client):
         assert data is not None and signature is not None
         return 0
 
-    def set_location(self, value: dmtp.LocationValue) -> bool:
-        if self.__analyze_location(location=value) < 0:
-            print('location error: %s' % value)
+    def set_location(self, location: dmtp.LocationValue) -> bool:
+        if self.__analyze_location(location=location) < 0:
+            print('location error: %s' % location)
             return False
-        address = value.mapped_address
-        self.__locations[value.id] = value
-        self.__locations[(address.ip, address.port)] = value
-        print('location updated: %s' % value)
-        return True
-
-    def get_location(self, uid: str = None, source: tuple = None) -> Optional[dmtp.LocationValue]:
-        if uid is None:
-            return self.__locations.get(source)
-        else:
-            return self.__locations.get(uid)
-
-    def say_hi(self, destination: tuple) -> bool:
-        uid = self.identifier
-        location = self.get_location(uid=uid)
-        if location is None:
-            cmd = dmtp.HelloCommand.new(uid=uid)
-        else:
-            cmd = dmtp.HelloCommand.new(location=location)
-        print('sending cmd: %s' % cmd)
-        self.send_command(cmd=cmd, destination=destination)
-        return True
+        return super().set_location(location=location)
 
     def __sign_location(self, location: dmtp.LocationValue) -> Optional[dmtp.LocationValue]:
-        if location is None or location.id is None or location.mapped_address is None:
+        if location is None or location.identifier is None or location.mapped_address is None:
             # location error
             return None
         # sign ("source-address" + "mapped-address" + "time")
@@ -109,7 +87,9 @@ class Client(dmtp.Client):
             data = source_address.data + data
         # TODO: sign it with private key
         s = b'sign(' + data + b')'
-        return dmtp.LocationValue.new(uid=location.id, source_address=source_address, mapped_address=mapped_address,
+        return dmtp.LocationValue.new(identifier=location.identifier,
+                                      source_address=source_address,
+                                      mapped_address=mapped_address,
                                       timestamp=timestamp, signature=s, nat=self.nat)
 
     def sign_in(self, location: dmtp.LocationValue, destination: tuple) -> bool:
@@ -120,7 +100,7 @@ class Client(dmtp.Client):
         cmd = dmtp.HelloCommand.new(location=location)
         print('sending cmd: %s' % cmd)
         self.send_command(cmd=cmd, destination=destination)
-        self.set_location(value=location)
+        self.set_location(location=location)
         return True
 
     def connect(self, location: dmtp.LocationValue=None, remote_address: tuple=None) -> bool:
@@ -140,8 +120,8 @@ class Client(dmtp.Client):
                 self.__hub.connect(destination=destination, source=source)
             return True
 
-    def call(self, uid: str) -> bool:
-        cmd = dmtp.CallCommand.new(uid=uid)
+    def call(self, identifier: str) -> bool:
+        cmd = dmtp.CallCommand.new(identifier=identifier)
         print('sending cmd: %s' % cmd)
         self.send_command(cmd=cmd, destination=self.server_address)
         return True
@@ -178,11 +158,11 @@ def create_client(local_address: tuple, server_address: tuple):
 
 
 def send_text(receiver: str, msg: str):
-    location = g_client.get_location(uid=receiver)
+    location = g_client.get_location(identifier=receiver)
     if location is None or location.mapped_address is None:
         print('cannot locate user: %s, %s' % (receiver, location))
         # ask the server to help building a connection
-        g_client.call(uid=receiver)
+        g_client.call(identifier=receiver)
         return False
     mapped_address = location.mapped_address
     address = (mapped_address.ip, mapped_address.port)

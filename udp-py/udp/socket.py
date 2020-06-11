@@ -59,9 +59,7 @@ class Socket(threading.Thread):
         super().__init__()
         self.__local_address = (host, port)
         # create socket
-        sock = self._create_socket()
-        sock.bind(self.__local_address)
-        self.__socket = sock
+        self.__socket = self._create_socket()
         # delegate
         self.connection_delegate: ConnectionDelegate = None
         # connection list
@@ -79,10 +77,10 @@ class Socket(threading.Thread):
     def running(self) -> bool:
         return not getattr(self.__socket, '_closed', False)
 
-    # noinspection PyMethodMayBeStatic
     def _create_socket(self) -> socket.socket:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(self.local_address)
         return sock
 
     def settimeout(self, timeout: Optional[float]):
@@ -96,8 +94,9 @@ class Socket(threading.Thread):
                     # got it
                     return conn
 
-    # noinspection PyMethodMayBeStatic
-    def _create_connection(self, local_address: tuple, remote_address: tuple) -> Connection:
+    def _create_connection(self, remote_address: tuple, local_address: tuple=None) -> Connection:
+        if local_address is None:
+            local_address = self.local_address
         return Connection(local_address=local_address, remote_address=remote_address)
 
     def connect(self, remote_address: tuple) -> Connection:
@@ -108,7 +107,7 @@ class Socket(threading.Thread):
                 if conn.remote_address == remote_address:
                     # already connected
                     return conn
-            conn = self._create_connection(local_address=self.local_address, remote_address=remote_address)
+            conn = self._create_connection(remote_address=remote_address)
             self.__connections.append(conn)
             return conn
 

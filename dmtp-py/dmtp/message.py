@@ -174,7 +174,8 @@ class Message(FieldsValue):
             assert isinstance(f_value, StringValue), 'filename error: %s' % f_value
             self.__filename = f_value.string
         else:
-            print('unknown field: %s -> %s' % (f_type, f_value))
+            clazz = self.__class__.__name__
+            print('%s> unknown field: %s -> %s' % (clazz, f_type, f_value))
 
     @classmethod
     def __fetch_msg_field(cls, array: list, info: dict, tag: str, name: str, t: VarName, clazz):

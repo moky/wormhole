@@ -194,8 +194,12 @@ class Peer(threading.Thread, HubListener):
     @property
     def pool(self) -> Pool:
         if self.__pool is None:
-            self.__pool = MemPool()
+            self.__pool = self._create_pool()
         return self.__pool
+
+    # noinspection PyMethodMayBeStatic
+    def _create_pool(self) -> Pool:
+        return MemPool()
 
     @property
     def delegate(self) -> Optional[PeerDelegate]:
