@@ -161,7 +161,7 @@ class Window(QWidget, DMTPClientDelegate):
 
     def call(self):
         self.__display('calling: %s' % self.receiver)
-        self.__dmtp_client.call(uid=self.receiver)
+        self.__dmtp_client.call(identifier=self.receiver)
 
     def send(self) -> Optional[dmtp.Message]:
         receiver = self.receiver
@@ -175,11 +175,11 @@ class Window(QWidget, DMTPClientDelegate):
         return msg
 
     def send_text(self, receiver: str, msg: str) -> Optional[dmtp.Message]:
-        location = self.__dmtp_client.get_location(uid=receiver)
+        location = self.__dmtp_client.get_location(identifier=receiver)
         if location is None or location.mapped_address is None:
             print('cannot locate user: %s, %s' % (receiver, location))
             # ask the server to help building a connection
-            self.__dmtp_client.call(uid=receiver)
+            self.__dmtp_client.call(identifier=receiver)
             return None
         mapped_address = location.mapped_address
         address = (mapped_address.ip, mapped_address.port)
@@ -205,13 +205,13 @@ class Window(QWidget, DMTPClientDelegate):
         elif cmd_type == dmtp.Sign:
             assert isinstance(cmd_value, dmtp.LocationValue), 'sign cmd error: %s' % cmd_value
             address = cmd_value.mapped_address
-            message = 'punching a hole at (%s:%d) for %s' % (address.ip, address.port, cmd_value.id)
+            message = 'punching a hole at (%s:%d) for %s' % (address.ip, address.port, cmd_value.identifier)
             self.display(message)
             return True
         elif cmd_type == dmtp.From:
             assert isinstance(cmd_value, dmtp.LocationValue), 'call from error: %s' % cmd_value
             address = cmd_value.mapped_address
-            message = '%s is calling from: (%s:%d)' % (cmd_value.id, address.ip, address.port)
+            message = '%s is calling from: (%s:%d)' % (cmd_value.identifier, address.ip, address.port)
             self.display(message)
             return True
 
