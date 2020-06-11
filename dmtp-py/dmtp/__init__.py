@@ -51,6 +51,7 @@ __all__ = [
     'ID',
     'SourceAddress', 'SourceAddressValue',
     'MappedAddress', 'MappedAddressValue',
+    'RelayedAddress', 'RelayedAddressValue',
     'Time',
     'Signature',
     'NAT',

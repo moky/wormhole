@@ -37,7 +37,7 @@ from .tlv import Field, FieldsValue
 from .tlv import BinaryValue, StringValue, TimestampValue
 from .tlv import s_value_parsers
 
-from .address import SourceAddressValue, MappedAddressValue
+from .address import SourceAddressValue, MappedAddressValue, RelayedAddressValue
 
 
 """
@@ -125,11 +125,14 @@ class HelloCommand(Command):
 
     @classmethod
     def new(cls, location: Value=None, uid: str=None,
-            source_address=None, mapped_address=None,
+            source_address=None, mapped_address=None, relayed_address=None,
             timestamp: int=0, signature: bytes=None, nat: str=None) -> Command:
         if location is None:
             assert uid is not None, 'user ID empty'
-            location = LocationValue.new(uid=uid, source_address=source_address, mapped_address=mapped_address,
+            location = LocationValue.new(uid=uid,
+                                         source_address=source_address,
+                                         mapped_address=mapped_address,
+                                         relayed_address=relayed_address,
                                          timestamp=timestamp, signature=signature, nat=nat)
         return cls(t=Hello, v=location)
 
@@ -137,8 +140,11 @@ class HelloCommand(Command):
 class SignCommand(Command):
 
     @classmethod
-    def new(cls, uid: str, source_address=None, mapped_address=None) -> Command:
-        value = LocationValue.new(uid=uid, source_address=source_address, mapped_address=mapped_address)
+    def new(cls, uid: str, source_address=None, mapped_address=None, relayed_address=None) -> Command:
+        value = LocationValue.new(uid=uid,
+                                  source_address=source_address,
+                                  mapped_address=mapped_address,
+                                  relayed_address=relayed_address)
         return cls(t=Sign, v=value)
 
 
@@ -155,6 +161,7 @@ class FromCommand(Command):
     @classmethod
     def new(cls, location: Value=None, uid: str=None) -> Command:
         if location is None:
+            assert uid is not None, 'UID should not be empty'
             location = LocationValue.new(uid=uid)
         return cls(t=From, v=location)
 
@@ -211,10 +218,11 @@ class LocationValue(CommandValue):
     """
 
     def __init__(self, fields: list, data: bytes=None):
-        self.__source_address: SourceAddressValue = None  # local IP and port
-        self.__mapped_address: MappedAddressValue = None  # public IP and port
-        self.__timestamp: int = None                      # time for signature
-        self.__signature: bytes = None                    # sign(addresses + timestamp)
+        self.__source_address: SourceAddressValue = None    # local IP and port
+        self.__mapped_address: MappedAddressValue = None    # public IP and port
+        self.__relayed_address: RelayedAddressValue = None  # server IP and port
+        self.__timestamp: int = None                        # time for signature
+        self.__signature: bytes = None                      # sign(addresses + timestamp)
         self.__nat: str = None
         super().__init__(fields=fields, data=data)
 
@@ -225,6 +233,10 @@ class LocationValue(CommandValue):
     @property
     def mapped_address(self) -> Optional[MappedAddressValue]:
         return self.__mapped_address
+
+    @property
+    def relayed_address(self) -> Optional[RelayedAddressValue]:
+        return self.__relayed_address
 
     @property
     def timestamp(self) -> int:
@@ -247,6 +259,9 @@ class LocationValue(CommandValue):
         elif f_type == MappedAddress:
             assert isinstance(f_value, MappedAddressValue), 'mapped address error: %s' % f_value
             self.__mapped_address = f_value
+        elif f_type == RelayedAddress:
+            assert isinstance(f_value, RelayedAddressValue), 'relayed address error: %s' % f_value
+            self.__relayed_address = f_value
         elif f_type == Time:
             assert isinstance(f_value, TimestampValue), 'time value error: %s' % f_value
             self.__timestamp = f_value.value
@@ -260,7 +275,7 @@ class LocationValue(CommandValue):
             super()._set_field(field=field)
 
     @classmethod
-    def new(cls, uid: str, source_address=None, mapped_address=None,
+    def new(cls, uid: str, source_address=None, mapped_address=None, relayed_address=None,
             timestamp: int=0, signature: bytes=None, nat: str=None):
         f_id = Field(t=ID, v=StringValue(string=uid))
         fields = [f_id]
@@ -278,11 +293,20 @@ class LocationValue(CommandValue):
             if isinstance(mapped_address, MappedAddressValue):
                 value = mapped_address
             else:
-                assert isinstance(mapped_address, tuple), 'mapped address error: %s' % source_address
+                assert isinstance(mapped_address, tuple), 'mapped address error: %s' % mapped_address
                 value = MappedAddressValue(ip=mapped_address[0], port=mapped_address[1])
             f_src = Field(t=MappedAddress, v=value)
             fields.append(f_src)
-        if source_address is not None or mapped_address is not None:
+        # append RELAYED-ADDRESS
+        if relayed_address is not None:
+            if isinstance(relayed_address, RelayedAddressValue):
+                value = relayed_address
+            else:
+                assert isinstance(relayed_address, tuple), 'relayed address error: %s' % relayed_address
+                value = RelayedAddressValue(ip=relayed_address[0], port=relayed_address[1])
+            f_src = Field(t=RelayedAddress, v=value)
+            fields.append(f_src)
+        if source_address is not None or mapped_address is not None or relayed_address is not None:
             # append sign time
             if timestamp > 0:
                 f_time = Field(t=Time, v=TimestampValue(value=timestamp))
@@ -308,12 +332,13 @@ Profile = VarName(name='PROFILE')  # (S,C) ask receiver for profile with ID
 Bye = VarName(name='BYE')          # (C) logout with ID and address
 
 # field names
-ID = VarName(name='ID')                         # user ID
-SourceAddress = VarName(name='SOURCE-ADDRESS')  # source-address (local IP and port)
-MappedAddress = VarName(name='MAPPED-ADDRESS')  # mapped-address (public IP and port)
-Time = VarName(name='TIME')                     # timestamp (uint32) stored in network order (big endian)
-Signature = VarName(name='SIGNATURE')           # verify with ('ADDR' + 'TIME') and meta.key
-NAT = VarName(name='NAT')                       # NAT type
+ID = VarName(name='ID')                           # user ID
+SourceAddress = VarName(name='SOURCE-ADDRESS')    # source-address (local IP and port)
+MappedAddress = VarName(name='MAPPED-ADDRESS')    # mapped-address (public IP and port)
+RelayedAddress = VarName(name='RELAYED-ADDRESS')  # relayed-address (server IP and port)
+Time = VarName(name='TIME')                       # timestamp (uint32) stored in network order (big endian)
+Signature = VarName(name='SIGNATURE')             # verify with ('ADDR' + 'TIME') and meta.key
+NAT = VarName(name='NAT')                         # NAT type
 
 
 # classes for parsing value
@@ -327,7 +352,7 @@ s_value_parsers[Bye] = LocationValue
 s_value_parsers[ID] = StringValue
 s_value_parsers[SourceAddress] = SourceAddressValue
 s_value_parsers[MappedAddress] = MappedAddressValue
-# s_value_parsers[AddressX] = XorMappedAddressValue
+s_value_parsers[RelayedAddress] = RelayedAddressValue
 s_value_parsers[Time] = TimestampValue
 s_value_parsers[Signature] = BinaryValue
 s_value_parsers[NAT] = StringValue

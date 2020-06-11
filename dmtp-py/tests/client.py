@@ -124,18 +124,21 @@ class Client(dmtp.Client):
         return True
 
     def connect(self, location: dmtp.LocationValue=None, remote_address: tuple=None) -> bool:
-        if location is None:
-            address = remote_address
-        elif location.mapped_address is not None:
-            address = (location.mapped_address.ip, location.mapped_address.port)
-        elif location.source_address is not None:
-            address = (location.source_address.ip, location.source_address.port)
-        else:
-            return False
-        # keep connection alive
-        self.__hub.connect(destination=address, source=self.source_address)
-        # say hi
-        return super().connect(location=location, remote_address=remote_address)
+        if super().connect(location=location, remote_address=remote_address):
+            addresses = []
+            if location is None:
+                assert remote_address is not None, 'remote address should not be empty'
+                addresses.append(remote_address)
+            else:
+                if location.source_address is not None:
+                    addresses.append((location.mapped_address.ip, location.mapped_address.port))
+                if location.mapped_address is not None:
+                    addresses.append((location.mapped_address.ip, location.mapped_address.port))
+            # keep connection alive
+            source = self.source_address
+            for destination in addresses:
+                self.__hub.connect(destination=destination, source=source)
+            return True
 
     def call(self, uid: str) -> bool:
         cmd = dmtp.CallCommand.new(uid=uid)

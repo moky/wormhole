@@ -234,18 +234,18 @@ class Client(Node):
         :return:
         """
         if location is None:
-            address = remote_address
-        else:
-            if not self.set_location(value=location):
-                # location error
-                return False
+            assert len(remote_address) == 2, 'remote address error: %s' % str(remote_address)
+            return self.say_hi(destination=remote_address)
+        elif self.set_location(value=location):
+            ok1 = False
+            ok2 = False
+            if location.source_address is not None:
+                address = (location.source_address.ip, location.source_address.port)
+                ok1 = self.say_hi(destination=address)
             if location.mapped_address is not None:
                 address = (location.mapped_address.ip, location.mapped_address.port)
-            elif location.source_address is not None:
-                address = (location.source_address.ip, location.source_address.port)
-            else:
-                return False
-        return self.say_hi(destination=address)
+                ok2 = self.say_hi(destination=address)
+            return ok1 or ok2
 
     def process_command(self, cmd: Command, source: tuple) -> bool:
         cmd_type = cmd.type

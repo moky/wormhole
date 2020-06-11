@@ -154,3 +154,15 @@ class SourceAddressValue(MappedAddressValue):
         ADDRESS.
     """
     pass
+
+
+class RelayedAddressValue(MappedAddressValue):
+    """
+        RELAYED-ADDRESS
+        ~~~~~~~~~~~~~~~
+
+        The RELAYED-ADDRESS attribute is present in Allocate responses.  It
+        specifies the address and port that the server allocated to the
+        client.  It is encoded in the same way as MAPPED-ADDRESS.
+    """
+    pass
