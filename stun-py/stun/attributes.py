@@ -35,6 +35,7 @@
     [RFC] https://www.ietf.org/rfc/rfc5389.txt
     [RFC] https://www.ietf.org/rfc/rfc3489.txt
 """
+
 from typing import Optional
 
 from udp.data import UInt16Data, UInt32Data
