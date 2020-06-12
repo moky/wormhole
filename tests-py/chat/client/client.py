@@ -65,14 +65,11 @@ class DMTPClient(dmtp.Client):
         # punching threads
         self.__punching = {}
 
-    @property
-    def peer(self) -> udp.Peer:
-        if self.__peer is None:
-            peer = DMTPPeer()
-            peer.delegate = self
-            peer.start()
-            self.__peer = peer
-        return self.__peer
+    def _create_peer(self) -> dmtp.Peer:
+        peer = DMTPPeer()
+        peer.delegate = self
+        peer.start()
+        return peer
 
     @staticmethod
     def __analyze_location(location: dmtp.LocationValue) -> int:
@@ -151,7 +148,9 @@ class DMTPClient(dmtp.Client):
         return True
 
     def connect(self, remote_address: tuple) -> bool:
+        print('connecting to %s' % str(remote_address))
         self.__hub.connect(destination=remote_address, source=self.source_address)
+        self.__keep_punching(destination=remote_address, source=self.source_address)
         return super().connect(remote_address=remote_address)
 
     def call(self, identifier: str) -> bool:
@@ -164,11 +163,11 @@ class DMTPClient(dmtp.Client):
         res = self.__hub.send(data=b'PING', destination=remote_address, source=local_address)
         return res == 4
 
-    def __keep_punching(self, destination: tuple):
+    def __keep_punching(self, destination: tuple, source: tuple):
         t = self.__punching.get(destination)
         if t is None:
             print('start punching for %s ...' % str(destination))
-            t = PunchThread(dmtp_client=self, remote_address=destination)
+            t = PunchThread(dmtp_client=self, remote_address=destination, local_address=source)
             t.start()
             self.__punching[destination] = t
 
@@ -185,15 +184,6 @@ class DMTPClient(dmtp.Client):
         if super().process_command(cmd=cmd, source=source):
             if self.delegate is not None:
                 self.delegate.process_command(cmd=cmd, source=source)
-            cmd_type = cmd.type
-            cmd_value = cmd.value
-            if cmd_type == dmtp.From:
-                assert isinstance(cmd_value, dmtp.LocationValue), 'call from error: %s' % cmd_value
-                mapped_address = cmd_value.mapped_address
-                address = (mapped_address.ip, mapped_address.port)
-                print('connecting with %s %s' % (cmd_value.identifier, address))
-                self.__hub.connect(destination=address)
-                self.__keep_punching(destination=address)
             return True
 
     def process_message(self, msg: dmtp.Message, source: tuple) -> bool:
@@ -236,13 +226,15 @@ class PunchThread(threading.Thread):
         remote = self.__remote_address
         local = self.__local_address
         now = int(time.time())
-        timeout = now + 300
+        timeout = now + 60
         while self.running and now < timeout:
             when = time_string(now)
             print('[%s] sending "PING" to %s' % (when, remote))
             client.ping(remote_address=remote, local_address=local)
             time.sleep(0.5)
             now = int(time.time())
+        # say HI after ping
+        client.say_hi(destination=remote)
 
 
 """

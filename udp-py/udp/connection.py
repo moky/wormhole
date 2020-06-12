@@ -80,9 +80,9 @@ class Connection:
         self.__remote_address = remote_address
         # connecting time
         now = time.time()
-        self.__connection_lost = now + (self.EXPIRES << 2)
-        self.__receive_expired = now + self.EXPIRES
-        self.__send_expired = now + self.EXPIRES
+        self.__connection_lost = now + (self.EXPIRES << 4)
+        self.__receive_expired = now  # + self.EXPIRES
+        self.__send_expired = now  # + self.EXPIRES
 
     @property
     def local_address(self) -> tuple:
@@ -103,32 +103,36 @@ class Connection:
 
     def update_sent_time(self) -> (ConnectionStatus, ConnectionStatus):
         now = time.time()
-        old_status = connection_status(now,
-                                       send_expired=self.__send_expired,
-                                       receive_expired=self.__receive_expired,
-                                       connection_lost=self.__connection_lost)
+        # old status
+        o_cs = connection_status(now,
+                                 send_expired=self.__send_expired,
+                                 receive_expired=self.__receive_expired,
+                                 connection_lost=self.__connection_lost)
         # update last send time
         self.__send_expired = now + self.EXPIRES
-        new_status = connection_status(now,
-                                       send_expired=self.__send_expired,
-                                       receive_expired=self.__receive_expired,
-                                       connection_lost=self.__connection_lost)
-        return old_status, new_status
+        # new status
+        n_cs = connection_status(now,
+                                 send_expired=self.__send_expired,
+                                 receive_expired=self.__receive_expired,
+                                 connection_lost=self.__connection_lost)
+        return o_cs, n_cs
 
     def update_received_time(self) -> (ConnectionStatus, ConnectionStatus):
         now = time.time()
-        old_status = connection_status(now,
-                                       send_expired=self.__send_expired,
-                                       receive_expired=self.__receive_expired,
-                                       connection_lost=self.__connection_lost)
+        # old status
+        o_cs = connection_status(now,
+                                 send_expired=self.__send_expired,
+                                 receive_expired=self.__receive_expired,
+                                 connection_lost=self.__connection_lost)
         # update last receive time
-        self.__connection_lost = now + (self.EXPIRES << 2)
+        self.__connection_lost = now + (self.EXPIRES << 4)
         self.__receive_expired = now + self.EXPIRES
-        new_status = connection_status(now,
-                                       send_expired=self.__send_expired,
-                                       receive_expired=self.__receive_expired,
-                                       connection_lost=self.__connection_lost)
-        return old_status, new_status
+        # new status
+        n_cs = connection_status(now,
+                                 send_expired=self.__send_expired,
+                                 receive_expired=self.__receive_expired,
+                                 connection_lost=self.__connection_lost)
+        return o_cs, n_cs
 
 
 class ConnectionDelegate(ABC):
