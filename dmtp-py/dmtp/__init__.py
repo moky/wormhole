@@ -28,8 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
+from .address import *
 from .command import *
 from .message import *
+from .contact import *
 from .node import *
 
 name = "DMTP"

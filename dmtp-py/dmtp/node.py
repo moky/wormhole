@@ -29,85 +29,17 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
+from typing import Optional
+from weakref import WeakValueDictionary
 
 from udp import Peer, PeerDelegate, Departure
 
-from .command import *
-from .message import *
-
-
-class Contact:
-
-    def __init__(self, identifier: str):
-        super().__init__()
-        self.__id = identifier
-        self.__location: LocationValue = None
-        self.__address: tuple = None
-
-    @property
-    def identifier(self) -> str:
-        return self.__id
-
-    @property
-    def location(self) -> Optional[LocationValue]:
-        """ Source Address, Mapped Address, Relayed Address """
-        return self.__location
-
-    def check_location(self, location: LocationValue) -> bool:
-        if location.identifier != self.identifier:
-            # assert False, 'location ID not match: %s, %s' % (self.identifier, location)
-            return False
-        if self.__location is not None and self.__location.timestamp > location.timestamp:
-            # expired location
-            return False
-        # TODO: check signature
-        return True
-
-    def update_location(self, location: LocationValue) -> bool:
-        if self.check_location(location=location):
-            self.__location = location
-            return True
-
-    def remove_location(self, location: LocationValue):
-        if self.check_location(location=location):
-            self.__location = None
-            return True
-
-    @property
-    def address(self) -> tuple:
-        """ Connected Address """
-        return self.__address
-
-    def update_address(self, address: tuple) -> bool:
-        assert self.location is not None, 'location should not empty'
-        # 1st, check source address
-        source_address = self.location.source_address
-        if source_address is not None:
-            if (source_address.ip, source_address.port) == self.__address:
-                # connected to source address
-                return self.__address == address
-            if (source_address.ip, source_address.port) == address:
-                self.__address = address
-                return True
-        # 2nd, check mapped address
-        mapped_address = self.location.mapped_address
-        if mapped_address is not None:
-            if (mapped_address.ip, mapped_address.port) == self.__address:
-                # connected to mapped address
-                return self.__address == address
-            if (mapped_address.ip, mapped_address.port) == address:
-                self.__address = address
-                return True
-        # 3rd, check relayed address
-        relayed_address = self.location.relayed_address
-        if relayed_address is not None:
-            if (relayed_address.ip, relayed_address.port) == self.__address:
-                # connected to relayed address
-                return self.__address == address
-            if (relayed_address.ip, relayed_address.port) == address:
-                self.__address = address
-                return True
-        assert False, 'failed to update address: %s -> %s' % (address, self.identifier)
+from .tlv import Field
+from .command import Command, WhoCommand, SignCommand, FromCommand
+from .command import Who, Hello, Sign, Call, From, Bye
+from .command import CommandValue, LocationValue
+from .message import Message
+from .contact import Contact
 
 
 class Node(PeerDelegate):
@@ -116,8 +48,8 @@ class Node(PeerDelegate):
         super().__init__()
         self.__peer: Peer = None
         # online contacts
-        self.__contacts: dict = {}  # ID -> Contact
-        self.__map: dict = {}       # (IP, port) -> Contact
+        self.__contacts: dict = {}          # ID -> Contact
+        self.__map = WeakValueDictionary()  # (IP, port) -> Contact
 
     #
     #   Peer (send/receive data)
@@ -135,45 +67,42 @@ class Node(PeerDelegate):
         return peer
 
     #
-    #   Contacts (with location info)
+    #   Contacts (with locations)
     #
-    @property
-    def contacts(self) -> dict:
-        return self.__contacts
 
     # noinspection PyMethodMayBeStatic
     def _create_contact(self, identifier: str) -> Contact:
         return Contact(identifier=identifier)
 
-    def set_location(self, location: LocationValue) -> bool:
-        identifier = location.identifier
+    def get_contact(self, identifier: str=None, address: tuple=None) -> Optional[Contact]:
+        """ get contact by ID or address """
         if identifier is None:
-            return False
-        contact = self.__contacts.get(identifier)
+            assert len(address) == 2, 'address error: %s' % str(address)
+            return self.__map.get(address)
+        else:
+            return self.__contacts.get(identifier)
+
+    def set_location(self, location: LocationValue) -> bool:
+        """ Login """
+        identifier = location.identifier
+        contact = self.get_contact(identifier=identifier)
         if contact is None:
             contact = self._create_contact(identifier=identifier)
         if contact.update_location(location=location):
             self.__contacts[identifier] = contact
             return True
 
-    def get_location(self, identifier: str=None, address: tuple=None) -> Optional[LocationValue]:
-        if identifier is None:
-            assert len(address) == 2, 'address error: %s' % str(address)
-            contact = self.__map.get(address)
-        else:
-            contact = self.__contacts.get(identifier)
-        if contact is not None:
-            return contact.location
-
     def remove_location(self, location: LocationValue) -> bool:
         """ Logout """
         identifier = location.identifier
-        contact = self.__contacts.get(identifier)
+        contact = self.get_contact(identifier=identifier)
         if contact is None:
             return False
         assert isinstance(contact, Contact), 'contact error: %s' % contact
         if contact.remove_location(location=location):
-            self.__contacts.pop(identifier, None)
+            if not contact.is_online:
+                # all sessions removed/expired
+                self.__contacts.pop(identifier, None)
             if location.source_address is not None:
                 address = location.source_address
                 address = (address.ip, address.port)
@@ -233,9 +162,9 @@ class Node(PeerDelegate):
     def _process_hello(self, location: LocationValue, source: tuple) -> bool:
         # check signature before accept it
         if self.set_location(location=location):
-            contact = self.contacts.get(location.identifier)
+            contact = self.get_contact(identifier=location.identifier)
             assert isinstance(contact, Contact), 'contact error: %s -> %s' % (location.identifier, contact)
-            return contact.update_address(address=source)
+            return self.update_address(address=source, contact=contact)
 
     # noinspection PyUnusedLocal
     def _process_bye(self, location: LocationValue, source: tuple) -> bool:
@@ -267,6 +196,7 @@ class Node(PeerDelegate):
         else:
             clazz = self.__class__.__name__
             print('%s> unknown command: %s' % (clazz, cmd))
+            return False
 
     @abstractmethod
     def process_message(self, msg: Message, source: tuple) -> bool:
@@ -309,27 +239,39 @@ class Server(Node, ABC):
         return True
 
     def _process_call(self, receiver: str, source: tuple) -> bool:
-        location = self.get_location(identifier=receiver)
-        if location is None or location.mapped_address is None:
+        # get locations of receiver
+        contact = self.get_contact(identifier=receiver)
+        if contact is None:
+            addresses = []
+        else:
+            addresses = contact.addresses
+        if len(addresses) == 0:
             # receiver not online
             # respond an empty 'FROM' command to the sender
             cmd = FromCommand.new(identifier=receiver)
             self.send_command(cmd=cmd, destination=source)
+            return False
+        # receiver is online
+        sender = self.get_contact(address=source)
+        if sender is None:
+            sender_location = None
         else:
-            # receiver is online
-            sender = self.get_location(address=source)
-            if sender is None:
-                # ask sender to login again
-                cmd = WhoCommand.new()
-                self.send_command(cmd=cmd, destination=source)
-            else:
-                # send 'fROM' command with sender's location info to the receiver
-                cmd = FromCommand.new(location=sender)
-                address = location.mapped_address
-                self.send_command(cmd=cmd, destination=(address.ip, address.port))
-                # respond 'FROM' command with receiver's location info to sender
-                cmd = FromCommand.new(location=location)
-                self.send_command(cmd=cmd, destination=source)
+            sender_location = sender.get_location(address=source)
+        if sender_location is None:
+            # ask sender to login again
+            cmd = WhoCommand.new()
+            self.send_command(cmd=cmd, destination=source)
+            return False
+        # send command for each address
+        for address in addresses:
+            receiver_location = contact.get_location(address=address)
+            assert receiver_location is not None, 'address error: %s, %s' % (address, receiver)
+            # send 'fROM' command with sender's location info to the receiver
+            cmd = FromCommand.new(location=sender_location)
+            self.send_command(cmd=cmd, destination=address)
+            # respond 'FROM' command with receiver's location info to sender
+            cmd = FromCommand.new(location=receiver_location)
+            self.send_command(cmd=cmd, destination=source)
         return True
 
     def process_command(self, cmd: Command, source: tuple) -> bool:

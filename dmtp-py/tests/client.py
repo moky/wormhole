@@ -93,7 +93,11 @@ class Client(dmtp.Client):
                                       timestamp=timestamp, signature=s, nat=self.nat)
 
     def say_hi(self, destination: tuple) -> bool:
-        location = self.get_location(identifier=self.identifier)
+        sender = self.get_contact(identifier=self.identifier)
+        if sender is None:
+            location = None
+        else:
+            location = sender.get_location(address=self.source_address)
         if location is None:
             cmd = dmtp.HelloCommand.new(identifier=self.identifier)
         else:
@@ -155,22 +159,25 @@ def create_client(local_address: tuple, server_address: tuple):
 
 
 def send_text(receiver: str, msg: str):
-    location = g_client.get_location(identifier=receiver)
-    if location is None or location.mapped_address is None:
-        print('cannot locate user: %s, %s' % (receiver, location))
+    contact = g_client.get_contact(identifier=receiver)
+    if contact is None:
+        addresses = None
+    else:
+        addresses = contact.addresses
+    if addresses is None or len(addresses) == 0:
+        print('user (%s) not login ... %s' % (receiver, contact))
         # ask the server to help building a connection
         g_client.call(identifier=receiver)
         return False
-    mapped_address = location.mapped_address
-    address = (mapped_address.ip, mapped_address.port)
     content = msg.encode('utf-8')
     msg = dmtp.Message.new(info={
         'sender': g_client.identifier,
         'receiver': receiver,
         'data': content,
     })
-    print('sending msg to %s:\n\t%s' % (address, msg))
-    g_client.send_message(msg=msg, destination=address)
+    for address in addresses:
+        print('sending msg to %s:\n\t%s' % (address, msg))
+        g_client.send_message(msg=msg, destination=address)
 
 
 if __name__ == '__main__':
@@ -178,7 +185,7 @@ if __name__ == '__main__':
     g_client = create_client(local_address=(CLIENT_HOST, CLIENT_PORT),
                              server_address=(SERVER_HOST, SERVER_PORT))
 
-    friend = 'moky@4DnqXWdTV8wuZgfqSCX9GjE2kNq7HJrUgQ'
+    friend = 'hulk'
 
     if len(sys.argv) == 3:
         g_client.identifier = sys.argv[1]

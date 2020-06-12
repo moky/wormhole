@@ -25,6 +25,12 @@ class Server(dmtp.Server):
         hub.add_listener(self.peer)
         self.__hub = hub
 
+    def say_hi(self, destination: tuple) -> bool:
+        cmd = dmtp.HelloCommand.new(identifier='station@anywhere')
+        print('sending cmd: %s' % cmd)
+        self.send_command(cmd=cmd, destination=destination)
+        return True
+
     # noinspection PyMethodMayBeStatic
     def __analyze_location(self, location: dmtp.LocationValue) -> int:
         if location is None:
