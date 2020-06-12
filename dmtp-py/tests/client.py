@@ -185,7 +185,7 @@ if __name__ == '__main__':
     g_client = create_client(local_address=(CLIENT_HOST, CLIENT_PORT),
                              server_address=(SERVER_HOST, SERVER_PORT))
 
-    friend = 'hulk'
+    friend = 'moky'
 
     if len(sys.argv) == 3:
         g_client.identifier = sys.argv[1]

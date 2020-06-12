@@ -126,7 +126,11 @@ class DMTPClient(dmtp.Client):
                                       timestamp=timestamp, signature=s, nat=self.nat)
 
     def say_hi(self, destination: tuple) -> bool:
-        location = self.get_location(identifier=self.identifier)
+        sender = self.get_contact(identifier=self.identifier)
+        if sender is None:
+            location = None
+        else:
+            location = sender.get_location(address=self.source_address)
         if location is None:
             cmd = dmtp.HelloCommand.new(identifier=self.identifier)
         else:

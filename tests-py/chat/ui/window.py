@@ -120,6 +120,9 @@ class Window(QWidget, DMTPClientDelegate):
     def text(self) -> str:
         return self.__text.toPlainText()
 
+    def set_text(self, value: str=''):
+        self.__text.setText(value)
+
     def show(self):
         self.setGeometry(300, 200, 640, 480)
         self.setMinimumSize(640, 480)
@@ -166,6 +169,7 @@ class Window(QWidget, DMTPClientDelegate):
     def send(self) -> Optional[dmtp.Message]:
         receiver = self.receiver
         text = self.text
+        self.set_text('')
         msg = self.send_text(receiver=receiver, msg=text)
         if msg is None:
             self.__display('failed to send message "%s" to %s' % (text, receiver))
@@ -175,14 +179,16 @@ class Window(QWidget, DMTPClientDelegate):
         return msg
 
     def send_text(self, receiver: str, msg: str) -> Optional[dmtp.Message]:
-        location = self.__dmtp_client.get_location(identifier=receiver)
-        if location is None or location.mapped_address is None:
-            print('cannot locate user: %s, %s' % (receiver, location))
+        contact = self.__dmtp_client.get_contact(identifier=receiver)
+        if contact is None:
+            addresses = None
+        else:
+            addresses = contact.addresses
+        if addresses is None or len(addresses) == 0:
+            print('user (%s) not login ... %s' % (receiver, contact))
             # ask the server to help building a connection
             self.__dmtp_client.call(identifier=receiver)
             return None
-        mapped_address = location.mapped_address
-        address = (mapped_address.ip, mapped_address.port)
         content = msg.encode('utf-8')
         msg = dmtp.Message.new(info={
             'sender': self.__dmtp_client.identifier,
@@ -190,8 +196,9 @@ class Window(QWidget, DMTPClientDelegate):
             'time': int(time.time()),
             'data': content,
         })
-        print('sending msg to %s:\n\t%s' % (address, msg))
-        self.__dmtp_client.send_message(msg=msg, destination=address)
+        for address in addresses:
+            print('sending msg to %s:\n\t%s' % (address, msg))
+            self.__dmtp_client.send_message(msg=msg, destination=address)
         return msg
 
     #
