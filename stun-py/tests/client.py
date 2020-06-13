@@ -7,17 +7,23 @@ from typing import Union
 import udp
 import stun
 
+import sys
+import os
 
-SERVER_TST = '127.0.0.1'
-SERVER_GZ1 = '134.175.87.98'
-SERVER_GZ2 = '203.195.224.155'
-SERVER_GZ3 = '129.204.94.164'
+curPath = os.path.abspath(os.path.dirname(__file__))
+rootPath = os.path.split(curPath)[0]
+sys.path.append(rootPath)
+
+from tests.srv_cnf import *
+
+
+SERVER_TEST = '127.0.0.1'
 
 STUN_SERVERS = [
-    (SERVER_TST, 3478),
+    # (SERVER_TEST, 3478),
     # (SERVER_GZ1, 3478),
     # (SERVER_GZ2, 3478),
-    # (SERVER_GZ3, 3478),
+    (SERVER_HK2, 3478),
 ]
 
 LOCAL_IP = stun.get_local_ip()
