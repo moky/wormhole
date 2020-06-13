@@ -57,7 +57,7 @@ def create_udp_client(local_host: str='127.0.0.1', local_port: int=9527) -> Clie
     # create a hub for sockets
     hub = udp.Hub()
     hub.open(host=local_host, port=local_port)
-    hub.start()
+    # hub.start()
 
     # create client
     client = Client(hub=hub)

@@ -42,7 +42,7 @@ def create_udp_server() -> Server:
     hub = udp.Hub()
     hub.open(port=SERVER_PORT)
     hub.open(port=CHANGE_PORT)
-    hub.start()
+    # hub.start()
 
     local_ip = stun.get_local_ip()
     if local_ip is None:

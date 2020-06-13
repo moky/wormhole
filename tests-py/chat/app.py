@@ -39,18 +39,16 @@ CLIENT_HOST = stun.get_local_ip()
 CLIENT_PORT = random.choice(range(9900, 9999))
 
 
-# create a hub for sockets
-g_hub = udp.Hub()
-g_hub.open(host=CLIENT_HOST, port=CLIENT_PORT)
-g_hub.start()
-
-
 """
     STUN
 """
 
+g_stun_hub = udp.Hub()
+g_stun_hub.open(host=CLIENT_HOST, port=CLIENT_PORT+100)
+# g_stun_hub.start()
+
 # STUN client
-g_stun_client = client = STUNClient(hub=g_hub)
+g_stun_client = client = STUNClient(hub=g_stun_hub)
 g_stun_client.source_address = (CLIENT_HOST, CLIENT_PORT)
 g_stun_client.server_address = (STUN_SERVER_HOST, STUN_SERVER_PORT)
 
@@ -59,8 +57,12 @@ g_stun_client.server_address = (STUN_SERVER_HOST, STUN_SERVER_PORT)
     DMTP
 """
 
+g_dmtp_hub = udp.Hub()
+g_dmtp_hub.open(host=CLIENT_HOST, port=CLIENT_PORT)
+g_dmtp_hub.start()
+
 # DMTP client
-g_dmtp_client = DMTPClient(hub=g_hub)
+g_dmtp_client = DMTPClient(hub=g_dmtp_hub)
 g_dmtp_client.source_address = (CLIENT_HOST, CLIENT_PORT)
 g_dmtp_client.server_address = (DMTP_SERVER_HOST, DMTP_SERVER_PORT)
 
