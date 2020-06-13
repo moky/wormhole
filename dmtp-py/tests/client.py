@@ -25,7 +25,7 @@ SERVER_GZ3 = '129.204.94.164'
 SERVER_HOST = SERVER_GZ1
 SERVER_PORT = 9395
 
-CLIENT_HOST = stun.Client.get_local_ip()
+CLIENT_HOST = stun.get_local_ip()
 CLIENT_PORT = random.choice(range(9900, 9999))
 
 

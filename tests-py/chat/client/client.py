@@ -257,6 +257,7 @@ class STUNClient(stun.Client):
         self.__hub = hub
         self.server_address = None
         self.delegate: STUNClientDelegate = None
+        self.retries = 5
 
     def info(self, msg: str):
         when = time_string(int(time.time()))
