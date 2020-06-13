@@ -1,6 +1,8 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import random
+
 from PyQt5.QtWidgets import QApplication
 
 import udp
@@ -34,7 +36,7 @@ DMTP_SERVER_HOST = SERVER_GZ1
 DMTP_SERVER_PORT = 9395
 
 CLIENT_HOST = stun.Client.get_local_ip()
-CLIENT_PORT = 9527  # random.choice(range(9900, 9999))
+CLIENT_PORT = random.choice(range(9900, 9999))
 
 
 # create a hub for sockets
