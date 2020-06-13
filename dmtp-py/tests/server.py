@@ -34,22 +34,25 @@ class Server(dmtp.Server):
     # noinspection PyMethodMayBeStatic
     def __analyze_location(self, location: dmtp.LocationValue) -> int:
         if location is None:
+            # location should not empty
             return -1
         if location.identifier is None:
-            # user ID error
+            # user ID should not empty
             return -2
         if location.mapped_address is None:
-            # address error
+            # mapped address should not empty
             return -3
         if location.signature is None:
-            # not signed
+            # location not signed
             return -4
-        # verify addresses and timestamp with signature
-        timestamp = dmtp.TimestampValue(value=location.timestamp)
-        data = location.mapped_address.data + timestamp.data
+        # data = "source_address" + "mapped_address" + "relayed_address" + "time"
+        data = location.mapped_address.data
         if location.source_address is not None:
-            # "source_address" + "mapped_address" + "time"
             data = location.source_address.data + data
+        if location.relayed_address is not None:
+            data = data + location.relayed_address.data
+        timestamp = dmtp.TimestampValue(value=location.timestamp)
+        data += timestamp.data
         signature = location.signature
         # TODO: verify data and signature with public key
         assert data is not None and signature is not None

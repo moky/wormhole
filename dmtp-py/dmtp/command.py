@@ -221,7 +221,7 @@ class LocationValue(CommandValue):
         self.__source_address: SourceAddressValue = None    # local IP and port
         self.__mapped_address: MappedAddressValue = None    # public IP and port
         self.__relayed_address: RelayedAddressValue = None  # server IP and port
-        self.__timestamp: int = None                        # time for signature
+        self.__timestamp: int = 0                           # time for signature
         self.__signature: bytes = None                      # sign(addresses + timestamp)
         self.__nat: str = None
         super().__init__(fields=fields, data=data)

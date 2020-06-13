@@ -43,22 +43,25 @@ class Client(dmtp.Client):
     # noinspection PyMethodMayBeStatic
     def __analyze_location(self, location: dmtp.LocationValue) -> int:
         if location is None:
+            # location should not empty
             return -1
         if location.identifier is None:
-            # user ID error
+            # user ID should not empty
             return -2
         if location.mapped_address is None:
-            # address error
+            # mapped address should not empty
             return -3
         if location.signature is None:
-            # not signed
+            # location not signed
             return -4
-        # verify addresses and timestamp with signature
-        timestamp = dmtp.TimestampValue(value=location.timestamp)
-        data = location.mapped_address.data + timestamp.data
+        # data = "source_address" + "mapped_address" + "relayed_address" + "time"
+        data = location.mapped_address.data
         if location.source_address is not None:
-            # "source_address" + "mapped_address" + "time"
             data = location.source_address.data + data
+        if location.relayed_address is not None:
+            data = data + location.relayed_address.data
+        timestamp = dmtp.TimestampValue(value=location.timestamp)
+        data += timestamp.data
         signature = location.signature
         # TODO: verify data and signature with public key
         assert data is not None and signature is not None
@@ -74,10 +77,10 @@ class Client(dmtp.Client):
         if location is None or location.identifier is None or location.mapped_address is None:
             # location error
             return None
-        # sign ("source-address" + "mapped-address" + "time")
+        # data = "source_address" + "mapped_address" + "relayed_address" + "time"
         mapped_address = location.mapped_address
-        timestamp = int(time.time())
-        data = mapped_address.data + dmtp.TimestampValue(value=timestamp).data
+        data = mapped_address.data
+        # source address
         if self.source_address is None:
             source_address = None
         else:
@@ -85,12 +88,22 @@ class Client(dmtp.Client):
             source_port = self.source_address[1]
             source_address = dmtp.SourceAddressValue(ip=source_ip, port=source_port)
             data = source_address.data + data
+        # relayed address
+        if location.relayed_address is None:
+            relayed_address = None
+        else:
+            relayed_address = location.relayed_address
+            data = data + relayed_address.data
+        # time
+        timestamp = int(time.time())
+        data += dmtp.TimestampValue(value=timestamp).data
         # TODO: sign it with private key
-        s = b'sign(' + data + b')'
+        signature = b'sign(' + data + b')'
         return dmtp.LocationValue.new(identifier=location.identifier,
                                       source_address=source_address,
                                       mapped_address=mapped_address,
-                                      timestamp=timestamp, signature=s, nat=self.nat)
+                                      relayed_address=relayed_address,
+                                      timestamp=timestamp, signature=signature, nat=self.nat)
 
     def say_hi(self, destination: tuple) -> bool:
         sender = self.get_contact(identifier=self.identifier)
