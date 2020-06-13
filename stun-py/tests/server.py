@@ -45,10 +45,16 @@ def create_udp_server() -> Server:
     hub.open(port=REDIRECTED_PORT)
     hub.start()
 
+    local_ip = stun.Client.get_local_ip()
+    if local_ip is None:
+        source_address = ('0.0.0.0', LOCAL_PORT)
+    else:
+        source_address = (local_ip, LOCAL_PORT)
+
     # create server
-    print('UDP server (%s:%d) starting ...' % (LOCAL_IP, LOCAL_PORT))
+    print('UDP server %s starting ...' % str(source_address))
     server = Server(hub=hub)
-    server.source_address = (LOCAL_IP, LOCAL_PORT)
+    server.source_address = source_address
     if len(NEIGHBOR_SERVERS) == 1:
         server.changed_address = NEIGHBOR_SERVERS[0]
         server.neighbour_address = NEIGHBOR_SERVERS[0]
