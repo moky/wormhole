@@ -40,29 +40,23 @@ class Server(stun.Server):
 def create_udp_server() -> Server:
     # create a hub for sockets
     hub = udp.Hub()
-    hub.open(port=LOCAL_PORT)
-    hub.open(port=ANOTHER_PORT)
-    hub.open(port=REDIRECTED_PORT)
+    hub.open(port=SERVER_PORT)
+    hub.open(port=CHANGE_PORT)
     hub.start()
 
-    local_ip = stun.Client.get_local_ip()
+    local_ip = stun.get_local_ip()
     if local_ip is None:
-        source_address = ('0.0.0.0', LOCAL_PORT)
+        source_address = ('0.0.0.0', SERVER_PORT)
     else:
-        source_address = (local_ip, LOCAL_PORT)
+        source_address = (local_ip, SERVER_PORT)
 
     # create server
     print('UDP server %s starting ...' % str(source_address))
     server = Server(hub=hub)
     server.source_address = source_address
-    if len(NEIGHBOR_SERVERS) == 1:
-        server.changed_address = NEIGHBOR_SERVERS[0]
-        server.neighbour_address = NEIGHBOR_SERVERS[0]
-    elif len(NEIGHBOR_SERVERS) == 2:
-        server.changed_address = NEIGHBOR_SERVERS[0]
-        server.neighbour_address = NEIGHBOR_SERVERS[1]
-    server.another_port = ANOTHER_PORT
-    server.redirected_port = REDIRECTED_PORT
+    server.changed_address = CHANGED_ADDRESS
+    server.change_port = CHANGE_PORT
+    server.neighbour = NEIGHBOR_SERVER
     return server
 
 

@@ -175,19 +175,14 @@ class Server(Node, ABC):
             This address will be the same as CHANGED-ADDRESS by default, but
             offer another different IP address here will be better.
         """
-        self.neighbour_address: (str, int) = None
-        """
-            If the request is redirected by another server ("change IP" and
-            "change port"), then use this port to respond the client.
-        """
-        self.redirected_port: int = 3480
+        self.neighbour: (str, int) = None
         """
             "Change Port"
             
             When this server received ChangeRequest with "change port" flag set,
             it should respond the client with another port.
         """
-        self.another_port: int = 3479
+        self.change_port: int = 3479
 
     def parse_attribute(self, attribute: Attribute, context: dict, result: Info) -> Info:
         value = attribute.value
@@ -212,14 +207,14 @@ class Server(Node, ABC):
         :param remote_port: Client's mapped address port
         :return:
         """
-        assert self.neighbour_address is not None, 'neighbour address not set'
+        assert self.neighbour is not None, 'neighbour address not set'
         # create attributes
         value = MappedAddressValue.new(ip=remote_ip, port=remote_port)
         data1 = Attribute(MappedAddress, value).data
         # pack
         body = data1
         pack = Package.new(msg_type=head.type, trans_id=head.trans_id, body=body)
-        self.send(data=pack.data, destination=self.neighbour_address)
+        self.send(data=pack.data, destination=self.neighbour)
 
     def _respond(self, head: Header, remote_ip: str, remote_port: int, local_port: int=0):
         assert self.source_address is not None, 'source address not set'
@@ -268,7 +263,7 @@ class Server(Node, ABC):
             self._redirect(head=head, remote_ip=remote_ip, remote_port=remote_port)
         elif result.change_request == ChangePort:
             # respond with another port for "change port" flag
-            self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port, local_port=self.another_port)
+            self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port, local_port=self.change_port)
         elif result.mapped_address is None:
             # respond origin request
             self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port)
@@ -276,7 +271,7 @@ class Server(Node, ABC):
             # respond redirected request
             remote_ip = result.mapped_address[0]
             remote_port = result.mapped_address[1]
-            self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port, local_port=self.redirected_port)
+            self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port, local_port=self.change_port)
 
 
 """
@@ -516,13 +511,13 @@ class Client(Node, ABC):
         else:
             return NatType.RestrictedNAT, res3
 
-    @classmethod
-    def get_local_ip(cls, remote_host: str='8.8.8.8', remote_port: int=80) -> Optional[str]:
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.connect((remote_host, remote_port))
-            ip = sock.getsockname()[0]
-        finally:
-            # noinspection PyUnboundLocalVariable
-            sock.close()
-        return ip
+
+def get_local_ip(remote_host: str='8.8.8.8', remote_port: int=80) -> Optional[str]:
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.connect((remote_host, remote_port))
+        ip = sock.getsockname()[0]
+    finally:
+        # noinspection PyUnboundLocalVariable
+        sock.close()
+    return ip

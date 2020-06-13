@@ -75,4 +75,6 @@ __all__ = [
     #
     'NatType',
     'Client', 'Server',
+
+    'get_local_ip',
 ]

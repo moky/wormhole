@@ -8,20 +8,19 @@ import udp
 import stun
 
 
-SERVER_LOC = '127.0.0.1'
+SERVER_TST = '127.0.0.1'
 SERVER_GZ1 = '134.175.87.98'
 SERVER_GZ2 = '203.195.224.155'
 SERVER_GZ3 = '129.204.94.164'
 
 STUN_SERVERS = [
-    # SERVER_LOC,
-    SERVER_GZ1,
-    # SERVER_GZ2,
-    # SERVER_GZ3,
+    (SERVER_TST, 3478),
+    # (SERVER_GZ1, 3478),
+    # (SERVER_GZ2, 3478),
+    # (SERVER_GZ3, 3478),
 ]
-STUN_PORT = 3478
 
-LOCAL_IP = stun.Client.get_local_ip()
+LOCAL_IP = stun.get_local_ip()
 LOCAL_PORT = 9527
 
 
@@ -76,8 +75,8 @@ if __name__ == '__main__':
     print('----------------------------------------------------------------')
     print('-- Local Address: (%s:%d)' % (LOCAL_IP, LOCAL_PORT))
     # create client
-    for host in STUN_SERVERS:
-        detect(client=g_client, stun_host=host, stun_port=STUN_PORT)
+    for address in STUN_SERVERS:
+        detect(client=g_client, stun_host=address[0], stun_port=address[1])
     # exit
     print('-- Local Address: (%s:%d)' % (LOCAL_IP, LOCAL_PORT))
     print('----------------------------------------------------------------')
