@@ -274,20 +274,6 @@ class Hub(threading.Thread, ConnectionDelegate):
                 return data, remote, sock.local_address
         return None, None, None
 
-    def __dispatch(self, data: bytes, source: tuple, destination: tuple) -> list:
-        responses = []
-        with self.__listeners_lock:
-            for listener in self.__listeners:
-                assert isinstance(listener, HubListener), 'listener error: %s' % listener
-                f = listener.filter
-                if f is not None and not f.check_data(data=data, source=source, destination=destination):
-                    continue
-                res = listener.received(data=data, source=source, destination=destination)
-                if res is None:
-                    continue
-                responses.append(res)
-        return responses
-
     def run(self):
         last_time = time.time() + Connection.EXPIRES
         while self.running:
@@ -313,6 +299,20 @@ class Hub(threading.Thread, ConnectionDelegate):
                         sock.purge()  # remove error connections
             except Exception as error:
                 print('run error: %s' % error)
+
+    def __dispatch(self, data: bytes, source: tuple, destination: tuple) -> list:
+        responses = []
+        with self.__listeners_lock:
+            for listener in self.__listeners:
+                assert isinstance(listener, HubListener), 'listener error: %s' % listener
+                f = listener.filter
+                if f is not None and not f.check_data(data=data, source=source, destination=destination):
+                    continue
+                res = listener.received(data=data, source=source, destination=destination)
+                if res is None:
+                    continue
+                responses.append(res)
+        return responses
 
     #
     #   ConnectionDelegate
