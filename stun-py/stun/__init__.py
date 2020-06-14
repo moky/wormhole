@@ -30,7 +30,9 @@
 
 from .protocol import *
 from .attributes import *
-from .service import *
+from .node import *
+from .server import *
+from .client import *
 
 name = "STUN"
 
