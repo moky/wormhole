@@ -56,7 +56,7 @@ from .data import bytes_to_int, uint8_to_bytes, uint32_to_bytes
         Command Respond          : 0x01 (0000 0001)
         Message                  : 0x02 (0000 0010)
         Message Respond          : 0x03 (0000 0011)
-        Fragment Message         : 0x0A (0000 1010)
+        Message Fragment         : 0x0A (0000 1010)
 """
 
 

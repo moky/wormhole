@@ -45,7 +45,8 @@ from .data import uint32_to_bytes
 from .protocol import Package, TransactionID
 from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment
-from .task import Departure, Arrival, Assemble, Pool, MemPool
+from .task import Departure, Arrival, Assemble
+from .pool import Pool, MemPool
 from .hub import HubListener
 
 
