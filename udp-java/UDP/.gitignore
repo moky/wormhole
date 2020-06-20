@@ -3,6 +3,7 @@ local.properties
 .gradle/*
 build/*
 .DS_Store
+*.iml
 
 # Compiled class file
 *.class
