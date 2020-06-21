@@ -7,7 +7,7 @@
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2019 Albert Moky
+ * Copyright (c) 2020 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -412,29 +412,33 @@ public class Socket extends Thread {
         DatagramPacket packet;
         byte[] data;
         while (isRunning()) {
-            packet = receive(BUFFER_SIZE);
-            if (packet == null) {
-                // received nothing
-                _sleep(0.1);
-                continue;
-            }
-            // TODO: process truncated message
-            if (packet.getLength() == 4) {
-                // check heartbeat
-                data = packet.getData();
-                if (data[0] == 'P' && data[2] == 'N' && data[3] == 'G') {
-                    if (data[1] == 'I') {
-                        // respond heartbeat
-                        send(PONG, packet.getSocketAddress());
-                        continue;
-                    } else if (data[1] == 'O') {
-                        // ignore it
-                        continue;
+            try {
+                packet = receive(BUFFER_SIZE);
+                if (packet == null) {
+                    // received nothing
+                    _sleep(0.1);
+                    continue;
+                }
+                // TODO: process truncated message
+                if (packet.getLength() == 4) {
+                    // check heartbeat
+                    data = packet.getData();
+                    if (data[0] == 'P' && data[2] == 'N' && data[3] == 'G') {
+                        if (data[1] == 'I') {
+                            // respond heartbeat
+                            send(PONG, packet.getSocketAddress());
+                            continue;
+                        } else if (data[1] == 'O') {
+                            // ignore it
+                            continue;
+                        }
                     }
                 }
+                // cache the data package received
+                cache(packet);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            // cache the data package received
-            cache(packet);
         }
     }
 

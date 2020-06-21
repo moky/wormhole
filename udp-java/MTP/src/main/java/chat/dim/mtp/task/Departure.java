@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  UDP: User Datagram Protocol
+ *  MTP: Message Transfer Protocol
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,52 +28,47 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.udp;
+package chat.dim.mtp.task;
 
 import java.net.SocketAddress;
 import java.util.Date;
+import java.util.List;
 
-public class Connection {
+import chat.dim.mtp.protocol.DataType;
+import chat.dim.mtp.protocol.TransactionID;
+import chat.dim.mtp.protocol.Package;
 
-    public static long EXPIRES = 28;  // seconds
+/**
+ *  Package(s) to sent out (waiting response)
+ */
+public class Departure {
 
-    public final SocketAddress remoteAddress;
-    public final SocketAddress localAddress;
+    public final List<Package> packages;
 
-    private long connectionLost;
-    private long receiveExpired;
-    private long sendExpired;
+    public final DataType type;
+    public final TransactionID sn;
 
-    public Connection(SocketAddress remoteAddress, SocketAddress localAddress) {
+    public final SocketAddress destination;
+    public final SocketAddress source;
+
+    public int maxRetries = 5;
+    private long lastTime = 0;  // last send/receive timestamp (in seconds)
+
+    public Departure(List<Package> packages, SocketAddress destination, SocketAddress source) {
         super();
-        this.localAddress = localAddress;
-        this.remoteAddress = remoteAddress;
-        // connecting time
-        Date now = new Date();
-        long timestamp = now.getTime() / 1000;
-        this.connectionLost = timestamp + (EXPIRES << 4);
-        this.receiveExpired = timestamp; // + EXPIRES
-        this.sendExpired = timestamp; // + EXPIRES
+        assert packages.size() > 0 : "departure packages should not be empty";
+        Package first = packages.get(0);
+        this.packages = packages;
+        this.type = first.head.type;
+        this.sn = first.head.sn;
+        this.destination = destination;
+        this.source = source;
     }
 
-    public ConnectionStatus getStatus(long timestamp) {
-        return ConnectionStatus.evaluate(timestamp, sendExpired, receiveExpired, connectionLost);
+    public long getLastTime() {
+        return lastTime;
     }
-
-    public ConnectionStatus getStatus() {
-        Date now = new Date();
-        long timestamp = now.getTime() / 1000;
-        return getStatus(timestamp);
-    }
-
-    public void updateSentTime(long timestamp) {
-        // update last send time
-        sendExpired = timestamp + EXPIRES;
-    }
-
-    public void updateReceivedTime(long timestamp) {
-        // update last receive time
-        connectionLost = timestamp + (EXPIRES << 4);
-        receiveExpired = timestamp + EXPIRES;
+    public void updateLastTime() {
+        lastTime = (new Date()).getTime() / 1000;
     }
 }

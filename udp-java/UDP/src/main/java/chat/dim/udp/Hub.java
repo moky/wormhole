@@ -7,7 +7,7 @@
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2019 Albert Moky
+ * Copyright (c) 2020 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -504,31 +504,35 @@ public class Hub extends Thread implements ConnectionDelegate {
         Lock readLock = socketLock.readLock();
 
         while (running) {
-            cargo = receivePacket();
-            if (cargo == null) {
-                // received nothing, have a rest
-                _sleep(0.1);;
-            } else {
-                // dispatch data and got responses
-                responses = dispatch(cargo.data, cargo.source, cargo.destination);
-                for (byte[] res : responses) {
-                    send(res, cargo.source);
-                }
-            }
-            // check time for next heartbeat
-            now = (new Date()).getTime();
-            if (now > expired) {
-                expired = now + 2;
-                // try heartbeat for all connections in all sockets
-                readLock.lock();
-                try {
-                    for (Socket socket : sockets) {
-                        socket.ping();  // try to keep all connections alive
-                        socket.purge(); // remove error connections
+            try {
+                cargo = receivePacket();
+                if (cargo == null) {
+                    // received nothing, have a rest
+                    _sleep(0.1);;
+                } else {
+                    // dispatch data and got responses
+                    responses = dispatch(cargo.data, cargo.source, cargo.destination);
+                    for (byte[] res : responses) {
+                        send(res, cargo.source);
                     }
-                } finally {
-                    readLock.unlock();
                 }
+                // check time for next heartbeat
+                now = (new Date()).getTime();
+                if (now > expired) {
+                    expired = now + 2000;
+                    // try heartbeat for all connections in all sockets
+                    readLock.lock();
+                    try {
+                        for (Socket socket : sockets) {
+                            socket.ping();  // try to keep all connections alive
+                            socket.purge(); // remove error connections
+                        }
+                    } finally {
+                        readLock.unlock();
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     }

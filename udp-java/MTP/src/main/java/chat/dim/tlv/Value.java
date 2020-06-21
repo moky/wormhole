@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  UDP: User Datagram Protocol
+ *  TLV: Tag Length Value
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,23 +28,25 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.udp;
+package chat.dim.tlv;
 
-public interface ConnectionDelegate {
+public class Value extends Data {
 
-    /**
-     *  Call when connection status changed
-     *
-     * @param connection - current connection
-     * @param oldStatus - status before
-     * @param newStatus - status after
-     */
-    void onConnectionStatusChanged(Connection connection, ConnectionStatus oldStatus, ConnectionStatus newStatus);
+    public Value(byte[] data) {
+        super(data);
+    }
 
-    /**
-     *  Call when received data from a connection
-     *
-     * @param connection - current connection
-     */
-    void onConnectionReceivedData(Connection connection);
+    public static Value parse(byte[] data, Type type, Length length) {
+        if (length == null || length.value == 0) {
+            return null;
+        }
+        int len = length.value;
+        int data_len = data.length;
+        if (data_len < len) {
+            return null;
+        } else if (data_len > len) {
+            data = slice(data, 0, len);
+        }
+        return new Value(data);
+    }
 }

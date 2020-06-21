@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  UDP: User Datagram Protocol
+ *  MTP: Message Transfer Protocol
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,52 +28,24 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.udp;
+package chat.dim.mtp.task;
 
 import java.net.SocketAddress;
-import java.util.Date;
 
-public class Connection {
+/**
+ *  Data package received (waiting process)
+ */
+public class Arrival {
 
-    public static long EXPIRES = 28;  // seconds
+    public final byte[] payload;
 
-    public final SocketAddress remoteAddress;
-    public final SocketAddress localAddress;
+    public final SocketAddress source;
+    public final SocketAddress destination;
 
-    private long connectionLost;
-    private long receiveExpired;
-    private long sendExpired;
-
-    public Connection(SocketAddress remoteAddress, SocketAddress localAddress) {
+    public Arrival(byte[] payload, SocketAddress source, SocketAddress destination) {
         super();
-        this.localAddress = localAddress;
-        this.remoteAddress = remoteAddress;
-        // connecting time
-        Date now = new Date();
-        long timestamp = now.getTime() / 1000;
-        this.connectionLost = timestamp + (EXPIRES << 4);
-        this.receiveExpired = timestamp; // + EXPIRES
-        this.sendExpired = timestamp; // + EXPIRES
-    }
-
-    public ConnectionStatus getStatus(long timestamp) {
-        return ConnectionStatus.evaluate(timestamp, sendExpired, receiveExpired, connectionLost);
-    }
-
-    public ConnectionStatus getStatus() {
-        Date now = new Date();
-        long timestamp = now.getTime() / 1000;
-        return getStatus(timestamp);
-    }
-
-    public void updateSentTime(long timestamp) {
-        // update last send time
-        sendExpired = timestamp + EXPIRES;
-    }
-
-    public void updateReceivedTime(long timestamp) {
-        // update last receive time
-        connectionLost = timestamp + (EXPIRES << 4);
-        receiveExpired = timestamp + EXPIRES;
+        this.payload = payload;
+        this.source = source;
+        this.destination = destination;
     }
 }

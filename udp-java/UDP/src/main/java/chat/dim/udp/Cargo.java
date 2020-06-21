@@ -7,7 +7,7 @@
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2019 Albert Moky
+ * Copyright (c) 2020 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,7 @@ public class Cargo {
 
     public final byte[] data;
     public final SocketAddress source;
-    public SocketAddress destination;
+    public final SocketAddress destination;
 
     public Cargo(byte[] data, SocketAddress source, SocketAddress destination) {
         super();
@@ -46,16 +46,8 @@ public class Cargo {
         this.destination = destination;
     }
 
-    public Cargo(byte[] data, SocketAddress source) {
-        this(data, source, null);
-    }
-
     public Cargo(DatagramPacket packet, Socket socket) {
         this(getData(packet), packet.getSocketAddress(), socket.localAddress);
-    }
-
-    public Cargo(DatagramPacket packet) {
-        this(getData(packet), packet.getSocketAddress(), null);
     }
 
     private static byte[] getData(DatagramPacket packet) {

@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  UDP: User Datagram Protocol
+ *  MTP: Message Transfer Protocol
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,52 +28,56 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.udp;
+package chat.dim.mtp.protocol;
 
-import java.net.SocketAddress;
-import java.util.Date;
+import java.util.Random;
 
-public class Connection {
+import chat.dim.tlv.Data;
+import chat.dim.tlv.UInt32Data;
 
-    public static long EXPIRES = 28;  // seconds
+public class TransactionID extends Data {
 
-    public final SocketAddress remoteAddress;
-    public final SocketAddress localAddress;
-
-    private long connectionLost;
-    private long receiveExpired;
-    private long sendExpired;
-
-    public Connection(SocketAddress remoteAddress, SocketAddress localAddress) {
-        super();
-        this.localAddress = localAddress;
-        this.remoteAddress = remoteAddress;
-        // connecting time
-        Date now = new Date();
-        long timestamp = now.getTime() / 1000;
-        this.connectionLost = timestamp + (EXPIRES << 4);
-        this.receiveExpired = timestamp; // + EXPIRES
-        this.sendExpired = timestamp; // + EXPIRES
+    public TransactionID(byte[] data) {
+        super(data);
     }
 
-    public ConnectionStatus getStatus(long timestamp) {
-        return ConnectionStatus.evaluate(timestamp, sendExpired, receiveExpired, connectionLost);
+    public static TransactionID parse(byte[] data) {
+        int length = data.length;
+        if (length < 8) {
+            throw new ArrayIndexOutOfBoundsException("Transaction ID length error: " + length);
+        } else if (length > 8) {
+            data = slice(data, 0, 8);
+        }
+        return new TransactionID(data);
     }
 
-    public ConnectionStatus getStatus() {
-        Date now = new Date();
-        long timestamp = now.getTime() / 1000;
-        return getStatus(timestamp);
+    //
+    //  Factory
+    //
+
+    public static synchronized TransactionID create() {
+        if (s_low < 0xFFFFFFFF) {
+            s_low += 1;
+        } else {
+            s_low = 0;
+            if (s_high < 0xFFFFFFFF) {
+                s_high += 1;
+            } else {
+                s_high = 0;
+            }
+        }
+        byte[] hi = UInt32Data.intToBytes((int) s_high, 4);
+        byte[] lo = UInt32Data.intToBytes((int) s_low, 4);
+        byte[] data = concat(hi, lo);
+        return new TransactionID(data);
     }
 
-    public void updateSentTime(long timestamp) {
-        // update last send time
-        sendExpired = timestamp + EXPIRES;
-    }
+    private static long s_high;
+    private static long s_low;
 
-    public void updateReceivedTime(long timestamp) {
-        // update last receive time
-        connectionLost = timestamp + (EXPIRES << 4);
-        receiveExpired = timestamp + EXPIRES;
+    static {
+        Random random = new Random();
+        s_high = random.nextInt();
+        s_low = random.nextInt();
     }
 }
