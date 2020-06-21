@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -47,7 +47,6 @@ from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment
 from .task import Departure, Arrival, Assemble
 from .pool import Pool, MemPool
-from .hub import HubListener
 
 
 """
@@ -121,13 +120,13 @@ class PeerDelegate(ABC):
         pass
 
     @abstractmethod
-    def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int]=None) -> int:
+    def send_data(self, data: bytes, destination: tuple, source: tuple) -> int:
         """
         Send data to destination address.
 
         :param data:        data package to send
         :param destination: remote address
-        :param source:      local address or port number
+        :param source:      local address
         :return: -1 on error
         """
         raise NotImplemented
@@ -184,7 +183,7 @@ class PeerDelegate(ABC):
         pass
 
 
-class Peer(threading.Thread, HubListener):
+class Peer(threading.Thread):
 
     def __init__(self):
         super().__init__()
@@ -216,29 +215,32 @@ class Peer(threading.Thread, HubListener):
 
     def run(self):
         while self.running:
-            # first, process all arrivals
-            done = self.__clean_arrivals()
-            # second, get one departure task
-            task = self.pool.any_departure()
-            if task is None:
-                # third, if no departure task, remove expired fragments
-                assembling = self.pool.discard_fragments()
-                for item in assembling:
-                    assert isinstance(item, Assemble), 'assemble error: %s' % item
-                    self.delegate.recycle_fragments(fragments=item.fragments,
-                                                    source=item.source, destination=item.destination)
-                if done == 0:
-                    # all jobs done, have a rest. ^_^
-                    time.sleep(0.1)
-            else:
-                # redo this departure task
-                self.__send(task=task)
+            try:
+                # first, process all arrivals
+                done = self.__clean_arrivals()
+                # second, get one departure task
+                task = self.pool.any_departure()
+                if task is None:
+                    # third, if no departure task, remove expired fragments
+                    assembling = self.pool.discard_fragments()
+                    for item in assembling:
+                        assert isinstance(item, Assemble), 'assemble error: %s' % item
+                        self.delegate.recycle_fragments(fragments=item.fragments,
+                                                        source=item.source, destination=item.destination)
+                    if done == 0:
+                        # all jobs done, have a rest. ^_^
+                        time.sleep(0.1)
+                else:
+                    # redo this departure task
+                    self.__send(task=task)
+            except Exception as error:
+                print('Peer.run error: %s' % error)
 
     def __clean_arrivals(self) -> int:
         """
         Process the received packages in waiting list
 
-        :return: False on no data
+        :return: finished tasks count
         """
         total = self.pool.arrivals_count()
         done = 0
@@ -253,7 +255,9 @@ class Peer(threading.Thread, HubListener):
 
     def __handle(self, task: Arrival):
         pack = Package.parse(data=task.payload)
-        assert pack is not None, 'package error: %s' % task.payload
+        if pack is None:
+            # assert False, 'package error: %s' % task.payload
+            return False
         head = pack.head
         data_type = head.data_type
         if data_type == CommandRespond:
@@ -285,7 +289,7 @@ class Peer(threading.Thread, HubListener):
                 msg = self.pool.add_fragment(fragment=pack, source=task.source, destination=task.destination)
                 if msg is not None:
                     # all fragments received
-                    self.delegate.received_message(msg=msg, source=task.source, destination=task.destination)
+                    self.delegate.received_message(msg=msg.body, source=task.source, destination=task.destination)
         # respond to the sender
         if ok:
             self.__respond(pack=pack, remote=task.source, local=task.destination)
@@ -304,8 +308,7 @@ class Peer(threading.Thread, HubListener):
             body = uint32_to_bytes(head.pages) + uint32_to_bytes(head.offset) + b'OK'
         else:
             raise TypeError('data type error: %s' % data_type)
-        sn = head.trans_id
-        response = Package.new(data_type=data_type, sn=sn, body=body)
+        response = Package.new(data_type=data_type, sn=head.trans_id, body=body)
         # send response directly, don't add this task to waiting list
         res = self.delegate.send_data(data=response.data, destination=remote, source=local)
         if res < 0:
@@ -314,7 +317,7 @@ class Peer(threading.Thread, HubListener):
     #
     #   Sending
     #
-    def __send(self, task: Departure) -> Optional[Departure]:
+    def __send(self, task: Departure):
         if self.pool.add_departure(task=task):
             # treat the task as a bundle of packages
             packages = task.packages
@@ -323,7 +326,6 @@ class Peer(threading.Thread, HubListener):
                 res = self.delegate.send_data(data=item.data, destination=task.destination, source=task.source)
                 if res < 0:
                     raise IOError('failed to resend task (%d packages) to: %s' % (len(packages), task.destination))
-            return task
         else:
             # mission failed
             data_type = task.data_type
@@ -335,31 +337,21 @@ class Peer(threading.Thread, HubListener):
             else:
                 raise AssertionError('data type error: %s' % data_type)
 
-    def send_command(self, pack: Union[Package, bytes],
-                     destination: tuple, source: Union[tuple, int]=None) -> Departure:
+    def send_command(self, pack: Union[Package, bytes], destination: tuple, source: tuple) -> Departure:
         if isinstance(pack, bytes):
             pack = Package.new(data_type=Command, body=pack)
         task = Departure(packages=[pack], destination=destination, source=source)
         self.__send(task=task)
         return task
 
-    def send_message(self, pack: Union[Package, bytes],
-                     destination: tuple, source: Union[tuple, int]=None) -> Departure:
+    def send_message(self, pack: Union[Package, bytes], destination: tuple, source: tuple) -> Departure:
         if isinstance(pack, bytes):
             pack = Package.new(data_type=Message, body=pack)
         # split packages
         if len(pack.body) <= Package.MAX_BODY_LEN or pack.head.data_type == MessageFragment:
             packages = [pack]
         else:
-            packages = Package.split(package=pack)
+            packages = pack.split()
         task = Departure(packages=packages, destination=destination, source=source)
         self.__send(task=task)
         return task
-
-    #
-    #   HubListener
-    #
-    def received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
-        task = Arrival(payload=data, source=source, destination=destination)
-        self.pool.add_arrival(task=task)
-        return None

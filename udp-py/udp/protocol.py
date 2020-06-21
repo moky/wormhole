@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,6 @@
 """
 
 import threading
-from typing import Optional
 
 from .data import Data
 from .data import random_bytes
@@ -235,23 +234,24 @@ class Header(Data):
         data_type = ch & 0x0F
         data_type = DataType.new(value=data_type)
         assert data_type is not None, 'data type error'
-        data = data[4:]
+        pos = 4
         # get transaction ID
-        sn = TransactionID.parse(data=data)
+        sn = TransactionID.parse(data=data[pos:])
         assert sn is not None, 'transaction ID error'
-        data = data[sn.length:]
+        pos += sn.length
         # get fragments count & offset
         if data_type == MessageFragment:
             assert head_len == 20, 'head length error: %d' % head_len
             assert data_len > head_len, 'fragment package error: %s' % data
-            pages = bytes_to_int(data[:4])
-            offset = bytes_to_int(data[4:8])
+            pages = bytes_to_int(data[pos:pos+4])
+            offset = bytes_to_int(data[pos+4:pos+8])
+            pos += 8
             assert pages > 1 and pages > offset, 'pages error: %d, %d' % (pages, offset)
         else:
             assert head_len == 12, 'head length error: %d' % head_len
             pages = 1
             offset = 0
-        return cls(data=data, head_len=head_len, data_type=data_type, sn=sn, pages=pages, offset=offset)
+        return cls(data=data[:pos], head_len=head_len, data_type=data_type, sn=sn, pages=pages, offset=offset)
 
     @classmethod
     def new(cls, data_type: DataType, sn: TransactionID=None, pages: int=1, offset: int=0):
@@ -323,34 +323,40 @@ class Package(Data):
         data = head.data + body
         return cls(data=data, head=head, body=body)
 
-    @classmethod
-    def split(cls, package) -> list:
-        assert isinstance(package, Package), 'package error: %s' % package
-        head = package.head
-        body = package.body
-        # change data type
+    def split(self) -> list:
+        """
+        Split large message package
+
+        :return: message fragment packages
+        """
+        head = self.head
+        body = self.body
+        # check data type
         assert head.data_type == Message, 'cannot split this type: %s' % head.data_type
         # split body
         fragments = []
         count = 1
+        start = 0
+        end = self.MAX_BODY_LEN
         body_len = len(body)
-        while body_len > cls.MAX_BODY_LEN:
-            fragments.append(body[:cls.MAX_BODY_LEN])
-            body = body[cls.MAX_BODY_LEN:]
-            body_len -= cls.MAX_BODY_LEN
+        while end < body_len:
+            fragments.append(body[start:end])
+            start = end
+            end += self.MAX_BODY_LEN
             count += 1
-        fragments.append(body)  # the tail
+        if start > 0:
+            fragments.append(body[start:])  # the tail
+        else:
+            fragments.append(body)
         # create packages with fragments
         data_type = MessageFragment
         sn = head.trans_id
-        index = 0
-        array = []
-        while index < count:
+        packages = []
+        for index in range(count):
             body = fragments[index]
-            pack = cls.new(data_type=data_type, sn=sn, pages=count, offset=index, body=body)
-            array.append(pack)
-            index += 1
-        return array
+            pack = self.new(data_type=data_type, sn=sn, pages=count, offset=index, body=body)
+            packages.append(pack)
+        return packages
 
     @classmethod
     def sort(cls, packages: list) -> list:
@@ -358,12 +364,12 @@ class Package(Data):
         return packages
 
     @classmethod
-    def join(cls, packages: list) -> Optional[bytes]:
+    def join(cls, packages: list):  # -> Optional[Package]:
         """
         Join sorted packages' body data together
 
         :param packages: packages sorted by offset
-        :return: original message data
+        :return: original message package
         """
         assert len(packages) > 1, 'packages count error: %d' % len(packages)
         first = packages[0]
@@ -381,12 +387,9 @@ class Package(Data):
             assert item.head.data_type == MessageFragment, 'data type not fragment: %s' % item
             assert item.head.trans_id == sn, 'transaction ID not match: %s' % item
             assert item.head.pages == pages, 'pages error: %s' % item
-            # check offset
-            if item.head.offset != offset:
-                raise LookupError('fragment missed: %d' % offset)
+            assert item.head.offset == offset, 'fragment missed: %d, %s' % (offset, item)
             data += item.body
             offset += 1
-        if offset != pages:
-            raise LookupError('fragment error: %d/%d' % (offset, pages))
+        assert offset == pages, 'fragment error: %d/%d' % (offset, pages)
         # OK
-        return bytes(data)
+        return cls.new(data_type=Message, sn=sn, body=bytes(data))

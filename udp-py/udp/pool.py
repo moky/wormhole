@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -131,7 +131,7 @@ class Pool(ABC):
     #
 
     @abstractmethod
-    def add_fragment(self, fragment: Package, source: tuple, destination: tuple) -> Optional[bytes]:
+    def add_fragment(self, fragment: Package, source: tuple, destination: tuple) -> Optional[Package]:
         """
         Add a fragment package into the pool for MessageFragment received.
         This will just wait until all fragments with the same 'trans_id' received.
@@ -142,7 +142,7 @@ class Pool(ABC):
         :param fragment:    message fragment
         :param source:      remote address
         :param destination: local address
-        :return: message data when all fragments received
+        :return: original message package when all fragments received
         """
         raise NotImplemented
 
@@ -222,7 +222,7 @@ class MemPool(Pool):
                 # Got it!
                 self.__departures.pop(pos)
                 count += 1
-                break
+                # break
         return count > 0
 
     def __del_task_fragment(self, trans_id: TransactionID, pages: int, offset: int, destination: tuple) -> bool:
@@ -241,17 +241,17 @@ class MemPool(Pool):
                     continue
                 assert task.data_type == MessageFragment, 'task error: %s' % task
                 packages = task.packages
-                index = len(packages)
-                while index > 0:
-                    index -= 1
-                    pack = packages[index]
+                pos2 = len(packages)
+                while pos2 > 0:
+                    pos2 -= 1
+                    pack = packages[pos2]
                     assert isinstance(pack, Package), 'package error: %s' % packages
                     assert pack.head.trans_id == trans_id, 'task fragment error: %s' % pack.head
                     assert pack.head.data_type == MessageFragment, 'task error: %s' % pack.head
                     assert pack.head.pages == pages, 'pages not match: %d, %s' % (pages, pack.head)
                     if pack.head.offset == offset:
                         # Got it!
-                        packages.pop(index)
+                        packages.pop(pos2)
                         break
                 if len(packages) == 0:
                     # all fragment sent, remove this task
@@ -313,8 +313,8 @@ class MemPool(Pool):
     #
     #   Fragments Assembling
     #
-    def add_fragment(self, fragment: Package, source: tuple, destination: tuple) -> Optional[bytes]:
-        data = None
+    def add_fragment(self, fragment: Package, source: tuple, destination: tuple) -> Optional[Package]:
+        pack = None
         with self.__fragments_lock:
             trans_id = fragment.head.trans_id
             assemble = self.__fragments.get(trans_id)
@@ -329,9 +329,9 @@ class MemPool(Pool):
                 # insert fragment and check whether completed
                 if assemble.insert(fragment=fragment, source=source, destination=destination):
                     if assemble.is_completed:
-                        data = Package.join(packages=assemble.fragments)
+                        pack = Package.join(packages=assemble.fragments)
                         self.__fragments.pop(trans_id)
-        return data
+        return pack
 
     def discard_fragments(self) -> list:
         """

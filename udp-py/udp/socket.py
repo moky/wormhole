@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,8 @@ from typing import Optional
 
 from .connection import ConnectionStatus, ConnectionDelegate, Connection
 
+ANY_ADDRESS = '0.0.0.0'
+
 
 class Cargo:
 
@@ -55,7 +57,13 @@ class Socket(threading.Thread):
     """
     MAX_CACHE_SPACES = 1024 * 1024 * 2
 
-    def __init__(self, port: int, host: str = '0.0.0.0'):
+    """
+        Buffer size for receiving package
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    """
+    BUFFER_SIZE = 2048
+
+    def __init__(self, port: int, host: str =ANY_ADDRESS):
         super().__init__()
         self.__local_address = (host, port)
         # create socket
@@ -80,6 +88,7 @@ class Socket(threading.Thread):
     def _create_socket(self) -> socket.socket:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.settimeout(2)
         sock.bind(self.local_address)
         return sock
 
@@ -111,8 +120,9 @@ class Socket(threading.Thread):
             self.__connections.append(conn)
             return conn
 
-    def disconnect(self, remote_address: tuple):
+    def disconnect(self, remote_address: tuple) -> bool:
         """ remove remote address from heartbeat tasks """
+        count = 0
         with self.__connections_lock:
             pos = len(self.__connections)
             while pos > 0:
@@ -122,23 +132,25 @@ class Socket(threading.Thread):
                 if conn.remote_address == remote_address:
                     # got one
                     self.__connections.pop(pos)
+                    count += 1
                     # break
+        return count > 0
+
+    def __connection_by_status(self, status: ConnectionStatus) -> Optional[Connection]:
+        """ get connection by status """
+        with self.__connections_lock:
+            for conn in self.__connections:
+                assert isinstance(conn, Connection), 'connection error: %s' % conn
+                if conn.status == status:
+                    return conn
 
     def __expired_connection(self) -> Optional[Connection]:
         """ get any expired connection """
-        with self.__connections_lock:
-            for conn in self.__connections:
-                assert isinstance(conn, Connection), 'connection error: %s' % conn
-                if conn.status == ConnectionStatus.Default:
-                    return conn
+        return self.__connection_by_status(ConnectionStatus.Default)
 
     def __error_connection(self) -> Optional[Connection]:
         """ get any error connection """
-        with self.__connections_lock:
-            for conn in self.__connections:
-                assert isinstance(conn, Connection), 'connection error: %s' % conn
-                if conn.status == ConnectionStatus.Error:
-                    return conn
+        return self.__connection_by_status(ConnectionStatus.Error)
 
     def __update_sent_time(self, remote_address: tuple):
         connection = None
@@ -153,6 +165,7 @@ class Socket(threading.Thread):
                     connection = conn
         # callback
         if self.connection_delegate is not None and old_status != new_status:
+            # assert connection is not None, 'connection error: %s' % remote_address
             self.connection_delegate.connection_status_changed(connection=connection,
                                                                old_status=old_status,
                                                                new_status=new_status)
@@ -230,10 +243,9 @@ class Socket(threading.Thread):
                 self.connection_delegate.connection_received_data(connection=connection)
 
     def run(self):
-        self.settimeout(2)
         while self.running:
             try:
-                data, address = self.__receive()
+                data, address = self.__receive(buffer_size=self.BUFFER_SIZE)
                 if data is None:
                     # receive nothing
                     time.sleep(0.1)
@@ -250,7 +262,7 @@ class Socket(threading.Thread):
                 # cache the data received
                 self.__cache(data=data, source=address)
             except Exception as error:
-                print('socket error: %s' % error)
+                print('Socket.run error: %s' % error)
 
     def ping(self):
         """ send heartbeat to all expired connections """
