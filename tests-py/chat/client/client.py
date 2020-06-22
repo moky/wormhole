@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import socket
 import threading
 import time
 from abc import abstractmethod
-from typing import Optional, Union
+from typing import Optional
 
 import udp
 import stun
@@ -22,7 +21,7 @@ def time_string(timestamp: int) -> str:
 """
 
 
-class DMTPPeer(udp.Peer, udp.HubFilter):
+class DMTPPeer(dmtp.Peer, udp.HubFilter):
 
     @property
     def filter(self) -> Optional[udp.HubFilter]:
@@ -52,27 +51,23 @@ class DMTPClientDelegate:
 
 class DMTPClient(dmtp.Client):
 
-    def __init__(self, hub: udp.Hub):
-        super().__init__()
-        self.__peer: udp.Peer = None
+    def __init__(self, port: int, host: str='127.0.0.1'):
+        super().__init__(host=host, port=port)
         self.delegate: DMTPClientDelegate = None
-        hub.add_listener(self.peer)
-        self.__hub = hub
-        self.source_address = None
         self.server_address = None
         self.identifier = 'hulk'
         self.nat = 'Port Restricted Cone NAT'
         # punching threads
         self.__punching = {}
 
-    def _create_peer(self) -> dmtp.Peer:
+    def _create_peer(self) -> DMTPPeer:
         peer = DMTPPeer()
         peer.delegate = self
         peer.start()
         return peer
 
-    @staticmethod
-    def __analyze_location(location: dmtp.LocationValue) -> int:
+    # noinspection PyMethodMayBeStatic
+    def __analyze_location(self, location: dmtp.LocationValue) -> int:
         if location is None:
             return -1
         if location.identifier is None:
@@ -105,29 +100,37 @@ class DMTPClient(dmtp.Client):
         if location is None or location.identifier is None or location.mapped_address is None:
             # location error
             return None
-        # sign ("source-address" + "mapped-address" + "time")
+        # data = "source_address" + "mapped_address" + "relayed_address" + "time"
         mapped_address = location.mapped_address
-        timestamp = int(time.time())
-        data = mapped_address.data + dmtp.TimestampValue(value=timestamp).data
-        if self.source_address is None:
-            source_address = None
+        data = mapped_address.data
+        # source address
+        source_ip = self.local_address[0]
+        source_port = self.local_address[1]
+        source_address = dmtp.SourceAddressValue(ip=source_ip, port=source_port)
+        data = source_address.data + data
+        # relayed address
+        if location.relayed_address is None:
+            relayed_address = None
         else:
-            source_ip = self.source_address[0]
-            source_port = self.source_address[1]
-            source_address = dmtp.SourceAddressValue(ip=source_ip, port=source_port)
-            data = source_address.data + data
+            relayed_address = location.relayed_address
+            data = data + relayed_address.data
+        # time
+        timestamp = int(time.time())
+        data += dmtp.TimestampValue(value=timestamp).data
         # TODO: sign it with private key
-        s = b'sign(' + data + b')'
+        signature = b'sign(' + data + b')'
         return dmtp.LocationValue.new(identifier=location.identifier,
-                                      source_address=source_address, mapped_address=mapped_address,
-                                      timestamp=timestamp, signature=s, nat=self.nat)
+                                      source_address=source_address,
+                                      mapped_address=mapped_address,
+                                      relayed_address=relayed_address,
+                                      timestamp=timestamp, signature=signature, nat=self.nat)
 
     def say_hi(self, destination: tuple) -> bool:
         sender = self.get_contact(identifier=self.identifier)
         if sender is None:
             location = None
         else:
-            location = sender.get_location(address=self.source_address)
+            location = sender.get_location(address=self.local_address)
         if location is None:
             cmd = dmtp.HelloCommand.new(identifier=self.identifier)
         else:
@@ -149,8 +152,7 @@ class DMTPClient(dmtp.Client):
 
     def connect(self, remote_address: tuple) -> bool:
         print('connecting to %s' % str(remote_address))
-        self.__hub.connect(destination=remote_address, source=self.source_address)
-        self.__keep_punching(destination=remote_address, source=self.source_address)
+        self.__keep_punching(destination=remote_address, source=self.local_address)
         return super().connect(remote_address=remote_address)
 
     def call(self, identifier: str) -> bool:
@@ -160,7 +162,7 @@ class DMTPClient(dmtp.Client):
         return True
 
     def ping(self, remote_address: tuple, local_address: tuple=None):
-        res = self.__hub.send(data=b'PING', destination=remote_address, source=local_address)
+        res = self.hub.send(data=b'PING', destination=remote_address, source=local_address)
         return res == 4
 
     def __keep_punching(self, destination: tuple, source: tuple):
@@ -195,11 +197,6 @@ class DMTPClient(dmtp.Client):
     #
     #   PeerDelegate
     #
-    def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
-        print('sending data to (%s): %s' % (destination, data))
-        self.__hub.send(data=data, destination=destination, source=source)
-        return 0
-
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
         self.__stop_punching(destination=source)
         return super().received_command(cmd=cmd, source=source, destination=destination)
@@ -252,9 +249,8 @@ class STUNClientDelegate:
 
 class STUNClient(stun.Client):
 
-    def __init__(self, hub: udp.Hub):
-        super().__init__()
-        self.__hub = hub
+    def __init__(self, host: str, port: int):
+        super().__init__(host=host, port=port)
         self.server_address = None
         self.delegate: STUNClientDelegate = None
         # self.retries = 5
@@ -265,16 +261,3 @@ class STUNClient(stun.Client):
         print(message)
         if self.delegate is not None:
             self.delegate.feedback(msg=message)
-
-    def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
-        try:
-            return self.__hub.send(data=data, destination=destination, source=source)
-        except socket.error:
-            return -1
-
-    def receive(self) -> (bytes, (str, int)):
-        try:
-            data, source, destination = self.__hub.receive(timeout=2)
-            return data, source
-        except socket.error:
-            return None, None

@@ -21,3 +21,4 @@ if __name__ == '__main__':
     # create server
     print('UDP server (%s:%d) starting ...' % (SERVER_HOST, SERVER_PORT))
     g_server = Server(host=SERVER_HOST, port=SERVER_PORT)
+    g_server.start()

@@ -35,8 +35,6 @@ from typing import Optional
 
 from .connection import ConnectionStatus, ConnectionDelegate, Connection
 
-ANY_ADDRESS = '0.0.0.0'
-
 
 class Cargo:
 
@@ -63,7 +61,7 @@ class Socket(threading.Thread):
     """
     BUFFER_SIZE = 2048
 
-    def __init__(self, port: int, host: str =ANY_ADDRESS):
+    def __init__(self, port: int, host: str ='0.0.0.0'):
         super().__init__()
         self.__local_address = (host, port)
         # create socket

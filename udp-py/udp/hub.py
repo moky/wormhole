@@ -35,7 +35,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Union
 
 from .connection import ConnectionStatus, ConnectionDelegate, Connection
-from .socket import Socket, ANY_ADDRESS
+from .socket import Socket
 
 """
     Topology:
@@ -165,7 +165,7 @@ class Hub(threading.Thread, ConnectionDelegate):
             return self.__get_socket_by_port(port=address)
         host = address[0]
         port = address[1]
-        if host == ANY_ADDRESS:
+        if '0.0.0.0' == host:
             return self.__get_socket_by_port(port=port)
         with self.__sockets_lock:
             port_matched = False
@@ -182,7 +182,7 @@ class Hub(threading.Thread, ConnectionDelegate):
                 for sock in self.__sockets:
                     assert isinstance(sock, Socket), 'socket error: %s' % sock
                     if port == sock.local_address[1]:
-                        if ANY_ADDRESS == sock.local_address[0]:
+                        if '0.0.0.0' == sock.local_address[0]:
                             # got it
                             return sock
 
@@ -192,7 +192,7 @@ class Hub(threading.Thread, ConnectionDelegate):
         sock.start()
         return sock
 
-    def open(self, port: int, host: str=ANY_ADDRESS) -> Socket:
+    def open(self, port: int, host: str='0.0.0.0') -> Socket:
         """ create a socket on this port """
         with self.__sockets_lock:
             sock = self.__get_socket(address=(host, port))
@@ -201,7 +201,7 @@ class Hub(threading.Thread, ConnectionDelegate):
                 self.__sockets.append(sock)
             return sock
 
-    def close(self, port: int, host: str=ANY_ADDRESS) -> bool:
+    def close(self, port: int, host: str='0.0.0.0') -> bool:
         """ remove the socket on this port """
         with self.__sockets_lock:
             count = 0
