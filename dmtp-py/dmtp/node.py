@@ -30,7 +30,6 @@
 
 from abc import ABC, abstractmethod
 from typing import Optional
-from weakref import WeakValueDictionary
 
 from udp import HubListener, Hub
 from udp.mtp import PeerDelegate, Peer as UDPPeer
@@ -62,9 +61,6 @@ class Node(PeerDelegate):
         self.__local_address = (host, port)
         self.__peer: Peer = None
         self.__hub: Hub = None
-        # online contacts
-        self.__contacts: dict = {}          # ID -> Contact
-        self.__map = WeakValueDictionary()  # (IP, port) -> Contact
 
     @property
     def local_address(self) -> tuple:
@@ -121,49 +117,25 @@ class Node(PeerDelegate):
     def _create_contact(self, identifier: str) -> Contact:
         return Contact(identifier=identifier)
 
+    @abstractmethod
     def get_contact(self, identifier: str=None, address: tuple=None) -> Optional[Contact]:
         """ get contact by ID or address """
-        if identifier is None:
-            assert len(address) == 2, 'address error: %s' % str(address)
-            return self.__map.get(address)
-        else:
-            return self.__contacts.get(identifier)
+        raise NotImplemented
 
+    @abstractmethod
     def set_location(self, location: LocationValue) -> bool:
         """ Login """
-        identifier = location.identifier
-        contact = self.get_contact(identifier=identifier)
-        if contact is None:
-            contact = self._create_contact(identifier=identifier)
-        if contact.update_location(location=location):
-            self.__contacts[identifier] = contact
-            return True
+        raise NotImplemented
 
+    @abstractmethod
     def remove_location(self, location: LocationValue) -> bool:
         """ Logout """
-        identifier = location.identifier
-        contact = self.get_contact(identifier=identifier)
-        if contact is None:
-            return False
-        assert isinstance(contact, Contact), 'contact error: %s' % contact
-        if contact.remove_location(location=location):
-            if not contact.is_online:
-                # all sessions removed/expired
-                self.__contacts.pop(identifier, None)
-            if location.source_address is not None:
-                address = location.source_address
-                address = (address.ip, address.port)
-                self.__map.pop(address, None)
-            if location.mapped_address is not None:
-                address = location.mapped_address
-                address = (address.ip, address.port)
-                self.__map.pop(address, None)
-            return True
+        raise NotImplemented
 
+    @abstractmethod
     def update_address(self, address: tuple, contact: Contact) -> bool:
-        if contact.update_address(address=address):
-            self.__map[address] = contact
-            return True
+        """ Switch IP and port """
+        raise NotImplemented
 
     #
     #   Send

@@ -7,6 +7,7 @@ import sys
 import os
 import time
 from typing import Optional
+from weakref import WeakValueDictionary
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
@@ -34,6 +35,60 @@ class Client(dmtp.Client):
         self.server_address = None
         self.identifier = 'moky-%d' % CLIENT_PORT
         self.nat = 'Port Restricted Cone NAT'
+        # online contacts
+        self.__contacts: dict = {}          # ID -> Contact
+        self.__map = WeakValueDictionary()  # (IP, port) -> Contact
+
+    #
+    #   Contacts (with locations)
+    #
+
+    def get_contact(self, identifier: str=None, address: tuple=None) -> Optional[dmtp.Contact]:
+        """ get contact by ID or address """
+        if identifier is None:
+            assert len(address) == 2, 'address error: %s' % str(address)
+            return self.__map.get(address)
+        else:
+            return self.__contacts.get(identifier)
+
+    def set_location(self, location: dmtp.LocationValue) -> bool:
+        """ Login """
+        if self.__analyze_location(location=location) < 0:
+            print('location error: %s' % location)
+            return False
+        identifier = location.identifier
+        contact = self.get_contact(identifier=identifier)
+        if contact is None:
+            contact = self._create_contact(identifier=identifier)
+        if contact.update_location(location=location):
+            self.__contacts[identifier] = contact
+            return True
+
+    def remove_location(self, location: dmtp.LocationValue) -> bool:
+        """ Logout """
+        identifier = location.identifier
+        contact = self.get_contact(identifier=identifier)
+        if contact is None:
+            return False
+        assert isinstance(contact, dmtp.Contact), 'contact error: %s' % contact
+        if contact.remove_location(location=location):
+            if not contact.is_online:
+                # all sessions removed/expired
+                self.__contacts.pop(identifier, None)
+            if location.source_address is not None:
+                address = location.source_address
+                address = (address.ip, address.port)
+                self.__map.pop(address, None)
+            if location.mapped_address is not None:
+                address = location.mapped_address
+                address = (address.ip, address.port)
+                self.__map.pop(address, None)
+            return True
+
+    def update_address(self, address: tuple, contact: dmtp.Contact) -> bool:
+        if contact.update_address(address=address):
+            self.__map[address] = contact
+            return True
 
     # noinspection PyMethodMayBeStatic
     def __analyze_location(self, location: dmtp.LocationValue) -> int:
@@ -61,12 +116,6 @@ class Client(dmtp.Client):
         # TODO: verify data and signature with public key
         assert data is not None and signature is not None
         return 0
-
-    def set_location(self, location: dmtp.LocationValue) -> bool:
-        if self.__analyze_location(location=location) < 0:
-            print('location error: %s' % location)
-            return False
-        return super().set_location(location=location)
 
     def __sign_location(self, location: dmtp.LocationValue) -> Optional[dmtp.LocationValue]:
         if location is None or location.identifier is None or location.mapped_address is None:
