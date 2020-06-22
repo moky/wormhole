@@ -32,8 +32,9 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from weakref import WeakValueDictionary
 
-from udp import HubListener, Hub, PeerDelegate, Peer as UDPPeer
-from udp import Departure, Arrival
+from udp import HubListener, Hub
+from udp.mtp import PeerDelegate, Peer as UDPPeer
+from udp.mtp import Departure, Arrival
 
 from .tlv import Field
 from .command import Command, WhoCommand, SignCommand, FromCommand

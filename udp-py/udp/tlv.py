@@ -30,8 +30,8 @@
 
 from typing import Optional
 
-from .data import Data, IntData
-from .data import bytes_to_int
+from .mtp.data import Data, IntData
+from .mtp.data import bytes_to_int
 
 
 """

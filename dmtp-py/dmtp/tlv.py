@@ -31,8 +31,8 @@
 import base64
 from typing import Optional
 
-from udp.data import Data, VarIntData, UInt8Data, UInt32Data
-from udp.data import bytes_to_varint, varint_to_bytes, uint8_to_bytes, uint32_to_bytes
+from udp.mtp.data import Data, VarIntData, UInt8Data, UInt32Data
+from udp.mtp.data import bytes_to_varint, varint_to_bytes, uint8_to_bytes, uint32_to_bytes
 from udp.tlv import TLV, Type, Length, Value
 
 

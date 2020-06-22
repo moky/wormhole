@@ -152,8 +152,9 @@ class DMTPClient(dmtp.Client):
 
     def connect(self, remote_address: tuple) -> bool:
         print('connecting to %s' % str(remote_address))
-        self.__keep_punching(destination=remote_address, source=self.local_address)
-        return super().connect(remote_address=remote_address)
+        if super().connect(remote_address=remote_address):
+            self.__keep_punching(destination=remote_address, source=self.local_address)
+            return True
 
     def call(self, identifier: str) -> bool:
         cmd = dmtp.CallCommand.new(identifier=identifier)

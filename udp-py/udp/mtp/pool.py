@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   UDP: User Datagram Protocol
+#   MTP: Message Transfer Protocol
 #
 #                                Written in 2020 by Moky <albert.moky@gmail.com>
 #
@@ -41,6 +41,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from .data import bytes_to_int
+
 from .protocol import Package, TransactionID
 from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment

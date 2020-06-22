@@ -3,20 +3,21 @@
 from typing import Optional
 
 import udp
+from udp import mtp
 
 
-class Peer(udp.Peer, udp.HubListener):
+class Peer(mtp.Peer, udp.HubListener):
 
     #
     #   HubListener
     #
     def received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
-        task = udp.Arrival(payload=data, source=source, destination=destination)
+        task = mtp.Arrival(payload=data, source=source, destination=destination)
         self.pool.add_arrival(task=task)
         return None
 
 
-class Node(udp.PeerDelegate):
+class Node(mtp.PeerDelegate):
 
     def __init__(self, host: str, port: int):
         super().__init__()
@@ -71,10 +72,10 @@ class Node(udp.PeerDelegate):
         if self.__peer is not None:
             self.__peer.stop()
 
-    def send_message(self, msg: bytes, destination: tuple) -> udp.Departure:
+    def send_message(self, msg: bytes, destination: tuple) -> mtp.Departure:
         return self.peer.send_message(pack=msg, destination=destination, source=self.local_address)
 
-    def send_command(self, cmd: bytes, destination: tuple) -> udp.Departure:
+    def send_command(self, cmd: bytes, destination: tuple) -> mtp.Departure:
         return self.peer.send_command(pack=cmd, destination=destination, source=self.local_address)
 
     #
