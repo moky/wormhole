@@ -41,6 +41,7 @@ from abc import ABC, abstractmethod
 from typing import Union, Optional
 
 from udp import Hub
+from udp.hub import Cargo
 
 from .protocol import Package, Header
 from .attributes import Attribute, ChangeRequestValue
@@ -130,17 +131,16 @@ class Node(ABC):
         except socket.error:
             return -1
 
-    def receive(self, timeout: float=2) -> (bytes, (str, int)):
+    def receive(self, timeout: float=2) -> Optional[Cargo]:
         """
         Received data from local port
 
         :return: data and remote address
         """
         try:
-            data, source, destination = self.hub.receive(timeout=timeout)
-            return data, source
+            return self.hub.receive(timeout=timeout)
         except socket.error:
-            return None, None
+            return None
 
     @abstractmethod
     def parse_attribute(self, attribute: Attribute, context: dict, result: Info) -> Info:

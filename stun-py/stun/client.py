@@ -173,22 +173,22 @@ class Client(Node, ABC):
             if size != len(req.data):
                 # failed to send data
                 return None
-            res, address = self.receive()
-            if res is None:
+            cargo = self.receive()
+            if cargo is None:
                 if count < self.retries:
                     count += 1
-                    self.info('(%d/%d) receive nothing from %s' % (count, self.retries, address))
+                    self.info('(%d/%d) receive nothing' % (count, self.retries))
                 else:
                     # failed to receive data
                     return None
             else:
-                self.info('received %d bytes from %s' % (len(res), address))
+                self.info('received %d bytes from %s' % (len(cargo.data), cargo.source))
                 break
         # 3. parse response
         context = {
             'trans_id': trans_id.data,
         }
-        head, result = self.parse_data(data=res, context=context)
+        head, result = self.parse_data(data=cargo.data, context=context)
         if head is None or head.type != BindResponse or head.trans_id != trans_id:
             # received package error
             return None

@@ -93,7 +93,7 @@ class HubListener(ABC):
         return None
 
     @abstractmethod
-    def received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
+    def data_received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
         """
         New data package arrived
 
@@ -354,7 +354,7 @@ class Hub(threading.Thread, ConnectionDelegate):
                 f = listener.filter
                 if f is not None and not f.check_data(data=data, source=source, destination=destination):
                     continue
-                res = listener.received(data=data, source=source, destination=destination)
+                res = listener.data_received(data=data, source=source, destination=destination)
                 if res is None:
                     continue
                 responses.append(res)

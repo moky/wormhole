@@ -11,7 +11,7 @@ class Peer(mtp.Peer, udp.HubListener):
     #
     #   HubListener
     #
-    def received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
+    def data_received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
         task = mtp.Arrival(payload=data, source=source, destination=destination)
         self.pool.add_arrival(task=task)
         return None
