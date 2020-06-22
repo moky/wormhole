@@ -40,9 +40,9 @@ public class Connection {
     public final SocketAddress remoteAddress;
     public final SocketAddress localAddress;
 
-    private long connectionLost;
-    private long receiveExpired;
-    private long sendExpired;
+    private float connectionLost;
+    private float receiveExpired;
+    private float sendExpired;
 
     public Connection(SocketAddress remoteAddress, SocketAddress localAddress) {
         super();
@@ -50,28 +50,28 @@ public class Connection {
         this.remoteAddress = remoteAddress;
         // connecting time
         Date now = new Date();
-        long timestamp = now.getTime() / 1000;
+        float timestamp = now.getTime() / 1000.0f;
         this.connectionLost = timestamp + (EXPIRES << 4);
         this.receiveExpired = timestamp; // + EXPIRES
         this.sendExpired = timestamp; // + EXPIRES
     }
 
-    public ConnectionStatus getStatus(long timestamp) {
+    public ConnectionStatus getStatus(float timestamp) {
         return ConnectionStatus.evaluate(timestamp, sendExpired, receiveExpired, connectionLost);
     }
 
     public ConnectionStatus getStatus() {
         Date now = new Date();
-        long timestamp = now.getTime() / 1000;
+        float timestamp = now.getTime() / 1000.0f;
         return getStatus(timestamp);
     }
 
-    public void updateSentTime(long timestamp) {
+    public void updateSentTime(float timestamp) {
         // update last send time
         sendExpired = timestamp + EXPIRES;
     }
 
-    public void updateReceivedTime(long timestamp) {
+    public void updateReceivedTime(float timestamp) {
         // update last receive time
         connectionLost = timestamp + (EXPIRES << 4);
         receiveExpired = timestamp + EXPIRES;

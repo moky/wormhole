@@ -71,25 +71,21 @@ public class MemPool implements Pool {
     }
 
     private boolean isExpired(Departure task) {
-        long now = (new Date()).getTime() / 1000;
+        float now = (new Date()).getTime() / 1000.0f;
         return (task.getLastTime() + EXPIRES) < now;
     }
 
     private boolean isExpired(Assemble task) {
-        long now = (new Date()).getTime() / 1000;
+        float now = (new Date()).getTime() / 1000.0f;
         return (task.getLastTime() + EXPIRES) < now;
     }
-
-    //
-    //  Pool interfaces
-    //
 
     //
     //  Departures
     //
 
     @Override
-    public Departure dequeueExpiredDeparture() {
+    public Departure shiftExpiredDeparture() {
         Departure task = null;
         Lock writeLock = departureLock.writeLock();
         writeLock.lock();
@@ -238,7 +234,7 @@ public class MemPool implements Pool {
 
     @Override
     public int getCountOfArrivals() {
-        int count = 0;
+        int count;
         Lock readLock = arrivalLock.readLock();
         readLock.lock();
         try {
@@ -250,7 +246,7 @@ public class MemPool implements Pool {
     }
 
     @Override
-    public Arrival dequeueFirstArrival() {
+    public Arrival shiftFirstArrival() {
         Arrival first = null;
         Lock writeLock = arrivalLock.writeLock();
         writeLock.lock();
@@ -321,13 +317,13 @@ public class MemPool implements Pool {
         Lock writeLock = assembleLock.writeLock();
         writeLock.lock();
         try {
-            TransactionID key;
+            // TransactionID key;
             Assemble value;
             Iterator<Map.Entry<TransactionID, Assemble>> iterator;
             Map.Entry<TransactionID, Assemble> item;
             for (iterator = assembles.entrySet().iterator(); iterator.hasNext();) {
                 item = iterator.next();
-                key = item.getKey();
+                // key = item.getKey();
                 value = item.getValue();
                 if (isExpired(value)) {
                     // remove expired fragments

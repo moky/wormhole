@@ -80,7 +80,7 @@ public class DataType {
     //  Factory
     //
 
-    public static DataType getInstance(int value) {
+    public static synchronized DataType getInstance(int value) {
         DataType type = s_types.get(value);
         if (type == null) {
             type = new DataType(value);

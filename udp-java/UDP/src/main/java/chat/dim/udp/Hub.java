@@ -119,8 +119,6 @@ public class Hub extends Thread implements ConnectionDelegate {
     //  Sockets
     //
 
-    private static final String ANY_ADDRESS = "0.0.0.0";
-
     private Socket getSocket() {
         Socket socket = null;
         Lock readLock = socketLock.readLock();
@@ -166,15 +164,15 @@ public class Hub extends Thread implements ConnectionDelegate {
         InetSocketAddress inetSocketAddress = (InetSocketAddress) address;
         String host = inetSocketAddress.getHostString();
         int port = inetSocketAddress.getPort();
-        if (host == null || host.equals(ANY_ADDRESS)) {
+        if (inetSocketAddress.getAddress().isAnyLocalAddress()) {
             // get by port
             return getSocket(port);
         }
         Socket socket = null;
-        boolean portMatched = false;
         Lock readLock = socketLock.readLock();
         readLock.lock();
         try {
+            boolean portMatched = false;
             // 1. check address exactly
             for (Socket item : sockets) {
                 assert item.localAddress instanceof InetSocketAddress : "address error: " + item.localAddress;
@@ -193,7 +191,7 @@ public class Hub extends Thread implements ConnectionDelegate {
                 for (Socket item : sockets) {
                     inetSocketAddress = (InetSocketAddress) item.localAddress;
                     if (port == inetSocketAddress.getPort()) {
-                        if (ANY_ADDRESS.equals(inetSocketAddress.getHostString())) {
+                        if (inetSocketAddress.getAddress().isAnyLocalAddress()) {
                             // got it
                             socket = item;
                             break;
@@ -238,12 +236,11 @@ public class Hub extends Thread implements ConnectionDelegate {
     }
 
     public Socket open(String host, int port) throws SocketException {
-        SocketAddress address = new InetSocketAddress(host, port);
-        return open(address);
+        return open(new InetSocketAddress(host, port));
     }
 
     public Socket open(int port) throws SocketException {
-        return open(ANY_ADDRESS, port);
+        return open(new InetSocketAddress(port));
     }
 
     /**
@@ -274,12 +271,11 @@ public class Hub extends Thread implements ConnectionDelegate {
     }
 
     public boolean close(String host, int port) {
-        SocketAddress address = new InetSocketAddress(host, port);
-        return close(address);
+        return close(new InetSocketAddress(host, port));
     }
 
     public boolean close(int port) {
-        return close(ANY_ADDRESS, port);
+        return close(new InetSocketAddress(port));
     }
 
     public void start() {
@@ -319,8 +315,7 @@ public class Hub extends Thread implements ConnectionDelegate {
     }
 
     public Connection connect(SocketAddress destination, int source) {
-        SocketAddress address = new InetSocketAddress(ANY_ADDRESS, source);
-        return connect(destination, address);
+        return connect(destination, new InetSocketAddress(source));
     }
 
     public Connection connect(SocketAddress destination) {
@@ -328,51 +323,15 @@ public class Hub extends Thread implements ConnectionDelegate {
     }
 
     public boolean disconnect(SocketAddress destination, SocketAddress source) {
-        InetSocketAddress inetSocketAddress;
-        String host;
-        int port;
-        if (source == null) {
-            host = null;
-            port = 0;
-        } else {
-            assert source instanceof InetSocketAddress : "address error: " + source;
-            inetSocketAddress = (InetSocketAddress) source;
-            host = inetSocketAddress.getHostString();
-            if (host != null && host.equals(ANY_ADDRESS)) {
-                host = null;
-            }
-            port = inetSocketAddress.getPort();
+        Socket socket = getSocket(source);
+        if (socket == null) {
+            return false;
         }
-
-        int count = 0;
-        Lock readLock = socketLock.readLock();
-        readLock.lock();
-        try {
-            for (Socket item : sockets) {
-                assert item.localAddress instanceof InetSocketAddress : "address error: " + item;
-                inetSocketAddress = (InetSocketAddress) item.localAddress;
-                // check port
-                if (port != 0 && port == inetSocketAddress.getPort()) {
-                    // check IP
-                    if (host != null && !host.equals(inetSocketAddress.getHostString())) {
-                        if (!ANY_ADDRESS.equals(inetSocketAddress.getHostString())) {
-                            continue;
-                        }
-                    }
-                }
-                if (item.disconnect(destination)) {
-                    count += 1;
-                }
-            }
-        } finally {
-            readLock.unlock();
-        }
-        return count > 0;
+        return socket.disconnect(destination);
     }
 
     public boolean disconnect(SocketAddress destination, int source) {
-        SocketAddress address = new InetSocketAddress(ANY_ADDRESS, source);
-        return disconnect(destination, address);
+        return disconnect(destination, new InetSocketAddress(source));
     }
 
     public boolean disconnect(SocketAddress destination) {
@@ -400,8 +359,7 @@ public class Hub extends Thread implements ConnectionDelegate {
     }
 
     public int send(byte[] data, SocketAddress destination, int source) {
-        SocketAddress address = new InetSocketAddress(ANY_ADDRESS, source);
-        return send(data, destination, address);
+        return send(data, destination, new InetSocketAddress(source));
     }
 
     public int send(byte[] data, SocketAddress destination) {
@@ -444,6 +402,7 @@ public class Hub extends Thread implements ConnectionDelegate {
         // receive data from appointed socket
         Socket socket = getSocket(source);
         if (socket == null) {
+            // throw new NullPointerException("no such socket: " + source);
             return null;
         }
         DatagramPacket packet = socket.receive();
@@ -460,18 +419,15 @@ public class Hub extends Thread implements ConnectionDelegate {
      * @param timeout - timeout in seconds
      * @return data package
      */
-    public Cargo receive(SocketAddress source, long timeout) {
+    public Cargo receive(SocketAddress source, float timeout) {
         long now = (new Date()).getTime(); // milliseconds
         timeout = now + timeout * 1000;
 
         Cargo cargo = null;
-        while (true) {
+        while (now <= timeout) {
             cargo = receivePacket(source);
             if (cargo != null) {
                 // got it
-                break;
-            } else if (now >= timeout) {
-                // timeout
                 break;
             }
             // receive nothing, have a rest for next job
@@ -481,13 +437,21 @@ public class Hub extends Thread implements ConnectionDelegate {
         return cargo;
     }
 
+    public Cargo receive(int port, float timeout) {
+        return receive(new InetSocketAddress(port), timeout);
+    }
+
     private static final long FOREVER = 31558150; // 3600 * 24 * 365.25636 (365d 6h 9m 10s)
 
     public Cargo receive(SocketAddress source) {
         return receive(source, FOREVER);
     }
 
-    public Cargo receive(long timeout) {
+    public Cargo receive(int port) {
+        return receive(new InetSocketAddress(port), FOREVER);
+    }
+
+    public Cargo receive(float timeout) {
         return receive(null, timeout);
     }
 
@@ -501,14 +465,14 @@ public class Hub extends Thread implements ConnectionDelegate {
         long expired = now + Connection.EXPIRES * 1000;
         Cargo cargo;
         List<byte[]> responses;
-        Lock readLock = socketLock.readLock();
 
         while (running) {
             try {
+                // try to receive data
                 cargo = receivePacket();
                 if (cargo == null) {
                     // received nothing, have a rest
-                    _sleep(0.1);;
+                    _sleep(0.1);
                 } else {
                     // dispatch data and got responses
                     responses = dispatch(cargo.data, cargo.source, cargo.destination);
@@ -519,21 +483,26 @@ public class Hub extends Thread implements ConnectionDelegate {
                 // check time for next heartbeat
                 now = (new Date()).getTime();
                 if (now > expired) {
-                    expired = now + 2000;
+                    heartbeat();
                     // try heartbeat for all connections in all sockets
-                    readLock.lock();
-                    try {
-                        for (Socket socket : sockets) {
-                            socket.ping();  // try to keep all connections alive
-                            socket.purge(); // remove error connections
-                        }
-                    } finally {
-                        readLock.unlock();
-                    }
+                    expired = now + 2000;
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    protected void heartbeat() {
+        Lock readLock = socketLock.readLock();
+        readLock.lock();
+        try {
+            for (Socket socket : sockets) {
+                socket.ping();  // try to keep all connections alive
+                socket.purge(); // remove error connections
+            }
+        } finally {
+            readLock.unlock();
         }
     }
 

@@ -31,7 +31,6 @@
 package chat.dim.mtp;
 
 import java.lang.ref.WeakReference;
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
@@ -109,7 +108,7 @@ public class Peer extends Thread {
                 // first, process all arrivals
                 done = cleanArrivals();
                 // second, get one departure task
-                departure = pool.dequeueExpiredDeparture();
+                departure = pool.shiftExpiredDeparture();
                 if (departure == null) {
                     // third, if no departure task, remove expired fragments
                     assembling = pool.discardFragments();
@@ -141,7 +140,7 @@ public class Peer extends Thread {
         int total = pool.getCountOfArrivals();
         Arrival arrival;
         while (done < total) {
-            arrival = pool.dequeueFirstArrival();
+            arrival = pool.shiftFirstArrival();
             if (arrival == null) {
                 // no task now
                 break;
@@ -184,14 +183,13 @@ public class Peer extends Thread {
         } else {
             // handle message fragment
             assert type.equals(DataType.MessageFragment) : "data type error: " + type;
-            PeerDelegate delegate = getDelegate();
-            ok = delegate.checkFragment(pack, task.source, task.destination);
+            ok = getDelegate().checkFragment(pack, task.source, task.destination);
             if (ok) {
                 // assemble fragments
                 Package msg = getPool().insertFragment(pack, task.source, task.destination);
                 if (msg != null) {
                     // all fragments received
-                    delegate.onReceivedMessage(msg.data, task.source, task.destination);
+                    getDelegate().onReceivedMessage(msg.body, task.source, task.destination);
                 }
             }
         }
@@ -272,19 +270,9 @@ public class Peer extends Thread {
         return task;
     }
 
-    public Departure sendCommand(Package pack, SocketAddress destination, int source) {
-        SocketAddress local = new InetSocketAddress(source);
-        return sendCommand(pack, destination, local);
-    }
-
     public Departure sendCommand(byte[] cmd, SocketAddress destination, SocketAddress source) {
         Package pack = Package.create(DataType.Command, cmd);
         return sendCommand(pack, destination, source);
-    }
-
-    public Departure sendCommand(byte[] cmd, SocketAddress destination, int source) {
-        SocketAddress local = new InetSocketAddress(source);
-        return sendCommand(cmd, destination, local);
     }
 
     //
@@ -304,18 +292,8 @@ public class Peer extends Thread {
         return task;
     }
 
-    public Departure sendMessage(Package pack, SocketAddress destination, int source) {
-        SocketAddress local = new InetSocketAddress(source);
-        return sendMessage(pack, destination, local);
-    }
-
     public Departure sendMessage(byte[] msg, SocketAddress destination, SocketAddress source) {
         Package pack = Package.create(DataType.Message, msg);
         return sendMessage(pack, destination, source);
-    }
-
-    public Departure sendMessage(byte[] msg, SocketAddress destination, int source) {
-        SocketAddress local = new InetSocketAddress(source);
-        return sendMessage(msg, destination, local);
     }
 }

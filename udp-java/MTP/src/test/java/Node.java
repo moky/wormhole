@@ -2,7 +2,6 @@
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.Charset;
-import java.util.Arrays;
 import java.util.List;
 
 import chat.dim.mtp.PeerDelegate;

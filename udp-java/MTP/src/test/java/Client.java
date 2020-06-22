@@ -37,6 +37,7 @@ public class Client extends Node {
             data = ("PING " + ++index).getBytes();
             info(data);
             client.sendCommand(data, destination);
+            client.sendMessage(data, destination);
             Thread.sleep(2000);
         }
     }

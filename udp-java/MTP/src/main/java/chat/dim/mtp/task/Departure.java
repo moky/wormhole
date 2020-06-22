@@ -52,7 +52,7 @@ public class Departure {
     public final SocketAddress source;
 
     public int maxRetries = 5;
-    private long lastTime = 0;  // last send/receive timestamp (in seconds)
+    private float lastTime = 0;  // last send/receive timestamp (in seconds)
 
     public Departure(List<Package> packages, SocketAddress destination, SocketAddress source) {
         super();
@@ -65,10 +65,10 @@ public class Departure {
         this.source = source;
     }
 
-    public long getLastTime() {
+    public float getLastTime() {
         return lastTime;
     }
     public void updateLastTime() {
-        lastTime = (new Date()).getTime() / 1000;
+        lastTime = (new Date()).getTime() / 1000.0f;
     }
 }

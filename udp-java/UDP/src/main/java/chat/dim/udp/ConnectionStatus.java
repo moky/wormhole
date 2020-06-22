@@ -47,10 +47,10 @@ public enum ConnectionStatus {
         return this.value == other.value;
     }
 
-    public static ConnectionStatus evaluate(long now,
-                                            long sendExpired,
-                                            long receiveExpired,
-                                            long connectionLost) {
+    public static ConnectionStatus evaluate(float now,
+                                            float sendExpired,
+                                            float receiveExpired,
+                                            float connectionLost) {
         if (now < receiveExpired) {
             /*  When received a package from remote address, this node must respond
              *  a package, so 'send expired' is always late than 'receive expired'.

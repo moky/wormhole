@@ -32,10 +32,7 @@ package chat.dim.udp;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.SocketAddress;
-import java.net.SocketException;
+import java.net.*;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -75,6 +72,10 @@ public class Socket extends Thread {
         super();
         localAddress = address;
         socket = createSocket();
+    }
+
+    public Socket(int port) throws SocketException {
+        this(new InetSocketAddress(port));
     }
 
     public boolean isRunning() {
@@ -134,9 +135,6 @@ public class Socket extends Thread {
     }
 
     protected Connection createConnection(SocketAddress remoteAddress, SocketAddress localAddress) {
-        if (localAddress == null) {
-            localAddress = this.localAddress;
-        }
         return new Connection(remoteAddress, localAddress);
     }
 
@@ -247,7 +245,7 @@ public class Socket extends Thread {
         Connection connection = null;
         ConnectionStatus oldStatus = null, newStatus = null;
         Date now = new Date();
-        long timestamp = now.getTime() / 1000;
+        float timestamp = now.getTime() / 1000.0f;
 
         Lock readLock = connectionLock.readLock();
         readLock.lock();
@@ -271,7 +269,7 @@ public class Socket extends Thread {
 
         // callback
         ConnectionDelegate delegate = getDelegate();
-        if (delegate != null && oldStatus != null && !oldStatus.equals(newStatus)) {
+        if (oldStatus != null && !oldStatus.equals(newStatus) && delegate != null) {
             // assert connection != null: "connection error: " + remoteAddress;
             delegate.onConnectionStatusChanged(connection, oldStatus, newStatus);
         }
@@ -281,7 +279,7 @@ public class Socket extends Thread {
         Connection connection = null;
         ConnectionStatus oldStatus = null, newStatus = null;
         Date now = new Date();
-        long timestamp = now.getTime() / 1000;
+        float timestamp = now.getTime() / 1000.0f;
 
         Lock readLock = connectionLock.readLock();
         readLock.lock();
@@ -305,7 +303,7 @@ public class Socket extends Thread {
 
         // callback
         ConnectionDelegate delegate = getDelegate();
-        if (delegate != null && oldStatus != null && !oldStatus.equals(newStatus)) {
+        if (oldStatus != null && !oldStatus.equals(newStatus) && delegate != null) {
             // assert connection != null: "connection error: " + remoteAddress;
             delegate.onConnectionStatusChanged(connection, oldStatus, newStatus);
         }
@@ -337,22 +335,21 @@ public class Socket extends Thread {
     }
 
     private DatagramPacket receive(int bufferSize) {
-        byte[] buffer = new byte[bufferSize];
-        DatagramPacket packet = new DatagramPacket(buffer, bufferSize);
         try {
+            byte[] buffer = new byte[bufferSize];
+            DatagramPacket packet = new DatagramPacket(buffer, bufferSize);
+            // receive packet from socket
             socket.receive(packet);
-            if (packet.getLength() == 0) {
-                // received nothing (timeout?)
-                packet = null;
-            } else {
-                // TODO: process truncated message
+            // TODO: process truncated message
+            if (packet.getLength() > 0) {
                 updateReceivedTime(packet.getSocketAddress());
+                return packet;
             }
-            return packet;
+            // received nothing (timeout?)
         } catch (IOException e) {
             // e.printStackTrace();
-            return null;
         }
+        return null;
     }
 
     /**
@@ -378,7 +375,7 @@ public class Socket extends Thread {
         Lock writeLock = cargoLock.writeLock();
         writeLock.lock();
         try {
-            if (cargoes.size() > MAX_CACHE_SPACES) {
+            if (cargoes.size() >= MAX_CACHE_SPACES) {
                 // drop the first package
                 cargo = cargoes.remove(0);
             }
@@ -419,17 +416,16 @@ public class Socket extends Thread {
                     _sleep(0.1);
                     continue;
                 }
-                // TODO: process truncated message
                 if (packet.getLength() == 4) {
                     // check heartbeat
                     data = packet.getData();
                     if (data[0] == 'P' && data[2] == 'N' && data[3] == 'G') {
                         if (data[1] == 'I') {
-                            // respond heartbeat
+                            // got 'PING': respond heartbeat
                             send(PONG, packet.getSocketAddress());
                             continue;
                         } else if (data[1] == 'O') {
-                            // ignore it
+                            // got 'PONG': ignore it
                             continue;
                         }
                     }

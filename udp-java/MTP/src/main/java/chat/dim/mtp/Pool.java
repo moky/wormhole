@@ -55,7 +55,7 @@ public interface Pool {
      *
      * @return any expiring departure task (removed from pool)
      */
-    Departure dequeueExpiredDeparture();
+    Departure shiftExpiredDeparture();
 
     /**
      *  Append a departure task into the pool after sent.
@@ -95,7 +95,7 @@ public interface Pool {
      *
      * @return the first arrival task (removed from pool)
      */
-    Arrival dequeueFirstArrival();
+    Arrival shiftFirstArrival();
 
     /**
      *  Append an arrival task into the pool after received something

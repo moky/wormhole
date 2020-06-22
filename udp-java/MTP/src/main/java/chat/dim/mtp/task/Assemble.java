@@ -52,7 +52,7 @@ public class Assemble {
     public final TransactionID sn;
     public final int pages;
 
-    private long lastTime;  // last receive timestamp (in seconds)
+    private float lastTime;  // last receive timestamp (in seconds)
 
     public Assemble(Package fragment, SocketAddress source, SocketAddress destination) {
         super();
@@ -72,11 +72,11 @@ public class Assemble {
         return fragments.size() == pages;
     }
 
-    public long getLastTime() {
+    public float getLastTime() {
         return lastTime;
     }
     public void updateLastTime() {
-        lastTime = (new Date()).getTime() / 1000;
+        lastTime = (new Date()).getTime() / 1000.0f;
     }
 
     public boolean insert(Package fragment, SocketAddress source, SocketAddress destination) {
@@ -104,7 +104,7 @@ public class Assemble {
             break;
         }
         fragments.add(index, fragment);
-        lastTime = (new Date()).getTime() / 1000;
+        updateLastTime();
         return true;
     }
 }
