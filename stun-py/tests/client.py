@@ -13,7 +13,8 @@ sys.path.append(rootPath)
 from tests.srv_cnf import *
 
 
-SERVER_TEST = '127.0.0.1'
+# SERVER_TEST = '127.0.0.1'
+SERVER_TEST = stun.get_local_ip()
 
 STUN_SERVERS = [
     # (SERVER_TEST, 3478),

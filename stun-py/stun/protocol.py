@@ -179,26 +179,21 @@ MagicCookie = uint32_to_bytes(0x2112A442)
 """
 
 
-class Header:
+class Header(Data):
 
-    def __init__(self, data: bytes, msg_type: MessageType, msg_len: MessageLength, trans_id: TransactionID):
-        super().__init__()
-        self.__data = data
+    def __init__(self, data: bytes, msg_type: MessageType, msg_length: MessageLength, trans_id: TransactionID):
+        super().__init__(data=data)
         self.__type = msg_type
-        self.__length = msg_len
+        self.__msg_length = msg_length
         self.__trans_id = trans_id
-
-    @property
-    def data(self) -> bytes:
-        return self.__data
 
     @property
     def type(self) -> MessageType:
         return self.__type
 
     @property
-    def length(self) -> MessageLength:
-        return self.__length
+    def msg_length(self) -> MessageLength:
+        return self.__msg_length
 
     @property
     def trans_id(self) -> TransactionID:
@@ -210,21 +205,22 @@ class Header:
         _type = MessageType.parse(data=data)
         if _type is None:
             return None
-        else:
-            data = data[_type.length:]
+        pos = _type.length
         # get message length
-        _len = MessageLength.parse(data=data)
+        _len = MessageLength.parse(data=data[pos:])
         if _len is None:
             return None
-        else:
-            data = data[_len.length:]
+        pos += _len.length
         # get transaction ID
-        _id = TransactionID.parse(data=data)
+        _id = TransactionID.parse(data=data[pos:])
         if _id is None:
             return None
-        # build data
-        data = _type.data + _len.data + _id.data
-        return cls(data=data, msg_type=_type, msg_len=_len, trans_id=_id)
+        pos += _id.length
+        assert pos == 20, 'header length error: %d' % pos
+        if len(data) > pos:
+            data = data[:pos]
+        # create
+        return cls(data=data, msg_type=_type, msg_length=_len, trans_id=_id)
 
     @classmethod
     def new(cls, msg_type: MessageType, msg_len: MessageLength, trans_id: TransactionID=None):
@@ -233,25 +229,16 @@ class Header:
             trans_id = TransactionID.new()
         # build data
         data = msg_type.data + msg_len.data + trans_id.data
-        return Header(data=data, msg_type=msg_type, msg_len=msg_len, trans_id=trans_id)
+        return Header(data=data, msg_type=msg_type, msg_length=msg_len, trans_id=trans_id)
 
 
-class Package:
+class Package(Data):
 
     def __init__(self, data: bytes, head: Header, body: bytes):
-        super().__init__()
-        self.__data = data
-        assert head.length.value == len(body), 'STUN message length error: %d, %d' % (head.length.value, len(body))
+        super().__init__(data=data)
+        assert head.msg_length.value == len(body), 'STUN msg length error: %d, %d' % (head.msg_length.value, len(body))
         self.__head = head
         self.__body = body
-
-    @property
-    def data(self) -> bytes:
-        if self.__data is None:
-            head = self.head.data
-            body = self.body
-            self.__data = head + body
-        return self.__data
 
     @property
     def head(self) -> Header:
@@ -269,11 +256,15 @@ class Package:
             # not a STUN message?
             return None
         # check message length
-        head_len = len(head.data)
-        body_len = head.length.value
-        if len(data) != (head_len + body_len):
-            # raise ValueError('STUN message length error: %d, %d' % (body_len, len(data)))
+        head_len = head.length
+        body_len = head.msg_length.value
+        pack_len = head_len + body_len
+        data_len = len(data)
+        if data_len < pack_len:
+            # raise ValueError('STUN package length error: %d, %d' % (data_len, pack_len))
             return None
+        elif data_len > pack_len:
+            data = data[:pack_len]
         # get attributes body
         body = data[head_len:]
         return Package(data=data, head=head, body=body)
