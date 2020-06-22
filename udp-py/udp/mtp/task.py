@@ -61,6 +61,9 @@ class Departure:
         self.trans_id = first.head.trans_id
         self.data_type = first.head.data_type
 
+    def update_last_time(self):
+        self.last_time = time.time()
+
 
 class Arrival:
     """
@@ -84,12 +87,13 @@ class Assemble:
         self.__fragments = [fragment]
         self.source = source
         self.destination = destination
-        self.last_time = time.time()  # last receive time
+        self.last_time = 0  # last receive time
         # package header info
         assert fragment.head.data_type == MessageFragment, 'fragment data type error: %s' % fragment
         assert fragment.head.pages > 1, 'fragment pages error: %s' % fragment
         self.trans_id = fragment.head.trans_id
         self.pages = fragment.head.pages
+        self.update_last_time()
 
     @property
     def fragments(self) -> list:
@@ -98,6 +102,9 @@ class Assemble:
     @property
     def is_completed(self) -> bool:
         return len(self.__fragments) == self.pages
+
+    def update_last_time(self):
+        self.last_time = time.time()
 
     def insert(self, fragment: Package, source: tuple, destination: tuple) -> bool:
         assert source == self.source, 'source error: %s -> %s' % (source, self.source)
@@ -123,5 +130,5 @@ class Assemble:
             index += 1
             break
         self.__fragments.insert(index, fragment)
-        self.last_time = time.time()
+        self.update_last_time()
         return True

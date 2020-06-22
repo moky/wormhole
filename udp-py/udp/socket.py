@@ -31,6 +31,7 @@
 import socket
 import threading
 import time
+import weakref
 from typing import Optional
 
 from .connection import ConnectionStatus, ConnectionDelegate, Connection
@@ -91,7 +92,7 @@ class Socket(threading.Thread):
         # create socket
         self.__socket = self._create_socket()
         # delegate
-        self.connection_delegate: ConnectionDelegate = None
+        self.__delegate: weakref.ReferenceType = None
         # connection list
         self.__connections = []
         self.__connections_lock = threading.Lock()
@@ -117,6 +118,19 @@ class Socket(threading.Thread):
     def settimeout(self, timeout: Optional[float]):
         self.__socket.settimeout(timeout)
 
+    @property
+    def delegate(self) -> Optional[ConnectionDelegate]:
+        if self.__delegate is not None:
+            return self.__delegate()
+
+    @delegate.setter
+    def delegate(self, value: Optional[ConnectionDelegate]):
+        self.__delegate = weakref.ref(value)
+
+    #
+    #  Connections
+    #
+
     def get_connection(self, remote_address: tuple) -> Optional[Connection]:
         with self.__connections_lock:
             for conn in self.__connections:
@@ -125,9 +139,8 @@ class Socket(threading.Thread):
                     # got it
                     return conn
 
+    # noinspection PyMethodMayBeStatic
     def _create_connection(self, remote_address: tuple, local_address: tuple=None) -> Connection:
-        if local_address is None:
-            local_address = self.local_address
         return Connection(local_address=local_address, remote_address=remote_address)
 
     def connect(self, remote_address: tuple) -> Connection:
@@ -138,7 +151,7 @@ class Socket(threading.Thread):
                 if conn.remote_address == remote_address:
                     # already connected
                     return conn
-            conn = self._create_connection(remote_address=remote_address)
+            conn = self._create_connection(remote_address=remote_address, local_address=self.local_address)
             self.__connections.append(conn)
             return conn
 
@@ -186,11 +199,11 @@ class Socket(threading.Thread):
                     old_status, new_status = conn.update_sent_time()
                     connection = conn
         # callback
-        if self.connection_delegate is not None and old_status != new_status:
+        if old_status != new_status and self.delegate is not None:
             # assert connection is not None, 'connection error: %s' % remote_address
-            self.connection_delegate.connection_status_changed(connection=connection,
-                                                               old_status=old_status,
-                                                               new_status=new_status)
+            self.delegate.connection_status_changed(connection=connection,
+                                                    old_status=old_status,
+                                                    new_status=new_status)
 
     def __update_received_time(self, remote_address: tuple):
         connection = None
@@ -204,10 +217,10 @@ class Socket(threading.Thread):
                     old_status, new_status = conn.update_received_time()
                     connection = conn
         # callback
-        if self.connection_delegate is not None and old_status != new_status:
-            self.connection_delegate.connection_status_changed(connection=connection,
-                                                               old_status=old_status,
-                                                               new_status=new_status)
+        if old_status != new_status and self.delegate is not None:
+            self.delegate.connection_status_changed(connection=connection,
+                                                    old_status=old_status,
+                                                    new_status=new_status)
 
     def send(self, data: bytes, remote_address: tuple) -> int:
         """
@@ -232,7 +245,7 @@ class Socket(threading.Thread):
             if data is not None:
                 assert len(address) == 2, 'remote address error: %s, data length: %d' % (address, len(data))
                 self.__update_received_time(remote_address=address)
-            return DatagramPacket(data=data, address=address)
+                return DatagramPacket(data=data, address=address)
         except socket.error as error:
             if not isinstance(error, socket.timeout):
                 print('Failed to receive data: %s' % error)
@@ -255,10 +268,10 @@ class Socket(threading.Thread):
             # append the new package to the end
             self.__cargoes.append(packet)
         # callback
-        if self.connection_delegate is not None:
+        if self.delegate is not None:
             connection = self.get_connection(remote_address=packet.address)
             if connection is not None:
-                self.connection_delegate.connection_received_data(connection=connection)
+                self.delegate.connection_received_data(connection=connection)
 
     def run(self):
         while self.running:

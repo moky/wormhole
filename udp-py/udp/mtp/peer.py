@@ -188,7 +188,7 @@ class Peer(threading.Thread):
 
     def __init__(self):
         super().__init__()
-        self.running = True
+        self.running = False
         self.__pool = None
         self.__delegate: weakref.ReferenceType = None
 
@@ -211,23 +211,29 @@ class Peer(threading.Thread):
     def delegate(self, value: Optional[PeerDelegate]):
         self.__delegate = weakref.ref(value)
 
+    def start(self):
+        self.running = True
+        super().start()
+
     def stop(self):
         self.running = False
 
     def run(self):
         while self.running:
             try:
+                pool = self.pool
+                delegate = self.delegate
                 # first, process all arrivals
                 done = self.__clean_arrivals()
                 # second, get one departure task
-                task = self.pool.any_departure()
+                task = pool.shift_expired_departure()
                 if task is None:
                     # third, if no departure task, remove expired fragments
-                    assembling = self.pool.discard_fragments()
+                    assembling = pool.discard_fragments()
                     for item in assembling:
                         assert isinstance(item, Assemble), 'assemble error: %s' % item
-                        self.delegate.recycle_fragments(fragments=item.fragments,
-                                                        source=item.source, destination=item.destination)
+                        delegate.recycle_fragments(fragments=item.fragments,
+                                                   source=item.source, destination=item.destination)
                     if done == 0:
                         # all jobs done, have a rest. ^_^
                         time.sleep(0.1)
@@ -243,10 +249,11 @@ class Peer(threading.Thread):
 
         :return: finished tasks count
         """
-        total = self.pool.arrivals_count()
+        pool = self.pool
+        total = pool.arrivals_count()
         done = 0
         while done < total:
-            task = self.pool.first_arrival()
+            task = pool.shift_first_arrival()
             if task is None:
                 # no data now
                 break
@@ -264,14 +271,14 @@ class Peer(threading.Thread):
         if data_type == CommandRespond:
             # command response
             trans_id = head.trans_id
-            if self.pool.del_departure(response=pack, destination=task.source, source=task.destination):
+            if self.pool.delete_departure(response=pack, destination=task.source, source=task.destination):
                 # if departure task is deleted, means it's finished
                 self.delegate.send_command_success(trans_id=trans_id, destination=task.source, source=task.destination)
             return None
         elif data_type == MessageRespond:
             # message response
             trans_id = head.trans_id
-            if self.pool.del_departure(response=pack, destination=task.source, source=task.destination):
+            if self.pool.delete_departure(response=pack, destination=task.source, source=task.destination):
                 # if departure task is deleted, means it's finished
                 self.delegate.send_message_success(trans_id=trans_id, destination=task.source, source=task.destination)
             return None
@@ -287,7 +294,7 @@ class Peer(threading.Thread):
             ok = self.delegate.check_fragment(fragment=pack, source=task.source, destination=task.destination)
             if ok:
                 # assemble fragments
-                msg = self.pool.add_fragment(fragment=pack, source=task.source, destination=task.destination)
+                msg = self.pool.insert_fragment(fragment=pack, source=task.source, destination=task.destination)
                 if msg is not None:
                     # all fragments received
                     self.delegate.received_message(msg=msg.body, source=task.source, destination=task.destination)
@@ -312,29 +319,28 @@ class Peer(threading.Thread):
         response = Package.new(data_type=data_type, sn=head.trans_id, body=body)
         # send response directly, don't add this task to waiting list
         res = self.delegate.send_data(data=response.data, destination=remote, source=local)
-        if res < 0:
-            raise IOError('failed to respond %s: %s' % (data_type, remote))
+        assert res == len(response.data), 'failed to respond %s: %s' % (data_type, remote)
 
     #
     #   Sending
     #
     def __send(self, task: Departure):
-        if self.pool.add_departure(task=task):
+        delegate = self.delegate
+        if self.pool.append_departure(task=task):
             # treat the task as a bundle of packages
             packages = task.packages
             for item in packages:
                 assert isinstance(item, Package), 'package error: %s' % item
-                res = self.delegate.send_data(data=item.data, destination=task.destination, source=task.source)
-                if res < 0:
-                    raise IOError('failed to resend task (%d packages) to: %s' % (len(packages), task.destination))
+                res = delegate.send_data(data=item.data, destination=task.destination, source=task.source)
+                assert res == len(item.data), 'failed to resend packs (%d) to: %s' % (len(packages), task.destination)
         else:
             # mission failed
             data_type = task.data_type
             trans_id = task.trans_id
             if data_type == Command:
-                self.delegate.send_command_timeout(trans_id=trans_id, destination=task.destination, source=task.source)
+                delegate.send_command_timeout(trans_id=trans_id, destination=task.destination, source=task.source)
             elif data_type == Message:
-                self.delegate.send_message_timeout(trans_id=trans_id, destination=task.destination, source=task.source)
+                delegate.send_message_timeout(trans_id=trans_id, destination=task.destination, source=task.source)
             else:
                 raise AssertionError('data type error: %s' % data_type)
 

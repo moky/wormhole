@@ -166,6 +166,7 @@ class Hub(threading.Thread, ConnectionDelegate):
         with self.__listeners_lock:
             assert listener in self.__listeners, 'listener not exists: %s' % listener
             self.__listeners.remove(listener)
+            return True
 
     #
     #  Sockets
@@ -213,7 +214,7 @@ class Hub(threading.Thread, ConnectionDelegate):
 
     def _create_socket(self, host: str, port: int) -> Socket:
         sock = Socket(host=host, port=port)
-        sock.connection_delegate = self
+        sock.delegate = self
         sock.start()
         return sock
 
@@ -294,6 +295,9 @@ class Hub(threading.Thread, ConnectionDelegate):
             return self.__receive_all()
         # receive data from appointed socket
         sock = self.__get_socket(address=source)
+        if sock is None:
+            # raise LookupError('no such socket: %s' % str(source))
+            return None
         packet = sock.receive()
         if packet is not None:
             # got it
@@ -334,17 +338,19 @@ class Hub(threading.Thread, ConnectionDelegate):
                         self.send(data=res, destination=cargo.source, source=cargo.destination)
                 # check time for next heartbeat
                 now = time.time()
-                if now <= expired:
-                    continue
-                expired = now + 2
-                # try heart beat for all connections in all sockets
-                with self.__sockets_lock:
-                    for sock in self.__sockets:
-                        assert isinstance(sock, Socket), 'socket error: %s' % sock
-                        sock.ping()   # try to keep all connections alive
-                        sock.purge()  # remove error connections
+                if now > expired:
+                    expired = now + 2
+                    # try heart beat for all connections in all sockets
+                    self._heartbeat()
             except Exception as error:
                 print('Hub.run error: %s' % error)
+
+    def _heartbeat(self):
+        with self.__sockets_lock:
+            for sock in self.__sockets:
+                assert isinstance(sock, Socket), 'socket error: %s' % sock
+                sock.ping()  # try to keep all connections alive
+                sock.purge()  # remove error connections
 
     def __dispatch(self, data: bytes, source: tuple, destination: tuple) -> list:
         responses = []

@@ -50,7 +50,7 @@ class Peer(UDPPeer, HubListener):
     #
     def data_received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
         task = Arrival(payload=data, source=source, destination=destination)
-        self.pool.add_arrival(task=task)
+        self.pool.append_arrival(task=task)
         return None
 
 

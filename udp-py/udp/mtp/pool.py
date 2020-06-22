@@ -61,16 +61,16 @@ class Pool(ABC):
     #
 
     @abstractmethod
-    def any_departure(self) -> Optional[Departure]:
+    def shift_expired_departure(self) -> Optional[Departure]:
         """
         Gat one departure task from the pool for sending.
 
-        :return: any task
+        :return: any expiring departure task (removed from pool)
         """
         raise NotImplemented
 
     @abstractmethod
-    def add_departure(self, task: Departure) -> bool:
+    def append_departure(self, task: Departure) -> bool:
         """
         Append a departure task into the pool after sent.
         This should be removed after its response received; if timeout, send it
@@ -83,12 +83,12 @@ class Pool(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def del_departure(self, response: Package, destination: tuple, source: tuple) -> bool:
+    def delete_departure(self, response: Package, destination: tuple, source: tuple) -> bool:
         """
         Delete the departure task with 'trans_id' in the response.
         If it's a message fragment, check the page offset too.
 
-        :param response:
+        :param response:    respond package
         :param destination: remote address
         :param source:      local address
         :return: False on task not found/not finished yet
@@ -109,16 +109,16 @@ class Pool(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def first_arrival(self) -> Optional[Arrival]:
+    def shift_first_arrival(self) -> Optional[Arrival]:
         """
         Get one arrival task from the pool for processing
 
-        :return: any task
+        :return: the first arrival task (removed from pool)
         """
         raise NotImplemented
 
     @abstractmethod
-    def add_arrival(self, task: Arrival) -> bool:
+    def append_arrival(self, task: Arrival) -> bool:
         """
         Append an arrival task into the pool after received something
 
@@ -132,7 +132,7 @@ class Pool(ABC):
     #
 
     @abstractmethod
-    def add_fragment(self, fragment: Package, source: tuple, destination: tuple) -> Optional[Package]:
+    def insert_fragment(self, fragment: Package, source: tuple, destination: tuple) -> Optional[Package]:
         """
         Add a fragment package into the pool for MessageFragment received.
         This will just wait until all fragments with the same 'trans_id' received.
@@ -187,19 +187,16 @@ class MemPool(Pool):
     #
     #   Departures
     #
-    def any_departure(self) -> Optional[Departure]:
+    def shift_expired_departure(self) -> Optional[Departure]:
         with self.__departures_lock:
             if len(self.__departures) > 0:
-                # check last sent time
-                task = self.__departures[0]
-                assert isinstance(task, Departure), 'task error: %s' % task
-                if self.is_departure_expired(task=task):
+                if self.is_departure_expired(task=self.__departures[0]):
                     return self.__departures.pop(0)
 
-    def add_departure(self, task: Departure) -> bool:
+    def append_departure(self, task: Departure) -> bool:
         if task.max_retries < 0:
             return False
-        task.last_time = time.time()
+        task.update_last_time()
         task.max_retries -= 1
         with self.__departures_lock:
             self.__departures.append(task)
@@ -260,11 +257,11 @@ class MemPool(Pool):
                     count += 1
                 else:
                     # update receive time
-                    task.last_time = time.time()
+                    task.update_last_time()
                 break
         return count > 0
 
-    def del_departure(self, response: Package, destination: tuple, source: tuple) -> bool:
+    def delete_departure(self, response: Package, destination: tuple, source: tuple) -> bool:
         head = response.head
         body = response.body
         body_len = len(body)
@@ -301,12 +298,12 @@ class MemPool(Pool):
         with self.__arrivals_lock:
             return len(self.__arrivals)
 
-    def first_arrival(self) -> Optional[Arrival]:
+    def shift_first_arrival(self) -> Optional[Arrival]:
         with self.__arrivals_lock:
             if len(self.__arrivals) > 0:
                 return self.__arrivals.pop(0)
 
-    def add_arrival(self, task: Arrival) -> bool:
+    def append_arrival(self, task: Arrival) -> bool:
         with self.__arrivals_lock:
             self.__arrivals.append(task)
         return True
@@ -314,7 +311,7 @@ class MemPool(Pool):
     #
     #   Fragments Assembling
     #
-    def add_fragment(self, fragment: Package, source: tuple, destination: tuple) -> Optional[Package]:
+    def insert_fragment(self, fragment: Package, source: tuple, destination: tuple) -> Optional[Package]:
         pack = None
         with self.__fragments_lock:
             trans_id = fragment.head.trans_id
