@@ -53,8 +53,8 @@ from .node import Node, Info
 
 class Server(Node, ABC):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, host: str='0.0.0.0', port: int=3478, change_port: int=3479):
+        super().__init__(host=host, port=port)
         self.software = 'stun.dim.chat 0.1'
         """
         11.2.3  CHANGED-ADDRESS
@@ -84,7 +84,9 @@ class Server(Node, ABC):
             When this server received ChangeRequest with "change port" flag set,
             it should respond the client with another port.
         """
-        self.change_port: int = 3479
+        self.change_port: int = change_port
+        assert change_port > 0, 'change port error'
+        self.hub.open(host=host, port=change_port)
 
     def parse_attribute(self, attribute: Attribute, context: dict, result: Info) -> Info:
         value = attribute.value

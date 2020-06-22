@@ -119,8 +119,8 @@ RFC 3489                          STUN                        March 2003
 
 class Client(Node, ABC):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, host: str, port: int):
+        super().__init__(host=host, port=port)
         self.retries = 3
 
     def parse_attribute(self, attribute: Attribute, context: dict, result: Info) -> Info:

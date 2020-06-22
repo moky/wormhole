@@ -40,6 +40,8 @@ import time
 from abc import ABC, abstractmethod
 from typing import Union, Optional
 
+from udp import Hub
+
 from .protocol import Package, Header
 from .attributes import Attribute, ChangeRequestValue
 
@@ -62,8 +64,13 @@ class Info(dict):
 
 class Node(ABC):
 
-    def __init__(self):
+    def __init__(self, host: str, port: int):
         super().__init__()
+        self.__local_address = (host, port)
+        self.__hub: Hub = None
+
+    @property
+    def source_address(self) -> tuple:
         """
         11.2.5 SOURCE-ADDRESS
 
@@ -76,7 +83,32 @@ class Node(ABC):
             Whether it's a server or a client, this indicates the current node's
             local address: (ip, port)
         """
-        self.source_address: (str, int) = None
+        return self.__local_address
+
+    @property
+    def hub(self) -> Hub:
+        if self.__hub is None:
+            self.__hub = self._create_hub()
+        return self.__hub
+
+    def _create_hub(self) -> Hub:
+        assert isinstance(self.__local_address, tuple), 'local address error'
+        host = self.__local_address[0]
+        port = self.__local_address[1]
+        assert port > 0, 'invalid port: %d' % port
+        hub = Hub()
+        hub.open(host=host, port=port)
+        # hub.start()
+        return hub
+
+    def start(self):
+        if not self.hub.running:
+            self.hub.start()
+
+    def stop(self):
+        # stop hub
+        if self.__hub is not None:
+            self.__hub.stop()
 
     # noinspection PyMethodMayBeStatic
     def info(self, msg: str):
@@ -84,7 +116,6 @@ class Node(ABC):
         time_string = time.strftime('%y-%m-%d %H:%M:%S', time_array)
         print('[%s] %s' % (time_string, msg))
 
-    @abstractmethod
     def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
         """
         Send data to remote address
@@ -94,16 +125,22 @@ class Node(ABC):
         :param source:      local address
         :return: count of sent bytes
         """
-        raise NotImplemented
+        try:
+            return self.hub.send(data=data, destination=destination, source=source)
+        except socket.error:
+            return -1
 
-    @abstractmethod
-    def receive(self) -> (bytes, (str, int)):
+    def receive(self, timeout: float=2) -> (bytes, (str, int)):
         """
         Received data from local port
 
         :return: data and remote address
         """
-        raise NotImplemented
+        try:
+            data, source, destination = self.hub.receive(timeout=timeout)
+            return data, source
+        except socket.error:
+            return None, None
 
     @abstractmethod
     def parse_attribute(self, attribute: Attribute, context: dict, result: Info) -> Info:
