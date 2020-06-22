@@ -46,7 +46,7 @@ __all__ = [
     #
     #   Socket
     #
-    'Socket',
+    'Socket', 'DatagramPacket',
 
     #
     #   Hub

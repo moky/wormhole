@@ -35,7 +35,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Union
 
 from .connection import ConnectionStatus, ConnectionDelegate, Connection
-from .socket import Socket
+from .socket import Socket, DatagramPacket
 
 """
     Topology:
@@ -114,6 +114,31 @@ class HubListener(ABC):
         :param new_status:
         """
         pass
+
+
+class Cargo:
+
+    def __init__(self, data: bytes, source: tuple, destination: tuple):
+        super().__init__()
+        self.__data = data
+        self.__source = source
+        self.__destination = destination
+
+    @property
+    def data(self) -> bytes:
+        return self.__data
+
+    @property
+    def source(self) -> tuple:
+        return self.__source
+
+    @property
+    def destination(self) -> tuple:
+        return self.__destination
+
+    @classmethod
+    def create(cls, packet: DatagramPacket, socket: Socket):
+        return cls(data=packet.data, source=packet.address, destination=socket.local_address)
 
 
 class Hub(threading.Thread, ConnectionDelegate):
@@ -254,29 +279,27 @@ class Hub(threading.Thread, ConnectionDelegate):
         if sock is not None:
             return sock.send(data=data, remote_address=destination)
 
-    def __receive_all(self) -> (bytes, (str, int), (str, int)):
+    def __receive_all(self) -> Optional[Cargo]:
         with self.__sockets_lock:
             # receive data from any socket
             for sock in self.__sockets:
                 assert isinstance(sock, Socket), 'socket error: %s' % sock
-                data, remote = sock.receive()
-                if data is not None:
+                packet = sock.receive()
+                if packet is not None:
                     # got one
-                    return data, remote, sock.local_address
-        return None, None, None
+                    return Cargo.create(packet=packet, socket=sock)
 
-    def __receive(self, source: Union[tuple, int]) -> (bytes, (str, int), (str, int)):
+    def __receive(self, source: Union[tuple, int]) -> Optional[Cargo]:
         if source is None:
             return self.__receive_all()
         # receive data from appointed socket
         sock = self.__get_socket(address=source)
-        data, remote = sock.receive()
-        if data is not None:
+        packet = sock.receive()
+        if packet is not None:
             # got it
-            return data, remote, sock.local_address
-        return None, None, None
+            return Cargo.create(packet=packet, socket=sock)
 
-    def receive(self, source: Union[tuple, int]=None, timeout: Optional[float]=None) -> (bytes, (str, int), (str, int)):
+    def receive(self, source: Union[tuple, int]=None, timeout: Optional[float]=None) -> Optional[Cargo]:
         """
         Block to receive data
 
@@ -288,28 +311,27 @@ class Hub(threading.Thread, ConnectionDelegate):
         else:
             timeout = now + timeout
         while now <= timeout:
-            data, source, destination = self.__receive(source=source)
-            if data is None:
+            cargo = self.__receive(source=source)
+            if cargo is None:
                 time.sleep(0.1)
                 now = time.time()
             else:
-                return data, source, destination
-        return None, None, None
+                return cargo
 
     def run(self):
         expired = time.time() + Connection.EXPIRES
         while self.running:
             try:
                 # try to receive data
-                data, source, destination = self.__receive_all()
-                if data is None:
+                cargo = self.__receive_all()
+                if cargo is None:
                     # received nothing, have a rest
                     time.sleep(0.1)
                 else:
                     # dispatch data and got responses
-                    responses = self.__dispatch(data=data, source=source, destination=destination)
+                    responses = self.__dispatch(data=cargo.data, source=cargo.source, destination=cargo.destination)
                     for res in responses:
-                        self.send(data=res, destination=source, source=destination)
+                        self.send(data=res, destination=cargo.source, source=cargo.destination)
                 # check time for next heartbeat
                 now = time.time()
                 if now <= expired:
@@ -355,11 +377,11 @@ class Hub(threading.Thread, ConnectionDelegate):
         if self.running:
             # process by run()
             return True
-        data, source, destination = self.__receive(source=connection.local_address)
-        if data is None:
+        cargo = self.__receive(source=connection.local_address)
+        if cargo is None:
             # assert False
             return False
         # dispatch data and got responses
-        responses = self.__dispatch(data=data, source=source, destination=destination)
+        responses = self.__dispatch(data=cargo.data, source=cargo.source, destination=cargo.destination)
         for res in responses:
-            self.send(data=res, destination=source, source=destination)
+            self.send(data=res, destination=cargo.source, source=cargo.destination)

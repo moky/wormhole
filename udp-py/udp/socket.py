@@ -36,12 +36,36 @@ from typing import Optional
 from .connection import ConnectionStatus, ConnectionDelegate, Connection
 
 
-class Cargo:
+class DatagramPacket:
 
-    def __init__(self, data: bytes, source: tuple):
+    def __init__(self, data: bytes, address: tuple):
         super().__init__()
-        self.data = data
-        self.source = source
+        self.__data = data
+        self.__address = address
+
+    @property
+    def data(self) -> bytes:
+        return self.__data
+
+    @property
+    def offset(self) -> int:
+        return 0
+
+    @property
+    def length(self) -> int:
+        return len(self.__data)
+
+    @property
+    def address(self) -> tuple:
+        return self.__address
+
+    @property
+    def ip(self) -> str:
+        return self.__address[0]
+
+    @property
+    def port(self) -> int:
+        return self.__address[1]
 
 
 class Socket(threading.Thread):
@@ -76,7 +100,7 @@ class Socket(threading.Thread):
         self.__cargoes_lock = threading.Lock()
 
     @property
-    def local_address(self) -> (str, int):
+    def local_address(self) -> tuple:
         return self.__local_address
 
     @property
@@ -202,19 +226,18 @@ class Socket(threading.Thread):
             print('Failed to send data: %s' % error)
             return -1
 
-    def __receive(self, buffer_size: int = 2048) -> (bytes, (str, int)):
+    def __receive(self, buffer_size: int = 2048) -> Optional[DatagramPacket]:
         try:
             data, address = self.__socket.recvfrom(buffer_size)
             if data is not None:
                 assert len(address) == 2, 'remote address error: %s, data length: %d' % (address, len(data))
                 self.__update_received_time(remote_address=address)
-            return data, address
+            return DatagramPacket(data=data, address=address)
         except socket.error as error:
             if not isinstance(error, socket.timeout):
                 print('Failed to receive data: %s' % error)
-            return None, None
 
-    def receive(self) -> (bytes, (str, int)):
+    def receive(self) -> Optional[DatagramPacket]:
         """
         Get received data package from buffer, non-blocked
 
@@ -222,43 +245,41 @@ class Socket(threading.Thread):
         """
         with self.__cargoes_lock:
             if len(self.__cargoes) > 0:
-                cargo = self.__cargoes.pop(0)
-                assert isinstance(cargo, Cargo), 'cargo error: %s' % cargo
-                return cargo.data, cargo.source
-        return None, None
+                return self.__cargoes.pop(0)
 
-    def __cache(self, data: bytes, source: tuple):
+    def __cache(self, packet: DatagramPacket):
         with self.__cargoes_lock:
             if len(self.__cargoes) >= self.MAX_CACHE_SPACES:
                 # drop the first package
                 self.__cargoes.pop(0)
             # append the new package to the end
-            self.__cargoes.append(Cargo(data=data, source=source))
+            self.__cargoes.append(packet)
         # callback
         if self.connection_delegate is not None:
-            connection = self.get_connection(remote_address=source)
+            connection = self.get_connection(remote_address=packet.address)
             if connection is not None:
                 self.connection_delegate.connection_received_data(connection=connection)
 
     def run(self):
         while self.running:
             try:
-                data, address = self.__receive(buffer_size=self.BUFFER_SIZE)
-                if data is None:
+                packet = self.__receive(buffer_size=self.BUFFER_SIZE)
+                if packet is None:
                     # receive nothing
                     time.sleep(0.1)
                     continue
-                if len(data) == 4:
+                if packet.length == 4:
                     # check heartbeat
+                    data = packet.data
                     if data == b'PING':
                         # respond heartbeat
-                        self.send(data=b'PONG', remote_address=address)
+                        self.send(data=b'PONG', remote_address=packet.address)
                         continue
                     elif data == b'PONG':
                         # ignore it
                         continue
                 # cache the data received
-                self.__cache(data=data, source=address)
+                self.__cache(packet=packet)
             except Exception as error:
                 print('Socket.run error: %s' % error)
 
