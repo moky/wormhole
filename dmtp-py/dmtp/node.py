@@ -32,7 +32,8 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from weakref import WeakValueDictionary
 
-from udp import Peer, PeerDelegate, Departure
+from udp import HubListener, Hub, PeerDelegate, Peer as UDPPeer
+from udp import Departure, Arrival
 
 from .tlv import Field
 from .command import Command, WhoCommand, SignCommand, FromCommand
@@ -42,18 +43,32 @@ from .message import Message
 from .contact import Contact
 
 
+class Peer(UDPPeer, HubListener):
+
+    #
+    #   HubListener
+    #
+    def received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
+        task = Arrival(payload=data, source=source, destination=destination)
+        self.pool.add_arrival(task=task)
+        return None
+
+
 class Node(PeerDelegate):
 
-    def __init__(self):
+    def __init__(self, host: str, port: int):
         super().__init__()
+        self.__local_address = (host, port)
         self.__peer: Peer = None
+        self.__hub: Hub = None
         # online contacts
         self.__contacts: dict = {}          # ID -> Contact
         self.__map = WeakValueDictionary()  # (IP, port) -> Contact
 
-    #
-    #   Peer (send/receive data)
-    #
+    @property
+    def local_address(self) -> tuple:
+        return self.__local_address
+
     @property
     def peer(self) -> Peer:
         if self.__peer is None:
@@ -65,6 +80,37 @@ class Node(PeerDelegate):
         peer.delegate = self
         peer.start()
         return peer
+
+    @property
+    def hub(self) -> Hub:
+        if self.__hub is None:
+            self.__hub = self._create_hub()
+        return self.__hub
+
+    def _create_hub(self) -> Hub:
+        assert isinstance(self.__local_address, tuple), 'local address error'
+        host = self.__local_address[0]
+        port = self.__local_address[1]
+        assert port > 0, 'invalid port: %d' % port
+        hub = Hub()
+        hub.open(host=host, port=port)
+        hub.add_listener(self.peer)
+        hub.start()
+        return hub
+
+    def start(self):
+        if not self.hub.running:
+            self.hub.start()
+
+    def stop(self):
+        # stop hub
+        if self.__hub is not None:
+            if self.__peer is not None:
+                self.__hub.remove_listener(self.__peer)
+            self.__hub.stop()
+        # stop peer
+        if self.__peer is not None:
+            self.__peer.stop()
 
     #
     #   Contacts (with locations)
@@ -129,7 +175,7 @@ class Node(PeerDelegate):
         :param destination: remote address
         :return: departure task with 'trans_id' in the payload
         """
-        return self.peer.send_command(pack=cmd.data, destination=destination)
+        return self.peer.send_command(pack=cmd.data, destination=destination, source=self.local_address)
 
     def send_message(self, msg: Message, destination: tuple) -> Departure:
         """
@@ -139,7 +185,7 @@ class Node(PeerDelegate):
         :param destination: remote address
         :return: departure task with 'trans_id' in the payload
         """
-        return self.peer.send_message(pack=msg.data, destination=destination)
+        return self.peer.send_message(pack=msg.data, destination=destination, source=self.local_address)
 
     #
     #   Process
@@ -212,6 +258,9 @@ class Node(PeerDelegate):
     #
     #   PeerDelegate
     #
+    def send_data(self, data: bytes, destination: tuple, source: tuple) -> int:
+        return self.hub.send(data=data, destination=destination, source=source)
+
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
         commands = Command.parse_all(data=cmd)
         for pack in commands:
@@ -304,6 +353,9 @@ class Client(Node):
         :param remote_address: server or remote user's address
         :return:
         """
+        conn = self.hub.connect(destination=remote_address, source=self.local_address)
+        if conn is None:
+            return False
         return self.say_hi(destination=remote_address)
 
     def _process_sign(self, location: LocationValue, destination: tuple) -> bool:

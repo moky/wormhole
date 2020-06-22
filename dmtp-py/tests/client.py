@@ -6,14 +6,12 @@ import random
 import sys
 import os
 import time
-from typing import Optional, Union
+from typing import Optional
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-import udp
-import stun
 import dmtp
 
 
@@ -25,17 +23,14 @@ SERVER_GZ3 = '129.204.94.164'
 SERVER_HOST = SERVER_GZ1
 SERVER_PORT = 9395
 
-CLIENT_HOST = stun.get_local_ip()
+CLIENT_HOST = '0.0.0.0'
 CLIENT_PORT = random.choice(range(9900, 9999))
 
 
 class Client(dmtp.Client):
 
-    def __init__(self, hub: udp.Hub):
-        super().__init__()
-        hub.add_listener(self.peer)
-        self.__hub = hub
-        self.source_address = None
+    def __init__(self, port: int, host: str='127.0.0.1'):
+        super().__init__(host=host, port=port)
         self.server_address = None
         self.identifier = 'moky-%d' % CLIENT_PORT
         self.nat = 'Port Restricted Cone NAT'
@@ -81,13 +76,10 @@ class Client(dmtp.Client):
         mapped_address = location.mapped_address
         data = mapped_address.data
         # source address
-        if self.source_address is None:
-            source_address = None
-        else:
-            source_ip = self.source_address[0]
-            source_port = self.source_address[1]
-            source_address = dmtp.SourceAddressValue(ip=source_ip, port=source_port)
-            data = source_address.data + data
+        source_ip = self.local_address[0]
+        source_port = self.local_address[1]
+        source_address = dmtp.SourceAddressValue(ip=source_ip, port=source_port)
+        data = source_address.data + data
         # relayed address
         if location.relayed_address is None:
             relayed_address = None
@@ -110,7 +102,7 @@ class Client(dmtp.Client):
         if sender is None:
             location = None
         else:
-            location = sender.get_location(address=self.source_address)
+            location = sender.get_location(address=self.local_address)
         if location is None:
             cmd = dmtp.HelloCommand.new(identifier=self.identifier)
         else:
@@ -130,10 +122,6 @@ class Client(dmtp.Client):
         self.set_location(location=location)
         return True
 
-    def connect(self, remote_address: tuple) -> bool:
-        self.__hub.connect(destination=remote_address, source=self.source_address)
-        return super().connect(remote_address=remote_address)
-
     def call(self, identifier: str) -> bool:
         cmd = dmtp.CallCommand.new(identifier=identifier)
         print('sending cmd: %s' % cmd)
@@ -146,29 +134,6 @@ class Client(dmtp.Client):
         if content is not None:
             print('msg content: "%s"' % content.decode('utf-8'))
         return True
-
-    #
-    #   PeerDelegate
-    #
-    def send_data(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
-        print('sending data to (%s): %s' % (destination, data))
-        self.__hub.send(data=data, destination=destination, source=source)
-        return 0
-
-
-def create_client(local_address: tuple, server_address: tuple):
-
-    # create a hub for sockets
-    hub = udp.Hub()
-    hub.open(host=local_address[0], port=local_address[1])
-    hub.start()
-
-    # create client
-    print('UDP client %s -> %s starting ...' % (local_address, server_address))
-    client = Client(hub=hub)
-    client.source_address = local_address
-    client.server_address = server_address
-    return client
 
 
 def send_text(receiver: str, msg: str):
@@ -194,9 +159,10 @@ def send_text(receiver: str, msg: str):
 
 
 if __name__ == '__main__':
-
-    g_client = create_client(local_address=(CLIENT_HOST, CLIENT_PORT),
-                             server_address=(SERVER_HOST, SERVER_PORT))
+    # create client
+    print('UDP client %s -> %s starting ...' % ((CLIENT_HOST, CLIENT_PORT), (SERVER_HOST, SERVER_PORT)))
+    g_client = Client(host=CLIENT_HOST, port=CLIENT_PORT)
+    g_client.server_address = (SERVER_HOST, SERVER_PORT)
 
     friend = 'moky'
 

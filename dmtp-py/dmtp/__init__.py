@@ -76,5 +76,6 @@ __all__ = [
 
     # node
     'Contact',
-    'Node', 'Server', 'Client',
+    'Peer', 'Node',
+    'Server', 'Client',
 ]
