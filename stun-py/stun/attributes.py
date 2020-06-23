@@ -65,7 +65,27 @@ from udp.tlv import Tag, Length, Value, TagLengthValue
 
 
 class AttributeValue(Value):
-    pass
+
+    @classmethod
+    def parse(cls, data: bytes, tag: Tag, length: Length=None):
+        if cls is AttributeValue:
+            # get attribute parser with type
+            assert isinstance(tag, AttributeType), 'attribute type error: %s' % tag
+            parser = s_attribute_parsers.get(tag)
+            if parser is not None:
+                # create instance by subclass
+                return parser.parse(data=data, tag=tag, length=length)
+        # check length
+        if length is None or length.value == 0:
+            return None
+        else:
+            length = length.value
+            data_len = len(data)
+            if data_len < length:
+                return None
+            elif data_len > length:
+                data = data[:length]
+        return cls(data=data)
 
 
 class AttributeLength(UInt16Data, Length):
@@ -74,6 +94,13 @@ class AttributeLength(UInt16Data, Length):
         if data is None:
             data = uint16_to_bytes(value)
         super().__init__(data=data, value=value)
+
+    @classmethod
+    def parse(cls, data: bytes, tag: Tag):
+        length = super().parse(data=data, tag=tag)
+        if length is not None:
+            assert length.value & 0x0003 == 0, 'attribute length error: %d' % length.value
+            return length
 
 
 class AttributeType(UInt16Data, Tag):
@@ -169,24 +196,11 @@ class Attribute(TagLengthValue):
 
     @classmethod
     def parse_length(cls, data: bytes, tag: AttributeType) -> Optional[AttributeLength]:
-        length = AttributeLength.parse(data=data, tag=tag)
-        assert (length.value & 0x0003) == 0, 'attribute length error: %s' % data
-        return length
+        return AttributeLength.parse(data=data, tag=tag)
 
     @classmethod
     def parse_value(cls, data: bytes, tag: AttributeType, length: AttributeLength = None) -> Optional[Value]:
-        if length is not None:
-            # check length
-            data_len = len(data)
-            if data_len > length.value:
-                data = data[:length.value]
-            else:
-                assert data_len == length.value, 'data length not enough: %d < %d' % (data_len, length.value)
-        # get attribute parser with type
-        parser = s_attribute_parsers.get(tag)
-        if parser is None:
-            parser = AttributeValue
-        return parser.parse(data=data, tag=tag, length=length)
+        return AttributeValue.parse(data=data, tag=tag, length=length)
 
 
 """
@@ -268,10 +282,9 @@ class MappedAddressValue(AttributeValue):
             array = ip.split('.')
             assert len(array) == 4, 'IP address error: %s' % ip
             return bytes([int(x) for x in array])
-            pass
         elif family == cls.family_ipv6:
             # TODO: IPv6
-            assert False, 'implement me!'
+            assert False, 'IPv6 not support yet'
         else:
             raise ValueError('unknown address family: %d' % family)
 
@@ -290,13 +303,25 @@ class MappedAddressValue(AttributeValue):
         elif family == cls.family_ipv6:
             assert len(address) == 16, 'IPv6 data error: %s' % address
             # TODO: IPv6
-            assert False, 'implement me!'
+            assert False, 'IPv6 not support yet'
         else:
             raise ValueError('unknown address family: %d' % family)
 
     @classmethod
     def parse(cls, data: bytes, tag: Tag, length: Length=None):
-        assert len(data) >= 8, 'mapped-address value error: %s' % data
+        # check length
+        if length is None or (length.value != 8 and length.value != 20):
+            # raise ValueError('mapped-address length error: %s' % length)
+            return None
+        else:
+            length = length.value
+            data_len = len(data)
+            if data_len < length:
+                # raise ValueError('data length error: %d, %d' % (data_len, length.value))
+                return None
+            elif data_len > length:
+                data = data[:length]
+        # checking
         if data[0] != 0:
             return None
         family = bytes_to_int(data[1:2])
@@ -541,7 +566,19 @@ class ChangeRequestValue(UInt32Data, AttributeValue):
 
     @classmethod
     def parse(cls, data: bytes, tag: Tag, length: Length=None):
-        assert length.value == 4, 'Change-Request value error: %s' % length
+        # check length
+        if length is None or length.value != 4:
+            # raise ValueError('Change-Request value error: %s' % length)
+            return None
+        else:
+            length = length.value
+            data_len = len(data)
+            if data_len < length:
+                # raise ValueError('data length error: %d, %d' % (data_len, length.value))
+                return None
+            elif data_len > length:
+                data = data[:length]
+        # get value
         value = bytes_to_int(data)
         if value == ChangeIPAndPort.value:
             return ChangeIPAndPort
@@ -603,15 +640,18 @@ class SoftwareValue(AttributeValue):
 
     @classmethod
     def parse(cls, data: bytes, tag: Tag, length: Length=None):
+        # check length
         if length is None or length.value == 0:
             return None
         else:
             length = length.value
-        data_len = len(data)
-        if data_len < length:
-            return None
-        elif data_len > length:
-            data = data[:length]
+            data_len = len(data)
+            if data_len < length:
+                # raise ValueError('data length error: %d, %d' % (data_len, length.value))
+                return None
+            elif data_len > length:
+                data = data[:length]
+        # get string
         desc = data.rstrip(b'\0').decode('utf-8')
         return cls(data=data, description=desc)
 

@@ -136,10 +136,14 @@ class TagLengthValue(Data):
             offset += len(value.data)
         # create
         if offset < len(data):
-            return cls(data=data[:offset], tag=tag, value=value)
+            return cls._create(data=data[:offset], tag=tag, value=value)
         else:
             assert offset == len(data), 'offset error: %d > %d' % (offset, len(data))
-            return cls(data=data, tag=tag, value=value)
+            return cls._create(data=data, tag=tag, value=value)
+
+    @classmethod
+    def _create(cls, data: bytes, tag: Tag, value: Value=None):
+        return cls(data=data, tag=tag, value=value)
 
     @classmethod
     def parse_tag(cls, data: bytes) -> Optional[Tag]:
