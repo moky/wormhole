@@ -32,7 +32,6 @@ package chat.dim.stun.valus;
 
 import java.util.Arrays;
 
-import chat.dim.stun.attributes.AttributeType;
 import chat.dim.stun.attributes.AttributeValue;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
@@ -95,6 +94,11 @@ public class MappedAddressValue extends AttributeValue {
         this.family = family;
     }
 
+    @Override
+    public String toString() {
+        return "(" + ip + ":" + port + ")";
+    }
+
     static byte[] build(String ip, int port, byte family) {
         byte[] address = IPToBytes(ip, family);
         if (address == null || address.length != 4) {
@@ -146,7 +150,7 @@ public class MappedAddressValue extends AttributeValue {
             }
             String[] array = new String[4];
             for (int index = 0; index < 4; ++index) {
-                array[index] = String.valueOf(address[index]);
+                array[index] = String.valueOf(address[index] & 0xFF);
             }
             return array[0] + "." + array[1] + "." + array[2] + "." + array[3];
         } else if (family == FAMILY_IPV6) {
@@ -176,9 +180,5 @@ public class MappedAddressValue extends AttributeValue {
         int port = ((data[2] &0xFF) << 8) | (data[3] & 0xFF);
         String ip = bytesToIP(slice(data, 4), family);
         return new MappedAddressValue(data, ip, port, family);
-    }
-
-    static {
-        register(AttributeType.MappedAddress, MappedAddressValue.class);
     }
 }

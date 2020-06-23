@@ -49,7 +49,7 @@ import chat.dim.tlv.UInt16Data;
  */
 public class MessageType extends UInt16Data {
 
-    public final String name;
+    private final String name;
 
     public MessageType(byte[] data, int value, String name) {
         super(data, value);
@@ -75,6 +75,11 @@ public class MessageType extends UInt16Data {
     @Override
     public int hashCode() {
         return Long.hashCode(value);
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 
     //

@@ -39,7 +39,7 @@ import chat.dim.tlv.UInt16Data;
 public class AttributeType extends Tag {
 
     public final int value;
-    public final String name;
+    private final String name;
 
     public AttributeType(int value, byte[] data, String name) {
         super(data);
@@ -70,6 +70,11 @@ public class AttributeType extends Tag {
     @Override
     public int hashCode() {
         return Integer.hashCode(value);
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 
     //
@@ -120,8 +125,8 @@ public class AttributeType extends Tag {
     public static AttributeType XorMappedAddress  = new AttributeType(0x0020, "XOR-MAPPED-ADDRESS(0020)");
 
     public static AttributeType XorMappedAddress2 = new AttributeType(0x8020, "XOR-MAPPED-ADDRESS(8020)");
-    public static AttributeType XorOnly           = new AttributeType(0x0014, "XOR-ONLY");
-    public static AttributeType Software          = new AttributeType(0x0014, "SOFTWARE");
-    public static AttributeType AlternateServer   = new AttributeType(0x0014, "ALTERNATE-SERVER");
-    public static AttributeType Fingerprint       = new AttributeType(0x0014, "FINGERPRINT");
+    public static AttributeType XorOnly           = new AttributeType(0x8021, "XOR-ONLY");
+    public static AttributeType Software          = new AttributeType(0x8022, "SOFTWARE");
+    public static AttributeType AlternateServer   = new AttributeType(0x8023, "ALTERNATE-SERVER");
+    public static AttributeType Fingerprint       = new AttributeType(0x8028, "FINGERPRINT");
 }

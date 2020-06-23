@@ -122,7 +122,7 @@ public class XorMappedAddressValue extends MappedAddressValue {
         int a_pos = data.length - 1;
         int f_pos = 0;
         while (a_pos >= 4) {
-            array[a_pos] = (byte) (data[a_pos] & factor[f_pos]);
+            array[a_pos] = (byte) (data[a_pos] ^ factor[f_pos]);
             a_pos -= 1;
             f_pos += 1;
         }
@@ -135,9 +135,5 @@ public class XorMappedAddressValue extends MappedAddressValue {
             return null;
         }
         return new XorMappedAddressValue(value.data, value.ip, value.port, value.family);
-    }
-
-    static {
-        //register(AttributeType.XorMappedAddress, XorMappedAddressValue.class);
     }
 }

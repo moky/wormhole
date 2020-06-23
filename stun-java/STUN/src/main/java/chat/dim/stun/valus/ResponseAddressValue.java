@@ -30,7 +30,6 @@
  */
 package chat.dim.stun.valus;
 
-import chat.dim.stun.attributes.AttributeType;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
 
@@ -55,9 +54,5 @@ public class ResponseAddressValue extends MappedAddressValue {
             return null;
         }
         return new ResponseAddressValue(value.data, value.ip, value.port, value.family);
-    }
-
-    static {
-        register(AttributeType.ResponseAddress, ResponseAddressValue.class);
     }
 }

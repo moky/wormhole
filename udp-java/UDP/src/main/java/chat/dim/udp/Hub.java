@@ -425,10 +425,10 @@ public class Hub extends Thread implements ConnectionDelegate {
      */
     public Cargo receive(SocketAddress source, float timeout) {
         long now = (new Date()).getTime(); // milliseconds
-        timeout = now + timeout * 1000;
+        long expired = now + (long) (timeout * 1000);
 
         Cargo cargo = null;
-        while (now <= timeout) {
+        while (now <= expired) {
             cargo = receivePacket(source);
             if (cargo != null) {
                 // got it

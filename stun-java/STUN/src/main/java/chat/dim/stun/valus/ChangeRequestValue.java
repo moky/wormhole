@@ -33,7 +33,6 @@ package chat.dim.stun.valus;
 import java.util.HashMap;
 import java.util.Map;
 
-import chat.dim.stun.attributes.AttributeType;
 import chat.dim.stun.attributes.AttributeValue;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
@@ -68,15 +67,21 @@ import chat.dim.tlv.UInt32Data;
 public class ChangeRequestValue extends AttributeValue {
 
     public final int value;
+    private final String name;
 
-    public ChangeRequestValue(byte[] data, int value) {
+    public ChangeRequestValue(byte[] data, int value, String name) {
         super(data);
         this.value = value;
+        this.name = name;
         s_values.put(value, this);
     }
 
+    public ChangeRequestValue(int value, String name) {
+        this(UInt32Data.intToBytes(value, 4), value, name);
+    }
+
     public ChangeRequestValue(int value) {
-        this(UInt32Data.intToBytes(value, 4), value);
+        this(value, "ChangeRequestValue-"+value);
     }
 
     public boolean equals(int other) {
@@ -89,6 +94,11 @@ public class ChangeRequestValue extends AttributeValue {
     @Override
     public int hashCode() {
         return Long.hashCode(value);
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 
     public static ChangeRequestValue parse(byte[] data, Tag type, Length length) {
@@ -116,11 +126,7 @@ public class ChangeRequestValue extends AttributeValue {
 
     private static final Map<Integer, ChangeRequestValue> s_values = new HashMap<>();
 
-    public static ChangeRequestValue ChangeIP = new ChangeRequestValue(0x00000004);
-    public static ChangeRequestValue ChangePort = new ChangeRequestValue(0x00000002);
-    public static ChangeRequestValue ChangeIPAndPort = new ChangeRequestValue(0x00000006);
-
-    static {
-        register(AttributeType.ChangeRequest, ChangeRequestValue.class);
-    }
+    public static ChangeRequestValue ChangeIP = new ChangeRequestValue(0x00000004, "ChangeIP");
+    public static ChangeRequestValue ChangePort = new ChangeRequestValue(0x00000002, "ChangePort");
+    public static ChangeRequestValue ChangeIPAndPort = new ChangeRequestValue(0x00000006, "ChangeIPAndPort");
 }

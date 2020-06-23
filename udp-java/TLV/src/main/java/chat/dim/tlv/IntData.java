@@ -68,7 +68,7 @@ public class IntData extends Data {
         int count = data.length;
         int index;
         for (index = 0; index < count; ++index) {
-            result = (result << 8) & (data[index] & 0xFF);
+            result = (result << 8) | (data[index] & 0xFF);
         }
         return result;
     }
@@ -77,7 +77,7 @@ public class IntData extends Data {
         int count = data.length;
         int index;
         for (index = count - 1; index >= 0; --index) {
-            result = (result << 8) & (data[index] & 0xFF);
+            result = (result << 8) | (data[index] & 0xFF);
         }
         return result;
     }

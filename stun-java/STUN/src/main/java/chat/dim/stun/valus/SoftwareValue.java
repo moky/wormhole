@@ -32,18 +32,22 @@ package chat.dim.stun.valus;
 
 import java.nio.charset.Charset;
 
-import chat.dim.stun.attributes.AttributeType;
 import chat.dim.stun.attributes.AttributeValue;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
 
 public class SoftwareValue extends AttributeValue {
 
-    public final String description;
+    private final String description;
 
     public SoftwareValue(byte[] data, String description) {
         super(data);
         this.description = description;
+    }
+
+    @Override
+    public String toString() {
+        return description;
     }
 
     public static SoftwareValue create(String description) {
@@ -70,10 +74,6 @@ public class SoftwareValue extends AttributeValue {
             data = slice(data, 0, (int) length.value);
         }
         String desc = new String(data, Charset.forName("UTF-8"));
-        return new SoftwareValue(data, desc);
-    }
-
-    static {
-        register(AttributeType.Software, SoftwareValue.class);
+        return new SoftwareValue(data, desc.trim());
     }
 }

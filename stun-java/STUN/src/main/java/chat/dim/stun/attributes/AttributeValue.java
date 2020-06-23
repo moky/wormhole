@@ -35,6 +35,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
+import chat.dim.stun.valus.*;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
 import chat.dim.tlv.Value;
@@ -92,5 +93,18 @@ public class AttributeValue extends Value {
             //e.printStackTrace();
         }
         return null;
+    }
+
+    static {
+        register(AttributeType.MappedAddress, MappedAddressValue.class);
+        //register(AttributeType.XorMappedAddress, XorMappedAddressValue.class);
+        //register(AttributeType.XorMappedAddress2, XorMappedAddressValue2.class);
+
+        register(AttributeType.ResponseAddress, ResponseAddressValue.class);
+        register(AttributeType.ChangeRequest, ChangeRequestValue.class);
+        register(AttributeType.SourceAddress, SourceAddressValue.class);
+        register(AttributeType.ChangedAddress, ChangedAddressValue.class);
+
+        register(AttributeType.Software, SoftwareValue.class);
     }
 }
