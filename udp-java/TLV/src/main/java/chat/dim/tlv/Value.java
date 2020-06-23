@@ -36,7 +36,7 @@ public class Value extends Data {
         super(data);
     }
 
-    public static Value parse(byte[] data, Type type, Length length) {
+    public static Value parse(byte[] data, Tag type, Length length) {
         if (length == null || length.value == 0) {
             return null;
         }

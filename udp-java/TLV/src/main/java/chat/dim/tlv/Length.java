@@ -36,7 +36,7 @@ public class Length extends IntData {
         super(data, value);
     }
 
-    public static Length parse(byte[] data, Type type) {
+    public static Length parse(byte[] data, Tag type) {
         int length = data.length;
         if (length < 2) {
             return null;

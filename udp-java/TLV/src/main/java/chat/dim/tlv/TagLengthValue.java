@@ -43,14 +43,14 @@ package chat.dim.tlv;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TLV extends Data {
+public class TagLengthValue extends Data {
 
-    public final Type type;
+    public final Tag tag;
     public final Value value;
 
-    public TLV(byte[] data, Type type, Value value) {
+    public TagLengthValue(byte[] data, Tag type, Value value) {
         super(data);
-        this.type = type;
+        this.tag = type;
         this.value = value;
     }
 
@@ -58,9 +58,9 @@ public class TLV extends Data {
     //  Parsers
     //
 
-    public static List<TLV> parseAll(byte[] data) {
-        List<TLV> array = new ArrayList<>();
-        TLV item;
+    public static List<TagLengthValue> parseAll(byte[] data) {
+        List<TagLengthValue> array = new ArrayList<>();
+        TagLengthValue item;
         int remaining = data.length;
         int pos;
         while (remaining > 0) {
@@ -78,9 +78,9 @@ public class TLV extends Data {
         return array;
     }
 
-    public static TLV parse(byte[] data) {
+    public static TagLengthValue parse(byte[] data) {
         // get type
-        Type type = parseType(data);
+        Tag type = parseTag(data);
         if (type == null) {
             return null;
         }
@@ -97,22 +97,22 @@ public class TLV extends Data {
         }
         // create
         if (offset < data.length) {
-            return new TLV(slice(data, 0, offset), type, value);
+            return new TagLengthValue(slice(data, 0, offset), type, value);
         } else {
             assert offset == data.length : "offset error: " + offset + " > " + data.length;
-            return new TLV(data, type, value);
+            return new TagLengthValue(data, type, value);
         }
     }
 
-    public static Type parseType(byte[] data) {
-        return Type.parse(data);
+    public static Tag parseTag(byte[] data) {
+        return Tag.parse(data);
     }
 
-    public static Length parseLength(byte[] data, Type type) {
+    public static Length parseLength(byte[] data, Tag type) {
         return Length.parse(data, type);
     }
 
-    public static Value parseValue(byte[] data, Type type, Length length) {
+    public static Value parseValue(byte[] data, Tag type, Length length) {
         return Value.parse(data, type, length);
     }
 }

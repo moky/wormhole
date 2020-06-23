@@ -30,19 +30,19 @@
  */
 package chat.dim.tlv;
 
-public class Type extends Data {
+public class Tag extends Data {
 
-    public Type(byte[] data) {
+    public Tag(byte[] data) {
         super(data);
     }
 
-    public static Type parse(byte[] data) {
+    public static Tag parse(byte[] data) {
         int length = data.length;
         if (length < 2) {
             return null;
         } else if (length > 2) {
             data = slice(data, 0, 2);
         }
-        return new Type(data);
+        return new Tag(data);
     }
 }
