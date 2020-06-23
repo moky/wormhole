@@ -122,8 +122,8 @@ public class Header extends Data {
         int pages = 1;
         int offset = 0;
         if (type.equals(DataType.MessageFragment)) {
-            pages = IntData.bytesToInt(slice(data, pos, pos + 4));
-            offset = IntData.bytesToInt(slice(data, pos + 4, pos + 8));
+            pages = (int) IntData.bytesToInt(slice(data, pos, pos + 4));
+            offset = (int) IntData.bytesToInt(slice(data, pos + 4, pos + 8));
             pos += 8;
         }
         return new Header(slice(data, 0, pos), headLen, type, sn, pages, offset);

@@ -137,8 +137,8 @@ public class MemPool implements Pool {
                 // MessageFragment
                 assert bodyLen == 8 || (body[8] == 'O' && body[9] == 'K') : "MessageRespond error: " + Arrays.toString(body);
                 // get pages count and index
-                int pages = IntData.bytesToInt(Data.slice(body, 0, 4));
-                int offset = IntData.bytesToInt(Data.slice(body, 4, 8));
+                int pages = (int) IntData.bytesToInt(Data.slice(body, 0, 4));
+                int offset = (int) IntData.bytesToInt(Data.slice(body, 4, 8));
                 assert pages > 1 && pages > offset : "pages error: " + pages + ", " + offset;
                 return deleteFragment(sn, offset, destination);
             } else if (bodyLen == 0 || (body[0] == 'O' && body[1] == 'K')) {

@@ -66,8 +66,8 @@ public class TransactionID extends Data {
                 s_high = 0;
             }
         }
-        byte[] hi = UInt32Data.intToBytes((int) s_high, 4);
-        byte[] lo = UInt32Data.intToBytes((int) s_low, 4);
+        byte[] hi = UInt32Data.intToBytes(s_high, 4);
+        byte[] lo = UInt32Data.intToBytes(s_low, 4);
         byte[] data = concat(hi, lo);
         return new TransactionID(data);
     }
@@ -77,7 +77,7 @@ public class TransactionID extends Data {
 
     static {
         Random random = new Random();
-        s_high = random.nextInt();
-        s_low = random.nextInt();
+        s_high = random.nextInt() + 0x80000000L;
+        s_low = random.nextInt() + 0x80000000L;
     }
 }

@@ -35,7 +35,7 @@ package chat.dim.tlv;
  */
 public class UInt8Data extends IntData {
 
-    public UInt8Data(byte[] data, int value) {
+    public UInt8Data(byte[] data, long value) {
         super(data, value);
     }
 
@@ -46,7 +46,7 @@ public class UInt8Data extends IntData {
         } else if (length > 1) {
             data = slice(data, 0, 1);
         }
-        int value = bytesToInt(data);
+        long value = bytesToInt(data);
         return new UInt8Data(data, value);
     }
 

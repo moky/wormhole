@@ -35,7 +35,7 @@ package chat.dim.tlv;
  */
 public class VarIntData extends IntData {
 
-    public VarIntData(byte[] data, int value) {
+    public VarIntData(byte[] data, long value) {
         super(data, value);
     }
 
@@ -51,9 +51,9 @@ public class VarIntData extends IntData {
         return new VarIntData(data, res.value);
     }
 
-    public static VarIntData fromInt(int uint8) {
-        byte[] data = intToBytes(uint8);
-        return new VarIntData(data, uint8);
+    public static VarIntData fromInt(long value) {
+        byte[] data = intToBytes(value);
+        return new VarIntData(data, value);
     }
 
     //
@@ -61,16 +61,16 @@ public class VarIntData extends IntData {
     //
 
     private static final class Result {
-        final int value;
+        final long value;
         final int length;
-        Result(int value, int length) {
+        Result(long value, int length) {
             this.value = value;
             this.length = length;
         }
     }
 
     private static Result parseBytes(byte[] data) {
-        int value = 0;
+        long value = 0;
         int index = 0;
         int offset = 0;
         byte ch;
@@ -83,11 +83,11 @@ public class VarIntData extends IntData {
         return new Result(value, index);
     }
 
-    public static int bytesToInt(byte[] data) {
+    public static long bytesToInt(byte[] data) {
         return parseBytes(data).value;
     }
 
-    public static byte[] intToBytes(int value) {
+    public static byte[] intToBytes(long value) {
         byte[] buffer = new byte[8];
         int index = 0;
         while (value > 0x7F) {

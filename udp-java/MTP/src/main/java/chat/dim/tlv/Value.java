@@ -40,7 +40,7 @@ public class Value extends Data {
         if (length == null || length.value == 0) {
             return null;
         }
-        int len = length.value;
+        int len = (int) length.value;
         int data_len = data.length;
         if (data_len < len) {
             return null;

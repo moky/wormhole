@@ -37,14 +37,17 @@ import java.nio.ByteOrder;
  */
 public class IntData extends Data {
 
-    public final int value;
+    public final long value;
 
-    public IntData(byte[] data, int value) {
+    public IntData(byte[] data, long value) {
         super(data);
         this.value = value;
     }
 
     public boolean equals(int other) {
+        return value == other;
+    }
+    public boolean equals(long other) {
         return value == other;
     }
     public boolean equals(IntData other) {
@@ -53,15 +56,15 @@ public class IntData extends Data {
 
     @Override
     public int hashCode() {
-        return Integer.hashCode(value);
+        return Long.hashCode(value);
     }
 
     //
     //  Converting
     //
 
-    private static int bytesToIntB(byte[] data) {
-        int result = 0;
+    private static long bytesToIntB(byte[] data) {
+        long result = 0;
         int count = data.length;
         int index;
         for (index = 0; index < count; ++index) {
@@ -69,8 +72,8 @@ public class IntData extends Data {
         }
         return result;
     }
-    private static int bytesToIntL(byte[] data) {
-        int result = 0;
+    private static long bytesToIntL(byte[] data) {
+        long result = 0;
         int count = data.length;
         int index;
         for (index = count - 1; index >= 0; --index) {
@@ -79,7 +82,7 @@ public class IntData extends Data {
         return result;
     }
 
-    private static byte[] intToBytesB(int value, int length) {
+    private static byte[] intToBytesB(long value, int length) {
         byte[] data = new byte[length];
         int index;
         for (index = length - 1; index >= 0; --index) {
@@ -88,7 +91,7 @@ public class IntData extends Data {
         }
         return data;
     }
-    private static byte[] intToBytesL(int value, int length) {
+    private static byte[] intToBytesL(long value, int length) {
         byte[] data = new byte[length];
         int index;
         for (index = 0; index < length; ++index) {
@@ -106,11 +109,11 @@ public class IntData extends Data {
      * @param data - bytes in network order
      * @return integer
      */
-    public static int bytesToInt(byte[] data) {
+    public static long bytesToInt(byte[] data) {
         return bytesToIntB(data);
     }
 
-    public static int bytesToInt(byte[] data, ByteOrder order) {
+    public static long bytesToInt(byte[] data, ByteOrder order) {
         if (order.equals(ByteOrder.BIG_ENDIAN)) {
             return bytesToIntB(data);
         } else {
@@ -125,11 +128,11 @@ public class IntData extends Data {
      * @param length - size in bytes
      * @return bytes in network order
      */
-    public static byte[] intToBytes(int value, int length) {
+    public static byte[] intToBytes(long value, int length) {
         return intToBytesB(value, length);
     }
 
-    public static byte[] intToBytes(int value, int length, ByteOrder order) {
+    public static byte[] intToBytes(long value, int length, ByteOrder order) {
         if (order.equals(ByteOrder.BIG_ENDIAN)) {
             return intToBytesB(value, length);
         } else {

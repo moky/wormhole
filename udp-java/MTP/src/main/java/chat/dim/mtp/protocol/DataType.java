@@ -61,7 +61,7 @@ public class DataType {
     }
 
     public DataType(int value) {
-        this(value, "Unknown Type");
+        this(value, "DataType-" + Integer.toHexString(value));
     }
 
     public boolean equals(int other) {
@@ -90,9 +90,9 @@ public class DataType {
 
     private static final Map<Integer, DataType> s_types = new HashMap<>();
 
-    public static DataType Command = new DataType(0, "Command");
-    public static DataType CommandRespond = new DataType(1, "Command Respond");
-    public static DataType Message = new DataType(2, "Message");
-    public static DataType MessageRespond = new DataType(3, "Message Respond");
+    public static DataType Command         = new DataType(0, "Command");
+    public static DataType CommandRespond  = new DataType(1, "Command Respond");
+    public static DataType Message         = new DataType(2, "Message");
+    public static DataType MessageRespond  = new DataType(3, "Message Respond");
     public static DataType MessageFragment = new DataType(10, "Message Fragment");
 }

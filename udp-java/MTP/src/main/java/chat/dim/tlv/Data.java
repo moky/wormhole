@@ -39,10 +39,12 @@ import java.util.Random;
 public class Data {
 
     public final byte[] data;
+    public final int length;
 
     public Data(byte[] data) {
         super();
         this.data = data;
+        this.length = data.length;
     }
 
     public boolean equals(byte[] other) {
