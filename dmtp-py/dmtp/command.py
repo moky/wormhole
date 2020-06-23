@@ -118,7 +118,7 @@ class WhoCommand(Command):
 
     @classmethod
     def new(cls) -> Command:
-        return cls(t=Who)
+        return cls(tag=Who)
 
 
 class HelloCommand(Command):
@@ -134,7 +134,7 @@ class HelloCommand(Command):
                                          mapped_address=mapped_address,
                                          relayed_address=relayed_address,
                                          timestamp=timestamp, signature=signature, nat=nat)
-        return cls(t=Hello, v=location)
+        return cls(tag=Hello, value=location)
 
 
 class SignCommand(Command):
@@ -145,7 +145,7 @@ class SignCommand(Command):
                                   source_address=source_address,
                                   mapped_address=mapped_address,
                                   relayed_address=relayed_address)
-        return cls(t=Sign, v=value)
+        return cls(tag=Sign, value=value)
 
 
 class CallCommand(Command):
@@ -153,7 +153,7 @@ class CallCommand(Command):
     @classmethod
     def new(cls, identifier: str) -> Command:
         value = LocationValue.new(identifier=identifier)
-        return cls(t=Call, v=value)
+        return cls(tag=Call, value=value)
 
 
 class FromCommand(Command):
@@ -163,7 +163,7 @@ class FromCommand(Command):
         if location is None:
             assert identifier is not None, 'UID should not be empty'
             location = LocationValue.new(identifier=identifier)
-        return cls(t=From, v=location)
+        return cls(tag=From, value=location)
 
 
 class ProfileCommand(Command):
@@ -171,14 +171,14 @@ class ProfileCommand(Command):
     @classmethod
     def new(cls, identifier: str) -> Command:
         value = LocationValue.new(identifier=identifier)
-        return cls(t=Profile, v=value)
+        return cls(tag=Profile, value=value)
 
 
 class ByeCommand(Command):
 
     @classmethod
     def new(cls, location: Value) -> Command:
-        return cls(t=Bye, v=location)
+        return cls(tag=Bye, value=location)
 
 
 """
@@ -198,17 +198,17 @@ class CommandValue(FieldsValue):
         return self.__id
 
     def _set_field(self, field: Field):
-        if field.type == ID:
+        if field.tag == ID:
             f_value = field.value
             assert isinstance(f_value, StringValue), 'ID value error: %s' % f_value
             self.__id = f_value.string
         else:
             clazz = self.__class__.__name__
-            print('%s> unknown field: %s -> %s' % (clazz, field.type, field.value))
+            print('%s> unknown field: %s -> %s' % (clazz, field.tag, field.value))
 
     @classmethod
     def new(cls, identifier: str):
-        f_id = Field(t=ID, v=StringValue(string=identifier))
+        f_id = Field(tag=ID, value=StringValue(string=identifier))
         return cls(fields=[f_id])
 
 
@@ -251,7 +251,7 @@ class LocationValue(CommandValue):
         return self.__nat
 
     def _set_field(self, field: Field):
-        f_type = field.type
+        f_type = field.tag
         f_value = field.value
         if f_type == SourceAddress:
             assert isinstance(f_value, SourceAddressValue), 'source address error: %s' % f_value
@@ -277,7 +277,7 @@ class LocationValue(CommandValue):
     @classmethod
     def new(cls, identifier: str, source_address=None, mapped_address=None, relayed_address=None,
             timestamp: int=0, signature: bytes=None, nat: str=None):
-        f_id = Field(t=ID, v=StringValue(string=identifier))
+        f_id = Field(tag=ID, value=StringValue(string=identifier))
         fields = [f_id]
         # append SOURCE-ADDRESS
         if source_address is not None:
@@ -286,7 +286,7 @@ class LocationValue(CommandValue):
             else:
                 assert isinstance(source_address, tuple), 'source address error: %s' % source_address
                 value = SourceAddressValue(ip=source_address[0], port=source_address[1])
-            f_src = Field(t=SourceAddress, v=value)
+            f_src = Field(tag=SourceAddress, value=value)
             fields.append(f_src)
         # append MAPPED-ADDRESS
         if mapped_address is not None:
@@ -295,7 +295,7 @@ class LocationValue(CommandValue):
             else:
                 assert isinstance(mapped_address, tuple), 'mapped address error: %s' % mapped_address
                 value = MappedAddressValue(ip=mapped_address[0], port=mapped_address[1])
-            f_src = Field(t=MappedAddress, v=value)
+            f_src = Field(tag=MappedAddress, value=value)
             fields.append(f_src)
         # append RELAYED-ADDRESS
         if relayed_address is not None:
@@ -304,20 +304,20 @@ class LocationValue(CommandValue):
             else:
                 assert isinstance(relayed_address, tuple), 'relayed address error: %s' % relayed_address
                 value = RelayedAddressValue(ip=relayed_address[0], port=relayed_address[1])
-            f_src = Field(t=RelayedAddress, v=value)
+            f_src = Field(tag=RelayedAddress, value=value)
             fields.append(f_src)
         if source_address is not None or mapped_address is not None or relayed_address is not None:
             # append sign time
             if timestamp > 0:
-                f_time = Field(t=Time, v=TimestampValue(value=timestamp))
+                f_time = Field(tag=Time, value=TimestampValue(value=timestamp))
                 fields.append(f_time)
             # append signature
             if signature is not None:
-                f_sign = Field(t=Signature, v=BinaryValue(data=signature))
+                f_sign = Field(tag=Signature, value=BinaryValue(data=signature))
                 fields.append(f_sign)
             # append NAT type
             if nat is not None:
-                f_nat = Field(t=NAT, v=StringValue(string=nat))
+                f_nat = Field(tag=NAT, value=StringValue(string=nat))
                 fields.append(f_nat)
         return cls(fields=fields)
 

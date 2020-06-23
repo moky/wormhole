@@ -40,7 +40,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from .data import bytes_to_int
+from ..tlv.data import bytes_to_int
 
 from .protocol import Package, TransactionID
 from .protocol import Command, CommandRespond

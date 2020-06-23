@@ -205,7 +205,7 @@ class Window(QWidget, DMTPClientDelegate):
     #   DMTPClientDelegate
     #
     def process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
-        cmd_type = cmd.type
+        cmd_type = cmd.tag
         cmd_value = cmd.value
         if cmd_type == dmtp.Who:
             pass

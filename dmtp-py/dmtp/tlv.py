@@ -28,23 +28,15 @@
 # SOFTWARE.
 # ==============================================================================
 
-import base64
 from typing import Optional
 
-from udp.mtp.data import Data, VarIntData, UInt8Data, UInt32Data
-from udp.mtp.data import bytes_to_varint, varint_to_bytes, uint8_to_bytes, uint32_to_bytes
-from udp.tlv import TLV, Type, Length, Value
+from udp.tlv.data import base64_encode
+from udp.tlv.data import bytes_to_varint, varint_to_bytes, uint8_to_bytes, uint32_to_bytes
+from udp.tlv import Data, VarIntData, UInt8Data, UInt32Data
+from udp.tlv import Tag, Length, Value, TagLengthValue
 
 
-def base64_encode(data: bytes) -> str:
-    return base64.b64encode(data).decode('utf-8')
-
-
-def base64_decode(string: str) -> bytes:
-    return base64.b64decode(string)
-
-
-class VarName(Type):
+class VarName(Tag):
 
     def __init__(self, name: str, data: bytes = None):
         if data is None:
@@ -98,39 +90,39 @@ class VarLength(VarIntData, Length):
 
     # noinspection PyUnusedLocal
     @classmethod
-    def parse(cls, data: bytes, t: Type):
+    def parse(cls, data: bytes, tag: Tag):
         value, length = bytes_to_varint(data=data)
         return cls(data=data[:length], value=value)
 
 
-class Field(TLV):
+class Field(TagLengthValue):
 
-    def __init__(self, t: Type, v: Value=None, data: bytes = None):
+    def __init__(self, tag: Tag, value: Value=None, data: bytes = None):
         if data is None:
-            if v is None:
-                data = t.data + varint_to_bytes(0)
+            if value is None:
+                data = tag.data + varint_to_bytes(0)
             else:
-                data = t.data + varint_to_bytes(len(v.data)) + v.data
-        super().__init__(data=data, t=t, v=v)
+                data = tag.data + varint_to_bytes(len(value.data)) + value.data
+        super().__init__(data=data, tag=tag, value=value)
 
     def __str__(self):
         clazz = self.__class__.__name__
-        return '/* %s */ %s: %s' % (clazz, self.type, self.value)
+        return '/* %s */ %s: %s' % (clazz, self.tag, self.value)
 
     def __repr__(self):
         clazz = self.__class__.__name__
-        return '/* %s */ %s: %s' % (clazz, self.type, self.value)
+        return '/* %s */ %s: %s' % (clazz, self.tag, self.value)
 
     @classmethod
-    def parse_type(cls, data: bytes) -> Optional[VarName]:
+    def parse_tag(cls, data: bytes) -> Optional[VarName]:
         return VarName.parse(data=data)
 
     @classmethod
-    def parse_length(cls, data: bytes, t: Type) -> Optional[VarLength]:
-        return VarLength.parse(data=data, t=t)
+    def parse_length(cls, data: bytes, tag: Tag) -> Optional[VarLength]:
+        return VarLength.parse(data=data, tag=tag)
 
     @classmethod
-    def parse_value(cls, data: bytes, t: Type, length: Length = None) -> Optional[Value]:
+    def parse_value(cls, data: bytes, tag: Tag, length: Length = None) -> Optional[Value]:
         if length is not None:
             # check length
             data_len = len(data)
@@ -139,10 +131,10 @@ class Field(TLV):
             else:
                 assert data_len == length.value, 'data length not enough: %d < %d' % (data_len, length.value)
         # get attribute parser with type
-        parser = s_value_parsers.get(t)
+        parser = s_value_parsers.get(tag)
         if parser is None:
             parser = Value
-        return parser.parse(data=data, t=t, length=length)
+        return parser.parse(data=data, tag=tag, length=length)
 
 
 # classes for parsing value
@@ -177,7 +169,7 @@ class FieldsValue(Value):
         pass
 
     @classmethod
-    def parse(cls, data: bytes, t: Type, length: Length = None):
+    def parse(cls, data: bytes, tag: Tag, length: Length = None):
         if length is None or length.value == 0:
             return None
         else:
@@ -196,7 +188,7 @@ class FieldsValue(Value):
         array = self.__fields
         for item in array:
             assert isinstance(item, Field), 'field item error: %s' % item
-            name = item.type
+            name = item.tag
             value = item.value
             if isinstance(value, FieldsValue):
                 value = value.to_dict()
@@ -238,7 +230,7 @@ class ByteValue(UInt8Data, Value):
         return '%d' % self.value
 
     @classmethod
-    def parse(cls, data: bytes, t: Type, length: Length=None):
+    def parse(cls, data: bytes, tag: Tag, length: Length=None):
         return super().from_bytes(data=data)
 
 
@@ -256,7 +248,7 @@ class TimestampValue(UInt32Data, Value):
         return '%d' % self.value
 
     @classmethod
-    def parse(cls, data: bytes, t: Type, length: Length=None):
+    def parse(cls, data: bytes, tag: Tag, length: Length=None):
         return super().from_bytes(data=data)
 
 
@@ -279,7 +271,7 @@ class StringValue(Value):
         return self.__string
 
     @classmethod
-    def parse(cls, data: bytes, t: Type, length: Length=None):
+    def parse(cls, data: bytes, tag: Tag, length: Length=None):
         if length is None or length.value == 0:
             return None
         else:

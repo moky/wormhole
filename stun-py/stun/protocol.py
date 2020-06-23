@@ -35,8 +35,8 @@
     [RFC] https://www.ietf.org/rfc/rfc5389.txt
 """
 
-from udp.mtp.data import Data, UInt16Data
-from udp.mtp.data import random_bytes, bytes_to_int, uint16_to_bytes, uint32_to_bytes
+from udp.tlv.data import random_bytes, bytes_to_int, uint16_to_bytes, uint32_to_bytes
+from udp.tlv import Data, UInt16Data
 
 
 """

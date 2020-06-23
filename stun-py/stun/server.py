@@ -91,16 +91,16 @@ class Server(Node, ABC):
     def parse_attribute(self, attribute: Attribute, context: dict, result: Info) -> Info:
         value = attribute.value
         # check attributes
-        if attribute.type == MappedAddress:
+        if attribute.tag == MappedAddress:
             assert isinstance(value, MappedAddressValue), 'mapped address value error: %s' % value
             result.mapped_address = (value.ip, value.port)
             self.info('MappedAddress:\t(%s:%d)' % (value.ip, value.port))
-        elif attribute.type == ChangeRequest:
+        elif attribute.tag == ChangeRequest:
             assert isinstance(value, ChangeRequestValue), 'change request value error: %s' % value
             result.change_request = value
             self.info('ChangeRequest: %s' % value)
         else:
-            self.info('unknown attribute type: %s' % attribute.type)
+            self.info('unknown attribute type: %s' % attribute.tag)
         return result
 
     def _redirect(self, head: Header, remote_ip: str, remote_port: int):

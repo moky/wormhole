@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   MTP: Message Transfer Protocol
+#   TLV: Tag Length Value
 #
 #                                Written in 2020 by Moky <albert.moky@gmail.com>
 #
@@ -28,6 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
+import base64
 import binascii
 import random
 
@@ -38,6 +39,14 @@ def hex_encode(data: bytes) -> str:
 
 def hex_decode(string: str) -> bytes:
     return binascii.a2b_hex(string)
+
+
+def base64_encode(data: bytes) -> str:
+    return base64.b64encode(data).decode('utf-8')
+
+
+def base64_decode(string: str) -> bytes:
+    return base64.b64decode(string)
 
 
 # noinspection PyUnusedLocal

@@ -202,7 +202,7 @@ class Node(PeerDelegate):
         :param source:      remote address
         :return: False on error
         """
-        cmd_type = cmd.type
+        cmd_type = cmd.tag
         cmd_value = cmd.value
         if cmd_type == Who:
             return self._process_who(source=source)
@@ -297,7 +297,7 @@ class Server(Node, ABC):
         return True
 
     def process_command(self, cmd: Command, source: tuple) -> bool:
-        cmd_type = cmd.type
+        cmd_type = cmd.tag
         cmd_value = cmd.value
         if cmd_type == Call:
             assert isinstance(cmd_value, CommandValue), 'call cmd error: %s' % cmd_value
@@ -350,7 +350,7 @@ class Client(Node):
             return ok1 or ok2
 
     def process_command(self, cmd: Command, source: tuple) -> bool:
-        cmd_type = cmd.type
+        cmd_type = cmd.tag
         cmd_value = cmd.value
         if cmd_type == Sign:
             assert isinstance(cmd_value, LocationValue), 'sign cmd error: %s' % cmd_value

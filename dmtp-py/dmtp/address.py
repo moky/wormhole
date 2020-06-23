@@ -28,8 +28,8 @@
 # SOFTWARE.
 # ==============================================================================
 
-from udp.mtp.data import bytes_to_int, uint8_to_bytes, uint16_to_bytes
-from udp.tlv import Type, Value, Length
+from udp.tlv import Tag, Value, Length
+from udp.tlv.data import bytes_to_int, uint8_to_bytes, uint16_to_bytes
 
 
 """
@@ -133,7 +133,7 @@ class MappedAddressValue(Value):
             raise ValueError('unknown address family: %d' % family)
 
     @classmethod
-    def parse(cls, data: bytes, t: Type, length: Length = None):
+    def parse(cls, data: bytes, tag: Tag, length: Length = None):
         assert len(data) >= 8, 'mapped-address value error: %s' % data
         if data[0] != 0:
             return None

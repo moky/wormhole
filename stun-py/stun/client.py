@@ -124,7 +124,7 @@ class Client(Node, ABC):
         self.retries = 3
 
     def parse_attribute(self, attribute: Attribute, context: dict, result: Info) -> Info:
-        a_type = attribute.type
+        a_type = attribute.tag
         a_value = attribute.value
         # check attributes
         if a_type == MappedAddress:
@@ -136,7 +136,7 @@ class Client(Node, ABC):
                 # XOR and parse again
                 data = XorMappedAddressValue.xor(data=a_value.data, factor=context['trans_id'])
                 a_len = AttributeLength(len(data))
-                a_value = XorMappedAddressValue.parse(data=data, t=a_type, length=a_len)
+                a_value = XorMappedAddressValue.parse(data=data, tag=a_type, length=a_len)
             result.mapped_address = (a_value.ip, a_value.port)
             self.info('XorMappedAddress:\t(%s:%d)' % (a_value.ip, a_value.port))
         elif a_type == XorMappedAddress2:
@@ -144,7 +144,7 @@ class Client(Node, ABC):
                 # XOR and parse again
                 data = XorMappedAddressValue2.xor(data=a_value.data, factor=context['trans_id'])
                 a_len = AttributeLength(len(data))
-                a_value = XorMappedAddressValue2.parse(data=data, t=a_type, length=a_len)
+                a_value = XorMappedAddressValue2.parse(data=data, tag=a_type, length=a_len)
             result.mapped_address = (a_value.ip, a_value.port)
             self.info('XorMappedAddress2:\t(%s:%d)' % (a_value.ip, a_value.port))
         elif a_type == ChangedAddress:

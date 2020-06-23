@@ -138,7 +138,7 @@ class Message(FieldsValue):
         return self.__filename
 
     def _set_field(self, field: Field):
-        f_type = field.type
+        f_type = field.tag
         f_value = field.value
         if f_type == MsgSender:
             assert isinstance(f_value, StringValue), 'sender ID error: %s' % f_value
@@ -178,16 +178,16 @@ class Message(FieldsValue):
             print('%s> unknown field: %s -> %s' % (clazz, f_type, f_value))
 
     @classmethod
-    def __fetch_msg_field(cls, array: list, info: dict, tag: str, name: str, t: VarName, clazz):
+    def __fetch_msg_field(cls, array: list, info: dict, s: str, name: str, tag: VarName, clazz):
         value = info.get(name)
         if value is None:
-            value = info.get(tag)
+            value = info.get(s)
             if value is None:
                 # no this field
                 return None
         if not isinstance(value, clazz):
             value = clazz(value)
-        field = Field(t=t, v=value)
+        field = Field(tag=tag, value=value)
         array.append(field)
 
     @classmethod

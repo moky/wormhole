@@ -41,7 +41,7 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Union, Optional
 
-from .data import uint32_to_bytes
+from ..tlv.data import uint32_to_bytes
 
 from .protocol import Package, TransactionID
 from .protocol import Command, CommandRespond

@@ -38,9 +38,9 @@
 
 from typing import Optional
 
-from udp.mtp.data import UInt16Data, UInt32Data
-from udp.mtp.data import bytes_to_int, uint8_to_bytes, uint16_to_bytes, uint32_to_bytes
-from udp.tlv import TLV, Type, Length, Value
+from udp.tlv.data import bytes_to_int, uint8_to_bytes, uint16_to_bytes, uint32_to_bytes
+from udp.tlv import UInt16Data, UInt32Data
+from udp.tlv import Tag, Length, Value, TagLengthValue
 
 """
     STUN Attributes
@@ -76,7 +76,7 @@ class AttributeLength(UInt16Data, Length):
         super().__init__(data=data, value=value)
 
 
-class AttributeType(UInt16Data, Type):
+class AttributeType(UInt16Data, Tag):
 
     def __init__(self, value: int, data: bytes=None, name: str=None):
         if data is None:
@@ -148,33 +148,33 @@ AlternateServer = AttributeType(0x8023, name='ALTERNATE-SERVER')
 Fingerprint = AttributeType(0x8028, name='FINGERPRINT')
 
 
-class Attribute(TLV):
+class Attribute(TagLengthValue):
 
-    def __init__(self, t: AttributeType, v: AttributeValue, data: bytes=None):
+    def __init__(self, tag: AttributeType, value: AttributeValue, data: bytes=None):
         if data is None:
-            data = t.data + uint16_to_bytes(len(v.data)) + v.data
-        super().__init__(data=data, t=t, v=v)
+            data = tag.data + uint16_to_bytes(len(value.data)) + value.data
+        super().__init__(data=data, tag=tag, value=value)
 
     def __str__(self):
         clazz = self.__class__.__name__
-        return '/* %s */ %s: %s' % (clazz, self.type, self.value)
+        return '/* %s */ %s: %s' % (clazz, self.tag, self.value)
 
     def __repr__(self):
         clazz = self.__class__.__name__
-        return '/* %s */ %s: %s' % (clazz, self.type, self.value)
+        return '/* %s */ %s: %s' % (clazz, self.tag, self.value)
 
     @classmethod
-    def parse_type(cls, data: bytes) -> Optional[AttributeType]:
+    def parse_tag(cls, data: bytes) -> Optional[AttributeType]:
         return AttributeType.parse(data=data)
 
     @classmethod
-    def parse_length(cls, data: bytes, t: AttributeType) -> Optional[AttributeLength]:
-        length = AttributeLength.parse(data=data, t=t)
+    def parse_length(cls, data: bytes, tag: AttributeType) -> Optional[AttributeLength]:
+        length = AttributeLength.parse(data=data, tag=tag)
         assert (length.value & 0x0003) == 0, 'attribute length error: %s' % data
         return length
 
     @classmethod
-    def parse_value(cls, data: bytes, t: AttributeType, length: AttributeLength = None) -> Optional[Value]:
+    def parse_value(cls, data: bytes, tag: AttributeType, length: AttributeLength = None) -> Optional[Value]:
         if length is not None:
             # check length
             data_len = len(data)
@@ -183,10 +183,10 @@ class Attribute(TLV):
             else:
                 assert data_len == length.value, 'data length not enough: %d < %d' % (data_len, length.value)
         # get attribute parser with type
-        parser = s_attribute_parsers.get(t)
+        parser = s_attribute_parsers.get(tag)
         if parser is None:
             parser = AttributeValue
-        return parser.parse(data=data, t=t, length=length)
+        return parser.parse(data=data, tag=tag, length=length)
 
 
 """
@@ -295,7 +295,7 @@ class MappedAddressValue(AttributeValue):
             raise ValueError('unknown address family: %d' % family)
 
     @classmethod
-    def parse(cls, data: bytes, t: Type, length: Length=None):
+    def parse(cls, data: bytes, tag: Tag, length: Length=None):
         assert len(data) >= 8, 'mapped-address value error: %s' % data
         if data[0] != 0:
             return None
@@ -540,7 +540,7 @@ class ChangeRequestValue(UInt32Data, AttributeValue):
         return '%d' % self.value
 
     @classmethod
-    def parse(cls, data: bytes, t: Type, length: Length=None):
+    def parse(cls, data: bytes, tag: Tag, length: Length=None):
         assert length.value == 4, 'Change-Request value error: %s' % length
         value = bytes_to_int(data)
         if value == ChangeIPAndPort.value:
@@ -602,7 +602,7 @@ class SoftwareValue(AttributeValue):
         return self.__desc
 
     @classmethod
-    def parse(cls, data: bytes, t: Type, length: Length=None):
+    def parse(cls, data: bytes, tag: Tag, length: Length=None):
         if length is None or length.value == 0:
             return None
         else:

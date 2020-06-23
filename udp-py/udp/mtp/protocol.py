@@ -37,9 +37,9 @@
 
 import threading
 
-from .data import Data
-from .data import random_bytes
-from .data import bytes_to_int, uint8_to_bytes, uint32_to_bytes
+from ..tlv import Data
+from ..tlv.data import random_bytes
+from ..tlv.data import bytes_to_int, uint8_to_bytes, uint32_to_bytes
 
 """
     Data Type:
