@@ -79,6 +79,10 @@ public class Hub extends Thread implements ConnectionDelegate {
         super();
     }
 
+    public boolean isRunning() {
+        return running;
+    }
+
     //
     //  Listeners
     //
@@ -402,7 +406,7 @@ public class Hub extends Thread implements ConnectionDelegate {
         // receive data from appointed socket
         Socket socket = getSocket(source);
         if (socket == null) {
-            // throw new NullPointerException("no such socket: " + source);
+            //throw new NullPointerException("no such socket: " + source);
             return null;
         }
         DatagramPacket packet = socket.receive();

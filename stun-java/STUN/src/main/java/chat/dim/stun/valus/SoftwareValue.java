@@ -46,6 +46,18 @@ public class SoftwareValue extends AttributeValue {
         this.description = description;
     }
 
+    public static SoftwareValue create(String description) {
+        byte[] data = description.getBytes(Charset.forName("UTF-8"));
+        int tail = data.length & 3;
+        if (tail > 0) {
+            int len = data.length + (4 - tail);
+            byte[] buffer = new byte[len];
+            System.arraycopy(data, 0, buffer, 0, data.length);
+            data = buffer;
+        }
+        return new SoftwareValue(data, description);
+    }
+
     public static SoftwareValue parse(byte[] data, Tag type, Length length) {
         // check length
         if (length == null || length.value == 0) {
