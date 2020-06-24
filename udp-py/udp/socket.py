@@ -89,6 +89,8 @@ class Socket(threading.Thread):
     def __init__(self, port: int, host: str ='0.0.0.0'):
         super().__init__()
         self.__local_address = (host, port)
+        self.__host = host
+        self.__port = port
         # create socket
         self.__socket = self._create_socket()
         # delegate
@@ -103,6 +105,14 @@ class Socket(threading.Thread):
     @property
     def local_address(self) -> tuple:
         return self.__local_address
+
+    @property
+    def host(self) -> str:
+        return self.__host
+
+    @property
+    def port(self) -> int:
+        return self.__port
 
     @property
     def running(self) -> bool:
@@ -124,8 +134,11 @@ class Socket(threading.Thread):
             return self.__delegate()
 
     @delegate.setter
-    def delegate(self, value: Optional[ConnectionDelegate]):
-        self.__delegate = weakref.ref(value)
+    def delegate(self, value: ConnectionDelegate):
+        if value is None:
+            self.__delegate = None
+        else:
+            self.__delegate = weakref.ref(value)
 
     #
     #  Connections
@@ -136,7 +149,6 @@ class Socket(threading.Thread):
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
                 if conn.remote_address == remote_address:
-                    # got it
                     return conn
 
     # noinspection PyMethodMayBeStatic
@@ -155,7 +167,7 @@ class Socket(threading.Thread):
             self.__connections.add(conn)
             return conn
 
-    def disconnect(self, remote_address: tuple) -> Optional[set]:
+    def disconnect(self, remote_address: tuple) -> set:
         """ remove remote address from heartbeat tasks """
         with self.__connections_lock:
             removed = set()

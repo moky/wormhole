@@ -173,44 +173,36 @@ class Hub(threading.Thread, ConnectionDelegate):
     #
 
     def __any_socket(self) -> Optional[Socket]:
+        """ get arbitrary socket """
         with self.__sockets_lock:
             for sock in self.__sockets:
                 return sock
 
-    def __get_socket_by_port(self, port: int) -> Optional[Socket]:
+    def __get_sockets(self, port: int) -> set:
+        """ get all sockets bond to this port """
         with self.__sockets_lock:
+            sockets = set()
             for sock in self.__sockets:
                 assert isinstance(sock, Socket), 'socket error: %s' % sock
-                if sock.local_address[1] == port:
-                    return sock
+                if port == sock.port:
+                    sockets.add(sock)
+            return sockets
 
-    def __get_socket(self, address: Union[tuple, int]=None) -> Optional[Socket]:
-        if address is None:
-            return self.__any_socket()
-        if isinstance(address, int):
-            return self.__get_socket_by_port(port=address)
-        host = address[0]
-        port = address[1]
-        if '0.0.0.0' == host:
-            return self.__get_socket_by_port(port=port)
-        with self.__sockets_lock:
-            port_matched = False
-            # 1. check address exactly
-            for sock in self.__sockets:
-                assert isinstance(sock, Socket), 'socket error: %s' % sock
-                if port == sock.local_address[1]:
-                    port_matched = True
-                    if host == sock.local_address[0]:
-                        # got it
-                        return sock
-            if port_matched:
-                # 2. check sockets binding to '0.0.0.0'
+    def __get_socket(self, port: int, host: str=None) -> Optional[Socket]:
+        if host is None:
+            # get socket by port
+            with self.__sockets_lock:
                 for sock in self.__sockets:
                     assert isinstance(sock, Socket), 'socket error: %s' % sock
-                    if port == sock.local_address[1]:
-                        if '0.0.0.0' == sock.local_address[0]:
-                            # got it
-                            return sock
+                    if port == sock.port:
+                        return sock
+        else:
+            # get socket by (IP, port)
+            with self.__sockets_lock:
+                for sock in self.__sockets:
+                    assert isinstance(sock, Socket), 'socket error: %s' % sock
+                    if port == sock.port and host == sock.host:
+                        return sock
 
     def _create_socket(self, host: str, port: int) -> Socket:
         sock = Socket(host=host, port=port)
@@ -221,25 +213,24 @@ class Hub(threading.Thread, ConnectionDelegate):
     def open(self, port: int, host: str='0.0.0.0') -> Socket:
         """ create a socket on this port """
         with self.__sockets_lock:
-            sock = self.__get_socket(address=(host, port))
+            sock = self.__get_socket(host=host, port=port)
             if sock is None:
                 sock = self._create_socket(host=host, port=port)
                 self.__sockets.add(sock)
             return sock
 
-    def close(self, port: int, host: str='0.0.0.0') -> bool:
-        """ remove the socket on this port """
+    def close(self, port: int, host: str=None) -> set:
+        """ remove the socket(s) on this port """
         with self.__sockets_lock:
-            count = 0
-            address = (host, port)
+            closed = set()
             while True:
-                sock = self.__get_socket(address=address)
+                sock = self.__get_socket(host=host, port=port)
                 if sock is None:
                     break
                 sock.close()
+                closed.add(sock)
                 self.__sockets.remove(sock)
-                count += 1
-            return count > 0
+            return closed
 
     def start(self):
         self.running = True
@@ -255,16 +246,40 @@ class Hub(threading.Thread, ConnectionDelegate):
             self.__sockets.clear()
 
     def connect(self, destination: tuple, source: Union[tuple, int]=None) -> Optional[Connection]:
-        sock = self.__get_socket(address=source)
+        if source is None:
+            # connect from any socket
+            sock = self.__any_socket()
+        elif isinstance(source, int):
+            # connect from the port
+            sock = self.__get_socket(port=source)
+        else:
+            # connect from the address
+            sock = self.__get_socket(host=source[0], port=source[1])
         if sock is not None:
             return sock.connect(remote_address=destination)
 
-    def disconnect(self, destination: tuple, source: Union[tuple, int]=None) -> Optional[set]:
-        sock = self.__get_socket(address=source)
-        if sock is not None:
-            return sock.disconnect(remote_address=destination)
+    def disconnect(self, destination: tuple, source: Union[tuple, int]=None) -> set:
+        if source is None:
+            # disconnect from all sockets
+            with self.__sockets_lock:
+                sockets = self.__sockets.copy()
+        elif isinstance(source, int):
+            # disconnect from sockets on this port
+            sockets = self.__get_sockets(port=source)
+        else:
+            # disconnect from the address
+            sockets = set()
+            sock = self.__get_socket(host=source[0], port=source[1])
+            if sock is not None:
+                sockets.add(sock)
+        all_removed = set()
+        for sock in sockets:
+            removed = sock.disconnect(remote_address=destination)
+            if len(removed) > 0:
+                all_removed = all_removed.union(removed)
+        return all_removed
 
-    def send(self, data: bytes, destination: tuple, source: tuple) -> int:
+    def send(self, data: bytes, destination: tuple, source: Union[tuple, int]=None) -> int:
         """
         Send data from source address(port) to destination address
 
@@ -273,34 +288,45 @@ class Hub(threading.Thread, ConnectionDelegate):
         :param source:      local address
         :return:
         """
-        sock = self.__get_socket(address=source)
+        if source is None:
+            # connect from any socket
+            sock = self.__any_socket()
+        elif isinstance(source, int):
+            # connect from the port
+            sock = self.__get_socket(port=source)
+        else:
+            # connect from the address
+            sock = self.__get_socket(host=source[0], port=source[1])
         if sock is not None:
             return sock.send(data=data, remote_address=destination)
 
     def __receive_all(self) -> Optional[Cargo]:
         with self.__sockets_lock:
             # receive data from any socket
-            for sock in self.__sockets:
-                assert isinstance(sock, Socket), 'socket error: %s' % sock
-                packet = sock.receive()
-                if packet is not None:
-                    # got one
-                    return Cargo.create(packet=packet, socket=sock)
+            return self.__receive_from_sockets(sockets=self.__sockets)
 
-    def __receive(self, source: Union[tuple, int]) -> Optional[Cargo]:
-        if source is None:
+    @staticmethod
+    def __receive_from_sockets(sockets) -> Optional[Cargo]:
+        for sock in sockets:
+            assert isinstance(sock, Socket), 'socket error: %s' % sock
+            packet = sock.receive()
+            if packet is not None:
+                return Cargo.create(packet=packet, socket=sock)
+
+    def __receive(self, host: str=None, port: int=0) -> Optional[Cargo]:
+        if port is 0:
             return self.__receive_all()
+        if host is None:
+            sockets = self.__get_sockets(port=port)
+            return self.__receive_from_sockets(sockets=sockets)
         # receive data from appointed socket
-        sock = self.__get_socket(address=source)
-        if sock is None:
-            # raise LookupError('no such socket: %s' % str(source))
-            return None
-        packet = sock.receive()
-        if packet is not None:
-            # got it
-            return Cargo.create(packet=packet, socket=sock)
+        sock = self.__get_socket(host=host, port=port)
+        if sock is not None:
+            packet = sock.receive()
+            if packet is not None:
+                return Cargo.create(packet=packet, socket=sock)
 
-    def receive(self, source: Union[tuple, int]=None, timeout: Optional[float]=None) -> Optional[Cargo]:
+    def receive(self, host: str=None, port: int=0, timeout: float=None) -> Optional[Cargo]:
         """
         Block to receive data
 
@@ -312,7 +338,7 @@ class Hub(threading.Thread, ConnectionDelegate):
         else:
             timeout = now + timeout
         while now <= timeout:
-            cargo = self.__receive(source=source)
+            cargo = self.__receive(host=host, port=port)
             if cargo is None:
                 time.sleep(0.1)
                 now = time.time()
@@ -380,7 +406,8 @@ class Hub(threading.Thread, ConnectionDelegate):
         if self.running:
             # process by run()
             return True
-        cargo = self.__receive(source=connection.local_address)
+        address = connection.local_address
+        cargo = self.__receive(host=address[0], port=address[1])
         if cargo is None:
             # assert False
             return False

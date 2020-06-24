@@ -208,8 +208,11 @@ class Peer(threading.Thread):
             return self.__delegate()
 
     @delegate.setter
-    def delegate(self, value: Optional[PeerDelegate]):
-        self.__delegate = weakref.ref(value)
+    def delegate(self, value: PeerDelegate):
+        if value is None:
+            self.__delegate = None
+        else:
+            self.__delegate = weakref.ref(value)
 
     def start(self):
         self.running = True
