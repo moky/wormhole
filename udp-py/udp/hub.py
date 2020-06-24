@@ -147,7 +147,7 @@ class Hub(threading.Thread, ConnectionDelegate):
         super().__init__()
         self.running = False
         # sockets
-        self.__sockets = []
+        self.__sockets = set()
         self.__sockets_lock = threading.RLock()
         # listeners
         self.__listeners = WeakSet()
@@ -174,8 +174,8 @@ class Hub(threading.Thread, ConnectionDelegate):
 
     def __any_socket(self) -> Optional[Socket]:
         with self.__sockets_lock:
-            if len(self.__sockets) > 0:
-                return self.__sockets[0]
+            for sock in self.__sockets:
+                return sock
 
     def __get_socket_by_port(self, port: int) -> Optional[Socket]:
         with self.__sockets_lock:
@@ -224,7 +224,7 @@ class Hub(threading.Thread, ConnectionDelegate):
             sock = self.__get_socket(address=(host, port))
             if sock is None:
                 sock = self._create_socket(host=host, port=port)
-                self.__sockets.append(sock)
+                self.__sockets.add(sock)
             return sock
 
     def close(self, port: int, host: str='0.0.0.0') -> bool:
@@ -249,20 +249,17 @@ class Hub(threading.Thread, ConnectionDelegate):
         self.running = False
         # close all sockets
         with self.__sockets_lock:
-            pos = len(self.__sockets)
-            while pos > 0:
-                pos -= 1
-                sock = self.__sockets[pos]
+            for sock in self.__sockets:
                 assert isinstance(sock, Socket), 'socket error: %s' % sock
                 sock.stop()
-                self.__sockets.pop(pos)
+            self.__sockets.clear()
 
     def connect(self, destination: tuple, source: Union[tuple, int]=None) -> Optional[Connection]:
         sock = self.__get_socket(address=source)
         if sock is not None:
             return sock.connect(remote_address=destination)
 
-    def disconnect(self, destination: tuple, source: Union[tuple, int]=None) -> bool:
+    def disconnect(self, destination: tuple, source: Union[tuple, int]=None) -> Optional[set]:
         sock = self.__get_socket(address=source)
         if sock is not None:
             return sock.disconnect(remote_address=destination)

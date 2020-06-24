@@ -94,7 +94,7 @@ class Socket(threading.Thread):
         # delegate
         self.__delegate: weakref.ReferenceType = None
         # connection list
-        self.__connections = []
+        self.__connections = set()
         self.__connections_lock = threading.Lock()
         # received packages
         self.__cargoes = []
@@ -152,24 +152,22 @@ class Socket(threading.Thread):
                     # already connected
                     return conn
             conn = self._create_connection(remote_address=remote_address, local_address=self.local_address)
-            self.__connections.append(conn)
+            self.__connections.add(conn)
             return conn
 
-    def disconnect(self, remote_address: tuple) -> bool:
+    def disconnect(self, remote_address: tuple) -> Optional[set]:
         """ remove remote address from heartbeat tasks """
-        count = 0
         with self.__connections_lock:
-            pos = len(self.__connections)
-            while pos > 0:
-                pos -= 1
-                conn = self.__connections[pos]
+            removed = set()
+            for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
                 if conn.remote_address == remote_address:
                     # got one
-                    self.__connections.pop(pos)
-                    count += 1
+                    removed.add(conn)
                     # break
-        return count > 0
+            for conn in removed:
+                self.__connections.remove(conn)
+            return removed
 
     def __connection_by_status(self, status: ConnectionStatus) -> Optional[Connection]:
         """ get connection by status """
