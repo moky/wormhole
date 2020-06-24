@@ -67,7 +67,7 @@ class DMTPClient(dmtp.Client):
     def _create_peer(self) -> DMTPPeer:
         peer = DMTPPeer()
         peer.delegate = self
-        peer.start()
+        # peer.start()
         return peer
 
     #

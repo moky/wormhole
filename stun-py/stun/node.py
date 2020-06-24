@@ -87,6 +87,7 @@ class Node(ABC):
         return hub
 
     def start(self):
+        # start hub
         if not self.hub.running:
             self.hub.start()
 

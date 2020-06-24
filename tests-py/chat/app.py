@@ -52,6 +52,7 @@ g_stun_client.server_address = (STUN_SERVER_HOST, STUN_SERVER_PORT)
 
 g_dmtp_client = DMTPClient(host=CLIENT_HOST, port=CLIENT_PORT)
 g_dmtp_client.server_address = (DMTP_SERVER_HOST, DMTP_SERVER_PORT)
+g_dmtp_client.start()
 
 
 if __name__ == '__main__':

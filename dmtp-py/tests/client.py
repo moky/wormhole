@@ -201,6 +201,7 @@ def send_text(receiver: str, msg: str):
     msg = dmtp.Message.new(info={
         'sender': g_client.identifier,
         'receiver': receiver,
+        'time': int(time.time()),
         'data': content,
     })
     for address in addresses:
@@ -213,6 +214,7 @@ if __name__ == '__main__':
     print('UDP client %s -> %s starting ...' % ((CLIENT_HOST, CLIENT_PORT), (SERVER_HOST, SERVER_PORT)))
     g_client = Client(host=CLIENT_HOST, port=CLIENT_PORT)
     g_client.server_address = (SERVER_HOST, SERVER_PORT)
+    g_client.start()
 
     friend = 'moky'
 

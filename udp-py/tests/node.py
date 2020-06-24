@@ -38,7 +38,7 @@ class Node(mtp.PeerDelegate):
     def _create_peer(self) -> Peer:
         peer = Peer()
         peer.delegate = self
-        peer.start()
+        # peer.start()
         return peer
 
     @property
@@ -55,10 +55,14 @@ class Node(mtp.PeerDelegate):
         hub = udp.Hub()
         hub.open(host=host, port=port)
         hub.add_listener(self.peer)
-        hub.start()
+        # hub.start()
         return hub
 
     def start(self):
+        # start peer
+        if not self.peer.running:
+            self.peer.start()
+        # start hub
         if not self.hub.running:
             self.hub.start()
 
