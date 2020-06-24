@@ -9,11 +9,12 @@ import time
 from typing import Optional
 from weakref import WeakValueDictionary
 
+import stun
+import dmtp
+
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
-
-import dmtp
 
 
 SERVER_GZ1 = '134.175.87.98'
@@ -24,7 +25,7 @@ SERVER_GZ3 = '129.204.94.164'
 SERVER_HOST = SERVER_GZ1
 SERVER_PORT = 9395
 
-CLIENT_HOST = '0.0.0.0'
+CLIENT_HOST = stun.get_local_ip()
 CLIENT_PORT = random.choice(range(9900, 9999))
 
 
