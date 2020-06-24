@@ -32,10 +32,9 @@ class Client(stun.Client):
     def detect(self, stun_host: str, stun_port: int):
         print('----------------------------------------------------------------')
         print('-- Detection starts from: %s ...' % stun_host)
-        msg, res = self.get_nat_type(stun_host=stun_host, stun_port=stun_port)
-        print('-- Detection Result:', msg)
-        if res is not None:
-            print('-- External Address:', res.mapped_address)
+        res = self.get_nat_type(stun_host=stun_host, stun_port=stun_port)
+        print('-- Detection Result:', res.get('NAT'))
+        print('-- External Address:', res.get('MAPPED-ADDRESS'))
         print('----------------------------------------------------------------')
 
 

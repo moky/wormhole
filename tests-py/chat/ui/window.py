@@ -25,12 +25,13 @@ class NATTestThread(QThread, STUNClientDelegate):
     def run(self):
         client = self.__stun_client
         address = client.server_address
-        msg, res = client.get_nat_type(stun_host=address[0], stun_port=address[1])
+        res = client.get_nat_type(stun_host=address[0], stun_port=address[1])
+        msg = res.get('NAT')
+        mapped_address = res.get('MAPPED-ADDRESS')
         window = self.__window
         window.display('Detection Result: %s' % msg)
-        if res is not None:
-            window.display('External Address: %s' % str(res.mapped_address))
-        window.update_nat(msg, res)
+        window.display('External Address: %s' % str(mapped_address))
+        window.update_nat(msg, mapped_address)
 
     #
     #   STUNClientDelegate
@@ -146,14 +147,14 @@ class Window(QWidget, DMTPClientDelegate):
         t = NATTestThread(window=self, stun_client=self.__stun_client)
         t.start()
 
-    def update_nat(self, nat: str, info):
+    def update_nat(self, nat: str, mapped_address):
         if nat is None:
             return
         self.__dmtp_client.nat = nat
-        if info is None:
+        if mapped_address is None:
             text = '%s' % nat
         else:
-            text = '%s %s' % (nat, info.mapped_address)
+            text = '%s (%s:%d)' % (nat, mapped_address.ip, mapped_address.port)
         self.__nat.setText(text)
 
     def login(self):

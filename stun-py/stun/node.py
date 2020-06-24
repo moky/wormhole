@@ -43,24 +43,8 @@ from typing import Union, Optional
 from udp import Hub
 from udp.hub import Cargo
 
-from .protocol import Package, Header
-from .attributes import Attribute, ChangeRequestValue
-
-
-class Info(dict):
-    """
-        1. Parameters from request
-        2. Result info from response
-    """
-
-    def __init__(self):
-        super().__init__()
-        # Bind Request
-        self.change_request: ChangeRequestValue = None
-        # Bind Response
-        self.mapped_address: (str, int) = None
-        self.changed_address: (str, int) = None
-        self.source_address: (str, int) = None
+from .protocol import Package
+from .attributes import Attribute
 
 
 class Node(ABC):
@@ -143,37 +127,36 @@ class Node(ABC):
             return None
 
     @abstractmethod
-    def parse_attribute(self, attribute: Attribute, context: dict, result: Info) -> Info:
+    def parse_attribute(self, attribute: Attribute, context: dict) -> bool:
         """
         Parse attribute
 
         :param attribute:
         :param context:
-        :param result:
-        :return:
+        :return: False on failed
         """
         raise NotImplemented
 
-    def parse_data(self, data: bytes, context: dict) -> (Optional[Header], Optional[Info]):
+    def parse_data(self, data: bytes, context: dict) -> bool:
         """
         Parse package data
 
-        :param data:
-        :param context:
-        :return: package head and results from body
+        :param data:    data package received
+        :param context: return with package head and results from body
+        :return: False on failed
         """
         # 1. parse STUN package
         pack = Package.parse(data=data)
         if pack is None:
             self.info('failed to parse package data: %d' % len(data))
-            return None, None
+            return False
         # 2. parse attributes
-        result = Info()
         attributes = Attribute.parse_all(data=pack.body)
         for item in attributes:
             # 3. process attribute
-            result = self.parse_attribute(attribute=item, context=context, result=result)
-        return pack.head, result
+            self.parse_attribute(attribute=item, context=context)
+        context['head'] = pack.head
+        return True
 
 
 def get_local_ip(remote_host: str = '8.8.8.8', remote_port: int = 80) -> Optional[str]:

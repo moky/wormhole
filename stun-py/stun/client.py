@@ -49,7 +49,7 @@ from .attributes import XorMappedAddress2, XorMappedAddressValue2
 from .attributes import SourceAddress, SourceAddressValue
 from .attributes import ChangedAddress, ChangedAddressValue
 from .attributes import Software, SoftwareValue
-from .node import Node, Info
+from .node import Node
 
 
 class NatType:
@@ -123,46 +123,43 @@ class Client(Node, ABC):
         super().__init__(host=host, port=port)
         self.retries = 3
 
-    def parse_attribute(self, attribute: Attribute, context: dict, result: Info) -> Info:
-        a_type = attribute.tag
-        a_value = attribute.value
+    def parse_attribute(self, attribute: Attribute, context: dict) -> bool:
+        tag = attribute.tag
+        value = attribute.value
         # check attributes
-        if a_type == MappedAddress:
-            assert isinstance(a_value, MappedAddressValue), 'mapped address value error: %s' % a_value
-            result.mapped_address = (a_value.ip, a_value.port)
-            self.info('MappedAddress:\t(%s:%d)' % (a_value.ip, a_value.port))
-        elif a_type == XorMappedAddress:
-            if not isinstance(a_value, XorMappedAddressValue):
+        if tag == MappedAddress:
+            assert isinstance(value, MappedAddressValue), 'mapped address value error: %s' % value
+            context['MAPPED-ADDRESS'] = value
+        elif tag == XorMappedAddress:
+            if not isinstance(value, XorMappedAddressValue):
                 # XOR and parse again
-                data = XorMappedAddressValue.xor(data=a_value.data, factor=context['trans_id'])
-                a_len = AttributeLength(len(data))
-                a_value = XorMappedAddressValue.parse(data=data, tag=a_type, length=a_len)
-            result.mapped_address = (a_value.ip, a_value.port)
-            self.info('XorMappedAddress:\t(%s:%d)' % (a_value.ip, a_value.port))
-        elif a_type == XorMappedAddress2:
-            if not isinstance(a_value, XorMappedAddressValue2):
+                data = XorMappedAddressValue.xor(data=value.data, factor=context['trans_id'])
+                length = AttributeLength(len(data))
+                value = XorMappedAddressValue.parse(data=data, tag=tag, length=length)
+            context['MAPPED-ADDRESS'] = value
+        elif tag == XorMappedAddress2:
+            if not isinstance(value, XorMappedAddressValue2):
                 # XOR and parse again
-                data = XorMappedAddressValue2.xor(data=a_value.data, factor=context['trans_id'])
-                a_len = AttributeLength(len(data))
-                a_value = XorMappedAddressValue2.parse(data=data, tag=a_type, length=a_len)
-            result.mapped_address = (a_value.ip, a_value.port)
-            self.info('XorMappedAddress2:\t(%s:%d)' % (a_value.ip, a_value.port))
-        elif a_type == ChangedAddress:
-            assert isinstance(a_value, ChangedAddressValue), 'changed address value error: %s' % a_value
-            result.changed_address = (a_value.ip, a_value.port)
-            self.info('ChangedAddress:\t(%s:%d)' % (a_value.ip, a_value.port))
-        elif a_type == SourceAddress:
-            assert isinstance(a_value, SourceAddressValue), 'source address value error: %s' % a_value
-            result.source_address = (a_value.ip, a_value.port)
-            self.info('SourceAddress:\t(%s:%d)' % (a_value.ip, a_value.port))
-        elif a_type == Software:
-            assert isinstance(a_value, SoftwareValue), 'software value error: %s' % a_value
-            self.info(('Software: %s' % a_value.description))
+                data = XorMappedAddressValue2.xor(data=value.data, factor=context['trans_id'])
+                length = AttributeLength(len(data))
+                value = XorMappedAddressValue2.parse(data=data, tag=tag, length=length)
+            context['MAPPED-ADDRESS'] = value
+        elif tag == ChangedAddress:
+            assert isinstance(value, ChangedAddressValue), 'changed address value error: %s' % value
+            context['CHANGED-ADDRESS'] = value
+        elif tag == SourceAddress:
+            assert isinstance(value, SourceAddressValue), 'source address value error: %s' % value
+            context['SOURCE-ADDRESS'] = value
+        elif tag == Software:
+            assert isinstance(value, SoftwareValue), 'software value error: %s' % value
+            context['SOFTWARE'] = value
         else:
-            self.info('unknown attribute type: %s' % a_type)
-        return result
+            self.info('unknown attribute type: %s' % tag)
+            return False
+        self.info('%s:\t%s' % (tag, value))
+        return True
 
-    def __bind_request(self, remote_host: str, remote_port: int, body: bytes) -> Optional[Info]:
+    def __bind_request(self, remote_host: str, remote_port: int, body: bytes) -> Optional[dict]:
         # 1. create STUN message package
         req = Package.new(msg_type=BindRequest, body=body)
         trans_id = req.head.trans_id
@@ -188,11 +185,13 @@ class Client(Node, ABC):
         context = {
             'trans_id': trans_id.data,
         }
-        head, result = self.parse_data(data=cargo.data, context=context)
+        if not self.parse_data(data=cargo.data, context=context):
+            return None
+        head = context.get('head')
         if head is None or head.type != BindResponse or head.trans_id != trans_id:
             # received package error
             return None
-        return result
+        return context
 
     """
     [RFC] https://www.ietf.org/rfc/rfc3489.txt
@@ -212,22 +211,22 @@ class Client(Node, ABC):
     a Binding Request with only the "change port" flag set.
     """
 
-    def __test_1(self, stun_host: str, stun_port: int) -> Optional[Info]:
+    def __test_1(self, stun_host: str, stun_port: int) -> Optional[dict]:
         self.info('[Test 1] sending empty request ... (%s:%d)' % (stun_host, stun_port))
         body = b''
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
-    def __test_2(self, stun_host: str, stun_port: int) -> Optional[Info]:
+    def __test_2(self, stun_host: str, stun_port: int) -> Optional[dict]:
         self.info('[Test 2] sending "ChangeIPAndPort" ... (%s:%d)' % (stun_host, stun_port))
         body = Attribute(ChangeRequest, ChangeIPAndPort).data
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
-    def __test_3(self, stun_host: str, stun_port: int) -> Optional[Info]:
+    def __test_3(self, stun_host: str, stun_port: int) -> Optional[dict]:
         self.info('[Test 3] sending "ChangePort" ... (%s:%d)' % (stun_host, stun_port))
         body = Attribute(ChangeRequest, ChangePort).data
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
-    def get_nat_type(self, stun_host: str, stun_port: int = 3478) -> (str, Optional[Info]):
+    def get_nat_type(self, stun_host: str, stun_port: int = 3478) -> dict:
         # 1. Test I
         res1 = self.__test_1(stun_host=stun_host, stun_port=stun_port)
         if res1 is None:
@@ -236,16 +235,18 @@ class Client(Node, ABC):
             response, the client knows right away that it is not capable of UDP
             connectivity.
             """
-            return NatType.UDPBlocked, None
+            res1 = {'NAT': NatType.UDPBlocked}
+            return res1
         """
         If the test produces a response, the client examines the MAPPED-ADDRESS
         attribute.  If this address and port are the same as the local IP
         address and port of the socket used to send the request, the client
         knows that it is not NATed.  It executes test II.
         """
+        ma1 = res1.get('MAPPED-ADDRESS')
         # 2. Test II
         res2 = self.__test_2(stun_host=stun_host, stun_port=stun_port)
-        if res1.mapped_address == self.source_address:
+        if ma1 is not None and (ma1.ip, ma1.port) == self.source_address:
             """
             If a response is received, the client knows that it has open access
             to the Internet (or, at least, its behind a firewall that behaves
@@ -253,9 +254,11 @@ class Client(Node, ABC):
             is received, the client knows its behind a symmetric UDP firewall.
             """
             if res2 is None:
-                return NatType.SymmetricFirewall, res1
+                res1['NAT'] = NatType.SymmetricFirewall
+                return res1
             else:
-                return NatType.OpenInternet, res2
+                res2['NAT'] = NatType.OpenInternet
+                return res2
         elif res2 is not None:
             """
             In the event that the IP address and port of the socket did not match
@@ -263,28 +266,35 @@ class Client(Node, ABC):
             knows that it is behind a NAT.  It performs test II.  If a response
             is received, the client knows that it is behind a full-cone NAT.
             """
-            return NatType.FullConeNAT, res2
+            res2['NAT'] = NatType.FullConeNAT
+            return res2
         """
         If no response is received, it performs test I again, but this time,
         does so to the address and port from the CHANGED-ADDRESS attribute
         from the response to test I.
         """
+        ca1 = res1.get('CHANGED-ADDRESS')
         # 3. Test I'
-        if res1.changed_address is None:
-            return 'Change-Address not found', res1
-        changed_ip = res1.changed_address[0]
-        changed_port = res1.changed_address[1]
+        if ca1 is None:
+            res1['NAT'] = 'Changed-Address not found'
+            return res1
+        assert isinstance(ca1, ChangedAddressValue), 'CHANGED-ADDRESS error: %s' % ca1
+        changed_ip = ca1.ip
+        changed_port = ca1.port
         res11 = self.__test_1(stun_host=changed_ip, stun_port=changed_port)
         if res11 is None:
             # raise AssertionError('network error')
-            return 'Change address failed', res1
-        if res11.mapped_address != res1.mapped_address:
+            res1['NAT'] = 'Change address failed'
+            return res1
+        ma11 = res11.get('MAPPED-ADDRESS')
+        if ma11 is None or ma1 is None or ma11.port != ma1.port or ma11.ip != ma1.ip:
             """
             If the IP address and port returned in the MAPPED-ADDRESS attribute
             are not the same as the ones from the first test I, the client
             knows its behind a symmetric NAT.
             """
-            return NatType.SymmetricNAT, res11
+            res11['NAT'] = NatType.SymmetricNAT
+            return res11
         """
         If the address and port are the same, the client is either behind a
         restricted or port restricted NAT.  To make a determination about
@@ -295,6 +305,8 @@ class Client(Node, ABC):
         # 4. Test III
         res3 = self.__test_3(stun_host=stun_host, stun_port=stun_port)
         if res3 is None:
-            return NatType.PortRestrictedNAT, res11
+            res11['NAT'] = NatType.PortRestrictedNAT
+            return res11
         else:
-            return NatType.RestrictedNAT, res3
+            res3['NAT'] = NatType.RestrictedNAT
+            return res3

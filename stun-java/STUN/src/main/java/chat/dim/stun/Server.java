@@ -40,6 +40,7 @@ import chat.dim.stun.attributes.Attribute;
 import chat.dim.stun.attributes.AttributeType;
 import chat.dim.stun.attributes.AttributeValue;
 import chat.dim.stun.protocol.Header;
+import chat.dim.stun.protocol.MessageType;
 import chat.dim.stun.protocol.Package;
 import chat.dim.stun.valus.*;
 import chat.dim.tlv.Data;
@@ -107,15 +108,14 @@ public class Server extends Node {
         if (type.equals(AttributeType.MappedAddress)) {
             assert value instanceof MappedAddressValue : "mapped address value error: " + value;
             context.put("MAPPED-ADDRESS", value);
-            info("MAPPED-ADDRESS:\t" + value);
         } else if (type.equals(AttributeType.ChangeRequest)) {
             assert value instanceof ChangeRequestValue : "change request value error: " + value;
             context.put("CHANGE-REQUEST", value);
-            info("CHANGE-REQUEST: %s" + value);
         } else {
             info("unknown attribute type: " + type);
             return false;
         }
+        info(type + ":\t" + value);
         return true;
     }
 
@@ -138,13 +138,16 @@ public class Server extends Node {
     }
 
     protected boolean respond(Header head, SocketAddress clientAddress, int localPort) {
+        // remote (client) address
         InetSocketAddress address = (InetSocketAddress) clientAddress;
         String remoteIP = address.getHostString();
         int remotePort = address.getPort();
+        // local (server) address
         assert sourceAddress != null : "source address not set yet";
-        assert changedAddress != null : "changed address not set yet";
-        assert localPort > 0 : "local port error";
         String localIP = ((InetSocketAddress) sourceAddress).getHostName();
+        assert localPort > 0 : "local port error";
+        // changed (another) address
+        assert changedAddress != null : "changed address not set yet";
         address = (InetSocketAddress) changedAddress;
         String changedIP = address.getHostString();
         int changedPort = address.getPort();
@@ -182,30 +185,30 @@ public class Server extends Node {
         Map<String, Object> context = new HashMap<>();
         boolean ok = parseData(data, context);
         Header head = (Header) context.get("head");
-        if (!ok || head == null) {
+        if (!ok || head == null || head.type.equals(MessageType.BindRequest)) {
             // received package error
             return false;
         }
         info("received message type: " + head.type);
-        ChangeRequestValue value1 = (ChangeRequestValue) context.get("CHANGE-REQUEST");
-        if (value1 != null) {
-            if (value1.equals(ChangeRequestValue.ChangeIPAndPort)) {
+        ChangeRequestValue changeRequest = (ChangeRequestValue) context.get("CHANGE-REQUEST");
+        if (changeRequest != null) {
+            if (changeRequest.equals(ChangeRequestValue.ChangeIPAndPort)) {
                 // redirect for "change IP" and "change port" flags
                 return redirect(head, clientAddress);
-            } else if (value1.equals(ChangeRequestValue.ChangePort)) {
+            } else if (changeRequest.equals(ChangeRequestValue.ChangePort)) {
                 // respond with another port for "change port" flag
                 return respond(head, clientAddress, changePort);
             }
         }
-        MappedAddressValue value2 = (MappedAddressValue) context.get("MAPPED-ADDRESS");
-        if (value2 != null) {
-            // respond redirected request
-            InetSocketAddress address = new InetSocketAddress(value2.ip, value2.port);
-            return respond(head, address, changePort);
-        } else {
+        MappedAddressValue mappedAddress = (MappedAddressValue) context.get("MAPPED-ADDRESS");
+        if (mappedAddress == null) {
             // respond origin request
             int localPort = ((InetSocketAddress) sourceAddress).getPort();
             return respond(head, clientAddress, localPort);
+        } else {
+            // respond redirected request
+            clientAddress = new InetSocketAddress(mappedAddress.ip, mappedAddress.port);
+            return respond(head, clientAddress, changePort);
         }
     }
 }

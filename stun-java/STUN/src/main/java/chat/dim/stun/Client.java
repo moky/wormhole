@@ -76,7 +76,6 @@ public class Client extends Node {
         if (type.equals(AttributeType.MappedAddress)) {
             assert value instanceof MappedAddressValue : "mapped address value error: " + value;
             context.put("MAPPED-ADDRESS", value);
-            info("MAPPED-ADDRESS:\t" + value);
         } else if (type.equals(AttributeType.XorMappedAddress)) {
             if (!(value instanceof XorMappedAddressValue)) {
                 // XOR and parse again
@@ -86,7 +85,6 @@ public class Client extends Node {
                 value = XorMappedAddressValue.parse(data, type, length);
             }
             context.put("MAPPED-ADDRESS", value);
-            info("XOR-MAPPED-ADDRESS(0020):\t" + value);
         } else if (type.equals(AttributeType.XorMappedAddress2)) {
             if (!(value instanceof XorMappedAddressValue2)) {
                 // XOR and parse again
@@ -96,22 +94,20 @@ public class Client extends Node {
                 value = XorMappedAddressValue2.parse(data, type, length);
             }
             context.put("MAPPED-ADDRESS", value);
-            info("XOR-MAPPED-ADDRESS(8020):\t" + value);
         } else if (type.equals(AttributeType.ChangedAddress)) {
             assert value instanceof ChangedAddressValue : "change address value error: " + value;
             context.put("CHANGED-ADDRESS", value);
-            info("CHANGED-ADDRESS:\t" + value);
         } else if (type.equals(AttributeType.SourceAddress)) {
             assert value instanceof SourceAddressValue : "source address value error: " + value;
             context.put("SOURCE-ADDRESS", value);
-            info("SOURCE-ADDRESS:\t" + value);
         } else if (type.equals(AttributeType.Software)) {
             assert value instanceof SoftwareValue : "software value error: " + value;
-            info("SOFTWARE: " + value);
+            context.put("SOFTWARE", value);
         } else {
             info("unknown attribute type: " + type);
             return false;
         }
+        info(type + ":\t" + value);
         return true;
     }
 
@@ -203,7 +199,7 @@ public class Client extends Node {
              *  connectivity.
              */
             res1 = new HashMap<>();
-            res1.put("NAT-TYPE", NatType.UDPBlocked);
+            res1.put("NAT", NatType.UDPBlocked);
             return res1;
         }
         /*  If the test produces a response, the client examines the MAPPED-ADDRESS
@@ -222,10 +218,10 @@ public class Client extends Node {
              *  is received, the client knows its behind a symmetric UDP firewall.
              */
             if (res2 == null) {
-                res1.put("NAT-TYPE", NatType.SymmetricFirewall);
+                res1.put("NAT", NatType.SymmetricFirewall);
                 return res1;
             } else {
-                res2.put("NAT-TYPE", NatType.OpenInternet);
+                res2.put("NAT", NatType.OpenInternet);
                 return res2;
             }
         } else if (res2 != null) {
@@ -234,7 +230,7 @@ public class Client extends Node {
              *  knows that it is behind a NAT.  It performs test II.  If a response
              *  is received, the client knows that it is behind a full-cone NAT.
              */
-            res2.put("NAT-TYPE", NatType.FullConeNAT);
+            res2.put("NAT", NatType.FullConeNAT);
             return res2;
         }
         /*  If no response is received, it performs test I again, but this time,
@@ -243,7 +239,7 @@ public class Client extends Node {
          */
         ChangedAddressValue ca1 = (ChangedAddressValue) res1.get("CHANGED-ADDRESS");
         if (ca1 == null) {
-            res1.put("NAT-TYPE", "Changed-Address not found");
+            res1.put("NAT", "Changed-Address not found");
             return res1;
         }
         // 3. Test I'
@@ -251,7 +247,7 @@ public class Client extends Node {
         Map<String, Object> res11 = test_1(address);
         if (res11 == null) {
             //throw new NullPointerException("network error");
-            res1.put("NAT-TYPE", "Change address failed");
+            res1.put("NAT", "Change address failed");
             return res1;
         }
         MappedAddressValue ma11 = (MappedAddressValue) res11.get("MAPPED-ADDRESS");
@@ -260,7 +256,7 @@ public class Client extends Node {
              *  are not the same as the ones from the first test I, the client
              *  knows its behind a symmetric NAT.
              */
-            res11.put("NAT-TYPE", NatType.SymmetricNAT);
+            res11.put("NAT", NatType.SymmetricNAT);
             return res11;
         }
         /*  If the address and port are the same, the client is either behind a
@@ -272,10 +268,10 @@ public class Client extends Node {
         // 4. Test III
         Map<String, Object> res3 = test_3(serverAddress);
         if (res3 == null) {
-            res11.put("NAT-TYPE", NatType.PortRestrictedNAT);
+            res11.put("NAT", NatType.PortRestrictedNAT);
             return res11;
         } else {
-            res3.put("NAT-TYPE", NatType.RestrictedNAT);
+            res3.put("NAT", NatType.RestrictedNAT);
             return res3;
         }
     }

@@ -17,7 +17,7 @@ public class Client extends chat.dim.stun.Client {
         info("----------------------------------------------------------------");
         info("-- Detection starts from : " + serverAddress);
         Map<String, Object> res = getNatType(serverAddress);
-        info("-- Detection Result: " + res.get("NAT-TYPE"));
+        info("-- Detection Result: " + res.get("NAT"));
         info("-- External Address: " + res.get("MAPPED-ADDRESS"));
         info("----------------------------------------------------------------");
     }

@@ -48,7 +48,7 @@ from .attributes import XorMappedAddress2, XorMappedAddressValue2
 from .attributes import SourceAddress, SourceAddressValue
 from .attributes import ChangedAddress, ChangedAddressValue
 from .attributes import Software, SoftwareValue
-from .node import Node, Info
+from .node import Node
 
 
 class Server(Node, ABC):
@@ -88,22 +88,23 @@ class Server(Node, ABC):
         assert change_port > 0, 'change port error'
         self.hub.open(host=host, port=change_port)
 
-    def parse_attribute(self, attribute: Attribute, context: dict, result: Info) -> Info:
+    def parse_attribute(self, attribute: Attribute, context: dict) -> bool:
+        tag = attribute.tag
         value = attribute.value
         # check attributes
-        if attribute.tag == MappedAddress:
+        if tag == MappedAddress:
             assert isinstance(value, MappedAddressValue), 'mapped address value error: %s' % value
-            result.mapped_address = (value.ip, value.port)
-            self.info('MappedAddress:\t(%s:%d)' % (value.ip, value.port))
-        elif attribute.tag == ChangeRequest:
+            context['MAPPED-ADDRESS'] = value
+        elif tag == ChangeRequest:
             assert isinstance(value, ChangeRequestValue), 'change request value error: %s' % value
-            result.change_request = value
-            self.info('ChangeRequest: %s' % value)
+            context['CHANGE-REQUEST'] = value
         else:
-            self.info('unknown attribute type: %s' % attribute.tag)
-        return result
+            self.info('unknown attribute type: %s' % tag)
+            return False
+        self.info('%s: %s' % (tag, value))
+        return True
 
-    def _redirect(self, head: Header, remote_ip: str, remote_port: int):
+    def _redirect(self, head: Header, remote_ip: str, remote_port: int) -> bool:
         """
         Redirect the request to the neighbor server
 
@@ -118,13 +119,15 @@ class Server(Node, ABC):
         # pack
         body = data1
         pack = Package.new(msg_type=head.type, trans_id=head.trans_id, body=body)
-        self.send(data=pack.data, destination=self.neighbour)
+        res = self.send(data=pack.data, destination=self.neighbour)
+        return res == pack.length
 
-    def _respond(self, head: Header, remote_ip: str, remote_port: int, local_port: int = 0):
+    def _respond(self, head: Header, remote_ip: str, remote_port: int, local_port: int) -> bool:
+        # local (server) address
         assert self.source_address is not None, 'source address not set'
         local_ip = self.source_address[0]
-        if local_port is 0:
-            local_port = self.source_address[1]
+        assert local_port > 0, 'local port error'
+        # changed (another) address
         assert self.changed_address is not None, 'changed address not set'
         changed_ip = self.changed_address[0]
         changed_port = self.changed_address[1]
@@ -149,30 +152,33 @@ class Server(Node, ABC):
         # pack
         body = data1 + data2 + data3 + data4 + data5 + data6
         pack = Package.new(msg_type=BindResponse, trans_id=head.trans_id, body=body)
-        self.send(data=pack.data, destination=(remote_ip, remote_port), source=(local_ip, local_port))
+        res = self.send(data=pack.data, destination=(remote_ip, remote_port), source=(local_ip, local_port))
+        return res == pack.length
 
-    def handle(self, data: bytes, remote_ip: str, remote_port: int):
-        # 1. parse request
-        context = {
-            remote_ip: remote_ip,
-            remote_port: remote_port,
-        }
-        head, result = self.parse_data(data=data, context=context)
-        if head is None or head.type != BindRequest:
+    def handle(self, data: bytes, remote_ip: str, remote_port: int) -> bool:
+        # parse request
+        context = {}
+        ok = self.parse_data(data=data, context=context)
+        head = context.get('head')
+        if not ok or head is None or head.type != BindRequest:
             # received package error
-            return None
+            return False
         self.info('received message type: %s' % head.type)
-        if result.change_request == ChangeIPAndPort:
+        change_request = context.get('CHANGE-REQUEST')
+        if change_request == ChangeIPAndPort:
             # redirect for "change IP" and "change port" flags
-            self._redirect(head=head, remote_ip=remote_ip, remote_port=remote_port)
-        elif result.change_request == ChangePort:
+            return self._redirect(head=head, remote_ip=remote_ip, remote_port=remote_port)
+        elif change_request == ChangePort:
             # respond with another port for "change port" flag
-            self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port, local_port=self.change_port)
-        elif result.mapped_address is None:
+            return self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port, local_port=self.change_port)
+        mapped_address = context.get('MAPPED-ADDRESS')
+        if mapped_address is None:
             # respond origin request
-            self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port)
+            local_port = self.source_address[1]
+            return self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port, local_port=local_port)
         else:
+            assert isinstance(mapped_address, MappedAddressValue), 'MAPPED-ADDRESS error: %s' % mapped_address
             # respond redirected request
-            remote_ip = result.mapped_address[0]
-            remote_port = result.mapped_address[1]
-            self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port, local_port=self.change_port)
+            remote_ip = mapped_address.ip
+            remote_port = mapped_address.port
+            return self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port, local_port=self.change_port)
