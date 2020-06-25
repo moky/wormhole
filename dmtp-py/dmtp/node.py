@@ -28,30 +28,19 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Optional
 
-from udp import HubListener, Hub
-from udp.mtp import PeerDelegate, Peer as UDPPeer
-from udp.mtp import Departure, Arrival
+from udp import Hub
+from udp.mtp import PeerDelegate
+from udp.mtp import Departure
 
 from .tlv import Field
-from .command import Command, WhoCommand, SignCommand, FromCommand
-from .command import Who, Hello, Sign, Call, From, Bye
-from .command import CommandValue, LocationValue
+from .command import Command, Who, Hello, Bye
+from .command import LocationValue
 from .message import Message
 from .contact import Contact
-
-
-class Peer(UDPPeer, HubListener):
-
-    #
-    #   HubListener
-    #
-    def data_received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
-        task = Arrival(payload=data, source=source, destination=destination)
-        self.pool.append_arrival(task=task)
-        return None
+from .peer import Peer
 
 
 class Node(PeerDelegate):
@@ -248,117 +237,3 @@ class Node(PeerDelegate):
         assert len(fields) > 0, 'message error: %s' % msg
         pack = Message(fields=fields, data=msg)
         return self.process_message(msg=pack, source=source)
-
-
-class Server(Node, ABC):
-
-    def _process_hello(self, location: LocationValue, source: tuple) -> bool:
-        mapped_address = location.mapped_address
-        if mapped_address is not None and (mapped_address.ip, mapped_address.port) == source:
-            if super()._process_hello(location=location, source=source):
-                return True
-        # response 'SIGN' command with 'ID' and 'ADDR'
-        cmd = SignCommand.new(identifier=location.identifier, mapped_address=source)
-        self.send_command(cmd=cmd, destination=source)
-        return True
-
-    def _process_call(self, receiver: str, source: tuple) -> bool:
-        # get locations of receiver
-        contact = self.get_contact(identifier=receiver)
-        if contact is None:
-            addresses = []
-        else:
-            addresses = contact.addresses
-        if len(addresses) == 0:
-            # receiver not online
-            # respond an empty 'FROM' command to the sender
-            cmd = FromCommand.new(identifier=receiver)
-            self.send_command(cmd=cmd, destination=source)
-            return False
-        # receiver is online
-        sender = self.get_contact(address=source)
-        if sender is None:
-            sender_location = None
-        else:
-            sender_location = sender.get_location(address=source)
-        if sender_location is None:
-            # ask sender to login again
-            cmd = WhoCommand.new()
-            self.send_command(cmd=cmd, destination=source)
-            return False
-        # send command for each address
-        for address in addresses:
-            receiver_location = contact.get_location(address=address)
-            assert receiver_location is not None, 'address error: %s, %s' % (address, receiver)
-            # send 'fROM' command with sender's location info to the receiver
-            cmd = FromCommand.new(location=sender_location)
-            self.send_command(cmd=cmd, destination=address)
-            # respond 'FROM' command with receiver's location info to sender
-            cmd = FromCommand.new(location=receiver_location)
-            self.send_command(cmd=cmd, destination=source)
-        return True
-
-    def process_command(self, cmd: Command, source: tuple) -> bool:
-        cmd_type = cmd.tag
-        cmd_value = cmd.value
-        if cmd_type == Call:
-            assert isinstance(cmd_value, CommandValue), 'call cmd error: %s' % cmd_value
-            return self._process_call(receiver=cmd_value.identifier, source=source)
-        else:
-            return super().process_command(cmd=cmd, source=source)
-
-
-class Client(Node):
-
-    @abstractmethod
-    def sign_in(self, location: LocationValue, destination: tuple) -> bool:
-        """
-        Sign the addresses and time in the location value with private key
-
-        :param location:    LocationValue contains ID, IP, port
-        :param destination: server's address
-        :return: False on error
-        """
-        pass
-
-    def connect(self, remote_address: tuple) -> bool:
-        """
-        Send something to punch a tunnel for that location
-
-        :param remote_address: server or remote user's address
-        :return:
-        """
-        conn = self.hub.connect(destination=remote_address, source=self.local_address)
-        if conn is None:
-            return False
-        return self.say_hi(destination=remote_address)
-
-    def _process_sign(self, location: LocationValue, destination: tuple) -> bool:
-        # sign your location for login
-        return self.sign_in(location=location, destination=destination)
-
-    def _process_from(self, location: LocationValue) -> bool:
-        # when someone is calling you
-        # respond anything (say 'HI') to build the connection.
-        if self.set_location(location=location):
-            ok1 = False
-            ok2 = False
-            if location.source_address is not None:
-                address = (location.source_address.ip, location.source_address.port)
-                ok1 = self.connect(remote_address=address)
-            if location.mapped_address is not None:
-                address = (location.mapped_address.ip, location.mapped_address.port)
-                ok2 = self.connect(remote_address=address)
-            return ok1 or ok2
-
-    def process_command(self, cmd: Command, source: tuple) -> bool:
-        cmd_type = cmd.tag
-        cmd_value = cmd.value
-        if cmd_type == Sign:
-            assert isinstance(cmd_value, LocationValue), 'sign cmd error: %s' % cmd_value
-            return self._process_sign(location=cmd_value, destination=source)
-        elif cmd_type == From:
-            assert isinstance(cmd_value, LocationValue), 'call from error: %s' % cmd_value
-            return self._process_from(location=cmd_value)
-        else:
-            return super().process_command(cmd=cmd, source=source)

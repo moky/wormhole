@@ -32,7 +32,9 @@ from .address import *
 from .command import *
 from .message import *
 from .contact import *
-from .node import *
+from .peer import *
+from .server import *
+from .client import *
 
 name = "DMTP"
 
