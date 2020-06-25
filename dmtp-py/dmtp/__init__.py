@@ -32,7 +32,7 @@ from .address import *
 from .command import *
 from .message import *
 from .contact import *
-from .peer import *
+from .node import *
 from .server import *
 from .client import *
 

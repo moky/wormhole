@@ -31,16 +31,26 @@
 from abc import abstractmethod
 from typing import Optional
 
-from udp import Hub
-from udp.mtp import PeerDelegate
-from udp.mtp import Departure
+from udp import Hub, HubListener
+from udp.mtp import PeerDelegate, Peer as UDPPeer
+from udp.mtp import Departure, Arrival
 
 from .tlv import Field
 from .command import Command, Who, Hello, Bye
 from .command import LocationValue
 from .message import Message
 from .contact import Contact
-from .peer import Peer
+
+
+class Peer(UDPPeer, HubListener):
+
+    #
+    #   HubListener
+    #
+    def data_received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
+        task = Arrival(payload=data, source=source, destination=destination)
+        self.pool.append_arrival(task=task)
+        return None
 
 
 class Node(PeerDelegate):

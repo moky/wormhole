@@ -254,6 +254,29 @@ class Hub(threading.Thread, ConnectionDelegate):
                 sock.stop()
             self.__sockets.clear()
 
+    #
+    #   Connections
+    #
+
+    def get_connection(self, destination: tuple, source: tuple) -> Optional[Connection]:
+        sock = self.__get_socket(host=source[0], port=source[1])
+        if sock is not None:
+            return sock.get_connection(remote_address=destination)
+
+    def get_connections(self, destination: tuple, source: int=0) -> set:
+        if source is 0:
+            sockets = self.__all_sockets()
+        else:
+            sockets = self.__get_sockets(port=source)
+        # get connections from these sockets
+        connections = set()
+        for sock in sockets:
+            assert isinstance(sock, Socket), 'socket error: %s' % sock
+            conn = sock.get_connection(remote_address=destination)
+            if conn is not None:
+                connections.add(conn)
+        return connections
+
     def connect(self, destination: tuple, source: Union[tuple, int]=None) -> Optional[Connection]:
         """
         Connect to the destination address by the socket bond to this source

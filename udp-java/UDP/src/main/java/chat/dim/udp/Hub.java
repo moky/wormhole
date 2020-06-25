@@ -342,8 +342,37 @@ public class Hub extends Thread implements ConnectionDelegate {
     }
 
     //
-    //  Connect / Disconnect
+    //  Connections
     //
+
+    public Connection getConnection(SocketAddress destination, SocketAddress source) {
+        Socket socket = getSocket(source);
+        if (socket == null) {
+            return null;
+        }
+        return socket.getConnection(destination);
+    }
+
+    private static Set<Connection> getConnections(SocketAddress destination, Set<Socket> sockets) {
+        // Get connections from these sockets
+        Set<Connection> connections = new LinkedHashSet<>();
+        Connection conn;
+        for (Socket sock : sockets) {
+            conn = sock.getConnection(destination);
+            if (conn != null) {
+                connections.add(conn);
+            }
+        }
+        return connections;
+    }
+
+    public Set<Connection> getConnections(SocketAddress destination, int source) {
+        return getConnections(destination, getSockets(source));
+    }
+
+    public Set<Connection> getConnections(SocketAddress destination) {
+        return getConnections(destination, allSockets());
+    }
 
     /**
      *  Connect to the destination address by the socket bond to this source address
