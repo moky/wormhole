@@ -103,7 +103,7 @@ public class Header extends Data {
     public static Header parse(byte[] data) {
         int length = data.length;
         if (length < 12) {
-            // throw new ArrayIndexOutOfBoundsException("package error: " + Arrays.toString(data));
+            //throw new ArrayIndexOutOfBoundsException("package error: " + Arrays.toString(data));
             return null;
         }
         if (data[0] != 'D' || data[1] != 'I' || data[2] != 'M') {

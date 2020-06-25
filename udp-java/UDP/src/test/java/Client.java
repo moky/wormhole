@@ -26,14 +26,20 @@ public class Client {
         Hub hub = new Hub();
         hub.open(9999);
 
-        byte[] data;
-        int index = 0;
+        StringBuilder text = new StringBuilder();
+        for (int index = 0; index < 1024; ++index) {
+            text.append(" Hello!");
+        }
 
-        while (true) {
-            data = ("PING " + ++index).getBytes();
-            info(data);
+        byte[] data;
+
+        for (int index = 0; index < 16; ++index) {
+            data = (index + " sheep:" + text).getBytes();
+            info("sending (" + data.length + " bytes): " + new String(data, Charset.forName("UTF-8")));
             hub.send(data, destination);
             Thread.sleep(2000);
         }
+
+        hub.close();
     }
 }

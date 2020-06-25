@@ -60,11 +60,15 @@ public class AttributeType extends Tag {
         this(value, UInt16Data.intToBytes(value, 2));
     }
 
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof AttributeType) {
+            return equals(((AttributeType) other).value);
+        }
+        return this == other;
+    }
     public boolean equals(int other) {
         return value == other;
-    }
-    public boolean equals(AttributeType other) {
-        return value == other.value;
     }
 
     @Override

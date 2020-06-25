@@ -2,6 +2,7 @@ import chat.dim.udp.*;
 
 import java.net.SocketAddress;
 import java.net.SocketException;
+import java.nio.charset.Charset;
 
 public class Server implements HubListener {
 
@@ -19,7 +20,8 @@ public class Server implements HubListener {
 
     @Override
     public byte[] onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
-        info(data);
+        String text = new String(data, Charset.forName("UTF-8"));
+        info("received (" + data.length + " bytes) from " + source + " to " + destination + ": " + text);
         return null;
     }
 

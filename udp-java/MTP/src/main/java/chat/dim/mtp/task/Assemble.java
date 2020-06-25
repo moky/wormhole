@@ -96,7 +96,7 @@ public class Assemble {
             if (offset < item.head.offset) {
                 continue;
             } else if (offset == item.head.offset) {
-                // throw new IllegalArgumentException("duplicated: " + item.head);
+                //throw new IllegalArgumentException("duplicated: " + item.head);
                 return false;
             }
             // got the position, insert after it

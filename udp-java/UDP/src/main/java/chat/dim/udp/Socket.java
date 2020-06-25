@@ -55,6 +55,9 @@ public class Socket extends Thread {
     public static int BUFFER_SIZE = 2048;
 
     public final SocketAddress localAddress;
+    public final String host;
+    public final int port;
+
     private final DatagramSocket socket;
 
     // connection delegate
@@ -71,7 +74,16 @@ public class Socket extends Thread {
     public Socket(SocketAddress address) throws SocketException {
         super();
         localAddress = address;
+
+        InetSocketAddress inetSocketAddress = (InetSocketAddress) address;
+        host = inetSocketAddress.getHostString();
+        port = inetSocketAddress.getPort();
+
         socket = createSocket();
+    }
+
+    public Socket(String host, int port) throws SocketException {
+        this(new InetSocketAddress(host, port));
     }
 
     public Socket(int port) throws SocketException {
@@ -106,7 +118,11 @@ public class Socket extends Thread {
     }
 
     public synchronized void setDelegate(ConnectionDelegate delegate) {
-        delegateRef = new WeakReference<>(delegate);
+        if (delegate == null) {
+            delegateRef = null;
+        } else {
+            delegateRef = new WeakReference<>(delegate);
+        }
     }
 
     //
@@ -176,26 +192,26 @@ public class Socket extends Thread {
      * @return false on connection not found
      */
     @SuppressWarnings("UnusedReturnValue")
-    public boolean disconnect(SocketAddress remoteAddress) {
-        int count = 0;
+    public Set<Connection> disconnect(SocketAddress remoteAddress) {
+        Set<Connection> removedConnections = new LinkedHashSet<>();
         Lock writeLock = connectionLock.writeLock();
         writeLock.lock();
         try {
             Iterator<Connection> iterator = connections.iterator();
-            Connection item;
+            Connection conn;
             while (iterator.hasNext()) {
-                item = iterator.next();
-                if (remoteAddress.equals(item.remoteAddress)) {
+                conn = iterator.next();
+                if (remoteAddress.equals(conn.remoteAddress)) {
                     // got one
+                    removedConnections.add(conn);
                     iterator.remove();
-                    count += 1;
                     // break;
                 }
             }
         } finally {
             writeLock.unlock();
         }
-        return count > 0;
+        return removedConnections;
     }
 
     private Connection getConnection(ConnectionStatus status) {
@@ -340,8 +356,8 @@ public class Socket extends Thread {
             DatagramPacket packet = new DatagramPacket(buffer, bufferSize);
             // receive packet from socket
             socket.receive(packet);
-            // TODO: process truncated message
             if (packet.getLength() > 0) {
+                // refresh connection time
                 updateReceivedTime(packet.getSocketAddress());
                 return packet;
             }
@@ -372,12 +388,18 @@ public class Socket extends Thread {
     }
 
     private void cache(DatagramPacket cargo) {
+        if (cargo.getOffset() > 0 || cargo.getLength() < cargo.getData().length) {
+            // remove empty spaces
+            byte[] buffer = new byte[cargo.getLength()];
+            System.arraycopy(cargo.getData(), cargo.getOffset(), buffer, 0, cargo.getLength());
+            cargo.setData(buffer);
+        }
         Lock writeLock = cargoLock.writeLock();
         writeLock.lock();
         try {
             if (cargoes.size() >= MAX_CACHE_SPACES) {
                 // drop the first package
-                cargo = cargoes.remove(0);
+                cargoes.remove(0);
             }
             // append the new package to the end
             cargoes.add(cargo);
@@ -444,7 +466,8 @@ public class Socket extends Thread {
     /**
      *  Send heartbeat to all expired connections
      */
-    public void ping() {
+    public int ping() {
+        int count = 0;
         Connection connection;
         while (true) {
             connection = getExpiredConnection();
@@ -453,13 +476,17 @@ public class Socket extends Thread {
                 break;
             }
             send(PING, connection.remoteAddress);
+            count += 1;
         }
+        return count;
     }
 
     /**
      *  Remove error connections
      */
-    public void purge() {
+    public Set<Connection> purge() {
+        Set<Connection> allConnections = new LinkedHashSet<>();
+        Set<Connection> removedConnections;
         Connection connection;
         while (true) {
             connection = getErrorConnection();
@@ -468,8 +495,12 @@ public class Socket extends Thread {
                 break;
             }
             // remove error connection (long time to receive nothing)
-            disconnect(connection.remoteAddress);
+            removedConnections = disconnect(connection.remoteAddress);
+            if (removedConnections.size() > 0) {
+                allConnections.addAll(removedConnections);
+            }
         }
+        return allConnections;
     }
 
     public void close() {

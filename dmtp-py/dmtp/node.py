@@ -106,8 +106,6 @@ class Node(PeerDelegate):
     def stop(self):
         # stop hub
         if self.__hub is not None:
-            if self.__peer is not None:
-                self.__hub.remove_listener(self.__peer)
             self.__hub.stop()
         # stop peer
         if self.__peer is not None:

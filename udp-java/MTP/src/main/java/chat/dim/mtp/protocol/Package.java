@@ -144,7 +144,7 @@ public class Package extends Data {
         // get package head
         Header head = Header.parse(data);
         if (head == null) {
-            // throw new NullPointerException("package head error: " + Arrays.toString(data));
+            //throw new NullPointerException("package head error: " + Arrays.toString(data));
             return null;
         }
         // get package body

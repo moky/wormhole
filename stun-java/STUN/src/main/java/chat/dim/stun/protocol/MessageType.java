@@ -65,18 +65,6 @@ public class MessageType extends UInt16Data {
         this(value, "MsgType-" + Integer.toHexString(value));
     }
 
-    public boolean equals(int other) {
-        return value == other;
-    }
-    public boolean equals(MessageType other) {
-        return value == other.value;
-    }
-
-    @Override
-    public int hashCode() {
-        return Long.hashCode(value);
-    }
-
     @Override
     public String toString() {
         return name;

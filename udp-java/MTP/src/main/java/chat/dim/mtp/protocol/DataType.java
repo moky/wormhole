@@ -64,11 +64,15 @@ public class DataType {
         this(value, "DataType-" + Integer.toHexString(value));
     }
 
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof DataType) {
+            return equals(((DataType) other).value);
+        }
+        return this == other;
+    }
     public boolean equals(int other) {
         return value == other;
-    }
-    public boolean equals(DataType other) {
-        return value == other.value;
     }
 
     @Override

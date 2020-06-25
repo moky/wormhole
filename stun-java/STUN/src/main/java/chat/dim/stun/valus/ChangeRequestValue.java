@@ -84,16 +84,20 @@ public class ChangeRequestValue extends AttributeValue {
         this(value, "ChangeRequestValue-"+value);
     }
 
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof ChangeRequestValue) {
+            return equals(((ChangeRequestValue) other).value);
+        }
+        return this == other;
+    }
     public boolean equals(int other) {
         return value == other;
-    }
-    public boolean equals(ChangeRequestValue other) {
-        return value == other.value;
     }
 
     @Override
     public int hashCode() {
-        return Long.hashCode(value);
+        return Integer.hashCode(value);
     }
 
     @Override

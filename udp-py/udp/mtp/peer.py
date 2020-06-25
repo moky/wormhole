@@ -188,9 +188,13 @@ class Peer(threading.Thread):
 
     def __init__(self):
         super().__init__()
-        self.running = False
+        self.__running = False
         self.__pool = None
         self.__delegate: weakref.ReferenceType = None
+
+    @property
+    def running(self) -> bool:
+        return self.__running
 
     @property
     def pool(self) -> Pool:
@@ -215,14 +219,14 @@ class Peer(threading.Thread):
             self.__delegate = weakref.ref(value)
 
     def start(self):
-        self.running = True
+        self.__running = True
         super().start()
 
     def stop(self):
-        self.running = False
+        self.__running = False
 
     def run(self):
-        while self.running:
+        while self.__running:
             try:
                 pool = self.pool
                 delegate = self.delegate

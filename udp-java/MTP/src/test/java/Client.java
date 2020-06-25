@@ -1,15 +1,14 @@
 
 import java.net.InetSocketAddress;
 import java.net.SocketException;
-
-import chat.dim.udp.Hub;
+import java.nio.charset.Charset;
 
 public class Client extends Node {
 
     static String HOST = "127.0.0.1";
     static int PORT = 9999;
 
-    public Client(String host, int port) {
+    public Client(String host, int port) throws SocketException {
         super(host, port);
     }
 
@@ -23,22 +22,23 @@ public class Client extends Node {
 
         InetSocketAddress destination = new InetSocketAddress(Server.HOST, Server.PORT);
 
-        Hub hub = new Hub();
-        hub.open(PORT);
-        hub.start();
-
         Client client = new Client(HOST, PORT);
-        client.setHub(hub);
+
+        StringBuilder text = new StringBuilder();
+        for (int index = 0; index < 1024; ++index) {
+            text.append(" Hello!");
+        }
 
         byte[] data;
-        int index = 0;
 
-        while (true) {
-            data = ("PING " + ++index).getBytes();
-            info(data);
+        for (int index = 0; index < 16; ++index) {
+            data = (index + " sheep:" + text).getBytes();
+            info("sending (" + data.length + " bytes): " + new String(data, Charset.forName("UTF-8")));
             client.sendCommand(data, destination);
             client.sendMessage(data, destination);
             Thread.sleep(2000);
         }
+
+        client.stop();
     }
 }

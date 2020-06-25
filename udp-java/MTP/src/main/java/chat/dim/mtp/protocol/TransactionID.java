@@ -56,11 +56,11 @@ public class TransactionID extends Data {
     //
 
     public static synchronized TransactionID create() {
-        if (s_low < 0xFFFFFFFF) {
+        if (s_low < 0xFFFFFFFFL) {
             s_low += 1;
         } else {
             s_low = 0;
-            if (s_high < 0xFFFFFFFF) {
+            if (s_high < 0xFFFFFFFFL) {
                 s_high += 1;
             } else {
                 s_high = 0;

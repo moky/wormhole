@@ -44,14 +44,18 @@ public class IntData extends Data {
         this.value = value;
     }
 
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof IntData) {
+            return equals(((IntData) other).value);
+        }
+        return this == other;
+    }
     public boolean equals(int other) {
         return value == other;
     }
     public boolean equals(long other) {
         return value == other;
-    }
-    public boolean equals(IntData other) {
-        return value == other.value;
     }
 
     @Override

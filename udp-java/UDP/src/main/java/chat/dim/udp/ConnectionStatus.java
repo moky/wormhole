@@ -43,10 +43,6 @@ public enum ConnectionStatus {
         this.value = value;
     }
 
-    public boolean equals(ConnectionStatus other) {
-        return this.value == other.value;
-    }
-
     public static ConnectionStatus evaluate(float now,
                                             float sendExpired,
                                             float receiveExpired,

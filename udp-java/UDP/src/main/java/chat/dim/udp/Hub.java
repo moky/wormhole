@@ -30,6 +30,7 @@
  */
 package chat.dim.udp;
 
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
@@ -107,7 +108,6 @@ public class Hub extends Thread implements ConnectionDelegate {
             while (iterator.hasNext()) {
                 item = iterator.next().get();
                 if (listener.equals(item)) {
-                    // got one
                     iterator.remove();
                     count += 1;
                     // break;
@@ -123,7 +123,8 @@ public class Hub extends Thread implements ConnectionDelegate {
     //  Sockets
     //
 
-    private Socket getSocket() {
+    private Socket anySocket() {
+        // Get arbitrary socket
         Socket socket = null;
         Lock readLock = socketLock.readLock();
         readLock.lock();
@@ -138,7 +139,39 @@ public class Hub extends Thread implements ConnectionDelegate {
         return socket;
     }
 
+    private Set<Socket> allSockets() {
+        // Get all sockets
+        Set<Socket> all = new LinkedHashSet<>();
+        Lock readLock = socketLock.readLock();
+        readLock.lock();
+        try {
+            all.addAll(sockets);
+        } finally {
+            readLock.unlock();
+        }
+        return all;
+    }
+
+    private Set<Socket> getSockets(int port) {
+        // Get all sockets bond to this port
+        Set<Socket> matchedSockets = new LinkedHashSet<>();
+        Lock readLock = socketLock.readLock();
+        readLock.lock();
+        try {
+            InetSocketAddress address;
+            for (Socket item : sockets) {
+                if (port == item.port) {
+                    matchedSockets.add(item);
+                }
+            }
+        } finally {
+            readLock.unlock();
+        }
+        return matchedSockets;
+    }
+
     private Socket getSocket(int port) {
+        // Get arbitrary socket bond to this port
         Socket socket = null;
         assert port != 0 : "port should not be ZERO";
         Lock readLock = socketLock.readLock();
@@ -146,10 +179,7 @@ public class Hub extends Thread implements ConnectionDelegate {
         try {
             InetSocketAddress address;
             for (Socket item : sockets) {
-                assert item.localAddress instanceof InetSocketAddress : "address error: " + item.localAddress;
-                address = (InetSocketAddress) item.localAddress;
-                if (port == address.getPort()) {
-                    // got it
+                if (port == item.port) {
                     socket = item;
                     break;
                 }
@@ -161,46 +191,15 @@ public class Hub extends Thread implements ConnectionDelegate {
     }
 
     private Socket getSocket(SocketAddress address) {
-        if (address == null) {
-            return getSocket();
-        }
-        assert address instanceof InetSocketAddress : "address error: " + address;
-        InetSocketAddress inetSocketAddress = (InetSocketAddress) address;
-        String host = inetSocketAddress.getHostString();
-        int port = inetSocketAddress.getPort();
-        if (inetSocketAddress.getAddress().isAnyLocalAddress()) {
-            // get by port
-            return getSocket(port);
-        }
+        // Get the socket bond to this address (host, port)
         Socket socket = null;
         Lock readLock = socketLock.readLock();
         readLock.lock();
         try {
-            boolean portMatched = false;
-            // 1. check address exactly
             for (Socket item : sockets) {
-                assert item.localAddress instanceof InetSocketAddress : "address error: " + item.localAddress;
-                inetSocketAddress = (InetSocketAddress) item.localAddress;
-                if (port == inetSocketAddress.getPort()) {
-                    portMatched = true;
-                    if (host.equals(inetSocketAddress.getHostString())) {
-                        // got it
-                        socket = item;
-                        break;
-                    }
-                }
-            }
-            if (portMatched) {
-                // 2. check sockets bond to '0.0.0.0'
-                for (Socket item : sockets) {
-                    inetSocketAddress = (InetSocketAddress) item.localAddress;
-                    if (port == inetSocketAddress.getPort()) {
-                        if (inetSocketAddress.getAddress().isAnyLocalAddress()) {
-                            // got it
-                            socket = item;
-                            break;
-                        }
-                    }
+                if (address.equals(item.localAddress)) {
+                    socket = item;
+                    break;
                 }
             }
         } finally {
@@ -244,17 +243,30 @@ public class Hub extends Thread implements ConnectionDelegate {
     }
 
     public Socket open(int port) throws SocketException {
-        return open(new InetSocketAddress(port));
+        // get any socket bond to this port
+        Socket socket;
+        Lock writeLock = socketLock.writeLock();
+        writeLock.lock();
+        try {
+            socket = getSocket(port);
+            if (socket == null) {
+                socket = createSocket(new InetSocketAddress(port));
+                sockets.add(socket);
+            }
+        } finally {
+            writeLock.unlock();
+        }
+        return socket;
     }
 
     /**
-     *  Remove the socket on this address (port)
+     *  Remove the socket on this address
      *
      * @param address - address contains IP & port
      * @return false on not found
      */
-    public boolean close(SocketAddress address) {
-        int count = 0;
+    public Set<Socket> close(SocketAddress address) {
+        Set<Socket> closedSockets = new LinkedHashSet<>();
         Lock writeLock = socketLock.writeLock();
         writeLock.lock();
         try {
@@ -265,21 +277,44 @@ public class Hub extends Thread implements ConnectionDelegate {
                     break;
                 }
                 socket.close();
+                closedSockets.add(socket);
                 sockets.remove(socket);
-                count += 1;
             }
         } finally {
             writeLock.unlock();
         }
-        return count > 0;
+        return closedSockets;
     }
 
-    public boolean close(String host, int port) {
+    public Set<Socket> close(String host, int port) {
         return close(new InetSocketAddress(host, port));
     }
 
-    public boolean close(int port) {
-        return close(new InetSocketAddress(port));
+    /**
+     *  Remove all sockets on this port
+     *
+     * @param port -
+     * @return false on not found
+     */
+    public Set<Socket> close(int port) {
+        Set<Socket> closedSockets = new LinkedHashSet<>();
+        Lock writeLock = socketLock.writeLock();
+        writeLock.lock();
+        try {
+            Socket socket;
+            while (true) {
+                socket = getSocket(port);
+                if (socket == null) {
+                    break;
+                }
+                socket.close();
+                closedSockets.add(socket);
+                sockets.remove(socket);
+            }
+        } finally {
+            writeLock.unlock();
+        }
+        return closedSockets;
     }
 
     public void start() {
@@ -310,6 +345,13 @@ public class Hub extends Thread implements ConnectionDelegate {
     //  Connect / Disconnect
     //
 
+    /**
+     *  Connect to the destination address by the socket bond to this source address
+     *
+     * @param destination - remote IP and port
+     * @param source      - local IP and port
+     * @return connection
+     */
     public Connection connect(SocketAddress destination, SocketAddress source) {
         Socket socket = getSocket(source);
         if (socket == null) {
@@ -318,28 +360,81 @@ public class Hub extends Thread implements ConnectionDelegate {
         return socket.connect(destination);
     }
 
+    /**
+     *  Connect to the destination address by any socket bond to this source port
+     *
+     * @param destination - remote IP and port
+     * @param source      - local port
+     * @return connection
+     */
     public Connection connect(SocketAddress destination, int source) {
-        return connect(destination, new InetSocketAddress(source));
-    }
-
-    public Connection connect(SocketAddress destination) {
-        return connect(destination, null);
-    }
-
-    public boolean disconnect(SocketAddress destination, SocketAddress source) {
         Socket socket = getSocket(source);
         if (socket == null) {
-            return false;
+            return null;
+        }
+        return socket.connect(destination);
+    }
+
+    /**
+     *  Connect to the destination address by any socket exists
+     *
+     * @param destination - remote IP and port
+     * @return connection
+     */
+    public Connection connect(SocketAddress destination) {
+        Socket socket = anySocket();
+        if (socket == null) {
+            return null;
+        }
+        return socket.connect(destination);
+    }
+
+    private static Set<Connection> disconnect(SocketAddress destination, Set<Socket> sockets) {
+        Set<Connection> allConnections = new LinkedHashSet<>();
+        Set<Connection> removedConnections;
+        for (Socket sock : sockets) {
+            removedConnections = sock.disconnect(destination);
+            if (removedConnections.size() > 0) {
+                allConnections.addAll(removedConnections);
+            }
+        }
+        return allConnections;
+    }
+
+    /**
+     *  Disconnect from the destination address by the socket bond to this source address
+     *
+     * @param destination - remote IP and port
+     * @param source      - local IP and port
+     * @return removed connections
+     */
+    public Set<Connection> disconnect(SocketAddress destination, SocketAddress source) {
+        Socket socket = getSocket(source);
+        if (socket == null) {
+            return null;
         }
         return socket.disconnect(destination);
     }
 
-    public boolean disconnect(SocketAddress destination, int source) {
-        return disconnect(destination, new InetSocketAddress(source));
+    /**
+     *  Disconnect from the destination address by all sockets bond to this source port
+     *
+     * @param destination - remote IP and port
+     * @param source      - local port
+     * @return removed connections
+     */
+    public Set<Connection> disconnect(SocketAddress destination, int source) {
+        return disconnect(destination, getSockets(source));
     }
 
-    public boolean disconnect(SocketAddress destination) {
-        return disconnect(destination, null);
+    /**
+     *  Disconnect from the destination address by all sockets
+     *
+     * @param destination - remote IP and port
+     * @return removed connections
+     */
+    public Set<Connection> disconnect(SocketAddress destination) {
+        return disconnect(destination, allSockets());
     }
 
     //
@@ -347,7 +442,7 @@ public class Hub extends Thread implements ConnectionDelegate {
     //
 
     /**
-     *  Send data from source address to destination address
+     *  Send data to the destination address by the socket bound to this source address
      *
      * @param data        - UDP data package
      * @param destination - remote IP and port
@@ -362,15 +457,38 @@ public class Hub extends Thread implements ConnectionDelegate {
         return socket.send(data, destination);
     }
 
+    /**
+     *  Send data to the destination address by any socket bound to this source port
+     *
+     * @param data        - UDP data package
+     * @param destination - remote IP and port
+     * @param source      - local port
+     * @return how many bytes have been sent
+     */
     public int send(byte[] data, SocketAddress destination, int source) {
-        return send(data, destination, new InetSocketAddress(source));
+        Socket socket = getSocket(source);
+        if (socket == null) {
+            return -1;
+        }
+        return socket.send(data, destination);
     }
 
+    /**
+     *  Send data to the destination address by any socket exists
+     *
+     * @param data        - UDP data package
+     * @param destination - remote IP and port
+     * @return how many bytes have been sent
+     */
     public int send(byte[] data, SocketAddress destination) {
-        return send(data, destination, null);
+        Socket socket = anySocket();
+        if (socket == null) {
+            return -1;
+        }
+        return socket.send(data, destination);
     }
 
-    private void _sleep(double seconds) {
+    private static void _sleep(double seconds) {
         try {
             sleep((long) (seconds * 1000));
         } catch (InterruptedException e) {
@@ -378,58 +496,29 @@ public class Hub extends Thread implements ConnectionDelegate {
         }
     }
 
-    private Cargo receivePacket() {
+    private static Cargo receivePacket(Set<Socket> sockets) {
+        // Receive data from these given sockets
         Cargo cargo = null;
         DatagramPacket packet;
-        Lock readLock = socketLock.readLock();
-        readLock.lock();
-        try {
-            for (Socket item : sockets) {
-                packet = item.receive();
-                if (packet != null) {
-                    // got one
-                    cargo = new Cargo(packet, item);
-                    break;
-                }
+        for (Socket sock : sockets) {
+            packet = sock.receive();
+            if (packet != null) {
+                // got one
+                cargo = new Cargo(packet, sock);
+                break;
             }
-        } finally {
-            readLock.unlock();
         }
         return cargo;
     }
 
-    private Cargo receivePacket(SocketAddress source) {
-        if (source == null) {
-            // receive data from any socket
-            return receivePacket();
-        }
-        // receive data from appointed socket
-        Socket socket = getSocket(source);
-        if (socket == null) {
-            //throw new NullPointerException("no such socket: " + source);
-            return null;
-        }
-        DatagramPacket packet = socket.receive();
-        if (packet == null) {
-            return null;
-        }
-        return new Cargo(packet, socket);
-    }
-
-    /**
-     *  Block to receive data
-     *
-     * @param source  - local IP and port
-     * @param timeout - timeout in seconds
-     * @return data package
-     */
-    public Cargo receive(SocketAddress source, float timeout) {
+    private static Cargo receivePacket(Set<Socket> sockets, float timeout) {
+        // Block to receive data from these given sockets
         long now = (new Date()).getTime(); // milliseconds
         long expired = now + (long) (timeout * 1000);
 
         Cargo cargo = null;
         while (now <= expired) {
-            cargo = receivePacket(source);
+            cargo = receivePacket(sockets);
             if (cargo != null) {
                 // got it
                 break;
@@ -441,26 +530,70 @@ public class Hub extends Thread implements ConnectionDelegate {
         return cargo;
     }
 
+    /**
+     *  Block to receive data
+     *
+     * @param source  - local IP and port
+     * @param timeout - timeout in seconds
+     * @return cargo with data and addresses
+     */
+    public Cargo receive(SocketAddress source, float timeout) throws IOException {
+        Socket sock = getSocket(source);
+        if (sock == null) {
+            throw new IOException("socket not found: " + source);
+        }
+        Set<Socket> sockets = new LinkedHashSet<>();
+        sockets.add(sock);
+        if (timeout < 0) {
+            timeout = FOREVER;
+        }
+        return receivePacket(sockets, timeout);
+    }
+
     public Cargo receive(int port, float timeout) {
-        return receive(new InetSocketAddress(port), timeout);
+        Set<Socket> sockets = getSockets(port);
+        if (timeout < 0) {
+            timeout = FOREVER;
+        }
+        return receivePacket(sockets, timeout);
+    }
+
+    public Cargo receive(float timeout) {
+        Set<Socket> sockets = allSockets();
+        if (timeout < 0) {
+            timeout = FOREVER;
+        }
+        return receivePacket(sockets, timeout);
     }
 
     private static final long FOREVER = 31558150; // 3600 * 24 * 365.25636 (365d 6h 9m 10s)
 
-    public Cargo receive(SocketAddress source) {
-        return receive(source, FOREVER);
+    public Cargo receive(SocketAddress source) throws IOException {
+        Socket sock = getSocket(source);
+        if (sock == null) {
+            throw new IOException("socket not found: " + source);
+        }
+        Set<Socket> sockets = new LinkedHashSet<>();
+        sockets.add(sock);
+        return receivePacket(sockets);
     }
 
-    public Cargo receive(int port) {
-        return receive(new InetSocketAddress(port), FOREVER);
+    public Cargo receive(int port) throws IOException {
+        Socket sock = getSocket(port);
+        if (sock == null) {
+            throw new IOException("socket not found: " + port);
+        }
+        Set<Socket> sockets = new LinkedHashSet<>();
+        sockets.add(sock);
+        return receivePacket(sockets);
     }
 
-    public Cargo receive(float timeout) {
-        return receive(null, timeout);
-    }
-
-    public Cargo receive() {
-        return receive(null, FOREVER);
+    public Cargo receive() throws IOException {
+        Set<Socket> sockets = allSockets();
+        if (sockets.size() == 0) {
+            throw new IOException("socket not found");
+        }
+        return receivePacket(sockets);
     }
 
     @Override
@@ -473,7 +606,7 @@ public class Hub extends Thread implements ConnectionDelegate {
         while (running) {
             try {
                 // try to receive data
-                cargo = receivePacket();
+                cargo = receivePacket(allSockets());
                 if (cargo == null) {
                     // received nothing, have a rest
                     _sleep(0.1);
@@ -574,7 +707,12 @@ public class Hub extends Thread implements ConnectionDelegate {
             // process by run()
             return;
         }
-        Cargo cargo = receive(connection.localAddress);
+        Cargo cargo = null;
+        try {
+            cargo = receive(connection.localAddress);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         if (cargo == null) {
             // assert false : "receive error";
             return;

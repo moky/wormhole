@@ -170,16 +170,16 @@ class Socket(threading.Thread):
     def disconnect(self, remote_address: tuple) -> set:
         """ remove remote address from heartbeat tasks """
         with self.__connections_lock:
-            removed = set()
+            removed_connections = set()
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
                 if conn.remote_address == remote_address:
                     # got one
-                    removed.add(conn)
+                    removed_connections.add(conn)
                     # break
-            for conn in removed:
+            for conn in removed_connections:
                 self.__connections.remove(conn)
-            return removed
+            return removed_connections
 
     def __connection_by_status(self, status: ConnectionStatus) -> Optional[Connection]:
         """ get connection by status """
@@ -306,24 +306,31 @@ class Socket(threading.Thread):
             except Exception as error:
                 print('Socket.run error: %s' % error)
 
-    def ping(self):
+    def ping(self) -> int:
         """ send heartbeat to all expired connections """
+        count = 0
         while True:
             conn = self.__expired_connection()
             if conn is None:
                 # no more expired connection
                 break
             self.send(data=b'PING', remote_address=conn.remote_address)
+            count += 1
+        return count
 
-    def purge(self):
+    def purge(self) -> set:
         """ remove error connections """
+        all_connections = set()
         while True:
             conn = self.__error_connection()
             if conn is None:
                 # no more error connection
                 break
             # remove error connection (long time to receive nothing)
-            self.disconnect(remote_address=conn.remote_address)
+            removed_connections = self.disconnect(remote_address=conn.remote_address)
+            if len(removed_connections) > 0:
+                all_connections = all_connections.union(removed_connections)
+        return all_connections
 
     def close(self):
         self.__socket.close()

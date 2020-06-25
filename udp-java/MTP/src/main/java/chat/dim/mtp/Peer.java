@@ -55,6 +55,10 @@ public class Peer extends Thread {
         super();
     }
 
+    public boolean isRunning() {
+        return running;
+    }
+
     public synchronized Pool getPool() {
         if (pool == null) {
             pool = createPool();
@@ -73,7 +77,11 @@ public class Peer extends Thread {
         return delegateRef.get();
     }
     public synchronized void setDelegate(PeerDelegate delegate) {
-        delegateRef = new WeakReference<>(delegate);
+        if (delegate == null) {
+            delegateRef = null;
+        } else {
+            delegateRef = new WeakReference<>(delegate);
+        }
     }
 
     public void start() {
@@ -154,7 +162,7 @@ public class Peer extends Thread {
     private void handle(Arrival task) {
         Package pack = Package.parse(task.payload);
         if (pack == null) {
-            // throw new NullPointerException("package error: " + Arrays.toString(task.payload));
+            //throw new NullPointerException("package error: " + Arrays.toString(task.payload));
             return;
         }
         boolean ok;

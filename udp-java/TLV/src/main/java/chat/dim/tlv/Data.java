@@ -47,6 +47,13 @@ public class Data {
         this.length = data.length;
     }
 
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof Data) {
+            return equals(((Data) other).data);
+        }
+        return this == other;
+    }
     public boolean equals(byte[] other) {
         if (other.length != data.length) {
             return false;
@@ -58,9 +65,6 @@ public class Data {
             }
         }
         return true;
-    }
-    public boolean equals(Data other) {
-        return equals(other.data);
     }
 
     @Override
