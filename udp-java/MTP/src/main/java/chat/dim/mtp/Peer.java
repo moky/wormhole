@@ -41,7 +41,7 @@ import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.task.Arrival;
 import chat.dim.mtp.task.Assemble;
 import chat.dim.mtp.task.Departure;
-import chat.dim.tlv.IntData;
+import chat.dim.tlv.IntegerData;
 
 public class Peer extends Thread {
 
@@ -224,8 +224,8 @@ public class Peer extends Thread {
         } else if (type.equals(DataType.MessageFragment)) {
             type = DataType.MessageRespond;
             body = new byte[10];
-            byte[] pages = IntData.intToBytes(head.pages, 4);
-            byte[] offset = IntData.intToBytes(head.offset, 4);
+            byte[] pages = IntegerData.intToBytes(head.pages, 4);
+            byte[] offset = IntegerData.intToBytes(head.offset, 4);
             System.arraycopy(pages, 0, body, 0, 4);
             System.arraycopy(offset, 0, body, 4, 4);
             body[8] = 'O';
@@ -233,7 +233,14 @@ public class Peer extends Thread {
         } else {
             throw new IllegalArgumentException("data type error: " + type);
         }
-        Package response = Package.create(type, head.sn, body);
+        Package response;
+        if (head.bodyLength < 0) {
+            // UDP (unlimited)
+            response = Package.create(type, head.sn, 1, 0, -1, body);
+        } else {
+            // TCP
+            response = Package.create(type, head.sn, 1, 0, body.length, body);
+        }
         // send response directly, don't add this task to waiting list
         int res = getDelegate().sendData(response.data, remote, local);
         assert res == response.data.length : "failed to respond: " + remote + ", " + type;
@@ -271,16 +278,12 @@ public class Peer extends Thread {
     //
 
     public Departure sendCommand(Package pack, SocketAddress destination, SocketAddress source) {
+        // send command as single package
         List<Package> packages = new ArrayList<>();
         packages.add(pack);
         Departure task = new Departure(packages, destination, source);
         send(task);
         return task;
-    }
-
-    public Departure sendCommand(byte[] cmd, SocketAddress destination, SocketAddress source) {
-        Package pack = Package.create(DataType.Command, cmd);
-        return sendCommand(pack, destination, source);
     }
 
     //
@@ -293,15 +296,11 @@ public class Peer extends Thread {
             packages = new ArrayList<>();
             packages.add(pack);
         } else {
+            // split packages for large message
             packages = pack.split();
         }
         Departure task = new Departure(packages, destination, source);
         send(task);
         return task;
-    }
-
-    public Departure sendMessage(byte[] msg, SocketAddress destination, SocketAddress source) {
-        Package pack = Package.create(DataType.Message, msg);
-        return sendMessage(pack, destination, source);
     }
 }

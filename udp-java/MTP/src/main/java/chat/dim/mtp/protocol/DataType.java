@@ -66,10 +66,13 @@ public class DataType {
 
     @Override
     public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
         if (other instanceof DataType) {
             return equals(((DataType) other).value);
         }
-        return this == other;
+        return false;
     }
     public boolean equals(int other) {
         return value == other;

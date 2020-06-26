@@ -34,7 +34,7 @@ import chat.dim.tlv.UInt16Data;
 
 public class MessageLength extends UInt16Data {
 
-    public MessageLength(byte[] data, long value) {
+    public MessageLength(byte[] data, int value) {
         super(data, value);
     }
 

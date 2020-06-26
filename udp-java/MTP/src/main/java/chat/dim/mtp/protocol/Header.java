@@ -31,7 +31,7 @@
 package chat.dim.mtp.protocol;
 
 import chat.dim.tlv.Data;
-import chat.dim.tlv.IntData;
+import chat.dim.tlv.IntegerData;
 
 /*    Package Header:
  *
@@ -47,6 +47,8 @@ import chat.dim.tlv.IntData;
  *        |               Fragment Count (32 bits) OPTIONAL               |
  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *        |               Fragment Index (32 bits) OPTIONAL               |
+ *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *        |                 Body Length (32 bits) OPTIONAL                |
  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  *        ** Magic Code **:
@@ -64,45 +66,53 @@ import chat.dim.tlv.IntData;
  *            different messages.
  *
  *        ** Count & Index **:
- *            If data type is a fragment message (or respond), there is a field
- *            'count' following the transaction ID, which indicates the message
- *            was split to how many fragments; and there is another field 'offset'
- *            following the 'count'; after them is the message fragment.
+ *            If data type is a fragment message (or its respond),
+ *            there is a field 'count' following the transaction ID,
+ *            which indicates the message was split to how many fragments;
+ *            and there is another field 'offset' following the 'count'.
+ *
+ *        ** Body Length **:
+ *            Defined only for TCP stream.
+ *            If transfer by UDP, no need to define the body's length.
  */
 public class Header extends Data {
 
-    public final int headLength;
     public final DataType type;
     public final TransactionID sn;
     public final int pages;
     public final int offset;
+    public final int bodyLength;
 
     /**
      *  Create package header
      *
      * @param data    - header data as bytes
-     * @param headLen - length of header (in bytes)
      * @param type    - package body data type
      * @param sn      - transaction ID
      * @param pages   - fragment count [OPTIONAL], default is 1
      * @param offset  - fragment index [OPTIONAL], default is 0
+     * @param bodyLen - length of body [OPTIONAL], default is -1 (unlimited)
      */
-    public Header(byte[] data, int headLen, DataType type, TransactionID sn, int pages, int offset) {
+    public Header(byte[] data, DataType type, TransactionID sn, int pages, int offset, int bodyLen) {
         super(data);
-        this.headLength = headLen;
         this.type = type;
         this.sn = sn;
         this.pages = pages;
         this.offset = offset;
+        this.bodyLength = bodyLen;
     }
 
-    public Header(byte[] data, int headLen, DataType type, TransactionID sn) {
-        this(data, headLen, type, sn, 1, 0);
+    public Header(byte[] data, DataType type, TransactionID sn, int bodyLen) {
+        this(data, type, sn, 1, 0, bodyLen);
+    }
+
+    public Header(byte[] data, DataType type, TransactionID sn) {
+        this(data, type, sn, 1, 0, -1);
     }
 
     public static Header parse(byte[] data) {
         int length = data.length;
-        if (length < 12) {
+        if (length < 4) {
             //throw new ArrayIndexOutOfBoundsException("package error: " + Arrays.toString(data));
             return null;
         }
@@ -113,41 +123,78 @@ public class Header extends Data {
         // get header length & data type
         byte ch = data[3];
         int headLen = (ch & 0xF0) >> 2; // in bytes
-        DataType type = DataType.getInstance(ch & 0x0F);
-        int pos = 4;
-        // get transaction ID
-        TransactionID sn = TransactionID.parse(slice(data, pos));
-        pos += sn.data.length;
-        // get fragments count & offset
+        TransactionID sn = null;
         int pages = 1;
         int offset = 0;
-        if (type.equals(DataType.MessageFragment)) {
-            pages = (int) IntData.bytesToInt(slice(data, pos, pos + 4));
-            offset = (int) IntData.bytesToInt(slice(data, pos + 4, pos + 8));
-            pos += 8;
+        int bodyLen = -1;
+        if (headLen == 4) {
+            // simple header
+            sn = TransactionID.ZERO;
+        } else if (headLen == 8) {
+            // simple header with body length
+            sn = TransactionID.ZERO;
+            bodyLen = IntegerData.bytesToInt(slice(data, 4, 8));
+        } else if (headLen >= 12) {
+            // command/message/fragment header
+            sn = TransactionID.parse(slice(data, 4));
+            if (headLen == 16) {
+                // command/message header with body length
+                bodyLen = IntegerData.bytesToInt(slice(data, 12, 16));
+            } else if (headLen >= 20) {
+                // fragment header
+                pages = IntegerData.bytesToInt(slice(data, 12, 16));
+                offset = IntegerData.bytesToInt(slice(data, 16, 20));
+                if (headLen == 24) {
+                    // fragment header with body length
+                    bodyLen = IntegerData.bytesToInt(slice(data, 20, 24));
+                }
+            }
         }
-        return new Header(slice(data, 0, pos), headLen, type, sn, pages, offset);
+        if (sn == null) {
+            //throw new NullPointerException("head length error: " + headLen);
+            return null;
+        }
+        DataType type = DataType.getInstance(ch & 0x0F);
+        return new Header(slice(data, 0, headLen), type, sn, pages, offset, bodyLen);
     }
 
     //
     //  Factories
     //
 
-    public static Header create(DataType type, TransactionID sn, int pages, int offset) {
-        byte[] options;
-        int headLen;
-        if (type.equals(DataType.MessageFragment)) {
-            byte[] a1 = IntData.intToBytes(pages, 4);
-            byte[] a2 = IntData.intToBytes(offset, 4);
-            options = concat(a1, a2);
-            headLen = 20; // in bytes
-        } else {
-            options = new byte[0];
-            headLen = 12; // in bytes
-        }
+    public static Header create(DataType type, TransactionID sn, int pages, int offset, int bodyLen) {
+        int headLen = 4;  // in bytes
+        // transaction ID
         if (sn == null) {
             // generate transaction ID
             sn = TransactionID.create();
+            headLen += 8;
+        } else if (!sn.equals(TransactionID.ZERO)) {
+            headLen += 8;
+        }
+        byte[] options;
+        // pages & offset
+        if (type.equals(DataType.MessageFragment)) {
+            // message fragment (or its respond)
+            assert pages > 1 && pages > offset : "pages error: " + pages + ", " + offset;
+            byte[] a1 = IntegerData.intToBytes(pages, 4);
+            byte[] a2 = IntegerData.intToBytes(offset, 4);
+            options = concat(a1, a2);
+            headLen += 8;
+        } else {
+            // command message (or its respond)
+            assert pages == 1 && offset == 0 : "pages error: " + pages + ", " + offset;
+            options = new byte[0];
+        }
+        // body length
+        if (bodyLen > 0) {
+            byte[] a3 = IntegerData.intToBytes(bodyLen, 4);
+            if (options.length > 0) {
+                options = concat(options, a3);
+            } else {
+                options = a3;
+            }
+            headLen += 4;
         }
         // generate header data
         byte hl_ty = (byte) (((headLen << 2) | (type.value & 0x0F)) & 0xFF);
@@ -156,22 +203,49 @@ public class Header extends Data {
         data[1] = 'I';
         data[2] = 'M';
         data[3] = hl_ty;
-        System.arraycopy(sn.data, 0, data, 4, sn.data.length);
-        if (options.length > 0) {
-            System.arraycopy(options, 0, data, 4 + sn.data.length, options.length);
+        if (sn.equals(TransactionID.ZERO)) {
+            // simple header
+            if (options.length > 0) {
+                System.arraycopy(options, 0, data, 4, options.length);
+            }
+        } else {
+            System.arraycopy(sn.data, 0, data, 4, sn.data.length);
+            if (options.length > 0) {
+                System.arraycopy(options, 0, data, 4 + sn.data.length, options.length);
+            }
         }
-        return new Header(data, headLen, type, sn, pages, offset);
+        return new Header(data, type, sn, pages, offset, bodyLen);
+    }
+
+    //
+    //  UDP
+    //
+
+    public static Header create(DataType type, TransactionID sn, int pages, int offset) {
+        return create(type, sn, pages, offset, -1);
     }
 
     public static Header create(DataType type, int pages, int offset) {
-        return create(type, null, pages, offset);
+        return create(type, null, pages, offset, -1);
     }
 
     public static Header create(DataType type, TransactionID sn) {
-        return create(type, sn, 1, 0);
+        return create(type, sn, 1, 0, -1);
     }
 
     public static Header create(DataType type) {
-        return create(type, null, 1, 0);
+        return create(type, null, 1, 0, -1);
+    }
+
+    //
+    //  TCP
+    //
+
+    public static Header create(DataType type, TransactionID sn, int bodyLen) {
+        return create(type, sn, 1, 0, bodyLen);
+    }
+
+    public static Header create(DataType type, int bodyLen) {
+        return create(type, null, 1, 0, bodyLen);
     }
 }

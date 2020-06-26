@@ -86,10 +86,13 @@ public class ChangeRequestValue extends AttributeValue {
 
     @Override
     public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
         if (other instanceof ChangeRequestValue) {
             return equals(((ChangeRequestValue) other).value);
         }
-        return this == other;
+        return false;
     }
     public boolean equals(int other) {
         return value == other;
@@ -110,13 +113,15 @@ public class ChangeRequestValue extends AttributeValue {
         if (length == null || length.value != 4) {
             //throw new ArrayIndexOutOfBoundsException("Change-Request length error: " + length);
             return null;
-        } else if (data.length < length.value) {
+        }
+        int len = length.getIntValue();
+        if (data.length < len) {
             //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
             return null;
-        } else if (data.length > length.value) {
-            data = slice(data, 0, (int) length.value);
+        } else if (data.length > len) {
+            data = slice(data, 0, len);
         }
-        int value = (int) UInt32Data.bytesToInt(data);
+        int value = UInt32Data.bytesToInt(data);
         return getInstance(value);
     }
 

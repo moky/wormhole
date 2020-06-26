@@ -67,11 +67,13 @@ public class SoftwareValue extends AttributeValue {
         if (length == null || length.value == 0) {
             //throw new ArrayIndexOutOfBoundsException("Software length error: " + length);
             return null;
-        } else if (data.length < length.value) {
+        }
+        int len = length.getIntValue();
+        if (data.length < len) {
             //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
             return null;
-        } else if (data.length > length.value) {
-            data = slice(data, 0, (int) length.value);
+        } else if (data.length > len) {
+            data = slice(data, 0, len);
         }
         String desc = new String(data, Charset.forName("UTF-8"));
         return new SoftwareValue(data, desc.trim());

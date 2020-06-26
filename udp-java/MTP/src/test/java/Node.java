@@ -6,6 +6,7 @@ import java.nio.charset.Charset;
 import java.util.List;
 
 import chat.dim.mtp.PeerDelegate;
+import chat.dim.mtp.protocol.DataType;
 import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.protocol.TransactionID;
 import chat.dim.mtp.task.Departure;
@@ -71,11 +72,13 @@ public class Node implements PeerDelegate {
     }
 
     public Departure sendCommand(byte[] cmd, SocketAddress destination) {
-        return peer.sendCommand(cmd, destination, localAddress);
+        Package pack = Package.create(DataType.Command, cmd);
+        return peer.sendCommand(pack, destination, localAddress);
     }
 
     public Departure sendMessage(byte[] msg, SocketAddress destination) {
-        return peer.sendMessage(msg, destination, localAddress);
+        Package pack = Package.create(DataType.Command, msg);
+        return peer.sendMessage(pack, destination, localAddress);
     }
 
     //

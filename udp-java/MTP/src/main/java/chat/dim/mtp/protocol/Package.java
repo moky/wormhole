@@ -86,8 +86,19 @@ public class Package extends Data {
         List<Package> packages = new ArrayList<>();
         DataType type = DataType.MessageFragment;
         TransactionID sn = head.sn;
-        for (int index = 0; index < count; ++index) {
-            packages.add(create(type, sn, count, index, fragments.get(index)));
+        byte[] data;
+        if (head.bodyLength < 0) {
+            // UDP (unlimited)
+            for (int index = 0; index < count; ++index) {
+                data = fragments.get(index);
+                packages.add(create(type, sn, count, index, -1, data));
+            }
+        } else {
+            // TCP
+            for (int index = 0; index < count; ++index) {
+                data = fragments.get(index);
+                packages.add(create(type, sn, count, index, data.length, data));
+            }
         }
         return packages;
     }
@@ -132,7 +143,13 @@ public class Package extends Data {
             pos += fra.length;
         }
         type = DataType.Message;
-        return create(type, sn, buffer);
+        if (first.head.bodyLength < 0) {
+            // UDP package (unlimited)
+            return create(type, sn, 1, 0, -1, buffer);
+        } else {
+            // TCP package
+            return create(type, sn, 1, 0, buffer.length, buffer);
+        }
     }
 
     public static List<Package> sort(List<Package> packages) {
@@ -147,8 +164,28 @@ public class Package extends Data {
             //throw new NullPointerException("package head error: " + Arrays.toString(data));
             return null;
         }
-        // get package body
-        byte[] body = slice(data, head.headLength);
+        // check lengths
+        int dataLen = data.length;
+        int headLen = head.length;
+        int bodyLen = head.bodyLength;
+        if (bodyLen < 0) {
+            // unlimited
+            bodyLen = dataLen - headLen;
+        }
+        int packLen = headLen + bodyLen;
+        if (dataLen < packLen) {
+            //throw new ArrayIndexOutOfBoundsException("package length error: " + Arrays.toString(data));
+            return null;
+        } else if (dataLen > packLen) {
+            data = slice(data, 0, packLen);
+        }
+        // get body
+        byte[] body;
+        if (bodyLen == 0) {
+            body = new byte[0];
+        } else {
+            body = slice(data, headLen);
+        }
         return new Package(data, head, body);
     }
 
@@ -156,25 +193,50 @@ public class Package extends Data {
     //  Factories
     //
 
-    public static Package create(DataType type, TransactionID sn, int pages, int offset, byte[] body) {
+    public static Package create(DataType type, TransactionID sn, int pages, int offset, int bodyLen, byte[] body) {
         if (body == null) {
             body = new byte[0];
         }
         // create package with header
-        Header head = Header.create(type, sn, pages, offset);
-        byte[] data = concat(head.data, body);
+        Header head = Header.create(type, sn, pages, offset, bodyLen);
+        byte[] data;
+        if (body.length > 0) {
+            data = concat(head.data, body);
+        } else {
+            data = head.data;
+        }
         return new Package(data, head, body);
     }
 
+    //
+    //  UDP
+    //
+
+    public static Package create(DataType type, TransactionID sn, int pages, int offset, byte[] body) {
+        return create(type, sn, pages, offset, -1, body);
+    }
+
     public static Package create(DataType type, int pages, int offset, byte[] body) {
-        return create(type, null, pages, offset, body);
+        return create(type, null, pages, offset, -1, body);
     }
 
     public static Package create(DataType type, TransactionID sn, byte[] body) {
-        return create(type, sn, 1, 0, body);
+        return create(type, sn, 1, 0, -1, body);
     }
 
     public static Package create(DataType type, byte[] body) {
-        return create(type, null, 1, 0, body);
+        return create(type, null, 1, 0, -1, body);
+    }
+
+    //
+    //  TCP
+    //
+
+    public static Package createTCP(DataType type, TransactionID sn, byte[] body) {
+        return create(type, sn, 1, 0, body.length, body);
+    }
+
+    public static Package createTCP(DataType type, byte[] body) {
+        return create(type, null, 1, 0, body.length, body);
     }
 }

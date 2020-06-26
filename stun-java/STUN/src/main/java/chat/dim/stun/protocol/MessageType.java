@@ -89,7 +89,7 @@ public class MessageType extends UInt16Data {
         } else if (data.length > 2) {
             data = slice(data, 0, 2);
         }
-        return getInstance((int) bytesToInt(data));
+        return getInstance(bytesToInt(data));
     }
 
     private static final Map<Integer, MessageType> s_types = new HashMap<>();

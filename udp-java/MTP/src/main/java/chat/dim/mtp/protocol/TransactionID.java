@@ -44,7 +44,8 @@ public class TransactionID extends Data {
     public static TransactionID parse(byte[] data) {
         int length = data.length;
         if (length < 8) {
-            throw new ArrayIndexOutOfBoundsException("Transaction ID length error: " + length);
+            //throw new ArrayIndexOutOfBoundsException("Transaction ID length error: " + length);
+            return null;
         } else if (length > 8) {
             data = slice(data, 0, 8);
         }
@@ -71,6 +72,8 @@ public class TransactionID extends Data {
         byte[] data = concat(hi, lo);
         return new TransactionID(data);
     }
+
+    public static final TransactionID ZERO = new TransactionID(new byte[8]);
 
     private static long s_high;
     private static long s_low;

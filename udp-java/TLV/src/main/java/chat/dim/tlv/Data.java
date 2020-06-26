@@ -49,10 +49,13 @@ public class Data {
 
     @Override
     public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
         if (other instanceof Data) {
             return equals(((Data) other).data);
         }
-        return this == other;
+        return false;
     }
     public boolean equals(byte[] other) {
         if (other.length != data.length) {

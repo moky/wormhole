@@ -33,7 +33,7 @@ package chat.dim.tlv;
 /**
  *  Unsigned Integer (32-bytes)
  */
-public class UInt32Data extends IntData {
+public class UInt32Data extends IntegerData {
 
     public UInt32Data(byte[] data, long value) {
         super(data, value);
@@ -46,7 +46,7 @@ public class UInt32Data extends IntData {
         } else if (length > 4) {
             data = slice(data, 0, 4);
         }
-        long value = bytesToInt(data);
+        long value = bytesToLong(data);
         return new UInt32Data(data, value);
     }
 

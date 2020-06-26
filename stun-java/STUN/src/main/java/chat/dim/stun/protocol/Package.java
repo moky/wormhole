@@ -51,7 +51,7 @@ public class Package extends Data {
             return null;
         }
         // check message length
-        int packLen = (int) (head.length + head.msgLength.value);
+        int packLen = head.length + head.msgLength.getIntValue();
         int dataLen = data.length;
         if (dataLen < packLen) {
             //throw new IndexOutOfBoundsException("STUN package length error: " + dataLen + ", " + packLen);

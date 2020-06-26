@@ -39,7 +39,7 @@ import threading
 import time
 import weakref
 from abc import ABC, abstractmethod
-from typing import Union, Optional
+from typing import Optional
 
 from ..tlv.data import uint32_to_bytes
 
@@ -323,7 +323,12 @@ class Peer(threading.Thread):
             body = uint32_to_bytes(head.pages) + uint32_to_bytes(head.offset) + b'OK'
         else:
             raise TypeError('data type error: %s' % data_type)
-        response = Package.new(data_type=data_type, sn=head.trans_id, body=body)
+        if head.body_length < 0:
+            # UDP (unlimited)
+            response = Package.new(data_type=data_type, sn=head.trans_id, body_length=-1, body=body)
+        else:
+            # TCP
+            response = Package.new(data_type=data_type, sn=head.trans_id, body_length=len(body), body=body)
         # send response directly, don't add this task to waiting list
         res = self.delegate.send_data(data=response.data, destination=remote, source=local)
         assert res == len(response.data), 'failed to respond %s: %s' % (data_type, remote)
@@ -351,20 +356,17 @@ class Peer(threading.Thread):
             else:
                 raise AssertionError('data type error: %s' % data_type)
 
-    def send_command(self, pack: Union[Package, bytes], destination: tuple, source: tuple) -> Departure:
-        if isinstance(pack, bytes):
-            pack = Package.new(data_type=Command, body=pack)
+    def send_command(self, pack: Package, destination: tuple, source: tuple) -> Departure:
+        # send command as single package
         task = Departure(packages=[pack], destination=destination, source=source)
         self.__send(task=task)
         return task
 
-    def send_message(self, pack: Union[Package, bytes], destination: tuple, source: tuple) -> Departure:
-        if isinstance(pack, bytes):
-            pack = Package.new(data_type=Message, body=pack)
-        # split packages
+    def send_message(self, pack: Package, destination: tuple, source: tuple) -> Departure:
         if len(pack.body) <= Package.MAX_BODY_LEN or pack.head.data_type == MessageFragment:
             packages = [pack]
         else:
+            # split packages for large message
             packages = pack.split()
         task = Departure(packages=packages, destination=destination, source=source)
         self.__send(task=task)

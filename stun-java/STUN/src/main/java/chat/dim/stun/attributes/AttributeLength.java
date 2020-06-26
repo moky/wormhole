@@ -36,11 +36,11 @@ import chat.dim.tlv.UInt16Data;
 
 public class AttributeLength extends Length {
 
-    public AttributeLength(byte[] data, long value) {
+    public AttributeLength(byte[] data, int value) {
         super(data, value);
     }
 
-    public AttributeLength(long value) {
+    public AttributeLength(int value) {
         this(UInt16Data.intToBytes(value, 2), value);
     }
 
@@ -51,7 +51,7 @@ public class AttributeLength extends Length {
         } else if (length > 2) {
             data = slice(data, 0, 2);
         }
-        long value = bytesToInt(data);
+        int value = bytesToInt(data);
         assert (value & 0x0003) == 0 : "attribute length error: " + value;
         return new AttributeLength(data, value);
     }

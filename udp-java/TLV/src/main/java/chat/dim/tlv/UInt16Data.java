@@ -33,9 +33,9 @@ package chat.dim.tlv;
 /**
  *  Unsigned Short Integer (16-bytes)
  */
-public class UInt16Data extends IntData {
+public class UInt16Data extends IntegerData {
 
-    public UInt16Data(byte[] data, long value) {
+    public UInt16Data(byte[] data, int value) {
         super(data, value);
     }
 
@@ -46,7 +46,7 @@ public class UInt16Data extends IntData {
         } else if (length > 2) {
             data = slice(data, 0, 2);
         }
-        long value = bytesToInt(data);
+        int value = bytesToInt(data);
         return new UInt16Data(data, value);
     }
 

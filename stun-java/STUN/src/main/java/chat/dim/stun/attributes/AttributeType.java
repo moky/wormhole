@@ -62,10 +62,13 @@ public class AttributeType extends Tag {
 
     @Override
     public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
         if (other instanceof AttributeType) {
             return equals(((AttributeType) other).value);
         }
-        return this == other;
+        return false;
     }
     public boolean equals(int other) {
         return value == other;
@@ -92,7 +95,7 @@ public class AttributeType extends Tag {
         } else if (length > 2) {
             data = slice(data, 0, 2);
         }
-        int value = (int) UInt16Data.bytesToInt(data);
+        int value = UInt16Data.bytesToInt(data);
         return getInstance(value);
     }
 

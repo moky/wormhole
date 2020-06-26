@@ -30,9 +30,9 @@
  */
 package chat.dim.tlv;
 
-public class Length extends IntData {
+public class Length extends IntegerData {
 
-    public Length(byte[] data, long value) {
+    public Length(byte[] data, int value) {
         super(data, value);
     }
 
@@ -43,7 +43,7 @@ public class Length extends IntData {
         } else if (length > 2) {
             data = slice(data, 0, 2);
         }
-        long value = bytesToInt(data);
+        int value = bytesToInt(data);
         return new Length(data, value);
     }
 }

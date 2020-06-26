@@ -74,11 +74,13 @@ class Node(mtp.PeerDelegate):
         if self.__peer is not None:
             self.__peer.stop()
 
-    def send_message(self, msg: bytes, destination: tuple) -> mtp.Departure:
-        return self.peer.send_message(pack=msg, destination=destination, source=self.local_address)
-
     def send_command(self, cmd: bytes, destination: tuple) -> mtp.Departure:
-        return self.peer.send_command(pack=cmd, destination=destination, source=self.local_address)
+        pack = mtp.Package.new(data_type=mtp.Command, body=cmd)
+        return self.peer.send_command(pack=pack, destination=destination, source=self.local_address)
+
+    def send_message(self, msg: bytes, destination: tuple) -> mtp.Departure:
+        pack = mtp.Package.new(data_type=mtp.Message, body=msg)
+        return self.peer.send_message(pack=pack, destination=destination, source=self.local_address)
 
     #
     #   PeerDelegate
