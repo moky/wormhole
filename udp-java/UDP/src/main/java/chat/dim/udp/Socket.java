@@ -60,8 +60,8 @@ public class Socket extends Thread {
 
     private final DatagramSocket socket;
 
-    // connection delegate
-    private WeakReference<ConnectionDelegate> delegateRef = null;
+    // connection handler
+    private WeakReference<ConnectionHandler> handlerRef = null;
 
     // connections
     private final Set<Connection> connections = new LinkedHashSet<>();
@@ -90,10 +90,6 @@ public class Socket extends Thread {
         this(new InetSocketAddress(port));
     }
 
-    public boolean isRunning() {
-        return !socket.isClosed();
-    }
-
     protected DatagramSocket createSocket() throws SocketException {
         DatagramSocket socket = new DatagramSocket(localAddress);
         socket.setReuseAddress(true);
@@ -110,18 +106,18 @@ public class Socket extends Thread {
         }
     }
 
-    public synchronized ConnectionDelegate getDelegate() {
-        if (delegateRef == null) {
+    public synchronized ConnectionHandler getHandler() {
+        if (handlerRef == null) {
             return null;
         }
-        return delegateRef.get();
+        return handlerRef.get();
     }
 
-    public synchronized void setDelegate(ConnectionDelegate delegate) {
+    public synchronized void setHandler(ConnectionHandler delegate) {
         if (delegate == null) {
-            delegateRef = null;
+            handlerRef = null;
         } else {
-            delegateRef = new WeakReference<>(delegate);
+            handlerRef = new WeakReference<>(delegate);
         }
     }
 
@@ -284,10 +280,12 @@ public class Socket extends Thread {
         }
 
         // callback
-        ConnectionDelegate delegate = getDelegate();
-        if (oldStatus != null && !oldStatus.equals(newStatus) && delegate != null) {
+        if (oldStatus != null && !oldStatus.equals(newStatus)) {
             // assert connection != null: "connection error: " + remoteAddress;
-            delegate.onConnectionStatusChanged(connection, oldStatus, newStatus);
+            ConnectionHandler delegate = getHandler();
+            if (delegate != null) {
+                delegate.onConnectionStatusChanged(connection, oldStatus, newStatus);
+            }
         }
     }
 
@@ -318,10 +316,12 @@ public class Socket extends Thread {
         }
 
         // callback
-        ConnectionDelegate delegate = getDelegate();
-        if (oldStatus != null && !oldStatus.equals(newStatus) && delegate != null) {
+        if (oldStatus != null && !oldStatus.equals(newStatus)) {
             // assert connection != null: "connection error: " + remoteAddress;
-            delegate.onConnectionStatusChanged(connection, oldStatus, newStatus);
+            ConnectionHandler delegate = getHandler();
+            if (delegate != null) {
+                delegate.onConnectionStatusChanged(connection, oldStatus, newStatus);
+            }
         }
     }
 
@@ -408,13 +408,38 @@ public class Socket extends Thread {
         }
 
         // callback
-        ConnectionDelegate delegate = getDelegate();
+        ConnectionHandler delegate = getHandler();
         if (delegate != null) {
             Connection connection = getConnection(cargo.getSocketAddress());
             if (connection != null) {
                 delegate.onConnectionReceivedData(connection);
             }
         }
+    }
+
+    /*
+    @Override
+    public void start() {
+        if (isAlive()) {
+            return;
+        }
+        super.start();
+    }
+     */
+
+    /*
+    public void stop() {
+        // super.stop();
+        close();
+    }
+     */
+
+    public void close() {
+        socket.close();
+    }
+
+    private boolean isRunning() {
+        return !socket.isClosed();
     }
 
     @SuppressWarnings("SameParameterValue")
@@ -502,15 +527,4 @@ public class Socket extends Thread {
         }
         return allConnections;
     }
-
-    public void close() {
-        socket.close();
-    }
-
-    /*
-    public void stop() {
-        // super.stop();
-        close();
-    }
-     */
 }

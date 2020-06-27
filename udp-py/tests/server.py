@@ -13,7 +13,9 @@ from tests.config import SERVER_HOST, SERVER_PORT
 
 
 class Server(Node):
-    pass
+
+    def __init__(self, host: str, port: int):
+        super().__init__(local_address=(host, port))
 
 
 if __name__ == '__main__':

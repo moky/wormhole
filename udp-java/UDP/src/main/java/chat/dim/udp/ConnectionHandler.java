@@ -30,7 +30,7 @@
  */
 package chat.dim.udp;
 
-public interface ConnectionDelegate {
+public interface ConnectionHandler {
 
     /**
      *  Call when connection status changed

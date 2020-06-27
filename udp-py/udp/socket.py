@@ -34,7 +34,7 @@ import time
 import weakref
 from typing import Optional
 
-from .connection import ConnectionStatus, ConnectionDelegate, Connection
+from .connection import ConnectionStatus, ConnectionHandler, Connection
 
 
 class DatagramPacket:
@@ -93,8 +93,8 @@ class Socket(threading.Thread):
         self.__port = port
         # create socket
         self.__socket = self._create_socket()
-        # delegate
-        self.__delegate: weakref.ReferenceType = None
+        # connection handler
+        self.__handler: weakref.ReferenceType = None
         # connection list
         self.__connections = set()
         self.__connections_lock = threading.Lock()
@@ -114,10 +114,6 @@ class Socket(threading.Thread):
     def port(self) -> int:
         return self.__port
 
-    @property
-    def running(self) -> bool:
-        return not getattr(self.__socket, '_closed', False)
-
     def _create_socket(self) -> socket.socket:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -129,16 +125,16 @@ class Socket(threading.Thread):
         self.__socket.settimeout(timeout)
 
     @property
-    def delegate(self) -> Optional[ConnectionDelegate]:
-        if self.__delegate is not None:
-            return self.__delegate()
+    def handler(self) -> Optional[ConnectionHandler]:
+        if self.__handler is not None:
+            return self.__handler()
 
-    @delegate.setter
-    def delegate(self, value: ConnectionDelegate):
+    @handler.setter
+    def handler(self, value: ConnectionHandler):
         if value is None:
-            self.__delegate = None
+            self.__handler = None
         else:
-            self.__delegate = weakref.ref(value)
+            self.__handler = weakref.ref(value)
 
     #
     #  Connections
@@ -209,11 +205,14 @@ class Socket(threading.Thread):
                     old_status, new_status = conn.update_sent_time()
                     connection = conn
         # callback
-        if old_status != new_status and self.delegate is not None:
+
+        if old_status != new_status:
             # assert connection is not None, 'connection error: %s' % remote_address
-            self.delegate.connection_status_changed(connection=connection,
-                                                    old_status=old_status,
-                                                    new_status=new_status)
+            handler = self.handler
+            if handler is not None:
+                handler.connection_status_changed(connection=connection,
+                                                  old_status=old_status,
+                                                  new_status=new_status)
 
     def __update_received_time(self, remote_address: tuple):
         connection = None
@@ -227,10 +226,13 @@ class Socket(threading.Thread):
                     old_status, new_status = conn.update_received_time()
                     connection = conn
         # callback
-        if old_status != new_status and self.delegate is not None:
-            self.delegate.connection_status_changed(connection=connection,
-                                                    old_status=old_status,
-                                                    new_status=new_status)
+        if old_status != new_status:
+            # assert connection is not None, 'connection error: %s' % remote_address
+            handler = self.handler
+            if handler is not None:
+                handler.connection_status_changed(connection=connection,
+                                                  old_status=old_status,
+                                                  new_status=new_status)
 
     def send(self, data: bytes, remote_address: tuple) -> int:
         """
@@ -278,10 +280,26 @@ class Socket(threading.Thread):
             # append the new package to the end
             self.__cargoes.append(packet)
         # callback
-        if self.delegate is not None:
+        handler = self.handler
+        if handler is not None:
             connection = self.get_connection(remote_address=packet.address)
             if connection is not None:
-                self.delegate.connection_received_data(connection=connection)
+                handler.connection_received_data(connection=connection)
+
+    # def start(self):
+    #     if self.isAlive():
+    #         return
+    #     super().start()
+
+    def stop(self):
+        self.close()
+
+    def close(self):
+        self.__socket.close()
+
+    @property
+    def running(self) -> bool:
+        return not getattr(self.__socket, '_closed', False)
 
     def run(self):
         while self.running:
@@ -331,9 +349,3 @@ class Socket(threading.Thread):
             if len(removed_connections) > 0:
                 all_connections = all_connections.union(removed_connections)
         return all_connections
-
-    def close(self):
-        self.__socket.close()
-
-    def stop(self):
-        self.close()

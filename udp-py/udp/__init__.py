@@ -41,15 +41,17 @@ __all__ = [
     #
     #   Connection
     #
-    'Connection', 'ConnectionStatus',
+    'Connection', 'ConnectionStatus', 'ConnectionHandler',
 
     #
     #   Socket
     #
-    'Socket', 'DatagramPacket',
+    'Socket',
+    'DatagramPacket',
 
     #
     #   Hub
     #
     'Hub', 'HubFilter', 'HubListener',
+    'Cargo',
 ]

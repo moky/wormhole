@@ -135,7 +135,7 @@ class Connection:
         return o_cs, n_cs
 
 
-class ConnectionDelegate(ABC):
+class ConnectionHandler(ABC):
 
     @abstractmethod
     def connection_status_changed(self, connection: Connection,

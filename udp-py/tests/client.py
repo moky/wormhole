@@ -17,7 +17,7 @@ from tests.config import SERVER_HOST, SERVER_PORT, CLIENT_HOST, CLIENT_PORT
 class Client(Node):
 
     def __init__(self, host: str, port: int):
-        super().__init__(host=host, port=port)
+        super().__init__(local_address=(host, port))
         self.server_address: tuple = None
 
     def send_cmd(self, cmd: str):

@@ -64,7 +64,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  *                   V    |                   V  V  |
  */
 
-public class Hub extends Thread implements ConnectionDelegate {
+public class Hub extends Thread implements ConnectionHandler {
 
     private boolean running = false;
 
@@ -78,10 +78,6 @@ public class Hub extends Thread implements ConnectionDelegate {
 
     public Hub() {
         super();
-    }
-
-    public boolean isRunning() {
-        return running;
     }
 
     //
@@ -210,7 +206,7 @@ public class Hub extends Thread implements ConnectionDelegate {
 
     protected Socket createSocket(SocketAddress address) throws SocketException {
         Socket socket = new Socket(address);
-        socket.setDelegate(this);
+        socket.setHandler(this);
         socket.start();
         return socket;
     }
@@ -317,12 +313,22 @@ public class Hub extends Thread implements ConnectionDelegate {
         return closedSockets;
     }
 
+    @Override
     public void start() {
+        if (isAlive()) {
+            return;
+        }
         running = true;
         super.start();
     }
 
-    // stop()
+    /*
+    public void stop() {
+        // super.stop();
+        close();
+    }
+     */
+
     public void close() {
         Lock writeLock = socketLock.writeLock();
         writeLock.lock();
@@ -703,7 +709,7 @@ public class Hub extends Thread implements ConnectionDelegate {
     }
 
     //
-    //  ConnectionDelegate
+    //  ConnectionHandler
     //
 
     @Override

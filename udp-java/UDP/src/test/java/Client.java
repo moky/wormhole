@@ -1,8 +1,9 @@
-import chat.dim.udp.Hub;
 
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.nio.charset.Charset;
+
+import chat.dim.udp.Hub;
 
 public class Client {
 

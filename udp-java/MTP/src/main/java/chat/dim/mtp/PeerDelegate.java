@@ -34,7 +34,7 @@ package chat.dim.mtp;
  *
  *        +-----------------------------------------------+
  *        |                      APP                      |
- *        |                (Peer Delegate)                |
+ *        |                 (Peer Handler)                |
  *        +-----------------------------------------------+
  *                            |       A
  *                            |       |
@@ -53,53 +53,8 @@ package chat.dim.mtp;
  */
 
 import java.net.SocketAddress;
-import java.util.List;
-
-import chat.dim.mtp.protocol.Package;
-import chat.dim.mtp.protocol.TransactionID;
 
 public interface PeerDelegate {
-
-    //
-    //  Callbacks
-    //
-
-    /**
-     *  Callback for send command success
-     *
-     * @param sn          - transaction ID
-     * @param destination - remote IP and port
-     * @param source      - local IP and port
-     */
-    void onSendCommandSuccess(TransactionID sn, SocketAddress destination, SocketAddress source);
-
-    /**
-     *  Callback for send command failed
-     *
-     * @param sn          - transaction ID
-     * @param destination - remote IP and port
-     * @param source      - local IP and port
-     */
-    void onSendCommandTimeout(TransactionID sn, SocketAddress destination, SocketAddress source);
-
-    /**
-     *  Callback for send message success
-     *
-     * @param sn          - transaction ID
-     * @param destination - remote IP and port
-     * @param source      - local IP and port
-     */
-    void onSendMessageSuccess(TransactionID sn, SocketAddress destination, SocketAddress source);
-
-
-    /**
-     *  Callback for send message failed
-     *
-     * @param sn          - transaction ID
-     * @param destination - remote IP and port
-     * @param source      - local IP and port
-     */
-    void onSendMessageTimeout(TransactionID sn, SocketAddress destination, SocketAddress source);
 
     //
     //  Send
@@ -114,53 +69,4 @@ public interface PeerDelegate {
      * @return -1 on error
      */
     int sendData(byte[] data, SocketAddress destination, SocketAddress source);
-
-    //
-    //  Receive
-    //
-
-    /**
-     *  Received command data from source address.
-     *
-     * @param cmd         - command data received
-     * @param source      - remote IP and port
-     * @param destination - local IP and port
-     * @return false on error
-     */
-    boolean onReceivedCommand(byte[] cmd, SocketAddress source, SocketAddress destination);
-
-    /**
-     *  Received command data from source address.
-     *
-     * @param msg         - message data received
-     * @param source      - remote IP and port
-     * @param destination - local IP and port
-     * @return false on error
-     */
-    boolean onReceivedMessage(byte[] msg, SocketAddress source, SocketAddress destination);
-
-    //
-    //  Fragments
-    //
-
-    /**
-     *  Check message fragment from the source address, if too many incomplete tasks
-     *  from the same address, return False to reject it to avoid 'DDoS' attack.
-     *
-     * @param fragment    - message fragment
-     * @param source      - remote IP and port
-     * @param destination - local IP and port
-     * @return false on error
-     */
-    boolean checkFragment(Package fragment, SocketAddress source, SocketAddress destination);
-
-    /**
-     *  Recycle incomplete message fragments from source address.
-     *  (Override for resuming the transaction)
-     *
-     * @param fragments   - packages list
-     * @param source      - remote IP and port
-     * @param destination - local IP and port
-     */
-    void recycleFragments(List<Package> fragments, SocketAddress source, SocketAddress destination);
 }

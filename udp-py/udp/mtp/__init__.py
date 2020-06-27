@@ -51,10 +51,14 @@ __all__ = [
     #   Task
     #
     'Departure', 'Arrival', 'Assemble',
-    'Pool',
+
+    #
+    #   Pool
+    #
+    'Pool',  # 'MemPool',
 
     #
     #   Peer
     #
-    'PeerDelegate', 'Peer',
+    'Peer', 'PeerDelegate', 'PeerHandler',
 ]

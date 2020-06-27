@@ -1,8 +1,9 @@
-import chat.dim.udp.*;
 
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.charset.Charset;
+
+import chat.dim.udp.*;
 
 public class Server implements HubListener {
 
@@ -42,15 +43,14 @@ public class Server implements HubListener {
     }
 
     private static Server server = new Server();
+    private static Hub hub = new Hub();
 
     public static void main(String args[]) throws SocketException {
 
         info("Starting server (" + HOST + ":" + PORT + ") ...");
 
-        Hub hub = new Hub();
         hub.open(HOST, PORT);
         hub.start();
-
         hub.addListener(server);
     }
 }

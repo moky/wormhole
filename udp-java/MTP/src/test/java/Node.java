@@ -5,61 +5,66 @@ import java.net.SocketException;
 import java.nio.charset.Charset;
 import java.util.List;
 
-import chat.dim.mtp.PeerDelegate;
+import chat.dim.mtp.PeerHandler;
+import chat.dim.mtp.Pool;
 import chat.dim.mtp.protocol.DataType;
 import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.protocol.TransactionID;
 import chat.dim.mtp.task.Departure;
-import chat.dim.udp.Hub;
 
-public class Node implements PeerDelegate {
+public class Node implements PeerHandler {
 
     public final Peer peer;
-    public final Hub hub;
 
-    public final SocketAddress localAddress;
+    public Node(Peer peer) {
+        super();
+        this.peer = peer;
+        peer.setHandler(this);
+    }
+
+    public Node(SocketAddress address, Hub hub, Pool pool) throws SocketException {
+        this(createPeer(address, hub, pool));
+    }
+
+    public Node(SocketAddress address, Hub hub) throws SocketException {
+        this(address, hub, null);
+    }
+
+    public Node(SocketAddress address, Pool pool) throws SocketException {
+        this(address, null, pool);
+    }
 
     public Node(SocketAddress address) throws SocketException {
-        super();
-        localAddress = address;
-        peer = createPeer();
-        hub = createHub();
+        this(address, null, null);
     }
 
     public Node(String host, int port) throws SocketException {
-        this(new InetSocketAddress(host, port));
+        this(new InetSocketAddress(host, port), null, null);
     }
 
-    protected Peer createPeer() {
-        Peer peer = new Peer();
-        peer.setDelegate(this);
+    private static Peer createPeer(SocketAddress address, Hub hub, Pool pool) throws SocketException {
+        Peer peer;
+        if (hub == null) {
+            if (pool == null) {
+                peer = new Peer(address);
+            } else {
+                peer = new Peer(address, pool);
+            }
+        } else if (pool == null) {
+            peer = new Peer(address, hub);
+        } else {
+            peer = new Peer(address, hub, pool);
+        }
         //peer.start();
         return peer;
     }
 
-    protected Hub createHub() throws SocketException {
-        InetSocketAddress address = (InetSocketAddress) localAddress;
-        Hub hub = new Hub();
-        hub.open(address.getHostString(), address.getPort());
-        hub.addListener(peer);
-        //hub.start();
-        return hub;
-    }
-
     public void start() {
         // start peer
-        if (!peer.isRunning()) {
-            peer.start();
-        }
-        // start hub
-        if (!hub.isRunning()) {
-            hub.start();
-        }
+        peer.start();
     }
 
     public void stop() {
-        // stop hub
-        hub.close();
         // stop peer
         peer.close();
     }
@@ -73,16 +78,16 @@ public class Node implements PeerDelegate {
 
     public Departure sendCommand(byte[] cmd, SocketAddress destination) {
         Package pack = Package.create(DataType.Command, cmd);
-        return peer.sendCommand(pack, destination, localAddress);
+        return peer.sendCommand(pack, destination);
     }
 
     public Departure sendMessage(byte[] msg, SocketAddress destination) {
         Package pack = Package.create(DataType.Command, msg);
-        return peer.sendMessage(pack, destination, localAddress);
+        return peer.sendMessage(pack, destination);
     }
 
     //
-    //  PeerDelegate
+    //  PeerHandler
     //
 
     @Override
@@ -103,11 +108,6 @@ public class Node implements PeerDelegate {
     @Override
     public void onSendMessageTimeout(TransactionID sn, SocketAddress destination, SocketAddress source) {
 
-    }
-
-    @Override
-    public int sendData(byte[] data, SocketAddress destination, SocketAddress source) {
-        return hub.send(data, destination, source);
     }
 
     @Override

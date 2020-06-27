@@ -34,7 +34,7 @@ from weakref import WeakSet
 from abc import ABC, abstractmethod
 from typing import Optional, Union
 
-from .connection import ConnectionStatus, ConnectionDelegate, Connection
+from .connection import ConnectionStatus, ConnectionHandler, Connection
 from .socket import Socket, DatagramPacket
 
 """
@@ -141,7 +141,7 @@ class Cargo:
         return cls(data=packet.data, source=packet.address, destination=socket.local_address)
 
 
-class Hub(threading.Thread, ConnectionDelegate):
+class Hub(threading.Thread, ConnectionHandler):
 
     def __init__(self):
         super().__init__()
@@ -152,10 +152,6 @@ class Hub(threading.Thread, ConnectionDelegate):
         # listeners
         self.__listeners = WeakSet()
         self.__listeners_lock = threading.Lock()
-
-    @property
-    def running(self) -> bool:
-        return self.__running
 
     #
     #  Listeners
@@ -215,7 +211,7 @@ class Hub(threading.Thread, ConnectionDelegate):
 
     def _create_socket(self, host: str, port: int) -> Socket:
         sock = Socket(host=host, port=port)
-        sock.delegate = self
+        sock.handler = self
         sock.start()
         return sock
 
@@ -242,6 +238,8 @@ class Hub(threading.Thread, ConnectionDelegate):
             return closed_sockets
 
     def start(self):
+        if self.isAlive():
+            return
         self.__running = True
         super().start()
 
@@ -445,7 +443,7 @@ class Hub(threading.Thread, ConnectionDelegate):
         return responses
 
     #
-    #   ConnectionDelegate
+    #   ConnectionHandler
     #
     def connection_status_changed(self, connection: Connection,
                                   old_status: ConnectionStatus, new_status: ConnectionStatus):

@@ -47,27 +47,18 @@ public class Peer extends Thread {
 
     private boolean running = false;
 
-    private Pool pool = null;
-
     private WeakReference<PeerDelegate> delegateRef = null;
+    private WeakReference<PeerHandler> handlerRef = null;
+
+    public final Pool pool;
+
+    public Peer(Pool pool) {
+        super();
+        this.pool = pool;
+    }
 
     public Peer() {
-        super();
-    }
-
-    public boolean isRunning() {
-        return running;
-    }
-
-    public synchronized Pool getPool() {
-        if (pool == null) {
-            pool = createPool();
-        }
-        return pool;
-    }
-
-    protected Pool createPool() {
-        return new MemPool();
+        this(new MemPool());
     }
 
     public synchronized PeerDelegate getDelegate() {
@@ -84,7 +75,25 @@ public class Peer extends Thread {
         }
     }
 
+    public synchronized PeerHandler getHandler() {
+        if (handlerRef == null) {
+            return null;
+        }
+        return handlerRef.get();
+    }
+    public synchronized void setHandler(PeerHandler handler) {
+        if (handler == null) {
+            handlerRef = null;
+        } else {
+            handlerRef = new WeakReference<>(handler);
+        }
+    }
+
+    @Override
     public void start() {
+        if (isAlive()) {
+            return;
+        }
         running = true;
         super.start();
     }
@@ -104,15 +113,13 @@ public class Peer extends Thread {
 
     @Override
     public void run() {
-        Pool pool;
-        PeerDelegate delegate;
+        PeerHandler handler;
         int done;
         Departure departure;
         List<Assemble> assembling;
         while (running) {
             try {
-                pool = getPool();
-                delegate = getDelegate();
+                handler = getHandler();
                 // first, process all arrivals
                 done = cleanArrivals();
                 // second, get one departure task
@@ -121,7 +128,7 @@ public class Peer extends Thread {
                     // third, if no departure task, remove expired fragments
                     assembling = pool.discardFragments();
                     for (Assemble item : assembling) {
-                        delegate.recycleFragments(item.fragments, item.source, item.destination);
+                        handler.recycleFragments(item.fragments, item.source, item.destination);
                     }
                     if (done == 0) {
                         // all jobs done, have a rest. ^_^
@@ -144,7 +151,6 @@ public class Peer extends Thread {
      */
     private int cleanArrivals() {
         int done = 0;
-        Pool pool = getPool();
         int total = pool.getCountOfArrivals();
         Arrival arrival;
         while (done < total) {
@@ -170,34 +176,34 @@ public class Peer extends Thread {
         DataType type = head.type;
         if (type.equals(DataType.CommandRespond)) {
             // command response
-            if (getPool().deleteDeparture(pack, task.source, task.destination)) {
+            if (pool.deleteDeparture(pack, task.source, task.destination)) {
                 // if departure task is deleted, means it's finished
-                getDelegate().onSendCommandSuccess(head.sn, task.source, task.destination);
+                getHandler().onSendCommandSuccess(head.sn, task.source, task.destination);
             }
             return;
         } else if (type.equals(DataType.MessageRespond)) {
             // message response
-            if (getPool().deleteDeparture(pack, task.source, task.destination)) {
+            if (pool.deleteDeparture(pack, task.source, task.destination)) {
                 // if departure task is deleted, means it's finished
-                getDelegate().onSendMessageSuccess(head.sn, task.source, task.destination);
+                getHandler().onSendMessageSuccess(head.sn, task.source, task.destination);
             }
             return;
         } else if (type.equals(DataType.Command)) {
             // handle command
-            ok = getDelegate().onReceivedCommand(pack.body, task.source, task.destination);
+            ok = getHandler().onReceivedCommand(pack.body, task.source, task.destination);
         } else if (type.equals(DataType.Message)) {
             // handle message
-            ok = getDelegate().onReceivedMessage(pack.body, task.source, task.destination);
+            ok = getHandler().onReceivedMessage(pack.body, task.source, task.destination);
         } else {
             // handle message fragment
             assert type.equals(DataType.MessageFragment) : "data type error: " + type;
-            ok = getDelegate().checkFragment(pack, task.source, task.destination);
+            ok = getHandler().checkFragment(pack, task.source, task.destination);
             if (ok) {
                 // assemble fragments
-                Package msg = getPool().insertFragment(pack, task.source, task.destination);
+                Package msg = pool.insertFragment(pack, task.source, task.destination);
                 if (msg != null) {
                     // all fragments received
-                    getDelegate().onReceivedMessage(msg.body, task.source, task.destination);
+                    getHandler().onReceivedMessage(msg.body, task.source, task.destination);
                 }
             }
         }
@@ -251,9 +257,9 @@ public class Peer extends Thread {
     //
 
     private void send(Departure task) {
-        PeerDelegate delegate = getDelegate();
-        if (getPool().appendDeparture(task)) {
+        if (pool.appendDeparture(task)) {
             // treat the task as a bundle of packages
+            PeerDelegate delegate = getDelegate();
             int res;
             List<Package> packages = task.packages;
             for (Package item : packages) {
@@ -264,9 +270,9 @@ public class Peer extends Thread {
             // mission failed
             DataType type = task.type;
             if (type.equals(DataType.Command)) {
-                delegate.onSendCommandTimeout(task.sn, task.destination, task.source);
+                getHandler().onSendCommandTimeout(task.sn, task.destination, task.source);
             } else if (type.equals(DataType.Message)) {
-                delegate.onSendMessageTimeout(task.sn, task.destination, task.source);
+                getHandler().onSendMessageTimeout(task.sn, task.destination, task.source);
             } else {
                 throw new IllegalArgumentException("data type error: " + type);
             }

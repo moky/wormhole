@@ -55,7 +55,7 @@ from .pool import Pool, MemPool
 
         +-----------------------------------------------+
         |                      APP                      |
-        |                (Peer Delegate)                |
+        |                 (Peer Handler)                |
         +-----------------------------------------------+
                             |       A
                             |       |
@@ -75,6 +75,29 @@ from .pool import Pool, MemPool
 
 
 class PeerDelegate(ABC):
+
+    #
+    #  Send
+    #
+
+    @abstractmethod
+    def send_data(self, data: bytes, destination: tuple, source: tuple) -> int:
+        """
+        Send data to destination address.
+
+        :param data:        data package to send
+        :param destination: remote address
+        :param source:      local address
+        :return: -1 on error
+        """
+        raise NotImplemented
+
+
+class PeerHandler(ABC):
+
+    #
+    #  Callbacks
+    #
 
     # @abstractmethod
     def send_command_success(self, trans_id: TransactionID, destination: tuple, source: tuple):
@@ -120,17 +143,9 @@ class PeerDelegate(ABC):
         """
         pass
 
-    @abstractmethod
-    def send_data(self, data: bytes, destination: tuple, source: tuple) -> int:
-        """
-        Send data to destination address.
-
-        :param data:        data package to send
-        :param destination: remote address
-        :param source:      local address
-        :return: -1 on error
-        """
-        raise NotImplemented
+    #
+    #  Received
+    #
 
     @abstractmethod
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
@@ -186,25 +201,18 @@ class PeerDelegate(ABC):
 
 class Peer(threading.Thread):
 
-    def __init__(self):
+    def __init__(self, pool: Pool=None):
         super().__init__()
         self.__running = False
-        self.__pool = None
         self.__delegate: weakref.ReferenceType = None
-
-    @property
-    def running(self) -> bool:
-        return self.__running
+        self.__handler: weakref.ReferenceType = None
+        if pool is None:
+            pool = MemPool()
+        self.__pool = pool
 
     @property
     def pool(self) -> Pool:
-        if self.__pool is None:
-            self.__pool = self._create_pool()
         return self.__pool
-
-    # noinspection PyMethodMayBeStatic
-    def _create_pool(self) -> Pool:
-        return MemPool()
 
     @property
     def delegate(self) -> Optional[PeerDelegate]:
@@ -218,7 +226,21 @@ class Peer(threading.Thread):
         else:
             self.__delegate = weakref.ref(value)
 
+    @property
+    def handler(self) -> Optional[PeerHandler]:
+        if self.__handler is not None:
+            return self.__handler()
+
+    @handler.setter
+    def handler(self, value: PeerHandler):
+        if value is None:
+            self.__handler = None
+        else:
+            self.__handler = weakref.ref(value)
+
     def start(self):
+        if self.isAlive():
+            return
         self.__running = True
         super().start()
 
@@ -229,7 +251,7 @@ class Peer(threading.Thread):
         while self.__running:
             try:
                 pool = self.pool
-                delegate = self.delegate
+                handler = self.handler
                 # first, process all arrivals
                 done = self.__clean_arrivals()
                 # second, get one departure task
@@ -239,8 +261,8 @@ class Peer(threading.Thread):
                     assembling = pool.discard_fragments()
                     for item in assembling:
                         assert isinstance(item, Assemble), 'assemble error: %s' % item
-                        delegate.recycle_fragments(fragments=item.fragments,
-                                                   source=item.source, destination=item.destination)
+                        handler.recycle_fragments(fragments=item.fragments,
+                                                  source=item.source, destination=item.destination)
                     if done == 0:
                         # all jobs done, have a rest. ^_^
                         time.sleep(0.1)
@@ -280,31 +302,31 @@ class Peer(threading.Thread):
             trans_id = head.trans_id
             if self.pool.delete_departure(response=pack, destination=task.source, source=task.destination):
                 # if departure task is deleted, means it's finished
-                self.delegate.send_command_success(trans_id=trans_id, destination=task.source, source=task.destination)
+                self.handler.send_command_success(trans_id=trans_id, destination=task.source, source=task.destination)
             return None
         elif data_type == MessageRespond:
             # message response
             trans_id = head.trans_id
             if self.pool.delete_departure(response=pack, destination=task.source, source=task.destination):
                 # if departure task is deleted, means it's finished
-                self.delegate.send_message_success(trans_id=trans_id, destination=task.source, source=task.destination)
+                self.handler.send_message_success(trans_id=trans_id, destination=task.source, source=task.destination)
             return None
         elif data_type == Command:
             # handle command
-            ok = self.delegate.received_command(cmd=pack.body, source=task.source, destination=task.destination)
+            ok = self.handler.received_command(cmd=pack.body, source=task.source, destination=task.destination)
         elif data_type == Message:
             # handle message
-            ok = self.delegate.received_message(msg=pack.body, source=task.source, destination=task.destination)
+            ok = self.handler.received_message(msg=pack.body, source=task.source, destination=task.destination)
         else:
             # handle message fragment
             assert data_type == MessageFragment, 'data type error: %s' % data_type
-            ok = self.delegate.check_fragment(fragment=pack, source=task.source, destination=task.destination)
+            ok = self.handler.check_fragment(fragment=pack, source=task.source, destination=task.destination)
             if ok:
                 # assemble fragments
                 msg = self.pool.insert_fragment(fragment=pack, source=task.source, destination=task.destination)
                 if msg is not None:
                     # all fragments received
-                    self.delegate.received_message(msg=msg.body, source=task.source, destination=task.destination)
+                    self.handler.received_message(msg=msg.body, source=task.source, destination=task.destination)
         # respond to the sender
         if ok:
             self.__respond(pack=pack, remote=task.source, local=task.destination)
@@ -337,9 +359,9 @@ class Peer(threading.Thread):
     #   Sending
     #
     def __send(self, task: Departure):
-        delegate = self.delegate
         if self.pool.append_departure(task=task):
             # treat the task as a bundle of packages
+            delegate = self.delegate
             packages = task.packages
             for item in packages:
                 assert isinstance(item, Package), 'package error: %s' % item
@@ -350,9 +372,9 @@ class Peer(threading.Thread):
             data_type = task.data_type
             trans_id = task.trans_id
             if data_type == Command:
-                delegate.send_command_timeout(trans_id=trans_id, destination=task.destination, source=task.source)
+                self.handler.send_command_timeout(trans_id=trans_id, destination=task.destination, source=task.source)
             elif data_type == Message:
-                delegate.send_message_timeout(trans_id=trans_id, destination=task.destination, source=task.source)
+                self.handler.send_message_timeout(trans_id=trans_id, destination=task.destination, source=task.source)
             else:
                 raise AssertionError('data type error: %s' % data_type)
 
