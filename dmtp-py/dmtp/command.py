@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -48,7 +48,7 @@ from .address import SourceAddressValue, MappedAddressValue, RelayedAddressValue
         Ask the receiver 'Who are you?' for user ID. The receiver should respond
         a 'HI' command with user ID.
 
-    HI, HELLO
+    HI (HELLO)
         Send 'ID' to tell the receiver who you are;
         Send 'ID', 'ADDR', 'S' and 'NAT' to the server for login.
         
@@ -90,12 +90,6 @@ from .address import SourceAddressValue, MappedAddressValue, RelayedAddressValue
             TIME - signed time (OPTIONAL)
             S - signature of 'ADDR+TIME' signed by this user (OPTIONAL)
             NAT - user's NAT type (OPTIONAL)
-
-    PROFILE
-        Ask the receiver to offer user profile info (includes meta, via message)
-
-        Field:
-            ID - user identifier
 
     BYE
         When a client is offline, send this command to the server, or broadcast
@@ -164,14 +158,6 @@ class FromCommand(Command):
             assert identifier is not None, 'UID should not be empty'
             location = LocationValue.new(identifier=identifier)
         return cls(tag=From, value=location)
-
-
-class ProfileCommand(Command):
-
-    @classmethod
-    def new(cls, identifier: str) -> Command:
-        value = LocationValue.new(identifier=identifier)
-        return cls(tag=Profile, value=value)
 
 
 class ByeCommand(Command):
@@ -328,7 +314,6 @@ Hello = VarName(name='HI')         # (C) login with ID
 Sign = VarName(name='SIGN')        # (S) ask client to login
 Call = VarName(name='CALL')        # (C) ask server to help connecting with another user
 From = VarName(name='FROM')        # (S) help users connecting
-Profile = VarName(name='PROFILE')  # (S,C) ask receiver for profile with ID
 Bye = VarName(name='BYE')          # (C) logout with ID and address
 
 # field names
@@ -346,7 +331,6 @@ s_value_parsers[Hello] = LocationValue
 s_value_parsers[Sign] = LocationValue
 s_value_parsers[Call] = CommandValue
 s_value_parsers[From] = LocationValue
-s_value_parsers[Profile] = CommandValue
 s_value_parsers[Bye] = LocationValue
 
 s_value_parsers[ID] = StringValue

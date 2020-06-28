@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import abstractmethod
+from abc import ABC
 
 from .command import Command
 from .command import Sign, From
@@ -36,48 +36,35 @@ from .command import LocationValue
 from .node import Node
 
 
-class Client(Node):
+class Client(Node, ABC):
 
-    @abstractmethod
-    def sign_in(self, location: LocationValue, destination: tuple) -> bool:
-        """
-        Sign the addresses and time in the location value with private key
-
-        :param location:    LocationValue contains ID, IP, port
-        :param destination: server's address
-        :return: False on error
-        """
-        pass
-
-    def connect(self, remote_address: tuple) -> bool:
-        """
-        Send something to punch a tunnel for that location
-
-        :param remote_address: server or remote user's address
-        :return:
-        """
-        conn = self.hub.connect(destination=remote_address, source=self.local_address)
-        if conn is None:
-            return False
-        return self.say_hi(destination=remote_address)
-
+    # noinspection PyUnusedLocal
     def _process_sign(self, location: LocationValue, destination: tuple) -> bool:
         # sign your location for login
-        return self.sign_in(location=location, destination=destination)
+        assert self.delegate is not None, 'contact delegate not set'
+        mine = self.delegate.sign_location(location=location)
+        if mine is None:
+            raise LookupError('failed to sign the location: %s' % location)
+            # return False
+        # update the signed location
+        if self.delegate.update_location(location=mine):
+            # say hi with new location
+            return self.say_hi(destination=destination)
 
     def _process_from(self, location: LocationValue) -> bool:
         # when someone is calling you
         # respond anything (say 'HI') to build the connection.
-        if self.set_location(location=location):
-            ok1 = False
-            ok2 = False
+        assert self.delegate is not None, 'contact delegate not set'
+        if self.delegate.update_location(location=location):
             if location.source_address is not None:
                 address = (location.source_address.ip, location.source_address.port)
-                ok1 = self.connect(remote_address=address)
+                self.peer.connect(remote_address=address)
+                self.say_hi(destination=address)
             if location.mapped_address is not None:
                 address = (location.mapped_address.ip, location.mapped_address.port)
-                ok2 = self.connect(remote_address=address)
-            return ok1 or ok2
+                self.peer.connect(remote_address=address)
+                self.say_hi(destination=address)
+            return True
 
     def process_command(self, cmd: Command, source: tuple) -> bool:
         cmd_type = cmd.tag

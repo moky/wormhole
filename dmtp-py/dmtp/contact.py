@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,8 @@
 # SOFTWARE.
 # ==============================================================================
 
-import time
+import threading
+from abc import ABC, abstractmethod
 from typing import Optional
 
 from .command import LocationValue
@@ -36,86 +37,80 @@ from .command import LocationValue
 
 class Session:
 
-    EXPIRES = 120
-
-    def __init__(self, location: LocationValue):
+    def __init__(self, location: LocationValue, address: tuple):
         super().__init__()
         self.__location = location
-        self.__address: tuple = None
-        self.last_time: float = 0
+        self.__address = address
 
     @property
     def location(self) -> LocationValue:
-        """ Source Address, Mapped Address, Relayed Address """
         return self.__location
 
     @property
-    def address(self) -> Optional[tuple]:
-        """ Connected Address """
+    def address(self) -> tuple:
         return self.__address
 
-    @property
-    def is_expired(self) -> bool:
-        return (self.last_time + self.EXPIRES) < time.time()
 
-    def matches(self, location: LocationValue=None, address: tuple=None) -> bool:
-        if location is not None:
-            if not self.__match_location(location=location):
-                return False
-        if address is not None:
-            if not self.__match_address(address=address):
-                return False
-        return True
+class ContactDelegate(ABC):
 
-    def __match_location(self, location: LocationValue) -> bool:
-        if self.location.source_address == location.source_address:
-            if self.location.mapped_address == location.mapped_address:
-                return True
+    @abstractmethod
+    def sign_location(self, location: LocationValue) -> Optional[LocationValue]:
+        """
+        Sign location addresses and time
 
-    def __match_address(self, address: tuple) -> bool:
-        # check connected address
-        if self.address == address:
-            return True
-        # check source address
-        source_address = self.location.source_address
-        if source_address is not None:
-            if (source_address.ip, source_address.port) == address:
-                return True
-        # check mapped address
-        mapped_address = self.location.mapped_address
-        if mapped_address is not None:
-            if (mapped_address.ip, mapped_address.port) == address:
-                return True
+        :param location: location info with 'MAPPED-ADDRESS' from server
+        :return: signed location info
+        """
+        raise NotImplemented
 
-    def update_address(self, address: tuple) -> bool:
-        # 1st, check source address
-        source_address = self.location.source_address
-        if source_address is not None:
-            if (source_address.ip, source_address.port) == self.__address:
-                # already connected to source address
-                return self.__address == address
-            if (source_address.ip, source_address.port) == address:
-                self.__address = address
-                return True
-        # 2nd, check mapped address
-        mapped_address = self.location.mapped_address
-        if mapped_address is not None:
-            if (mapped_address.ip, mapped_address.port) == self.__address:
-                # already connected to mapped address
-                return self.__address == address
-            if (mapped_address.ip, mapped_address.port) == address:
-                self.__address = address
-                return True
-        # # 3rd, check relayed address
-        # relayed_address = self.location.relayed_address
-        # if relayed_address is not None:
-        #     if (relayed_address.ip, relayed_address.port) == self.__address:
-        #         # connected to relayed address
-        #         return self.__address == address
-        #     if (relayed_address.ip, relayed_address.port) == address:
-        #         self.__address = address
-        #         return True
-        # assert False, 'failed to update address: %s -> %s' % (address, self.identifier)
+    @abstractmethod
+    def current_location(self) -> Optional[LocationValue]:
+        """
+        Get my location
+
+        :return: my current location
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def get_location(self, address: tuple) -> Optional[LocationValue]:
+        """
+        Get location info by address
+
+        :param address: IP and port
+        :return: location info bond to this address
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def get_locations(self, identifier: str) -> list:
+        """
+        Get locations list by ID
+
+        :param identifier: user ID
+        :return: all locations of this user, ordered by time
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def update_location(self, location: LocationValue) -> bool:
+        """
+        Check and update location info
+
+        :param location: location info with ID and signature, time
+        :return: False on error
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def remove_location(self, location: LocationValue) -> bool:
+        """
+        Check and remove location info
+
+        :param location: location info with ID and signature, time
+        :return: False on error
+        """
+        raise NotImplemented
 
 
 class Contact:
@@ -123,93 +118,75 @@ class Contact:
     def __init__(self, identifier: str):
         super().__init__()
         self.__id = identifier
-        self.__sessions = []
+        self.__locations = []  # ordered by time
+        self.__locations_lock = threading.Lock()
 
     @property
     def identifier(self) -> str:
         return self.__id
 
     @property
-    def is_online(self) -> bool:
-        """ check whether there is any session not expired """
-        for item in self.__sessions:
-            assert isinstance(item, Session), 'session error: %s' % item
-            if not item.is_expired:
-                return True
-
-    @property
     def locations(self) -> list:
-        """ get all valid locations """
-        array = []
-        for item in self.__sessions:
-            assert isinstance(item, Session), 'session error: %s' % item
-            if item.is_expired:
-                continue
-            array.append(item.location)
-        return array
+        """ Get all locations ordered by time """
+        with self.__locations_lock:
+            return self.__locations.copy()
 
-    @property
-    def addresses(self) -> list:
-        """ get connected addresses """
-        array = []
-        for item in self.__sessions:
-            assert isinstance(item, Session), 'session error: %s' % item
-            if item.is_expired:
-                continue
-            address = item.address
-            if address is not None:
-                array.append(address)
-        return array
-
-    def __get_session(self, location: LocationValue):
-        for item in self.__sessions:
-            assert isinstance(item, Session), 'session error: %s' % item
-            if item.matches(location=location):
-                return item
-
-    def check_location(self, location: LocationValue) -> bool:
-        if location.identifier != self.identifier:
-            # assert False, 'location ID not match: %s, %s' % (self.identifier, location)
-            return False
-        session = self.__get_session(location=location)
-        if session is not None and session.location.timestamp > location.timestamp:
-            # expired location
-            return False
-        # check signature by subclass
-        return True
+    def get_location(self, address: tuple) -> Optional[LocationValue]:
+        """ Get location by (IP, port) """
+        with self.__locations_lock:
+            host = address[0]
+            port = address[1]
+            for item in self.__locations:
+                assert isinstance(item, LocationValue), 'location error: %s' % item
+                if item.source_address is not None \
+                        and port == item.source_address.port \
+                        and host == item.source_address.ip:
+                    return item
+                if item.mapped_address is not None \
+                        and port == item.mapped_address.port \
+                        and host == item.mapped_address.ip:
+                    return item
 
     def update_location(self, location: LocationValue) -> bool:
-        """ set location with last time """
-        if self.check_location(location=location):
-            session = self.__get_session(location=location)
-            if session is None:
-                session = Session(location=location)
-                self.__sessions.append(session)
-            # set last time to now
-            session.last_time = time.time()
+        """
+        When received 'HI' command, update the location in it
+
+        :param location: location info with time
+        :return: False on error
+        """
+        with self.__locations_lock:
+            # check same location with different time
+            pos = len(self.__locations)
+            while pos > 0:
+                pos -= 1
+                item = self.__locations[pos]
+                assert isinstance(item, LocationValue), 'location error: %s' % item
+                if item.source_address != location.source_address:
+                    continue
+                if item.mapped_address != location.mapped_address:
+                    continue
+                if item.timestamp >= location.timestamp:
+                    return False
+                # remove it
+                self.__locations.pop(pos)
+            # insert (ordered by time)
+            pos = len(self.__locations)
+            while pos > 0:
+                pos -= 1
+                item = self.__locations[pos]
+                assert isinstance(item, LocationValue), 'location error: %s' % item
+                if item.timestamp <= location.timestamp:
+                    # insert after it
+                    pos += 1
+                    break
+            self.__locations.insert(pos, location)
             return True
 
     def remove_location(self, location: LocationValue):
-        if self.check_location(location=location):
-            session = self.__get_session(location=location)
-            if session is not None:
-                self.__sessions.remove(session)
-                return True
+        """
+        When receive 'BYE' command, remove the location in it
 
-    def get_location(self, address: tuple) -> Optional[LocationValue]:
-        """ get location by address """
-        for item in self.__sessions:
-            assert isinstance(item, Session), 'session error: %s' % item
-            if item.matches(address=address):
-                return item.location
-
-    def update_address(self, address: tuple) -> bool:
-        """ set connected address """
-        ok = False
-        for item in self.__sessions:
-            assert isinstance(item, Session), 'session error: %s' % item
-            if item.update_address(address=address):
-                item.last_time = time.time()
-                ok = True
-                # break
-        return ok
+        :param location: location info with signature and time
+        """
+        with self.__locations_lock:
+            self.__locations.remove(location)

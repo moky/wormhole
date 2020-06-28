@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,114 +29,69 @@
 # ==============================================================================
 
 from abc import abstractmethod
-from typing import Optional
 
-from udp import Hub, HubListener
-from udp.mtp import PeerDelegate, Peer as UDPPeer
-from udp.mtp import Departure, Arrival
+from udp.mtp import Package, Command as DataTypeCommand, Message as DataTypeMessage
+from udp.mtp import PeerHandler, Pool
+from udp.mtp import Departure
 
 from .tlv import Field
-from .command import Command, Who, Hello, Bye
+from .command import Command, Who, Bye
+from .command import Hello, HelloCommand
 from .command import LocationValue
 from .message import Message
-from .contact import Contact
+from .peer import Hub, Peer
+from .contact import ContactDelegate, Session
 
 
-class Peer(UDPPeer, HubListener):
+class Node(PeerHandler):
 
-    #
-    #   HubListener
-    #
-    def data_received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
-        task = Arrival(payload=data, source=source, destination=destination)
-        self.pool.append_arrival(task=task)
-        return None
-
-
-class Node(PeerDelegate):
-
-    def __init__(self, host: str, port: int):
+    def __init__(self, peer: Peer=None, local_address: tuple=None, hub: Hub=None, pool: Pool=None):
         super().__init__()
-        self.__local_address = (host, port)
-        self.__peer: Peer = None
-        self.__hub: Hub = None
-
-    @property
-    def local_address(self) -> tuple:
-        return self.__local_address
+        if peer is None:
+            peer = Peer(local_address=local_address, hub=hub, pool=pool)
+        self.__peer = peer
+        peer.handler = self
+        # contact delegate
+        self.delegate: ContactDelegate = None
 
     @property
     def peer(self) -> Peer:
-        if self.__peer is None:
-            self.__peer = self._create_peer()
         return self.__peer
-
-    def _create_peer(self) -> Peer:
-        peer = Peer()
-        peer.delegate = self
-        # peer.start()
-        return peer
-
-    @property
-    def hub(self) -> Hub:
-        if self.__hub is None:
-            self.__hub = self._create_hub()
-        return self.__hub
-
-    def _create_hub(self) -> Hub:
-        assert isinstance(self.__local_address, tuple), 'local address error'
-        host = self.__local_address[0]
-        port = self.__local_address[1]
-        assert port > 0, 'invalid port: %d' % port
-        hub = Hub()
-        hub.open(host=host, port=port)
-        hub.add_listener(self.peer)
-        # hub.start()
-        return hub
 
     def start(self):
         # start peer
-        if not self.peer.running:
-            self.peer.start()
-        # start hub
-        if not self.hub.running:
-            self.hub.start()
+        self.peer.start()
 
     def stop(self):
-        # stop hub
-        if self.__hub is not None:
-            self.__hub.stop()
         # stop peer
-        if self.__peer is not None:
-            self.__peer.stop()
+        self.peer.stop()
 
-    #
-    #   Contacts (with locations)
-    #
+    def get_sessions(self, identifier: str) -> list:
+        """
+        Get connected locations for user ID
 
-    # noinspection PyMethodMayBeStatic
-    def _create_contact(self, identifier: str) -> Contact:
-        return Contact(identifier=identifier)
-
-    @abstractmethod
-    def get_contact(self, identifier: str=None, address: tuple=None) -> Optional[Contact]:
-        """ get contact by ID or address """
-        raise NotImplemented
-
-    @abstractmethod
-    def set_location(self, location: LocationValue) -> bool:
-        """ Login """
-        raise NotImplemented
-
-    @abstractmethod
-    def remove_location(self, location: LocationValue) -> bool:
-        """ Logout """
-        raise NotImplemented
-
-    @abstractmethod
-    def update_address(self, address: tuple, contact: Contact) -> bool:
-        """ Switch IP and port """
-        raise NotImplemented
+        :param identifier: user ID
+        :return: connected locations and addresses
+        """
+        assert self.delegate is not None, 'contact delegate not set'
+        locations = self.delegate.get_locations(identifier=identifier)
+        if len(locations) == 0:
+            # locations not found
+            return []
+        sessions = []
+        for loc in locations:
+            assert isinstance(loc, LocationValue), 'location error: %s' % loc
+            if loc.source_address is not None:
+                addr = (loc.source_address.ip, loc.source_address.port)
+                if self.__peer.is_connected(remote_address=addr):
+                    sessions.append(Session(location=loc, address=addr))
+                    continue
+            if loc.mapped_address is not None:
+                addr = (loc.mapped_address.ip, loc.mapped_address.port)
+                if self.__peer.is_connected(remote_address=addr):
+                    sessions.append(Session(location=loc, address=addr))
+                    continue
+        return sessions
 
     #
     #   Send
@@ -149,7 +104,8 @@ class Node(PeerDelegate):
         :param destination: remote address
         :return: departure task with 'trans_id' in the payload
         """
-        return self.peer.send_command(pack=cmd.data, destination=destination, source=self.local_address)
+        pack = Package.new(data_type=DataTypeCommand, body=cmd.data)
+        return self.peer.send_command(pack=pack, destination=destination)
 
     def send_message(self, msg: Message, destination: tuple) -> Departure:
         """
@@ -159,20 +115,22 @@ class Node(PeerDelegate):
         :param destination: remote address
         :return: departure task with 'trans_id' in the payload
         """
-        return self.peer.send_message(pack=msg.data, destination=destination, source=self.local_address)
+        pack = Package.new(data_type=DataTypeMessage, body=msg.data)
+        return self.peer.send_message(pack=pack, destination=destination)
 
     #
     #   Process
     #
-    @abstractmethod
-    def say_hi(self, destination: tuple) -> bool:
-        """
-        Send 'HI' command to tell the server who you are
 
-        :param destination: server address
-        :return: False on failed
-        """
-        pass
+    def say_hi(self, destination: tuple) -> bool:
+        assert self.delegate is not None, 'contact delegate not set yet'
+        mine = self.delegate.current_location()
+        if mine is None:
+            # raise LookupError('failed to get my location')
+            return False
+        cmd = HelloCommand.new(location=mine)
+        self.send_command(cmd=cmd, destination=destination)
+        return True
 
     def _process_who(self, source: tuple) -> bool:
         # say hi when the sender asked 'Who are you?'
@@ -181,19 +139,15 @@ class Node(PeerDelegate):
     # noinspection PyUnusedLocal
     def _process_hello(self, location: LocationValue, source: tuple) -> bool:
         # check signature before accept it
-        if self.set_location(location=location):
-            contact = self.get_contact(identifier=location.identifier)
-            assert isinstance(contact, Contact), 'contact error: %s -> %s' % (location.identifier, contact)
-            return self.update_address(address=source, contact=contact)
+        assert self.delegate is not None, 'contact delegate not set yet'
+        return self.delegate.update_location(location=location)
 
     # noinspection PyUnusedLocal
     def _process_bye(self, location: LocationValue, source: tuple) -> bool:
         # check signature before cleaning location
-        return self.remove_location(location=location)
+        assert self.delegate is not None, 'contact delegate not set yet'
+        return self.delegate.remove_location(location=location)
 
-    #
-    #   Receive
-    #
     @abstractmethod
     def process_command(self, cmd: Command, source: tuple) -> bool:
         """
@@ -230,11 +184,8 @@ class Node(PeerDelegate):
         pass
 
     #
-    #   PeerDelegate
+    #   PeerHandler
     #
-    def send_data(self, data: bytes, destination: tuple, source: tuple) -> int:
-        return self.hub.send(data=data, destination=destination, source=source)
-
     def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
         commands = Command.parse_all(data=cmd)
         for pack in commands:

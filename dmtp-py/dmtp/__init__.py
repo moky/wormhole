@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -32,9 +32,11 @@ from .address import *
 from .command import *
 from .message import *
 from .contact import *
+from .peer import *
 from .node import *
 from .server import *
 from .client import *
+from .contact import *
 
 name = "DMTP"
 
@@ -53,7 +55,6 @@ __all__ = [
     'Sign', 'SignCommand',
     'Call', 'CallCommand',
     'From', 'FromCommand',
-    'Profile', 'ProfileCommand',
     'Bye', 'ByeCommand',
 
     # command values
@@ -77,7 +78,10 @@ __all__ = [
     'MsgFilename',
 
     # node
-    'Contact',
-    'Peer', 'Node',
-    'Server', 'Client',
+    'Hub', 'Peer',
+    'Node', 'Server', 'Client',
+
+    # contact
+    'Contact', 'ContactDelegate',
+    'Session',
 ]

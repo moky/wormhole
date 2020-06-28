@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -33,15 +33,20 @@ from abc import ABC
 from .command import Command, WhoCommand, SignCommand, FromCommand
 from .command import Call
 from .command import CommandValue, LocationValue
+
+from .contact import Session
 from .node import Node
 
 
 class Server(Node, ABC):
 
     def _process_hello(self, location: LocationValue, source: tuple) -> bool:
-        mapped_address = location.mapped_address
-        if mapped_address is not None and (mapped_address.ip, mapped_address.port) == source:
+        address = location.mapped_address
+        if address is not None \
+                and address.port == source[1] and address.ip == source[0]:
+            # check 'MAPPED-ADDRESS'
             if super()._process_hello(location=location, source=source):
+                # location info accepted
                 return True
         # response 'SIGN' command with 'ID' and 'ADDR'
         cmd = SignCommand.new(identifier=location.identifier, mapped_address=source)
@@ -49,38 +54,34 @@ class Server(Node, ABC):
         return True
 
     def _process_call(self, receiver: str, source: tuple) -> bool:
-        # get locations of receiver
-        contact = self.get_contact(identifier=receiver)
-        if contact is None:
-            addresses = []
-        else:
-            addresses = contact.addresses
-        if len(addresses) == 0:
-            # receiver not online
+        assert self.delegate is not None, 'contact delegate not set yet'
+        if receiver is None:
+            # raise ValueError('receiver ID not found')
+            return False
+        # get sessions of receiver
+        sessions = self.get_sessions(identifier=receiver)
+        if len(sessions) == 0:
+            # receiver offline
             # respond an empty 'FROM' command to the sender
             cmd = FromCommand.new(identifier=receiver)
             self.send_command(cmd=cmd, destination=source)
             return False
-        # receiver is online
-        sender = self.get_contact(address=source)
-        if sender is None:
-            sender_location = None
-        else:
-            sender_location = sender.get_location(address=source)
+        # receiver online
+        sender_location = self.delegate.get_location(address=source)
         if sender_location is None:
-            # ask sender to login again
+            # sender offline, ask sender to login again
             cmd = WhoCommand.new()
             self.send_command(cmd=cmd, destination=source)
             return False
+        # sender online
         # send command for each address
-        for address in addresses:
-            receiver_location = contact.get_location(address=address)
-            assert receiver_location is not None, 'address error: %s, %s' % (address, receiver)
+        for item in sessions:
+            assert isinstance(item, Session), 'session info error: %s' % item
             # send 'fROM' command with sender's location info to the receiver
             cmd = FromCommand.new(location=sender_location)
-            self.send_command(cmd=cmd, destination=address)
+            self.send_command(cmd=cmd, destination=item.address)
             # respond 'FROM' command with receiver's location info to sender
-            cmd = FromCommand.new(location=receiver_location)
+            cmd = FromCommand.new(location=item.location)
             self.send_command(cmd=cmd, destination=source)
         return True
 
