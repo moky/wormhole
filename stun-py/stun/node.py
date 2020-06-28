@@ -49,10 +49,14 @@ from .attributes import Attribute
 
 class Node(ABC):
 
-    def __init__(self, host: str, port: int):
+    def __init__(self, port: int, host: str='0.0.0.0', hub: Hub=None):
         super().__init__()
         self.__local_address = (host, port)
-        self.__hub: Hub = None
+        if hub is None:
+            hub = Hub()
+            hub.open(host=host, port=port)
+            # hub.start()
+        self.__hub = hub
 
     @property
     def source_address(self) -> tuple:
@@ -72,29 +76,15 @@ class Node(ABC):
 
     @property
     def hub(self) -> Hub:
-        if self.__hub is None:
-            self.__hub = self._create_hub()
         return self.__hub
-
-    def _create_hub(self) -> Hub:
-        assert isinstance(self.__local_address, tuple), 'local address error'
-        host = self.__local_address[0]
-        port = self.__local_address[1]
-        assert port > 0, 'invalid port: %d' % port
-        hub = Hub()
-        hub.open(host=host, port=port)
-        # hub.start()
-        return hub
 
     def start(self):
         # start hub
-        if not self.hub.running:
-            self.hub.start()
+        self.hub.start()
 
     def stop(self):
         # stop hub
-        if self.__hub is not None:
-            self.__hub.stop()
+        self.hub.stop()
 
     # noinspection PyMethodMayBeStatic
     def info(self, msg: str):

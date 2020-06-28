@@ -67,10 +67,14 @@ public abstract class Node {
 
     public final Hub hub;
 
-    public Node(SocketAddress localAddress) throws SocketException {
+    public Node(SocketAddress address, Hub hub) {
         super();
-        this.sourceAddress = localAddress;
-        this.hub = createHub();
+        this.sourceAddress = address;
+        this.hub = hub;
+    }
+
+    public Node(SocketAddress address) throws SocketException {
+        this(address, createHub(address));
     }
 
     public Node(String host, int port) throws SocketException {
@@ -81,24 +85,22 @@ public abstract class Node {
         this(new InetSocketAddress(port));
     }
 
-    protected Hub createHub() throws SocketException {
-        assert ((InetSocketAddress) sourceAddress).getPort() > 0 : "invalid port: " + sourceAddress;
+    private static Hub createHub(SocketAddress localAddress) throws SocketException {
+        InetSocketAddress address = (InetSocketAddress) localAddress;
         Hub hub = new Hub();
-        hub.open(sourceAddress);
+        hub.open(address.getHostString(), address.getPort());
         //hub.start();
         return hub;
     }
 
     public void start() {
-        if (!hub.isRunning()) {
-            hub.start();
-        }
+        // start hub
+        hub.start();
     }
 
     public void stop() {
-        if (hub.isRunning()) {
-            hub.close();
-        }
+        // stop hub
+        hub.close();
     }
 
     protected void info(String msg) {
