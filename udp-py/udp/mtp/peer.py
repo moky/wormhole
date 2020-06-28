@@ -385,7 +385,7 @@ class Peer(threading.Thread):
         return task
 
     def send_message(self, pack: Package, destination: tuple, source: tuple) -> Departure:
-        if len(pack.body) <= Package.MAX_BODY_LEN or pack.head.data_type == MessageFragment:
+        if len(pack.body) <= Package.OPTIMAL_BODY_LENGTH or pack.head.data_type == MessageFragment:
             packages = [pack]
         else:
             # split packages for large message

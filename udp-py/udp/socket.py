@@ -70,6 +70,7 @@ class DatagramPacket:
 
 
 class Socket(threading.Thread):
+
     """
         Max count for caching packages
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -81,10 +82,12 @@ class Socket(threading.Thread):
     MAX_CACHE_SPACES = 1024 * 1024 * 2
 
     """
+        Maximum Transmission Unit
+        ~~~~~~~~~~~~~~~~~~~~~~~~~
+        
         Buffer size for receiving package
-        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     """
-    BUFFER_SIZE = 2048
+    MTU = 1472  # 1500 - 20 - 8
 
     def __init__(self, port: int, host: str ='0.0.0.0'):
         super().__init__()
@@ -304,7 +307,7 @@ class Socket(threading.Thread):
     def run(self):
         while self.running:
             try:
-                packet = self.__receive(buffer_size=self.BUFFER_SIZE)
+                packet = self.__receive(buffer_size=self.MTU)
                 if packet is None:
                     # receive nothing
                     time.sleep(0.1)

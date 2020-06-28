@@ -41,18 +41,20 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class Socket extends Thread {
 
     /*  Max count for caching packages
-        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-        Each UDP data package is limited to no more than 576 bytes, so set the
-        MAX_CACHE_SPACES to about 2,000,000 means it would take up to 1GB memory
-        for the caching.
+     *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     *
+     *  Each UDP data package is limited to no more than 576 bytes, so set the
+     *  MAX_CACHE_SPACES to about 2,000,000 means it would take up to 1GB memory
+     *  for the caching.
      */
     public static int MAX_CACHE_SPACES = 1024 * 1024 * 2;
 
-    /*  Buffer size for receiving package
-        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    /*  Maximum Transmission Unit
+     *  ~~~~~~~~~~~~~~~~~~~~~~~~~
+     *
+     *  Buffer size for receiving package
      */
-    public static int BUFFER_SIZE = 2048;
+    public static int MTU = 1472; // 1500 - 20 - 8
 
     public final SocketAddress localAddress;
     public final String host;
@@ -388,10 +390,13 @@ public class Socket extends Thread {
     }
 
     private void cache(DatagramPacket cargo) {
-        if (cargo.getOffset() > 0 || cargo.getLength() < cargo.getData().length) {
+        int offset = cargo.getOffset();
+        int length = cargo.getLength();
+        byte[] buf = cargo.getData();
+        if (offset > 0 || length < buf.length) {
             // remove empty spaces
-            byte[] buffer = new byte[cargo.getLength()];
-            System.arraycopy(cargo.getData(), cargo.getOffset(), buffer, 0, cargo.getLength());
+            byte[] buffer = new byte[length];
+            System.arraycopy(buf, offset, buffer, 0, length);
             cargo.setData(buffer);
         }
         Lock writeLock = cargoLock.writeLock();
@@ -457,7 +462,7 @@ public class Socket extends Thread {
         byte[] data;
         while (isRunning()) {
             try {
-                packet = receive(BUFFER_SIZE);
+                packet = receive(MTU);
                 if (packet == null) {
                     // received nothing
                     _sleep(0.1);

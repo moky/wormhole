@@ -38,15 +38,15 @@ import chat.dim.tlv.Data;
 
 public class Package extends Data {
 
-    /*    Max Length for Package Body
-     *    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    /*    Optimal Length for UDP package body
+     *    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
      *    MTU      : 576 bytes
      *    IP Head  : 20 bytes
      *    UDP Head : 8 bytes
-     *    Header   : 12 bytes (excludes 'pages' and 'offset')
-     *    Reserved : 24 bytes (includes 'pages' and 'offset')
+     *    Header   : 12 bytes (excludes 'pages', 'offset' and 'bodyLen')
+     *    Reserved : 24 bytes (includes 'pages', 'offset' and 'bodyLen')
      */
-    public static int MAX_BODY_LEN = 512;
+    public static int OPTIMAL_BODY_LENGTH = 512;
 
     public final Header head;
     public final byte[] body;
@@ -71,9 +71,9 @@ public class Package extends Data {
         // split body
         List<byte[]> fragments = new ArrayList<>();
         int count = 1;
-        int start = 0, end = MAX_BODY_LEN;
+        int start = 0, end = OPTIMAL_BODY_LENGTH;
         int length = body.length;
-        for (; end < length; start = end, end += MAX_BODY_LEN) {
+        for (; end < length; start = end, end += OPTIMAL_BODY_LENGTH) {
             fragments.add(slice(body, start, end));
             count += 1;
         }
@@ -94,7 +94,7 @@ public class Package extends Data {
                 packages.add(create(type, sn, count, index, -1, data));
             }
         } else {
-            // TCP
+            // TCP (should not happen)
             for (int index = 0; index < count; ++index) {
                 data = fragments.get(index);
                 packages.add(create(type, sn, count, index, data.length, data));
@@ -144,10 +144,10 @@ public class Package extends Data {
         }
         type = DataType.Message;
         if (first.head.bodyLength < 0) {
-            // UDP package (unlimited)
+            // UDP (unlimited)
             return create(type, sn, 1, 0, -1, buffer);
         } else {
-            // TCP package
+            // TCP (should not happen)
             return create(type, sn, 1, 0, buffer.length, buffer);
         }
     }
@@ -194,9 +194,7 @@ public class Package extends Data {
     //
 
     public static Package create(DataType type, TransactionID sn, int pages, int offset, int bodyLen, byte[] body) {
-        if (body == null) {
-            body = new byte[0];
-        }
+        assert body != null : "package body should not be null";
         // create package with header
         Header head = Header.create(type, sn, pages, offset, bodyLen);
         byte[] data;
@@ -217,7 +215,7 @@ public class Package extends Data {
     }
 
     public static Package create(DataType type, int pages, int offset, byte[] body) {
-        return create(type, null, pages, offset, -1, body);
+        return create(type, TransactionID.create(), pages, offset, -1, body);
     }
 
     public static Package create(DataType type, TransactionID sn, byte[] body) {
@@ -225,18 +223,20 @@ public class Package extends Data {
     }
 
     public static Package create(DataType type, byte[] body) {
-        return create(type, null, 1, 0, -1, body);
+        return create(type, TransactionID.create(), 1, 0, -1, body);
     }
 
     //
     //  TCP
     //
 
-    public static Package createTCP(DataType type, TransactionID sn, byte[] body) {
-        return create(type, sn, 1, 0, body.length, body);
+    public static Package create(DataType type, TransactionID sn, int bodyLen , byte[] body) {
+        assert bodyLen == body.length : "body length error: " + bodyLen + ", " + body.length;
+        return create(type, sn, 1, 0, bodyLen, body);
     }
 
-    public static Package createTCP(DataType type, byte[] body) {
-        return create(type, null, 1, 0, body.length, body);
+    public static Package create(DataType type, int bodyLen, byte[] body) {
+        assert bodyLen == body.length : "body length error: " + bodyLen + ", " + body.length;
+        return create(type, TransactionID.create(), 1, 0, bodyLen, body);
     }
 }

@@ -78,8 +78,8 @@ class DataType:
     @classmethod
     def new(cls, value: int):
         t = s_data_types.get(value)
-        if t is None:
-            t = cls(value=value)
+        # if t is None:
+        #     t = cls(value=value)
         return t
 
 
@@ -177,6 +177,16 @@ TransactionID.ZERO = TransactionID(b'\0\0\0\0\0\0\0\0')
 
 class Header(Data):
 
+    """
+        Max Length for message package body
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        Each message package before split should not more than 1GB,
+        so the max pages should not more than about 2,000,000.
+    """
+    MAX_BODY_LENGTH = 1024 * 1024 * 1024  # 1GB
+    MAX_PAGES = 1024 * 1024 * 2           # 1GB
+
     def __init__(self, data: bytes,
                  data_type: DataType, sn: TransactionID,
                  pages: int=1, offset: int=0, body_length: int=-1):
@@ -269,6 +279,15 @@ class Header(Data):
         if sn is None:
             # raise AssertionError('head length error: %d' % head_len)
             return None
+        if pages < 1 or pages > cls.MAX_PAGES:
+            # raise ValueError('pages error: %d' % pages)
+            return None
+        if offset < 0 or offset >= pages:
+            # raise ValueError('offset error: %d' % offset)
+            return None
+        if body_len < -1 or body_len > cls.MAX_BODY_LENGTH:
+            # raise ValueError('body length error: %d' % body_len)
+            return None
         data_type = ch & 0x0F
         data_type = DataType.new(value=data_type)
         return cls(data=data[:head_len], data_type=data_type, sn=sn, pages=pages, offset=offset, body_length=body_len)
@@ -294,7 +313,7 @@ class Header(Data):
             assert pages == 1 and offset == 0, 'pages error: %d, %d' % (pages, offset)
             options = b''
         # body length
-        if body_length > 0:
+        if body_length >= 0:
             options += uint32_to_bytes(value=body_length)
             head_len += 4
         # generate header data
@@ -310,15 +329,15 @@ class Header(Data):
 class Package(Data):
 
     """
-        Max Length for Package Body
-        ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        Optimal Length for UDP Package Body
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         MTU      : 576 bytes
         IP Head  : 20 bytes
         UDP Head : 8 bytes
-        Header   : 12 bytes (excludes 'pages' and 'offset')
-        Reserved : 24 bytes (includes 'pages' and 'offset')
+        Header   : 12 bytes (excludes 'pages', 'offset' and 'bodyLen')
+        Reserved : 24 bytes (includes 'pages', 'offset' and 'bodyLen')
     """
-    MAX_BODY_LEN = 512
+    OPTIMAL_BODY_LENGTH = 512
 
     def __init__(self, data: bytes, head: Header, body: bytes):
         super().__init__(data=data)
@@ -387,12 +406,12 @@ class Package(Data):
         fragments = []
         count = 1
         start = 0
-        end = self.MAX_BODY_LEN
+        end = self.OPTIMAL_BODY_LENGTH
         body_len = len(body)
         while end < body_len:
             fragments.append(body[start:end])
             start = end
-            end += self.MAX_BODY_LEN
+            end += self.OPTIMAL_BODY_LENGTH
             count += 1
         if start > 0:
             fragments.append(body[start:])  # the tail
@@ -409,7 +428,7 @@ class Package(Data):
                 pack = self.new(data_type=data_type, sn=sn, pages=count, offset=index, body_length=-1, body=body)
                 packages.append(pack)
         else:
-            # TCP
+            # TCP (should not happen)
             for index in range(count):
                 body = fragments[index]
                 pack = self.new(data_type=data_type, sn=sn, pages=count, offset=index, body_length=len(body), body=body)
@@ -455,5 +474,5 @@ class Package(Data):
             # UDP (unlimited)
             return cls.new(data_type=Message, sn=sn, body_length=-1, body=body)
         else:
-            # TCP
+            # TCP (should not happen)
             return cls.new(data_type=Message, sn=sn, body_length=len(body), body=body)

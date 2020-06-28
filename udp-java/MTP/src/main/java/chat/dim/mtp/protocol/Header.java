@@ -83,6 +83,15 @@ public class Header extends Data {
     public final int offset;
     public final int bodyLength;
 
+    /*  Max Length for message package body
+     *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     *
+     *  Each message package before split should not more than 1GB,
+     *  so the max pages should not more than about 2,000,000.
+     */
+    public static int MAX_BODY_LENGTH = 1024 * 1024 * 1024; // 1GB
+    public static int MAX_PAGES       = 1024 * 1024 * 2;    // 1GB
+
     /**
      *  Create package header
      *
@@ -154,6 +163,18 @@ public class Header extends Data {
             //throw new NullPointerException("head length error: " + headLen);
             return null;
         }
+        if (pages < 1 || pages > MAX_PAGES) {
+            //throw new IllegalArgumentException("pages error: " + pages);
+            return null;
+        }
+        if (offset < 0 || offset >= pages) {
+            //throw new IllegalArgumentException("offset error: " + offset);
+            return null;
+        }
+        if (bodyLen < -1 || bodyLen > MAX_BODY_LENGTH) {
+            //throw new IllegalArgumentException("body length error: " + bodyLen);
+            return null;
+        }
         DataType type = DataType.getInstance(ch & 0x0F);
         return new Header(slice(data, 0, headLen), type, sn, pages, offset, bodyLen);
     }
@@ -165,15 +186,13 @@ public class Header extends Data {
     public static Header create(DataType type, TransactionID sn, int pages, int offset, int bodyLen) {
         int headLen = 4;  // in bytes
         // transaction ID
-        if (sn == null) {
-            // generate transaction ID
-            sn = TransactionID.create();
-            headLen += 8;
-        } else if (!sn.equals(TransactionID.ZERO)) {
+        assert sn != null : "transaction ID should not be null, use TransactionID.ZERO instead";
+        if (!sn.equals(TransactionID.ZERO)) {
             headLen += 8;
         }
         byte[] options;
         // pages & offset
+        assert type != null : "data type should not be null";
         if (type.equals(DataType.MessageFragment)) {
             // message fragment (or its respond)
             assert pages > 1 && pages > offset : "pages error: " + pages + ", " + offset;
@@ -187,7 +206,7 @@ public class Header extends Data {
             options = new byte[0];
         }
         // body length
-        if (bodyLen > 0) {
+        if (bodyLen >= 0) {
             byte[] a3 = IntegerData.intToBytes(bodyLen, 4);
             if (options.length > 0) {
                 options = concat(options, a3);
@@ -226,7 +245,7 @@ public class Header extends Data {
     }
 
     public static Header create(DataType type, int pages, int offset) {
-        return create(type, null, pages, offset, -1);
+        return create(type, TransactionID.create(), pages, offset, -1);
     }
 
     public static Header create(DataType type, TransactionID sn) {
@@ -234,7 +253,7 @@ public class Header extends Data {
     }
 
     public static Header create(DataType type) {
-        return create(type, null, 1, 0, -1);
+        return create(type, TransactionID.create(), 1, 0, -1);
     }
 
     //
@@ -246,6 +265,6 @@ public class Header extends Data {
     }
 
     public static Header create(DataType type, int bodyLen) {
-        return create(type, null, 1, 0, bodyLen);
+        return create(type, TransactionID.create(), 1, 0, bodyLen);
     }
 }

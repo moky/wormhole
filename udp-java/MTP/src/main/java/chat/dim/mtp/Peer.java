@@ -298,7 +298,7 @@ public class Peer extends Thread {
 
     public Departure sendMessage(Package pack, SocketAddress destination, SocketAddress source) {
         List<Package> packages;
-        if (pack.body.length <= Package.MAX_BODY_LEN || pack.head.type.equals(DataType.MessageFragment)) {
+        if (pack.body.length <= Package.OPTIMAL_BODY_LENGTH || pack.head.type.equals(DataType.MessageFragment)) {
             packages = new ArrayList<>();
             packages.add(pack);
         } else {
