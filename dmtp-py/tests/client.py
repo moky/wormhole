@@ -41,6 +41,14 @@ class Client(dmtp.Client):
     def connect(self, remote_address: tuple) -> Optional[dmtp.Connection]:
         return self.peer.connect(remote_address=remote_address)
 
+    def say_hi(self, destination: tuple) -> bool:
+        if super().say_hi(destination=destination):
+            return True
+        cmd = dmtp.HelloCommand.new(identifier=self.identifier)
+        print('send cmd: %s' % cmd)
+        self.send_command(cmd=cmd, destination=destination)
+        return True
+
     def call(self, identifier: str) -> bool:
         cmd = dmtp.CallCommand.new(identifier=identifier)
         print('sending cmd: %s' % cmd)
@@ -70,6 +78,7 @@ class Client(dmtp.Client):
         })
         for item in sessions:
             assert isinstance(item, dmtp.Session), 'session error: %s' % item
+            print('sending msg to %s:\n\t%s' % (item.address, msg))
             self.send_message(msg=msg, destination=item.address)
         return True
 
@@ -95,6 +104,7 @@ if __name__ == '__main__':
 
     # login
     g_client.connect(remote_address=g_client.server_address)
+    g_client.say_hi(destination=g_client.server_address)
 
     # test send
     text = '你好 %s！' % friend

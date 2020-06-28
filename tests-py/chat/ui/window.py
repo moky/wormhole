@@ -10,16 +10,16 @@ from PyQt5.QtWidgets import QWidget, QTextEdit, QLabel, QPushButton
 import dmtp
 
 from ..client import time_string
-from ..client import STUNClient, STUNClientDelegate
-from ..client import DMTPClientDelegate, DMTPClient
+from ..client import STUNClient, STUNClientHandler
+from ..client import DMTPClientHandler, DMTPClient
 
 
-class NATTestThread(QThread, STUNClientDelegate):
+class NATTestThread(QThread, STUNClientHandler):
 
     def __init__(self, window, stun_client: STUNClient):
         super().__init__()
         self.__window = window
-        stun_client.delegate = self
+        stun_client.handler = self
         self.__stun_client = stun_client
 
     def run(self):
@@ -34,13 +34,13 @@ class NATTestThread(QThread, STUNClientDelegate):
         window.update_nat(msg, mapped_address)
 
     #
-    #   STUNClientDelegate
+    #   STUNClientHandler
     #
     def feedback(self, msg: str):
         self.__window.display(message=msg)
 
 
-class Window(QWidget, DMTPClientDelegate):
+class Window(QWidget, DMTPClientHandler):
     update_sig = pyqtSignal(str)
 
     def __init__(self, dmtp_client: DMTPClient, stun_client: STUNClient):
@@ -104,8 +104,8 @@ class Window(QWidget, DMTPClientDelegate):
 
         self.update_sig.connect(self.__display)
 
-        dmtp_client.delegate = self
-        stun_client.delegate = self
+        dmtp_client.handler = self
+        stun_client.handler = self
         self.__dmtp_client = dmtp_client
         self.__stun_client = stun_client
 
@@ -162,6 +162,7 @@ class Window(QWidget, DMTPClientDelegate):
         self.__display('try to login: %s' % self.sender)
         self.__dmtp_client.identifier = self.sender
         self.__dmtp_client.connect(remote_address=server_address)
+        self.__dmtp_client.say_hi(destination=server_address)
 
     def call(self):
         self.__display('calling: %s' % self.receiver)
@@ -180,13 +181,9 @@ class Window(QWidget, DMTPClientDelegate):
         return msg
 
     def send_text(self, receiver: str, msg: str) -> Optional[dmtp.Message]:
-        contact = self.__dmtp_client.get_contact(identifier=receiver)
-        if contact is None:
-            addresses = None
-        else:
-            addresses = contact.addresses
-        if addresses is None or len(addresses) == 0:
-            print('user (%s) not login ... %s' % (receiver, contact))
+        sessions = self.__dmtp_client.get_sessions(identifier=receiver)
+        if len(sessions) == 0:
+            print('user (%s) not login ...' % receiver)
             # ask the server to help building a connection
             self.__dmtp_client.call(identifier=receiver)
             return None
@@ -197,13 +194,13 @@ class Window(QWidget, DMTPClientDelegate):
             'time': int(time.time()),
             'data': content,
         })
-        for address in addresses:
-            print('sending msg to %s:\n\t%s' % (address, msg))
-            self.__dmtp_client.send_message(msg=msg, destination=address)
+        for item in sessions:
+            assert isinstance(item, dmtp.Session), 'session error: %s' % item
+            self.__dmtp_client.send_message(msg=msg, destination=item.address)
         return msg
 
     #
-    #   DMTPClientDelegate
+    #   DMTPClientHandler
     #
     def process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
         cmd_type = cmd.tag
