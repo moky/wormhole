@@ -30,12 +30,38 @@
  */
 package chat.dim.udp;
 
+
+/*
+ *  @enum ConnectionStatus
+ *
+ *  @abstract Defined for indicating connection status
+ *
+ *  @discussion connection status.
+ *
+ *      Default     - 'initialized', or sent timeout
+ *      Connecting  - sent 'PING', waiting for response
+ *      Connected   - got response recently
+ *      Expired     - long time, needs maintaining (still connected)
+ *      Maintaining - sent 'PING', waiting for response
+ *      Error       - long long time no response, connection lost
+ *
+ *  Bits:
+ *      0000 0001 - indicates sent something just now
+ *      0000 0010 - indicates sent something not too long ago
+ *
+ *      0001 0000 - indicates received something just now
+ *      0010 0000 - indicates received something not too long ago
+ *
+ *      (All above are just some advices to help choosing numbers :P)
+ */
 public enum ConnectionStatus {
 
-    Error     (-1),
-    Default    (0),
-    Connecting (1),
-    Connected  (2);
+    Default     (0x00),  // 0000 0000
+    Connecting  (0x01),  // 0000 0001, sent just now
+    Connected   (0x11),  // 0001 0001, received just now
+    Maintaining (0x21),  // 0010 0001, received not long ago, sent just now
+    Expired     (0x22),  // 0010 0010, received not long ago, needs sending
+    Error       (0x03);  // 0000 0011, long time no response
 
     public final int value;
 
@@ -43,32 +69,27 @@ public enum ConnectionStatus {
         this.value = value;
     }
 
-    public static ConnectionStatus evaluate(float now,
-                                            float sendExpired,
-                                            float receiveExpired,
-                                            float connectionLost) {
-        if (now < receiveExpired) {
-            /*  When received a package from remote address, this node must respond
-             *  a package, so 'send expired' is always late than 'receive expired'.
-             *  So, if received anything (normal package or just 'PING') from this
-             *  connection, this indicates 'Connected'.
-             */
-            return Connected;
-        } else if (now > connectionLost) {
-            /*  It's a long time to receive nothing (even a 'PONG'), this connection
-             *  may be already lost, needs to reconnect again.
-             */
-            return Error;
-        } else if (now < sendExpired) {
-            /*  If sent package through this connection recently but not received
-                anything yet (includes 'PONG'), this indicates 'Connecting'.
-             */
-            return Connecting;
-        } else {
-            /*  It's a long time to send nothing, this connection needs maintaining,
-                send something immediately (e.g.: 'PING') to keep it alive.
-             */
-            return Default;
-        }
+    public boolean isConnected() {
+        return isConnected(value);
+    }
+
+    public boolean isExpired() {
+        return isExpired(value);
+    }
+
+    public boolean isError() {
+        return isError(value);
+    }
+
+    public static boolean isConnected(int status) {
+        return (status & 0x30) != 0;  // received something not long ago
+    }
+
+    public static boolean isExpired(int status) {
+        return (status & 0x01) == 0;  // sent nothing in a period
+    }
+
+    public static boolean isError(int status) {
+        return status == Error.value;  // sent for a long time, but received nothing
     }
 }

@@ -180,37 +180,42 @@ class Socket(threading.Thread):
                 self.__connections.remove(conn)
             return removed_connections
 
-    def __connection_by_status(self, status: ConnectionStatus) -> Optional[Connection]:
-        """ get connection by status """
+    def __expired_connection(self) -> Optional[Connection]:
+        """ get any expired connection """
+        now = time.time()
         with self.__connections_lock:
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
-                if conn.status == status:
+                if ConnectionStatus.is_expired(status=conn.get_status(now=now)):
                     return conn
-
-    def __expired_connection(self) -> Optional[Connection]:
-        """ get any expired connection """
-        return self.__connection_by_status(ConnectionStatus.Default)
 
     def __error_connection(self) -> Optional[Connection]:
         """ get any error connection """
-        return self.__connection_by_status(ConnectionStatus.Error)
+        now = time.time()
+        with self.__connections_lock:
+            for conn in self.__connections:
+                assert isinstance(conn, Connection), 'connection error: %s' % conn
+                if ConnectionStatus.is_error(status=conn.get_status(now=now)):
+                    return conn
 
     def __update_sent_time(self, remote_address: tuple):
         connection = None
         old_status = None
         new_status = None
+        now = time.time()
         with self.__connections_lock:
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
                 if conn.remote_address == remote_address:
                     # refresh time
-                    old_status, new_status = conn.update_sent_time()
-                    connection = conn
+                    old_status = conn.get_status(now=now)
+                    new_status = conn.update_sent_time(now=now)
+                    if old_status != new_status:
+                        connection = conn
+                        break
+                    # break
         # callback
-
-        if old_status != new_status:
-            # assert connection is not None, 'connection error: %s' % remote_address
+        if connection is not None:
             handler = self.handler
             if handler is not None:
                 handler.connection_status_changed(connection=connection,
@@ -221,16 +226,20 @@ class Socket(threading.Thread):
         connection = None
         old_status = None
         new_status = None
+        now = time.time()
         with self.__connections_lock:
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
                 if conn.remote_address == remote_address:
                     # refresh time
-                    old_status, new_status = conn.update_received_time()
-                    connection = conn
+                    old_status = conn.get_status(now=now)
+                    new_status = conn.update_received_time(now=now)
+                    if old_status != new_status:
+                        connection = conn
+                        break
+                    # break
         # callback
-        if old_status != new_status:
-            # assert connection is not None, 'connection error: %s' % remote_address
+        if connection is not None:
             handler = self.handler
             if handler is not None:
                 handler.connection_status_changed(connection=connection,

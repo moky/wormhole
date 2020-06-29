@@ -212,8 +212,15 @@ public class Socket extends Thread {
         return removedConnections;
     }
 
-    private Connection getConnection(ConnectionStatus status) {
+    /**
+     *  Get any expired connection
+     *
+     * @return connection needs maintain
+     */
+    private Connection getExpiredConnection() {
         Connection connection = null;
+        long now = (new Date()).getTime();
+
         Lock readLock = connectionLock.readLock();
         readLock.lock();
         try {
@@ -221,7 +228,7 @@ public class Socket extends Thread {
             Connection item;
             while (iterator.hasNext()) {
                 item = iterator.next();
-                if (status.equals(item.getStatus())) {
+                if (item.getStatus(now).isExpired()) {
                     // got it
                     connection = item;
                     break;
@@ -234,21 +241,31 @@ public class Socket extends Thread {
     }
 
     /**
-     *  Get any expired connection
-     *
-     * @return connection needs maintain
-     */
-    private Connection getExpiredConnection() {
-        return getConnection(ConnectionStatus.Default);
-    }
-
-    /**
      *  Get any error connection
      *
      * @return connection maybe lost
      */
     private Connection getErrorConnection() {
-        return getConnection(ConnectionStatus.Error);
+        Connection connection = null;
+        long now = (new Date()).getTime();
+
+        Lock readLock = connectionLock.readLock();
+        readLock.lock();
+        try {
+            Iterator<Connection> iterator = connections.iterator();
+            Connection item;
+            while (iterator.hasNext()) {
+                item = iterator.next();
+                if (item.getStatus(now).isError()) {
+                    // got it
+                    connection = item;
+                    break;
+                }
+            }
+        } finally {
+            readLock.unlock();
+        }
+        return connection;
     }
 
     //
@@ -258,8 +275,7 @@ public class Socket extends Thread {
     private void updateSentTime(SocketAddress remoteAddress) {
         Connection connection = null;
         ConnectionStatus oldStatus = null, newStatus = null;
-        Date now = new Date();
-        float timestamp = now.getTime() / 1000.0f;
+        long now = (new Date()).getTime();
 
         Lock readLock = connectionLock.readLock();
         readLock.lock();
@@ -270,11 +286,13 @@ public class Socket extends Thread {
                 item = iterator.next();
                 if (remoteAddress.equals(item.remoteAddress)) {
                     // refresh time
-                    oldStatus = item.getStatus(timestamp);
-                    item.updateSentTime(timestamp);
-                    newStatus = item.getStatus(timestamp);
-                    connection = item;
-                    break;
+                    oldStatus = item.getStatus(now);
+                    newStatus = item.updateSentTime(now);
+                    if (!oldStatus.equals(newStatus)) {
+                        connection = item;
+                        break;
+                    }
+                    //break;
                 }
             }
         } finally {
@@ -282,8 +300,7 @@ public class Socket extends Thread {
         }
 
         // callback
-        if (oldStatus != null && !oldStatus.equals(newStatus)) {
-            // assert connection != null: "connection error: " + remoteAddress;
+        if (connection != null) {
             ConnectionHandler delegate = getHandler();
             if (delegate != null) {
                 delegate.onConnectionStatusChanged(connection, oldStatus, newStatus);
@@ -294,8 +311,7 @@ public class Socket extends Thread {
     private void updateReceivedTime(SocketAddress remoteAddress) {
         Connection connection = null;
         ConnectionStatus oldStatus = null, newStatus = null;
-        Date now = new Date();
-        float timestamp = now.getTime() / 1000.0f;
+        long now = (new Date()).getTime();
 
         Lock readLock = connectionLock.readLock();
         readLock.lock();
@@ -306,11 +322,13 @@ public class Socket extends Thread {
                 item = iterator.next();
                 if (remoteAddress.equals(item.remoteAddress)) {
                     // refresh time
-                    oldStatus = item.getStatus(timestamp);
-                    item.updateReceivedTime(timestamp);
-                    newStatus = item.getStatus(timestamp);
-                    connection = item;
-                    break;
+                    oldStatus = item.getStatus(now);
+                    newStatus = item.updateReceivedTime(now);
+                    if (!oldStatus.equals(newStatus)) {
+                        connection = item;
+                        break;
+                    }
+                    //break;
                 }
             }
         } finally {
@@ -318,8 +336,7 @@ public class Socket extends Thread {
         }
 
         // callback
-        if (oldStatus != null && !oldStatus.equals(newStatus)) {
-            // assert connection != null: "connection error: " + remoteAddress;
+        if (connection != null) {
             ConnectionHandler delegate = getHandler();
             if (delegate != null) {
                 delegate.onConnectionStatusChanged(connection, oldStatus, newStatus);
