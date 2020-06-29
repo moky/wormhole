@@ -209,7 +209,8 @@ class Socket(threading.Thread):
                 if conn.remote_address == remote_address:
                     # refresh time
                     old_status = conn.get_status(now=now)
-                    new_status = conn.update_sent_time(now=now)
+                    conn.update_sent_time(now=now)
+                    new_status = conn.get_status(now=now)
                     if old_status != new_status:
                         connection = conn
                         break
@@ -233,7 +234,8 @@ class Socket(threading.Thread):
                 if conn.remote_address == remote_address:
                     # refresh time
                     old_status = conn.get_status(now=now)
-                    new_status = conn.update_received_time(now=now)
+                    conn.update_received_time(now=now)
+                    new_status = conn.get_status(now=now)
                     if old_status != new_status:
                         connection = conn
                         break

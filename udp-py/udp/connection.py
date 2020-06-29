@@ -135,25 +135,25 @@ class Connection:
 
     @property
     def is_connected(self) -> bool:
-        return ConnectionStatus.is_connected(status=self.get_status())
+        return ConnectionStatus.is_connected(status=self.get_status(now=time.time()))
 
     @property
     def is_expired(self) -> bool:
-        return ConnectionStatus.is_expired(status=self.get_status())
+        return ConnectionStatus.is_expired(status=self.get_status(now=time.time()))
 
     @property
     def is_error(self) -> bool:
-        return ConnectionStatus.is_error(status=self.get_status())
+        return ConnectionStatus.is_error(status=self.get_status(now=time.time()))
 
-    def get_status(self, now: float=0):
+    def get_status(self, now: float):
         """
         Get connection status
 
         :param now: timestamp in seconds
         :return: new status
         """
-        if now < 1:
-            now = time.time()
+        # if now < 1:
+        #     now = time.time()
         # pre-checks
         if now < self.__last_received_time + self.EXPIRES:
             # received response recently
@@ -203,17 +203,11 @@ class Connection:
                 self.__status = ConnectionStatus.Expired
         return self.__status
 
-    def update_sent_time(self, now: float) -> ConnectionStatus:
-        # update last sent time
+    def update_sent_time(self, now: float):
         self.__last_sent_time = now
-        # update and return new status
-        return self.get_status(now=now)
 
-    def update_received_time(self, now: float) -> ConnectionStatus:
-        # update last received time
+    def update_received_time(self, now: float):
         self.__last_received_time = now
-        # update and return new status
-        return self.get_status(now=now)
 
 
 class ConnectionHandler(ABC):

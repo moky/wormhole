@@ -67,8 +67,8 @@ public class Connection {
 
     // connection status
     private ConnectionStatus status = ConnectionStatus.Default;
-    private long lastSentTime = 0;
-    private long lastReceivedTime = 0;
+    private long lastSentTime;
+    private long lastReceivedTime;
 
     public static long EXPIRES = 28 * 1000;  // milliseconds
 
@@ -185,25 +185,17 @@ public class Connection {
      *  Update last sent time
      *
      * @param now - milliseconds
-     * @return new status
      */
-    public ConnectionStatus updateSentTime(long now) {
-        // update last sent time
+    void updateSentTime(long now) {
         lastSentTime = now;
-        // update and return new status
-        return getStatus(now);
     }
 
     /**
      *  Update last received time
      *
      * @param now - milliseconds
-     * @return new status
      */
-    public ConnectionStatus updateReceivedTime(long now) {
-        // update last received time
+    void updateReceivedTime(long now) {
         lastReceivedTime = now;
-        // update and return new status
-        return getStatus(now);
     }
 }

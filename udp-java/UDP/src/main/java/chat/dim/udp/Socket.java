@@ -287,7 +287,8 @@ public class Socket extends Thread {
                 if (remoteAddress.equals(item.remoteAddress)) {
                     // refresh time
                     oldStatus = item.getStatus(now);
-                    newStatus = item.updateSentTime(now);
+                    item.updateSentTime(now);
+                    newStatus = item.getStatus(now);
                     if (!oldStatus.equals(newStatus)) {
                         connection = item;
                         break;
@@ -323,7 +324,8 @@ public class Socket extends Thread {
                 if (remoteAddress.equals(item.remoteAddress)) {
                     // refresh time
                     oldStatus = item.getStatus(now);
-                    newStatus = item.updateReceivedTime(now);
+                    item.updateReceivedTime(now);
+                    newStatus = item.getStatus(now);
                     if (!oldStatus.equals(newStatus)) {
                         connection = item;
                         break;

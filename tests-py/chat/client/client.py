@@ -103,7 +103,8 @@ class DMTPClient(dmtp.Client):
         print('received msg from %s:\n\t%s' % (source, msg))
         if self.handler is not None:
             self.handler.process_message(msg=msg, source=source)
-        return super().process_message(msg=msg, source=source)
+        # return super().process_message(msg=msg, source=source)
+        return True
 
     def send_command(self, cmd: dmtp.Command, destination: tuple) -> dmtp.Departure:
         print('sending cmd to %s:\n\t%s' % (destination, cmd))
