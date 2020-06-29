@@ -34,7 +34,6 @@ from .command import Command, WhoCommand, SignCommand, FromCommand
 from .command import Call
 from .command import CommandValue, LocationValue
 
-from .contact import Session
 from .node import Node
 
 
@@ -59,8 +58,8 @@ class Server(Node, ABC):
             # raise ValueError('receiver ID not found')
             return False
         # get sessions of receiver
-        sessions = self.get_sessions(identifier=receiver)
-        if len(sessions) == 0:
+        locations = self.delegate.get_locations(identifier=receiver)
+        if len(locations) == 0:
             # receiver offline
             # respond an empty 'FROM' command to the sender
             cmd = FromCommand.new(identifier=receiver)
@@ -75,13 +74,16 @@ class Server(Node, ABC):
             return False
         # sender online
         # send command for each address
-        for item in sessions:
-            assert isinstance(item, Session), 'session info error: %s' % item
+        for loc in locations:
+            assert isinstance(loc, LocationValue), 'location info error: %s' % loc
             # send 'fROM' command with sender's location info to the receiver
             cmd = FromCommand.new(location=sender_location)
-            self.send_command(cmd=cmd, destination=item.address)
+            address = loc.mapped_address
+            if address is None:
+                continue
+            self.send_command(cmd=cmd, destination=(address.ip, address.port))
             # respond 'FROM' command with receiver's location info to sender
-            cmd = FromCommand.new(location=item.location)
+            cmd = FromCommand.new(location=loc)
             self.send_command(cmd=cmd, destination=source)
         return True
 

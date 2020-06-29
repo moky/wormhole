@@ -37,6 +37,22 @@ from dmtp import LocationValue, SourceAddressValue, TimestampValue
 from dmtp import ContactDelegate, Contact
 
 
+class Session:
+
+    def __init__(self, location: LocationValue, address: tuple):
+        super().__init__()
+        self.__location = location
+        self.__address = address
+
+    @property
+    def location(self) -> LocationValue:
+        return self.__location
+
+    @property
+    def address(self) -> tuple:
+        return self.__address
+
+
 class ContactManager(ContactDelegate):
 
     def __init__(self):
@@ -126,6 +142,16 @@ class ContactManager(ContactDelegate):
     def update_location(self, location: LocationValue) -> bool:
         identifier = location.identifier
         # TODO: verify signature
+        # set with contact
+        with self.__contacts_lock:
+            contact = self.__contacts.get(identifier)
+            if contact is None:
+                # create new contact
+                contact = Contact(identifier=identifier)
+                self.__contacts[identifier] = contact
+            # update location for this contact
+            if not contact.update_location(location=location):
+                return False
         # set with source address
         address = location.source_address
         if address is not None:
@@ -136,15 +162,7 @@ class ContactManager(ContactDelegate):
         if address is not None:
             address = (address.ip, address.port)
             self.__locations[address] = location
-        # set with contact
-        with self.__contacts_lock:
-            contact = self.__contacts.get(identifier)
-            if contact is None:
-                # create new contact
-                contact = Contact(identifier=identifier)
-                self.__contacts[identifier] = contact
-            # update location for this contact
-            return contact.update_location(location=location)
+        return True
 
     def remove_location(self, location: LocationValue) -> bool:
         identifier = location.identifier

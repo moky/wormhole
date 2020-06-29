@@ -30,7 +30,7 @@
 
 from typing import Optional
 
-from udp import Connection, ConnectionStatus
+from udp import Connection
 from udp import HubListener, Hub as UDPHub
 from udp.mtp import Package
 from udp.mtp import Departure, Arrival, Pool
@@ -92,7 +92,7 @@ class Peer(MTPPeer, HubListener):
     def is_connected(self, remote_address: tuple) -> bool:
         conn = self.get_connection(remote_address=remote_address)
         if conn is not None:
-            return conn.status == ConnectionStatus.Connected
+            return conn.is_connected
 
     #
     #   Send

@@ -83,5 +83,4 @@ __all__ = [
 
     # contact
     'Contact', 'ContactDelegate',
-    'Session',
 ]

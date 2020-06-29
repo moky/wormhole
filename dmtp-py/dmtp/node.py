@@ -40,7 +40,7 @@ from .command import Hello, HelloCommand
 from .command import LocationValue
 from .message import Message
 from .peer import Hub, Peer
-from .contact import ContactDelegate, Session
+from .contact import ContactDelegate
 
 
 class Node(PeerHandler):
@@ -65,33 +65,6 @@ class Node(PeerHandler):
     def stop(self):
         # stop peer
         self.peer.stop()
-
-    def get_sessions(self, identifier: str) -> list:
-        """
-        Get connected locations for user ID
-
-        :param identifier: user ID
-        :return: connected locations and addresses
-        """
-        assert self.delegate is not None, 'contact delegate not set'
-        locations = self.delegate.get_locations(identifier=identifier)
-        if len(locations) == 0:
-            # locations not found
-            return []
-        sessions = []
-        for loc in locations:
-            assert isinstance(loc, LocationValue), 'location error: %s' % loc
-            if loc.source_address is not None:
-                addr = (loc.source_address.ip, loc.source_address.port)
-                if self.__peer.is_connected(remote_address=addr):
-                    sessions.append(Session(location=loc, address=addr))
-                    continue
-            if loc.mapped_address is not None:
-                addr = (loc.mapped_address.ip, loc.mapped_address.port)
-                if self.__peer.is_connected(remote_address=addr):
-                    sessions.append(Session(location=loc, address=addr))
-                    continue
-        return sessions
 
     #
     #   Send

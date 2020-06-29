@@ -105,6 +105,14 @@ class DMTPClient(dmtp.Client):
             self.handler.process_message(msg=msg, source=source)
         return super().process_message(msg=msg, source=source)
 
+    def send_command(self, cmd: dmtp.Command, destination: tuple) -> dmtp.Departure:
+        print('sending cmd to %s:\n\t%s' % (destination, cmd))
+        return super().send_command(cmd=cmd, destination=destination)
+
+    def send_message(self, msg: dmtp.Message, destination: tuple) -> dmtp.Departure:
+        print('sending msg to %s:\n\t%s' % (destination, msg))
+        return super().send_message(msg=msg, destination=destination)
+
     #
     #   PeerDelegate
     #

@@ -35,22 +35,6 @@ from typing import Optional
 from .command import LocationValue
 
 
-class Session:
-
-    def __init__(self, location: LocationValue, address: tuple):
-        super().__init__()
-        self.__location = location
-        self.__address = address
-
-    @property
-    def location(self) -> LocationValue:
-        return self.__location
-
-    @property
-    def address(self) -> tuple:
-        return self.__address
-
-
 class ContactDelegate(ABC):
 
     @abstractmethod
@@ -165,7 +149,7 @@ class Contact:
                     continue
                 if item.mapped_address != location.mapped_address:
                     continue
-                if item.timestamp >= location.timestamp:
+                if item.timestamp > location.timestamp:
                     return False
                 # remove it
                 self.__locations.pop(pos)

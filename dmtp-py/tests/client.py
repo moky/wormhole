@@ -15,7 +15,7 @@ sys.path.append(rootPath)
 import stun
 import dmtp
 
-from tests.contacts import ContactManager
+from tests.contacts import ContactManager, Session
 
 
 SERVER_GZ1 = '134.175.87.98'
@@ -55,12 +55,51 @@ class Client(dmtp.Client):
         self.send_command(cmd=cmd, destination=self.server_address)
         return True
 
+    def process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
+        print('received cmd from %s:\n\t%s' % (source, cmd))
+        return super().process_command(cmd=cmd, source=source)
+
     def process_message(self, msg: dmtp.Message, source: tuple) -> bool:
         print('received msg from %s:\n\t%s' % (source, msg))
         content = msg.content
         if content is not None:
             print('msg content: "%s"' % content.decode('utf-8'))
-        return True
+        return super().process_message(msg=msg, source=source)
+
+    def send_command(self, cmd: dmtp.Command, destination: tuple) -> dmtp.Departure:
+        print('sending cmd to %s:\n\t%s' % (destination, cmd))
+        return super().send_command(cmd=cmd, destination=destination)
+
+    def send_message(self, msg: dmtp.Message, destination: tuple) -> dmtp.Departure:
+        print('sending msg to %s:\n\t%s' % (destination, msg))
+        return super().send_message(msg=msg, destination=destination)
+
+    def get_sessions(self, identifier: str) -> list:
+        """
+        Get connected locations for user ID
+
+        :param identifier: user ID
+        :return: connected locations and addresses
+        """
+        assert self.delegate is not None, 'contact delegate not set'
+        locations = self.delegate.get_locations(identifier=identifier)
+        if len(locations) == 0:
+            # locations not found
+            return []
+        sessions = []
+        for loc in locations:
+            assert isinstance(loc, dmtp.LocationValue), 'location error: %s' % loc
+            if loc.source_address is not None:
+                addr = (loc.source_address.ip, loc.source_address.port)
+                if self.peer.is_connected(remote_address=addr):
+                    sessions.append(Session(location=loc, address=addr))
+                    continue
+            if loc.mapped_address is not None:
+                addr = (loc.mapped_address.ip, loc.mapped_address.port)
+                if self.peer.is_connected(remote_address=addr):
+                    sessions.append(Session(location=loc, address=addr))
+                    continue
+        return sessions
 
     def send_text(self, receiver: str, msg: str) -> bool:
         sessions = self.get_sessions(identifier=receiver)
@@ -77,7 +116,7 @@ class Client(dmtp.Client):
             'data': content,
         })
         for item in sessions:
-            assert isinstance(item, dmtp.Session), 'session error: %s' % item
+            assert isinstance(item, Session), 'session error: %s' % item
             print('sending msg to %s:\n\t%s' % (item.address, msg))
             self.send_message(msg=msg, destination=item.address)
         return True
