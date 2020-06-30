@@ -108,24 +108,33 @@ public class TagLengthValue extends Data {
             if (type == null) {
                 return null;
             }
+            Value value = null;
+            int dataLen = data.length;
             int offset = type.length;
-            // get length
-            Length length = parseLength(slice(data, offset), type);
-            if (length != null) {
-                offset += length.length;
+            if (0 < offset && offset < dataLen) {
+                // get length
+                Length length = parseLength(slice(data, offset), type);
+                // get value
+                if (length == null) {
+                    value = parseValue(slice(data, offset), type, null);
+                } else {
+                    offset += length.length;
+                    int end = offset + (int) length.value;
+                    if (offset < end && end <= dataLen) {
+                        value = parseValue(slice(data, offset, end), type, length);
+                    }
+                }
+                if (value != null) {
+                    offset += value.length;
+                }
             }
-            // get value
-            Value value = parseValue(slice(data, offset), type, length);
-            if (value != null) {
-                offset += value.length;
+            // check length
+            if (offset <= 0 || offset > dataLen) {
+                throw new AssertionError("TLV length error: " + offset + ", " + dataLen);
+            } else if (offset < dataLen) {
+                data = slice(data, 0, offset);
             }
-            // create
-            if (offset < data.length) {
-                return create(slice(data, 0, offset), type, value);
-            } else {
-                assert offset == data.length : "offset error: " + offset + " > " + data.length;
-                return create(data, type, value);
-            }
+            return create(data, type, value);
         }
 
         protected TagLengthValue create(byte[] data, Tag type, Value value) {

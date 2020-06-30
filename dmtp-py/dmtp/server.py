@@ -76,11 +76,11 @@ class Server(Node, ABC):
         # send command for each address
         for loc in locations:
             assert isinstance(loc, LocationValue), 'location info error: %s' % loc
-            # send 'fROM' command with sender's location info to the receiver
-            cmd = FromCommand.new(location=sender_location)
             address = loc.mapped_address
             if address is None:
                 continue
+            # send 'FROM' command with sender's location info to the receiver
+            cmd = FromCommand.new(location=sender_location)
             self.send_command(cmd=cmd, destination=(address.ip, address.port))
             # respond 'FROM' command with receiver's location info to sender
             cmd = FromCommand.new(location=loc)

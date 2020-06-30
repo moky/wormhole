@@ -65,15 +65,17 @@ public class SoftwareValue extends AttributeValue {
     public static SoftwareValue parse(byte[] data, Tag type, Length length) {
         // check length
         if (length == null || length.value == 0) {
-            //throw new ArrayIndexOutOfBoundsException("Software length error: " + length);
+            //throw new ArrayIndexOutOfBoundsException("length error: " + length);
             return null;
-        }
-        int len = length.getIntValue();
-        if (data.length < len) {
-            //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
-            return null;
-        } else if (data.length > len) {
-            data = slice(data, 0, len);
+        } else {
+            int len = length.getIntValue();
+            int dataLen = data.length;
+            if (len < 0 || len > dataLen) {
+                //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
+                return null;
+            } else if (len < dataLen) {
+                data = slice(data, 0, len);
+            }
         }
         String desc = new String(data, Charset.forName("UTF-8"));
         return new SoftwareValue(data, desc.trim());

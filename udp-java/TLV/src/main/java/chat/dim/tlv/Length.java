@@ -32,7 +32,7 @@ package chat.dim.tlv;
 
 public class Length extends IntegerData {
 
-    public Length(byte[] data, int value) {
+    public Length(byte[] data, long value) {
         super(data, value);
     }
 

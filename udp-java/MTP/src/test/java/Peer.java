@@ -21,16 +21,16 @@ public class Peer extends chat.dim.mtp.Peer implements HubListener {
         super(pool);
         this.localAddress = address;
         this.hub = hub;
-        hub.addListener(this);
         this.setDelegate(hub);
+        hub.addListener(this);
     }
 
     public Peer(SocketAddress address, Hub hub) {
         super();
         this.localAddress = address;
         this.hub = hub;
-        hub.addListener(this);
         this.setDelegate(hub);
+        hub.addListener(this);
     }
 
     public Peer(SocketAddress address, Pool pool) throws SocketException {

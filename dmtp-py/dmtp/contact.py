@@ -151,7 +151,7 @@ class Contact:
                     continue
                 if item.timestamp > location.timestamp:
                     return False
-                # remove it
+                # remove location(s) with same addresses
                 self.__locations.pop(pos)
             # insert (ordered by time)
             pos = len(self.__locations)

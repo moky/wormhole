@@ -125,21 +125,28 @@ class TagLengthValue(Data):
         tag = cls.parse_tag(data=data)
         if tag is None:
             return None
-        offset = len(tag.data)
-        # get length
-        length = cls.parse_length(data=data[offset:], tag=tag)
-        if length is not None:
-            offset += len(length.data)
-        # get value
-        value = cls.parse_value(data=data[offset:], tag=tag, length=length)
-        if value is not None:
-            offset += len(value.data)
-        # create
-        if offset < len(data):
-            return cls._create(data=data[:offset], tag=tag, value=value)
-        else:
-            assert offset == len(data), 'offset error: %d > %d' % (offset, len(data))
-            return cls._create(data=data, tag=tag, value=value)
+        value = None
+        data_len = len(data)
+        offset = tag.length
+        if 0 < offset < data_len:
+            # get length
+            length = cls.parse_length(data=data[offset:], tag=tag)
+            # get value
+            if length is None:
+                value = cls.parse_value(data=data[offset:], tag=tag, length=None)
+            else:
+                offset += length.length
+                end = offset + length.value
+                if offset < end <= data_len:
+                    value = cls.parse_value(data=data[offset:end], tag=tag, length=length)
+            if value is not None:
+                offset += value.length
+        # check length
+        if offset <= 0 or offset > data_len:
+            raise AssertionError('TLV length error: %d, %d' % (offset, data_len))
+        elif offset < data_len:
+            data = data[:offset]
+        return cls._create(data=data, tag=tag, value=value)
 
     @classmethod
     def _create(cls, data: bytes, tag: Tag, value: Value=None):

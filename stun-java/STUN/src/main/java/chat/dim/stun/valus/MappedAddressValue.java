@@ -163,24 +163,33 @@ public class MappedAddressValue extends AttributeValue {
 
     public static MappedAddressValue parse(byte[] data, Tag type, Length length) {
         // check length
-        if (length == null || (length.value != 8 && length.value != 20)) {
-            //throw new ArrayIndexOutOfBoundsException("Mapped-Address length error: " + length);
+        if (length == null || length.value == 0) {
+            //throw new ArrayIndexOutOfBoundsException("length error: " + length);
             return null;
-        }
-        int len = length.getIntValue();
-        if (data.length < len) {
-            //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
-            return null;
-        } else if (data.length > len) {
-            data = slice(data, 0, len);
+        } else {
+            int len = length.getIntValue();
+            int dataLen = data.length;
+            if (len < 0 || len > dataLen) {
+                //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
+                return null;
+            } else if (len < dataLen) {
+                data = slice(data, 0, len);
+            }
         }
         // checking
         if (data[0] != 0) {
             return null;
         }
         byte family = data[1];
-        int port = ((data[2] &0xFF) << 8) | (data[3] & 0xFF);
-        String ip = bytesToIP(slice(data, 4), family);
-        return new MappedAddressValue(data, ip, port, family);
+        // check family
+        if ((family == FAMILY_IPV4 && length.value == 8) ||
+                (family == FAMILY_IPV6 && length.value == 20)) {
+            int port = ((data[2] &0xFF) << 8) | (data[3] & 0xFF);
+            String ip = bytesToIP(slice(data, 4), family);
+            return new MappedAddressValue(data, ip, port, family);
+        } else {
+            //throw new IllegalArgumentException("mapped-address error: " + Arrays.toString(data));
+            return null;
+        }
     }
 }

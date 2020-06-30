@@ -52,9 +52,9 @@ class Peer(MTPPeer, HubListener):
             hub = Hub()
             hub.open(host=local_address[0], port=local_address[1])
             # hub.start()
-            hub.add_listener(listener=self)
         self.__hub = hub
         self.delegate = hub
+        hub.add_listener(listener=self)
 
     @property
     def local_address(self) -> tuple:

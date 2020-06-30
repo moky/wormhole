@@ -115,7 +115,6 @@ class MappedAddressValue(Value):
 
     @classmethod
     def bytes_to_ip(cls, address: bytes, family: int) -> str:
-        # check address family
         if family == cls.family_ipv4:
             assert len(address) == 4, 'IPv4 data error: %s' % address
             # IPv4
@@ -134,10 +133,24 @@ class MappedAddressValue(Value):
 
     @classmethod
     def parse(cls, data: bytes, tag: Tag, length: Length = None):
-        assert len(data) >= 8, 'mapped-address value error: %s' % data
+        # check length
+        if length is None or length.value == 0:
+            return None
+        else:
+            length = length.value
+            data_len = len(data)
+            if data_len < length:
+                return None
+            elif data_len > length:
+                data = data[:length]
+            if length != 8 and length != 20:
+                # raise ValueError('mapped-address length error: %d' % length)
+                return None
         if data[0] != 0:
             return None
         family = bytes_to_int(data[1:2])
+        if family != cls.family_ipv4 and family != cls.family_ipv6:
+            return None
         port = bytes_to_int(data[2:4])
         ip = cls.bytes_to_ip(address=data[4:], family=family)
         return cls(data=data, ip=ip, port=port, family=family)
