@@ -48,6 +48,12 @@ public class TagLengthValue extends Data {
     public final Tag tag;
     public final Value value;
 
+    public TagLengthValue(Data data, Tag type, Value value) {
+        super(data);
+        this.tag = type;
+        this.value = value;
+    }
+
     public TagLengthValue(byte[] data, Tag type, Value value) {
         super(data);
         this.tag = type;
@@ -58,13 +64,13 @@ public class TagLengthValue extends Data {
         this(build(type, length, value), type, value);
     }
 
-    private static byte[] build(Tag type, Length length, Value value) {
-        byte[] data = type.data;
+    private static Data build(Tag type, Length length, Value value) {
+        Data data = type;
         if (length != null) {
-            data = concat(data, length.data);
+            data = data.concat(length);
         }
         if (value != null) {
-            data = concat(data, value.data);
+            data = data.concat(value);
         }
         return data;
     }
@@ -75,14 +81,14 @@ public class TagLengthValue extends Data {
 
     private static final Parser parser = new Parser();
 
-    public static List<TagLengthValue> parseAll(byte[] data) {
+    public static List<TagLengthValue> parseAll(Data data) {
         //noinspection unchecked
         return (List<TagLengthValue>) parser.parseAll(data);
     }
 
     protected static class Parser {
 
-        public List parseAll(byte[] data) {
+        public List parseAll(Data data) {
             List<TagLengthValue> array = new ArrayList<>();
             TagLengthValue item;
             int remaining = data.length;
@@ -96,32 +102,31 @@ public class TagLengthValue extends Data {
                 array.add(item);
                 // next item
                 pos = item.length;
-                data = slice(data, pos);
+                data = data.slice(pos);
                 remaining -= pos;
             }
             return array;
         }
 
-        private TagLengthValue parse(byte[] data) {
+        private TagLengthValue parse(Data data) {
             // get type
             Tag type = parseTag(data);
             if (type == null) {
                 return null;
             }
             Value value = null;
-            int dataLen = data.length;
             int offset = type.length;
-            if (0 < offset && offset < dataLen) {
+            if (0 < offset && offset < data.length) {
                 // get length
-                Length length = parseLength(slice(data, offset), type);
+                Length length = parseLength(data.slice(offset), type);
                 // get value
                 if (length == null) {
-                    value = parseValue(slice(data, offset), type, null);
+                    value = parseValue(data.slice(offset), type, null);
                 } else {
                     offset += length.length;
                     int end = offset + (int) length.value;
-                    if (offset < end && end <= dataLen) {
-                        value = parseValue(slice(data, offset, end), type, length);
+                    if (offset < end && end <= data.length) {
+                        value = parseValue(data.slice(offset, end), type, length);
                     }
                 }
                 if (value != null) {
@@ -129,27 +134,27 @@ public class TagLengthValue extends Data {
                 }
             }
             // check length
-            if (offset <= 0 || offset > dataLen) {
-                throw new AssertionError("TLV length error: " + offset + ", " + dataLen);
-            } else if (offset < dataLen) {
-                data = slice(data, 0, offset);
+            if (offset <= 0 || offset > data.length) {
+                throw new AssertionError("TLV length error: " + offset + ", " + data.length);
+            } else if (offset < data.length) {
+                data = data.slice(0, offset);
             }
             return create(data, type, value);
         }
 
-        protected TagLengthValue create(byte[] data, Tag type, Value value) {
+        protected TagLengthValue create(Data data, Tag type, Value value) {
             return new TagLengthValue(data, type, value);
         }
 
-        protected Tag parseTag(byte[] data) {
+        protected Tag parseTag(Data data) {
             return Tag.parse(data);
         }
 
-        protected Length parseLength(byte[] data, Tag type) {
+        protected Length parseLength(Data data, Tag type) {
             return Length.parse(data, type);
         }
 
-        protected Value parseValue(byte[] data, Tag type, Length length) {
+        protected Value parseValue(Data data, Tag type, Length length) {
             return Value.parse(data, type, length);
         }
     }

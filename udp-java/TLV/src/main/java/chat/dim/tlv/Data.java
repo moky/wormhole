@@ -36,47 +36,177 @@ import java.util.Random;
 /**
  *  Data in bytes
  */
-public class Data {
+public class Data implements Cloneable {
 
-    public final byte[] data;
+    // data view
+    protected byte[] buffer;
+    // buffer length
+    protected int bufLength;
+    // view offset
+    protected int offset;
+    // view length
     public final int length;
 
-    public Data(byte[] data) {
+    /**
+     *  Adjust position
+     *
+     * @param pos - position
+     * @param len - length
+     * @return adjust the position in range [0, len]
+     */
+    protected static int adjust(int pos, int len) {
+        if (pos < 0) {
+            pos += len;  // count from right hand
+            if (pos < 0) {
+                pos = 0; // too small
+            }
+        } else if (pos > len) {
+            pos = len;   // too big
+        }
+        return pos;
+    }
+
+    /**
+     *  Create data view with range [start, end)
+     *
+     * @param data  - data view
+     * @param start - start position (include)
+     * @param end   - end position (exclude)
+     */
+    public Data(byte[] data, int start, int end) {
         super();
-        this.data = data;
-        this.length = data.length;
+        buffer = data;
+        bufLength = data.length;
+
+        // adjust positions
+        start = adjust(start, bufLength);
+        end = adjust(end, bufLength);
+
+        offset = start;
+        if (start < end) {
+            length = end - start;
+        } else {
+            length = 0;  // end position should not smaller than start position
+        }
+    }
+
+    /**
+     *  Create data view with bytes
+     *
+     * @param data - bytes
+     */
+    public Data(byte[] data) {
+        this(data, 0, data.length);
+    }
+
+    /**
+     *  Clone data view
+     *
+     * @param data - same view
+     */
+    public Data(Data data) {
+        this(data.buffer, data.offset, data.offset + data.length);
     }
 
     @Override
     public boolean equals(Object other) {
+        if (other instanceof Data) {
+            return equals((Data) other);
+        }
+        return this == other;
+    }
+    public boolean equals(Data other) {
         if (this == other) {
             return true;
         }
-        if (other instanceof Data) {
-            return equals(((Data) other).data);
-        }
-        return false;
+        return equals(other.buffer, other.offset, other.length);
     }
-    public boolean equals(byte[] other) {
-        if (other.length != data.length) {
+    public boolean equals(byte[] otherBuffer, int otherOffset, int otherLength) {
+        if (otherBuffer == buffer) {
+            if (otherLength == length && otherOffset == offset) {
+                return true;
+            }
+        }
+        if (otherLength != length) {
             return false;
         }
-        int pos = other.length - 1;
-        for (; pos >= 0; --pos) {
-            if (other[pos] != data[pos]) {
+        int pos1 = offset + length - 1;
+        int pos2 = otherLength + otherLength - 1;
+        for (; pos1 >= offset; --pos1, --pos2) {
+            if (buffer[pos1] != otherBuffer[pos2]) {
                 return false;
             }
         }
         return true;
     }
+    public boolean equals(byte[] other) {
+        return equals(other, 0, other.length);
+    }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(data);
+        if (offset == 0 && length == bufLength) {
+            return Arrays.hashCode(buffer);
+        } else {
+            return Arrays.hashCode(slice(buffer, offset, offset + length));
+        }
     }
 
     //
-    //  functions
+    //  To bytes
+    //
+
+    public byte[] getBytes() {
+        return getBytes(0, length);
+    }
+
+    public byte[] getBytes(int start) {
+        return getBytes(start, length);
+    }
+
+    public byte[] getBytes(int start, int end) {
+        return slice(buffer, offset + start, offset + end);
+    }
+
+    //
+    //  To another data
+    //
+
+    public Data slice(int start) {
+        return slice(start, length);
+    }
+
+    public Data slice(int start, int end) {
+        return new Data(buffer, offset + start, offset + end);
+    }
+
+    public Data concat(Data other) {
+        if (other.buffer == buffer) {
+            if (other.offset == offset + length) {
+                // join the neighbour views
+                return new Data(buffer, offset, offset + length + other.length);
+            }
+        }
+        byte[] data = new byte[length + other.length];
+        System.arraycopy(buffer, offset, data, 0, length);;
+        System.arraycopy(other.buffer, other.offset, data, length, other.length);
+        return new Data(data);
+    }
+
+    @Override
+    public Data clone() throws CloneNotSupportedException {
+        // deep copy
+        byte[] data = new byte[length];
+        System.arraycopy(buffer, offset, data, 0, length);
+        Data copy = (Data) super.clone();
+        copy.buffer = data;
+        copy.bufLength = data.length;
+        copy.offset = 0;
+        return copy;
+    }
+
+    //
+    //  bytes functions
     //
 
     public static byte[] slice(byte[] data, int start) {
@@ -85,33 +215,17 @@ public class Data {
 
     public static byte[] slice(byte[] data, int start, int end) {
         int length = data.length;
-        // check start position
-        if (start < 0) {
-            start += length;
-            if (start < 0) {
-                start = 0;
-            }
-        } else if (start >= length) {
-            return new byte[0];
-        }
-        // check end position
-        if (end < 0) {
-            end += length;
-            if (end <= 0) {
-                return new byte[0];
-            }
-        } else if (end > length) {
-            end = length;
-        }
+        // adjust positions
+        start = adjust(start, length);
+        end = adjust(end, length);
         // check range
-        if (start >= end) {
+        if (start == 0 && end == length) {
+            // same buffer
+            return data;
+        } else if (start >= end) {
+            // empty buffer
             return new byte[0];
         }
-        /*
-        if (start == 0 && end == data.length) {
-            return data;
-        }
-         */
         // copy sub-array
         byte[] buffer = new byte[end - start];
         System.arraycopy(data, start, buffer, 0, end - start);
@@ -119,13 +233,28 @@ public class Data {
     }
 
     public static byte[] concat(byte[] array1, byte[] array2) {
-        byte[] buffer = new byte[array1.length + array2.length];
-        System.arraycopy(array1, 0, buffer, 0, array1.length);
-        System.arraycopy(array2, 0, buffer, array1.length, array2.length);
+        int len1 = array1.length;
+        int len2 = array2.length;
+        if (len1 == 0) {
+            // array1 empty
+            return array2;
+        } else if (len2 == 0) {
+            // array2 empty
+            return array1;
+        }
+        byte[] buffer = new byte[len1 + len2];
+        System.arraycopy(array1, 0, buffer, 0, len1);
+        System.arraycopy(array2, 0, buffer, len1, len2);
         return buffer;
     }
 
-    public static byte[] randomBytes(int length) {
+    public static byte[] clone(byte[] data) {
+        byte[] buffer = new byte[data.length];
+        System.arraycopy(data, 0, buffer, 0, data.length);
+        return buffer;
+    }
+
+    public static byte[] random(int length) {
         byte[] data = new byte[length];
         Random random = new Random();
         random.nextBytes(data);

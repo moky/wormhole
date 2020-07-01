@@ -30,14 +30,17 @@
  */
 package chat.dim.tlv;
 
-import java.nio.ByteOrder;
-
 /**
  *  Integer data (network ordered)
  */
 public class IntegerData extends Data {
 
     public final long value;
+
+    public IntegerData(Data data, long value) {
+        super(data);
+        this.value = value;
+    }
 
     public IntegerData(byte[] data, long value) {
         super(data);
@@ -46,13 +49,10 @@ public class IntegerData extends Data {
 
     @Override
     public boolean equals(Object other) {
-        if (this == other) {
-            return true;
-        }
         if (other instanceof IntegerData) {
-            return equals(((IntegerData) other).value);
+            return value == ((IntegerData) other).value;
         }
-        return false;
+        return this == other;
     }
     public boolean equals(int other) {
         return value == other;
@@ -74,29 +74,30 @@ public class IntegerData extends Data {
     }
 
     //
-    //  Converting
+    //  bytes functions
     //
 
-    private static long bytesToLongB(byte[] data) {
-        long result = 0;
-        int count = data.length;
-        int index;
-        for (index = 0; index < count; ++index) {
-            result = (result << 8) | (data[index] & 0xFF);
-        }
-        return result;
+    protected static long longFromBytes(byte[] data) {
+        return longFromBytes(data, 0, data.length);
     }
-    private static long bytesToLongL(byte[] data) {
+    protected static long longFromBytes(byte[] data, int length) {
+        return longFromBytes(data, 0, length);
+    }
+    protected static long longFromBytes(byte[] data, int start, int end) {
+        // adjust positions
+        start = adjust(start, data.length);
+        end = adjust(end, data.length);
+        if (start >= end) {
+            return 0;
+        }
         long result = 0;
-        int count = data.length;
-        int index;
-        for (index = count - 1; index >= 0; --index) {
-            result = (result << 8) | (data[index] & 0xFF);
+        for (; start < end; ++start) {
+            result = (result << 8) | (data[start] & 0xFF);
         }
         return result;
     }
 
-    private static byte[] longToBytesB(long value, int length) {
+    protected static byte[] bytesFromLong(long value, int length) {
         byte[] data = new byte[length];
         int index;
         for (index = length - 1; index >= 0; --index) {
@@ -104,63 +105,5 @@ public class IntegerData extends Data {
             value >>= 8;
         }
         return data;
-    }
-    private static byte[] longToBytesL(long value, int length) {
-        byte[] data = new byte[length];
-        int index;
-        for (index = 0; index < length; ++index) {
-            data[index] = (byte) (value & 0xFF);
-            value >>= 8;
-        }
-        return data;
-    }
-
-    // TODO: signed / unsigned int
-
-    /**
-     *  Convert bytes to int value
-     *
-     * @param data - bytes in network order
-     * @return integer
-     */
-    public static int bytesToInt(byte[] data) {
-        return (int) bytesToLongB(data);
-    }
-    public static long bytesToLong(byte[] data) {
-        return bytesToLongB(data);
-    }
-
-    public static int bytesToInt(byte[] data, ByteOrder order) {
-        if (order.equals(ByteOrder.BIG_ENDIAN)) {
-            return (int) bytesToLongB(data);
-        } else {
-            return (int) bytesToLongL(data);
-        }
-    }
-    public static long bytesToLong(byte[] data, ByteOrder order) {
-        if (order.equals(ByteOrder.BIG_ENDIAN)) {
-            return bytesToLongB(data);
-        } else {
-            return bytesToLongB(data);
-        }
-    }
-
-    /**
-     *  Convert int value to bytes
-     *
-     * @param value - int
-     * @param length - size in bytes
-     * @return bytes in network order
-     */
-    public static byte[] intToBytes(long value, int length) {
-        return longToBytesB(value, length);
-    }
-
-    public static byte[] intToBytes(long value, int length, ByteOrder order) {
-        if (order.equals(ByteOrder.BIG_ENDIAN)) {
-            return longToBytesB(value, length);
-        } else {
-            return longToBytesL(value, length);
-        }
     }
 }

@@ -32,18 +32,25 @@ package chat.dim.tlv;
 
 public class Length extends IntegerData {
 
+    public Length(Data data, long value) {
+        super(data, value);
+    }
+
     public Length(byte[] data, long value) {
         super(data, value);
     }
 
-    public static Length parse(byte[] data, Tag type) {
-        int length = data.length;
-        if (length < 2) {
+    //
+    //  Factory
+    //
+
+    public static Length parse(Data data, Tag type) {
+        if (data.length < 2) {
             return null;
-        } else if (length > 2) {
-            data = slice(data, 0, 2);
+        } else if (data.length > 2) {
+            data = data.slice(0, 2);
         }
-        int value = bytesToInt(data);
+        long value = longFromBytes(data.buffer, data.offset, data.offset + data.length);
         return new Length(data, value);
     }
 }

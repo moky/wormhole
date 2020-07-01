@@ -32,16 +32,23 @@ package chat.dim.tlv;
 
 public class Tag extends Data {
 
+    public Tag(Data data) {
+        super(data);
+    }
+
     public Tag(byte[] data) {
         super(data);
     }
 
-    public static Tag parse(byte[] data) {
-        int length = data.length;
-        if (length < 2) {
+    //
+    //  Factory
+    //
+
+    public static Tag parse(Data data) {
+        if (data.length < 2) {
             return null;
-        } else if (length > 2) {
-            data = slice(data, 0, 2);
+        } else if (data.length > 2) {
+            data = data.slice(0, 2);
         }
         return new Tag(data);
     }

@@ -35,43 +35,53 @@ package chat.dim.tlv;
  */
 public class VarIntData extends IntegerData {
 
-    public VarIntData(byte[] data, long value) {
+    public VarIntData(Data data, long value) {
         super(data, value);
     }
 
+    public VarIntData(long value) {
+        super(bytesFromLong(value), value);
+    }
+
+    //
+    //  Factories
+    //
+
     public static VarIntData fromBytes(byte[] data) {
-        int length = data.length;
-        if (length < 1) {
-            return null;
-        }
-        Result res = parseBytes(data);
-        if (res.length < length) {
-            data = slice(data, 0, res.length);
+        return fromData(new Data(data));
+    }
+
+    public static VarIntData fromData(Data data) {
+        Result res = parseBytes(data.buffer, data.offset);
+        if (res.length < data.length) {
+            data = data.slice(0, res.length);
         }
         return new VarIntData(data, res.value);
     }
 
-    public static VarIntData fromLong(long value) {
-        byte[] data = intToBytes(value);
-        return new VarIntData(data, value);
-    }
-
     //
-    //  Converting
+    //  bytes functions
     //
 
-    private static final class Result {
-        final long value;
-        final int length;
-        Result(long value, int length) {
-            this.value = value;
-            this.length = length;
-        }
-    }
-
-    private static Result parseBytes(byte[] data) {
-        long value = 0;
+    protected static byte[] bytesFromLong(long value) {
+        byte[] buffer = new byte[8];
         int index = 0;
+        while (value > 0x7F) {
+            buffer[index] = (byte) ((value & 0x7F) | 0x80);
+            value >>= 7;
+            index += 1;
+        }
+        buffer[index] = (byte) (value & 0x7F);
+        return slice(buffer, 0, index + 1);
+    }
+
+    protected static long longFromBytes(byte[] data) {
+        return parseBytes(data, 0).value;
+    }
+
+    private static Result parseBytes(byte[] data, int start) {
+        long value = 0;
+        int index = start;
         int offset = 0;
         byte ch;
         do {
@@ -83,19 +93,15 @@ public class VarIntData extends IntegerData {
         return new Result(value, index);
     }
 
-    public static long bytesToLong(byte[] data) {
-        return parseBytes(data).value;
-    }
+    private static final class Result {
 
-    public static byte[] intToBytes(long value) {
-        byte[] buffer = new byte[8];
-        int index = 0;
-        while (value > 0x7F) {
-            buffer[index] = (byte) ((value & 0x7F) | 0x80);
-            value >>= 7;
-            index += 1;
+        final long value;
+        final int length;
+
+        Result(long value, int length) {
+            super();
+            this.value = value;
+            this.length = length;
         }
-        buffer[index] = (byte) (value & 0x7F);
-        return slice(buffer, 0, index + 1);
     }
 }

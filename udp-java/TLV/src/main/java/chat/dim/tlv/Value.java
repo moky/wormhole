@@ -32,20 +32,27 @@ package chat.dim.tlv;
 
 public class Value extends Data {
 
+    public Value(Data data) {
+        super(data);
+    }
+
     public Value(byte[] data) {
         super(data);
     }
 
-    public static Value parse(byte[] data, Tag type, Length length) {
+    //
+    //  Factory
+    //
+
+    public static Value parse(Data data, Tag type, Length length) {
         if (length == null || length.value == 0) {
             return null;
         }
         int len = (int) length.value;
-        int data_len = data.length;
-        if (data_len < len) {
+        if (data.length < len) {
             return null;
-        } else if (data_len > len) {
-            data = slice(data, 0, len);
+        } else if (data.length > len) {
+            data = data.slice(0, len);
         }
         return new Value(data);
     }
