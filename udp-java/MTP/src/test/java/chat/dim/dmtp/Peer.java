@@ -1,7 +1,38 @@
+/* license: https://mit-license.org
+ *
+ *  DMTP: Direct Message Transfer Protocol
+ *
+ *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *
+ * ==============================================================================
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2020 Albert Moky
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * ==============================================================================
+ */
+package chat.dim.dmtp;
 
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
+import java.util.Set;
 
 import chat.dim.mtp.Pool;
 import chat.dim.mtp.protocol.Package;
@@ -41,18 +72,9 @@ public class Peer extends chat.dim.mtp.Peer implements HubListener {
         this(address, createHub(address));
     }
 
-    public Peer(String host, int port, Pool pool) throws SocketException {
-        this(new InetSocketAddress(host, port), pool);
-    }
-
-    public Peer(String host, int port) throws SocketException {
-        this(new InetSocketAddress(host, port));
-    }
-
     private static Hub createHub(SocketAddress localAddress) throws SocketException {
-        InetSocketAddress address = (InetSocketAddress) localAddress;
         Hub hub = new Hub();
-        hub.open(address.getHostString(), address.getPort());
+        hub.open(localAddress);
         //hub.start();
         return hub;
     }
@@ -73,6 +95,34 @@ public class Peer extends chat.dim.mtp.Peer implements HubListener {
         super.close();
     }
 
+    //
+    //  Connections
+    //
+
+    public Connection connect(SocketAddress remoteAddress) {
+        return hub.connect(remoteAddress, localAddress);
+    }
+
+    public Set<Connection> disconnect(SocketAddress remoteAddress) {
+        return hub.disconnect(remoteAddress, localAddress);
+    }
+
+    public Connection getConnection(SocketAddress remoteAddress) {
+        return hub.getConnection(remoteAddress, localAddress);
+    }
+
+    public boolean isConnected(SocketAddress remoteAddress) {
+        Connection conn = getConnection(remoteAddress);
+        if (conn == null) {
+            return false;
+        }
+        return conn.isConnected();
+    }
+
+    //
+    //  Send
+    //
+
     public Departure sendCommand(Package pack, SocketAddress destination) {
         return sendCommand(pack, destination, localAddress);
     }
@@ -87,6 +137,7 @@ public class Peer extends chat.dim.mtp.Peer implements HubListener {
 
     @Override
     public HubFilter getFilter() {
+        // TODO: create filter for connection
         return null;
     }
 
@@ -99,6 +150,6 @@ public class Peer extends chat.dim.mtp.Peer implements HubListener {
 
     @Override
     public void onStatusChanged(Connection connection, ConnectionStatus oldStatus, ConnectionStatus newStatus) {
-
+        // TODO: update for connection status
     }
 }

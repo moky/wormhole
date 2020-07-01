@@ -77,30 +77,11 @@ public abstract class Node {
         this(address, createHub(address));
     }
 
-    public Node(String host, int port) throws SocketException {
-        this(new InetSocketAddress(host, port));
-    }
-
-    public Node(int port) throws SocketException {
-        this(new InetSocketAddress(port));
-    }
-
     private static Hub createHub(SocketAddress localAddress) throws SocketException {
-        InetSocketAddress address = (InetSocketAddress) localAddress;
         Hub hub = new Hub();
-        hub.open(address.getHostString(), address.getPort());
+        hub.open(localAddress);
         //hub.start();
         return hub;
-    }
-
-    public void start() {
-        // start hub
-        hub.start();
-    }
-
-    public void stop() {
-        // stop hub
-        hub.close();
     }
 
     protected void info(String msg) {

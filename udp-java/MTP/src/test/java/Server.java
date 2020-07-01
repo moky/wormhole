@@ -1,4 +1,5 @@
 
+import java.net.InetSocketAddress;
 import java.net.SocketException;
 
 public class Server extends Node {
@@ -7,7 +8,7 @@ public class Server extends Node {
     static int PORT = 9394;
 
     public Server(String host, int port) throws SocketException {
-        super(host, port);
+        super(new InetSocketAddress(host, port));
     }
 
     //
@@ -16,7 +17,7 @@ public class Server extends Node {
 
     public static void main(String args[]) throws SocketException {
 
-        info("Starting server (" + HOST + ":" + PORT + ") ...");
+        System.out.printf("Starting server (%s:%d) ...\n", HOST, PORT);
 
         Server server = new Server(HOST, PORT);
         server.start();

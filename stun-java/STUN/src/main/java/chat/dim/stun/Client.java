@@ -61,11 +61,7 @@ public class Client extends Node {
     public int retries = 3;
 
     public Client(String host, int port) throws SocketException {
-        super(host, port);
-    }
-
-    public Client(int port) throws SocketException {
-        super(port);
+        super(new InetSocketAddress(host, port));
     }
 
     @Override

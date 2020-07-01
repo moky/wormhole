@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  STUN: Session Traversal Utilities for NAT
+ *  DMTP: Direct Message Transfer Protocol
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,31 +28,20 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.stun.attributes;
+package chat.dim.dmtp;
 
-import chat.dim.tlv.Length;
-import chat.dim.tlv.Tag;
-import chat.dim.tlv.UInt16Data;
+import java.net.SocketAddress;
 
-public class AttributeLength extends Length {
+import chat.dim.mtp.PeerDelegate;
 
-    public AttributeLength(byte[] data, long value) {
-        super(data, value);
-    }
+public class Hub extends chat.dim.udp.Hub implements PeerDelegate {
 
-    public AttributeLength(int value) {
-        this(UInt16Data.intToBytes(value, 2), value);
-    }
+    //
+    //  PeerDelegate
+    //
 
-    public static AttributeLength parse(byte[] data, Tag type) {
-        int length = data.length;
-        if (length < 2) {
-            return null;
-        } else if (length > 2) {
-            data = slice(data, 0, 2);
-        }
-        int value = bytesToInt(data);
-        assert (value & 0x0003) == 0 : "attribute length error: " + value;
-        return new AttributeLength(data, value);
+    @Override
+    public int sendData(byte[] data, SocketAddress destination, SocketAddress source) {
+        return send(data, destination, source);
     }
 }

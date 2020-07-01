@@ -125,7 +125,7 @@ public class MappedAddressValue extends AttributeValue {
     private static byte[] IPToBytes(String ip, byte family) {
         if (family == FAMILY_IPV4) {
             // IPv4
-            String[] array = ip.split(".");
+            String[] array = ip.split("\\.");
             if (array.length != 4) {
                 throw new IndexOutOfBoundsException("IP error: " + ip);
             }

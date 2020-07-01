@@ -84,14 +84,6 @@ public class Socket extends Thread {
         socket = createSocket();
     }
 
-    public Socket(String host, int port) throws SocketException {
-        this(new InetSocketAddress(host, port));
-    }
-
-    public Socket(int port) throws SocketException {
-        this(new InetSocketAddress(port));
-    }
-
     protected DatagramSocket createSocket() throws SocketException {
         DatagramSocket socket = new DatagramSocket(localAddress);
         socket.setReuseAddress(true);

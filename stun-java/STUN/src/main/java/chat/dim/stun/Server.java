@@ -33,6 +33,7 @@ package chat.dim.stun;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -88,17 +89,9 @@ public class Server extends Node {
     public int changePort;
 
     public Server(String host, int port, int changePort) throws SocketException {
-        super(host, port);
+        super(new InetSocketAddress(host, port));
         this.changePort = changePort;
-        this.hub.open(host, changePort);
-    }
-
-    public Server(int port, int changePort) throws SocketException {
-        this("0.0.0.0", port, changePort);
-    }
-
-    public Server() throws SocketException {
-        this("0.0.0.0", 3478, 3479);
+        this.hub.open(new InetSocketAddress(host, changePort));
     }
 
     @Override
@@ -170,12 +163,12 @@ public class Server extends Node {
         byte[] data3 = (new Attribute(AttributeType.ChangedAddress, value)).data;
         // software
         value = SoftwareValue.create(software);
-        byte[] data6 = (new Attribute(AttributeType.SourceAddress, value)).data;
+        byte[] data6 = (new Attribute(AttributeType.Software, value)).data;
         // pack
         byte[] body = Data.concat(data1, data2);
         body = Data.concat(body, Data.concat(data3, data4));
         body = Data.concat(body, Data.concat(data5, data6));
-        Package pack = Package.create(head.type, head.sn, body);
+        Package pack = Package.create(MessageType.BindResponse, head.sn, body);
         int res = send(pack.data, clientAddress, new InetSocketAddress(localIP, localPort));
         return res == pack.length;
     }
@@ -185,7 +178,7 @@ public class Server extends Node {
         Map<String, Object> context = new HashMap<>();
         boolean ok = parseData(data, context);
         Header head = (Header) context.get("head");
-        if (!ok || head == null || head.type.equals(MessageType.BindRequest)) {
+        if (!ok || head == null || !head.type.equals(MessageType.BindRequest)) {
             // received package error
             return false;
         }

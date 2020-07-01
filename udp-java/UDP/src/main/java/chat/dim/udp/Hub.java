@@ -282,10 +282,6 @@ public class Hub extends Thread implements ConnectionHandler {
         return closedSockets;
     }
 
-    public Set<Socket> close(String host, int port) {
-        return close(new InetSocketAddress(host, port));
-    }
-
     /**
      *  Remove all sockets on this port
      *

@@ -1,10 +1,11 @@
 
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.charset.Charset;
 import java.util.List;
 
+import chat.dim.dmtp.Hub;
+import chat.dim.dmtp.Peer;
 import chat.dim.mtp.PeerHandler;
 import chat.dim.mtp.Pool;
 import chat.dim.mtp.protocol.DataType;
@@ -22,41 +23,20 @@ public class Node implements PeerHandler {
         peer.setHandler(this);
     }
 
-    public Node(SocketAddress address, Hub hub, Pool pool) throws SocketException {
-        this(createPeer(address, hub, pool));
+    public Node(SocketAddress address, Hub hub, Pool pool) {
+        this(new Peer(address, hub, pool));
     }
 
-    public Node(SocketAddress address, Hub hub) throws SocketException {
-        this(address, hub, null);
+    public Node(SocketAddress address, Hub hub) {
+        this(new Peer(address, hub));
     }
 
     public Node(SocketAddress address, Pool pool) throws SocketException {
-        this(address, null, pool);
+        this(new Peer(address, pool));
     }
 
     public Node(SocketAddress address) throws SocketException {
-        this(address, null, null);
-    }
-
-    public Node(String host, int port) throws SocketException {
-        this(new InetSocketAddress(host, port), null, null);
-    }
-
-    private static Peer createPeer(SocketAddress address, Hub hub, Pool pool) throws SocketException {
-        Peer peer;
-        if (hub == null) {
-            if (pool == null) {
-                peer = new Peer(address);
-            } else {
-                peer = new Peer(address, pool);
-            }
-        } else if (pool == null) {
-            peer = new Peer(address, hub);
-        } else {
-            peer = new Peer(address, hub, pool);
-        }
-        //peer.start();
-        return peer;
+        this(new Peer(address));
     }
 
     public void start() {
@@ -65,22 +45,37 @@ public class Node implements PeerHandler {
     }
 
     public void stop() {
+        close();
+    }
+
+    public void close() {
         // stop peer
         peer.close();
     }
 
-    static void info(String msg) {
-        System.out.printf("%s\n", msg);
-    }
-    static void info(byte[] data) {
-        info(new String(data, Charset.forName("UTF-8")));
-    }
+    //
+    //  Send
+    //
 
+    /**
+     *  Send command data to destination address
+     *
+     * @param cmd         - command data
+     * @param destination - remote IP and port
+     * @return departure task with 'trans_id' in the payload
+     */
     public Departure sendCommand(byte[] cmd, SocketAddress destination) {
         Package pack = Package.create(DataType.Command, cmd);
         return peer.sendCommand(pack, destination);
     }
 
+    /**
+     *  Send message data to destination address
+     *
+     * @param msg         - message data
+     * @param destination - remote IP and port
+     * @return departure task with 'trans_id' in the payload
+     */
     public Departure sendMessage(byte[] msg, SocketAddress destination) {
         Package pack = Package.create(DataType.Command, msg);
         return peer.sendMessage(pack, destination);
@@ -92,45 +87,48 @@ public class Node implements PeerHandler {
 
     @Override
     public void onSendCommandSuccess(TransactionID sn, SocketAddress destination, SocketAddress source) {
-
+        // TODO: process after success to send command
     }
 
     @Override
     public void onSendCommandTimeout(TransactionID sn, SocketAddress destination, SocketAddress source) {
-
+        // TODO: process after failed to send command
     }
 
     @Override
     public void onSendMessageSuccess(TransactionID sn, SocketAddress destination, SocketAddress source) {
-
+        // TODO: process after success to send message
     }
 
     @Override
     public void onSendMessageTimeout(TransactionID sn, SocketAddress destination, SocketAddress source) {
-
+        // TODO: process after failed to send message
     }
 
     @Override
     public boolean onReceivedCommand(byte[] cmd, SocketAddress source, SocketAddress destination) {
+        // TODO: process after received command data
         String text = new String(cmd, Charset.forName("UTF-8"));
-        info("received cmd (" + cmd.length + " bytes) from " + source + " to " + destination + ": " + text);
-        return false;
+        System.out.printf("received cmd (%d bytes) from %s to %s: %s\n", cmd.length, source, destination, text);
+        return true;
     }
 
     @Override
     public boolean onReceivedMessage(byte[] msg, SocketAddress source, SocketAddress destination) {
+        // TODO: process after received message data
         String text = new String(msg, Charset.forName("UTF-8"));
-        info("received msg (" + msg.length + " bytes) from " + source + " to " + destination + ": " + text);
-        return false;
+        System.out.printf("received msg (%d bytes) from %s to %s: %s\n", msg.length, source, destination, text);
+        return true;
     }
 
     @Override
     public boolean checkFragment(Package fragment, SocketAddress source, SocketAddress destination) {
+        // TODO: process after received command fragment
         return true;
     }
 
     @Override
     public void recycleFragments(List<Package> fragments, SocketAddress source, SocketAddress destination) {
-
+        // TODO: process after failed to send message as fragments
     }
 }

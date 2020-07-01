@@ -61,10 +61,10 @@ public class TagLengthValue extends Data {
     private static byte[] build(Tag type, Length length, Value value) {
         byte[] data = type.data;
         if (length != null) {
-            return concat(data, length.data);
+            data = concat(data, length.data);
         }
         if (value != null) {
-            return concat(data, value.data);
+            data = concat(data, value.data);
         }
         return data;
     }

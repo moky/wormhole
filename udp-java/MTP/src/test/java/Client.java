@@ -9,7 +9,7 @@ public class Client extends Node {
     static int PORT = 9999;
 
     public Client(String host, int port) throws SocketException {
-        super(host, port);
+        super(new InetSocketAddress(host, port));
     }
 
     //
@@ -18,7 +18,7 @@ public class Client extends Node {
 
     public static void main(String args[]) throws SocketException, InterruptedException {
 
-        info("Connecting server (" + Server.HOST + ":" + Server.PORT + ") ...");
+        System.out.printf("Connecting server (%s:%d) ...\n", Server.HOST, Server.PORT);
 
         InetSocketAddress destination = new InetSocketAddress(Server.HOST, Server.PORT);
 
@@ -33,7 +33,7 @@ public class Client extends Node {
 
         for (int index = 0; index < 16; ++index) {
             data = (index + " sheep:" + text).getBytes();
-            info("sending (" + data.length + " bytes): " + new String(data, Charset.forName("UTF-8")));
+            System.out.printf("sending (%d bytes): %s\n", data.length, new String(data, Charset.forName("UTF-8")));
             client.sendCommand(data, destination);
             client.sendMessage(data, destination);
             Thread.sleep(2000);
