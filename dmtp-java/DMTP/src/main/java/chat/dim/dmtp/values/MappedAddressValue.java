@@ -115,7 +115,7 @@ public class MappedAddressValue extends FieldValue {
         switch (family) {
             case FAMILY_IPV4: {
                 // IPv4
-                String[] array = ip.split(".");
+                String[] array = ip.split("\\.");
                 if (array.length == 4) {
                     data = new byte[4];
                     for (int index = 0; index < 4; ++index) {
@@ -145,9 +145,9 @@ public class MappedAddressValue extends FieldValue {
             case FAMILY_IPV4: {
                 // IPv4
                 if (address.length == 4) {
-                    StringBuilder sb = new StringBuilder(Integer.toString(address[0]));
+                    StringBuilder sb = new StringBuilder(Integer.toString(address[0] & 0xFF));
                     for (int index = 1; index < 4; ++index) {
-                        sb.append(".").append(Integer.toString(address[index]));
+                        sb.append(".").append(Integer.toString(address[index] & 0xFF));
                     }
                     ip = sb.toString();
                 }

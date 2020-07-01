@@ -55,7 +55,7 @@ public class ByteValue extends FieldValue {
 
     @Override
     public String toString() {
-        return Integer.toString(value);
+        return Integer.toString(value & 0xFF);
     }
 
     public static ByteValue parse(byte[] data, FieldName type, FieldLength length) {

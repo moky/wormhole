@@ -99,11 +99,11 @@ public class Assemble {
                 //throw new IllegalArgumentException("duplicated: " + item.head);
                 return false;
             }
-            // got the position, insert after it
-            index += 1;
+            // got the position
             break;
         }
-        fragments.add(index, fragment);
+        // insert after it
+        fragments.add(index + 1, fragment);
         updateLastTime();
         return true;
     }

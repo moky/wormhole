@@ -75,7 +75,7 @@ public class FieldName extends Tag {
         if (pos == 0 || pos == len) {
             return null;
         }
-        pos += 1;  // includes the tail '\0'
+        ++pos;  // includes the tail '\0'
         if (pos < len) {
             data = slice(data, 0, pos);
         }

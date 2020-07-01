@@ -46,15 +46,16 @@ import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.protocol.TransactionID;
 import chat.dim.mtp.task.Departure;
 
-public class Node implements PeerHandler {
+public abstract class Node implements PeerHandler {
 
     public final Peer peer;
 
-    private WeakReference<ContactDelegate> delegateRef = null;
+    private WeakReference<LocationDelegate> delegateRef = null;
 
     public Node(Peer peer) {
         super();
         this.peer = peer;
+        peer.setHandler(this);
     }
 
     public Node(SocketAddress address, Hub hub, Pool pool) {
@@ -73,13 +74,13 @@ public class Node implements PeerHandler {
         this(new Peer(address));
     }
 
-    public synchronized ContactDelegate getDelegate() {
+    public synchronized LocationDelegate getDelegate() {
         if (delegateRef == null) {
             return null;
         }
         return delegateRef.get();
     }
-    public synchronized void setDelegate(ContactDelegate delegate) {
+    public synchronized void setDelegate(LocationDelegate delegate) {
         if (delegate == null) {
             delegateRef = null;
         } else {
@@ -97,12 +98,37 @@ public class Node implements PeerHandler {
     }
 
     public void close() {
+        // stop peer
         peer.close();
     }
 
     //
     //  Send
     //
+
+    /**
+     *  Send command data to destination address
+     *
+     * @param cmd         - command data
+     * @param destination - remote IP and port
+     * @return departure task with 'trans_id' in the payload
+     */
+    public Departure sendCommand(byte[] cmd, SocketAddress destination) {
+        Package pack = Package.create(DataType.Command, cmd);
+        return peer.sendCommand(pack, destination);
+    }
+
+    /**
+     *  Send message data to destination address
+     *
+     * @param msg         - message data
+     * @param destination - remote IP and port
+     * @return departure task with 'trans_id' in the payload
+     */
+    public Departure sendMessage(byte[] msg, SocketAddress destination) {
+        Package pack = Package.create(DataType.Message, msg);
+        return peer.sendMessage(pack, destination);
+    }
 
     /**
      *  Send command to destination address
@@ -112,8 +138,7 @@ public class Node implements PeerHandler {
      * @return departure task with 'trans_id' in the payload
      */
     public Departure sendCommand(Command cmd, SocketAddress destination) {
-        Package pack = Package.create(DataType.Command, cmd.data);
-        return peer.sendCommand(pack, destination);
+        return sendCommand(cmd.data, destination);
     }
 
     /**
@@ -124,17 +149,18 @@ public class Node implements PeerHandler {
      * @return departure task with 'trans_id' in the payload
      */
     public Departure sendMessage(Message msg, SocketAddress destination) {
-        Package pack = Package.create(DataType.Message, msg.data);
-        return peer.sendCommand(pack, destination);
+        return sendMessage(msg.data, destination);
     }
 
-    //
-    //  Process
-    //
-
+    /**
+     *  Send current user ID/location to destination
+     *
+     * @param destination - server IP and port
+     * @return false on error
+     */
     public boolean sayHello(SocketAddress destination) {
-        ContactDelegate delegate = getDelegate();
-        assert delegate != null : "contact delegate not set yet";
+        LocationDelegate delegate = getDelegate();
+        assert delegate != null : "location delegate not set yet";
         LocationValue mine = delegate.currentLocation();
         if (mine == null) {
             //throw new NullPointerException("failed to get my location");
@@ -145,23 +171,41 @@ public class Node implements PeerHandler {
         return true;
     }
 
+    //
+    //  Process
+    //
+
     protected boolean processWho(SocketAddress source) {
         // say hi when the sender asked "Who are you?"
         return sayHello(source);
     }
 
+    /**
+     *  Accept location info
+     *
+     * @param location - location info
+     * @param source   - remote IP and port
+     * @return false on error
+     */
     protected boolean processHello(LocationValue location, SocketAddress source) {
-        // TODO: check source address with location
-        ContactDelegate delegate = getDelegate();
-        assert delegate != null : "contact delegate not set yet";
-        return delegate.updateLocation(location);
+        // check location signature and save it
+        LocationDelegate delegate = getDelegate();
+        assert delegate != null : "location delegate not set yet";
+        return delegate.storeLocation(location);
     }
 
+    /**
+     *  Check location info; if signature matched, remove it.
+     *
+     * @param location - location info
+     * @param source   - remote IP and port
+     * @return false on error
+     */
     protected boolean processBye(LocationValue location, SocketAddress source) {
-        // TODO: check source address with location
-        ContactDelegate delegate = getDelegate();
-        assert delegate != null : "contact delegate not set yet";
-        return delegate.removeLocation(location);
+        // check location signature and remove it
+        LocationDelegate delegate = getDelegate();
+        assert delegate != null : "location delegate not set yet";
+        return delegate.clearLocation(location);
     }
 
     /**
@@ -188,7 +232,7 @@ public class Node implements PeerHandler {
         }
         else
         {
-            System.out.printf("%s> unknown command: %s", getClass(), cmd);
+            System.out.printf("%s> unknown command: %s\n", getClass(), cmd);
             return false;
         }
     }
@@ -200,10 +244,7 @@ public class Node implements PeerHandler {
      * @param source - remote IP and port
      * @return false on error
      */
-    public boolean processMessage(Message msg, SocketAddress source) {
-        // TODO: implement me!
-        return true;
-    }
+    public abstract boolean processMessage(Message msg, SocketAddress source);
 
     //
     //  PeerHandler
@@ -211,49 +252,51 @@ public class Node implements PeerHandler {
 
     @Override
     public void onSendCommandSuccess(TransactionID sn, SocketAddress destination, SocketAddress source) {
-
+        // TODO: process after success to send command
     }
 
     @Override
     public void onSendCommandTimeout(TransactionID sn, SocketAddress destination, SocketAddress source) {
-
+        // TODO: process after failed to send command
     }
 
     @Override
     public void onSendMessageSuccess(TransactionID sn, SocketAddress destination, SocketAddress source) {
-
+        // TODO: process after success to send message
     }
 
     @Override
     public void onSendMessageTimeout(TransactionID sn, SocketAddress destination, SocketAddress source) {
-
+        // TODO: process after failed to send message
     }
 
     @Override
     public boolean onReceivedCommand(byte[] cmd, SocketAddress source, SocketAddress destination) {
-        List<Field> commands = Command.parseFields(cmd);
-        for (Field pack : commands) {
-            assert pack instanceof Command : "command error: " + pack;
-            processCommand((Command) pack, source);
+        // process after received command data
+        List<Command> commands = Command.parseCommands(cmd);
+        for (Command pack : commands) {
+            processCommand(pack, source);
         }
         return true;
     }
 
     @Override
     public boolean onReceivedMessage(byte[] msg, SocketAddress source, SocketAddress destination) {
+        // process after received message data
         List<Field> fields = Field.parseFields(msg);
-        Message pack = new Message(msg, fields);
+        Message pack = new Message(msg);
+        pack.setFields(fields);
         return processMessage(pack, source);
     }
 
     @Override
     public boolean checkFragment(Package fragment, SocketAddress source, SocketAddress destination) {
-        // TODO: check fragment
+        // TODO: process after received command fragment
         return true;
     }
 
     @Override
     public void recycleFragments(List<Package> fragments, SocketAddress source, SocketAddress destination) {
-
+        // TODO: process after failed to send message as fragments
     }
 }

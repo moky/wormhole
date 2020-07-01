@@ -28,60 +28,25 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.dmtp.fields;
+package chat.dim.dmtp;
 
-import java.util.List;
+import java.net.SocketAddress;
 
-import chat.dim.tlv.Length;
-import chat.dim.tlv.Tag;
-import chat.dim.tlv.TagLengthValue;
-import chat.dim.tlv.Value;
+import chat.dim.dmtp.values.LocationValue;
 
-public class Field extends TagLengthValue {
+public class Session {
 
-    public Field(byte[] data, FieldName type, FieldValue value) {
-        super(data, type, value);
-    }
+    public final LocationValue location;
+    public final SocketAddress address;
 
-    public Field(FieldName type, FieldValue value) {
-        super(type, new FieldLength(value == null ? 0 : value.length), value);
+    public Session(LocationValue location, SocketAddress address) {
+        super();
+        this.location = location;
+        this.address = address;
     }
 
     @Override
     public String toString() {
-        return "/* " + getClass().getSimpleName() + " */ " + tag + ": " + value;
-    }
-
-
-    //
-    //  Parser
-    //
-
-    private static final Parser parser = new Parser();
-
-    public static List<Field> parseFields(byte[] data) {
-        //noinspection unchecked
-        return (List<Field>) parser.parseAll(data);
-    }
-
-    protected static class Parser extends TagLengthValue.Parser {
-
-        @Override
-        protected Field create(byte[] data, Tag type, Value value) {
-            return new Field(data, (FieldName) type, (FieldValue) value);
-        }
-
-        @Override
-        protected FieldName parseTag(byte[] data) {
-            return FieldName.parse(data);
-        }
-
-        protected FieldLength parseLength(byte[] data, Tag type) {
-            return FieldLength.parse(data, (FieldName) type);
-        }
-
-        protected FieldValue parseValue(byte[] data, Tag type, Length length) {
-            return FieldValue.parse(data, (FieldName) type, (FieldLength) length);
-        }
+        return location.getIdentifier() + "@" + address;
     }
 }

@@ -42,19 +42,14 @@ import chat.dim.dmtp.fields.FieldValue;
 
 public class FieldsValue extends FieldValue {
 
-    public final List<Field> fields;
+    private List<Field> fields = null;
 
-    public FieldsValue(byte[] data, List<Field> fields) {
+    public FieldsValue(byte[] data) {
         super(data);
-        // set fields
-        this.fields = fields;
-        for (Field item : fields) {
-            setField(item);
-        }
     }
 
     public FieldsValue(List<Field> fields) {
-        this(build(fields), fields);
+        this(build(fields));
     }
 
     private static byte[] build(List<Field> fields) {
@@ -71,9 +66,21 @@ public class FieldsValue extends FieldValue {
         return data;
     }
 
+    @Override
+    public String toString() {
+        return toDictionary().toString();
+    }
+
     protected void setField(Field field) {
         // TODO: implement by subclass
-        System.out.printf("%s> unknown field: %s -> %s", getClass(), field.tag, field.value);
+        System.out.printf("%s> unknown field: %s -> %s\n", getClass(), field.tag, field.value);
+    }
+
+    public void setFields(List<Field> fields) {
+        for (Field item : fields) {
+            setField(item);
+        }
+        this.fields = fields;
     }
 
     public static FieldsValue parse(byte[] data, FieldName type, FieldLength length) {
@@ -93,11 +100,16 @@ public class FieldsValue extends FieldValue {
         }
         // parse fields
         List<Field> fields = Field.parseFields(data);
-        return new FieldsValue(data, fields);
+        FieldsValue value = new FieldsValue(data);
+        value.setFields(fields);
+        return value;
     }
 
     public Map<String, Object> toDictionary() {
         Map<String, Object> dictionary = new HashMap<>();
+        if (fields == null) {
+            return dictionary;
+        }
         String name;
         Object value;
         Object same;

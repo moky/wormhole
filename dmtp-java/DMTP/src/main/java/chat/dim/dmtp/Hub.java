@@ -30,9 +30,9 @@
  */
 package chat.dim.dmtp;
 
-import chat.dim.mtp.PeerDelegate;
-
 import java.net.SocketAddress;
+
+import chat.dim.mtp.PeerDelegate;
 
 public class Hub extends chat.dim.udp.Hub implements PeerDelegate {
 

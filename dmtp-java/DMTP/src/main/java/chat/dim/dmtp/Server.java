@@ -42,7 +42,7 @@ import chat.dim.dmtp.values.MappedAddressValue;
 import chat.dim.dmtp.values.StringValue;
 import chat.dim.mtp.Pool;
 
-public class Server extends Node {
+public abstract class Server extends Node {
 
     public Server(Peer peer) {
         super(peer);
@@ -94,7 +94,7 @@ public class Server extends Node {
             //throw new NullPointerException("receiver ID not found: " + receiver);
             return false;
         }
-        ContactDelegate delegate = getDelegate();
+        LocationDelegate delegate = getDelegate();
         assert delegate != null : "contact delegate not set yet";
         Command cmd;
         // get sessions of receiver

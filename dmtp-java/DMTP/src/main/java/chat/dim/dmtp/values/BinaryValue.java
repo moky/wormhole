@@ -32,6 +32,8 @@ package chat.dim.dmtp.values;
 
 import java.util.Arrays;
 
+import chat.dim.dmtp.fields.FieldLength;
+import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
 
 public class BinaryValue extends FieldValue {
@@ -43,5 +45,23 @@ public class BinaryValue extends FieldValue {
     @Override
     public String toString() {
         return Arrays.toString(data);
+    }
+
+    public static BinaryValue parse(byte[] data, FieldName type, FieldLength length) {
+        // check length
+        if (length == null || length.value == 0) {
+            //throw new ArrayIndexOutOfBoundsException("length error: " + length);
+            return null;
+        } else {
+            int len = length.getIntValue();
+            int dataLen = data.length;
+            if (len < 0 || len > dataLen) {
+                //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
+                return null;
+            } else if (len < dataLen) {
+                data = slice(data, 0, len);
+            }
+        }
+        return new BinaryValue(data);
     }
 }

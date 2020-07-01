@@ -40,7 +40,7 @@ import chat.dim.dmtp.values.MappedAddressValue;
 import chat.dim.dmtp.values.SourceAddressValue;
 import chat.dim.mtp.Pool;
 
-public class Client extends Node {
+public abstract class Client extends Node {
 
     public Client(Peer peer) {
         super(peer);
@@ -67,14 +67,14 @@ public class Client extends Node {
     //
 
     protected boolean processSign(LocationValue location, SocketAddress destination) {
-        ContactDelegate delegate = getDelegate();
+        LocationDelegate delegate = getDelegate();
         assert delegate != null : "contact delegate not set yet";
         LocationValue mine = delegate.signLocation(location);
         if (mine == null) {
             throw new NullPointerException("failed to sign the location: " + location);
         }
         // update the signed location
-        if (delegate.updateLocation(mine)) {
+        if (delegate.storeLocation(mine)) {
             return sayHello(destination);
         } else {
             throw new AssertionError("failed to update location: " + mine);
@@ -84,9 +84,9 @@ public class Client extends Node {
     protected boolean processFrom(LocationValue location) {
         // when someone is calling you,
         // respond anything (say "HI") to build the connection
-        ContactDelegate delegate = getDelegate();
+        LocationDelegate delegate = getDelegate();
         assert delegate != null : "contact delegate not set yet";
-        if (!delegate.updateLocation(location)) {
+        if (!delegate.storeLocation(location)) {
             //throw new RuntimeException("failed to update location: " + location);
             return false;
         }

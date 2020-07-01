@@ -34,13 +34,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 import chat.dim.dmtp.fields.Field;
+import chat.dim.dmtp.fields.FieldLength;
+import chat.dim.dmtp.fields.FieldName;
 
 public class CommandValue extends FieldsValue {
 
     private StringValue identifier = null;
 
-    public CommandValue(byte[] data, List<Field> fields) {
-        super(data, fields);
+    public CommandValue(byte[] data) {
+        super(data);
     }
 
     public CommandValue(List<Field> fields) {
@@ -69,5 +71,27 @@ public class CommandValue extends FieldsValue {
         List<Field> fields = new ArrayList<>();
         fields.add(id);
         return new CommandValue(fields);
+    }
+
+    public static CommandValue parse(byte[] data, FieldName type, FieldLength length) {
+        // check length
+        if (length == null || length.value == 0) {
+            //throw new ArrayIndexOutOfBoundsException("length error: " + length);
+            return null;
+        } else {
+            int len = length.getIntValue();
+            int dataLen = data.length;
+            if (len < 0 || len > dataLen) {
+                //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
+                return null;
+            } else if (len < dataLen) {
+                data = slice(data, 0, len);
+            }
+        }
+        // parse fields
+        List<Field> fields = Field.parseFields(data);
+        CommandValue value = new CommandValue(data);
+        value.setFields(fields);
+        return value;
     }
 }

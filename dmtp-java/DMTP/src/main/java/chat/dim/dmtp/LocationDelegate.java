@@ -35,15 +35,23 @@ import java.util.List;
 
 import chat.dim.dmtp.values.LocationValue;
 
-public interface ContactDelegate {
+public interface LocationDelegate {
 
     /**
-     *  Sign location addresses and time
+     *  Check location info; if signature matched, save it.
      *
-     * @param location - location info with 'MAPPED-ADDRESS' from server
-     * @return signed location info
+     * @param location - location info with ID, addresses, time and signature
+     * @return false on error
      */
-    LocationValue signLocation(LocationValue location);
+    boolean storeLocation(LocationValue location);
+
+    /**
+     *  Check location info; if signature matched, remove it.
+     *
+     * @param location - location info with ID, addresses, time and signature
+     * @return false on error
+     */
+    boolean clearLocation(LocationValue location);
 
     /**
      *  Get my location
@@ -69,18 +77,10 @@ public interface ContactDelegate {
     List<LocationValue> getLocations(String identifier);
 
     /**
-     *  Check and update location info
+     *  Sign location addresses and time
      *
-     * @param location - location info with ID and signature, time
-     * @return false on error
+     * @param location - location info with 'MAPPED-ADDRESS' from server
+     * @return signed location info
      */
-    boolean updateLocation(LocationValue location);
-
-    /**
-     *  Check and remove location info
-     *
-     * @param location - location: location info with ID and signature, time
-     * @return false on error
-     */
-    boolean removeLocation(LocationValue location);
+    LocationValue signLocation(LocationValue location);
 }

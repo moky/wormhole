@@ -31,11 +31,15 @@
 package chat.dim.dmtp.protocol;
 
 import chat.dim.dmtp.fields.Field;
+import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
 import chat.dim.dmtp.values.*;
+import chat.dim.tlv.Tag;
+import chat.dim.tlv.Value;
 
 import java.net.SocketAddress;
+import java.util.List;
 
 /*     Commands
  *     ~~~~~~~~
@@ -284,6 +288,26 @@ public class Command extends Field {
 
         public static Bye create(LocationValue locationValue) {
             return new Bye(locationValue);
+        }
+    }
+
+
+    //
+    //  Parser
+    //
+
+    private static final Parser parser = new Parser();
+
+    public static List<Command> parseCommands(byte[] data) {
+        //noinspection unchecked
+        return (List<Command>) parser.parseAll(data);
+    }
+
+    protected static class Parser extends Field.Parser {
+
+        @Override
+        protected Field create(byte[] data, Tag type, Value value) {
+            return new Command(data, (FieldName) type, (FieldValue) value);
         }
     }
 

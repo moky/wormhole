@@ -96,8 +96,8 @@ public class Message extends FieldsValue {
     // file in message
     private String filename = null;
 
-    public Message(byte[] data, List<Field> fields) {
-        super(data, fields);
+    public Message(byte[] data) {
+        super(data);
     }
 
     public Message(List<Field> fields) {
@@ -234,7 +234,7 @@ public class Message extends FieldsValue {
     //
 
     private static void addField(List<Field> fields, FieldName name, FieldValue value) {
-        if (name != null) {
+        if (value != null) {
             fields.add(new Field(name, value));
         }
     }
@@ -271,7 +271,9 @@ public class Message extends FieldsValue {
         //
         //  OK
         //
-        return new Message(fields);
+        Message msg = new Message(fields);
+        msg.setFields(fields);
+        return msg;
     }
 
     public static Message create(String sender, String receiver, long timestamp,

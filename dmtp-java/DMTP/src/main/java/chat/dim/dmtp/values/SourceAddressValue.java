@@ -30,7 +30,11 @@
  */
 package chat.dim.dmtp.values;
 
+import chat.dim.dmtp.fields.FieldLength;
+import chat.dim.dmtp.fields.FieldName;
+
 public class SourceAddressValue extends MappedAddressValue {
+    private MappedAddressValue value;
 
     /*  SOURCE-ADDRESS
      *  ~~~~~~~~~~~~~~
@@ -51,5 +55,13 @@ public class SourceAddressValue extends MappedAddressValue {
 
     public SourceAddressValue(String ip, int port) {
         super(ip, port);
+    }
+
+    public static SourceAddressValue parse(byte[] data, FieldName type, FieldLength length) {
+        MappedAddressValue value = MappedAddressValue.parse(data, type, length);
+        if (value == null) {
+            return null;
+        }
+        return new SourceAddressValue(data, value.ip, value.port, value.family);
     }
 }

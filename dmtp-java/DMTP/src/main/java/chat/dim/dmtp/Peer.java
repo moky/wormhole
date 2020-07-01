@@ -72,9 +72,9 @@ public class Peer extends chat.dim.mtp.Peer implements HubListener {
         this(address, createHub(address));
     }
 
-    private static Hub createHub(SocketAddress address) throws SocketException {
+    private static Hub createHub(SocketAddress localAddress) throws SocketException {
         Hub hub = new Hub();
-        hub.open(address);
+        hub.open(localAddress);
         //hub.start();
         return hub;
     }
@@ -111,14 +111,6 @@ public class Peer extends chat.dim.mtp.Peer implements HubListener {
         return hub.getConnection(remoteAddress, localAddress);
     }
 
-    public boolean isConnected(SocketAddress remoteAddress) {
-        Connection conn = getConnection(remoteAddress);
-        if (conn == null) {
-            return false;
-        }
-        return conn.isConnected();
-    }
-
     //
     //  Send
     //
@@ -137,6 +129,7 @@ public class Peer extends chat.dim.mtp.Peer implements HubListener {
 
     @Override
     public HubFilter getFilter() {
+        // TODO: create filter for connection
         return null;
     }
 
@@ -149,6 +142,6 @@ public class Peer extends chat.dim.mtp.Peer implements HubListener {
 
     @Override
     public void onStatusChanged(Connection connection, ConnectionStatus oldStatus, ConnectionStatus newStatus) {
-
+        // TODO: update for connection status
     }
 }
