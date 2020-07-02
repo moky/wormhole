@@ -31,6 +31,7 @@
 package chat.dim.stun.protocol;
 
 import chat.dim.tlv.Data;
+import chat.dim.tlv.MutableData;
 
 /*  [RFC] https://www.ietf.org/rfc/rfc5389.txt
  *
@@ -125,7 +126,7 @@ public class Header extends Data {
     }
 
     public static Header create(MessageType type, MessageLength len, TransactionID sn) {
-        Data data = new Data(type.getLength() + len.getLength() + sn.getLength());
+        MutableData data = new MutableData(type.getLength() + len.getLength() + sn.getLength());
         data.copy(type, 0, 0, type.getLength());
         data.copy(len, 0, type.getLength(), len.getLength());
         data.copy(sn, 0, type.getLength() + len.getLength(), sn.getLength());

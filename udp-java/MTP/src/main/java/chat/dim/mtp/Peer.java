@@ -41,7 +41,7 @@ import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.task.Arrival;
 import chat.dim.mtp.task.Assemble;
 import chat.dim.mtp.task.Departure;
-import chat.dim.tlv.Data;
+import chat.dim.tlv.MutableData;
 import chat.dim.tlv.UInt32Data;
 
 public class Peer extends Thread {
@@ -215,24 +215,24 @@ public class Peer extends Thread {
     }
 
     private void respond(Package pack, SocketAddress remote, SocketAddress local) {
-        Data body;
+        MutableData body;
         Header head = pack.head;
         DataType type = head.type;
         if (type.equals(DataType.Command)) {
             type = DataType.CommandRespond;
-            body = new Data(2);
+            body = new MutableData(2);
             body.setByte(0, (byte) 'O');
             body.setByte(1, (byte) 'K');
         } else if (type.equals(DataType.Message)) {
             type = DataType.MessageRespond;
-            body = new Data(2);
+            body = new MutableData(2);
             body.setByte(0, (byte) 'O');
             body.setByte(1, (byte) 'K');
         } else if (type.equals(DataType.MessageFragment)) {
             type = DataType.MessageRespond;
             UInt32Data pages = new UInt32Data(head.pages);
             UInt32Data offset = new UInt32Data(head.offset);
-            body = new Data(10);
+            body = new MutableData(10);
             body.copy(pages, 0, 0, 4);
             body.copy(offset, 0, 4, 4);
             body.setByte(8, (byte) 'O');

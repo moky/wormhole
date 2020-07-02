@@ -31,6 +31,7 @@
 package chat.dim.mtp.protocol;
 
 import chat.dim.tlv.Data;
+import chat.dim.tlv.MutableData;
 import chat.dim.tlv.UInt32Data;
 
 /*    Package Header:
@@ -217,7 +218,7 @@ public class Header extends Data {
         }
         // generate header data
         byte hl_ty = (byte) (((headLen << 2) | (type.value & 0x0F)) & 0xFF);
-        Data data = new Data(headLen);
+        MutableData data = new MutableData(headLen);
         data.setByte(0, (byte) 'D');
         data.setByte(1, (byte) 'I');
         data.setByte(2, (byte) 'M');

@@ -33,6 +33,7 @@ package chat.dim.stun.protocol;
 import java.util.Random;
 
 import chat.dim.tlv.Data;
+import chat.dim.tlv.MutableData;
 import chat.dim.tlv.UInt32Data;
 
 /*  [RFC] https://www.ietf.org/rfc/rfc5389.txt
@@ -115,7 +116,7 @@ public class TransactionID extends Data {
         Data mi = new UInt32Data(s_middle);
         Data lo = new UInt32Data(s_low);
 
-        Data data = new Data(16);
+        MutableData data = new MutableData(16);
         data.copy(mc, 0, 0, 4);
         data.copy(hi, 0, 4, 4);
         data.copy(mi, 0, 8, 4);

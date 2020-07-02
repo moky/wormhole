@@ -44,6 +44,7 @@ import chat.dim.stun.protocol.MessageType;
 import chat.dim.stun.protocol.Package;
 import chat.dim.stun.valus.*;
 import chat.dim.tlv.Data;
+import chat.dim.tlv.MutableData;
 import chat.dim.tlv.Tag;
 import chat.dim.tlv.Value;
 
@@ -163,7 +164,7 @@ public class Server extends Node {
         value = SoftwareValue.create(software);
         Data data6 = (new Attribute(AttributeType.Software, value));
         // pack
-        Data body = new Data(data1.getLength() + data2.getLength() + data3.getLength()
+        MutableData body = new MutableData(data1.getLength() + data2.getLength() + data3.getLength()
                 + data4.getLength() + data5.getLength() + data6.getLength());
 
         int offset = 0;

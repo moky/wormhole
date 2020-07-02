@@ -117,7 +117,7 @@ public class Node implements PeerHandler {
     public boolean onReceivedCommand(Data cmd, SocketAddress source, SocketAddress destination) {
         // TODO: process after received command data
         String text = cmd.toString();
-        System.out.printf("received cmd (%d bytes) from %s to %s: %s\n", cmd.length, source, destination, text);
+        System.out.printf("received cmd (%d bytes) from %s to %s: %s\n", cmd.getLength(), source, destination, text);
         return true;
     }
 
@@ -125,7 +125,7 @@ public class Node implements PeerHandler {
     public boolean onReceivedMessage(Data msg, SocketAddress source, SocketAddress destination) {
         // TODO: process after received message data
         String text = msg.toString();
-        System.out.printf("received msg (%d bytes) from %s to %s: %s\n", msg.length, source, destination, text);
+        System.out.printf("received msg (%d bytes) from %s to %s: %s\n", msg.getLength(), source, destination, text);
         return true;
     }
 

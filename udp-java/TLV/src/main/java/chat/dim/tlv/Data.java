@@ -38,14 +38,19 @@ import java.util.Random;
  */
 public class Data implements Cloneable {
 
+    /*
+     * The fields of this class are package-private since MutableData
+     * classes needs to access them.
+     */
+
     // data view
-    private byte[] buffer;
+    byte[] buffer;
     // buffer length
-    private int bufLength;
+    int bufLength;
     // view offset
-    private int offset;
+    int offset;
     // view length
-    private int length;
+    int length;
 
     public byte[] getBuffer() {
         return buffer;
@@ -96,14 +101,10 @@ public class Data implements Cloneable {
         this.length = length;
     }
 
-    public Data(int capacity) {
-        this(new byte[capacity], 0, capacity);
-    }
-
     public final static Data ZERO = new Data(new byte[0]);
 
     // adjust the position in range [0, len]
-    private static int adjust(int pos, int len) {
+    static int adjust(int pos, int len) {
         if (pos < 0) {
             pos += len;  // count from right hand
             if (pos < 0) {
@@ -170,48 +171,6 @@ public class Data implements Cloneable {
     @Override
     public String toString() {
         return new String(getBytes(), Charset.forName("UTF-8"));
-    }
-
-    public void copy(Data src, int srcPos, int destPos, int len) {
-        if (len <= 0) {
-            return;
-        }
-        // adjust positions
-        srcPos = adjust(srcPos, src.length);
-        destPos = adjust(destPos, length);
-        // adjust length
-        if (len > src.length - srcPos) {
-            len = src.length - srcPos;
-        }
-        if (len > length - destPos) {
-            len = length - destPos;
-        }
-        // copy buffer
-        System.arraycopy(src.buffer, src.offset + srcPos, buffer, offset + destPos, len);
-    }
-
-    public void copy(byte[] src, int srcPos, int destPos, int len) {
-        if (len <= 0) {
-            return;
-        }
-        // adjust positions
-        srcPos = adjust(srcPos, src.length);
-        destPos = adjust(destPos, length);
-        // adjust length
-        if (len > src.length - srcPos) {
-            len = src.length - srcPos;
-        }
-        if (len > length - destPos) {
-            len = length - destPos;
-        }
-        // copy buffer
-        System.arraycopy(src, srcPos, buffer, offset + destPos, len);
-    }
-
-    public void setByte(int index, byte value) {
-        if (index >= 0 && index < length) {
-            buffer[offset + index] = value;
-        }
     }
 
     public byte getByte(int index) {
@@ -326,6 +285,12 @@ public class Data implements Cloneable {
         copy.offset = 0;
         copy.length = length;
         return copy;
+    }
+
+    public MutableData mutableCopy() {
+        byte[] bytes = new byte[length];
+        System.arraycopy(buffer, offset, bytes, 0, length);
+        return new MutableData(bytes);
     }
 
     public static Data random(int length) {

@@ -35,6 +35,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import chat.dim.tlv.Data;
+import chat.dim.tlv.MutableData;
 
 public class Package extends Data {
 
@@ -134,7 +135,7 @@ public class Package extends Data {
         }
         assert index == pages : "fragment error: " + index + ", " + pages;
         // join fragments
-        Data data = new Data(length);
+        MutableData data = new MutableData(length);
         Data fra;
         int pos;
         for (index = 0, pos = 0; index < count; ++index) {
