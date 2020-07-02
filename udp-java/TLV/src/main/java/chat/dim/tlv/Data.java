@@ -37,14 +37,14 @@ import java.util.Random;
 /**
  *  Data in bytes
  */
-public class Data implements Cloneable {
+public class Data {
 
     // data view
-    protected byte[] buffer;
+    protected final byte[] buffer;
     // buffer length
-    protected int bufLength;
+    protected final int bufLength;
     // view offset
-    protected int offset;
+    protected final int offset;
     // view length
     public final int length;
 
@@ -73,25 +73,16 @@ public class Data implements Cloneable {
     /**
      *  Create data view with range [start, end)
      *
-     * @param bytes - data view
-     * @param start - start position (include)
-     * @param end   - end position (exclude)
+     * @param bytes  - data view
+     * @param offset - data view offset
+     * @param length - data view length
      */
-    public Data(byte[] bytes, int start, int end) {
+    public Data(byte[] bytes, int offset, int length) {
         super();
-        buffer = bytes;
-        bufLength = bytes.length;
-
-        // adjust positions
-        start = adjust(start, bufLength);
-        end = adjust(end, bufLength);
-
-        offset = start;
-        if (start < end) {
-            length = end - start;
-        } else {
-            length = 0;  // end position should not smaller than start position
-        }
+        this.buffer = bytes;
+        this.bufLength = bytes.length;
+        this.offset = offset;
+        this.length = length;
     }
 
     public Data(int capacity) {
@@ -101,7 +92,7 @@ public class Data implements Cloneable {
     public final static Data ZERO = new Data(0);
 
     // adjust the position in range [0, len]
-    protected static int adjust(int pos, int len) {
+    private static int adjust(int pos, int len) {
         if (pos < 0) {
             pos += len;  // count from right hand
             if (pos < 0) {
@@ -163,19 +154,37 @@ public class Data implements Cloneable {
     }
 
     public void copy(Data src, int srcPos, int destPos, int len) {
+        if (len <= 0) {
+            return;
+        }
         // adjust positions
         srcPos = adjust(srcPos, src.length);
         destPos = adjust(destPos, length);
-        assert len > 0 && (srcPos + len <= src.length) && (destPos + len <= length) : "copy length error: " + len;
+        // adjust length
+        if (len > src.length - srcPos) {
+            len = src.length - srcPos;
+        }
+        if (len > length - destPos) {
+            len = length - destPos;
+        }
         // copy buffer
         System.arraycopy(src.buffer, src.offset + srcPos, buffer, offset + destPos, len);
     }
 
     public void copy(byte[] src, int srcPos, int destPos, int len) {
+        if (len <= 0) {
+            return;
+        }
         // adjust positions
         srcPos = adjust(srcPos, src.length);
         destPos = adjust(destPos, length);
-        assert len > 0 && (srcPos + len <= src.length) && (destPos + len <= length) : "copy length error: " + len;
+        // adjust length
+        if (len > src.length - srcPos) {
+            len = src.length - srcPos;
+        }
+        if (len > length - destPos) {
+            len = length - destPos;
+        }
         // copy buffer
         System.arraycopy(src, srcPos, buffer, offset + destPos, len);
     }
@@ -208,11 +217,11 @@ public class Data implements Cloneable {
         end = offset + adjust(end, length);
         // check range
         if (start == 0 && end == bufLength) {
-            // same buffer
+            // whole buffer
             return buffer;
         } else if (start >= end) {
             // empty buffer
-            return new byte[0];
+            return ZERO.getBytes();
         }
         // copy sub-array
         byte[] bytes = new byte[end - start];
@@ -257,35 +266,28 @@ public class Data implements Cloneable {
     }
 
     public Data slice(int start, int end) {
+        // adjust position
+        start = adjust(start, length);
+        end = adjust(end, length);
         if (start == 0 && end == length) {
             return this;
+        } else if (start >= end) {
+            return ZERO;
         }
-        return new Data(buffer, offset + start, offset + end);
+        return new Data(buffer, offset + start, end - start);
     }
 
     public Data concat(Data other) {
         if (other.buffer == buffer) {
             if (other.offset == offset + length) {
                 // join the neighbour views
-                return new Data(buffer, offset, offset + length + other.length);
+                return new Data(buffer, offset, length + other.length);
             }
         }
         byte[] bytes = new byte[length + other.length];
         System.arraycopy(buffer, offset, bytes, 0, length);
         System.arraycopy(other.buffer, other.offset, bytes, length, other.length);
         return new Data(bytes);
-    }
-
-    @Override
-    public Data clone() throws CloneNotSupportedException {
-        // deep copy
-        byte[] bytes = new byte[length];
-        System.arraycopy(buffer, offset, bytes, 0, length);
-        Data copy = (Data) super.clone();
-        copy.buffer = bytes;
-        copy.bufLength = bytes.length;
-        copy.offset = 0;
-        return copy;
     }
 
     public static Data random(int length) {
