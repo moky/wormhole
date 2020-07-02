@@ -35,16 +35,20 @@ package chat.dim.tlv;
  */
 public class UInt16Data extends IntegerData {
 
+    public UInt16Data(UInt16Data data) {
+        super(data);
+    }
+
     public UInt16Data(Data data, int value) {
         super(data, value);
     }
 
-    public UInt16Data(UInt16Data data) {
-        super(data, data.value);
+    public UInt16Data(byte[] bytes, int value) {
+        super(bytes, value);
     }
 
     public UInt16Data(int value) {
-        super(IntegerData.fromInt(value, 2), value);
+        super(bytesFromLong(value, 2), value);
     }
 
     //
@@ -55,13 +59,8 @@ public class UInt16Data extends IntegerData {
         return fromData(new Data(bytes, 0, 2));
     }
 
-    public static UInt16Data fromData(Data other) {
-        if (other instanceof UInt16Data) {
-            //return new UInt16Data(other, (int) ((UInt16Data) other).value);
-            return (UInt16Data) other;
-        }
-        other = other.slice(0, 2);
-        IntegerData data = IntegerData.fromData(other);
-        return new UInt16Data(other, (int) data.value);
+    public static UInt16Data fromData(Data data) {
+        data = data.slice(0, 2);
+        return new UInt16Data(data, data.getUInt16Value(0));
     }
 }

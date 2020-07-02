@@ -48,6 +48,12 @@ public class TagLengthValue extends Data {
     public final Tag tag;
     public final Value value;
 
+    public TagLengthValue(TagLengthValue tlv) {
+        super(tlv);
+        tag = tlv.tag;
+        value = tlv.value;
+    }
+
     public TagLengthValue(Data data, Tag type, Value value) {
         super(data);
         this.tag = type;
@@ -92,7 +98,6 @@ public class TagLengthValue extends Data {
             List<TagLengthValue> array = new ArrayList<>();
             TagLengthValue item;
             int remaining = data.length;
-            int pos;
             while (remaining > 0) {
                 item = parse(data);
                 if (item == null) {
@@ -101,9 +106,8 @@ public class TagLengthValue extends Data {
                 }
                 array.add(item);
                 // next item
-                pos = item.length;
-                data = data.slice(pos);
-                remaining -= pos;
+                data = data.slice(item.length);
+                remaining -= item.length;
             }
             return array;
         }
@@ -114,48 +118,53 @@ public class TagLengthValue extends Data {
             if (type == null) {
                 return null;
             }
-            Value value = null;
+            Value value;
             int offset = type.length;
-            if (0 < offset && offset < data.length) {
-                // get length
-                Length length = parseLength(data.slice(offset), type);
-                // get value
-                if (length == null) {
-                    value = parseValue(data.slice(offset), type, null);
-                } else {
-                    offset += length.length;
-                    int end = offset + (int) length.value;
-                    if (offset < end && end <= data.length) {
-                        value = parseValue(data.slice(offset, end), type, length);
-                    }
+            assert offset <= data.length : "data length error: " + data.length + ", offset: " + offset;
+            // get length
+            Length length = parseLength(data.slice(offset), type);
+            if (length == null) {
+                // get value unlimited length
+                value = parseValue(data.slice(offset), type, null);
+            } else {
+                // get value with limited length
+                offset += length.length;
+                int end = offset + length.getIntValue();
+                if (end < offset || end > data.length) {
+                    throw new IndexOutOfBoundsException("data length error: " + length.value + ", " + data.length);
                 }
-                if (value != null) {
-                    offset += value.length;
-                }
+                value = parseValue(data.slice(offset, end), type, length);
+            }
+            if (value != null) {
+                offset += value.length;
             }
             // check length
-            if (offset <= 0 || offset > data.length) {
-                throw new AssertionError("TLV length error: " + offset + ", " + data.length);
+            if (offset > data.length) {
+                throw new AssertionError("TLV length error: " + length + ", " + data.length);
             } else if (offset < data.length) {
                 data = data.slice(0, offset);
             }
             return create(data, type, value);
         }
 
-        protected TagLengthValue create(Data data, Tag type, Value value) {
-            return new TagLengthValue(data, type, value);
-        }
-
         protected Tag parseTag(Data data) {
+            // TODO: override for user-defined Tag
             return Tag.parse(data);
         }
 
         protected Length parseLength(Data data, Tag type) {
+            // TODO: override for user-defined Length
             return Length.parse(data, type);
         }
 
         protected Value parseValue(Data data, Tag type, Length length) {
+            // TODO: override for user-defined Value
             return Value.parse(data, type, length);
+        }
+
+        protected TagLengthValue create(Data data, Tag type, Value value) {
+            // TODO: override for user-defined TLV
+            return new TagLengthValue(data, type, value);
         }
     }
 }

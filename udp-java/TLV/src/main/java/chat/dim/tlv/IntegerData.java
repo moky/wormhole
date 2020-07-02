@@ -37,6 +37,11 @@ public class IntegerData extends Data {
 
     public final long value;
 
+    public IntegerData(IntegerData data) {
+        super(data);
+        this.value = data.value;
+    }
+
     public IntegerData(Data data, long value) {
         super(data);
         this.value = value;
@@ -82,18 +87,8 @@ public class IntegerData extends Data {
     }
 
     public static IntegerData fromLong(long value, int length) {
-        byte[] bytes = new byte[length];
-        int index;
-        for (index = length - 1; index >= 0; --index) {
-            bytes[index] = (byte) (value & 0xFF);
-            value >>= 8;
-        }
+        byte[] bytes = bytesFromLong(value, length);
         return new IntegerData(bytes, value);
-    }
-
-    public static IntegerData fromData(Data data) {
-        long result = longFromBytes(data.buffer, data.offset, data.offset + data.length);
-        return new IntegerData(data, result);
     }
 
     public static IntegerData fromBytes(byte[] bytes) {
@@ -101,7 +96,30 @@ public class IntegerData extends Data {
         return new IntegerData(bytes, result);
     }
 
-    private static long longFromBytes(byte[] bytes, int start, int end) {
+    public static IntegerData fromData(Data other) {
+        if (other instanceof IntegerData) {
+            //return new IntegerData(other, ((IntegerData) other).value);
+            return (IntegerData) other;
+        }
+        long result = longFromBytes(other.buffer, other.offset, other.offset + other.length);
+        return new IntegerData(other, result);
+    }
+
+    //
+    //  bytes functions
+    //
+
+    public static byte[] bytesFromLong(long value, int length) {
+        byte[] bytes = new byte[length];
+        int index;
+        for (index = length - 1; index >= 0; --index) {
+            bytes[index] = (byte) (value & 0xFF);
+            value >>= 8;
+        }
+        return bytes;
+    }
+
+    public static long longFromBytes(byte[] bytes, int start, int end) {
         long result = 0;
         for (; start < end; ++start) {
             result = (result << 8) | (bytes[start] & 0xFF);

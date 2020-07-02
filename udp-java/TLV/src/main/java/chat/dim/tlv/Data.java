@@ -30,6 +30,7 @@
  */
 package chat.dim.tlv;
 
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -93,6 +94,12 @@ public class Data implements Cloneable {
         }
     }
 
+    public Data(int capacity) {
+        this(new byte[capacity], 0, capacity);
+    }
+
+    public final static Data ZERO = new Data(0);
+
     // adjust the position in range [0, len]
     protected static int adjust(int pos, int len) {
         if (pos < 0) {
@@ -129,7 +136,7 @@ public class Data implements Cloneable {
             return false;
         }
         int pos1 = offset + length - 1;
-        int pos2 = otherLength + otherLength - 1;
+        int pos2 = otherOffset + otherLength - 1;
         for (; pos1 >= offset; --pos1, --pos2) {
             if (buffer[pos1] != otherBuffer[pos2]) {
                 return false;
@@ -150,6 +157,39 @@ public class Data implements Cloneable {
         }
     }
 
+    @Override
+    public String toString() {
+        return new String(getBytes(), Charset.forName("UTF-8"));
+    }
+
+    public void copy(Data src, int srcPos, int destPos, int len) {
+        // adjust positions
+        srcPos = adjust(srcPos, src.length);
+        destPos = adjust(destPos, length);
+        assert len > 0 && (srcPos + len <= src.length) && (destPos + len <= length) : "copy length error: " + len;
+        // copy buffer
+        System.arraycopy(src.buffer, src.offset + srcPos, buffer, offset + destPos, len);
+    }
+
+    public void copy(byte[] src, int srcPos, int destPos, int len) {
+        // adjust positions
+        srcPos = adjust(srcPos, src.length);
+        destPos = adjust(destPos, length);
+        assert len > 0 && (srcPos + len <= src.length) && (destPos + len <= length) : "copy length error: " + len;
+        // copy buffer
+        System.arraycopy(src, srcPos, buffer, offset + destPos, len);
+    }
+
+    public void setByte(int index, byte value) {
+        if (index >= 0 && index < length) {
+            buffer[offset + index] = value;
+        }
+    }
+
+    public byte getByte(int index) {
+        return buffer[offset + index];
+    }
+
     //
     //  To bytes
     //
@@ -164,8 +204,8 @@ public class Data implements Cloneable {
 
     public byte[] getBytes(int start, int end) {
         // adjust positions
-        start = adjust(start, bufLength);
-        end = adjust(end, bufLength);
+        start = offset + adjust(start, length);
+        end = offset + adjust(end, length);
         // check range
         if (start == 0 && end == bufLength) {
             // same buffer
@@ -181,6 +221,34 @@ public class Data implements Cloneable {
     }
 
     //
+    //  To integer
+    //
+
+    public int getUInt8Value(int start) {
+        int end = start + 1;
+        if (start < 0 || end > length) {
+            return 0;
+        }
+        return (int) IntegerData.longFromBytes(buffer, offset + start, offset + end);
+    }
+
+    public int getUInt16Value(int start) {
+        int end = start + 2;
+        if (start < 0 || end > length) {
+            return 0;
+        }
+        return (int) IntegerData.longFromBytes(buffer, offset + start, offset + end);
+    }
+
+    public long getUInt32Value(int start) {
+        int end = start + 4;
+        if (start < 0 || end > length) {
+            return 0;
+        }
+        return IntegerData.longFromBytes(buffer, offset + start, offset + end);
+    }
+
+    //
     //  To another data view
     //
 
@@ -189,6 +257,9 @@ public class Data implements Cloneable {
     }
 
     public Data slice(int start, int end) {
+        if (start == 0 && end == length) {
+            return this;
+        }
         return new Data(buffer, offset + start, offset + end);
     }
 

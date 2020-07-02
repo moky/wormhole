@@ -30,27 +30,57 @@
  */
 package chat.dim.tlv;
 
+/*
+ *       0                   1                   2                   3
+ *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |         Type                  |            Length             |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |                         Value (variable)                ....
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
 public class Length extends IntegerData {
 
-    public Length(Data data, long value) {
+    public Length(Length length) {
+        super(length);
+    }
+
+    public Length(UInt16Data data) {
+        super(data);
+    }
+
+    public Length(Data data, int value) {
         super(data, value);
     }
 
-    public Length(byte[] bytes, long value) {
+    public Length(byte[] bytes, int value) {
         super(bytes, value);
     }
 
+    public Length(int value) {
+        super(bytesFromLong(value, 2), value);
+    }
+
     //
-    //  Factory
+    //  Factories
     //
+
+    public static Length fromBytes(byte[] bytes) {
+        return fromData(new Data(bytes, 0, 2));
+    }
+
+    public static Length fromData(Data data) {
+        data = data.slice(0, 2);
+        return new Length(data, data.getUInt16Value(0));
+    }
 
     public static Length parse(Data data, Tag type) {
         if (data.length < 2) {
-            return null;
+            throw new IndexOutOfBoundsException("TLV length error: " + data.length);
         } else if (data.length > 2) {
             data = data.slice(0, 2);
         }
-        UInt16Data int16 = UInt16Data.fromData(data);
-        return new Length(data, int16.value);
+        return new Length(data, data.getUInt16Value(0));
     }
 }

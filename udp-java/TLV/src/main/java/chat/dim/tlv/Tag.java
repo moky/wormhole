@@ -30,6 +30,16 @@
  */
 package chat.dim.tlv;
 
+/*
+ *       0                   1                   2                   3
+ *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |         Type                  |            Length             |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |                         Value (variable)                ....
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
 public class Tag extends Data {
 
     public Tag(Data data) {
@@ -46,7 +56,7 @@ public class Tag extends Data {
 
     public static Tag parse(Data data) {
         if (data.length < 2) {
-            return null;
+            throw new IndexOutOfBoundsException("TLV tag error: " + data.length);
         } else if (data.length > 2) {
             data = data.slice(0, 2);
         }

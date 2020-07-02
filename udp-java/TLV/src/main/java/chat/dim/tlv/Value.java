@@ -30,6 +30,16 @@
  */
 package chat.dim.tlv;
 
+/*
+ *       0                   1                   2                   3
+ *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |         Type                  |            Length             |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |                         Value (variable)                ....
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
 public class Value extends Data {
 
     public Value(Data data) {
@@ -45,15 +55,17 @@ public class Value extends Data {
     //
 
     public static Value parse(Data data, Tag type, Length length) {
-        if (length == null || length.value == 0) {
-            return null;
+        /*
+        if (length != null) {
+            if (length.value == 0) {
+                return null;
+            } else if (data.length < length.value) {
+                throw new IndexOutOfBoundsException("TLV value error: " + data.length);
+            } else if (data.length > length.value) {
+                data = data.slice(0, (int) length.value);
+            }
         }
-        int len = (int) length.value;
-        if (data.length < len) {
-            return null;
-        } else if (data.length > len) {
-            data = data.slice(0, len);
-        }
+         */
         return new Value(data);
     }
 }
