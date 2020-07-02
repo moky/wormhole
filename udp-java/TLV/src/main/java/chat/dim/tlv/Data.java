@@ -163,7 +163,7 @@ public class Data implements Cloneable {
         int result = 1;
         int start = offset, end = offset + length;
         for (; start < end; ++start) {
-            result = 31 * result + buffer[start];
+            result = (result << 5) - result + buffer[start];
         }
         return result;
     }

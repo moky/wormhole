@@ -67,11 +67,15 @@ public class MutableData extends Data {
         if (len > src.length - srcPos) {
             len = src.length - srcPos;
         }
-        if (len > length - destPos) {
-            len = length - destPos;
+        if (len > bufLength - offset - destPos) {
+            len = bufLength - offset - destPos;
         }
         // copy buffer
         System.arraycopy(src.buffer, src.offset + srcPos, buffer, offset + destPos, len);
+        len = destPos + len;
+        if (len > length) {
+            length = len;
+        }
     }
 
     public void copy(byte[] src, int srcPos, int destPos, int len) {
@@ -85,11 +89,15 @@ public class MutableData extends Data {
         if (len > src.length - srcPos) {
             len = src.length - srcPos;
         }
-        if (len > length - destPos) {
-            len = length - destPos;
+        if (len > bufLength - offset - destPos) {
+            len = bufLength - offset - destPos;
         }
         // copy buffer
         System.arraycopy(src, srcPos, buffer, offset + destPos, len);
+        len = destPos + len;
+        if (len > length) {
+            length = len;
+        }
     }
 
     /**
