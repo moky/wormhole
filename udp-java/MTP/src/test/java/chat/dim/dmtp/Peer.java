@@ -142,8 +142,8 @@ public class Peer extends chat.dim.mtp.Peer implements HubListener {
     }
 
     @Override
-    public byte[] onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
-        Arrival task = new Arrival(data, source, destination);
+    public byte[] onDataReceived(byte[] bytes, SocketAddress source, SocketAddress destination) {
+        Arrival task = new Arrival(bytes, source, destination);
         pool.appendArrival(task);
         return null;
     }

@@ -32,20 +32,26 @@ package chat.dim.mtp.task;
 
 import java.net.SocketAddress;
 
+import chat.dim.tlv.Data;
+
 /**
  *  Data package received (waiting process)
  */
 public class Arrival {
 
-    public final byte[] payload;
+    public final Data payload;
 
     public final SocketAddress source;
     public final SocketAddress destination;
 
-    public Arrival(byte[] payload, SocketAddress source, SocketAddress destination) {
+    public Arrival(Data payload, SocketAddress source, SocketAddress destination) {
         super();
         this.payload = payload;
         this.source = source;
         this.destination = destination;
+    }
+
+    public Arrival(byte[] payload, SocketAddress source, SocketAddress destination) {
+        this(new Data(payload), source, destination);
     }
 }

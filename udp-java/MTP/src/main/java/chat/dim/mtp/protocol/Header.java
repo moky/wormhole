@@ -31,7 +31,7 @@
 package chat.dim.mtp.protocol;
 
 import chat.dim.tlv.Data;
-import chat.dim.tlv.IntegerData;
+import chat.dim.tlv.UInt32Data;
 
 /*    Package Header:
  *
@@ -95,14 +95,14 @@ public class Header extends Data {
     /**
      *  Create package header
      *
-     * @param data    - header data as bytes
+     * @param data    - header data view
      * @param type    - package body data type
      * @param sn      - transaction ID
      * @param pages   - fragment count [OPTIONAL], default is 1
      * @param offset  - fragment index [OPTIONAL], default is 0
      * @param bodyLen - length of body [OPTIONAL], default is -1 (unlimited)
      */
-    public Header(byte[] data, DataType type, TransactionID sn, int pages, int offset, int bodyLen) {
+    public Header(Data data, DataType type, TransactionID sn, int pages, int offset, int bodyLen) {
         super(data);
         this.type = type;
         this.sn = sn;
@@ -111,26 +111,26 @@ public class Header extends Data {
         this.bodyLength = bodyLen;
     }
 
-    public Header(byte[] data, DataType type, TransactionID sn, int bodyLen) {
+    public Header(Data data, DataType type, TransactionID sn, int bodyLen) {
         this(data, type, sn, 1, 0, bodyLen);
     }
 
-    public Header(byte[] data, DataType type, TransactionID sn) {
+    public Header(Data data, DataType type, TransactionID sn) {
         this(data, type, sn, 1, 0, -1);
     }
 
-    public static Header parse(byte[] data) {
+    public static Header parse(Data data) {
         int length = data.length;
         if (length < 4) {
             //throw new ArrayIndexOutOfBoundsException("package error: " + Arrays.toString(data));
             return null;
         }
-        if (data[0] != 'D' || data[1] != 'I' || data[2] != 'M') {
+        if (data.getByte(0) != 'D' || data.getByte(1) != 'I' || data.getByte(2) != 'M') {
             //throw new IllegalArgumentException("not a DIM package: " + Arrays.toString(data));
             return null;
         }
         // get header length & data type
-        byte ch = data[3];
+        byte ch = data.getByte(3);
         int headLen = (ch & 0xF0) >> 2; // in bytes
         TransactionID sn = null;
         int pages = 1;
@@ -142,20 +142,20 @@ public class Header extends Data {
         } else if (headLen == 8) {
             // simple header with body length
             sn = TransactionID.ZERO;
-            bodyLen = IntegerData.bytesToInt(slice(data, 4, 8));
+            bodyLen = (int) data.getUInt32Value(4);
         } else if (headLen >= 12) {
             // command/message/fragment header
-            sn = TransactionID.parse(slice(data, 4));
+            sn = TransactionID.parse(data.slice(4));
             if (headLen == 16) {
                 // command/message header with body length
-                bodyLen = IntegerData.bytesToInt(slice(data, 12, 16));
+                bodyLen = (int) data.getUInt32Value(12);
             } else if (headLen >= 20) {
                 // fragment header
-                pages = IntegerData.bytesToInt(slice(data, 12, 16));
-                offset = IntegerData.bytesToInt(slice(data, 16, 20));
+                pages = (int) data.getUInt32Value(12);
+                offset = (int) data.getUInt32Value(16);
                 if (headLen == 24) {
                     // fragment header with body length
-                    bodyLen = IntegerData.bytesToInt(slice(data, 20, 24));
+                    bodyLen = (int) data.getUInt32Value(20);
                 }
             }
         }
@@ -175,8 +175,8 @@ public class Header extends Data {
             //throw new IllegalArgumentException("body length error: " + bodyLen);
             return null;
         }
-        DataType type = DataType.getInstance(ch & 0x0F);
-        return new Header(slice(data, 0, headLen), type, sn, pages, offset, bodyLen);
+        DataType type = DataType.getInstance((byte) (ch & 0x0F));
+        return new Header(data.slice(0, headLen), type, sn, pages, offset, bodyLen);
     }
 
     //
@@ -190,47 +190,47 @@ public class Header extends Data {
         if (!sn.equals(TransactionID.ZERO)) {
             headLen += 8;
         }
-        byte[] options;
+        Data options;
         // pages & offset
         assert type != null : "data type should not be null";
         if (type.equals(DataType.MessageFragment)) {
             // message fragment (or its respond)
             assert pages > 1 && pages > offset : "pages error: " + pages + ", " + offset;
-            byte[] a1 = IntegerData.intToBytes(pages, 4);
-            byte[] a2 = IntegerData.intToBytes(offset, 4);
-            options = concat(a1, a2);
+            Data d1 = new UInt32Data(pages);
+            Data d2 = new UInt32Data(offset);
+            options = d1.concat(d2);
             headLen += 8;
         } else {
             // command message (or its respond)
             assert pages == 1 && offset == 0 : "pages error: " + pages + ", " + offset;
-            options = new byte[0];
+            options = null;
         }
         // body length
         if (bodyLen >= 0) {
-            byte[] a3 = IntegerData.intToBytes(bodyLen, 4);
-            if (options.length > 0) {
-                options = concat(options, a3);
+            Data d3 = new UInt32Data(bodyLen);
+            if (options == null) {
+                options = d3;
             } else {
-                options = a3;
+                options = options.concat(d3);
             }
             headLen += 4;
         }
         // generate header data
         byte hl_ty = (byte) (((headLen << 2) | (type.value & 0x0F)) & 0xFF);
-        byte[] data = new byte[headLen];
-        data[0] = 'D';
-        data[1] = 'I';
-        data[2] = 'M';
-        data[3] = hl_ty;
+        Data data = new Data(headLen);
+        data.setByte(0, (byte) 'D');
+        data.setByte(1, (byte) 'I');
+        data.setByte(2, (byte) 'M');
+        data.setByte(3, hl_ty);
         if (sn.equals(TransactionID.ZERO)) {
             // simple header
-            if (options.length > 0) {
-                System.arraycopy(options, 0, data, 4, options.length);
+            if (options != null) {
+                data.copy(options, 0, 4, options.length);
             }
         } else {
-            System.arraycopy(sn.data, 0, data, 4, sn.data.length);
-            if (options.length > 0) {
-                System.arraycopy(options, 0, data, 4 + sn.data.length, options.length);
+            data.copy(sn, 0, 4, sn.length);
+            if (options != null) {
+                data.copy(options, 0, 4 + sn.length, options.length);
             }
         }
         return new Header(data, type, sn, pages, offset, bodyLen);

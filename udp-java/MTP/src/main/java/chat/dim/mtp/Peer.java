@@ -41,7 +41,8 @@ import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.task.Arrival;
 import chat.dim.mtp.task.Assemble;
 import chat.dim.mtp.task.Departure;
-import chat.dim.tlv.IntegerData;
+import chat.dim.tlv.Data;
+import chat.dim.tlv.UInt32Data;
 
 public class Peer extends Thread {
 
@@ -214,28 +215,28 @@ public class Peer extends Thread {
     }
 
     private void respond(Package pack, SocketAddress remote, SocketAddress local) {
-        byte[] body;
+        Data body;
         Header head = pack.head;
         DataType type = head.type;
         if (type.equals(DataType.Command)) {
             type = DataType.CommandRespond;
-            body = new byte[2];
-            body[0] = 'O';
-            body[1] = 'K';
+            body = new Data(2);
+            body.setByte(0, (byte) 'O');
+            body.setByte(1, (byte) 'K');
         } else if (type.equals(DataType.Message)) {
             type = DataType.MessageRespond;
-            body = new byte[2];
-            body[0] = 'O';
-            body[1] = 'K';
+            body = new Data(2);
+            body.setByte(0, (byte) 'O');
+            body.setByte(1, (byte) 'K');
         } else if (type.equals(DataType.MessageFragment)) {
             type = DataType.MessageRespond;
-            body = new byte[10];
-            byte[] pages = IntegerData.intToBytes(head.pages, 4);
-            byte[] offset = IntegerData.intToBytes(head.offset, 4);
-            System.arraycopy(pages, 0, body, 0, 4);
-            System.arraycopy(offset, 0, body, 4, 4);
-            body[8] = 'O';
-            body[9] = 'K';
+            UInt32Data pages = new UInt32Data(head.pages);
+            UInt32Data offset = new UInt32Data(head.offset);
+            body = new Data(10);
+            body.copy(pages, 0, 0, 4);
+            body.copy(offset, 0, 4, 4);
+            body.setByte(8, (byte) 'O');
+            body.setByte(9, (byte) 'K');
         } else {
             throw new IllegalArgumentException("data type error: " + type);
         }
@@ -248,8 +249,8 @@ public class Peer extends Thread {
             response = Package.create(type, head.sn, 1, 0, body.length, body);
         }
         // send response directly, don't add this task to waiting list
-        int res = getDelegate().sendData(response.data, remote, local);
-        assert res == response.data.length : "failed to respond: " + remote + ", " + type;
+        int res = getDelegate().sendData(response, remote, local);
+        assert res == response.length : "failed to respond: " + remote + ", " + type;
     }
 
     //
@@ -263,8 +264,8 @@ public class Peer extends Thread {
             int res;
             List<Package> packages = task.packages;
             for (Package item : packages) {
-                res = delegate.sendData(item.data, task.destination, task.source);
-                assert res == item.data.length : "failed to resend task (" + packages.size() + " packages) to: " + task.destination;
+                res = delegate.sendData(item, task.destination, task.source);
+                assert res == item.length : "failed to resend task (" + packages.size() + " packages) to: " + task.destination;
             }
         } else {
             // mission failed

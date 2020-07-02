@@ -54,6 +54,8 @@ package chat.dim.mtp;
 
 import java.net.SocketAddress;
 
+import chat.dim.tlv.Data;
+
 public interface PeerDelegate {
 
     //
@@ -68,5 +70,5 @@ public interface PeerDelegate {
      * @param source      - local IP and port
      * @return -1 on error
      */
-    int sendData(byte[] data, SocketAddress destination, SocketAddress source);
+    int sendData(Data data, SocketAddress destination, SocketAddress source);
 }

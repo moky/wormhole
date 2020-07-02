@@ -44,7 +44,6 @@ import chat.dim.mtp.task.Arrival;
 import chat.dim.mtp.task.Assemble;
 import chat.dim.mtp.task.Departure;
 import chat.dim.tlv.Data;
-import chat.dim.tlv.IntegerData;
 
 public class MemPool implements Pool {
 
@@ -123,25 +122,25 @@ public class MemPool implements Pool {
     @Override
     public boolean deleteDeparture(Package response, SocketAddress destination, SocketAddress source) {
         Header head = response.head;
-        byte[] body = response.body;
+        Data body = response.body;
         int bodyLen = body.length;
         TransactionID sn = head.sn;
         DataType type = head.type;
         if (type.equals(DataType.CommandRespond)) {
             // response for Command
-            assert bodyLen == 0 || (body[0] == 'O' && body[1] == 'K') : "CommandRespond error: " + Arrays.toString(body);
+            assert bodyLen == 0 || (body.getByte(0) == 'O' && body.getByte(1) == 'K') : "CommandRespond error: " + body;
             return deleteEntireTask(sn, destination);
         } else if (type.equals(DataType.MessageRespond)) {
             // response for Message or Fragment
             if (bodyLen >= 8) {
                 // MessageFragment
-                assert bodyLen == 8 || (body[8] == 'O' && body[9] == 'K') : "MessageRespond error: " + Arrays.toString(body);
+                assert bodyLen == 8 || (body.getByte(8) == 'O' && body.getByte(9) == 'K') : "MessageRespond error: " + body;
                 // get pages count and index
-                int pages = IntegerData.bytesToInt(Data.slice(body, 0, 4));
-                int offset = IntegerData.bytesToInt(Data.slice(body, 4, 8));
+                int pages = (int) body.getUInt32Value(0);
+                int offset = (int) body.getUInt32Value(4);
                 assert pages > 1 && pages > offset : "pages error: " + pages + ", " + offset;
                 return deleteFragment(sn, offset, destination);
-            } else if (bodyLen == 0 || (body[0] == 'O' && body[1] == 'K')) {
+            } else if (bodyLen == 0 || (body.getByte(0) == 'O' && body.getByte(1) == 'K')) {
                 // Message
                 return deleteEntireTask(sn, destination);
             } else {

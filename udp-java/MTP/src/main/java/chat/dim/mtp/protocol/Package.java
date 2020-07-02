@@ -49,9 +49,9 @@ public class Package extends Data {
     public static int OPTIMAL_BODY_LENGTH = 512;
 
     public final Header head;
-    public final byte[] body;
+    public final Data body;
 
-    public Package(byte[] data, Header head, byte[] body) {
+    public Package(Data data, Header head, Data body) {
         super(data);
         this.head = head;
         this.body = body;
@@ -69,16 +69,16 @@ public class Package extends Data {
     public List<Package> split() {
         assert head.type.equals(DataType.Message) : "cannot split this type: " + head.type;
         // split body
-        List<byte[]> fragments = new ArrayList<>();
+        List<Data> fragments = new ArrayList<>();
         int count = 1;
         int start = 0, end = OPTIMAL_BODY_LENGTH;
         int length = body.length;
         for (; end < length; start = end, end += OPTIMAL_BODY_LENGTH) {
-            fragments.add(slice(body, start, end));
+            fragments.add(body.slice(start, end));
             count += 1;
         }
         if (start > 0) {
-            fragments.add(slice(body, start)); // the tail
+            fragments.add(body.slice(start)); // the tail
         } else {
             fragments.add(body);
         }
@@ -86,7 +86,7 @@ public class Package extends Data {
         List<Package> packages = new ArrayList<>();
         DataType type = DataType.MessageFragment;
         TransactionID sn = head.sn;
-        byte[] data;
+        Data data;
         if (head.bodyLength < 0) {
             // UDP (unlimited)
             for (int index = 0; index < count; ++index) {
@@ -119,7 +119,7 @@ public class Package extends Data {
         int pages = first.head.pages;
         assert pages == count : "pages error: " + pages + ", " + count;
         // add message fragments part by part
-        List<byte[]> fragments = new ArrayList<>();
+        List<Data> fragments = new ArrayList<>();
         int length = 0;
         int index;
         Package item;
@@ -134,21 +134,21 @@ public class Package extends Data {
         }
         assert index == pages : "fragment error: " + index + ", " + pages;
         // join fragments
-        byte[] buffer = new byte[length];
-        byte[] fra;
+        Data data = new Data(length);
+        Data fra;
         int pos;
         for (index = 0, pos = 0; index < count; ++index) {
             fra = fragments.get(index);
-            System.arraycopy(fra, 0, buffer, pos, fra.length);
+            data.copy(fra, 0, pos, fra.length);
             pos += fra.length;
         }
         type = DataType.Message;
         if (first.head.bodyLength < 0) {
             // UDP (unlimited)
-            return create(type, sn, 1, 0, -1, buffer);
+            return create(type, sn, 1, 0, -1, data);
         } else {
             // TCP (should not happen)
-            return create(type, sn, 1, 0, buffer.length, buffer);
+            return create(type, sn, 1, 0, data.length, data);
         }
     }
 
@@ -157,7 +157,7 @@ public class Package extends Data {
         return packages;
     }
 
-    public static Package parse(byte[] data) {
+    public static Package parse(Data data) {
         // get package head
         Header head = Header.parse(data);
         if (head == null) {
@@ -177,14 +177,14 @@ public class Package extends Data {
             //throw new ArrayIndexOutOfBoundsException("package length error: " + Arrays.toString(data));
             return null;
         } else if (dataLen > packLen) {
-            data = slice(data, 0, packLen);
+            data = data.slice(0, packLen);
         }
         // get body
-        byte[] body;
+        Data body;
         if (bodyLen == 0) {
-            body = new byte[0];
+            body = Data.ZERO;
         } else {
-            body = slice(data, headLen);
+            body = data.slice(headLen);
         }
         return new Package(data, head, body);
     }
@@ -193,15 +193,15 @@ public class Package extends Data {
     //  Factories
     //
 
-    public static Package create(DataType type, TransactionID sn, int pages, int offset, int bodyLen, byte[] body) {
+    public static Package create(DataType type, TransactionID sn, int pages, int offset, int bodyLen, Data body) {
         assert body != null : "package body should not be null";
         // create package with header
         Header head = Header.create(type, sn, pages, offset, bodyLen);
-        byte[] data;
+        Data data;
         if (body.length > 0) {
-            data = concat(head.data, body);
+            data = head.concat(body);
         } else {
-            data = head.data;
+            data = head;
         }
         return new Package(data, head, body);
     }
@@ -210,19 +210,19 @@ public class Package extends Data {
     //  UDP
     //
 
-    public static Package create(DataType type, TransactionID sn, int pages, int offset, byte[] body) {
+    public static Package create(DataType type, TransactionID sn, int pages, int offset, Data body) {
         return create(type, sn, pages, offset, -1, body);
     }
 
-    public static Package create(DataType type, int pages, int offset, byte[] body) {
+    public static Package create(DataType type, int pages, int offset, Data body) {
         return create(type, TransactionID.create(), pages, offset, -1, body);
     }
 
-    public static Package create(DataType type, TransactionID sn, byte[] body) {
+    public static Package create(DataType type, TransactionID sn, Data body) {
         return create(type, sn, 1, 0, -1, body);
     }
 
-    public static Package create(DataType type, byte[] body) {
+    public static Package create(DataType type, Data body) {
         return create(type, TransactionID.create(), 1, 0, -1, body);
     }
 
@@ -230,12 +230,12 @@ public class Package extends Data {
     //  TCP
     //
 
-    public static Package create(DataType type, TransactionID sn, int bodyLen , byte[] body) {
+    public static Package create(DataType type, TransactionID sn, int bodyLen , Data body) {
         assert bodyLen == body.length : "body length error: " + bodyLen + ", " + body.length;
         return create(type, sn, 1, 0, bodyLen, body);
     }
 
-    public static Package create(DataType type, int bodyLen, byte[] body) {
+    public static Package create(DataType type, int bodyLen, Data body) {
         assert bodyLen == body.length : "body length error: " + bodyLen + ", " + body.length;
         return create(type, TransactionID.create(), 1, 0, bodyLen, body);
     }

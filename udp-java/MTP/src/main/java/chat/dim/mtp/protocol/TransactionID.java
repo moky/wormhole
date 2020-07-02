@@ -37,24 +37,28 @@ import chat.dim.tlv.UInt32Data;
 
 public class TransactionID extends Data {
 
-    public TransactionID(byte[] data) {
+    public TransactionID(Data data) {
         super(data);
     }
 
-    public static TransactionID parse(byte[] data) {
+    public TransactionID(byte[] bytes) {
+        super(bytes);
+    }
+
+    //
+    //  Factories
+    //
+
+    public static TransactionID parse(Data data) {
         int length = data.length;
         if (length < 8) {
             //throw new ArrayIndexOutOfBoundsException("Transaction ID length error: " + length);
             return null;
         } else if (length > 8) {
-            data = slice(data, 0, 8);
+            data = data.slice(0, 8);
         }
         return new TransactionID(data);
     }
-
-    //
-    //  Factory
-    //
 
     public static synchronized TransactionID create() {
         if (s_low < 0xFFFFFFFFL) {
@@ -67,9 +71,9 @@ public class TransactionID extends Data {
                 s_high = 0;
             }
         }
-        byte[] hi = UInt32Data.intToBytes(s_high, 4);
-        byte[] lo = UInt32Data.intToBytes(s_low, 4);
-        byte[] data = concat(hi, lo);
+        UInt32Data hi = new UInt32Data(s_high);
+        UInt32Data lo = new UInt32Data(s_low);
+        Data data = hi.concat(lo);
         return new TransactionID(data);
     }
 

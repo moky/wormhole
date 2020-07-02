@@ -50,18 +50,14 @@ import java.util.Map;
  */
 public class DataType {
 
-    public final int value;
+    public final byte value;
     public final String name;
 
-    public DataType(int value, String name) {
+    public DataType(byte value, String name) {
         super();
         this.value = value;
         this.name = name;
         s_types.put(value, this);
-    }
-
-    public DataType(int value) {
-        this(value, "DataType-" + Integer.toHexString(value));
     }
 
     @Override
@@ -87,21 +83,20 @@ public class DataType {
     //  Factory
     //
 
-    public static synchronized DataType getInstance(int value) {
+    public static synchronized DataType getInstance(byte value) {
         DataType type = s_types.get(value);
-        /*
         if (type == null) {
-            type = new DataType(value);
+            //type = new DataType(value, "DataType-" + Integer.toHexString(value));
+            throw new NullPointerException("data type error: " + value);
         }
-         */
         return type;
     }
 
-    private static final Map<Integer, DataType> s_types = new HashMap<>();
+    private static final Map<Byte, DataType> s_types = new HashMap<>();
 
-    public static DataType Command         = new DataType(0, "Command");
-    public static DataType CommandRespond  = new DataType(1, "Command Respond");
-    public static DataType Message         = new DataType(2, "Message");
-    public static DataType MessageRespond  = new DataType(3, "Message Respond");
-    public static DataType MessageFragment = new DataType(10, "Message Fragment");
+    public static DataType Command         = new DataType((byte) 0x00, "Command");
+    public static DataType CommandRespond  = new DataType((byte) 0x01, "Command Respond");
+    public static DataType Message         = new DataType((byte) 0x02, "Message");
+    public static DataType MessageRespond  = new DataType((byte) 0x03, "Message Respond");
+    public static DataType MessageFragment = new DataType((byte) 0x0A, "Message Fragment");
 }

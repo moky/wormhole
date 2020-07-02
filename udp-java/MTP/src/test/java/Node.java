@@ -1,7 +1,6 @@
 
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.nio.charset.Charset;
 import java.util.List;
 
 import chat.dim.dmtp.Hub;
@@ -12,6 +11,7 @@ import chat.dim.mtp.protocol.DataType;
 import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.protocol.TransactionID;
 import chat.dim.mtp.task.Departure;
+import chat.dim.tlv.Data;
 
 public class Node implements PeerHandler {
 
@@ -64,7 +64,7 @@ public class Node implements PeerHandler {
      * @param destination - remote IP and port
      * @return departure task with 'trans_id' in the payload
      */
-    public Departure sendCommand(byte[] cmd, SocketAddress destination) {
+    public Departure sendCommand(Data cmd, SocketAddress destination) {
         Package pack = Package.create(DataType.Command, cmd);
         return peer.sendCommand(pack, destination);
     }
@@ -76,9 +76,17 @@ public class Node implements PeerHandler {
      * @param destination - remote IP and port
      * @return departure task with 'trans_id' in the payload
      */
-    public Departure sendMessage(byte[] msg, SocketAddress destination) {
+    public Departure sendMessage(Data msg, SocketAddress destination) {
         Package pack = Package.create(DataType.Command, msg);
         return peer.sendMessage(pack, destination);
+    }
+
+    public Departure sendCommand(byte[] cmd, SocketAddress destination) {
+        return sendCommand(new Data(cmd), destination);
+    }
+
+    public Departure sendMessage(byte[] msg, SocketAddress destination) {
+        return sendMessage(new Data(msg), destination);
     }
 
     //
@@ -106,17 +114,17 @@ public class Node implements PeerHandler {
     }
 
     @Override
-    public boolean onReceivedCommand(byte[] cmd, SocketAddress source, SocketAddress destination) {
+    public boolean onReceivedCommand(Data cmd, SocketAddress source, SocketAddress destination) {
         // TODO: process after received command data
-        String text = new String(cmd, Charset.forName("UTF-8"));
+        String text = cmd.toString();
         System.out.printf("received cmd (%d bytes) from %s to %s: %s\n", cmd.length, source, destination, text);
         return true;
     }
 
     @Override
-    public boolean onReceivedMessage(byte[] msg, SocketAddress source, SocketAddress destination) {
+    public boolean onReceivedMessage(Data msg, SocketAddress source, SocketAddress destination) {
         // TODO: process after received message data
-        String text = new String(msg, Charset.forName("UTF-8"));
+        String text = msg.toString();
         System.out.printf("received msg (%d bytes) from %s to %s: %s\n", msg.length, source, destination, text);
         return true;
     }
