@@ -31,22 +31,33 @@
 package chat.dim.tlv;
 
 import java.nio.charset.Charset;
-import java.util.Arrays;
 import java.util.Random;
 
 /**
  *  Data in bytes
  */
-public class Data {
+public class Data implements Cloneable {
 
     // data view
-    protected final byte[] buffer;
+    private byte[] buffer;
     // buffer length
-    protected final int bufLength;
+    private int bufLength;
     // view offset
-    protected final int offset;
+    private int offset;
     // view length
-    public final int length;
+    private int length;
+
+    public byte[] getBuffer() {
+        return buffer;
+    }
+
+    public int getOffset() {
+        return offset;
+    }
+
+    public int getLength() {
+        return length;
+    }
 
     /**
      *  Clone data view
@@ -89,7 +100,7 @@ public class Data {
         this(new byte[capacity], 0, capacity);
     }
 
-    public final static Data ZERO = new Data(0);
+    public final static Data ZERO = new Data(new byte[0]);
 
     // adjust the position in range [0, len]
     private static int adjust(int pos, int len) {
@@ -141,11 +152,19 @@ public class Data {
 
     @Override
     public int hashCode() {
+        /*
         if (offset == 0 && length == bufLength) {
             return Arrays.hashCode(buffer);
         } else {
             return Arrays.hashCode(getBytes());
         }
+         */
+        int result = 1;
+        int start = offset, end = offset + length;
+        for (; start < end; ++start) {
+            result = 31 * result + buffer[start];
+        }
+        return result;
     }
 
     @Override
@@ -288,6 +307,25 @@ public class Data {
         System.arraycopy(buffer, offset, bytes, 0, length);
         System.arraycopy(other.buffer, other.offset, bytes, length, other.length);
         return new Data(bytes);
+    }
+
+    @Override
+    public Data clone() {
+        // deep copy
+        Data copy;
+        try {
+            copy = (Data) super.clone();
+        } catch (CloneNotSupportedException e) {
+            e.printStackTrace();
+            return null;
+        }
+        byte[] bytes = new byte[length];
+        System.arraycopy(buffer, offset, bytes, 0, length);
+        copy.buffer = bytes;
+        copy.bufLength = length;
+        copy.offset = 0;
+        copy.length = length;
+        return copy;
     }
 
     public static Data random(int length) {

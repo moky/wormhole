@@ -123,7 +123,7 @@ public class MemPool implements Pool {
     public boolean deleteDeparture(Package response, SocketAddress destination, SocketAddress source) {
         Header head = response.head;
         Data body = response.body;
-        int bodyLen = body.length;
+        int bodyLen = body.getLength();
         TransactionID sn = head.sn;
         DataType type = head.type;
         if (type.equals(DataType.CommandRespond)) {

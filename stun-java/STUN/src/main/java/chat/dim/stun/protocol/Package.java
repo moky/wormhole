@@ -63,8 +63,8 @@ public class Package extends Data {
             return null;
         }
         // check message length
-        int packLen = head.length + head.msgLength.getIntValue();
-        int dataLen = data.length;
+        int packLen = head.getLength() + head.msgLength.getIntValue();
+        int dataLen = data.getLength();
         if (dataLen < packLen) {
             //throw new IndexOutOfBoundsException("STUN package length error: " + dataLen + ", " + packLen);
             return null;
@@ -72,12 +72,12 @@ public class Package extends Data {
             data = data.slice(0, packLen);
         }
         // get attributes body
-        Data body = data.slice(head.length);
+        Data body = data.slice(head.getLength());
         return new Package(data, head, body);
     }
 
     public static Package create(MessageType type, TransactionID sn, Data body) {
-        MessageLength len = new MessageLength(body.length);
+        MessageLength len = new MessageLength(body.getLength());
         Header head = Header.create(type, len, sn);
         Data data = head.concat(body);
         return new Package(data, head, body);

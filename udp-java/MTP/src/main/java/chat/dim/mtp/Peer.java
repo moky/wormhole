@@ -246,11 +246,11 @@ public class Peer extends Thread {
             response = Package.create(type, head.sn, 1, 0, -1, body);
         } else {
             // TCP
-            response = Package.create(type, head.sn, 1, 0, body.length, body);
+            response = Package.create(type, head.sn, 1, 0, body.getLength(), body);
         }
         // send response directly, don't add this task to waiting list
         int res = getDelegate().sendData(response, remote, local);
-        assert res == response.length : "failed to respond: " + remote + ", " + type;
+        assert res == response.getLength() : "failed to respond: " + remote + ", " + type;
     }
 
     //
@@ -265,7 +265,7 @@ public class Peer extends Thread {
             List<Package> packages = task.packages;
             for (Package item : packages) {
                 res = delegate.sendData(item, task.destination, task.source);
-                assert res == item.length : "failed to resend task (" + packages.size() + " packages) to: " + task.destination;
+                assert res == item.getLength() : "failed to resend task (" + packages.size() + " packages) to: " + task.destination;
             }
         } else {
             // mission failed
@@ -299,7 +299,7 @@ public class Peer extends Thread {
 
     public Departure sendMessage(Package pack, SocketAddress destination, SocketAddress source) {
         List<Package> packages;
-        if (pack.body.length <= Package.OPTIMAL_BODY_LENGTH || pack.head.type.equals(DataType.MessageFragment)) {
+        if (pack.body.getLength() <= Package.OPTIMAL_BODY_LENGTH || pack.head.type.equals(DataType.MessageFragment)) {
             packages = new ArrayList<>();
             packages.add(pack);
         } else {

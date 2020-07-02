@@ -103,21 +103,21 @@ public class Header extends Data {
         if (type == null) {
             return null;
         }
-        pos = type.length;
+        pos = type.getLength();
         // get message length
         MessageLength len = MessageLength.parse(data.slice(pos));
         if (len == null) {
             return null;
         }
-        pos += len.length;
+        pos += len.getLength();
         // get transaction ID
         TransactionID sn = TransactionID.parse(data.slice(pos));
         if (sn == null) {
             return null;
         }
-        pos += sn.length;
+        pos += sn.getLength();
         assert pos == 20 : "header length error: " + pos;
-        if (data.length > pos) {
+        if (data.getLength() > pos) {
             data = data.slice(0, pos);
         }
         // create
@@ -125,10 +125,10 @@ public class Header extends Data {
     }
 
     public static Header create(MessageType type, MessageLength len, TransactionID sn) {
-        Data data = new Data(type.length + len.length + sn.length);
-        data.copy(type, 0, 0, type.length);
-        data.copy(len, 0, type.length, len.length);
-        data.copy(sn, 0, type.length + len.length, sn.length);
+        Data data = new Data(type.getLength() + len.getLength() + sn.getLength());
+        data.copy(type, 0, 0, type.getLength());
+        data.copy(len, 0, type.getLength(), len.getLength());
+        data.copy(sn, 0, type.getLength() + len.getLength(), sn.getLength());
         return new Header(data, type, len, sn);
     }
 

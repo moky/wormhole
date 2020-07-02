@@ -97,7 +97,7 @@ public class TagLengthValue extends Data {
         public List parseAll(Data data) {
             List<TagLengthValue> array = new ArrayList<>();
             TagLengthValue item;
-            int remaining = data.length;
+            int remaining = data.getLength();
             while (remaining > 0) {
                 item = parse(data);
                 if (item == null) {
@@ -106,8 +106,8 @@ public class TagLengthValue extends Data {
                 }
                 array.add(item);
                 // next item
-                data = data.slice(item.length);
-                remaining -= item.length;
+                data = data.slice(item.getLength());
+                remaining -= item.getLength();
             }
             return array;
         }
@@ -119,8 +119,8 @@ public class TagLengthValue extends Data {
                 return null;
             }
             Value value;
-            int offset = type.length;
-            assert offset <= data.length : "data length error: " + data.length + ", offset: " + offset;
+            int offset = type.getLength();
+            assert offset <= data.getLength() : "data length error: " + data.getLength() + ", offset: " + offset;
             // get length
             Length length = parseLength(data.slice(offset), type);
             if (length == null) {
@@ -128,20 +128,20 @@ public class TagLengthValue extends Data {
                 value = parseValue(data.slice(offset), type, null);
             } else {
                 // get value with limited length
-                offset += length.length;
+                offset += length.getLength();
                 int end = offset + length.getIntValue();
-                if (end < offset || end > data.length) {
-                    throw new IndexOutOfBoundsException("data length error: " + length.value + ", " + data.length);
+                if (end < offset || end > data.getLength()) {
+                    throw new IndexOutOfBoundsException("data length error: " + length.value + ", " + data.getLength());
                 }
                 value = parseValue(data.slice(offset, end), type, length);
             }
             if (value != null) {
-                offset += value.length;
+                offset += value.getLength();
             }
             // check length
-            if (offset > data.length) {
-                throw new AssertionError("TLV length error: " + length + ", " + data.length);
-            } else if (offset < data.length) {
+            if (offset > data.getLength()) {
+                throw new AssertionError("TLV length error: " + length + ", " + data.getLength());
+            } else if (offset < data.getLength()) {
                 data = data.slice(0, offset);
             }
             return create(data, type, value);

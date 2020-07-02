@@ -101,7 +101,7 @@ public class IntegerData extends Data {
             //return new IntegerData(other, ((IntegerData) other).value);
             return (IntegerData) other;
         }
-        long result = longFromBytes(other.buffer, other.offset, other.offset + other.length);
+        long result = longFromBytes(other.getBuffer(), other.getOffset(), other.getOffset() + other.getLength());
         return new IntegerData(other, result);
     }
 

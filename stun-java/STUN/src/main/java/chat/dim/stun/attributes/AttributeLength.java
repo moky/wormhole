@@ -58,9 +58,9 @@ public class AttributeLength extends Length {
     }
 
     public static AttributeLength parse(Data data, Tag type) {
-        if (data.length < 2) {
-            throw new IndexOutOfBoundsException("Attribute length error: " + data.length);
-        } else if (data.length > 2) {
+        if (data.getLength() < 2) {
+            throw new IndexOutOfBoundsException("Attribute length error: " + data.getLength());
+        } else if (data.getLength() > 2) {
             data = data.slice(0, 2);
         }
         return new AttributeLength(data, data.getUInt16Value(0));

@@ -120,7 +120,7 @@ public class Header extends Data {
     }
 
     public static Header parse(Data data) {
-        int length = data.length;
+        int length = data.getLength();
         if (length < 4) {
             //throw new ArrayIndexOutOfBoundsException("package error: " + Arrays.toString(data));
             return null;
@@ -225,12 +225,12 @@ public class Header extends Data {
         if (sn.equals(TransactionID.ZERO)) {
             // simple header
             if (options != null) {
-                data.copy(options, 0, 4, options.length);
+                data.copy(options, 0, 4, options.getLength());
             }
         } else {
-            data.copy(sn, 0, 4, sn.length);
+            data.copy(sn, 0, 4, sn.getLength());
             if (options != null) {
-                data.copy(options, 0, 4 + sn.length, options.length);
+                data.copy(options, 0, 4 + sn.getLength(), options.getLength());
             }
         }
         return new Header(data, type, sn, pages, offset, bodyLen);

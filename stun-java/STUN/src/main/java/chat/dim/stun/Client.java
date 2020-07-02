@@ -122,7 +122,7 @@ public class Client extends Node {
         Cargo cargo;
         while (true) {
             size = send(req, serverAddress);
-            if (size != req.length) {
+            if (size != req.getLength()) {
                 // failed to send data
                 return null;
             }

@@ -57,7 +57,7 @@ public class Package extends Data {
         this.body = body;
     }
 
-    private int getOffset() {
+    private int getFragmentOffset() {
         return head.offset;
     }
 
@@ -72,7 +72,7 @@ public class Package extends Data {
         List<Data> fragments = new ArrayList<>();
         int count = 1;
         int start = 0, end = OPTIMAL_BODY_LENGTH;
-        int length = body.length;
+        int length = body.getLength();
         for (; end < length; start = end, end += OPTIMAL_BODY_LENGTH) {
             fragments.add(body.slice(start, end));
             count += 1;
@@ -97,7 +97,7 @@ public class Package extends Data {
             // TCP (should not happen)
             for (int index = 0; index < count; ++index) {
                 data = fragments.get(index);
-                packages.add(create(type, sn, count, index, data.length, data));
+                packages.add(create(type, sn, count, index, data.getLength(), data));
             }
         }
         return packages;
@@ -130,7 +130,7 @@ public class Package extends Data {
             assert pages == item.head.pages : "pages error: " + item;
             assert index == item.head.offset : "fragment missed: " + index;
             fragments.add(item.body);
-            length += item.body.length;
+            length += item.body.getLength();
         }
         assert index == pages : "fragment error: " + index + ", " + pages;
         // join fragments
@@ -139,8 +139,8 @@ public class Package extends Data {
         int pos;
         for (index = 0, pos = 0; index < count; ++index) {
             fra = fragments.get(index);
-            data.copy(fra, 0, pos, fra.length);
-            pos += fra.length;
+            data.copy(fra, 0, pos, fra.getLength());
+            pos += fra.getLength();
         }
         type = DataType.Message;
         if (first.head.bodyLength < 0) {
@@ -148,12 +148,12 @@ public class Package extends Data {
             return create(type, sn, 1, 0, -1, data);
         } else {
             // TCP (should not happen)
-            return create(type, sn, 1, 0, data.length, data);
+            return create(type, sn, 1, 0, data.getLength(), data);
         }
     }
 
     public static List<Package> sort(List<Package> packages) {
-        packages.sort(Comparator.comparingInt(Package::getOffset));
+        packages.sort(Comparator.comparingInt(Package::getFragmentOffset));
         return packages;
     }
 
@@ -165,8 +165,8 @@ public class Package extends Data {
             return null;
         }
         // check lengths
-        int dataLen = data.length;
-        int headLen = head.length;
+        int dataLen = data.getLength();
+        int headLen = head.getLength();
         int bodyLen = head.bodyLength;
         if (bodyLen < 0) {
             // unlimited
@@ -198,7 +198,7 @@ public class Package extends Data {
         // create package with header
         Header head = Header.create(type, sn, pages, offset, bodyLen);
         Data data;
-        if (body.length > 0) {
+        if (body.getLength() > 0) {
             data = head.concat(body);
         } else {
             data = head;
@@ -231,12 +231,12 @@ public class Package extends Data {
     //
 
     public static Package create(DataType type, TransactionID sn, int bodyLen , Data body) {
-        assert bodyLen == body.length : "body length error: " + bodyLen + ", " + body.length;
+        assert bodyLen == body.getLength() : "body length error: " + bodyLen + ", " + body.getLength();
         return create(type, sn, 1, 0, bodyLen, body);
     }
 
     public static Package create(DataType type, int bodyLen, Data body) {
-        assert bodyLen == body.length : "body length error: " + bodyLen + ", " + body.length;
+        assert bodyLen == body.getLength() : "body length error: " + bodyLen + ", " + body.getLength();
         return create(type, TransactionID.create(), 1, 0, bodyLen, body);
     }
 }

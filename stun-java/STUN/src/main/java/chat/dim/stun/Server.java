@@ -125,7 +125,7 @@ public class Server extends Node {
         Package pack = Package.create(head.type, head.sn, attribute);
         assert neighbour != null : "neighbour address not set yet";
         int res = send(pack, neighbour);
-        return res == pack.length;
+        return res == pack.getLength();
     }
 
     protected boolean respond(Header head, SocketAddress clientAddress, int localPort) {
@@ -163,29 +163,29 @@ public class Server extends Node {
         value = SoftwareValue.create(software);
         Data data6 = (new Attribute(AttributeType.Software, value));
         // pack
-        Data body = new Data(data1.length + data2.length + data3.length
-                + data4.length + data5.length + data6.length);
+        Data body = new Data(data1.getLength() + data2.getLength() + data3.getLength()
+                + data4.getLength() + data5.getLength() + data6.getLength());
 
         int offset = 0;
-        body.copy(data1, 0, offset, data1.length);
+        body.copy(data1, 0, offset, data1.getLength());
 
-        offset += data1.length;
-        body.copy(data2, 0, offset, data2.length);
+        offset += data1.getLength();
+        body.copy(data2, 0, offset, data2.getLength());
 
-        offset += data2.length;
-        body.copy(data3, 0, offset, data3.length);
+        offset += data2.getLength();
+        body.copy(data3, 0, offset, data3.getLength());
 
-        offset += data3.length;
-        body.copy(data4, 0, offset, data4.length);
+        offset += data3.getLength();
+        body.copy(data4, 0, offset, data4.getLength());
 
-        offset += data4.length;
-        body.copy(data5, 0, offset, data5.length);
+        offset += data4.getLength();
+        body.copy(data5, 0, offset, data5.getLength());
 
-        offset += data5.length;
-        body.copy(data6, 0, offset, data6.length);
+        offset += data5.getLength();
+        body.copy(data6, 0, offset, data6.getLength());
         Package pack = Package.create(MessageType.BindResponse, head.sn, body);
         int res = send(pack, clientAddress, new InetSocketAddress(localIP, localPort));
-        return res == pack.length;
+        return res == pack.getLength();
     }
 
     public boolean handle(Data data, SocketAddress clientAddress) {

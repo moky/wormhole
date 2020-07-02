@@ -55,9 +55,9 @@ public class Tag extends Data {
     //
 
     public static Tag parse(Data data) {
-        if (data.length < 2) {
-            throw new IndexOutOfBoundsException("TLV tag error: " + data.length);
-        } else if (data.length > 2) {
+        if (data.getLength() < 2) {
+            throw new IndexOutOfBoundsException("TLV tag error: " + data.getLength());
+        } else if (data.getLength() > 2) {
             data = data.slice(0, 2);
         }
         return new Tag(data);

@@ -159,7 +159,7 @@ public class MappedAddressValue extends AttributeValue {
     private static String bytesToIP(Data address, byte family) {
         if (family == FAMILY_IPV4) {
             // IPv4
-            if (address.length != 4) {
+            if (address.getLength() != 4) {
                 throw new IndexOutOfBoundsException("address error: " + address);
             }
             String[] array = new String[4];

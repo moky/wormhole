@@ -70,7 +70,7 @@ public class Attribute extends TagLengthValue {
     }
 
     public Attribute(AttributeType type, AttributeValue value) {
-        super(type, new AttributeLength(value == null ? 0 : value.length), value);
+        super(type, new AttributeLength(value == null ? 0 : value.getLength()), value);
     }
 
     //

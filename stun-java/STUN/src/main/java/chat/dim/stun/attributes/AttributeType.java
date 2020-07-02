@@ -107,7 +107,7 @@ public class AttributeType extends Tag {
     //
 
     public static AttributeType parse(Data data) {
-        int length = data.length;
+        int length = data.getLength();
         if (length < 2) {
             return null;
         } else if (length > 2) {

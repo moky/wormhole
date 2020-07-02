@@ -93,10 +93,10 @@ public class MessageType extends UInt16Data {
     }
 
     public static MessageType parse(Data data) {
-        if (data.length < 2 || (data.getByte(0) & 0xC0) != 0) {
+        if (data.getLength() < 2 || (data.getByte(0) & 0xC0) != 0) {
             // format: 00xx xxxx, xxxx, xxxx
             return null;
-        } else if (data.length > 2) {
+        } else if (data.getLength() > 2) {
             data = data.slice(0, 2);
         }
         int value = data.getUInt16Value(0);

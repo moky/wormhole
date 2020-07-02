@@ -52,8 +52,8 @@ public class VarIntData extends IntegerData {
     }
 
     public static VarIntData fromData(Data data) {
-        Result res = parseBytes(data.buffer, data.offset);
-        if (res.length < data.length) {
+        Result res = parseBytes(data.getBuffer(), data.getOffset());
+        if (res.length < data.getLength()) {
             data = data.slice(0, res.length);
         }
         return new VarIntData(data, res.value);
