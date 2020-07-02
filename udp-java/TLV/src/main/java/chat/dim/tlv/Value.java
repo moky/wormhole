@@ -36,8 +36,8 @@ public class Value extends Data {
         super(data);
     }
 
-    public Value(byte[] data) {
-        super(data);
+    public Value(byte[] bytes) {
+        super(bytes);
     }
 
     //

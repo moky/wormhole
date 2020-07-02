@@ -36,8 +36,8 @@ public class Tag extends Data {
         super(data);
     }
 
-    public Tag(byte[] data) {
-        super(data);
+    public Tag(byte[] bytes) {
+        super(bytes);
     }
 
     //

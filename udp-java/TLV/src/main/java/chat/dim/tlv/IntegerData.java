@@ -42,8 +42,8 @@ public class IntegerData extends Data {
         this.value = value;
     }
 
-    public IntegerData(byte[] data, long value) {
-        super(data);
+    public IntegerData(byte[] bytes, long value) {
+        super(bytes);
         this.value = value;
     }
 
@@ -74,36 +74,38 @@ public class IntegerData extends Data {
     }
 
     //
-    //  bytes functions
+    //  Factories
     //
 
-    protected static long longFromBytes(byte[] data) {
-        return longFromBytes(data, 0, data.length);
-    }
-    protected static long longFromBytes(byte[] data, int length) {
-        return longFromBytes(data, 0, length);
-    }
-    protected static long longFromBytes(byte[] data, int start, int end) {
-        // adjust positions
-        start = adjust(start, data.length);
-        end = adjust(end, data.length);
-        if (start >= end) {
-            return 0;
-        }
-        long result = 0;
-        for (; start < end; ++start) {
-            result = (result << 8) | (data[start] & 0xFF);
-        }
-        return result;
+    public static IntegerData fromInt(int value, int length) {
+        return fromLong(value, length);
     }
 
-    protected static byte[] bytesFromLong(long value, int length) {
-        byte[] data = new byte[length];
+    public static IntegerData fromLong(long value, int length) {
+        byte[] bytes = new byte[length];
         int index;
         for (index = length - 1; index >= 0; --index) {
-            data[index] = (byte) (value & 0xFF);
+            bytes[index] = (byte) (value & 0xFF);
             value >>= 8;
         }
-        return data;
+        return new IntegerData(bytes, value);
+    }
+
+    public static IntegerData fromData(Data data) {
+        long result = longFromBytes(data.buffer, data.offset, data.offset + data.length);
+        return new IntegerData(data, result);
+    }
+
+    public static IntegerData fromBytes(byte[] bytes) {
+        long result = longFromBytes(bytes, 0, bytes.length);
+        return new IntegerData(bytes, result);
+    }
+
+    private static long longFromBytes(byte[] bytes, int start, int end) {
+        long result = 0;
+        for (; start < end; ++start) {
+            result = (result << 8) | (bytes[start] & 0xFF);
+        }
+        return result;
     }
 }

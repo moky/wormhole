@@ -35,15 +35,37 @@ package chat.dim.tlv;
  */
 public class UInt8Data extends IntegerData {
 
-    public UInt8Data(Data data) {
-        super(data, longFromBytes(data.buffer, data.offset, data.offset + 1));
+    public UInt8Data(Data data, int value) {
+        super(data, value);
     }
 
-    public UInt8Data(byte[] data) {
-        this(new Data(data, 0, 1));
+    public UInt8Data(UInt8Data data) {
+        super(data, data.value);
     }
 
-    public UInt8Data(int uint8) {
-        super(bytesFromLong(uint8, 1), uint8);
+    public UInt8Data(int value) {
+        super(IntegerData.fromInt(value, 1), value);
+    }
+
+    public UInt8Data(byte value) {
+        this(value & 0xFF);
+    }
+
+    //
+    //  Factories
+    //
+
+    public static UInt8Data fromBytes(byte[] bytes) {
+        return fromData(new Data(bytes, 0, 1));
+    }
+
+    public static UInt8Data fromData(Data other) {
+        if (other instanceof UInt8Data) {
+            //return new UInt8Data(other, (int) ((UInt8Data) other).value);
+            return (UInt8Data) other;
+        }
+        other = other.slice(0, 1);
+        IntegerData data = IntegerData.fromData(other);
+        return new UInt8Data(other, (int) data.value);
     }
 }

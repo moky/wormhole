@@ -36,8 +36,8 @@ public class Length extends IntegerData {
         super(data, value);
     }
 
-    public Length(byte[] data, long value) {
-        super(data, value);
+    public Length(byte[] bytes, long value) {
+        super(bytes, value);
     }
 
     //
@@ -50,7 +50,7 @@ public class Length extends IntegerData {
         } else if (data.length > 2) {
             data = data.slice(0, 2);
         }
-        long value = longFromBytes(data.buffer, data.offset, data.offset + data.length);
-        return new Length(data, value);
+        UInt16Data int16 = UInt16Data.fromData(data);
+        return new Length(data, int16.value);
     }
 }

@@ -48,35 +48,38 @@ public class Data implements Cloneable {
     public final int length;
 
     /**
-     *  Adjust position
+     *  Clone data view
      *
-     * @param pos - position
-     * @param len - length
-     * @return adjust the position in range [0, len]
+     * @param data - same view
      */
-    protected static int adjust(int pos, int len) {
-        if (pos < 0) {
-            pos += len;  // count from right hand
-            if (pos < 0) {
-                pos = 0; // too small
-            }
-        } else if (pos > len) {
-            pos = len;   // too big
-        }
-        return pos;
+    public Data(Data data) {
+        super();
+        buffer = data.buffer;
+        bufLength = data.bufLength;
+        offset = data.offset;
+        length = data.length;
+    }
+
+    /**
+     *  Create data view with bytes
+     *
+     * @param bytes - data view
+     */
+    public Data(byte[] bytes) {
+        this(bytes, 0, bytes.length);
     }
 
     /**
      *  Create data view with range [start, end)
      *
-     * @param data  - data view
+     * @param bytes - data view
      * @param start - start position (include)
      * @param end   - end position (exclude)
      */
-    public Data(byte[] data, int start, int end) {
+    public Data(byte[] bytes, int start, int end) {
         super();
-        buffer = data;
-        bufLength = data.length;
+        buffer = bytes;
+        bufLength = bytes.length;
 
         // adjust positions
         start = adjust(start, bufLength);
@@ -90,22 +93,17 @@ public class Data implements Cloneable {
         }
     }
 
-    /**
-     *  Create data view with bytes
-     *
-     * @param data - bytes
-     */
-    public Data(byte[] data) {
-        this(data, 0, data.length);
-    }
-
-    /**
-     *  Clone data view
-     *
-     * @param data - same view
-     */
-    public Data(Data data) {
-        this(data.buffer, data.offset, data.offset + data.length);
+    // adjust the position in range [0, len]
+    protected static int adjust(int pos, int len) {
+        if (pos < 0) {
+            pos += len;  // count from right hand
+            if (pos < 0) {
+                pos = 0; // too small
+            }
+        } else if (pos > len) {
+            pos = len;   // too big
+        }
+        return pos;
     }
 
     @Override
@@ -148,7 +146,7 @@ public class Data implements Cloneable {
         if (offset == 0 && length == bufLength) {
             return Arrays.hashCode(buffer);
         } else {
-            return Arrays.hashCode(slice(buffer, offset, offset + length));
+            return Arrays.hashCode(getBytes());
         }
     }
 
@@ -165,11 +163,25 @@ public class Data implements Cloneable {
     }
 
     public byte[] getBytes(int start, int end) {
-        return slice(buffer, offset + start, offset + end);
+        // adjust positions
+        start = adjust(start, bufLength);
+        end = adjust(end, bufLength);
+        // check range
+        if (start == 0 && end == bufLength) {
+            // same buffer
+            return buffer;
+        } else if (start >= end) {
+            // empty buffer
+            return new byte[0];
+        }
+        // copy sub-array
+        byte[] bytes = new byte[end - start];
+        System.arraycopy(buffer, start, bytes, 0, end - start);
+        return bytes;
     }
 
     //
-    //  To another data
+    //  To another data view
     //
 
     public Data slice(int start) {
@@ -187,77 +199,28 @@ public class Data implements Cloneable {
                 return new Data(buffer, offset, offset + length + other.length);
             }
         }
-        byte[] data = new byte[length + other.length];
-        System.arraycopy(buffer, offset, data, 0, length);;
-        System.arraycopy(other.buffer, other.offset, data, length, other.length);
-        return new Data(data);
+        byte[] bytes = new byte[length + other.length];
+        System.arraycopy(buffer, offset, bytes, 0, length);
+        System.arraycopy(other.buffer, other.offset, bytes, length, other.length);
+        return new Data(bytes);
     }
 
     @Override
     public Data clone() throws CloneNotSupportedException {
         // deep copy
-        byte[] data = new byte[length];
-        System.arraycopy(buffer, offset, data, 0, length);
+        byte[] bytes = new byte[length];
+        System.arraycopy(buffer, offset, bytes, 0, length);
         Data copy = (Data) super.clone();
-        copy.buffer = data;
-        copy.bufLength = data.length;
+        copy.buffer = bytes;
+        copy.bufLength = bytes.length;
         copy.offset = 0;
         return copy;
     }
 
-    //
-    //  bytes functions
-    //
-
-    public static byte[] slice(byte[] data, int start) {
-        return slice(data, start, data.length);
-    }
-
-    public static byte[] slice(byte[] data, int start, int end) {
-        int length = data.length;
-        // adjust positions
-        start = adjust(start, length);
-        end = adjust(end, length);
-        // check range
-        if (start == 0 && end == length) {
-            // same buffer
-            return data;
-        } else if (start >= end) {
-            // empty buffer
-            return new byte[0];
-        }
-        // copy sub-array
-        byte[] buffer = new byte[end - start];
-        System.arraycopy(data, start, buffer, 0, end - start);
-        return buffer;
-    }
-
-    public static byte[] concat(byte[] array1, byte[] array2) {
-        int len1 = array1.length;
-        int len2 = array2.length;
-        if (len1 == 0) {
-            // array1 empty
-            return array2;
-        } else if (len2 == 0) {
-            // array2 empty
-            return array1;
-        }
-        byte[] buffer = new byte[len1 + len2];
-        System.arraycopy(array1, 0, buffer, 0, len1);
-        System.arraycopy(array2, 0, buffer, len1, len2);
-        return buffer;
-    }
-
-    public static byte[] clone(byte[] data) {
-        byte[] buffer = new byte[data.length];
-        System.arraycopy(data, 0, buffer, 0, data.length);
-        return buffer;
-    }
-
-    public static byte[] random(int length) {
-        byte[] data = new byte[length];
+    public static Data random(int length) {
+        byte[] bytes = new byte[length];
         Random random = new Random();
-        random.nextBytes(data);
-        return data;
+        random.nextBytes(bytes);
+        return new Data(bytes);
     }
 }

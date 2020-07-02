@@ -54,8 +54,8 @@ public class TagLengthValue extends Data {
         this.value = value;
     }
 
-    public TagLengthValue(byte[] data, Tag type, Value value) {
-        super(data);
+    public TagLengthValue(byte[] bytes, Tag type, Value value) {
+        super(bytes);
         this.tag = type;
         this.value = value;
     }

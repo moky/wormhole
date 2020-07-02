@@ -40,15 +40,15 @@ public class VarIntData extends IntegerData {
     }
 
     public VarIntData(long value) {
-        super(bytesFromLong(value), value);
+        super(parseLong(value), value);
     }
 
     //
     //  Factories
     //
 
-    public static VarIntData fromBytes(byte[] data) {
-        return fromData(new Data(data));
+    public static VarIntData fromBytes(byte[] bytes) {
+        return fromData(new Data(bytes));
     }
 
     public static VarIntData fromData(Data data) {
@@ -59,11 +59,7 @@ public class VarIntData extends IntegerData {
         return new VarIntData(data, res.value);
     }
 
-    //
-    //  bytes functions
-    //
-
-    protected static byte[] bytesFromLong(long value) {
+    private static Data parseLong(long value) {
         byte[] buffer = new byte[8];
         int index = 0;
         while (value > 0x7F) {
@@ -72,20 +68,16 @@ public class VarIntData extends IntegerData {
             index += 1;
         }
         buffer[index] = (byte) (value & 0x7F);
-        return slice(buffer, 0, index + 1);
+        return new Data(buffer, 0, index + 1);
     }
 
-    protected static long longFromBytes(byte[] data) {
-        return parseBytes(data, 0).value;
-    }
-
-    private static Result parseBytes(byte[] data, int start) {
+    private static Result parseBytes(byte[] bytes, int start) {
         long value = 0;
         int index = start;
         int offset = 0;
         byte ch;
         do {
-            ch = data[index];
+            ch = bytes[index];
             value |= (ch & 0x7F) << offset;
             index += 1;
             offset += 7;
