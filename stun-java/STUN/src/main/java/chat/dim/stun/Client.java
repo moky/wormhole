@@ -44,6 +44,7 @@ import chat.dim.stun.protocol.MessageType;
 import chat.dim.stun.protocol.Package;
 import chat.dim.stun.protocol.TransactionID;
 import chat.dim.stun.valus.*;
+import chat.dim.tlv.Data;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
 import chat.dim.tlv.Value;
@@ -75,21 +76,25 @@ public class Client extends Node {
         } else if (type.equals(AttributeType.XorMappedAddress)) {
             if (!(value instanceof XorMappedAddressValue)) {
                 // XOR and parse again
-                byte[] factor = (byte[]) context.get("trans_id");
-                byte[] data = XorMappedAddressValue.xor(value.data, factor);
+                Data factor = (Data) context.get("trans_id");
+                byte[] data = XorMappedAddressValue.xor(value.getBytes(), factor.getBytes());
                 length = new AttributeLength(data.length);
-                value = XorMappedAddressValue.parse(data, type, length);
+                value = XorMappedAddressValue.parse(new Data(data), type, length);
             }
-            context.put("MAPPED-ADDRESS", value);
+            if (value != null) {
+                context.put("MAPPED-ADDRESS", value);
+            }
         } else if (type.equals(AttributeType.XorMappedAddress2)) {
             if (!(value instanceof XorMappedAddressValue2)) {
                 // XOR and parse again
-                byte[] factor = (byte[]) context.get("trans_id");
-                byte[] data = XorMappedAddressValue2.xor(value.data, factor);
+                Data factor = (Data) context.get("trans_id");
+                byte[] data = XorMappedAddressValue2.xor(value.getBytes(), factor.getBytes());
                 length = new AttributeLength(data.length);
-                value = XorMappedAddressValue2.parse(data, type, length);
+                value = XorMappedAddressValue2.parse(new Data(data), type, length);
             }
-            context.put("MAPPED-ADDRESS", value);
+            if (value != null) {
+                context.put("MAPPED-ADDRESS", value);
+            }
         } else if (type.equals(AttributeType.ChangedAddress)) {
             assert value instanceof ChangedAddressValue : "change address value error: " + value;
             context.put("CHANGED-ADDRESS", value);
@@ -107,7 +112,7 @@ public class Client extends Node {
         return true;
     }
 
-    private Map<String, Object> bindRequest(byte[] body, SocketAddress serverAddress) {
+    private Map<String, Object> bindRequest(Data body, SocketAddress serverAddress) {
         // 1. create STUN message package
         Package req = Package.create(MessageType.BindRequest, body);
         TransactionID sn = req.head.sn;
@@ -116,7 +121,7 @@ public class Client extends Node {
         int size;
         Cargo cargo;
         while (true) {
-            size = send(req.data, serverAddress);
+            size = send(req, serverAddress);
             if (size != req.length) {
                 // failed to send data
                 return null;
@@ -137,8 +142,8 @@ public class Client extends Node {
         }
         // 3. parse response
         Map<String, Object> context = new HashMap<>();
-        context.put("trans_id", sn.data);
-        if (!parseData(cargo.data, context)) {
+        context.put("trans_id", sn);
+        if (!parseData(new Data(cargo.data), context)) {
             return null;
         }
         Header head = (Header) context.get("head");
@@ -168,22 +173,19 @@ public class Client extends Node {
 
     private Map<String, Object> test_1(SocketAddress serverAddress) {
         info("[Test 1] sending empty request ... " + serverAddress);
-        byte[] body = new byte[0];
-        return bindRequest(body, serverAddress);
+        return bindRequest(Data.ZERO, serverAddress);
     }
 
     private Map<String, Object> test_2(SocketAddress serverAddress) {
         info("[Test 2] sending ChangeIPAndPort request ... " + serverAddress);
         Attribute item = new Attribute(AttributeType.ChangeRequest, ChangeRequestValue.ChangeIPAndPort);
-        byte[] body = item.data;
-        return bindRequest(body, serverAddress);
+        return bindRequest(item, serverAddress);
     }
 
     private Map<String, Object> test_3(SocketAddress serverAddress) {
         info("[Test 1] sending ChangePort request ... " + serverAddress);
         Attribute item = new Attribute(AttributeType.ChangeRequest, ChangeRequestValue.ChangePort);
-        byte[] body = item.data;
-        return bindRequest(body, serverAddress);
+        return bindRequest(item, serverAddress);
     }
 
     public Map<String, Object> getNatType(SocketAddress serverAddress) {

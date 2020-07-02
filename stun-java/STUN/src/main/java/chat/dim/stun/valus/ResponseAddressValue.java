@@ -30,6 +30,7 @@
  */
 package chat.dim.stun.valus;
 
+import chat.dim.tlv.Data;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
 
@@ -44,15 +45,15 @@ import chat.dim.tlv.Tag;
 
 public class ResponseAddressValue extends MappedAddressValue {
 
-    public ResponseAddressValue(byte[] data, String ip, int port, byte family) {
+    public ResponseAddressValue(Data data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 
-    public static ResponseAddressValue parse(byte[] data, Tag type, Length length) {
+    public static ResponseAddressValue parse(Data data, Tag type, Length length) {
         MappedAddressValue value = MappedAddressValue.parse(data, type, length);
         if (value == null) {
             return null;
         }
-        return new ResponseAddressValue(value.data, value.ip, value.port, value.family);
+        return new ResponseAddressValue(value, value.ip, value.port, value.family);
     }
 }

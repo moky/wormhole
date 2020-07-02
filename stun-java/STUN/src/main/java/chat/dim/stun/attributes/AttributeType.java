@@ -33,31 +33,49 @@ package chat.dim.stun.attributes;
 import java.util.HashMap;
 import java.util.Map;
 
+import chat.dim.tlv.Data;
+import chat.dim.tlv.IntegerData;
 import chat.dim.tlv.Tag;
-import chat.dim.tlv.UInt16Data;
 
 public class AttributeType extends Tag {
 
     public final int value;
     private final String name;
 
-    public AttributeType(int value, byte[] data, String name) {
+    public AttributeType(AttributeType type) {
+        super(type);
+        value = type.value;
+        name = type.name;
+    }
+
+    public AttributeType(Data data, int value, String name) {
         super(data);
         this.value = value;
         this.name = name;
         s_types.put(value, this);
     }
 
-    public AttributeType(int value, byte[] data) {
-        this(value, data, "Attribute-" + Integer.toHexString(value));
+    public AttributeType(byte[] bytes, int value, String name) {
+        super(bytes);
+        this.value = value;
+        this.name = name;
+        s_types.put(value, this);
+    }
+
+    public AttributeType(Data data, int value) {
+        this(data, value, "Attribute-" + Integer.toHexString(value));
+    }
+
+    public AttributeType(byte[] bytes, int value) {
+        this(new Data(bytes), value);
     }
 
     public AttributeType(int value, String name) {
-        this(value, UInt16Data.intToBytes(value, 2), name);
+        this(IntegerData.bytesFromLong(value, 2), value, name);
     }
 
     public AttributeType(int value) {
-        this(value, UInt16Data.intToBytes(value, 2));
+        this(IntegerData.bytesFromLong(value, 2), value);
     }
 
     @Override
@@ -88,14 +106,14 @@ public class AttributeType extends Tag {
     //  Factory
     //
 
-    public static AttributeType parse(byte[] data) {
+    public static AttributeType parse(Data data) {
         int length = data.length;
         if (length < 2) {
             return null;
         } else if (length > 2) {
-            data = slice(data, 0, 2);
+            data = data.slice(0, 2);
         }
-        int value = UInt16Data.bytesToInt(data);
+        int value = data.getUInt16Value(0);
         return getInstance(value);
     }
 

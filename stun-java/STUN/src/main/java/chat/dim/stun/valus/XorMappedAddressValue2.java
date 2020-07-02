@@ -30,6 +30,7 @@
  */
 package chat.dim.stun.valus;
 
+import chat.dim.tlv.Data;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
 
@@ -72,12 +73,29 @@ import chat.dim.tlv.Tag;
 
 public class XorMappedAddressValue2 extends MappedAddressValue {
 
-    public XorMappedAddressValue2(byte[] data, String ip, int port, byte family) {
+    public XorMappedAddressValue2(MappedAddressValue addressValue) {
+        super(addressValue);
+    }
+
+    public XorMappedAddressValue2(Data data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 
+    public XorMappedAddressValue2(byte[] bytes, String ip, int port, byte family) {
+        super(bytes, ip, port, family);
+    }
+
+    public XorMappedAddressValue2(String ip, int port, byte family) {
+        super(ip, port, family);
+    }
+
+    public XorMappedAddressValue2(String ip, int port) {
+        super(ip, port);
+    }
+
     public static XorMappedAddressValue2 create(String ip, int port, byte family, byte[] factor) {
-        byte[] data = build(ip, port, family);
+        MappedAddressValue addressValue = new MappedAddressValue(ip, port, family);
+        byte[] data = addressValue.getBytes();
         data = xor(data, factor);
         return new XorMappedAddressValue2(data, ip, port, family);
     }
@@ -112,11 +130,11 @@ public class XorMappedAddressValue2 extends MappedAddressValue {
         return array;
     }
 
-    public static XorMappedAddressValue2 parse(byte[] data, Tag type, Length length) {
+    public static XorMappedAddressValue2 parse(Data data, Tag type, Length length) {
         MappedAddressValue value = MappedAddressValue.parse(data, type, length);
         if (value == null) {
             return null;
         }
-        return new XorMappedAddressValue2(value.data, value.ip, value.port, value.family);
+        return new XorMappedAddressValue2(value, value.ip, value.port, value.family);
     }
 }

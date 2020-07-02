@@ -30,29 +30,39 @@
  */
 package chat.dim.stun.protocol;
 
+import chat.dim.tlv.Data;
 import chat.dim.tlv.UInt16Data;
 
 public class MessageLength extends UInt16Data {
 
-    public MessageLength(byte[] data, int value) {
+    public MessageLength(UInt16Data data) {
+        super(data);
+    }
+
+    public MessageLength(Data data, int value) {
         super(data, value);
     }
 
+    public MessageLength(byte[] bytes, int value) {
+        super(bytes, value);
+    }
+
     public MessageLength(int value) {
-        this(intToBytes(value, 2), value);
+        this(bytesFromLong(value, 2), value);
     }
 
     //
     //  Factory
     //
 
-    public static MessageLength parse(byte[] data) {
-        if (data.length < 2 || (data[0] & 0x03) != 0) {
+    public static MessageLength parse(Data data) {
+        if (data.length < 2 || (data.getByte(0) & 0x03) != 0) {
             // format: xxxx xxxx, xxxx, xx00
             return null;
         } else if (data.length > 2) {
-            data = slice(data, 0, 2);
+            data = data.slice(0, 2);
         }
-        return new MessageLength(data, bytesToInt(data));
+        int value = data.getUInt16Value(0);
+        return new MessageLength(data, value);
     }
 }

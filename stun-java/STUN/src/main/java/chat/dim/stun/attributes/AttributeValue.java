@@ -36,35 +36,26 @@ import java.util.HashMap;
 import java.util.Map;
 
 import chat.dim.stun.valus.*;
+import chat.dim.tlv.Data;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
 import chat.dim.tlv.Value;
 
 public class AttributeValue extends Value {
 
-    public AttributeValue(byte[] data) {
+    public AttributeValue(Data data) {
         super(data);
     }
 
-    public static AttributeValue parse(byte[] data, Tag type, Length length) {
+    public AttributeValue(byte[] bytes) {
+        super(bytes);
+    }
+
+    public static AttributeValue parse(Data data, Tag type, Length length) {
         Class clazz = attributeValueClasses.get(type);
         if (clazz != null) {
             // create instance by subclass
             return create(clazz, data, type, length);
-        }
-        // check length
-        if (length == null || length.value == 0) {
-            //throw new ArrayIndexOutOfBoundsException("length error: " + length);
-            return null;
-        } else {
-            int len = length.getIntValue();
-            int dataLen = data.length;
-            if (len < 0 || len > dataLen) {
-                //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
-                return null;
-            } else if (len < dataLen) {
-                data = slice(data, 0, len);
-            }
         }
         return new AttributeValue(data);
     }
@@ -85,10 +76,10 @@ public class AttributeValue extends Value {
     }
 
     @SuppressWarnings("unchecked")
-    private static AttributeValue create(Class clazz, byte[] data, Tag type, Length length) {
+    private static AttributeValue create(Class clazz, Data data, Tag type, Length length) {
         // try 'Clazz.parse(data, type, length)'
         try {
-            Method method = clazz.getMethod("parse", byte[].class, Tag.class, Length.class);
+            Method method = clazz.getMethod("parse", Data.class, Tag.class, Length.class);
             if (method.getDeclaringClass().equals(clazz)) {
                 // only invoke the method 'parse()' declared in this class
                 return (AttributeValue) method.invoke(null, data, type, length);

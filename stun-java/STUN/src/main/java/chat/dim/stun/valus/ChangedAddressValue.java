@@ -30,6 +30,7 @@
  */
 package chat.dim.stun.valus;
 
+import chat.dim.tlv.Data;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
 
@@ -47,15 +48,27 @@ import chat.dim.tlv.Tag;
 
 public class ChangedAddressValue extends MappedAddressValue {
 
-    public ChangedAddressValue(byte[] data, String ip, int port, byte family) {
+    public ChangedAddressValue(MappedAddressValue addressValue) {
+        super(addressValue);
+    }
+
+    public ChangedAddressValue(Data data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 
-    public static ChangedAddressValue parse(byte[] data, Tag type, Length length) {
+    public ChangedAddressValue(String ip, int port, byte family) {
+        super(ip, port, family);
+    }
+
+    public ChangedAddressValue(String ip, int port) {
+        super(ip, port);
+    }
+
+    public static ChangedAddressValue parse(Data data, Tag type, Length length) {
         MappedAddressValue value = MappedAddressValue.parse(data, type, length);
         if (value == null) {
             return null;
         }
-        return new ChangedAddressValue(value.data, value.ip, value.port, value.family);
+        return new ChangedAddressValue(value, value.ip, value.port, value.family);
     }
 }

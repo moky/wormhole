@@ -3,6 +3,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 
+import chat.dim.tlv.Data;
 import chat.dim.udp.Cargo;
 
 public class Server extends chat.dim.stun.Server {
@@ -38,7 +39,7 @@ public class Server extends chat.dim.stun.Server {
                     _sleep(0.1);
                     continue;
                 }
-                handle(cargo.data, cargo.source);
+                handle(new Data(cargo.data), cargo.source);
             } catch (Exception e) {
                 e.printStackTrace();
             }

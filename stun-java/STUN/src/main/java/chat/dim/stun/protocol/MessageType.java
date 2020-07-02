@@ -33,6 +33,7 @@ package chat.dim.stun.protocol;
 import java.util.HashMap;
 import java.util.Map;
 
+import chat.dim.tlv.Data;
 import chat.dim.tlv.UInt16Data;
 
 /*  [RFC] https://www.ietf.org/rfc/rfc5389.txt
@@ -51,18 +52,26 @@ public class MessageType extends UInt16Data {
 
     private final String name;
 
-    public MessageType(byte[] data, int value, String name) {
+    public MessageType(MessageType type) {
+        super(type);
+        name = type.name;
+        s_types.put(type.getIntValue(), this);
+    }
+
+    public MessageType(Data data, int value, String name) {
         super(data, value);
         this.name = name;
         s_types.put(value, this);
     }
 
-    public MessageType(int value, String name) {
-        this(intToBytes(value, 2), value, name);
+    public MessageType(byte[] bytes, int value, String name) {
+        super(bytes, value);
+        this.name = name;
+        s_types.put(value, this);
     }
 
-    public MessageType(int value) {
-        this(value, "MsgType-" + Integer.toHexString(value));
+    public MessageType(int value, String name) {
+        this(bytesFromLong(value, 2), value, name);
     }
 
     @Override
@@ -77,19 +86,21 @@ public class MessageType extends UInt16Data {
     public static synchronized MessageType getInstance(int value) {
         MessageType type = s_types.get(value);
         if (type == null) {
-            type = new MessageType(value);
+            //type = new MessageType(value, "MsgType-" + Integer.toHexString(value));
+            throw new NullPointerException("msg type error: " + value);
         }
         return type;
     }
 
-    public static MessageType parse(byte[] data) {
-        if (data.length < 2 || (data[0] & 0xC0) != 0) {
+    public static MessageType parse(Data data) {
+        if (data.length < 2 || (data.getByte(0) & 0xC0) != 0) {
             // format: 00xx xxxx, xxxx, xxxx
             return null;
         } else if (data.length > 2) {
-            data = slice(data, 0, 2);
+            data = data.slice(0, 2);
         }
-        return getInstance(bytesToInt(data));
+        int value = data.getUInt16Value(0);
+        return getInstance(value);
     }
 
     private static final Map<Integer, MessageType> s_types = new HashMap<>();

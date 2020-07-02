@@ -30,6 +30,7 @@
  */
 package chat.dim.stun.valus;
 
+import chat.dim.tlv.Data;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
 
@@ -89,12 +90,21 @@ public class XorMappedAddressValue extends MappedAddressValue {
      *    failure of STUN's message-integrity checking.
      */
 
-    public XorMappedAddressValue(byte[] data, String ip, int port, byte family) {
+    public XorMappedAddressValue(MappedAddressValue addressValue) {
+        super(addressValue);
+    }
+
+    public XorMappedAddressValue(Data data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 
+    public XorMappedAddressValue(byte[] bytes, String ip, int port, byte family) {
+        super(bytes, ip, port, family);
+    }
+
     public static XorMappedAddressValue create(String ip, int port, byte family, byte[] factor) {
-        byte[] data = build(ip, port, family);
+        MappedAddressValue addressValue = new MappedAddressValue(ip, port, family);
+        byte[] data = addressValue.getBytes();
         data = xor(data, factor);
         return new XorMappedAddressValue(data, ip, port, family);
     }
@@ -129,11 +139,11 @@ public class XorMappedAddressValue extends MappedAddressValue {
         return array;
     }
 
-    public static XorMappedAddressValue parse(byte[] data, Tag type, Length length) {
+    public static XorMappedAddressValue parse(Data data, Tag type, Length length) {
         MappedAddressValue value = MappedAddressValue.parse(data, type, length);
         if (value == null) {
             return null;
         }
-        return new XorMappedAddressValue(value.data, value.ip, value.port, value.family);
+        return new XorMappedAddressValue(value, value.ip, value.port, value.family);
     }
 }

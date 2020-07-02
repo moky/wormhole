@@ -70,24 +70,28 @@ import chat.dim.tlv.UInt32Data;
  */
 public class TransactionID extends Data {
 
-    public TransactionID(byte[] data) {
+    public TransactionID(Data data) {
         super(data);
     }
 
-    public static TransactionID parse(byte[] data) {
+    public TransactionID(byte[] bytes) {
+        super(bytes);
+    }
+
+    //
+    //  Factories
+    //
+
+    public static TransactionID parse(Data data) {
         int length = data.length;
         if (length < 16) {
             //throw new ArrayIndexOutOfBoundsException("Transaction ID length error: " + length);
             return null;
         } else if (length > 16) {
-            data = slice(data, 0, 16);
+            data = data.slice(0, 16);
         }
         return new TransactionID(data);
     }
-
-    //
-    //  Factory
-    //
 
     public static synchronized TransactionID create() {
         if (s_low < 0xFFFFFFFFL) {
@@ -106,17 +110,21 @@ public class TransactionID extends Data {
             }
         }
 
-        byte[] mc = MagicCookie.data;
-        byte[] hi = UInt32Data.intToBytes(s_high, 4);
-        byte[] mi = UInt32Data.intToBytes(s_middle, 4);
-        byte[] lo = UInt32Data.intToBytes(s_low, 4);
+        Data mc = MagicCookie;
+        Data hi = new UInt32Data(s_high);
+        Data mi = new UInt32Data(s_middle);
+        Data lo = new UInt32Data(s_low);
 
-        byte[] data = concat(concat(mc, hi), concat(mi, lo));
+        Data data = new Data(16);
+        data.copy(mc, 0, 0, 4);
+        data.copy(hi, 0, 4, 4);
+        data.copy(mi, 0, 8, 4);
+        data.copy(lo, 0, 12, 4);
         return new TransactionID(data);
     }
 
     // Magic Cookie
-    public static UInt32Data MagicCookie = UInt32Data.fromInt(0x2112A442);
+    public static UInt32Data MagicCookie = new UInt32Data(0x2112A442);
 
     private static long s_high;
     private static long s_middle;

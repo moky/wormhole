@@ -34,9 +34,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import chat.dim.stun.attributes.AttributeValue;
-import chat.dim.tlv.Length;
-import chat.dim.tlv.Tag;
-import chat.dim.tlv.UInt32Data;
+import chat.dim.tlv.*;
 
 /*  11.2.4 CHANGE-REQUEST
  *
@@ -77,7 +75,7 @@ public class ChangeRequestValue extends AttributeValue {
     }
 
     public ChangeRequestValue(int value, String name) {
-        this(UInt32Data.intToBytes(value, 4), value, name);
+        this(IntegerData.bytesFromLong(value, 4), value, name);
     }
 
     public ChangeRequestValue(int value) {
@@ -108,22 +106,8 @@ public class ChangeRequestValue extends AttributeValue {
         return name;
     }
 
-    public static ChangeRequestValue parse(byte[] data, Tag type, Length length) {
-        // check length
-        if (length == null || length.value == 0) {
-            //throw new ArrayIndexOutOfBoundsException("length error: " + length);
-            return null;
-        } else {
-            int len = length.getIntValue();
-            int dataLen = data.length;
-            if (len < 0 || len > dataLen) {
-                //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
-                return null;
-            } else if (len < dataLen) {
-                data = slice(data, 0, len);
-            }
-        }
-        int value = UInt32Data.bytesToInt(data);
+    public static ChangeRequestValue parse(Data data, Tag type, Length length) {
+        int value = (int) data.getUInt32Value(0);
         return getInstance(value);
     }
 

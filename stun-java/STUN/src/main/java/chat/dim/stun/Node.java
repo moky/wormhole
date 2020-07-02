@@ -34,13 +34,13 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
 import chat.dim.stun.attributes.Attribute;
 import chat.dim.stun.protocol.Package;
+import chat.dim.tlv.Data;
 import chat.dim.udp.Cargo;
 import chat.dim.udp.Hub;
 
@@ -99,16 +99,16 @@ public abstract class Node {
      * @param source      - local IP and port
      * @return count of sent bytes
      */
-    public int send(byte[] data, SocketAddress destination, SocketAddress source) {
-        return hub.send(data, destination, source);
+    public int send(Data data, SocketAddress destination, SocketAddress source) {
+        return hub.send(data.getBytes(), destination, source);
     }
 
-    public int send(byte[] data, SocketAddress destination, int source) {
+    public int send(Data data, SocketAddress destination, int source) {
         SocketAddress address = new InetSocketAddress(source);
         return send(data, destination, address);
     }
 
-    public int send(byte[] data, SocketAddress destination) {
+    public int send(Data data, SocketAddress destination) {
         return send(data, destination, sourceAddress);
     }
 
@@ -142,11 +142,11 @@ public abstract class Node {
      * @param context - return with package head and results from body
      * @return false on failed`
      */
-    public boolean parseData(byte[] data, Map<String, Object> context) {
+    public boolean parseData(Data data, Map<String, Object> context) {
         // 1. parse STUN package
         Package pack = Package.parse(data);
         if (pack == null) {
-            info("failed to parse package data: " + Arrays.toString(data));
+            info("failed to parse package data: " + data);
             return false;
         }
         // 2. parse attributes

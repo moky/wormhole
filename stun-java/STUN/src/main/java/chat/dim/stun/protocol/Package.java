@@ -35,15 +35,27 @@ import chat.dim.tlv.Data;
 public class Package extends Data {
 
     public final Header head;
-    public final byte[] body;
+    public final Data body;
 
-    public Package(byte[] data, Header head, byte[] body) {
+    public Package(Package pack) {
+        super(pack);
+        head = pack.head;
+        body = pack.body;
+    }
+
+    public Package(Data data, Header head, Data body) {
         super(data);
         this.head = head;
         this.body = body;
     }
 
-    public static Package parse(byte[] data) {
+    public Package(byte[] bytes, Header head, Data body) {
+        super(bytes);
+        this.head = head;
+        this.body = body;
+    }
+
+    public static Package parse(Data data) {
         // get STUN head
         Header head = Header.parse(data);
         if (head == null) {
@@ -57,34 +69,32 @@ public class Package extends Data {
             //throw new IndexOutOfBoundsException("STUN package length error: " + dataLen + ", " + packLen);
             return null;
         } else if (dataLen > packLen) {
-            data = slice(data, 0, packLen);
+            data = data.slice(0, packLen);
         }
         // get attributes body
-        byte[] body = slice(data, head.length);
+        Data body = data.slice(head.length);
         return new Package(data, head, body);
     }
 
-    public static Package create(MessageType type, TransactionID sn, byte[] body) {
+    public static Package create(MessageType type, TransactionID sn, Data body) {
         MessageLength len = new MessageLength(body.length);
         Header head = Header.create(type, len, sn);
-        byte[] data = concat(head.data, body);
+        Data data = head.concat(body);
         return new Package(data, head, body);
     }
 
-    public static Package create(MessageType type, byte[] body) {
+    public static Package create(MessageType type, Data body) {
         TransactionID sn = TransactionID.create();
         return create(type, sn, body);
     }
 
     public static Package create(MessageType type, TransactionID sn) {
-        byte[] body = new byte[0];
-        return create(type, sn, body);
+        return create(type, sn, Data.ZERO);
     }
 
     public static Package create(MessageType type) {
         TransactionID sn = TransactionID.create();
-        byte[] body = new byte[0];
-        return create(type, sn, body);
+        return create(type, sn, Data.ZERO);
     }
 
     // const body

@@ -33,7 +33,6 @@ package chat.dim.stun;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -120,13 +119,12 @@ public class Server extends Node {
      */
     protected boolean redirect(Header head, SocketAddress clientAddress) {
         InetSocketAddress address = (InetSocketAddress) clientAddress;
-        MappedAddressValue value = MappedAddressValue.create(address.getHostString(), address.getPort());
+        MappedAddressValue value = new MappedAddressValue(address.getHostString(), address.getPort());
         Attribute attribute = new Attribute(AttributeType.MappedAddress, value);
         // pack
-        byte[] body = attribute.data;
-        Package pack = Package.create(head.type, head.sn, body);
+        Package pack = Package.create(head.type, head.sn, attribute);
         assert neighbour != null : "neighbour address not set yet";
-        int res = send(pack.data, neighbour);
+        int res = send(pack, neighbour);
         return res == pack.length;
     }
 
@@ -147,33 +145,50 @@ public class Server extends Node {
         // create attributes
         AttributeValue value;
         // mapped address
-        value = MappedAddressValue.create(remoteIP, remotePort);
-        byte[] data1 = (new Attribute(AttributeType.MappedAddress, value)).data;
+        value = new MappedAddressValue(remoteIP, remotePort);
+        Data data1 = (new Attribute(AttributeType.MappedAddress, value));
         // xor
-        value = XorMappedAddressValue.create(remoteIP, remotePort, head.sn.data);
-        byte[] data4 = (new Attribute(AttributeType.XorMappedAddress, value)).data;
+        value = XorMappedAddressValue.create(remoteIP, remotePort, head.sn.getBytes());
+        Data data4 = (new Attribute(AttributeType.XorMappedAddress, value));
         // xor2
-        value = XorMappedAddressValue2.create(remoteIP, remotePort, head.sn.data);
-        byte[] data5 = (new Attribute(AttributeType.XorMappedAddress2, value)).data;
+        value = XorMappedAddressValue2.create(remoteIP, remotePort, head.sn.getBytes());
+        Data data5 = (new Attribute(AttributeType.XorMappedAddress2, value));
         // source address
-        value = SourceAddressValue.create(localIP, localPort);
-        byte[] data2 = (new Attribute(AttributeType.SourceAddress, value)).data;
+        value = new SourceAddressValue(localIP, localPort);
+        Data data2 = (new Attribute(AttributeType.SourceAddress, value));
         // changed address
-        value = ChangedAddressValue.create(changedIP, changedPort);
-        byte[] data3 = (new Attribute(AttributeType.ChangedAddress, value)).data;
+        value = new ChangedAddressValue(changedIP, changedPort);
+        Data data3 = (new Attribute(AttributeType.ChangedAddress, value));
         // software
         value = SoftwareValue.create(software);
-        byte[] data6 = (new Attribute(AttributeType.Software, value)).data;
+        Data data6 = (new Attribute(AttributeType.Software, value));
         // pack
-        byte[] body = Data.concat(data1, data2);
-        body = Data.concat(body, Data.concat(data3, data4));
-        body = Data.concat(body, Data.concat(data5, data6));
+        Data body = new Data(data1.length + data2.length + data3.length
+                + data4.length + data5.length + data6.length);
+
+        int offset = 0;
+        body.copy(data1, 0, offset, data1.length);
+
+        offset += data1.length;
+        body.copy(data2, 0, offset, data2.length);
+
+        offset += data2.length;
+        body.copy(data3, 0, offset, data3.length);
+
+        offset += data3.length;
+        body.copy(data4, 0, offset, data4.length);
+
+        offset += data4.length;
+        body.copy(data5, 0, offset, data5.length);
+
+        offset += data5.length;
+        body.copy(data6, 0, offset, data6.length);
         Package pack = Package.create(MessageType.BindResponse, head.sn, body);
-        int res = send(pack.data, clientAddress, new InetSocketAddress(localIP, localPort));
+        int res = send(pack, clientAddress, new InetSocketAddress(localIP, localPort));
         return res == pack.length;
     }
 
-    public boolean handle(byte[] data, SocketAddress clientAddress) {
+    public boolean handle(Data data, SocketAddress clientAddress) {
         // parse request data
         Map<String, Object> context = new HashMap<>();
         boolean ok = parseData(data, context);

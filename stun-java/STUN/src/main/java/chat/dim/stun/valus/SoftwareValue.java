@@ -33,6 +33,7 @@ package chat.dim.stun.valus;
 import java.nio.charset.Charset;
 
 import chat.dim.stun.attributes.AttributeValue;
+import chat.dim.tlv.Data;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
 
@@ -40,8 +41,13 @@ public class SoftwareValue extends AttributeValue {
 
     private final String description;
 
-    public SoftwareValue(byte[] data, String description) {
+    public SoftwareValue(Data data, String description) {
         super(data);
+        this.description = description;
+    }
+
+    public SoftwareValue(byte[] bytes, String description) {
+        super(bytes);
         this.description = description;
     }
 
@@ -62,22 +68,8 @@ public class SoftwareValue extends AttributeValue {
         return new SoftwareValue(data, description);
     }
 
-    public static SoftwareValue parse(byte[] data, Tag type, Length length) {
-        // check length
-        if (length == null || length.value == 0) {
-            //throw new ArrayIndexOutOfBoundsException("length error: " + length);
-            return null;
-        } else {
-            int len = length.getIntValue();
-            int dataLen = data.length;
-            if (len < 0 || len > dataLen) {
-                //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
-                return null;
-            } else if (len < dataLen) {
-                data = slice(data, 0, len);
-            }
-        }
-        String desc = new String(data, Charset.forName("UTF-8"));
+    public static SoftwareValue parse(Data data, Tag type, Length length) {
+        String desc = data.toString();
         return new SoftwareValue(data, desc.trim());
     }
 }

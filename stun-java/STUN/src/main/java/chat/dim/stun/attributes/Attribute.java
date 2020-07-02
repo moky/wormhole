@@ -57,8 +57,16 @@ import chat.dim.tlv.*;
 
 public class Attribute extends TagLengthValue {
 
-    public Attribute(byte[] data, Tag type, Value value) {
+    public Attribute(Attribute attribute) {
+        super(attribute);
+    }
+
+    public Attribute(Data data, Tag type, Value value) {
         super(data, type, value);
+    }
+
+    public Attribute(byte[] bytes, Tag type, Value value) {
+        super(bytes, type, value);
     }
 
     public Attribute(AttributeType type, AttributeValue value) {
@@ -71,7 +79,7 @@ public class Attribute extends TagLengthValue {
 
     private static final Parser parser = new Parser();
 
-    public static List<Attribute> parseAttributes(byte[] data) {
+    public static List<Attribute> parseAttributes(Data data) {
         //noinspection unchecked
         return (List<Attribute>) parser.parseAll(data);
     }
@@ -79,23 +87,23 @@ public class Attribute extends TagLengthValue {
     protected static class Parser extends TagLengthValue.Parser {
 
         @Override
-        protected Attribute create(byte[] data, Tag type, Value value) {
-            return new Attribute(data, type, value);
-        }
-
-        @Override
-        protected AttributeType parseTag(byte[] data) {
+        protected AttributeType parseTag(Data data) {
             return AttributeType.parse(data);
         }
 
         @Override
-        protected AttributeLength parseLength(byte[] data, Tag type) {
+        protected AttributeLength parseLength(Data data, Tag type) {
             return AttributeLength.parse(data, type);
         }
 
         @Override
-        protected AttributeValue parseValue(byte[] data, Tag type, Length length) {
+        protected AttributeValue parseValue(Data data, Tag type, Length length) {
             return AttributeValue.parse(data, type, length);
+        }
+
+        @Override
+        protected Attribute create(Data data, Tag type, Value value) {
+            return new Attribute(data, type, value);
         }
     }
 }

@@ -75,14 +75,28 @@ public class Header extends Data {
     public final MessageLength msgLength;
     public final TransactionID sn;
 
-    public Header(byte[] data, MessageType type, MessageLength length, TransactionID sn) {
+    public Header(Header head) {
+        super(head);
+        type = head.type;
+        msgLength = head.msgLength;
+        sn = head.sn;
+    }
+
+    public Header(Data data, MessageType type, MessageLength length, TransactionID sn) {
         super(data);
         this.type = type;
         this.msgLength = length;
         this.sn = sn;
     }
 
-    public static Header parse(byte[] data) {
+    public Header(byte[] bytes, MessageType type, MessageLength length, TransactionID sn) {
+        super(bytes);
+        this.type = type;
+        this.msgLength = length;
+        this.sn = sn;
+    }
+
+    public static Header parse(Data data) {
         int pos;
         // get message type
         MessageType type = MessageType.parse(data);
@@ -91,27 +105,30 @@ public class Header extends Data {
         }
         pos = type.length;
         // get message length
-        MessageLength len = MessageLength.parse(slice(data, pos));
+        MessageLength len = MessageLength.parse(data.slice(pos));
         if (len == null) {
             return null;
         }
         pos += len.length;
         // get transaction ID
-        TransactionID sn = TransactionID.parse(slice(data, pos));
+        TransactionID sn = TransactionID.parse(data.slice(pos));
         if (sn == null) {
             return null;
         }
         pos += sn.length;
         assert pos == 20 : "header length error: " + pos;
         if (data.length > pos) {
-            data = slice(data, 0, pos);
+            data = data.slice(0, pos);
         }
         // create
         return new Header(data, type, len, sn);
     }
 
     public static Header create(MessageType type, MessageLength len, TransactionID sn) {
-        byte[] data = concat(concat(type.data, len.data), sn.data);
+        Data data = new Data(type.length + len.length + sn.length);
+        data.copy(type, 0, 0, type.length);
+        data.copy(len, 0, type.length, len.length);
+        data.copy(sn, 0, type.length + len.length, sn.length);
         return new Header(data, type, len, sn);
     }
 

@@ -30,6 +30,7 @@
  */
 package chat.dim.stun.valus;
 
+import chat.dim.tlv.Data;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
 
@@ -45,15 +46,27 @@ import chat.dim.tlv.Tag;
 
 public class SourceAddressValue extends MappedAddressValue {
 
-    public SourceAddressValue(byte[] data, String ip, int port, byte family) {
+    public SourceAddressValue(MappedAddressValue addressValue) {
+        super(addressValue);
+    }
+
+    public SourceAddressValue(Data data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 
-    public static SourceAddressValue parse(byte[] data, Tag type, Length length) {
+    public SourceAddressValue(String ip, int port, byte family) {
+        super(ip, port, family);
+    }
+
+    public SourceAddressValue(String ip, int port) {
+        super(ip, port);
+    }
+
+    public static SourceAddressValue parse(Data data, Tag type, Length length) {
         MappedAddressValue value = MappedAddressValue.parse(data, type, length);
         if (value == null) {
             return null;
         }
-        return new SourceAddressValue(value.data, value.ip, value.port, value.family);
+        return new SourceAddressValue(value, value.ip, value.port, value.family);
     }
 }
