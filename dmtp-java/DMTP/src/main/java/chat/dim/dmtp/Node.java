@@ -45,6 +45,7 @@ import chat.dim.mtp.protocol.DataType;
 import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.protocol.TransactionID;
 import chat.dim.mtp.task.Departure;
+import chat.dim.tlv.Data;
 
 public abstract class Node implements PeerHandler {
 
@@ -107,30 +108,6 @@ public abstract class Node implements PeerHandler {
     //
 
     /**
-     *  Send command data to destination address
-     *
-     * @param cmd         - command data
-     * @param destination - remote IP and port
-     * @return departure task with 'trans_id' in the payload
-     */
-    public Departure sendCommand(byte[] cmd, SocketAddress destination) {
-        Package pack = Package.create(DataType.Command, cmd);
-        return peer.sendCommand(pack, destination);
-    }
-
-    /**
-     *  Send message data to destination address
-     *
-     * @param msg         - message data
-     * @param destination - remote IP and port
-     * @return departure task with 'trans_id' in the payload
-     */
-    public Departure sendMessage(byte[] msg, SocketAddress destination) {
-        Package pack = Package.create(DataType.Message, msg);
-        return peer.sendMessage(pack, destination);
-    }
-
-    /**
      *  Send command to destination address
      *
      * @param cmd         -
@@ -138,7 +115,8 @@ public abstract class Node implements PeerHandler {
      * @return departure task with 'trans_id' in the payload
      */
     public Departure sendCommand(Command cmd, SocketAddress destination) {
-        return sendCommand(cmd.data, destination);
+        Package pack = Package.create(DataType.Command, cmd);
+        return peer.sendCommand(pack, destination);
     }
 
     /**
@@ -149,7 +127,8 @@ public abstract class Node implements PeerHandler {
      * @return departure task with 'trans_id' in the payload
      */
     public Departure sendMessage(Message msg, SocketAddress destination) {
-        return sendMessage(msg.data, destination);
+        Package pack = Package.create(DataType.Message, msg);
+        return peer.sendMessage(pack, destination);
     }
 
     /**
@@ -271,7 +250,7 @@ public abstract class Node implements PeerHandler {
     }
 
     @Override
-    public boolean onReceivedCommand(byte[] cmd, SocketAddress source, SocketAddress destination) {
+    public boolean onReceivedCommand(Data cmd, SocketAddress source, SocketAddress destination) {
         // process after received command data
         List<Command> commands = Command.parseCommands(cmd);
         for (Command pack : commands) {
@@ -281,7 +260,7 @@ public abstract class Node implements PeerHandler {
     }
 
     @Override
-    public boolean onReceivedMessage(byte[] msg, SocketAddress source, SocketAddress destination) {
+    public boolean onReceivedMessage(Data msg, SocketAddress source, SocketAddress destination) {
         // process after received message data
         List<Field> fields = Field.parseFields(msg);
         Message pack = new Message(msg);

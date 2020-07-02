@@ -37,6 +37,7 @@ import chat.dim.dmtp.fields.Field;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
 import chat.dim.dmtp.values.*;
+import chat.dim.tlv.Data;
 import chat.dim.tlv.Tag;
 
 /*     Message
@@ -85,18 +86,18 @@ public class Message extends FieldsValue {
     private String group = null;
 
     // body
-    private byte[] content = null;
-    private byte[] signature = null;
-    private byte[] key = null;
+    private Data content = null;
+    private Data signature = null;
+    private Data key = null;
 
     // attachments
-    private byte[] meta = null;
-    private byte[] profile = null;
+    private Data meta = null;
+    private Data profile = null;
 
     // file in message
     private String filename = null;
 
-    public Message(byte[] data) {
+    public Message(Data data) {
         super(data);
     }
 
@@ -126,23 +127,23 @@ public class Message extends FieldsValue {
     //
     //  body
     //
-    public byte[] getContent() {
+    public Data getContent() {
         return content;
     }
-    public byte[] getSignature() {
+    public Data getSignature() {
         return signature;
     }
-    public byte[] getKey() {
+    public Data getKey() {
         return key;
     }
 
     //
     //  attachments
     //
-    public byte[] getMeta() {
+    public Data getMeta() {
         return meta;
     }
-    public byte[] getProfile() {
+    public Data getProfile() {
         return profile;
     }
 
@@ -190,17 +191,17 @@ public class Message extends FieldsValue {
         else if (tag.equals(CONTENT))
         {
             assert field.value instanceof BinaryValue : "content data error: " + field.value;
-            content = field.value.data;
+            content = field.value;
         }
         else if (tag.equals(SIGNATURE))
         {
             assert field.value instanceof BinaryValue : "signature error: " + field.value;
-            signature = field.value.data;
+            signature = field.value;
         }
         else if (tag.equals(KEY))
         {
             assert field.value instanceof BinaryValue : "symmetric key data error: " + field.value;
-            key = field.value.data;
+            key = field.value;
         }
         //
         //  attachments
@@ -208,12 +209,12 @@ public class Message extends FieldsValue {
         else if (tag.equals(META))
         {
             assert field.value instanceof BinaryValue : "meta error: " + field.value;
-            meta = field.value.data;
+            meta = field.value;
         }
         else if (tag.equals(PROFILE))
         {
             assert field.value instanceof BinaryValue : "profile error: " + field.value;
-            profile = field.value.data;
+            profile = field.value;
         }
         //
         //  file in message

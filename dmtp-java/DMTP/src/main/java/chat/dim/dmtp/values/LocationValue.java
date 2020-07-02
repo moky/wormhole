@@ -38,6 +38,7 @@ import java.util.List;
 import chat.dim.dmtp.fields.Field;
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
+import chat.dim.tlv.Data;
 import chat.dim.tlv.Tag;
 
 public class LocationValue extends CommandValue {
@@ -51,7 +52,7 @@ public class LocationValue extends CommandValue {
     private TimestampValue timestamp = null; // time for signature (in seconds)
     private BinaryValue signature = null;
 
-    public LocationValue(byte[] data) {
+    public LocationValue(Data data) {
         super(data);
     }
 
@@ -119,21 +120,7 @@ public class LocationValue extends CommandValue {
         }
     }
 
-    public static LocationValue parse(byte[] data, FieldName type, FieldLength length) {
-        // check length
-        if (length == null || length.value == 0) {
-            //throw new ArrayIndexOutOfBoundsException("length error: " + length);
-            return null;
-        } else {
-            int len = length.getIntValue();
-            int dataLen = data.length;
-            if (len < 0 || len > dataLen) {
-                //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
-                return null;
-            } else if (len < dataLen) {
-                data = slice(data, 0, len);
-            }
-        }
+    public static LocationValue parse(Data data, FieldName type, FieldLength length) {
         // parse fields
         List<Field> fields = Field.parseFields(data);
         LocationValue value = new LocationValue(data);

@@ -41,15 +41,20 @@ import chat.dim.dmtp.values.SourceAddressValue;
 import chat.dim.dmtp.values.BinaryValue;
 import chat.dim.dmtp.values.StringValue;
 import chat.dim.dmtp.values.TimestampValue;
+import chat.dim.tlv.Data;
 import chat.dim.tlv.Value;
 
 public class FieldValue extends Value {
 
-    public FieldValue(byte[] data) {
+    public FieldValue(Data data) {
         super(data);
     }
 
-    public static FieldValue parse(byte[] data, FieldName type, FieldLength length) {
+    public FieldValue(byte[] bytes) {
+        super(bytes);
+    }
+
+    public static FieldValue parse(Data data, FieldName type, FieldLength length) {
         Class clazz = fieldValueClasses.get(type);
         if (clazz != null) {
             // create instance by subclass
@@ -61,12 +66,12 @@ public class FieldValue extends Value {
             return null;
         } else {
             int len = length.getIntValue();
-            int dataLen = data.length;
+            int dataLen = data.getLength();
             if (len < 0 || len > dataLen) {
                 //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
                 return null;
             } else if (len < dataLen) {
-                data = slice(data, 0, len);
+                data = data.slice(0, len);
             }
         }
         return new FieldValue(data);
@@ -89,10 +94,10 @@ public class FieldValue extends Value {
     }
 
     @SuppressWarnings("unchecked")
-    private static FieldValue create(Class clazz, byte[] data, FieldName type, FieldLength length) {
+    private static FieldValue create(Class clazz, Data data, FieldName type, FieldLength length) {
         // try 'Clazz.parse(data, type, length)'
         try {
-            Method method = clazz.getMethod("parse", byte[].class, FieldName.class, FieldLength.class);
+            Method method = clazz.getMethod("parse", Data.class, FieldName.class, FieldLength.class);
             if (method.getDeclaringClass().equals(clazz)) {
                 // only invoke the method 'parse()' declared in this class
                 return (FieldValue) method.invoke(null, data, type, length);

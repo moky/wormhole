@@ -98,7 +98,7 @@ public class MutableData extends Data {
      * @param index - position
      * @param value - byte value
      */
-    public boolean setByte(int index, byte value) {
+    public boolean setByte(int index, int value) {
         if (index < 0) {
             index += length;   // count from right hand
             if (index < 0) {
@@ -116,7 +116,7 @@ public class MutableData extends Data {
             }
             length = index + 1;
         }
-        buffer[offset + index] = value;
+        buffer[offset + index] = (byte) (value & 0xFF);
         return true;
     }
 

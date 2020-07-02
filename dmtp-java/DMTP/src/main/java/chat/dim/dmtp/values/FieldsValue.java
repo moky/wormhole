@@ -39,12 +39,14 @@ import chat.dim.dmtp.fields.Field;
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
+import chat.dim.tlv.Data;
+import chat.dim.tlv.MutableData;
 
 public class FieldsValue extends FieldValue {
 
     private List<Field> fields = null;
 
-    public FieldsValue(byte[] data) {
+    public FieldsValue(Data data) {
         super(data);
     }
 
@@ -52,16 +54,16 @@ public class FieldsValue extends FieldValue {
         this(build(fields));
     }
 
-    private static byte[] build(List<Field> fields) {
+    private static Data build(List<Field> fields) {
         int length = 0;
         for (Field item : fields) {
-            length += item.length;
+            length += item.getLength();
         }
-        byte[] data = new byte[length];
+        MutableData data = new MutableData(length);
         int pos = 0;
         for (Field item : fields) {
-            System.arraycopy(item.data, 0, data, pos, item.length);
-            pos += item.length;
+            data.copy(item, 0, pos, item.getLength());
+            pos += item.getLength();
         }
         return data;
     }
@@ -83,21 +85,7 @@ public class FieldsValue extends FieldValue {
         this.fields = fields;
     }
 
-    public static FieldsValue parse(byte[] data, FieldName type, FieldLength length) {
-        // check length
-        if (length == null || length.value == 0) {
-            //throw new ArrayIndexOutOfBoundsException("length error: " + length);
-            return null;
-        } else {
-            int len = length.getIntValue();
-            int dataLen = data.length;
-            if (len < 0 || len > dataLen) {
-                //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
-                return null;
-            } else if (len < dataLen) {
-                data = slice(data, 0, len);
-            }
-        }
+    public static FieldsValue parse(Data data, FieldName type, FieldLength length) {
         // parse fields
         List<Field> fields = Field.parseFields(data);
         FieldsValue value = new FieldsValue(data);

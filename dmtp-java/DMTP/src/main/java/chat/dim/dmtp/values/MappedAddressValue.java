@@ -33,6 +33,7 @@ package chat.dim.dmtp.values;
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
+import chat.dim.tlv.Data;
 
 /*     Address Values
  *     ~~~~~~~~~~~~~~
@@ -80,8 +81,15 @@ public class MappedAddressValue extends FieldValue {
     public final int port;
     public final int family;
 
-    public MappedAddressValue(byte[] data, String ip, int port, int family) {
+    public MappedAddressValue(Data data, String ip, int port, int family) {
         super(data);
+        this.ip = ip;
+        this.port = port;
+        this.family = family;
+    }
+
+    public MappedAddressValue(byte[] bytes, String ip, int port, int family) {
+        super(bytes);
         this.ip = ip;
         this.port = port;
         this.family = family;
@@ -168,34 +176,16 @@ public class MappedAddressValue extends FieldValue {
         return ip;
     }
 
-    public static MappedAddressValue parse(byte[] data, FieldName type, FieldLength length) {
-        // check length
-        if (length == null || length.value == 0) {
-            //throw new ArrayIndexOutOfBoundsException("attribute length error: " + length);
-            return null;
-        } else {
-            int len = length.getIntValue();
-            int data_len = data.length;
-            if (data_len < len) {
-                //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
-                return null;
-            } else if (data_len > len) {
-                data = slice(data, 0, len);
-            }
-            if (len != 8 && len != 20) {
-                //throw new ArrayIndexOutOfBoundsException("mapped-address length error: " + length);
-                return null;
-            }
-        }
-        if (data[0] != 0) {
+    public static MappedAddressValue parse(Data data, FieldName type, FieldLength length) {
+        if (data.getByte(0) != 0) {
             return null;
         }
-        int family = data[1];
+        int family = data.getByte(1);
         if (family != FAMILY_IPV4 && family != FAMILY_IPV6) {
             return null;
         }
-        int port = ((data[2] & 0xFF) << 8) | (data[3] & 0xFF);
-        String ip = bytesToIP(slice(data, 4), family);
+        int port = ((data.getByte(2) & 0xFF) << 8) | (data.getByte(3) & 0xFF);
+        String ip = bytesToIP(data.getBytes(4), family);
         return new MappedAddressValue(data, ip, port, family);
     }
 }

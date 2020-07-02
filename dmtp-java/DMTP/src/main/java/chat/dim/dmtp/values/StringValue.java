@@ -35,13 +35,19 @@ import java.nio.charset.Charset;
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
+import chat.dim.tlv.Data;
 
 public class StringValue extends FieldValue {
 
     public final String string;
 
-    public StringValue(byte[] data, String string) {
+    public StringValue(Data data, String string) {
         super(data);
+        this.string = string;
+    }
+
+    public StringValue(byte[] bytes, String string) {
+        super(bytes);
         this.string = string;
     }
 
@@ -54,22 +60,8 @@ public class StringValue extends FieldValue {
         return string;
     }
 
-    public static StringValue parse(byte[] data, FieldName type, FieldLength length) {
-        // check length
-        if (length == null || length.value == 0) {
-            //throw new ArrayIndexOutOfBoundsException("length error: " + length);
-            return null;
-        } else {
-            int len = length.getIntValue();
-            int dataLen = data.length;
-            if (len < 0 || len > dataLen) {
-                //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
-                return null;
-            } else if (len < dataLen) {
-                data = slice(data, 0, len);
-            }
-        }
-        String string = new String(data, Charset.forName("UTF-8"));
+    public static StringValue parse(Data data, FieldName type, FieldLength length) {
+        String string = data.toString();
         return new StringValue(data, string);
     }
 }

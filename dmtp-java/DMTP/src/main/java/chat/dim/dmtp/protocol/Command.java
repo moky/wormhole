@@ -35,6 +35,7 @@ import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
 import chat.dim.dmtp.values.*;
+import chat.dim.tlv.Data;
 import chat.dim.tlv.Tag;
 import chat.dim.tlv.Value;
 
@@ -105,7 +106,7 @@ import java.util.List;
 
 public class Command extends Field {
 
-    public Command(byte[] data, FieldName type, FieldValue value) {
+    public Command(Data data, FieldName type, FieldValue value) {
         super(data, type, value);
     }
 
@@ -119,7 +120,7 @@ public class Command extends Field {
 
     public static class Who extends Command {
 
-        public Who(byte[] data) {
+        public Who(Data data) {
             super(data, WHO, null);
         }
 
@@ -134,7 +135,7 @@ public class Command extends Field {
 
     public static class Hello extends Command {
 
-        public Hello(byte[] data, FieldValue value) {
+        public Hello(Data data, FieldValue value) {
             super(data, HELLO, value);
         }
 
@@ -187,7 +188,7 @@ public class Command extends Field {
 
     public static class Sign extends Command {
 
-        public Sign(byte[] data, FieldValue value) {
+        public Sign(Data data, FieldValue value) {
             super(data, SIGN, value);
         }
 
@@ -220,7 +221,7 @@ public class Command extends Field {
 
     public static class Call extends Command {
 
-        public Call(byte[] data, FieldValue value) {
+        public Call(Data data, FieldValue value) {
             super(data, CALL, value);
         }
 
@@ -247,7 +248,7 @@ public class Command extends Field {
 
     public static class From extends Command {
 
-        public From(byte[] data, FieldValue value) {
+        public From(Data data, FieldValue value) {
             super(data, FROM, value);
         }
 
@@ -274,7 +275,7 @@ public class Command extends Field {
 
     public static class Bye extends Command {
 
-        public Bye(byte[] data, FieldValue value) {
+        public Bye(Data data, FieldValue value) {
             super(data, BYE, value);
         }
 
@@ -298,7 +299,7 @@ public class Command extends Field {
 
     private static final Parser parser = new Parser();
 
-    public static List<Command> parseCommands(byte[] data) {
+    public static List<Command> parseCommands(Data data) {
         //noinspection unchecked
         return (List<Command>) parser.parseAll(data);
     }
@@ -306,7 +307,7 @@ public class Command extends Field {
     protected static class Parser extends Field.Parser {
 
         @Override
-        protected Field create(byte[] data, Tag type, Value value) {
+        protected Field create(Data data, Tag type, Value value) {
             return new Command(data, (FieldName) type, (FieldValue) value);
         }
     }

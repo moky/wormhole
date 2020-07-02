@@ -32,6 +32,7 @@ package chat.dim.dmtp.values;
 
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
+import chat.dim.tlv.Data;
 
 public class RelayedAddressValue extends MappedAddressValue {
 
@@ -43,7 +44,7 @@ public class RelayedAddressValue extends MappedAddressValue {
      *  client.  It is encoded in the same way as MAPPED-ADDRESS.
      */
 
-    public RelayedAddressValue(byte[] data, String ip, int port, int family) {
+    public RelayedAddressValue(Data data, String ip, int port, int family) {
         super(data, ip, port, family);
     }
 
@@ -55,7 +56,7 @@ public class RelayedAddressValue extends MappedAddressValue {
         super(ip, port);
     }
 
-    public static RelayedAddressValue parse(byte[] data, FieldName type, FieldLength length) {
+    public static RelayedAddressValue parse(Data data, FieldName type, FieldLength length) {
         MappedAddressValue value = MappedAddressValue.parse(data, type, length);
         if (value == null) {
             return null;

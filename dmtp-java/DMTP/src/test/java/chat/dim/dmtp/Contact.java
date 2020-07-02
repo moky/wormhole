@@ -33,7 +33,6 @@ package chat.dim.dmtp;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
@@ -278,7 +277,7 @@ public class Contact {
     //  Sign
     //
 
-    private static byte[] getSignData(LocationValue location) {
+    private static Data getSignData(LocationValue location) {
         SourceAddressValue sourceAddress = location.getSourceAddress();
         MappedAddressValue mappedAddress = location.getMappedAddress();
         RelayedAddressValue relayedAddress = location.getRelayedAddress();
@@ -287,25 +286,25 @@ public class Contact {
         if (mappedAddress == null) {
             return null;
         }
-        byte[] data = mappedAddress.data;
+        Data data = mappedAddress;
         if (sourceAddress != null) {
-            data = Data.concat(sourceAddress.data, data);
+            data = sourceAddress.concat(data);
         }
         if (relayedAddress != null) {
-            data = Data.concat(data, relayedAddress.data);
+            data = data.concat(relayedAddress);
         }
         if (timestamp != null) {
-            data = Data.concat(data, timestamp.data);
+            data = data.concat(timestamp);
         }
         return data;
     }
 
-    private static byte[] getSignature(LocationValue location) {
+    private static Data getSignature(LocationValue location) {
         BinaryValue signature = location.getSignature();
         if (signature == null) {
             return null;
         }
-        return signature.data;
+        return signature;
     }
 
     /**
@@ -315,12 +314,12 @@ public class Contact {
      * @return signed location info
      */
     public LocationValue signLocation(LocationValue location) {
-        byte[] data = getSignData(location);
+        Data data = getSignData(location);
         if (data == null) {
             return null;
         }
         // TODO: sign it with private key
-        byte[] sign = ("sign(" + Arrays.toString(data) + ")").getBytes();
+        byte[] sign = ("sign(" + data + ")").getBytes();
         BinaryValue signature = new BinaryValue(sign);
         // create
         return LocationValue.create(location.getIdentifier(),
@@ -340,8 +339,8 @@ public class Contact {
             return false;
         }
 
-        byte[] data = getSignData(location);
-        byte[] signature = getSignature(location);
+        Data data = getSignData(location);
+        Data signature = getSignature(location);
         if (data == null || signature == null) {
             return false;
         }

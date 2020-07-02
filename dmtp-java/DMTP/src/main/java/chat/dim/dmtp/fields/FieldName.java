@@ -32,14 +32,20 @@ package chat.dim.dmtp.fields;
 
 import java.nio.charset.Charset;
 
+import chat.dim.tlv.Data;
 import chat.dim.tlv.Tag;
 
 public class FieldName extends Tag {
 
     public final String name;
 
-    public FieldName(byte[] data, String name) {
+    public FieldName(Data data, String name) {
         super(data);
+        this.name = name;
+    }
+
+    public FieldName(byte[] bytes, String name) {
+        super(bytes);
         this.name = name;
     }
 
@@ -64,11 +70,11 @@ public class FieldName extends Tag {
         return name;
     }
 
-    public static FieldName parse(byte[] data) {
+    public static FieldName parse(Data data) {
         int pos = 0;
-        int len = data.length;
+        int len = data.getLength();
         for (; pos < len; ++pos) {
-            if (data[pos] == 0) {
+            if (data.getByte(pos) == 0) {
                 break;
             }
         }
@@ -77,9 +83,9 @@ public class FieldName extends Tag {
         }
         ++pos;  // includes the tail '\0'
         if (pos < len) {
-            data = slice(data, 0, pos);
+            data = data.slice(0, pos);
         }
-        String name = new String(data, 0, pos-1, Charset.forName("UTF-8"));
+        String name = data.toString().trim();
         return new FieldName(data, name);
     }
 }

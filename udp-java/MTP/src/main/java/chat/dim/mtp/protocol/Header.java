@@ -219,9 +219,9 @@ public class Header extends Data {
         // generate header data
         byte hl_ty = (byte) (((headLen << 2) | (type.value & 0x0F)) & 0xFF);
         MutableData data = new MutableData(headLen);
-        data.setByte(0, (byte) 'D');
-        data.setByte(1, (byte) 'I');
-        data.setByte(2, (byte) 'M');
+        data.setByte(0, 'D');
+        data.setByte(1, 'I');
+        data.setByte(2, 'M');
         data.setByte(3, hl_ty);
         if (sn.equals(TransactionID.ZERO)) {
             // simple header

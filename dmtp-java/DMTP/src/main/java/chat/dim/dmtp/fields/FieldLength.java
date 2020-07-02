@@ -30,24 +30,22 @@
  */
 package chat.dim.dmtp.fields;
 
+import chat.dim.tlv.Data;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.VarIntData;
 
 public class FieldLength extends Length {
 
-    public FieldLength(byte[] data, long value) {
+    public FieldLength(Data data, int value) {
         super(data, value);
     }
 
     public FieldLength(int value) {
-        this(VarIntData.intToBytes(value), value);
+        this(new VarIntData(value), value);
     }
 
-    public static FieldLength parse(byte[] data, FieldName type) {
-        VarIntData varInt = VarIntData.fromBytes(data);
-        if (varInt == null) {
-            return null;
-        }
-        return new FieldLength(varInt.data, varInt.value);
+    public static FieldLength parse(Data data, FieldName type) {
+        VarIntData varInt = VarIntData.fromData(data);
+        return new FieldLength(varInt, (int) varInt.value);
     }
 }

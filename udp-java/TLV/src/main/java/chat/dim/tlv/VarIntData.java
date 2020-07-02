@@ -82,7 +82,7 @@ public class VarIntData extends IntegerData {
             index += 1;
             offset += 7;
         } while ((ch & 0x80) != 0);
-        return new Result(value, index);
+        return new Result(value, index - start);
     }
 
     private static final class Result {

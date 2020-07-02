@@ -32,19 +32,16 @@ package chat.dim.dmtp.fields;
 
 import java.util.List;
 
-import chat.dim.tlv.Length;
-import chat.dim.tlv.Tag;
-import chat.dim.tlv.TagLengthValue;
-import chat.dim.tlv.Value;
+import chat.dim.tlv.*;
 
 public class Field extends TagLengthValue {
 
-    public Field(byte[] data, FieldName type, FieldValue value) {
+    public Field(Data data, FieldName type, FieldValue value) {
         super(data, type, value);
     }
 
     public Field(FieldName type, FieldValue value) {
-        super(type, new FieldLength(value == null ? 0 : value.length), value);
+        super(type, new FieldLength(value == null ? 0 : value.getLength()), value);
     }
 
     @Override
@@ -59,7 +56,7 @@ public class Field extends TagLengthValue {
 
     private static final Parser parser = new Parser();
 
-    public static List<Field> parseFields(byte[] data) {
+    public static List<Field> parseFields(Data data) {
         //noinspection unchecked
         return (List<Field>) parser.parseAll(data);
     }
@@ -67,20 +64,20 @@ public class Field extends TagLengthValue {
     protected static class Parser extends TagLengthValue.Parser {
 
         @Override
-        protected Field create(byte[] data, Tag type, Value value) {
+        protected Field create(Data data, Tag type, Value value) {
             return new Field(data, (FieldName) type, (FieldValue) value);
         }
 
         @Override
-        protected FieldName parseTag(byte[] data) {
+        protected FieldName parseTag(Data data) {
             return FieldName.parse(data);
         }
 
-        protected FieldLength parseLength(byte[] data, Tag type) {
+        protected FieldLength parseLength(Data data, Tag type) {
             return FieldLength.parse(data, (FieldName) type);
         }
 
-        protected FieldValue parseValue(byte[] data, Tag type, Length length) {
+        protected FieldValue parseValue(Data data, Tag type, Length length) {
             return FieldValue.parse(data, (FieldName) type, (FieldLength) length);
         }
     }

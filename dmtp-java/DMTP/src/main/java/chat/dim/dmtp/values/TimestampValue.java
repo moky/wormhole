@@ -33,19 +33,20 @@ package chat.dim.dmtp.values;
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
+import chat.dim.tlv.Data;
 import chat.dim.tlv.UInt32Data;
 
 public class TimestampValue extends FieldValue {
 
     public final long value;
 
-    public TimestampValue(byte[] data, long value) {
+    public TimestampValue(Data data, long value) {
         super(data);
         this.value = value;
     }
 
     public TimestampValue(long value) {
-        this(UInt32Data.intToBytes(value, 4), value);
+        this(new UInt32Data(value), value);
     }
 
     @Override
@@ -53,22 +54,8 @@ public class TimestampValue extends FieldValue {
         return Long.toString(value);
     }
 
-    public static TimestampValue parse(byte[] data, FieldName type, FieldLength length) {
-        // check length
-        if (length == null || length.value != 4) {
-            //throw new ArrayIndexOutOfBoundsException("length error: " + length);
-            return null;
-        } else {
-            int len = length.getIntValue();
-            int dataLen = data.length;
-            if (len < 0 || len > dataLen) {
-                //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
-                return null;
-            } else if (len < dataLen) {
-                data = slice(data, 0, len);
-            }
-        }
-        long value = UInt32Data.bytesToLong(data);
+    public static TimestampValue parse(Data data, FieldName type, FieldLength length) {
+        long value = data.getUInt32Value(0);
         return new TimestampValue(data, value);
     }
 }
