@@ -87,7 +87,7 @@ public class MutableData extends Data {
             // check buffer size
             int size = offset + index + 1;
             if (size > bufLength) {
-                // expend the buffer to this size
+                // expend the buffer to new size
                 resize(size);
             }
             length = index + 1;
@@ -103,13 +103,19 @@ public class MutableData extends Data {
     /**
      *  Copy values from source buffer with range [start, end)
      *
-     * @param index  - copy to this buffer from this position
+     * @param index  - copy to self buffer from this position
      * @param source - source buffer
-     * @param start  - start position (include)
-     * @param end    - end position (exclude)
+     * @param start  - source start position (include)
+     * @param end    - source end position (exclude)
      */
     public MutableData copy(int index, byte[] source, int start, int end) {
-        // adjust position
+        // adjust positions
+        if (index < 0) {
+            index += length;  // count from right hand
+            if (index < 0) {
+                throw new ArrayIndexOutOfBoundsException("error index: " + (index - length) + ", length: " + length);
+            }
+        }
         start = adjust(start, source.length);
         end = adjust(end, source.length);
         if (start < end) {
@@ -120,17 +126,17 @@ public class MutableData extends Data {
                     return this;
                 }
             }
-            int len = end - start;
-            int size = offset + index + len;
-            if (size > bufLength) {
+            int copyLen = end - start;
+            int newSize = offset + index + copyLen;
+            if (newSize > bufLength) {
                 // expend the buffer to this size
-                resize(size);
+                resize(newSize);
             }
             // copy buffer
-            System.arraycopy(source, start, buffer, offset + index, len);
+            System.arraycopy(source, start, buffer, offset + index, copyLen);
             // reset view length
-            if (index + len > length) {
-                length = index + len;
+            if (index + copyLen > length) {
+                length = index + copyLen;
             }
         }
         return this;
@@ -240,8 +246,8 @@ public class MutableData extends Data {
      *  Append values from source buffer with range [start, end)
      *
      * @param source - source buffer
-     * @param start  - start position (include)
-     * @param end    - end position (exclude)
+     * @param start  - source start position (include)
+     * @param end    - source end position (exclude)
      */
     public MutableData append(byte[] source, int start, int end) {
         return copy(length, source, start, end);
@@ -280,12 +286,8 @@ public class MutableData extends Data {
      */
     public byte remove(int index) {
         // check position
-        if (index < 0) {
-            index += length; // count from right hand
-            if (index < 0) {
-                throw new ArrayIndexOutOfBoundsException("index error: " + (index - length) + ", length: " + length);
-            }
-        } else if (index >= length) {
+        index = adjustE(index, length);
+        if (index >= length) {
             throw new ArrayIndexOutOfBoundsException("index error: " + index + ", length: " + length);
         }
         byte erased = buffer[index];

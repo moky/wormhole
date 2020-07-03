@@ -75,7 +75,7 @@ public class VarIntData extends IntegerData {
         int offset = 0;
         int index = start;
         byte ch = (byte) 0x80;
-        for (; index < end && (ch & 0x80) != 0; ++index) {
+        for (; (ch & 0x80) != 0 && index < end; ++index) {
             ch = bytes[index];
             value |= (ch & 0x7F) << offset;
             offset += 7;

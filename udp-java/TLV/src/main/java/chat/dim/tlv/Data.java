@@ -34,7 +34,7 @@ import java.nio.charset.Charset;
 import java.util.Random;
 
 /**
- *  Data in bytes
+ *  Data View
  */
 public class Data implements Cloneable {
 
@@ -103,15 +103,29 @@ public class Data implements Cloneable {
 
     public final static Data ZERO = new Data(new byte[0]);
 
-    // adjust the position in range [0, len]
+    // adjust the position within range [0, len)
     static int adjust(int pos, int len) {
         if (pos < 0) {
-            pos += len;  // count from right hand
+            pos += len;    // count from right hand
             if (pos < 0) {
-                pos = 0; // too small
+                return 0;  // too small
             }
         } else if (pos > len) {
-            pos = len;   // too big
+            return len;    // too big
+        }
+        return pos;
+    }
+
+    static int adjustE(int pos, int len) {
+        if (pos < 0) {
+            pos += len;    // count from right hand
+            if (pos < 0) {
+                // too small
+                throw new ArrayIndexOutOfBoundsException("error index: " + (pos - len) + ", length: " + len);
+            }
+        } else if (pos > len) {
+            // too big
+            throw new ArrayIndexOutOfBoundsException("error index: " + pos + ", length: " + len);
         }
         return pos;
     }
@@ -131,6 +145,7 @@ public class Data implements Cloneable {
     }
     public boolean equals(byte[] otherBuffer, int otherOffset, int otherLength) {
         if (otherBuffer == buffer) {
+            // same buffer, checking range
             if (otherLength == length && otherOffset == offset) {
                 return true;
             }
@@ -174,6 +189,15 @@ public class Data implements Cloneable {
     }
 
     public byte getByte(int index) {
+        // check position
+        if (index < 0) {
+            index += length;
+            if (index < 0) {
+                throw new ArrayIndexOutOfBoundsException("error index: " + (index - length) + ", length: " + length);
+            }
+        } else if (index >= length) {
+            throw new ArrayIndexOutOfBoundsException("error index: " + index + ", length: " + length);
+        }
         return buffer[offset + index];
     }
 
@@ -211,28 +235,27 @@ public class Data implements Cloneable {
     //  To integer
     //
 
-    public int getUInt8Value(int start) {
-        int end = start + 1;
-        if (start < 0 || end > length) {
-            return 0;
+    private long getIntegerValue(int start, int size) {
+        assert size > 0 : "data size error";
+        // check position
+        start = adjustE(start, length);
+        int end = start + size;
+        if (end > length) {
+            throw new ArrayIndexOutOfBoundsException("error index: " + start + ", size: " + size);
         }
-        return (int) IntegerData.longFromBytes(buffer, offset + start, offset + end);
+        return IntegerData.longFromBytes(buffer, offset + start, offset + end);
+    }
+
+    public int getUInt8Value(int start) {
+        return (int) getIntegerValue(start, 1);
     }
 
     public int getUInt16Value(int start) {
-        int end = start + 2;
-        if (start < 0 || end > length) {
-            return 0;
-        }
-        return (int) IntegerData.longFromBytes(buffer, offset + start, offset + end);
+        return (int) getIntegerValue(start, 2);
     }
 
     public long getUInt32Value(int start) {
-        int end = start + 4;
-        if (start < 0 || end > length) {
-            return 0;
-        }
-        return IntegerData.longFromBytes(buffer, offset + start, offset + end);
+        return getIntegerValue(start, 4);
     }
 
     //
@@ -244,7 +267,7 @@ public class Data implements Cloneable {
     }
 
     public Data slice(int start, int end) {
-        // adjust position
+        // adjust positions
         start = adjust(start, length);
         end = adjust(end, length);
         if (start == 0 && end == length) {
@@ -256,20 +279,43 @@ public class Data implements Cloneable {
     }
 
     public Data concat(Data other) {
-        if (other.length <= 0) {
-            return this;
-        } else if (length <= 0) {
+        if (length <= 0) {
             return other;
-        } else if (other.buffer == buffer) {
-            if (other.offset == offset + length) {
+        }
+        return concat(other.buffer, other.offset, other.offset + other.length);
+    }
+
+    public Data concat(byte[] bytes, int start, int end) {
+        // adjust positions
+        start = adjust(start, bytes.length);
+        end = adjust(end, bytes.length);
+        if (start > end) {
+            throw new IndexOutOfBoundsException("error index: " + start + ", " + end + ", length: " + bytes.length);
+        } else if (start == end) {
+            // other view empty, return this view
+            return this;
+        } else if (length == 0) {
+            // this view empty, return other view
+            return new Data(bytes, start, end - start);
+        } else if (bytes == buffer) {
+            // same buffer
+            if (offset + length == start) {
                 // join the neighbour views
-                return new Data(buffer, offset, length + other.length);
+                return new Data(buffer, offset, length + end - start);
             }
         }
-        byte[] bytes = new byte[length + other.length];
-        System.arraycopy(buffer, offset, bytes, 0, length);
-        System.arraycopy(other.buffer, other.offset, bytes, length, other.length);
-        return new Data(bytes);
+        byte[] joined = new byte[length + end - start];
+        System.arraycopy(buffer, offset, joined, 0, length);
+        System.arraycopy(bytes, start, joined, length, end - start);
+        return new Data(joined);
+    }
+
+    public Data concat(byte[] bytes, int start) {
+        return concat(bytes, start, bytes.length);
+    }
+
+    public Data concat(byte[] bytes) {
+        return concat(bytes, 0, bytes.length);
     }
 
     @Override

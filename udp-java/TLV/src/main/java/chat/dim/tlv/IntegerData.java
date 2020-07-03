@@ -91,18 +91,19 @@ public class IntegerData extends Data {
         return new IntegerData(bytes, value);
     }
 
-    public static IntegerData fromBytes(byte[] bytes) {
-        long result = longFromBytes(bytes, 0, bytes.length);
+    public static IntegerData fromBytes(byte[] bytes, int start, int end) {
+        long result = longFromBytes(bytes, start, end);
         return new IntegerData(bytes, result);
+    }
+    public static IntegerData fromBytes(byte[] bytes, int start) {
+        return fromBytes(bytes, start, bytes.length);
+    }
+    public static IntegerData fromBytes(byte[] bytes) {
+        return fromBytes(bytes, 0, bytes.length);
     }
 
     public static IntegerData fromData(Data other) {
-        if (other instanceof IntegerData) {
-            //return new IntegerData(other, ((IntegerData) other).value);
-            return (IntegerData) other;
-        }
-        long result = longFromBytes(other.getBuffer(), other.getOffset(), other.getOffset() + other.getLength());
-        return new IntegerData(other, result);
+        return fromBytes(other.buffer, other.offset, other.offset + other.length);
     }
 
     //
