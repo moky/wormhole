@@ -1,7 +1,9 @@
 
+import chat.dim.tlv.Data;
+import chat.dim.tlv.MutableData;
+
 import java.net.InetSocketAddress;
 import java.net.SocketException;
-import java.nio.charset.Charset;
 
 public class Client extends Node {
 
@@ -29,11 +31,14 @@ public class Client extends Node {
             text.append(" Hello!");
         }
 
-        byte[] data;
+        Data fixed = new Data(text.toString().getBytes());
+        MutableData data;
 
         for (int index = 0; index < 16; ++index) {
-            data = (index + " sheep:" + text).getBytes();
-            System.out.printf("sending (%d bytes): %s\n", data.length, new String(data, Charset.forName("UTF-8")));
+            data = new MutableData(1024);
+            data.append((index + " sheep:").getBytes());
+            data.append(fixed);
+            System.out.printf("sending (%d bytes): %s\n", data.getLength(), data);
             client.sendCommand(data, destination);
             client.sendMessage(data, destination);
             Thread.sleep(2000);

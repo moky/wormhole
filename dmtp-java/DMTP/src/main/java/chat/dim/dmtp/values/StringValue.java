@@ -46,13 +46,9 @@ public class StringValue extends FieldValue {
         this.string = string;
     }
 
-    public StringValue(byte[] bytes, String string) {
-        super(bytes);
-        this.string = string;
-    }
-
     public StringValue(String string) {
-        this(string.getBytes(Charset.forName("UTF-8")), string);
+        super(string.getBytes(Charset.forName("UTF-8")));
+        this.string = string;
     }
 
     @Override

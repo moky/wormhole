@@ -33,24 +33,20 @@ package chat.dim.dmtp.values;
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
+import chat.dim.tlv.Data;
+import chat.dim.tlv.UInt8Data;
 
 public class ByteValue extends FieldValue {
 
     public final int value;
 
-    public ByteValue(byte[] data, int value) {
+    public ByteValue(Data data, int value) {
         super(data);
         this.value = value;
     }
 
     public ByteValue(int value) {
-        this(build(value), value);
-    }
-
-    private static byte[] build(int value) {
-        byte[] data = new byte[1];
-        data[0] = (byte) (value & 0xFF);
-        return data;
+        this(new UInt8Data(value), value);
     }
 
     @Override
@@ -58,14 +54,14 @@ public class ByteValue extends FieldValue {
         return Integer.toString(value & 0xFF);
     }
 
-    public static ByteValue parse(byte[] data, FieldName type, FieldLength length) {
+    public static ByteValue parse(Data data, FieldName type, FieldLength length) {
         if (length != null && length.value != 1) {
             //throw new ArrayIndexOutOfBoundsException("length error: " + length);
             return null;
-        } else if (data.length < 1) {
+        } else if (data.getLength() < 1) {
             //throw new ArrayIndexOutOfBoundsException("length error: " + length);
             return null;
         }
-        return new ByteValue(data[0]);
+        return new ByteValue(data.getByte(0));
     }
 }

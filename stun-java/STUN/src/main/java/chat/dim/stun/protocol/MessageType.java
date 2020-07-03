@@ -64,14 +64,8 @@ public class MessageType extends UInt16Data {
         s_types.put(value, this);
     }
 
-    public MessageType(byte[] bytes, int value, String name) {
-        super(bytes, value);
-        this.name = name;
-        s_types.put(value, this);
-    }
-
     public MessageType(int value, String name) {
-        this(bytesFromLong(value, 2), value, name);
+        this(new UInt16Data(value), value, name);
     }
 
     @Override

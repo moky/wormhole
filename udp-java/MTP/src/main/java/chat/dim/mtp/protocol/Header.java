@@ -93,6 +93,15 @@ public class Header extends Data {
     public static int MAX_BODY_LENGTH = 1024 * 1024 * 1024; // 1GB
     public static int MAX_PAGES       = 1024 * 1024 * 2;    // 1GB
 
+    public Header(Header head) {
+        super(head);
+        type = head.type;
+        sn = head.sn;
+        pages = head.pages;
+        offset = head.offset;
+        bodyLength = head.bodyLength;
+    }
+
     /**
      *  Create package header
      *
@@ -245,7 +254,7 @@ public class Header extends Data {
     }
 
     public static Header create(DataType type, int pages, int offset) {
-        return create(type, TransactionID.create(), pages, offset, -1);
+        return create(type, new TransactionID(), pages, offset, -1);
     }
 
     public static Header create(DataType type, TransactionID sn) {
@@ -253,7 +262,7 @@ public class Header extends Data {
     }
 
     public static Header create(DataType type) {
-        return create(type, TransactionID.create(), 1, 0, -1);
+        return create(type, new TransactionID(), 1, 0, -1);
     }
 
     //
@@ -265,6 +274,6 @@ public class Header extends Data {
     }
 
     public static Header create(DataType type, int bodyLen) {
-        return create(type, TransactionID.create(), 1, 0, bodyLen);
+        return create(type, new TransactionID(), 1, 0, bodyLen);
     }
 }

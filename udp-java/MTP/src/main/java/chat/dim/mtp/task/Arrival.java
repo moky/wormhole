@@ -50,8 +50,4 @@ public class Arrival {
         this.source = source;
         this.destination = destination;
     }
-
-    public Arrival(byte[] payload, SocketAddress source, SocketAddress destination) {
-        this(new Data(payload), source, destination);
-    }
 }

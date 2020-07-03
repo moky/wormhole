@@ -81,6 +81,11 @@ public class TagLengthValue extends Data {
         return data;
     }
 
+    @Override
+    public String toString() {
+        return "/* " + getClass().getSimpleName() + " */ " + tag + ": " + value;
+    }
+
     //
     //  Parser
     //

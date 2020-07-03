@@ -58,6 +58,14 @@ public class Package extends Data {
         this.body = body;
     }
 
+    public Package(Header head, Data body) {
+        this(head.concat(body), head, body);
+    }
+
+    public Package(Header head) {
+        this(head, head, Data.ZERO);
+    }
+
     private int getFragmentOffset() {
         return head.offset;
     }
@@ -212,7 +220,7 @@ public class Package extends Data {
     }
 
     public static Package create(DataType type, int pages, int offset, Data body) {
-        return create(type, TransactionID.create(), pages, offset, -1, body);
+        return create(type, new TransactionID(), pages, offset, -1, body);
     }
 
     public static Package create(DataType type, TransactionID sn, Data body) {
@@ -220,7 +228,7 @@ public class Package extends Data {
     }
 
     public static Package create(DataType type, Data body) {
-        return create(type, TransactionID.create(), 1, 0, -1, body);
+        return create(type, new TransactionID(), 1, 0, -1, body);
     }
 
     //
@@ -234,6 +242,6 @@ public class Package extends Data {
 
     public static Package create(DataType type, int bodyLen, Data body) {
         assert bodyLen == body.getLength() : "body length error: " + bodyLen + ", " + body.getLength();
-        return create(type, TransactionID.create(), 1, 0, bodyLen, body);
+        return create(type, new TransactionID(), 1, 0, bodyLen, body);
     }
 }

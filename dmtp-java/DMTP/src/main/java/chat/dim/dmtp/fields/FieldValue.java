@@ -60,23 +60,8 @@ public class FieldValue extends Value {
             // create instance by subclass
             return create(clazz, data, type, length);
         }
-        // check length
-        if (length == null || length.value == 0) {
-            //throw new ArrayIndexOutOfBoundsException("length error: " + length);
-            return null;
-        } else {
-            int len = length.getIntValue();
-            int dataLen = data.getLength();
-            if (len < 0 || len > dataLen) {
-                //throw new ArrayIndexOutOfBoundsException("data length error: " + data.length + ", " + length.value);
-                return null;
-            } else if (len < dataLen) {
-                data = data.slice(0, len);
-            }
-        }
         return new FieldValue(data);
     }
-
 
     //-------- Runtime --------
 
@@ -108,25 +93,13 @@ public class FieldValue extends Value {
         return null;
     }
 
-    //
-    //  Field names
-    //
-
-    public static final FieldName ID = new FieldName("ID");       // user ID
-    public static final FieldName SOURCE_ADDRESS = new FieldName("SOURCE-ADDRESS");
-    public static final FieldName MAPPED_ADDRESS = new FieldName("MAPPED-ADDRESS");
-    public static final FieldName RELAYED_ADDRESS = new FieldName("RELAYED-ADDRESS");
-    public static final FieldName TIME = new FieldName("TIME");   // timestamp (uint32) stored in network order (big endian)
-    public static final FieldName SIGNATURE = new FieldName("SIGNATURE");
-    public static final FieldName NAT = new FieldName("NAT");     // NAT type
-
     static {
-        register(ID, StringValue.class);
-        register(SOURCE_ADDRESS, SourceAddressValue.class);
-        register(MAPPED_ADDRESS, MappedAddressValue.class);
-        register(RELAYED_ADDRESS, RelayedAddressValue.class);
-        register(TIME, TimestampValue.class);
-        register(SIGNATURE, BinaryValue.class);
-        register(NAT, StringValue.class);
+        register(FieldName.ID,              StringValue.class);
+        register(FieldName.SOURCE_ADDRESS,  SourceAddressValue.class);
+        register(FieldName.MAPPED_ADDRESS,  MappedAddressValue.class);
+        register(FieldName.RELAYED_ADDRESS, RelayedAddressValue.class);
+        register(FieldName.TIME,            TimestampValue.class);
+        register(FieldName.SIGNATURE,       BinaryValue.class);
+        register(FieldName.NAT,             StringValue.class);
     }
 }

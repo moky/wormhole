@@ -41,12 +41,12 @@ public class TransactionID extends Data {
         super(data);
     }
 
-    public TransactionID(byte[] bytes) {
-        super(bytes);
+    public TransactionID() {
+        this(generate());
     }
 
     //
-    //  Factories
+    //  Factory
     //
 
     public static TransactionID parse(Data data) {
@@ -60,7 +60,7 @@ public class TransactionID extends Data {
         return new TransactionID(data);
     }
 
-    public static synchronized TransactionID create() {
+    private static synchronized Data generate() {
         if (s_low < 0xFFFFFFFFL) {
             s_low += 1;
         } else {
@@ -73,11 +73,10 @@ public class TransactionID extends Data {
         }
         UInt32Data hi = new UInt32Data(s_high);
         UInt32Data lo = new UInt32Data(s_low);
-        Data data = hi.concat(lo);
-        return new TransactionID(data);
+        return hi.concat(lo);
     }
 
-    public static final TransactionID ZERO = new TransactionID(new byte[8]);
+    public static final TransactionID ZERO = new TransactionID(new Data(new byte[8]));
 
     private static long s_high;
     private static long s_low;

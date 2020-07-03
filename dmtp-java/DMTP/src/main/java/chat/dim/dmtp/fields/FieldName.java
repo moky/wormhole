@@ -33,19 +33,20 @@ package chat.dim.dmtp.fields;
 import java.nio.charset.Charset;
 
 import chat.dim.tlv.Data;
+import chat.dim.tlv.MutableData;
 import chat.dim.tlv.Tag;
 
 public class FieldName extends Tag {
 
     public final String name;
 
-    public FieldName(Data data, String name) {
-        super(data);
-        this.name = name;
+    public FieldName(FieldName type) {
+        super(type);
+        name = type.name;
     }
 
-    public FieldName(byte[] bytes, String name) {
-        super(bytes);
+    public FieldName(Data data, String name) {
+        super(data);
         this.name = name;
     }
 
@@ -53,16 +54,28 @@ public class FieldName extends Tag {
         this(build(name), name);
     }
 
-    private static byte[] build(String name) {
-        byte[] data = name.getBytes(Charset.forName("UTF-8"));
-        int len = data.length;
-        byte[] buffer = new byte[len + 1];  // append '\0' to tail
-        System.arraycopy(data, 0, buffer, 0, len);
-        return buffer;
+    private static Data build(String name) {
+        byte[] bytes = name.getBytes(Charset.forName("UTF-8"));
+        MutableData data = new MutableData(bytes.length + 1);
+        data.append(bytes);
+        data.append(0);  // add '\0' for tail
+        return data;
     }
 
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof FieldName) {
+            return equals(((FieldName) other).name);
+        }
+        return super.equals(other);
+    }
     public boolean equals(String other) {
         return name.equals(other);
+    }
+
+    @Override
+    public int hashCode() {
+        return name.hashCode();
     }
 
     @Override
@@ -88,4 +101,16 @@ public class FieldName extends Tag {
         String name = data.toString().trim();
         return new FieldName(data, name);
     }
+
+    //
+    //  Field names
+    //
+
+    public static final FieldName ID              = new FieldName("ID");       // user ID
+    public static final FieldName SOURCE_ADDRESS  = new FieldName("SOURCE-ADDRESS");
+    public static final FieldName MAPPED_ADDRESS  = new FieldName("MAPPED-ADDRESS");
+    public static final FieldName RELAYED_ADDRESS = new FieldName("RELAYED-ADDRESS");
+    public static final FieldName TIME            = new FieldName("TIME");   // timestamp (uint32) stored in network order (big endian)
+    public static final FieldName SIGNATURE       = new FieldName("SIGNATURE");
+    public static final FieldName NAT             = new FieldName("NAT");     // NAT type
 }

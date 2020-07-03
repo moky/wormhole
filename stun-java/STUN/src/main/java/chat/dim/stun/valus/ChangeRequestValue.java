@@ -33,6 +33,8 @@ package chat.dim.stun.valus;
 import java.util.HashMap;
 import java.util.Map;
 
+import chat.dim.stun.attributes.AttributeLength;
+import chat.dim.stun.attributes.AttributeType;
 import chat.dim.stun.attributes.AttributeValue;
 import chat.dim.tlv.*;
 
@@ -67,7 +69,13 @@ public class ChangeRequestValue extends AttributeValue {
     public final int value;
     private final String name;
 
-    public ChangeRequestValue(byte[] data, int value, String name) {
+    public ChangeRequestValue(ChangeRequestValue requestValue) {
+        super(requestValue);
+        value = requestValue.value;
+        name = requestValue.name;
+    }
+
+    public ChangeRequestValue(Data data, int value, String name) {
         super(data);
         this.value = value;
         this.name = name;
@@ -75,7 +83,7 @@ public class ChangeRequestValue extends AttributeValue {
     }
 
     public ChangeRequestValue(int value, String name) {
-        this(IntegerData.bytesFromLong(value, 4), value, name);
+        this(new UInt32Data(value), value, name);
     }
 
     public ChangeRequestValue(int value) {
@@ -106,7 +114,7 @@ public class ChangeRequestValue extends AttributeValue {
         return name;
     }
 
-    public static ChangeRequestValue parse(Data data, Tag type, Length length) {
+    public static ChangeRequestValue parse(Data data, AttributeType type, AttributeLength length) {
         int value = (int) data.getUInt32Value(0);
         return getInstance(value);
     }

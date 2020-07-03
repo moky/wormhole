@@ -46,11 +46,15 @@ public class SourceAddressValue extends MappedAddressValue {
      *  ADDRESS.
      */
 
-    public SourceAddressValue(Data data, String ip, int port, int family) {
+    public SourceAddressValue(MappedAddressValue addressValue) {
+        super(addressValue);
+    }
+
+    public SourceAddressValue(Data data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 
-    public SourceAddressValue(String ip, int port, int family) {
+    public SourceAddressValue(String ip, int port, byte family) {
         super(ip, port, family);
     }
 

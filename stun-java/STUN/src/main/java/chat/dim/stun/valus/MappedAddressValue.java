@@ -30,12 +30,11 @@
  */
 package chat.dim.stun.valus;
 
-import java.util.Arrays;
-
+import chat.dim.stun.attributes.AttributeLength;
+import chat.dim.stun.attributes.AttributeType;
 import chat.dim.stun.attributes.AttributeValue;
 import chat.dim.tlv.Data;
-import chat.dim.tlv.Length;
-import chat.dim.tlv.Tag;
+import chat.dim.tlv.MutableData;
 
 /*  Rosenberg, et al.           Standards Track                    [Page 32]
  *
@@ -102,13 +101,6 @@ public class MappedAddressValue extends AttributeValue {
         this.family = family;
     }
 
-    public MappedAddressValue(byte[] bytes, String ip, int port, byte family) {
-        super(bytes);
-        this.ip = ip;
-        this.port = port;
-        this.family = family;
-    }
-
     public MappedAddressValue(String ip, int port, byte family) {
         this(build(ip, port, family), ip, port, family);
     }
@@ -117,79 +109,64 @@ public class MappedAddressValue extends AttributeValue {
         this(ip, port, FAMILY_IPV4);
     }
 
-    private static byte[] build(String ip, int port, byte family) {
-        byte[] address = IPToBytes(ip, family);
-        if (address == null || address.length != 4) {
-            throw new ArrayIndexOutOfBoundsException("failed to convert IP: " + ip + ", " + family);
-        }
-        byte[] data = new byte[8];
-        data[0] = '\0';
-        data[1] = family;
-        data[2] = (byte) ((port & 0xFF00) >> 8);
-        data[3] = (byte) (port & 0xFF);
-        System.arraycopy(address, 0, data, 4, 4);
-        return data;
-    }
-
     @Override
     public String toString() {
         return "(" + ip + ":" + port + ")";
     }
 
-    private static byte[] IPToBytes(String ip, byte family) {
+    private static Data build(String ip, int port, byte family) {
+        Data address = null;
         if (family == FAMILY_IPV4) {
             // IPv4
-            String[] array = ip.split("\\.");
-            if (array.length != 4) {
-                throw new IndexOutOfBoundsException("IP error: " + ip);
-            }
-            byte[] address = new byte[4];
-            for (int index = 0; index < 4; ++index) {
-                address[index] = (byte) (Integer.parseInt(array[index]) & 0xFF);
-            }
-            return address;
-        } else if (family == FAMILY_IPV6) {
-            // TODO: IPv6
-            throw new UnsupportedOperationException("IPv6 not support yet");
-        } else {
-            throw new IllegalArgumentException("unknown address family: " + family);
+            address = dataFromIPv4(ip);
         }
+        assert address != null : "failed to convert IP: " + ip + ", " + family;
+        MutableData data = new MutableData(8);
+        data.append(0);
+        data.append(family);
+        data.append((port & 0xFF00) >> 8);
+        data.append(port & 0xFF);
+        data.append(address);
+        return data;
     }
 
-    private static String bytesToIP(Data address, byte family) {
-        if (family == FAMILY_IPV4) {
-            // IPv4
-            if (address.getLength() != 4) {
-                throw new IndexOutOfBoundsException("address error: " + address);
-            }
-            String[] array = new String[4];
-            for (int index = 0; index < 4; ++index) {
-                array[index] = String.valueOf(address.getByte(index) & 0xFF);
-            }
-            return array[0] + "." + array[1] + "." + array[2] + "." + array[3];
-        } else if (family == FAMILY_IPV6) {
-            // TODO: IPv6
-            throw new UnsupportedOperationException("IPv6 not support yet");
-        } else {
-            throw new IllegalArgumentException("unknown address family: " + family);
+    private static Data dataFromIPv4(String ip) {
+        String[] array = ip.split("\\.");
+        if (array.length != 4) {
+            throw new IndexOutOfBoundsException("IP error: " + ip);
         }
+        MutableData address = new MutableData(4);
+        for (int index = 0; index < 4; ++index) {
+            address.append(Integer.parseInt(array[index]));
+        }
+        return address;
     }
 
-    public static MappedAddressValue parse(Data data, Tag type, Length length) {
+    private static String dataToIPv4(Data address) {
+        if (address.getLength() != 4) {
+            throw new IndexOutOfBoundsException("address error: " + address);
+        }
+        String[] array = new String[4];
+        for (int index = 0; index < 4; ++index) {
+            array[index] = String.valueOf(address.getByte(index) & 0xFF);
+        }
+        return array[0] + "." + array[1] + "." + array[2] + "." + array[3];
+    }
+
+    public static MappedAddressValue parse(Data data, AttributeType type, AttributeLength length) {
         // checking
         if (data.getByte(0) != 0) {
             return null;
         }
         byte family = data.getByte(1);
-        // check family
-        if ((family == FAMILY_IPV4 && length.value == 8) ||
-                (family == FAMILY_IPV6 && length.value == 20)) {
-            int port = ((data.getByte(2) & 0xFF) << 8) | (data.getByte(3) & 0xFF);
-            String ip = bytesToIP(data.slice(4), family);
-            return new MappedAddressValue(data, ip, port, family);
-        } else {
-            //throw new IllegalArgumentException("mapped-address error: " + Arrays.toString(data));
-            return null;
+        if (family == FAMILY_IPV4) {
+            // IPv4
+            if (length.value == 8) {
+                int port = ((data.getByte(2) & 0xFF) << 8) | (data.getByte(3) & 0xFF);
+                String ip = dataToIPv4(data.slice(4));
+                return new MappedAddressValue(data, ip, port, family);
+            }
         }
+        return null;
     }
 }

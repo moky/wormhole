@@ -30,9 +30,9 @@
  */
 package chat.dim.stun.valus;
 
+import chat.dim.stun.attributes.AttributeLength;
+import chat.dim.stun.attributes.AttributeType;
 import chat.dim.tlv.Data;
-import chat.dim.tlv.Length;
-import chat.dim.tlv.Tag;
 
 /* Rosenberg, et al.           Standards Track                    [Page 33]
  *
@@ -98,48 +98,50 @@ public class XorMappedAddressValue extends MappedAddressValue {
         super(data, ip, port, family);
     }
 
-    public XorMappedAddressValue(byte[] bytes, String ip, int port, byte family) {
-        super(bytes, ip, port, family);
-    }
-
-    public static XorMappedAddressValue create(String ip, int port, byte family, byte[] factor) {
+    public static XorMappedAddressValue create(String ip, int port, byte family, Data factor) {
         MappedAddressValue addressValue = new MappedAddressValue(ip, port, family);
-        byte[] data = addressValue.getBytes();
-        data = xor(data, factor);
+        Data data = xor(addressValue, factor);
         return new XorMappedAddressValue(data, ip, port, family);
     }
 
-    public static XorMappedAddressValue create(String ip, int port, byte[] factor) {
+    public static XorMappedAddressValue create(String ip, int port, Data factor) {
         return create(ip, port, FAMILY_IPV4, factor);
     }
 
-    public static byte[] xor(byte[] data, byte[] factor) {
-        if (data.length != 8 && data.length != 20) {
-            throw new ArrayIndexOutOfBoundsException("address length error: " + data.length);
+    public static Data xor(Data addressValue, Data trans_id) {
+        int addressLen = addressValue.getLength();
+        int factorLen = trans_id.getLength();
+        if (addressLen != 8 && addressLen != 20) {
+            throw new ArrayIndexOutOfBoundsException("address length error: " + addressLen);
             //return null;
-        } else if (factor.length != 16) {
+        } else if (factorLen != 16) {
             throw new ArrayIndexOutOfBoundsException("factor should be the \"magic code\" + \"(96-bits) transaction ID\"");
             //return null;
         }
-        assert data[0] == 0 : "address data error";
-        byte[] array = new byte[data.length];
-        array[0] = data[0];
-        array[1] = data[1];
+        byte[] address = addressValue.getBuffer();
+        byte[] factor = trans_id.getBuffer();
+        int addressOffset = addressValue.getOffset();
+        int factorOffset = trans_id.getOffset();
+        assert address[addressOffset] == 0 : "address data error";
+        // create new data buffer
+        byte[] array = new byte[addressLen];
+        // family
+        array[1] = address[addressOffset + 1];
         // X-Port
-        array[2] = (byte) (data[2] ^ factor[1]);
-        array[3] = (byte) (data[3] ^ factor[0]);
+        array[2] = (byte) (address[addressOffset + 2] ^ factor[factorOffset + 1]);
+        array[3] = (byte) (address[addressOffset + 3] ^ factor[factorOffset]);
         // X-Address
-        int a_pos = data.length - 1;
+        int a_pos = addressLen - 1;
         int f_pos = 0;
         while (a_pos >= 4) {
-            array[a_pos] = (byte) (data[a_pos] ^ factor[f_pos]);
+            array[a_pos] = (byte) (address[addressOffset + a_pos] ^ factor[factorOffset + f_pos]);
             a_pos -= 1;
             f_pos += 1;
         }
-        return array;
+        return new Data(array);
     }
 
-    public static XorMappedAddressValue parse(Data data, Tag type, Length length) {
+    public static XorMappedAddressValue parse(Data data, AttributeType type, AttributeLength length) {
         MappedAddressValue value = MappedAddressValue.parse(data, type, length);
         if (value == null) {
             return null;

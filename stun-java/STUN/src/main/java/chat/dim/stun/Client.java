@@ -45,8 +45,6 @@ import chat.dim.stun.protocol.Package;
 import chat.dim.stun.protocol.TransactionID;
 import chat.dim.stun.valus.*;
 import chat.dim.tlv.Data;
-import chat.dim.tlv.Length;
-import chat.dim.tlv.Tag;
 import chat.dim.tlv.Value;
 import chat.dim.udp.Cargo;
 
@@ -67,8 +65,7 @@ public class Client extends Node {
 
     @Override
     public boolean parseAttribute(Attribute attribute, Map<String, Object> context) {
-        Tag type = attribute.tag;
-        Length length;
+        AttributeType type = (AttributeType) attribute.tag;
         Value value = attribute.value;
         if (type.equals(AttributeType.MappedAddress)) {
             assert value instanceof MappedAddressValue : "mapped address value error: " + value;
@@ -77,8 +74,8 @@ public class Client extends Node {
             if (!(value instanceof XorMappedAddressValue)) {
                 // XOR and parse again
                 Data factor = (Data) context.get("trans_id");
-                byte[] data = XorMappedAddressValue.xor(value.getBytes(), factor.getBytes());
-                length = new AttributeLength(data.length);
+                Data data = XorMappedAddressValue.xor(value, factor);
+                AttributeLength length = new AttributeLength(data.getLength());
                 value = XorMappedAddressValue.parse(new Data(data), type, length);
             }
             if (value != null) {
@@ -88,8 +85,8 @@ public class Client extends Node {
             if (!(value instanceof XorMappedAddressValue2)) {
                 // XOR and parse again
                 Data factor = (Data) context.get("trans_id");
-                byte[] data = XorMappedAddressValue2.xor(value.getBytes(), factor.getBytes());
-                length = new AttributeLength(data.length);
+                Data data = XorMappedAddressValue2.xor(value, factor);
+                AttributeLength length = new AttributeLength(data.getLength());
                 value = XorMappedAddressValue2.parse(new Data(data), type, length);
             }
             if (value != null) {
@@ -114,7 +111,7 @@ public class Client extends Node {
 
     private Map<String, Object> bindRequest(Data body, SocketAddress serverAddress) {
         // 1. create STUN message package
-        Package req = Package.create(MessageType.BindRequest, body);
+        Package req = Package.create(MessageType.BindRequest, null, body);
         TransactionID sn = req.head.sn;
         // 2. send and get response
         int count = 0;

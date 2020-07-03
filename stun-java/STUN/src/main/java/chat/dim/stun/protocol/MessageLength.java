@@ -43,12 +43,8 @@ public class MessageLength extends UInt16Data {
         super(data, value);
     }
 
-    public MessageLength(byte[] bytes, int value) {
-        super(bytes, value);
-    }
-
     public MessageLength(int value) {
-        this(bytesFromLong(value, 2), value);
+        this(new UInt16Data(value), value);
     }
 
     //

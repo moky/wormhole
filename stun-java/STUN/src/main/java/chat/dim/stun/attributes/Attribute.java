@@ -57,16 +57,12 @@ import chat.dim.tlv.*;
 
 public class Attribute extends TagLengthValue {
 
-    public Attribute(Attribute attribute) {
+    public Attribute(TagLengthValue attribute) {
         super(attribute);
     }
 
-    public Attribute(Data data, Tag type, Value value) {
+    public Attribute(Data data, AttributeType type, AttributeValue value) {
         super(data, type, value);
-    }
-
-    public Attribute(byte[] bytes, Tag type, Value value) {
-        super(bytes, type, value);
     }
 
     public Attribute(AttributeType type, AttributeValue value) {
@@ -93,17 +89,22 @@ public class Attribute extends TagLengthValue {
 
         @Override
         protected AttributeLength parseLength(Data data, Tag type) {
-            return AttributeLength.parse(data, type);
+            assert type instanceof AttributeType : "attribute type error: " + type;
+            return AttributeLength.parse(data, (AttributeType) type);
         }
 
         @Override
         protected AttributeValue parseValue(Data data, Tag type, Length length) {
-            return AttributeValue.parse(data, type, length);
+            assert type instanceof AttributeType : "attribute type error: " + type;
+            assert length instanceof AttributeLength : "attribute length error: " + length;
+            return AttributeValue.parse(data, (AttributeType) type, (AttributeLength) length);
         }
 
         @Override
         protected Attribute create(Data data, Tag type, Value value) {
-            return new Attribute(data, type, value);
+            assert type instanceof AttributeType : "attribute type error: " + type;
+            assert value == null || value instanceof AttributeValue : "attribute value error: " + value;
+            return new Attribute(data, (AttributeType) type, (AttributeValue) value);
         }
     }
 }

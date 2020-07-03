@@ -30,9 +30,9 @@
  */
 package chat.dim.stun.valus;
 
+import chat.dim.stun.attributes.AttributeLength;
+import chat.dim.stun.attributes.AttributeType;
 import chat.dim.tlv.Data;
-import chat.dim.tlv.Length;
-import chat.dim.tlv.Tag;
 
 /*  11.2.5 SOURCE-ADDRESS
  *
@@ -62,7 +62,7 @@ public class SourceAddressValue extends MappedAddressValue {
         super(ip, port);
     }
 
-    public static SourceAddressValue parse(Data data, Tag type, Length length) {
+    public static SourceAddressValue parse(Data data, AttributeType type, AttributeLength length) {
         MappedAddressValue value = MappedAddressValue.parse(data, type, length);
         if (value == null) {
             return null;

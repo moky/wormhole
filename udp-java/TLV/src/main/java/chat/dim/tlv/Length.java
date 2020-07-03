@@ -42,12 +42,8 @@ package chat.dim.tlv;
 
 public class Length extends IntegerData {
 
-    public Length(Length length) {
+    public Length(IntegerData length) {
         super(length);
-    }
-
-    public Length(UInt16Data data) {
-        super(data);
     }
 
     public Length(Data data, int value) {
@@ -60,19 +56,6 @@ public class Length extends IntegerData {
 
     public Length(int value) {
         super(bytesFromLong(value, 2), value);
-    }
-
-    //
-    //  Factories
-    //
-
-    public static Length fromBytes(byte[] bytes) {
-        return fromData(new Data(bytes, 0, 2));
-    }
-
-    public static Length fromData(Data data) {
-        data = data.slice(0, 2);
-        return new Length(data, data.getUInt16Value(0));
     }
 
     public static Length parse(Data data, Tag type) {

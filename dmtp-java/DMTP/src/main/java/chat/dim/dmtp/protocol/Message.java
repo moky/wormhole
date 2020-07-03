@@ -279,8 +279,8 @@ public class Message extends FieldsValue {
 
     public static Message create(String sender, String receiver, long timestamp,
                                  int type, String group,
-                                 byte[] content, byte[] signature, byte[] key,
-                                 byte[] meta, byte[] profile,
+                                 Data content, Data signature, Data key,
+                                 Data meta, Data profile,
                                  String filename) {
         StringValue senderValue = null;
         StringValue receiverValue = null;
@@ -352,14 +352,14 @@ public class Message extends FieldsValue {
 
     public static Message create(String sender, String receiver, long timestamp,
                                  int type, String group,
-                                 byte[] content, byte[] signature, byte[] key,
-                                 byte[] meta, byte[] profile) {
+                                 Data content, Data signature, Data key,
+                                 Data meta, Data profile) {
         return create(sender, receiver, timestamp, type, group,
                 content, signature, key, meta, profile, null);
     }
 
     public static Message create(String sender, String receiver, long timestamp,
-                                 byte[] content, byte[] signature, byte[] key) {
+                                 Data content, Data signature, Data key) {
         return create(sender, receiver, timestamp, 0, null,
                 content, signature, key, null, null, null);
     }
@@ -368,14 +368,14 @@ public class Message extends FieldsValue {
     //  file in message
     //
 
-    public static Message create(String filename, byte[] content,
+    public static Message create(String filename, Data content,
                                  String sender, String receiver,
-                                 byte[] signature, byte[] key) {
+                                 Data signature, Data key) {
         return create(sender, receiver, 0, 0, null,
                 content, signature, key, null, null, filename);
     }
 
-    public static Message create(String filename, byte[] content) {
+    public static Message create(String filename, Data content) {
         return create(null, null, 0, 0, null,
                 content, null, null, null, null, filename);
     }

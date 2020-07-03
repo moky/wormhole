@@ -30,34 +30,23 @@
  */
 package chat.dim.stun.attributes;
 
-import chat.dim.tlv.Data;
-import chat.dim.tlv.Length;
-import chat.dim.tlv.Tag;
-import chat.dim.tlv.UInt16Data;
+import chat.dim.tlv.*;
 
 public class AttributeLength extends Length {
 
-    public AttributeLength(AttributeLength length) {
+    public AttributeLength(IntegerData length) {
         super(length);
-    }
-
-    public AttributeLength(UInt16Data data) {
-        super(data);
     }
 
     public AttributeLength(Data data, int value) {
         super(data, value);
     }
 
-    public AttributeLength(byte[] bytes, int value) {
-        super(bytes, value);
-    }
-
     public AttributeLength(int value) {
-        this(bytesFromLong(value, 2), value);
+        this(new UInt16Data(value), value);
     }
 
-    public static AttributeLength parse(Data data, Tag type) {
+    public static AttributeLength parse(Data data, AttributeType type) {
         if (data.getLength() < 2) {
             throw new IndexOutOfBoundsException("Attribute length error: " + data.getLength());
         } else if (data.getLength() > 2) {

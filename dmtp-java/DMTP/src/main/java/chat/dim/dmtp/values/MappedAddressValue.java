@@ -34,6 +34,7 @@ import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
 import chat.dim.tlv.Data;
+import chat.dim.tlv.MutableData;
 
 /*     Address Values
  *     ~~~~~~~~~~~~~~
@@ -74,28 +75,28 @@ public class MappedAddressValue extends FieldValue {
      *  must be in network byte order.
      */
 
-    public static final int FAMILY_IPV4 = 0x01;
-    public static final int FAMILY_IPV6 = 0x02;
+    public static final byte FAMILY_IPV4 = 0x01;
+    public static final byte FAMILY_IPV6 = 0x02;
 
     public final String ip;
     public final int port;
-    public final int family;
+    public final byte family;
 
-    public MappedAddressValue(Data data, String ip, int port, int family) {
+    public MappedAddressValue(MappedAddressValue addressValue) {
+        super(addressValue);
+        ip = addressValue.ip;
+        port = addressValue.port;
+        family = addressValue.family;
+    }
+
+    public MappedAddressValue(Data data, String ip, int port, byte family) {
         super(data);
         this.ip = ip;
         this.port = port;
         this.family = family;
     }
 
-    public MappedAddressValue(byte[] bytes, String ip, int port, int family) {
-        super(bytes);
-        this.ip = ip;
-        this.port = port;
-        this.family = family;
-    }
-
-    public MappedAddressValue(String ip, int port, int family) {
+    public MappedAddressValue(String ip, int port, byte family) {
         this(build(ip, port, family), ip, port, family);
     }
 
@@ -108,84 +109,59 @@ public class MappedAddressValue extends FieldValue {
         return "\"" + ip + ":" + port + "\"";
     }
 
-    private static byte[] build(String ip, int port, int family) {
-        byte[] ipData = ipToBytes(ip, port, family);
-        byte[] data = new byte[4 + ipData.length];
-        data[1] = (byte) (family & 0xFF);
-        data[2] = (byte) ((port & 0xFF00) >> 8);
-        data[3] = (byte) (port & 0xFF);
-        System.arraycopy(ipData, 0, data, 4, ipData.length);
+    private static Data build(String ip, int port, byte family) {
+        Data address = null;
+        if (family == FAMILY_IPV4) {
+            // IPv4
+            address = dataFromIPv4(ip);
+        }
+        assert address != null : "failed to convert IP: " + ip + ", " + family;
+        MutableData data = new MutableData(8);
+        data.append(0);
+        data.append(family);
+        data.append((port & 0xFF00) >> 8);
+        data.append(port & 0xFF);
+        data.append(address);
         return data;
     }
 
-    private static byte[] ipToBytes(String ip, int port, int family) {
-        byte[] data = null;
-        switch (family) {
-            case FAMILY_IPV4: {
-                // IPv4
-                String[] array = ip.split("\\.");
-                if (array.length == 4) {
-                    data = new byte[4];
-                    for (int index = 0; index < 4; ++index) {
-                        data[index] = (byte) (Integer.parseInt(array[index]) & 0xFF);
-                    }
-                }
-                break;
-            }
-
-            case FAMILY_IPV6: {
-                // TODO: IPv6
-                throw new UnsupportedOperationException("implement me!");
-                //break;
-            }
-
-            default: {
-                throw new IllegalArgumentException("unknown address family: " + family);
-                //break;
-            }
+    private static Data dataFromIPv4(String ip) {
+        String[] array = ip.split("\\.");
+        if (array.length != 4) {
+            throw new IndexOutOfBoundsException("IP error: " + ip);
         }
-        return data;
+        MutableData address = new MutableData(4);
+        for (int index = 0; index < 4; ++index) {
+            address.append(Integer.parseInt(array[index]));
+        }
+        return address;
     }
 
-    private static String bytesToIP(byte[] address, int family) {
-        String ip = null;
-        switch (family) {
-            case FAMILY_IPV4: {
-                // IPv4
-                if (address.length == 4) {
-                    StringBuilder sb = new StringBuilder(Integer.toString(address[0] & 0xFF));
-                    for (int index = 1; index < 4; ++index) {
-                        sb.append(".").append(Integer.toString(address[index] & 0xFF));
-                    }
-                    ip = sb.toString();
-                }
-                break;
-            }
-
-            case FAMILY_IPV6: {
-                // TODO: IPv6
-                throw new UnsupportedOperationException("implement me!");
-                //break;
-            }
-
-            default: {
-                throw new IllegalArgumentException("unknown address family: " + family);
-                //break;
-            }
+    private static String dataToIPv4(Data address) {
+        if (address.getLength() != 4) {
+            throw new IndexOutOfBoundsException("address error: " + address);
         }
-        return ip;
+        String[] array = new String[4];
+        for (int index = 0; index < 4; ++index) {
+            array[index] = String.valueOf(address.getByte(index) & 0xFF);
+        }
+        return array[0] + "." + array[1] + "." + array[2] + "." + array[3];
     }
 
     public static MappedAddressValue parse(Data data, FieldName type, FieldLength length) {
+        // checking
         if (data.getByte(0) != 0) {
             return null;
         }
-        int family = data.getByte(1);
-        if (family != FAMILY_IPV4 && family != FAMILY_IPV6) {
-            return null;
+        byte family = data.getByte(1);
+        if (family == FAMILY_IPV4) {
+            // IPv4
+            if (length.value == 8) {
+                int port = ((data.getByte(2) & 0xFF) << 8) | (data.getByte(3) & 0xFF);
+                String ip = dataToIPv4(data.slice(4));
+                return new MappedAddressValue(data, ip, port, family);
+            }
         }
-        int port = ((data.getByte(2) & 0xFF) << 8) | (data.getByte(3) & 0xFF);
-        String ip = bytesToIP(data.getBytes(4), family);
-        return new MappedAddressValue(data, ip, port, family);
+        return null;
     }
 }

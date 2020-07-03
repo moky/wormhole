@@ -168,7 +168,7 @@ public class Command extends Field {
                                    SocketAddress mappedAddress,
                                    SocketAddress relayedAddress,
                                    long timestamp,
-                                   byte[] signature,
+                                   Data signature,
                                    String nat) {
             return create(LocationValue.create(identifier,
                     sourceAddress, mappedAddress, relayedAddress,

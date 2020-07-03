@@ -90,11 +90,20 @@ public class Header extends Data {
         this.sn = sn;
     }
 
-    public Header(byte[] bytes, MessageType type, MessageLength length, TransactionID sn) {
-        super(bytes);
-        this.type = type;
-        this.msgLength = length;
-        this.sn = sn;
+    public Header(MessageType type, MessageLength length, TransactionID sn) {
+        this(build(type, length, sn), type, length, sn);
+    }
+
+    public Header(MessageType type, MessageLength length) {
+        this(type, length, new TransactionID());
+    }
+
+    private static Data build(MessageType type, MessageLength length, TransactionID sn) {
+        MutableData data = new MutableData(type.getLength() + length.getLength() + sn.getLength());
+        data.append(type);
+        data.append(length);
+        data.append(sn);
+        return data;
     }
 
     public static Header parse(Data data) {
@@ -123,18 +132,5 @@ public class Header extends Data {
         }
         // create
         return new Header(data, type, len, sn);
-    }
-
-    public static Header create(MessageType type, MessageLength len, TransactionID sn) {
-        MutableData data = new MutableData(type.getLength() + len.getLength() + sn.getLength());
-        data.append(type);
-        data.append(len);
-        data.append(sn);
-        return new Header(data, type, len, sn);
-    }
-
-    public static Header create(MessageType type, MessageLength len) {
-        TransactionID sn = TransactionID.create();
-        return create(type, len, sn);
     }
 }

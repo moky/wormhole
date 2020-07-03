@@ -84,32 +84,32 @@ public class LocationValue extends CommandValue {
     @Override
     protected void setField(Field field) {
         Tag type = field.tag;
-        if (type.equals(SOURCE_ADDRESS))
+        if (type.equals(FieldName.SOURCE_ADDRESS))
         {
             assert field.value instanceof SourceAddressValue : "source address error: " + field.value;
             sourceAddress = (SourceAddressValue) field.value;
         }
-        else if (type.equals(MAPPED_ADDRESS))
+        else if (type.equals(FieldName.MAPPED_ADDRESS))
         {
             assert field.value instanceof MappedAddressValue : "mapped address error: " + field.value;
             mappedAddress = (MappedAddressValue) field.value;
         }
-        else if (type.equals(RELAYED_ADDRESS))
+        else if (type.equals(FieldName.RELAYED_ADDRESS))
         {
             assert field.value instanceof RelayedAddressValue : "relayed address error: " + field.value;
             relayedAddress = (RelayedAddressValue) field.value;
         }
-        else if (type.equals(TIME))
+        else if (type.equals(FieldName.TIME))
         {
             assert field.value instanceof TimestampValue : "timestamp error: " + field.value;
             timestamp = (TimestampValue) field.value;
         }
-        else if (type.equals(SIGNATURE))
+        else if (type.equals(FieldName.SIGNATURE))
         {
             assert field.value instanceof BinaryValue : "signature error: " + field.value;
             signature = (BinaryValue) field.value;
         }
-        else if (type.equals(NAT))
+        else if (type.equals(FieldName.NAT))
         {
             assert field.value instanceof StringValue : "NAT error: " + field.value;
             nat = (StringValue) field.value;
@@ -142,30 +142,30 @@ public class LocationValue extends CommandValue {
                                        StringValue nat) {
         List<Field> fields = new ArrayList<>();
         // ID
-        fields.add(new Field(ID, identifier));
+        fields.add(new Field(FieldName.ID, identifier));
         // SOURCE-ADDRESS
         if (sourceAddress != null) {
-            fields.add(new Field(SOURCE_ADDRESS, sourceAddress));
+            fields.add(new Field(FieldName.SOURCE_ADDRESS, sourceAddress));
         }
         // MAPPED-ADDRESS
         if (mappedAddress != null) {
-            fields.add(new Field(MAPPED_ADDRESS, mappedAddress));
+            fields.add(new Field(FieldName.MAPPED_ADDRESS, mappedAddress));
         }
         // RELAYED-ADDRESS
         if (relayedAddress != null) {
-            fields.add(new Field(RELAYED_ADDRESS, relayedAddress));
+            fields.add(new Field(FieldName.RELAYED_ADDRESS, relayedAddress));
         }
         // TIME
         if (timestamp != null) {
-            fields.add(new Field(TIME, timestamp));
+            fields.add(new Field(FieldName.TIME, timestamp));
         }
         // SIGNATURE
         if (signature != null) {
-            fields.add(new Field(SIGNATURE, signature));
+            fields.add(new Field(FieldName.SIGNATURE, signature));
         }
         // NAT
         if (nat != null) {
-            fields.add(new Field(NAT, nat));
+            fields.add(new Field(FieldName.NAT, nat));
         }
         LocationValue value = new LocationValue(fields);
         value.setFields(fields);
@@ -177,7 +177,7 @@ public class LocationValue extends CommandValue {
                                        SocketAddress mappedAddress,
                                        SocketAddress relayedAddress,
                                        long timestamp,
-                                       byte[] signature,
+                                       Data signature,
                                        String nat) {
         StringValue identifierValue = new StringValue(identifier);
         SourceAddressValue sourceAddressValue = null;

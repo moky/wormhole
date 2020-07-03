@@ -75,12 +75,12 @@ public class TransactionID extends Data {
         super(data);
     }
 
-    public TransactionID(byte[] bytes) {
-        super(bytes);
+    public TransactionID() {
+        this(generate());
     }
 
     //
-    //  Factories
+    //  Factory
     //
 
     public static TransactionID parse(Data data) {
@@ -94,7 +94,7 @@ public class TransactionID extends Data {
         return new TransactionID(data);
     }
 
-    public static synchronized TransactionID create() {
+    private static synchronized Data generate() {
         if (s_low < 0xFFFFFFFFL) {
             s_low += 1;
         } else {
@@ -121,7 +121,7 @@ public class TransactionID extends Data {
         data.append(hi);
         data.append(mi);
         data.append(lo);
-        return new TransactionID(data);
+        return data;
     }
 
     // Magic Cookie

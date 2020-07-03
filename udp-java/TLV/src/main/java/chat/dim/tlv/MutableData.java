@@ -113,6 +113,13 @@ public class MutableData extends Data {
         start = adjust(start, source.length);
         end = adjust(end, source.length);
         if (start < end) {
+            if (source == buffer) {
+                // same buffer, check neighbours
+                if (offset + index == start) {
+                    // nothing changed
+                    return this;
+                }
+            }
             int len = end - start;
             int size = offset + index + len;
             if (size > bufLength) {
@@ -237,27 +244,27 @@ public class MutableData extends Data {
      * @param end    - end position (exclude)
      */
     public MutableData append(byte[] source, int start, int end) {
-        return copy(offset + length, source, start, end);
+        return copy(length, source, start, end);
     }
 
     public MutableData append(byte[] source, int start) {
-        return copy(offset + length, source, start);
+        return copy(length, source, start);
     }
 
     public MutableData append(byte[] source) {
-        return copy(offset + length, source);
+        return copy(length, source);
     }
 
     public MutableData append(Data source, int start, int end) {
-        return copy(offset + length, source, start, end);
+        return copy(length, source, start, end);
     }
 
     public MutableData append(Data source, int start) {
-        return copy(offset + length, source, start);
+        return copy(length, source, start);
     }
 
     public MutableData append(Data source) {
-        return copy(offset + length, source);
+        return copy(length, source);
     }
 
     //

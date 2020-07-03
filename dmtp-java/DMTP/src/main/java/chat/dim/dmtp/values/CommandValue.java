@@ -56,7 +56,7 @@ public class CommandValue extends FieldsValue {
 
     @Override
     protected void setField(Field field) {
-        if (ID.equals(field.tag))
+        if (FieldName.ID.equals(field.tag))
         {
             assert field.value instanceof StringValue : "ID value error: " + field.value;
             identifier = (StringValue) field.value;
@@ -68,7 +68,7 @@ public class CommandValue extends FieldsValue {
     }
 
     public static CommandValue create(String identifier) {
-        Field id = new Field(ID, new StringValue(identifier));
+        Field id = new Field(FieldName.ID, new StringValue(identifier));
         List<Field> fields = new ArrayList<>();
         fields.add(id);
         return new CommandValue(fields);

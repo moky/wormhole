@@ -34,8 +34,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import chat.dim.tlv.Data;
-import chat.dim.tlv.IntegerData;
 import chat.dim.tlv.Tag;
+import chat.dim.tlv.UInt16Data;
 
 public class AttributeType extends Tag {
 
@@ -55,38 +55,24 @@ public class AttributeType extends Tag {
         s_types.put(value, this);
     }
 
-    public AttributeType(byte[] bytes, int value, String name) {
-        super(bytes);
-        this.value = value;
-        this.name = name;
-        s_types.put(value, this);
-    }
-
     public AttributeType(Data data, int value) {
         this(data, value, "Attribute-" + Integer.toHexString(value));
     }
 
-    public AttributeType(byte[] bytes, int value) {
-        this(new Data(bytes), value);
-    }
-
     public AttributeType(int value, String name) {
-        this(IntegerData.bytesFromLong(value, 2), value, name);
+        this(new UInt16Data(value), value, name);
     }
 
     public AttributeType(int value) {
-        this(IntegerData.bytesFromLong(value, 2), value);
+        this(new UInt16Data(value), value);
     }
 
     @Override
     public boolean equals(Object other) {
-        if (this == other) {
-            return true;
-        }
         if (other instanceof AttributeType) {
             return equals(((AttributeType) other).value);
         }
-        return false;
+        return super.equals(other);
     }
     public boolean equals(int other) {
         return value == other;

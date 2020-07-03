@@ -16,6 +16,7 @@ import chat.dim.dmtp.values.LocationValue;
 import chat.dim.dmtp.values.MappedAddressValue;
 import chat.dim.dmtp.values.SourceAddressValue;
 import chat.dim.mtp.task.Departure;
+import chat.dim.tlv.Data;
 import chat.dim.udp.Connection;
 
 public class Client extends chat.dim.dmtp.Client {
@@ -126,10 +127,11 @@ public class Client extends chat.dim.dmtp.Client {
             return false;
         }
         long timestamp = (new Date()).getTime() / 1000;
-        byte[] content = text.getBytes(Charset.forName("UTF-8"));
+        byte[] bytes = text.getBytes(Charset.forName("UTF-8"));
+        Data content = new Data(bytes);
         Message msg = Message.create(identifier, receiver, timestamp, content, null, null);
         for (Session item : sessions) {
-            System.out.printf("sending msg to:\n\t%s\n", item);
+            System.out.printf("sending msg to %s:\n\t%s\n", item, msg);
             sendMessage(msg, item.address);
         }
         return true;

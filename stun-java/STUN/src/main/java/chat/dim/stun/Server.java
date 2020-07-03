@@ -149,10 +149,10 @@ public class Server extends Node {
         value = new MappedAddressValue(remoteIP, remotePort);
         Data data1 = (new Attribute(AttributeType.MappedAddress, value));
         // xor
-        value = XorMappedAddressValue.create(remoteIP, remotePort, head.sn.getBytes());
+        value = XorMappedAddressValue.create(remoteIP, remotePort, head.sn);
         Data data4 = (new Attribute(AttributeType.XorMappedAddress, value));
         // xor2
-        value = XorMappedAddressValue2.create(remoteIP, remotePort, head.sn.getBytes());
+        value = XorMappedAddressValue2.create(remoteIP, remotePort, head.sn);
         Data data5 = (new Attribute(AttributeType.XorMappedAddress2, value));
         // source address
         value = new SourceAddressValue(localIP, localPort);
@@ -161,7 +161,7 @@ public class Server extends Node {
         value = new ChangedAddressValue(changedIP, changedPort);
         Data data3 = (new Attribute(AttributeType.ChangedAddress, value));
         // software
-        value = SoftwareValue.create(software);
+        value = new SoftwareValue(software);
         Data data6 = (new Attribute(AttributeType.Software, value));
         // pack
         MutableData body = new MutableData(data1.getLength() + data2.getLength() + data3.getLength()

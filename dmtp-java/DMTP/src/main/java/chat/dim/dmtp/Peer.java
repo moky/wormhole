@@ -38,6 +38,7 @@ import chat.dim.mtp.Pool;
 import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.task.Arrival;
 import chat.dim.mtp.task.Departure;
+import chat.dim.tlv.Data;
 import chat.dim.udp.Connection;
 import chat.dim.udp.ConnectionStatus;
 import chat.dim.udp.HubFilter;
@@ -134,8 +135,8 @@ public class Peer extends chat.dim.mtp.Peer implements HubListener {
     }
 
     @Override
-    public byte[] onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
-        Arrival task = new Arrival(data, source, destination);
+    public byte[] onDataReceived(byte[] bytes, SocketAddress source, SocketAddress destination) {
+        Arrival task = new Arrival(new Data(bytes), source, destination);
         pool.appendArrival(task);
         return null;
     }

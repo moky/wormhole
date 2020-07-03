@@ -52,7 +52,7 @@ public class VarIntData extends IntegerData {
     }
 
     public static VarIntData fromData(Data data) {
-        Result res = parseBytes(data.getBuffer(), data.getOffset());
+        Result res = parseBytes(data.buffer, data.offset, data.offset + data.length);
         if (res.length < data.getLength()) {
             data = data.slice(0, res.length);
         }
@@ -62,26 +62,24 @@ public class VarIntData extends IntegerData {
     private static Data parseLong(long value) {
         byte[] buffer = new byte[8];
         int index = 0;
-        while (value > 0x7F) {
+        for (; value > 0x7F /*&& index < 8*/; ++index) {
             buffer[index] = (byte) ((value & 0x7F) | 0x80);
             value >>= 7;
-            index += 1;
         }
         buffer[index] = (byte) (value & 0x7F);
         return new Data(buffer, 0, index + 1);
     }
 
-    private static Result parseBytes(byte[] bytes, int start) {
+    private static Result parseBytes(byte[] bytes, int start, int end) {
         long value = 0;
-        int index = start;
         int offset = 0;
-        byte ch;
-        do {
+        int index = start;
+        byte ch = (byte) 0x80;
+        for (; index < end && (ch & 0x80) != 0; ++index) {
             ch = bytes[index];
             value |= (ch & 0x7F) << offset;
-            index += 1;
             offset += 7;
-        } while ((ch & 0x80) != 0);
+        }
         return new Result(value, index - start);
     }
 

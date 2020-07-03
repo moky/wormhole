@@ -32,23 +32,39 @@ package chat.dim.stun.valus;
 
 import java.nio.charset.Charset;
 
+import chat.dim.stun.attributes.AttributeLength;
+import chat.dim.stun.attributes.AttributeType;
 import chat.dim.stun.attributes.AttributeValue;
 import chat.dim.tlv.Data;
-import chat.dim.tlv.Length;
-import chat.dim.tlv.Tag;
+import chat.dim.tlv.MutableData;
 
 public class SoftwareValue extends AttributeValue {
 
     private final String description;
+
+    public SoftwareValue(SoftwareValue softwareValue) {
+        super(softwareValue);
+        description = softwareValue.description;
+    }
 
     public SoftwareValue(Data data, String description) {
         super(data);
         this.description = description;
     }
 
-    public SoftwareValue(byte[] bytes, String description) {
-        super(bytes);
-        this.description = description;
+    public SoftwareValue(String description) {
+        this(build(description), description);
+    }
+
+    private static Data build(String description) {
+        byte[] bytes = description.getBytes(Charset.forName("UTF-8"));
+        MutableData data = new MutableData(bytes);
+        int tail = bytes.length & 3;
+        if (tail > 0) {
+            // append '\0' to the tail
+            data.setByte(bytes.length - tail + 4, 0);
+        }
+        return data;
     }
 
     @Override
@@ -56,19 +72,7 @@ public class SoftwareValue extends AttributeValue {
         return description;
     }
 
-    public static SoftwareValue create(String description) {
-        byte[] data = description.getBytes(Charset.forName("UTF-8"));
-        int tail = data.length & 3;
-        if (tail > 0) {
-            int len = data.length + (4 - tail);
-            byte[] buffer = new byte[len];
-            System.arraycopy(data, 0, buffer, 0, data.length);
-            data = buffer;
-        }
-        return new SoftwareValue(data, description);
-    }
-
-    public static SoftwareValue parse(Data data, Tag type, Length length) {
+    public static SoftwareValue parse(Data data, AttributeType type, AttributeLength length) {
         String desc = data.toString();
         return new SoftwareValue(data, desc.trim());
     }

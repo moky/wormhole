@@ -30,9 +30,9 @@
  */
 package chat.dim.stun.valus;
 
+import chat.dim.stun.attributes.AttributeLength;
+import chat.dim.stun.attributes.AttributeType;
 import chat.dim.tlv.Data;
-import chat.dim.tlv.Length;
-import chat.dim.tlv.Tag;
 
 /*  11.2.3  CHANGED-ADDRESS
  *
@@ -64,7 +64,7 @@ public class ChangedAddressValue extends MappedAddressValue {
         super(ip, port);
     }
 
-    public static ChangedAddressValue parse(Data data, Tag type, Length length) {
+    public static ChangedAddressValue parse(Data data, AttributeType type, AttributeLength length) {
         MappedAddressValue value = MappedAddressValue.parse(data, type, length);
         if (value == null) {
             return null;

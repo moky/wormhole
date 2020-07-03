@@ -256,7 +256,11 @@ public class Data implements Cloneable {
     }
 
     public Data concat(Data other) {
-        if (other.buffer == buffer) {
+        if (other.length <= 0) {
+            return this;
+        } else if (length <= 0) {
+            return other;
+        } else if (other.buffer == buffer) {
             if (other.offset == offset + length) {
                 // join the neighbour views
                 return new Data(buffer, offset, length + other.length);

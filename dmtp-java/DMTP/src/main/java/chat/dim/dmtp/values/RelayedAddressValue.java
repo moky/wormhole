@@ -44,11 +44,15 @@ public class RelayedAddressValue extends MappedAddressValue {
      *  client.  It is encoded in the same way as MAPPED-ADDRESS.
      */
 
-    public RelayedAddressValue(Data data, String ip, int port, int family) {
+    public RelayedAddressValue(MappedAddressValue addressValue) {
+        super(addressValue);
+    }
+
+    public RelayedAddressValue(Data data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 
-    public RelayedAddressValue(String ip, int port, int family) {
+    public RelayedAddressValue(String ip, int port, byte family) {
         super(ip, port, family);
     }
 

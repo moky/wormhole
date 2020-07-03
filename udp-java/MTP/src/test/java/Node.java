@@ -81,14 +81,6 @@ public class Node implements PeerHandler {
         return peer.sendMessage(pack, destination);
     }
 
-    public Departure sendCommand(byte[] cmd, SocketAddress destination) {
-        return sendCommand(new Data(cmd), destination);
-    }
-
-    public Departure sendMessage(byte[] msg, SocketAddress destination) {
-        return sendMessage(new Data(msg), destination);
-    }
-
     //
     //  PeerHandler
     //

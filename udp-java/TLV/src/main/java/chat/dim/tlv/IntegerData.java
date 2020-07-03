@@ -109,7 +109,7 @@ public class IntegerData extends Data {
     //  bytes functions
     //
 
-    public static byte[] bytesFromLong(long value, int length) {
+    static byte[] bytesFromLong(long value, int length) {
         byte[] bytes = new byte[length];
         int index;
         for (index = length - 1; index >= 0; --index) {
@@ -119,7 +119,7 @@ public class IntegerData extends Data {
         return bytes;
     }
 
-    public static long longFromBytes(byte[] bytes, int start, int end) {
+    static long longFromBytes(byte[] bytes, int start, int end) {
         long result = 0;
         for (; start < end; ++start) {
             result = (result << 8) | (bytes[start] & 0xFF);

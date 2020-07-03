@@ -37,7 +37,6 @@ import java.util.Map;
 
 import chat.dim.stun.valus.*;
 import chat.dim.tlv.Data;
-import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
 import chat.dim.tlv.Value;
 
@@ -47,11 +46,7 @@ public class AttributeValue extends Value {
         super(data);
     }
 
-    public AttributeValue(byte[] bytes) {
-        super(bytes);
-    }
-
-    public static AttributeValue parse(Data data, Tag type, Length length) {
+    public static AttributeValue parse(Data data, AttributeType type, AttributeLength length) {
         Class clazz = attributeValueClasses.get(type);
         if (clazz != null) {
             // create instance by subclass
@@ -76,10 +71,10 @@ public class AttributeValue extends Value {
     }
 
     @SuppressWarnings("unchecked")
-    private static AttributeValue create(Class clazz, Data data, Tag type, Length length) {
+    private static AttributeValue create(Class clazz, Data data, AttributeType type, AttributeLength length) {
         // try 'Clazz.parse(data, type, length)'
         try {
-            Method method = clazz.getMethod("parse", Data.class, Tag.class, Length.class);
+            Method method = clazz.getMethod("parse", Data.class, AttributeType.class, AttributeLength.class);
             if (method.getDeclaringClass().equals(clazz)) {
                 // only invoke the method 'parse()' declared in this class
                 return (AttributeValue) method.invoke(null, data, type, length);
@@ -91,15 +86,15 @@ public class AttributeValue extends Value {
     }
 
     static {
-        register(AttributeType.MappedAddress, MappedAddressValue.class);
-        //register(AttributeType.XorMappedAddress, XorMappedAddressValue.class);
+        register(AttributeType.MappedAddress,     MappedAddressValue.class);
+        //register(AttributeType.XorMappedAddress,  XorMappedAddressValue.class);
         //register(AttributeType.XorMappedAddress2, XorMappedAddressValue2.class);
 
-        register(AttributeType.ResponseAddress, ResponseAddressValue.class);
-        register(AttributeType.ChangeRequest, ChangeRequestValue.class);
-        register(AttributeType.SourceAddress, SourceAddressValue.class);
-        register(AttributeType.ChangedAddress, ChangedAddressValue.class);
+        register(AttributeType.ResponseAddress,   ResponseAddressValue.class);
+        register(AttributeType.ChangeRequest,     ChangeRequestValue.class);
+        register(AttributeType.SourceAddress,     SourceAddressValue.class);
+        register(AttributeType.ChangedAddress,    ChangedAddressValue.class);
 
-        register(AttributeType.Software, SoftwareValue.class);
+        register(AttributeType.Software,          SoftwareValue.class);
     }
 }

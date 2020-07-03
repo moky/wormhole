@@ -36,17 +36,16 @@ import chat.dim.tlv.*;
 
 public class Field extends TagLengthValue {
 
+    public Field(TagLengthValue field) {
+        super(field);
+    }
+
     public Field(Data data, FieldName type, FieldValue value) {
         super(data, type, value);
     }
 
     public Field(FieldName type, FieldValue value) {
         super(type, new FieldLength(value == null ? 0 : value.getLength()), value);
-    }
-
-    @Override
-    public String toString() {
-        return "/* " + getClass().getSimpleName() + " */ " + tag + ": " + value;
     }
 
 
@@ -64,21 +63,28 @@ public class Field extends TagLengthValue {
     protected static class Parser extends TagLengthValue.Parser {
 
         @Override
-        protected Field create(Data data, Tag type, Value value) {
-            return new Field(data, (FieldName) type, (FieldValue) value);
-        }
-
-        @Override
         protected FieldName parseTag(Data data) {
             return FieldName.parse(data);
         }
 
+        @Override
         protected FieldLength parseLength(Data data, Tag type) {
+            assert type instanceof FieldName : "field name error: " + type;
             return FieldLength.parse(data, (FieldName) type);
         }
 
+        @Override
         protected FieldValue parseValue(Data data, Tag type, Length length) {
+            assert type instanceof FieldName : "field name error: " + type;
+            assert length instanceof FieldLength : "field length error: " + length;
             return FieldValue.parse(data, (FieldName) type, (FieldLength) length);
+        }
+
+        @Override
+        protected Field create(Data data, Tag type, Value value) {
+            assert type instanceof FieldName : "field name error: " + type;
+            assert value == null || value instanceof FieldValue : "field value error: " + value;
+            return new Field(data, (FieldName) type, (FieldValue) value);
         }
     }
 }

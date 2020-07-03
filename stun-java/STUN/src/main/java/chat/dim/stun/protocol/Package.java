@@ -49,10 +49,29 @@ public class Package extends Data {
         this.body = body;
     }
 
-    public Package(byte[] bytes, Header head, Data body) {
-        super(bytes);
-        this.head = head;
-        this.body = body;
+    public Package(Header head, Data body) {
+        this(head.concat(body), head, body);
+    }
+
+    public Package(Header head) {
+        this(head, head, Data.ZERO);
+    }
+
+    //
+    //  Factories
+    //
+
+    public static Package create(MessageType type, TransactionID sn, Data body) {
+        if (sn == null) {
+            sn = new TransactionID();
+        }
+        if (body == null) {
+            body = Data.ZERO;
+        }
+        MessageLength len = new MessageLength(body.getLength());
+        Header head = new Header(type, len, sn);
+        Data data = head.concat(body);
+        return new Package(data, head, body);
     }
 
     public static Package parse(Data data) {
@@ -74,27 +93,6 @@ public class Package extends Data {
         // get attributes body
         Data body = data.slice(head.getLength());
         return new Package(data, head, body);
-    }
-
-    public static Package create(MessageType type, TransactionID sn, Data body) {
-        MessageLength len = new MessageLength(body.getLength());
-        Header head = Header.create(type, len, sn);
-        Data data = head.concat(body);
-        return new Package(data, head, body);
-    }
-
-    public static Package create(MessageType type, Data body) {
-        TransactionID sn = TransactionID.create();
-        return create(type, sn, body);
-    }
-
-    public static Package create(MessageType type, TransactionID sn) {
-        return create(type, sn, Data.ZERO);
-    }
-
-    public static Package create(MessageType type) {
-        TransactionID sn = TransactionID.create();
-        return create(type, sn, Data.ZERO);
     }
 
     // const body

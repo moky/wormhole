@@ -80,7 +80,12 @@ public class DataType {
 
     @Override
     public int hashCode() {
-        return Integer.hashCode(value);
+        return Byte.hashCode(value);
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 
     //
