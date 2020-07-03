@@ -136,12 +136,8 @@ public class Package extends Data {
         assert index == pages : "fragment error: " + index + ", " + pages;
         // join fragments
         MutableData data = new MutableData(length);
-        Data fra;
-        int pos;
-        for (index = 0, pos = 0; index < count; ++index) {
-            fra = fragments.get(index);
-            data.copy(fra, 0, pos, fra.getLength());
-            pos += fra.getLength();
+        for (index = 0; index < count; ++index) {
+            data.append(fragments.get(index));
         }
         type = DataType.Message;
         if (first.head.bodyLength < 0) {

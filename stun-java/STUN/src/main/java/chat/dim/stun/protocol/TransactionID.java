@@ -117,10 +117,10 @@ public class TransactionID extends Data {
         Data lo = new UInt32Data(s_low);
 
         MutableData data = new MutableData(16);
-        data.copy(mc, 0, 0, 4);
-        data.copy(hi, 0, 4, 4);
-        data.copy(mi, 0, 8, 4);
-        data.copy(lo, 0, 12, 4);
+        data.append(mc);
+        data.append(hi);
+        data.append(mi);
+        data.append(lo);
         return new TransactionID(data);
     }
 

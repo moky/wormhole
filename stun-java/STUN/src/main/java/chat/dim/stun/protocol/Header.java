@@ -127,9 +127,9 @@ public class Header extends Data {
 
     public static Header create(MessageType type, MessageLength len, TransactionID sn) {
         MutableData data = new MutableData(type.getLength() + len.getLength() + sn.getLength());
-        data.copy(type, 0, 0, type.getLength());
-        data.copy(len, 0, type.getLength(), len.getLength());
-        data.copy(sn, 0, type.getLength() + len.getLength(), sn.getLength());
+        data.append(type);
+        data.append(len);
+        data.append(sn);
         return new Header(data, type, len, sn);
     }
 

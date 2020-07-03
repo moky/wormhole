@@ -48,57 +48,28 @@ public class MutableData extends Data {
         this(new byte[capacity], 0, 0);
     }
 
-    /**
-     *  Copy buffer values
-     *
-     * @param src     - source
-     * @param srcPos  - source position
-     * @param destPos - destination position
-     * @param len     - length
-     */
-    public void copy(Data src, int srcPos, int destPos, int len) {
-        if (len <= 0) {
-            return;
-        }
-        // adjust positions
-        srcPos = adjust(srcPos, src.length);
-        destPos = adjust(destPos, length);
-        // adjust length
-        if (len > src.length - srcPos) {
-            len = src.length - srcPos;
-        }
-        if (len > bufLength - offset - destPos) {
-            len = bufLength - offset - destPos;
-        }
-        // copy buffer
-        System.arraycopy(src.buffer, src.offset + srcPos, buffer, offset + destPos, len);
-        len = destPos + len;
-        if (len > length) {
-            length = len;
+    public MutableData() {
+        this(4);
+    }
+
+    private void resize(int size) {
+        byte[] bytes = new byte[size];
+        System.arraycopy(buffer, 0, bytes, 0, bufLength);
+        buffer = bytes;
+        bufLength = size;
+    }
+
+    private void expends() {
+        if (bufLength > 4) {
+            resize(bufLength << 1);
+        } else {
+            resize(8);
         }
     }
 
-    public void copy(byte[] src, int srcPos, int destPos, int len) {
-        if (len <= 0) {
-            return;
-        }
-        // adjust positions
-        srcPos = adjust(srcPos, src.length);
-        destPos = adjust(destPos, length);
-        // adjust length
-        if (len > src.length - srcPos) {
-            len = src.length - srcPos;
-        }
-        if (len > bufLength - offset - destPos) {
-            len = bufLength - offset - destPos;
-        }
-        // copy buffer
-        System.arraycopy(src, srcPos, buffer, offset + destPos, len);
-        len = destPos + len;
-        if (len > length) {
-            length = len;
-        }
-    }
+    //
+    //  Updating
+    //
 
     /**
      *  Change byte value at this position
@@ -106,7 +77,7 @@ public class MutableData extends Data {
      * @param index - position
      * @param value - byte value
      */
-    public boolean setByte(int index, int value) {
+    public boolean setByte(int index, byte value) {
         if (index < 0) {
             index += length;   // count from right hand
             if (index < 0) {
@@ -116,28 +87,88 @@ public class MutableData extends Data {
             // check buffer size
             int size = offset + index + 1;
             if (size > bufLength) {
-                // expends
-                byte[] bytes = new byte[size];
-                System.arraycopy(buffer, 0, bytes, 0, bufLength);
-                buffer = bytes;
-                bufLength = size;
+                // expend the buffer to this size
+                resize(size);
             }
             length = index + 1;
         }
-        buffer[offset + index] = (byte) (value & 0xFF);
+        buffer[offset + index] = value;
         return true;
+    }
+
+    public boolean setByte(int index, int value) {
+        return setByte(index, (byte) (value & 0xFF));
+    }
+
+    /**
+     *  Copy values from source buffer with range [start, end)
+     *
+     * @param index  - copy to this buffer from this position
+     * @param source - source buffer
+     * @param start  - start position (include)
+     * @param end    - end position (exclude)
+     */
+    public MutableData copy(int index, byte[] source, int start, int end) {
+        // adjust position
+        start = adjust(start, source.length);
+        end = adjust(end, source.length);
+        if (start < end) {
+            int len = end - start;
+            int size = offset + index + len;
+            if (size > bufLength) {
+                // expend the buffer to this size
+                resize(size);
+            }
+            // copy buffer
+            System.arraycopy(source, start, buffer, offset + index, len);
+            // reset view length
+            if (index + len > length) {
+                length = index + len;
+            }
+        }
+        return this;
+    }
+
+    public MutableData copy(int index, byte[] source, int start) {
+        return copy(index, source, start, source.length);
+    }
+
+    public MutableData copy(int index, byte[] source) {
+        return copy(index, source, 0, source.length);
+    }
+
+    public MutableData copy(int index, Data source, int start, int end) {
+        // adjust position
+        start = adjust(start, source.length);
+        end = adjust(end, source.length);
+        return copy(index, source.buffer, source.offset + start, source.offset + end);
+    }
+
+    public MutableData copy(int index, Data source, int start) {
+        return copy(index, source, start, source.length);
+    }
+
+    public MutableData copy(int index, Data source) {
+        return copy(index, source, 0, source.length);
     }
 
     //
     //  Expanding
     //
 
+    /**
+     *  Insert the value to this position
+     *
+     * @param index -
+     * @param value -
+     * @return false for ArrayIndexOutOfBoundsException
+     */
     public boolean insert(int index, byte value) {
         // check position
         if (index < 0) {
             index += length; // count from right hand
             if (index < 0) {
-                throw new ArrayIndexOutOfBoundsException("index error: " + (index - length) + ", length: " + length);
+                return false;
             }
         }
         if (offset > 0) {
@@ -178,22 +209,15 @@ public class MutableData extends Data {
         return true;
     }
 
-    private void expends() {
-        int size;
-        if (bufLength > 4) {
-            size = bufLength << 1;
-        } else {
-            size = 8;
-        }
-        byte[] bytes = new byte[size];
-        System.arraycopy(buffer, 0, bytes, 0, bufLength);
-        buffer = bytes;
-        bufLength = size;
-    }
-
+    /**
+     *  Append the element to the tail
+     *
+     * @param element - value
+     */
     public MutableData append(byte element) {
         int index = offset + length;
         if (index >= bufLength) {
+            // expend the buffer
             expends();
         }
         buffer[index] = element;
@@ -205,10 +229,48 @@ public class MutableData extends Data {
         return append((byte) (value & 0xFF));
     }
 
+    /**
+     *  Append values from source buffer with range [start, end)
+     *
+     * @param source - source buffer
+     * @param start  - start position (include)
+     * @param end    - end position (exclude)
+     */
+    public MutableData append(byte[] source, int start, int end) {
+        return copy(offset + length, source, start, end);
+    }
+
+    public MutableData append(byte[] source, int start) {
+        return copy(offset + length, source, start);
+    }
+
+    public MutableData append(byte[] source) {
+        return copy(offset + length, source);
+    }
+
+    public MutableData append(Data source, int start, int end) {
+        return copy(offset + length, source, start, end);
+    }
+
+    public MutableData append(Data source, int start) {
+        return copy(offset + length, source, start);
+    }
+
+    public MutableData append(Data source) {
+        return copy(offset + length, source);
+    }
+
     //
     //  Erasing
     //
 
+    /**
+     *  Remove element at this position and return its value
+     *
+     * @param index - position
+     * @return element value removed
+     * @throws ArrayIndexOutOfBoundsException on error
+     */
     public byte remove(int index) {
         // check position
         if (index < 0) {
@@ -230,8 +292,14 @@ public class MutableData extends Data {
         return erased;
     }
 
+    /**
+     *  Remove element from the head position and return its value
+     *
+     * @return element value at the first place
+     * @throws ArrayIndexOutOfBoundsException on data empty
+     */
     public byte shift() {
-        if (length <= 0) {
+        if (isEmpty()) {
             throw new ArrayIndexOutOfBoundsException("data empty!");
         }
         byte erased = buffer[offset];
@@ -240,11 +308,21 @@ public class MutableData extends Data {
         return erased;
     }
 
+    /**
+     *  Remove element from the tail position and return its value
+     *
+     * @return element value at the last place
+     * @throws ArrayIndexOutOfBoundsException on data empty
+     */
     public byte pop() {
-        if (length <= 0) {
+        if (isEmpty()) {
             throw new ArrayIndexOutOfBoundsException("data empty!");
         }
         --length;
         return buffer[offset + length];
+    }
+
+    public boolean isEmpty() {
+        return length <= 0;
     }
 }

@@ -60,10 +60,8 @@ public class FieldsValue extends FieldValue {
             length += item.getLength();
         }
         MutableData data = new MutableData(length);
-        int pos = 0;
         for (Field item : fields) {
-            data.copy(item, 0, pos, item.getLength());
-            pos += item.getLength();
+            data.append(item);
         }
         return data;
     }

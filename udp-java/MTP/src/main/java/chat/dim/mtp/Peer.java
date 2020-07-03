@@ -221,22 +221,22 @@ public class Peer extends Thread {
         if (type.equals(DataType.Command)) {
             type = DataType.CommandRespond;
             body = new MutableData(2);
-            body.setByte(0, (byte) 'O');
-            body.setByte(1, (byte) 'K');
+            body.setByte(0, 'O');
+            body.setByte(1, 'K');
         } else if (type.equals(DataType.Message)) {
             type = DataType.MessageRespond;
             body = new MutableData(2);
-            body.setByte(0, (byte) 'O');
-            body.setByte(1, (byte) 'K');
+            body.setByte(0, 'O');
+            body.setByte(1, 'K');
         } else if (type.equals(DataType.MessageFragment)) {
             type = DataType.MessageRespond;
             UInt32Data pages = new UInt32Data(head.pages);
             UInt32Data offset = new UInt32Data(head.offset);
             body = new MutableData(10);
-            body.copy(pages, 0, 0, 4);
-            body.copy(offset, 0, 4, 4);
-            body.setByte(8, (byte) 'O');
-            body.setByte(9, (byte) 'K');
+            body.append(pages);
+            body.append(offset);
+            body.append('O');
+            body.append('K');
         } else {
             throw new IllegalArgumentException("data type error: " + type);
         }

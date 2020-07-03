@@ -60,6 +60,10 @@ public class DataType {
         s_types.put(value, this);
     }
 
+    public DataType(int value, String name) {
+        this((byte) (value & 0xFF), name);
+    }
+
     @Override
     public boolean equals(Object other) {
         if (this == other) {
@@ -80,7 +84,7 @@ public class DataType {
     }
 
     //
-    //  Factory
+    //  Factories
     //
 
     public static synchronized DataType getInstance(byte value) {
@@ -92,11 +96,15 @@ public class DataType {
         return type;
     }
 
+    public static synchronized DataType getInstance(int value) {
+        return getInstance((byte) (value & 0xFF));
+    }
+
     private static final Map<Byte, DataType> s_types = new HashMap<>();
 
-    public static DataType Command         = new DataType((byte) 0x00, "Command");
-    public static DataType CommandRespond  = new DataType((byte) 0x01, "Command Respond");
-    public static DataType Message         = new DataType((byte) 0x02, "Message");
-    public static DataType MessageRespond  = new DataType((byte) 0x03, "Message Respond");
-    public static DataType MessageFragment = new DataType((byte) 0x0A, "Message Fragment");
+    public static DataType Command         = new DataType(0x00, "Command");
+    public static DataType CommandRespond  = new DataType(0x01, "Command Respond");
+    public static DataType Message         = new DataType(0x02, "Message");
+    public static DataType MessageRespond  = new DataType(0x03, "Message Respond");
+    public static DataType MessageFragment = new DataType(0x0A, "Message Fragment");
 }

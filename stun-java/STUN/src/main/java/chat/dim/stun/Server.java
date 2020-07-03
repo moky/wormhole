@@ -166,24 +166,12 @@ public class Server extends Node {
         // pack
         MutableData body = new MutableData(data1.getLength() + data2.getLength() + data3.getLength()
                 + data4.getLength() + data5.getLength() + data6.getLength());
-
-        int offset = 0;
-        body.copy(data1, 0, offset, data1.getLength());
-
-        offset += data1.getLength();
-        body.copy(data2, 0, offset, data2.getLength());
-
-        offset += data2.getLength();
-        body.copy(data3, 0, offset, data3.getLength());
-
-        offset += data3.getLength();
-        body.copy(data4, 0, offset, data4.getLength());
-
-        offset += data4.getLength();
-        body.copy(data5, 0, offset, data5.getLength());
-
-        offset += data5.getLength();
-        body.copy(data6, 0, offset, data6.getLength());
+        body.append(data1);
+        body.append(data2);
+        body.append(data3);
+        body.append(data4);
+        body.append(data5);
+        body.append(data6);
         Package pack = Package.create(MessageType.BindResponse, head.sn, body);
         int res = send(pack, clientAddress, new InetSocketAddress(localIP, localPort));
         return res == pack.getLength();

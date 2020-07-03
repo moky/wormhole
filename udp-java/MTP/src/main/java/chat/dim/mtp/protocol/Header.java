@@ -176,7 +176,7 @@ public class Header extends Data {
             //throw new IllegalArgumentException("body length error: " + bodyLen);
             return null;
         }
-        DataType type = DataType.getInstance((byte) (ch & 0x0F));
+        DataType type = DataType.getInstance(ch & 0x0F);
         return new Header(data.slice(0, headLen), type, sn, pages, offset, bodyLen);
     }
 
@@ -217,21 +217,20 @@ public class Header extends Data {
             headLen += 4;
         }
         // generate header data
-        byte hl_ty = (byte) (((headLen << 2) | (type.value & 0x0F)) & 0xFF);
         MutableData data = new MutableData(headLen);
-        data.setByte(0, 'D');
-        data.setByte(1, 'I');
-        data.setByte(2, 'M');
-        data.setByte(3, hl_ty);
+        data.append('D');
+        data.append('I');
+        data.append('M');
+        data.append((headLen << 2) | (type.value & 0x0F));
         if (sn.equals(TransactionID.ZERO)) {
             // simple header
             if (options != null) {
-                data.copy(options, 0, 4, options.getLength());
+                data.append(options);
             }
         } else {
-            data.copy(sn, 0, 4, sn.getLength());
+            data.append(sn);
             if (options != null) {
-                data.copy(options, 0, 4 + sn.getLength(), options.getLength());
+                data.append(options);
             }
         }
         return new Header(data, type, sn, pages, offset, bodyLen);
