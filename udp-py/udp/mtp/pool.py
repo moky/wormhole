@@ -40,8 +40,6 @@ import time
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from ..tlv.data import bytes_to_int
-
 from .protocol import Package, TransactionID
 from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment
@@ -264,29 +262,29 @@ class MemPool(Pool):
     def delete_departure(self, response: Package, destination: tuple, source: tuple) -> bool:
         head = response.head
         body = response.body
-        body_len = len(body)
+        body_len = body.length
         data_type = head.data_type
         trans_id = head.trans_id
         if data_type == CommandRespond:
             # response for Command
-            assert body_len == 0 or body == b'OK', 'CommandRespond error: %s' % body
+            assert body_len == 0 or body.get_bytes(end=2) == b'OK', 'CommandRespond error: %s' % body
             return self.__del_entire_task(trans_id=trans_id, destination=destination)
         elif data_type == MessageRespond:
             # response for Message or Fragment
             if body_len >= 8:
                 # MessageFragment
-                assert body_len == 8 or body[8:] == b'OK', 'MessageRespond error: %s' % body
+                assert body_len == 8 or body.get_bytes(start=8) == b'OK', 'MessageRespond error: %s' % body
                 # get pages count and index
-                pages = bytes_to_int(body[:4])
-                offset = bytes_to_int(body[4:8])
+                pages = body.get_uint32_value(start=0)
+                offset = body.get_uint32_value(start=4)
                 assert pages > 1 and pages > offset, 'pages error: %d, %d' % (pages, offset)
                 return self.__del_task_fragment(trans_id=trans_id, pages=pages, offset=offset, destination=destination)
-            elif body_len == 0 or body == b'OK':
+            elif body_len == 0 or body.get_bytes() == b'OK':
                 # Message
                 return self.__del_entire_task(trans_id=trans_id, destination=destination)
             else:
                 # respond for split message
-                assert body == b'AGAIN', 'MessageRespond error: %s' % body
+                assert body.get_bytes() == b'AGAIN', 'MessageRespond error: %s' % body
                 # TODO: resend all fragments of this message
         else:
             assert False, 'data type should be a Respond: %s' % data_type

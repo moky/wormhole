@@ -30,18 +30,18 @@
 
 from typing import Union
 
-from .utils import adjust, array_copy
+from .utils import adjust, adjust_e, array_copy
 from .data import Data
 
 
 class MutableData(Data):
 
-    def __init__(self, data, offset: int=0, length: int=None, capacity: int=4):
+    def __init__(self, data=None, offset: int=0, length: int=None, capacity: int=4):
         if data is None:
             assert capacity > 0, 'capacity error'
             offset = 0
             length = 0
-            data = bytearray(length=capacity)
+            data = bytearray(capacity)
         elif isinstance(data, Data):
             offset = 0
             length = data.length
@@ -87,7 +87,7 @@ class MutableData(Data):
         self._buffer[self._offset + index] = value & 0xFF
         return True
 
-    def copy(self, index: int, source: Union[Data, bytes], start: int=0, end: int=None):  # -> MutableData
+    def copy(self, index: int, source: Union[Data, bytes, bytearray], start: int=0, end: int=None):  # -> MutableData
         """
         Copy values from source buffer with range [start, end)
 
@@ -177,3 +177,74 @@ class MutableData(Data):
             # index out of the range, insert directly
             return self.set_byte(index=index, value=value)
         return True
+
+    def append(self, value: Union[int, str]=None,
+               source: Union[Data, bytes, bytearray]=None, start: int=0, end: int=None):  # -> MutableData
+        """
+        Append one element to the tail
+        Append values from source buffer with range [start, end)
+
+        :param value:  element value
+        :param source: source buffer
+        :param start:  source start position (include)
+        :param end:    source end position (exclude)
+        :return: self object
+        """
+        if source is None:
+            if isinstance(value, str):
+                assert len(value) == 1, 'char value length error: %d' % len(value)
+                value = ord(value)
+            else:
+                assert isinstance(value, int), 'value error: %s' % value
+            self.set_byte(index=self._length, value=value)
+            return self
+        else:
+            return self.copy(index=self._length, source=source, start=start, end=end)
+
+    #
+    #   Erasing
+    #
+
+    def remove(self, index: int) -> int:
+        """
+        Remove element at this position and return its value
+
+        :param index: position
+        :return: element value removed
+        :raise IndexError on out of bounds
+        """
+        # check position
+        index = adjust_e(position=index, length=self._length)
+        if index >= self._length:
+            raise IndexError('error index: %d, length: %d' % (index, self._length))
+        erased = self._buffer[index]
+        start = index + 1
+        length = self._length - start
+        array_copy(src=self._buffer, src_pos=start, dest=self._buffer, dest_pos=index, length=length)
+        return erased
+
+    def shift(self) -> int:
+        """
+        Remove element from the head position and return its value
+
+        :return: element value at the first place
+        :raise IndexError on data empty
+        """
+        if self.is_empty:
+            raise IndexError('data empty')
+        erased = self._buffer[self._offset]
+        self._offset += 1
+        self._length -= 1
+        return erased
+
+    def pop(self) -> int:
+        """
+        Remove element from the tail position and return its value
+
+        :return: element value at the last place
+        :raise IndexError on data empty
+        """
+        if self.is_empty:
+            raise IndexError('data empty')
+        self._length -= 1
+        return self._buffer[self._length]

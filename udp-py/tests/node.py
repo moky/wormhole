@@ -41,21 +41,21 @@ class Node(mtp.PeerHandler):
     #
     #   Send
     #
-    def send_command(self, cmd: bytes, destination: tuple) -> mtp.Departure:
+    def send_command(self, cmd: mtp.Data, destination: tuple) -> mtp.Departure:
         pack = mtp.Package.new(data_type=mtp.Command, body=cmd)
         return self.peer.send_command(pack=pack, destination=destination)
 
-    def send_message(self, msg: bytes, destination: tuple) -> mtp.Departure:
+    def send_message(self, msg: mtp.Data, destination: tuple) -> mtp.Departure:
         pack = mtp.Package.new(data_type=mtp.Message, body=msg)
         return self.peer.send_message(pack=pack, destination=destination)
 
     #
     #   PeerHandler
     #
-    def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
-        self.info('received cmd (%d bytes) from %s to %s: %s' % (len(cmd), source, destination, cmd))
+    def received_command(self, cmd: mtp.Data, source: tuple, destination: tuple) -> bool:
+        self.info('received cmd (%d bytes) from %s to %s: %s' % (cmd.length, source, destination, cmd.get_bytes()))
         return True
 
-    def received_message(self, msg: bytes, source: tuple, destination: tuple) -> bool:
-        self.info('received msg (%d bytes) from %s to %s: %s' % (len(msg), source, destination, msg))
+    def received_message(self, msg: mtp.Data, source: tuple, destination: tuple) -> bool:
+        self.info('received msg (%d bytes) from %s to %s: %s' % (msg.length, source, destination, msg.get_bytes()))
         return True

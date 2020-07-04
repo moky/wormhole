@@ -40,6 +40,7 @@
 import time
 from typing import Union
 
+from ..tlv import Data
 from .protocol import Package, MessageFragment
 
 
@@ -70,7 +71,7 @@ class Arrival:
         Data package received (waiting process)
     """
 
-    def __init__(self, payload: bytes, source: tuple, destination: tuple):
+    def __init__(self, payload: Data, source: tuple, destination: tuple):
         super().__init__()
         self.payload = payload
         self.source = source

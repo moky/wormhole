@@ -41,8 +41,7 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from ..tlv.data import uint32_to_bytes
-
+from ..tlv import Data, MutableData, UInt32Data
 from .protocol import Package, TransactionID
 from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment
@@ -81,7 +80,7 @@ class PeerDelegate(ABC):
     #
 
     @abstractmethod
-    def send_data(self, data: bytes, destination: tuple, source: tuple) -> int:
+    def send_data(self, data: Data, destination: tuple, source: tuple) -> int:
         """
         Send data to destination address.
 
@@ -148,7 +147,7 @@ class PeerHandler(ABC):
     #
 
     @abstractmethod
-    def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
+    def received_command(self, cmd: Data, source: tuple, destination: tuple) -> bool:
         """
         Received command data from source address.
 
@@ -160,7 +159,7 @@ class PeerHandler(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def received_message(self, msg: bytes, source: tuple, destination: tuple) -> bool:
+    def received_message(self, msg: Data, source: tuple, destination: tuple) -> bool:
         """
         Received message data from source address.
 
@@ -336,13 +335,19 @@ class Peer(threading.Thread):
         data_type = head.data_type
         if data_type == Command:
             data_type = CommandRespond
-            body = b'OK'
+            body = Data(data=b'OK')
         elif data_type == Message:
             data_type = MessageRespond
-            body = b'OK'
+            body = Data(data=b'OK')
         elif data_type == MessageFragment:
             data_type = MessageRespond
-            body = uint32_to_bytes(head.pages) + uint32_to_bytes(head.offset) + b'OK'
+            pages = UInt32Data(value=head.pages)
+            offset = UInt32Data(value=head.offset)
+            body = MutableData(capacity=10)
+            body.append(source=pages)
+            body.append(source=offset)
+            body.append(value='O')
+            body.append(value='K')
         else:
             raise TypeError('data type error: %s' % data_type)
         if head.body_length < 0:
@@ -350,10 +355,10 @@ class Peer(threading.Thread):
             response = Package.new(data_type=data_type, sn=head.trans_id, body_length=-1, body=body)
         else:
             # TCP
-            response = Package.new(data_type=data_type, sn=head.trans_id, body_length=len(body), body=body)
+            response = Package.new(data_type=data_type, sn=head.trans_id, body_length=body.length, body=body)
         # send response directly, don't add this task to waiting list
-        res = self.delegate.send_data(data=response.data, destination=remote, source=local)
-        assert res == len(response.data), 'failed to respond %s: %s' % (data_type, remote)
+        res = self.delegate.send_data(data=response, destination=remote, source=local)
+        assert res == response.length, 'failed to respond %s: %s' % (remote, data_type)
 
     #
     #   Sending
@@ -365,8 +370,8 @@ class Peer(threading.Thread):
             packages = task.packages
             for item in packages:
                 assert isinstance(item, Package), 'package error: %s' % item
-                res = delegate.send_data(data=item.data, destination=task.destination, source=task.source)
-                assert res == len(item.data), 'failed to resend packs (%d) to: %s' % (len(packages), task.destination)
+                res = delegate.send_data(data=item, destination=task.destination, source=task.source)
+                assert res == item.length, 'failed to resend packs (%d) to: %s' % (len(packages), task.destination)
         else:
             # mission failed
             data_type = task.data_type
@@ -385,7 +390,7 @@ class Peer(threading.Thread):
         return task
 
     def send_message(self, pack: Package, destination: tuple, source: tuple) -> Departure:
-        if len(pack.body) <= Package.OPTIMAL_BODY_LENGTH or pack.head.data_type == MessageFragment:
+        if pack.body.length <= Package.OPTIMAL_BODY_LENGTH or pack.head.data_type == MessageFragment:
             packages = [pack]
         else:
             # split packages for large message

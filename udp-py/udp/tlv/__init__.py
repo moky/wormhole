@@ -29,6 +29,8 @@
 # ==============================================================================
 
 from .data import *
+from .mutable import *
+from .integer import *
 from .item import *
 
 name = "TLV"
@@ -40,8 +42,8 @@ __all__ = [
     #
     #   Data
     #
-    'Data',
-    'IntData',
+    'Data', 'MutableData',
+    'IntegerData',
     'UInt8Data', 'UInt16Data', 'UInt32Data',
     'VarIntData',
 

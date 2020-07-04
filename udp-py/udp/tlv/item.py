@@ -28,10 +28,11 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional
+from typing import Optional, Union
 
-from .data import Data, IntData
-from .data import bytes_to_int
+from .utils import int_to_bytes
+from .data import Data
+from .integer import IntegerData
 
 
 """
@@ -48,26 +49,35 @@ from .data import bytes_to_int
 class Tag(Data):
 
     @classmethod
-    def parse(cls, data: bytes):
-        data_len = len(data)
-        if data_len < 2:
+    def parse(cls, data: Data):
+        if data.length < 2:
             return None
-        elif data_len > 2:
-            data = data[:2]
+        elif data.length > 2:
+            data = data.slice(end=2)
         return cls(data=data)
 
 
-class Length(IntData):
+class Length(IntegerData):
+
+    def __init__(self, data: Union[IntegerData, Data, bytes]=None, value: int=None):
+        if data is None:
+            assert isinstance(value, int), 'value error: %s' % value
+            data = int_to_bytes(value=value, length=2)
+            super().__init__(data=data, value=value)
+        elif isinstance(data, IntegerData):
+            super().__init__(data=data)
+        else:
+            # bytes, bytearray or Data?
+            super().__init__(data=data, value=value)
 
     # noinspection PyUnusedLocal
     @classmethod
-    def parse(cls, data: bytes, tag: Tag):
-        data_len = len(data)
-        if data_len < 2:
+    def parse(cls, data: Data, tag: Tag):
+        if data.length < 2:
             return None
-        elif data_len > 2:
-            data = data[:2]
-        value = bytes_to_int(data=data)
+        elif data.length > 2:
+            data = data.slice(end=2)
+        value = data.get_uint16_value()
         return cls(data=data, value=value)
 
 
@@ -75,25 +85,53 @@ class Value(Data):
 
     # noinspection PyUnusedLocal
     @classmethod
-    def parse(cls, data: bytes, tag: Tag, length: Length=None):
-        if length is None or length.value == 0:
-            return None
-        else:
-            length = length.value
-        data_len = len(data)
-        if data_len < length:
-            return None
-        elif data_len > length:
-            data = data[:length]
+    def parse(cls, data: Data, tag: Tag, length: Length=None):
+        # if length is not None:
+        #     if length.value == 0:
+        #         return None
+        #     elif data.length < length.value:
+        #         raise IndexError('TLV value error: %d' % data.length)
+        #     elif data.length > length.value:
+        #         data = data.slice(end=length.value)
         return cls(data=data)
 
 
 class TagLengthValue(Data):
 
-    def __init__(self, data: bytes, tag: Tag, value: Optional[Value]):
+    def __init__(self, data=None, tag: Tag=None, length: Length=None, value: Optional[Value]=None):
+        """
+        Initialize with another TLV object
+        Initialize with Data and Tag + Value
+        Initialize with Tag + Length + Value
+
+        :param data:   bytes, bytearray, Data, another TLV object or None
+        :param tag:
+        :param length:
+        :param value:
+        """
+        if data is None:
+            # building data with Tag + Length + Value
+            assert tag is not None, 'TLV tag should not be empty'
+            data = tag
+            if length is not None:
+                data = data.concat(length)
+            if value is not None:
+                data = data.concat(value)
+        elif isinstance(data, TagLengthValue):
+            # get Tag + Value from another TLV object
+            tag = data.tag
+            value = data.value
         super().__init__(data=data)
         self.__tag = tag
         self.__value = value
+
+    def __str__(self) -> str:
+        clazz = self.__class__.__name__
+        return '/* %s */ %s: "%s"' % (clazz, self.tag, self.value)
+
+    def __repr__(self):
+        clazz = self.__class__.__name__
+        return '/* %s */ %s: "%s"' % (clazz, self.tag, self.value)
 
     @property
     def tag(self) -> Tag:
@@ -104,9 +142,9 @@ class TagLengthValue(Data):
         return self.__value
 
     @classmethod
-    def parse_all(cls, data: bytes) -> list:
+    def parse_all(cls, data: Data) -> list:
         array = []
-        remaining = len(data)
+        remaining = data.length
         while remaining > 0:
             item = cls.parse(data=data)
             if item is None:
@@ -114,52 +152,56 @@ class TagLengthValue(Data):
                 break
             array.append(item)
             # next item
-            pos = len(item.data)
-            data = data[pos:]
+            pos = item.length
+            data = data.slice(start=pos)
             remaining -= pos
         return array
 
     @classmethod
-    def parse(cls, data: bytes):
+    def parse(cls, data: Data):  # -> TagLengthValue:
         # get tag
         tag = cls.parse_tag(data=data)
         if tag is None:
             return None
-        value = None
-        data_len = len(data)
         offset = tag.length
-        if 0 < offset < data_len:
-            # get length
-            length = cls.parse_length(data=data[offset:], tag=tag)
-            # get value
-            if length is None:
-                value = cls.parse_value(data=data[offset:], tag=tag, length=None)
-            else:
-                offset += length.length
-                end = offset + length.value
-                if offset < end <= data_len:
-                    value = cls.parse_value(data=data[offset:end], tag=tag, length=length)
-            if value is not None:
-                offset += value.length
+        assert offset <= data.length, 'data length error: %d, offset: %d' % (data.length, offset)
+        # get length
+        length = cls.parse_length(data=data.slice(start=offset), tag=tag)
+        if length is None:
+            # get value with unlimited length
+            value = cls.parse_value(data=data.slice(start=offset), tag=tag)
+        else:
+            # get value with limited length
+            offset += length.length
+            end = offset + length.value
+            if end < offset or end > data.length:
+                raise IndexError('data length error: %d, %d' % (length.value, data.length))
+            value = cls.parse_value(data=data.slice(start=offset, end=end), tag=tag, length=length)
+        if value is not None:
+            offset += value.length
         # check length
-        if offset <= 0 or offset > data_len:
-            raise AssertionError('TLV length error: %d, %d' % (offset, data_len))
-        elif offset < data_len:
-            data = data[:offset]
+        if offset > data.length:
+            raise AssertionError('TLV length error: %d, %d' % (offset, data.length))
+        elif offset < data.length:
+            data = data.slice(end=offset)
         return cls._create(data=data, tag=tag, value=value)
 
     @classmethod
-    def _create(cls, data: bytes, tag: Tag, value: Value=None):
-        return cls(data=data, tag=tag, value=value)
-
-    @classmethod
-    def parse_tag(cls, data: bytes) -> Optional[Tag]:
+    def parse_tag(cls, data: Data) -> Optional[Tag]:
+        # TODO: override for user-defined Tag
         return Tag.parse(data=data)
 
     @classmethod
-    def parse_length(cls, data: bytes, tag: Tag) -> Optional[Length]:
+    def parse_length(cls, data: Data, tag: Tag) -> Optional[Length]:
+        # TODO: override for user-defined Length
         return Length.parse(data=data, tag=tag)
 
     @classmethod
-    def parse_value(cls, data: bytes, tag: Tag, length: Length=None) -> Optional[Value]:
+    def parse_value(cls, data: Data, tag: Tag, length: Length=None) -> Optional[Value]:
+        # TODO: override for user-defined Value
         return Value.parse(data=data, tag=tag, length=length)
+
+    @classmethod
+    def _create(cls, data: Data, tag: Tag, value: Value=None):
+        # TODO: override for user-defined TLV
+        return cls(data=data, tag=tag, value=value)

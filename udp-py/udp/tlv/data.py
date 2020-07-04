@@ -28,6 +28,8 @@
 # SOFTWARE.
 # ==============================================================================
 
+from typing import Union
+
 from .utils import bytes_to_int
 from .utils import random_bytes
 from .utils import adjust, adjust_e
@@ -38,11 +40,13 @@ class Data:
         Data View
     """
 
+    ZERO = None  # Data(data=b'')
+
     def __init__(self, data, offset: int=0, length: int=None):
         """
         Create data view
 
-        :param data:   bytes or another data view
+        :param data:   bytes, bytearray or another data view
         :param offset: data view offset
         :param length: data view length
         """
@@ -55,7 +59,7 @@ class Data:
             self._offset = data._offset
             self._length = data._length
         else:
-            # create data view with bytes
+            # create data view with bytes (or bytearray)
             self._buffer = data
             self._buf_length = len(data)
             self._offset = offset
@@ -64,7 +68,7 @@ class Data:
             else:
                 self._length = length
 
-    def equals(self, buffer: bytes, offset: int=0, length: int=None) -> bool:
+    def equals(self, buffer: Union[bytes, bytearray], offset: int=0, length: int=None) -> bool:
         if length is None:
             length = len(buffer)
         if self._buffer is buffer:
@@ -87,7 +91,7 @@ class Data:
             return True
         if isinstance(other, Data):
             return self.equals(buffer=other._buffer, offset=other._offset, length=other._length)
-        if isinstance(other, bytes):
+        if isinstance(other, bytes) or isinstance(other, bytearray):
             return self.equals(buffer=other)
 
     def __hash__(self) -> int:
@@ -102,6 +106,10 @@ class Data:
     @property
     def length(self) -> int:
         return self._length
+
+    @property
+    def is_empty(self) -> bool:
+        return self._length <= 0
 
     #
     #   To byte/bytes
@@ -158,13 +166,13 @@ class Data:
         end += self._offset
         return bytes_to_int(data=self._buffer[start:end])
 
-    def get_uint8_value(self, start: int) -> int:
+    def get_uint8_value(self, start: int=0) -> int:
         return self.__get_integer_value(start=start, size=1)
 
-    def get_uint16_value(self, start: int) -> int:
+    def get_uint16_value(self, start: int=0) -> int:
         return self.__get_integer_value(start=start, size=2)
 
-    def get_uint32_value(self, start: int) -> int:
+    def get_uint32_value(self, start: int=0) -> int:
         return self.__get_integer_value(start=start, size=4)
 
     #
@@ -187,48 +195,54 @@ class Data:
 
     def concat(self, other, start: int=0, end: int=None):  # -> Data:
         if isinstance(other, Data):
-            # concat another data view
-            if self._length == 0:
-                return other
-            return self.concat(other=other._buffer, start=other._offset, end=other._offset + other._length)
-        else:
-            other_buf_length = len(other)
             # adjust positions
-            start = adjust(position=start, length=other_buf_length)
-            # concat bytes
+            start = adjust(position=start, length=other._length)
             if end is None:
-                end = other_buf_length
+                end = other._length
             else:
-                end = adjust(position=end, length=other_buf_length)
+                end = adjust(position=end, length=other._length)
             length = end - start
             if length < 0:
-                raise IndexError('error index: %d, %d' % (start, end))
+                raise IndexError('error index: %d, %d, length: %d' % (start, end, other._length))
             elif length == 0:
                 # other view empty, return this view
                 return self
             elif self._length == 0:
                 # this view empty, return other view
-                return Data(data=other, offset=start, length=length)
-            elif self._buffer is other:
+                return other.slice(start=start, end=end)
+            elif self._buffer is other._buffer:
                 # same buffer
-                if self._offset + self._length == start:
+                if self._offset + self._length == other._offset + start:
                     # join the neighbour views
                     length += self._length
-                    return Data(data=other, offset=self._offset, length=length)
+                    return Data(data=self._buffer, offset=self._offset, length=length)
             # right part
-            if start == 0 and end == other_buf_length:
-                data2 = other
+            if isinstance(other._buffer, bytes):
+                buffer = other._buffer
             else:
-                data2 = other[start:end]
+                buffer = bytes(other._buffer)
+            start += other._offset
+            end += other._offset
+            if start == 0 and end == other._buf_length:
+                buf2 = buffer
+            else:
+                buf2 = buffer[start:end]
             # left part
+            if isinstance(self._buffer, bytes):
+                buffer = self._buffer
+            else:
+                buffer = bytes(self._buffer)
             if self._offset == 0 and self._length == self._buf_length:
-                data1 = self._buffer
+                buf1 = buffer
             else:
                 start = self._offset
                 end = start + self._length
-                data1 = self._buffer[start:end]
-            joined = data1 + data2
+                buf1 = buffer[start:end]
+            joined = buf1 + buf2
             return Data(data=joined)
+        else:
+            # bytes, bytearray
+            return self.concat(other=Data(data=other), start=start, end=end)
 
     @classmethod
     def random(cls, length: int):  # -> Data:

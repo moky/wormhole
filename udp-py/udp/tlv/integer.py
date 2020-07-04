@@ -40,12 +40,12 @@ class IntegerData(Data):
         Integer data (network ordered)
     """
 
-    def __init__(self, data: Union[Data, bytes], value: int=None):
+    def __init__(self, data, value: int=None):
         super().__init__(data=data)
         if isinstance(data, IntegerData):
             self.__value = data.__value
         else:
-            # Data or bytes, bytearray?
+            # bytes, bytearray or Data?
             assert isinstance(value, int), 'value error: %s' % value
             self.__value = value
 
@@ -170,7 +170,7 @@ class VarIntData(IntegerData):
                 value, length = bytes_to_varint(data=data._buffer, start=start, end=end)
                 if length < data._length:
                     data = data.slice(end=length)
-            elif isinstance(data, bytes):
+            elif isinstance(data, bytes) or isinstance(data, bytearray):
                 assert len(data) > 0, 'data empty: %s' % data
                 value, length = bytes_to_varint(data=data, start=0, end=4)
                 if length < len(data):

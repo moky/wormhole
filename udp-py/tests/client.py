@@ -10,6 +10,8 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
+from udp import mtp
+
 from tests.node import Node
 from tests.config import SERVER_HOST, SERVER_PORT, CLIENT_HOST, CLIENT_PORT
 
@@ -22,14 +24,16 @@ class Client(Node):
 
     def send_cmd(self, cmd: str):
         data = cmd.encode('utf-8')
+        data = mtp.Data(data=data)
         address = self.server_address
-        print('sending cmd (%d bytes): "%s" to %s' % (len(data), cmd, address))
+        print('sending cmd (%d bytes): "%s" to %s' % (data.length, cmd, address))
         self.send_command(cmd=data, destination=address)
 
     def send_msg(self, msg: str):
         data = msg.encode('utf-8')
+        data = mtp.Data(data=data)
         address = self.server_address
-        print('sending msg (%d bytes): "%s" to %s' % (len(data), msg, address))
+        print('sending msg (%d bytes): "%s" to %s' % (data.length, msg, address))
         self.send_message(msg=data, destination=address)
 
 
