@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,7 @@
     [RFC] https://www.ietf.org/rfc/rfc5766.txt
 """
 
-from ..attributes import AttributeType, s_attribute_parsers
+from ..attributes import AttributeType, AttributeValue
 from ..attributes import XorMappedAddressValue
 
 
@@ -64,20 +64,21 @@ class XorRelayedAddressValue(XorMappedAddressValue):
 
 
 # New STUN Attributes
-ChannelNumber = AttributeType(0x000C, name='CHANNEL-NUMBER')
-Lifetime = AttributeType(0x000D, name='LIFETIME')
-# BandWidth = AttributeType(0x0010, name='BANDWIDTH')  # Reserved
-XorPeerAddress = AttributeType(0x0012, name='XOR-PEER-ADDRESS')
-Data = AttributeType(0x0013, name='DATA')
-XorRelayedAddress = AttributeType(0x0016, name='XOR-RELAYED-ADDRESS')
-EvenPort = AttributeType(0x0018, name='EVEN-PORT')
-RequestedTransport = AttributeType(0x0019, name='REQUESTED-TRANSPORT')
-DontFragment = AttributeType(0x001A, name='DONT-FRAGMENT')
-# TimerVal = AttributeType(0x0021, name='TIMER-VAL')   # Reserved
-ReservationToken = AttributeType(0x0022, name='RESERVATION-TOKEN')
+ChannelNumber = AttributeType(value=0x000C, name='CHANNEL-NUMBER')
+Lifetime = AttributeType(value=0x000D, name='LIFETIME')
+# BandWidth = AttributeType(value=0x0010, name='BANDWIDTH')  # Reserved
+XorPeerAddress = AttributeType(value=0x0012, name='XOR-PEER-ADDRESS')
+Data = AttributeType(value=0x0013, name='DATA')
+XorRelayedAddress = AttributeType(value=0x0016, name='XOR-RELAYED-ADDRESS')
+EvenPort = AttributeType(value=0x0018, name='EVEN-PORT')
+RequestedTransport = AttributeType(value=0x0019, name='REQUESTED-TRANSPORT')
+DontFragment = AttributeType(value=0x001A, name='DONT-FRAGMENT')
+# TimerVal = AttributeType(value=0x0021, name='TIMER-VAL')   # Reserved
+ReservationToken = AttributeType(value=0x0022, name='RESERVATION-TOKEN')
 
 #
 #  Register attribute parsers
 #
-s_attribute_parsers[XorPeerAddress] = XorPeerAddressValue
-s_attribute_parsers[XorRelayedAddress] = XorRelayedAddressValue
+
+AttributeValue.register(tag=XorPeerAddress, value_class=XorPeerAddressValue)
+AttributeValue.register(tag=XorRelayedAddress, value_class=XorRelayedAddressValue)

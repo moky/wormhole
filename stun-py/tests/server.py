@@ -29,7 +29,8 @@ class Server(stun.Server):
                     time.sleep(0.1)
                     continue
                 # noinspection PyTypeChecker
-                self.handle(data=cargo.data, remote_ip=cargo.source[0], remote_port=cargo.source[1])
+                data = stun.Data(data=cargo.data)
+                self.handle(data=data, remote_ip=cargo.source[0], remote_port=cargo.source[1])
             except Exception as error:
                 print('error: %s' % error)
 

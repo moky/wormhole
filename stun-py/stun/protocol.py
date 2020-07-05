@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -34,9 +34,9 @@
 
     [RFC] https://www.ietf.org/rfc/rfc5389.txt
 """
+from typing import Union
 
-from udp.tlv.data import random_bytes, bytes_to_int, uint16_to_bytes, uint32_to_bytes
-from udp.tlv import Data, UInt16Data
+from udp.tlv import Data, MutableData, UInt16Data, UInt32Data
 
 
 """
@@ -55,44 +55,35 @@ from udp.tlv import Data, UInt16Data
 class MessageType(UInt16Data):
 
     def __init__(self, value: int, data: bytes=None, name: str=None):
-        if data is None:
-            data = uint16_to_bytes(value)
-        super().__init__(value=value, data=data)
+        super().__init__(data=data, value=value)
         self.__name = name
-        s_message_types[value] = self
+        self.__message_types[value] = self
 
     def __str__(self):
-        # clazz = self.__class__.__name__
-        if self.__name is None:
-            return '"MessageType-0x%04X"' % self.value
-        else:
-            return '"%s"' % self.__name
+        return self.__name
 
     def __repr__(self):
-        # clazz = self.__class__.__name__
-        if self.__name is None:
-            return '"MessageType-0x%04X"' % self.value
-        else:
-            return '"%s"' % self.__name
+        return self.__name
+
+    __message_types = {}  # int -> MessageType
 
     @classmethod
-    def parse(cls, data: bytes):
-        data_len = len(data)
-        if data_len < 2 or (data[0] & 0xC0) != 0:
+    def parse(cls, data: Data):
+        if data.length < 2 or (data.get_byte(index=0) & 0xC0) != 0:
             # format: 00xx xxxx, xxxx xxxx
             return None
-        elif data_len > 2:
-            data = data[:2]
-        value = bytes_to_int(data=data)
-        t = s_message_types.get(value)
+        elif data.length > 2:
+            data = data.slice(end=2)
+        value = data.get_uint16_value()
+        t = cls.__message_types.get(value)
         if t is None:
-            return cls(value=value, data=data)
+            name = 'MessageType-0x%04X' % value
+            return cls(value=value, data=data, name=name)
         else:
             return t
 
 
 # types for a STUN message
-s_message_types = {}
 BindRequest = MessageType(0x0001, name='Binding Request')
 BindResponse = MessageType(0x0101, name='Binding Response')
 BindErrorResponse = MessageType(0x0111, name='Binding Error Response')
@@ -103,42 +94,35 @@ SharedSecretErrorResponse = MessageType(0x0112, name='Shared Secret Error Respon
 
 class MessageLength(UInt16Data):
 
-    def __init__(self, value: int, data: bytes=None):
-        if data is None:
-            data = uint16_to_bytes(value)
-        super().__init__(data=data, value=value)
-
     @classmethod
-    def parse(cls, data: bytes):
-        data_len = len(data)
-        if data_len < 2 or (data[1] & 0x03) != 0:
+    def parse(cls, data: Data):
+        if data.length < 2 or (data.get_byte(index=1) & 0x03) != 0:
             # format: xxxx xxxx, xxxx xx00
             return None
-        elif data_len > 2:
-            data = data[:2]
-        return super().from_bytes(data=data)
+        elif data.length > 2:
+            data = data.slice(end=2)
+        return cls(data=data)
 
 
 class TransactionID(Data):
 
     @classmethod
-    def parse(cls, data: bytes):
-        data_len = len(data)
-        if data_len < 16:
+    def parse(cls, data: Data):
+        if data.length < 16:
             return None
-        elif data_len > 16:
-            data = data[:16]
-        assert data[:4] == MagicCookie, 'transaction ID not starts with magic cookie'
+        elif data.length > 16:
+            data = data.slice(end=16)
+        assert data.get_bytes(end=4) == MagicCookie, 'transaction ID not starts with magic cookie'
         return cls(data=data)
 
     @classmethod
-    def new(cls):
-        data = MagicCookie + random_bytes(12)
+    def generate(cls):  # -> TransactionID:
+        data = MagicCookie.concat(Data.random(length=12))
         return cls(data=data)
 
 
 # Magic Cookie
-MagicCookie = uint32_to_bytes(0x2112A442)
+MagicCookie = UInt32Data(value=0x2112A442)
 
 
 """
@@ -181,7 +165,23 @@ MagicCookie = uint32_to_bytes(0x2112A442)
 
 class Header(Data):
 
-    def __init__(self, data: bytes, msg_type: MessageType, msg_length: MessageLength, trans_id: TransactionID):
+    def __init__(self, data=None,
+                 msg_type: MessageType=None, msg_length: MessageLength=None, trans_id: TransactionID=None):
+        if data is None:
+            if trans_id is None:
+                trans_id = TransactionID.generate()
+            length = msg_type.length + msg_length.length + trans_id.length
+            data = MutableData(capacity=length)
+            data.append(msg_type)
+            data.append(msg_length)
+            data.append(trans_id)
+        elif isinstance(data, Header):
+            if msg_type is None:
+                msg_type = data.type
+            if msg_length is None:
+                msg_length = data.msg_length
+            if trans_id is None:
+                trans_id = data.trans_id
         super().__init__(data=data)
         self.__type = msg_type
         self.__msg_length = msg_length
@@ -200,43 +200,47 @@ class Header(Data):
         return self.__trans_id
 
     @classmethod
-    def parse(cls, data: bytes):
+    def parse(cls, data: Data):
         # get message type
         _type = MessageType.parse(data=data)
         if _type is None:
             return None
         pos = _type.length
         # get message length
-        _len = MessageLength.parse(data=data[pos:])
+        _len = MessageLength.parse(data=data.slice(start=pos))
         if _len is None:
             return None
         pos += _len.length
         # get transaction ID
-        _id = TransactionID.parse(data=data[pos:])
+        _id = TransactionID.parse(data=data.slice(start=pos))
         if _id is None:
             return None
         pos += _id.length
         assert pos == 20, 'header length error: %d' % pos
-        if len(data) > pos:
-            data = data[:pos]
+        if data.length > pos:
+            data = data.slice(end=pos)
         # create
         return cls(data=data, msg_type=_type, msg_length=_len, trans_id=_id)
-
-    @classmethod
-    def new(cls, msg_type: MessageType, msg_len: MessageLength, trans_id: TransactionID=None):
-        if trans_id is None:
-            # generate Transaction ID
-            trans_id = TransactionID.new()
-        # build data
-        data = msg_type.data + msg_len.data + trans_id.data
-        return Header(data=data, msg_type=msg_type, msg_length=msg_len, trans_id=trans_id)
 
 
 class Package(Data):
 
-    def __init__(self, data: bytes, head: Header, body: bytes):
+    def __init__(self, data=None, head: Header=None, body: Data=None):
+        if data is None:
+            assert head is not None, 'package header should not empty'
+            if body is None:
+                body = Data.ZERO
+                data = head
+            else:
+                data = head.concat(body)
+        elif isinstance(data, Package):
+            if head is None:
+                head = data.head
+            if body is None:
+                body = data.body
         super().__init__(data=data)
-        assert head.msg_length.value == len(body), 'STUN msg length error: %d, %d' % (head.msg_length.value, len(body))
+        msg_length = head.msg_length.value
+        assert msg_length == body.length, 'STUN msg length error: %d, %d' % (msg_length, body.length)
         self.__head = head
         self.__body = body
 
@@ -249,7 +253,7 @@ class Package(Data):
         return self.__body
 
     @classmethod
-    def parse(cls, data: bytes):
+    def parse(cls, data: Data):
         # get STUN head
         head = Header.parse(data=data)
         if head is None:
@@ -257,21 +261,24 @@ class Package(Data):
             return None
         # check message length
         head_len = head.length
-        body_len = head.msg_length.value
-        pack_len = head_len + body_len
-        data_len = len(data)
+        pack_len = head_len + head.msg_length.value
+        data_len = data.length
         if data_len < pack_len:
             # raise ValueError('STUN package length error: %d, %d' % (data_len, pack_len))
             return None
         elif data_len > pack_len:
-            data = data[:pack_len]
+            data = data.slice(end=pack_len)
         # get attributes body
-        body = data[head_len:]
-        return Package(data=data, head=head, body=body)
+        body = data.slice(start=head_len)
+        return cls(data=data, head=head, body=body)
 
     @classmethod
-    def new(cls, msg_type: MessageType, trans_id: TransactionID=None, body: bytes=b''):
-        msg_len = MessageLength(len(body))
-        head = Header.new(msg_type=msg_type, msg_len=msg_len, trans_id=trans_id)
-        data = head.data + body
-        return Package(data=data, head=head, body=body)
+    def new(cls, msg_type: MessageType, trans_id: TransactionID=None, body: Union[Data, bytes, bytearray]=None):
+        if body is None:
+            body = Data.ZERO
+        elif not isinstance(body, Data):
+            # bytes or bytearray
+            body = Data(data=body)
+        msg_len = MessageLength(value=body.length)
+        head = Header(msg_type=msg_type, msg_length=msg_len, trans_id=trans_id)
+        return cls(head=head, body=body)

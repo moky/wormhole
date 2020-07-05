@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,8 +38,7 @@
 
 from typing import Optional
 
-from udp.tlv.data import bytes_to_int, uint8_to_bytes, uint16_to_bytes, uint32_to_bytes
-from udp.tlv import UInt16Data, UInt32Data
+from udp.tlv import Data, MutableData, UInt16Data, UInt32Data
 from udp.tlv import Tag, Length, Value, TagLengthValue
 
 """
@@ -64,104 +63,51 @@ from udp.tlv import Tag, Length, Value, TagLengthValue
 """
 
 
-class AttributeValue(Value):
-
-    @classmethod
-    def parse(cls, data: bytes, tag: Tag, length: Length=None):
-        if cls is AttributeValue:
-            # get attribute parser with type
-            assert isinstance(tag, AttributeType), 'attribute type error: %s' % tag
-            parser = s_attribute_parsers.get(tag)
-            if parser is not None:
-                # create instance by subclass
-                return parser.parse(data=data, tag=tag, length=length)
-        # check length
-        if length is None or length.value == 0:
-            return None
-        else:
-            length = length.value
-            data_len = len(data)
-            if data_len < length:
-                return None
-            elif data_len > length:
-                data = data[:length]
-        return cls(data=data)
-
-
-class AttributeLength(UInt16Data, Length):
-
-    def __init__(self, value: int, data: bytes=None):
-        if data is None:
-            data = uint16_to_bytes(value)
-        super().__init__(data=data, value=value)
-
-    @classmethod
-    def parse(cls, data: bytes, tag: Tag):
-        length = super().parse(data=data, tag=tag)
-        if length is not None:
-            assert length.value & 0x0003 == 0, 'attribute length error: %d' % length.value
-            return length
-
-
 class AttributeType(UInt16Data, Tag):
 
-    def __init__(self, value: int, data: bytes=None, name: str=None):
-        if data is None:
-            data = uint16_to_bytes(value)
-        super().__init__(value=value, data=data)
+    def __init__(self, value: int, data: Data=None, name: str=None):
+        super().__init__(data=data, value=value)
         self.__name = name
-        s_attribute_types[value] = self
+        self.__attribute_types[value] = self
 
     def __str__(self):
-        # clazz = self.__class__.__name__
-        if self.__name is None:
-            return '"AttributeType-0x%04X"' % self.value
-        else:
-            return '"%s"' % self.__name
+        return self.__name
 
     def __repr__(self):
-        # clazz = self.__class__.__name__
-        if self.__name is None:
-            return '"AttributeType-0x%04X"' % self.value
-        else:
-            return '"%s"' % self.__name
+        return self.__name
 
-    def __hash__(self) -> int:
-        return hash(self.value)
+    # Attribute Types in STUN message
+    __attribute_types = {}  # int -> AttributeValue
 
     @classmethod
-    def parse(cls, data: bytes):
-        data_len = len(data)
-        if data_len < 2:
+    def parse(cls, data: Data):
+        if data.length < 2:
             return None
-        elif data_len > 2:
-            data = data[:2]
-        value = bytes_to_int(data=data)
-        t = s_attribute_types.get(value)
+        elif data.length > 2:
+            data = data.slice(end=2)
+        value = data.get_uint16_value()
+        t = cls.__attribute_types.get(value)
         if t is None:
             return cls(value=value, data=data)
         else:
             return t
 
 
-# Attribute Types in STUN message
-s_attribute_types = {}
-
 # Comprehension-required range (0x0000-0x7FFF)
 # Comprehension-optional range (0x8000-0xFFFF)
 
 # [RFC-3489]
-MappedAddress = AttributeType(0x0001, name='MAPPED-ADDRESS')
-ResponseAddress = AttributeType(0x0002, name='RESPONSE-ADDRESS')
-ChangeRequest = AttributeType(0x0003, name='CHANGE-REQUEST')
-SourceAddress = AttributeType(0x0004, name='SOURCE-ADDRESS')
-ChangedAddress = AttributeType(0x0005, name='CHANGED-ADDRESS')
-Username = AttributeType(0x0006, name='USERNAME')
-Password = AttributeType(0x0007, name='PASSWORD')
-MessageIntegrity = AttributeType(0x0008, name='MESSAGE-INTEGRITY')
-ErrorCode = AttributeType(0x0009, name='ERROR-CODE')
-UnknownAttributes = AttributeType(0x000A, name='UNKNOWN-ATTRIBUTES')
-ReflectedFrom = AttributeType(0x000B, name='REFLECTED-FROM')
+MappedAddress = AttributeType(value=0x0001, name='MAPPED-ADDRESS')
+ResponseAddress = AttributeType(value=0x0002, name='RESPONSE-ADDRESS')
+ChangeRequest = AttributeType(value=0x0003, name='CHANGE-REQUEST')
+SourceAddress = AttributeType(value=0x0004, name='SOURCE-ADDRESS')
+ChangedAddress = AttributeType(value=0x0005, name='CHANGED-ADDRESS')
+Username = AttributeType(value=0x0006, name='USERNAME')
+Password = AttributeType(value=0x0007, name='PASSWORD')
+MessageIntegrity = AttributeType(value=0x0008, name='MESSAGE-INTEGRITY')
+ErrorCode = AttributeType(value=0x0009, name='ERROR-CODE')
+UnknownAttributes = AttributeType(value=0x000A, name='UNKNOWN-ATTRIBUTES')
+ReflectedFrom = AttributeType(value=0x000B, name='REFLECTED-FROM')
 
 # [RFC-5389]
 Realm = AttributeType(0x0014, name='REALM')
@@ -175,31 +121,65 @@ AlternateServer = AttributeType(0x8023, name='ALTERNATE-SERVER')
 Fingerprint = AttributeType(0x8028, name='FINGERPRINT')
 
 
-class Attribute(TagLengthValue):
-
-    def __init__(self, tag: AttributeType, value: AttributeValue, data: bytes=None):
-        if data is None:
-            data = tag.data + uint16_to_bytes(len(value.data)) + value.data
-        super().__init__(data=data, tag=tag, value=value)
-
-    def __str__(self):
-        clazz = self.__class__.__name__
-        return '/* %s */ %s: %s' % (clazz, self.tag, self.value)
-
-    def __repr__(self):
-        clazz = self.__class__.__name__
-        return '/* %s */ %s: %s' % (clazz, self.tag, self.value)
+class AttributeLength(UInt16Data, Length):
 
     @classmethod
-    def parse_tag(cls, data: bytes) -> Optional[AttributeType]:
+    def parse(cls, data: Data, tag: AttributeType):
+        length = super().parse(data=data, tag=tag)
+        if length is not None:
+            assert length.value & 0x0003 == 0, 'attribute length error: %d, %s' % (length.value, data)
+            return length
+
+
+class AttributeValue(Value):
+
+    @classmethod
+    def parse(cls, data: Data, tag: AttributeType, length: AttributeLength=None):  # -> AttributeValue:
+        if data is None or data.length == 0:
+            return None
+        elif cls is AttributeValue:
+            # get attribute parser with type
+            clazz = cls.__value_classes.get(tag)
+            if clazz is not None:
+                # create instance by subclass
+                return clazz.parse(data=data, tag=tag, length=length)
+        return cls(data=data)
+
+    #
+    #   Runtime
+    #
+    __value_classes = {}  # tag -> class
+
+    @classmethod
+    def register(cls, tag: Tag, value_class):
+        if value_class is None:
+            cls.__value_classes.pop(tag)
+        elif issubclass(value_class, AttributeValue):
+            cls.__value_classes[tag] = value_class
+        else:
+            raise TypeError('%s must be subclass of AttributeValue' % value_class)
+
+
+class Attribute(TagLengthValue):
+
+    def __init__(self, data=None, tag: AttributeType=None, length: AttributeLength=None, value: AttributeValue=None):
+        if data is None and length is None:
+            if value is None:
+                length = AttributeLength(value=0)
+            else:
+                length = AttributeLength(value=value.length)
+        super().__init__(data=data, tag=tag, length=length, value=value)
+
+    @classmethod
+    def parse_tag(cls, data: Data) -> Optional[AttributeType]:
         return AttributeType.parse(data=data)
 
     @classmethod
-    def parse_length(cls, data: bytes, tag: AttributeType) -> Optional[AttributeLength]:
+    def parse_length(cls, data: Data, tag: AttributeType) -> Optional[AttributeLength]:
         return AttributeLength.parse(data=data, tag=tag)
 
     @classmethod
-    def parse_value(cls, data: bytes, tag: AttributeType, length: AttributeLength = None) -> Optional[Value]:
+    def parse_value(cls, data: Data, tag: AttributeType, length: AttributeLength = None) -> Optional[Value]:
         return AttributeValue.parse(data=data, tag=tag, length=length)
 
 
@@ -251,17 +231,37 @@ class MappedAddressValue(AttributeValue):
     family_ipv4 = 0x01
     family_ipv6 = 0x02
 
-    def __init__(self, data: bytes, ip: str, port: int, family: int):
+    def __init__(self, data=None, ip: str=None, port: int=0, family: int=0):
+        if data is None:
+            assert ip is not None and port is not 0, 'IP:port error: (%s:%d' % (ip, port)
+            if family is 0:
+                family = self.family_ipv4
+            if family == self.family_ipv4:
+                # IPv4
+                address = self.data_from_ipv4(ip=ip)
+            else:
+                # IPv6?
+                address = None
+            assert address is not None, 'failed to convert IP: %s, %d' % (ip, family)
+            data = MutableData(capacity=8)
+            data.append(0)
+            data.append(family)
+            data.append(UInt16Data(value=port))
+            data.append(address)
+        elif isinstance(data, MappedAddressValue):
+            ip = data.ip
+            port = data.port
+            family = data.family
         super().__init__(data=data)
         self.__family = family
         self.__port = port
         self.__ip = ip
 
     def __str__(self):
-        return '"%s:%d"' % (self.ip, self.port)
+        return '(%s:%d)' % (self.ip, self.port)
 
     def __repr__(self):
-        return '"%s:%d"' % (self.ip, self.port)
+        return '(%s:%d)' % (self.ip, self.port)
 
     @property
     def family(self) -> int:
@@ -276,66 +276,38 @@ class MappedAddressValue(AttributeValue):
         return self.__ip
 
     @classmethod
-    def ip_to_bytes(cls, ip: str, family: int) -> bytes:
+    def data_from_ipv4(cls, ip: str) -> Data:
+        # IPv4
+        array = ip.split('.')
+        assert len(array) == 4, 'IPv4 address error: %s' % ip
+        data = MutableData(capacity=4)
+        for i in range(4):
+            data.append(int(array[i]))
+        return data
+
+    @classmethod
+    def data_to_ipv4(cls, address: Data) -> str:
+        # IPv4
+        assert address.length == 4, 'IPv4 data error: %s' % address
+        return '.'.join([
+            str(address.get_byte(index=0)),
+            str(address.get_byte(index=1)),
+            str(address.get_byte(index=2)),
+            str(address.get_byte(index=3)),
+        ])
+
+    @classmethod
+    def parse(cls, data: Data, tag: AttributeType, length: AttributeLength=None):
+        # checking head byte
+        if data.get_byte(index=0) != 0:
+            raise ValueError('mapped-address error: %s' % data)
+        family = data.get_byte(index=1)
         if family == cls.family_ipv4:
             # IPv4
-            array = ip.split('.')
-            assert len(array) == 4, 'IP address error: %s' % ip
-            return bytes([int(x) for x in array])
-        elif family == cls.family_ipv6:
-            # TODO: IPv6
-            assert False, 'IPv6 not support yet'
-        else:
-            raise ValueError('unknown address family: %d' % family)
-
-    @classmethod
-    def bytes_to_ip(cls, address: bytes, family: int) -> str:
-        # check address family
-        if family == cls.family_ipv4:
-            assert len(address) == 4, 'IPv4 data error: %s' % address
-            # IPv4
-            return '.'.join([
-                str(bytes_to_int(address[0:1])),
-                str(bytes_to_int(address[1:2])),
-                str(bytes_to_int(address[2:3])),
-                str(bytes_to_int(address[3:4])),
-            ])
-        elif family == cls.family_ipv6:
-            assert len(address) == 16, 'IPv6 data error: %s' % address
-            # TODO: IPv6
-            assert False, 'IPv6 not support yet'
-        else:
-            raise ValueError('unknown address family: %d' % family)
-
-    @classmethod
-    def parse(cls, data: bytes, tag: Tag, length: Length=None):
-        # check length
-        if length is None or (length.value != 8 and length.value != 20):
-            # raise ValueError('mapped-address length error: %s' % length)
-            return None
-        else:
-            length = length.value
-            data_len = len(data)
-            if data_len < length:
-                # raise ValueError('data length error: %d, %d' % (data_len, length.value))
-                return None
-            elif data_len > length:
-                data = data[:length]
-        # checking
-        if data[0] != 0:
-            return None
-        family = bytes_to_int(data[1:2])
-        port = bytes_to_int(data[2:4])
-        ip = cls.bytes_to_ip(address=data[4:], family=family)
-        return cls(data=data, ip=ip, port=port, family=family)
-
-    @classmethod
-    def new(cls, ip: str, port: int, family: int=None):
-        if family is None:
-            family = cls.family_ipv4
-        address = cls.ip_to_bytes(ip=ip, family=family)
-        data = b'\0' + uint8_to_bytes(family) + uint16_to_bytes(port) + address
-        return cls(data=data, ip=ip, port=port, family=family)
+            if length.value == 8:
+                port = data.get_uint16_value(2)
+                ip = cls.data_to_ipv4(address=data.slice(start=4))
+                return cls(data=data, ip=ip, port=port, family=family)
 
 
 """
@@ -397,34 +369,53 @@ class XorMappedAddressValue(MappedAddressValue):
         failure of STUN's message-integrity checking.
     """
 
-    @classmethod
-    def xor(cls, data: bytes, factor: bytes) -> Optional[bytes]:
-        if data[0] != 0:
-            return None
-        assert len(data) == 8 or len(data) == 20, 'address error: %s' % data
-        assert len(factor) == 16, 'factor should be the "magic code" + "(96-bits) transaction ID"'
-        array = bytearray(data)
-        # X-Port
-        array[2] ^= factor[1]
-        array[3] ^= factor[0]
-        # X-Address
-        a_pos = len(array) - 1
-        f_pos = 0
-        while a_pos >= 4:
-            array[a_pos] ^= factor[f_pos]
-            a_pos -= 1
-            f_pos += 1
-        return bytes(array)
+    def __init__(self, data=None, ip: str=None, port: int=0, family: int=0, factor: Data=None):
+        if data is None:
+            assert ip is not None and port is not 0, 'IP:port error: (%s:%d' % (ip, port)
+            if family is 0:
+                family = self.family_ipv4
+            if family == self.family_ipv4:
+                # IPv4
+                address = self.data_from_ipv4(ip=ip)
+            else:
+                # IPv6?
+                address = None
+            assert address is not None, 'failed to convert IP: %s, %d' % (ip, family)
+            data = MutableData(capacity=8)
+            data.append(0)
+            data.append(family)
+            data.append(UInt16Data(value=port))
+            data.append(address)
+            assert factor is not None, 'xor factor empty'
+            data = self.xor(data=data, factor=factor)
+        super().__init__(data=data, ip=ip, port=port, family=family)
 
     @classmethod
-    def new(cls, ip: str, port: int, family: int=None, factor: bytes=None):
-        if family is None:
-            family = cls.family_ipv4
-        address = cls.ip_to_bytes(ip=ip, family=family)
-        data = b'\0' + uint8_to_bytes(family) + uint16_to_bytes(port) + address
-        assert factor is not None, 'missing factor'
-        data = cls.xor(data=data, factor=factor)
-        return cls(data=data, ip=ip, port=port, family=family)
+    def xor(cls, data: Data, factor: Data) -> Optional[Data]:
+        if data.get_byte(0) != 0:
+            return None
+        data_buffer = data._buffer
+        data_offset = data._offset
+        data_length = data._length
+        fact_buffer = factor._buffer
+        fact_offset = factor._offset
+        fact_length = factor._length
+        assert data_length == 8 or data_length == 20, 'address error: %s' % data
+        assert fact_length == 16, 'factor should be the "magic code" + "(96-bits) transaction ID": %s' % factor
+        array = bytearray(data_length)
+        # family
+        array[1] = data_buffer[data_offset+1]
+        # X-Port
+        array[2] = data_buffer[data_offset+2] ^ fact_buffer[fact_offset+1]
+        array[3] = data_buffer[data_offset+3] ^ fact_buffer[fact_offset+0]
+        # X-Address
+        a_pos = data_length - 1
+        f_pos = 0
+        while a_pos >= 4:
+            array[a_pos] = data_buffer[data_offset+a_pos] ^ fact_buffer[fact_offset+f_pos]
+            a_pos -= 1
+            f_pos += 1
+        return Data(data=array)
 
 
 class XorMappedAddressValue2(MappedAddressValue):
@@ -465,35 +456,53 @@ class XorMappedAddressValue2(MappedAddressValue):
         entire 128 bit transaction ID.
     """
 
-    @classmethod
-    def xor(cls, data: bytes, factor: bytes) -> Optional[bytes]:
-        if data[0] != 0:
-            return None
-        assert len(data) == 8 or len(data) == 20, 'address error: %s' % data
-        assert len(factor) == 16, 'factor should be the "magic code" + "(96-bits) transaction ID"'
-        array = bytearray(data)
-        # X-Port
-        array[2] ^= factor[0]
-        array[3] ^= factor[1]
-        # X-Address
-        length = len(array)
-        a_pos = 4
-        f_pos = 0
-        while a_pos < length:
-            array[a_pos] ^= factor[f_pos]
-            a_pos += 1
-            f_pos += 1
-        return bytes(array)
+    def __init__(self, data=None, ip: str=None, port: int=0, family: int=0, factor: Data=None):
+        if data is None:
+            assert ip is not None and port is not 0, 'IP:port error: (%s:%d' % (ip, port)
+            if family is 0:
+                family = self.family_ipv4
+            if family == self.family_ipv4:
+                # IPv4
+                address = self.data_from_ipv4(ip=ip)
+            else:
+                # IPv6?
+                address = None
+            assert address is not None, 'failed to convert IP: %s, %d' % (ip, family)
+            data = MutableData(capacity=8)
+            data.append(0)
+            data.append(family)
+            data.append(UInt16Data(value=port))
+            data.append(address)
+            assert factor is not None, 'xor factor empty'
+            data = self.xor(data=data, factor=factor)
+        super().__init__(data=data, ip=ip, port=port, family=family)
 
     @classmethod
-    def new(cls, ip: str, port: int, family: int=None, factor: bytes=None):
-        if family is None:
-            family = cls.family_ipv4
-        address = cls.ip_to_bytes(ip=ip, family=family)
-        data = b'\0' + uint8_to_bytes(family) + uint16_to_bytes(port) + address
-        assert factor is not None, 'missing factor'
-        data = cls.xor(data=data, factor=factor)
-        return cls(data=data, ip=ip, port=port, family=family)
+    def xor(cls, data: Data, factor: Data) -> Optional[Data]:
+        if data.get_byte(0) != 0:
+            return None
+        data_buffer = data._buffer
+        data_offset = data._offset
+        data_length = data._length
+        fact_buffer = factor._buffer
+        fact_offset = factor._offset
+        fact_length = factor._length
+        assert data_length == 8 or data_length == 20, 'address error: %s' % data
+        assert fact_length == 16, 'factor should be the "magic code" + "(96-bits) transaction ID": %s' % factor
+        array = bytearray(data_length)
+        # family
+        array[1] = data_buffer[data_offset+1]
+        # X-Port
+        array[2] = data_buffer[data_offset+2] ^ fact_buffer[fact_offset+0]
+        array[3] = data_buffer[data_offset+3] ^ fact_buffer[fact_offset+1]
+        # X-Address
+        a_pos = 4
+        f_pos = 0
+        while a_pos < data_length:
+            array[a_pos] = data_buffer[data_offset+a_pos] ^ fact_buffer[fact_offset+f_pos]
+            a_pos += 1
+            f_pos += 1
+        return Data(data=array)
 
 
 class ResponseAddressValue(MappedAddressValue):
@@ -553,11 +562,6 @@ class ChangeRequestValue(UInt32Data, AttributeValue):
     (Defined in RFC-3489, removed from RFC-5389)
     """
 
-    def __init__(self, value: int, data: bytes=None):
-        if data is None:
-            data = uint32_to_bytes(value)
-        super().__init__(data=data, value=value)
-
     def __str__(self):
         return '%d' % self.value
 
@@ -565,21 +569,12 @@ class ChangeRequestValue(UInt32Data, AttributeValue):
         return '%d' % self.value
 
     @classmethod
-    def parse(cls, data: bytes, tag: Tag, length: Length=None):
+    def parse(cls, data: Data, tag: Tag, length: Length=None):
         # check length
-        if length is None or length.value != 4:
-            # raise ValueError('Change-Request value error: %s' % length)
-            return None
-        else:
-            length = length.value
-            data_len = len(data)
-            if data_len < length:
-                # raise ValueError('data length error: %d, %d' % (data_len, length.value))
-                return None
-            elif data_len > length:
-                data = data[:length]
+        if length.value != 4:
+            raise ValueError('Change-Request value error: %s' % length)
         # get value
-        value = bytes_to_int(data)
+        value = data.get_uint32_value()
         if value == ChangeIPAndPort.value:
             return ChangeIPAndPort
         elif value == ChangeIP.value:
@@ -591,9 +586,9 @@ class ChangeRequestValue(UInt32Data, AttributeValue):
         #     return ChangeRequestValue(value=value)
 
 
-ChangeIP = ChangeRequestValue(0x00000004)
-ChangePort = ChangeRequestValue(0x00000002)
-ChangeIPAndPort = ChangeRequestValue(0x00000006)
+ChangeIP = ChangeRequestValue(value=0x00000004)
+ChangePort = ChangeRequestValue(value=0x00000002)
+ChangeIPAndPort = ChangeRequestValue(value=0x00000006)
 
 
 class SourceAddressValue(MappedAddressValue):
@@ -624,61 +619,50 @@ class SoftwareValue(AttributeValue):
         763 bytes).
     """
 
-    def __init__(self, data: bytes, description: str):
+    def __init__(self, description: str, data: Data=None):
+        if data is None:
+            data = description.encode('utf-8')
+            length = len(data)
+            tail = length & 3
+            if tail > 0:
+                length += 4 - tail
+            data = MutableData(capacity=length)
+            data.copy(index=0, source=data)
+            if tail > 0:
+                # set '\0' to fill the tail spaces
+                length -= 1
+                data.set_byte(index=length, value=0)
         super().__init__(data=data)
         self.__desc = description
 
     def __str__(self):
-        return '"%s"' % self.__desc
+        return self.__desc
 
     def __repr__(self):
-        return '"%s"' % self.__desc
+        return self.__desc
 
     @property
     def description(self) -> str:
         return self.__desc
 
     @classmethod
-    def parse(cls, data: bytes, tag: Tag, length: Length=None):
-        # check length
-        if length is None or length.value == 0:
-            return None
-        else:
-            length = length.value
-            data_len = len(data)
-            if data_len < length:
-                # raise ValueError('data length error: %d, %d' % (data_len, length.value))
-                return None
-            elif data_len > length:
-                data = data[:length]
+    def parse(cls, data: Data, tag: Tag, length: Length=None):
         # get string
-        desc = data.rstrip(b'\0').decode('utf-8')
+        desc = data.get_bytes().decode('utf-8').rstrip('\0')
         return cls(data=data, description=desc)
-
-    @classmethod
-    def new(cls, description: str):
-        data = description.encode('utf-8')
-        # padding with '\0'
-        length = len(data)
-        tail = length & 3
-        while tail < 4:
-            data += b'\0'
-            tail += 1
-        return cls(data=data, description=description)
 
 
 #
 #  Register attribute parsers
 #
-s_attribute_parsers = {
-    MappedAddress: MappedAddressValue,
-    # XorMappedAddress: XorMappedAddressValue,
-    # XorMappedAddress2: XorMappedAddressValue2,
 
-    ResponseAddress: ResponseAddressValue,
-    ChangeRequest: ChangeRequestValue,
-    SourceAddress: SourceAddressValue,
-    ChangedAddress: ChangedAddressValue,
+AttributeValue.register(tag=MappedAddress, value_class=MappedAddressValue)
+# AttributeValue.register(tag=XorMappedAddress, value_class=XorMappedAddressValue)
+# AttributeValue.register(tag=XorMappedAddress2, value_class=XorMappedAddressValue2)
 
-    Software: SoftwareValue,
-}
+AttributeValue.register(tag=ResponseAddress, value_class=ResponseAddressValue)
+AttributeValue.register(tag=ChangeRequest, value_class=ChangeRequestValue)
+AttributeValue.register(tag=SourceAddress, value_class=SourceAddressValue)
+AttributeValue.register(tag=ChangedAddress, value_class=ChangedAddressValue)
+
+AttributeValue.register(tag=Software, value_class=SoftwareValue)

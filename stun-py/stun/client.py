@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,9 +38,11 @@
 from abc import ABC
 from typing import Optional
 
+from udp.tlv import Data
+
 from .protocol import Package
 from .protocol import BindRequest, BindResponse
-from .attributes import Attribute, AttributeLength
+from .attributes import Attribute, AttributeType, AttributeLength, AttributeValue
 from .attributes import ChangePort, ChangeIPAndPort
 from .attributes import ChangeRequest
 from .attributes import MappedAddress, MappedAddressValue
@@ -49,72 +51,7 @@ from .attributes import XorMappedAddress2, XorMappedAddressValue2
 from .attributes import SourceAddress, SourceAddressValue
 from .attributes import ChangedAddress, ChangedAddressValue
 from .attributes import Software, SoftwareValue
-from .node import Node
-
-
-class NatType:
-    UDPBlocked = 'UDP Blocked'
-    OpenInternet = 'Open Internet'
-    SymmetricFirewall = 'Symmetric UDP Firewall'
-    SymmetricNAT = 'Symmetric NAT'
-    FullConeNAT = 'Full Cone NAT'
-    RestrictedNAT = 'Restricted Cone NAT'
-    PortRestrictedNAT = 'Port Restricted Cone NAT'
-
-
-"""
-[RFC] https://www.ietf.org/rfc/rfc3489.txt
-
-Rosenberg, et al.           Standards Track                    [Page 21]
-
-RFC 3489                          STUN                        March 2003
-
-
-                        +--------+
-                        |  Test  |
-                        |   I    |
-                        +--------+
-                             |
-                             |
-                             V
-                            /\              /\
-                         N /  \ Y          /  \ Y             +--------+
-          UDP     <-------/Resp\--------->/ IP \------------->|  Test  |
-          Blocked         \ ?  /          \Same/              |   II   |
-                           \  /            \? /               +--------+
-                            \/              \/                    |
-                                             | N                  |
-                                             |                    V
-                                             V                    /\
-                                         +--------+  Sym.      N /  \
-                                         |  Test  |  UDP    <---/Resp\
-                                         |   II   |  Firewall   \ ?  /
-                                         +--------+              \  /
-                                             |                    \/
-                                             V                     |Y
-                  /\                         /\                    |
-   Symmetric  N  /  \       +--------+   N  /  \                   V
-      NAT  <--- / IP \<-----|  Test  |<--- /Resp\               Open
-                \Same/      |   I    |     \ ?  /               Internet
-                 \? /       +--------+      \  /
-                  \/                         \/
-                  |                           |Y
-                  |                           |
-                  |                           V
-                  |                           Full
-                  |                           Cone
-                  V              /\
-              +--------+        /  \ Y
-              |  Test  |------>/Resp\---->Restricted
-              |   III  |       \ ?  /
-              +--------+        \  /
-                                 \/
-                                  |N
-                                  |       Port
-                                  +------>Restricted
-
-                 Figure 2: Flow for type discovery process
-"""
+from .node import Node, NatType
 
 
 class Client(Node, ABC):
@@ -126,6 +63,8 @@ class Client(Node, ABC):
     def parse_attribute(self, attribute: Attribute, context: dict) -> bool:
         tag = attribute.tag
         value = attribute.value
+        assert isinstance(tag, AttributeType), 'attribute type error: %s' % tag
+        assert isinstance(value, AttributeValue), 'attribute value error: %s' % value
         # check attributes
         if tag == MappedAddress:
             assert isinstance(value, MappedAddressValue), 'mapped address value error: %s' % value
@@ -133,15 +72,15 @@ class Client(Node, ABC):
         elif tag == XorMappedAddress:
             if not isinstance(value, XorMappedAddressValue):
                 # XOR and parse again
-                data = XorMappedAddressValue.xor(data=value.data, factor=context['trans_id'])
-                length = AttributeLength(len(data))
+                data = XorMappedAddressValue.xor(data=value, factor=context['trans_id'])
+                length = AttributeLength(value=data.length)
                 value = XorMappedAddressValue.parse(data=data, tag=tag, length=length)
             context['MAPPED-ADDRESS'] = value
         elif tag == XorMappedAddress2:
             if not isinstance(value, XorMappedAddressValue2):
                 # XOR and parse again
-                data = XorMappedAddressValue2.xor(data=value.data, factor=context['trans_id'])
-                length = AttributeLength(len(data))
+                data = XorMappedAddressValue2.xor(data=value, factor=context['trans_id'])
+                length = AttributeLength(value=data.length)
                 value = XorMappedAddressValue2.parse(data=data, tag=tag, length=length)
             context['MAPPED-ADDRESS'] = value
         elif tag == ChangedAddress:
@@ -159,15 +98,15 @@ class Client(Node, ABC):
         self.info('%s:\t%s' % (tag, value))
         return True
 
-    def __bind_request(self, remote_host: str, remote_port: int, body: bytes) -> Optional[dict]:
+    def __bind_request(self, remote_host: str, remote_port: int, body: Data) -> Optional[dict]:
         # 1. create STUN message package
         req = Package.new(msg_type=BindRequest, body=body)
         trans_id = req.head.trans_id
         # 2. send and get response
         count = 0
         while True:
-            size = self.send(data=req.data, destination=(remote_host, remote_port))
-            if size != len(req.data):
+            size = self.send(data=req, destination=(remote_host, remote_port))
+            if size != req.length:
                 # failed to send data
                 return None
             cargo = self.receive()
@@ -183,9 +122,10 @@ class Client(Node, ABC):
                 break
         # 3. parse response
         context = {
-            'trans_id': trans_id.data,
+            'trans_id': trans_id,
         }
-        if not self.parse_data(data=cargo.data, context=context):
+        data = Data(data=cargo.data)
+        if not self.parse_data(data=data, context=context):
             return None
         head = context.get('head')
         if head is None or head.type != BindResponse or head.trans_id != trans_id:
@@ -213,17 +153,17 @@ class Client(Node, ABC):
 
     def __test_1(self, stun_host: str, stun_port: int) -> Optional[dict]:
         self.info('[Test 1] sending empty request ... (%s:%d)' % (stun_host, stun_port))
-        body = b''
+        body = Data.ZERO
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
     def __test_2(self, stun_host: str, stun_port: int) -> Optional[dict]:
         self.info('[Test 2] sending "ChangeIPAndPort" ... (%s:%d)' % (stun_host, stun_port))
-        body = Attribute(ChangeRequest, ChangeIPAndPort).data
+        body = Attribute(tag=ChangeRequest, value=ChangeIPAndPort)
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
     def __test_3(self, stun_host: str, stun_port: int) -> Optional[dict]:
         self.info('[Test 3] sending "ChangePort" ... (%s:%d)' % (stun_host, stun_port))
-        body = Attribute(ChangeRequest, ChangePort).data
+        body = Attribute(tag=ChangeRequest, value=ChangePort)
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
     def get_nat_type(self, stun_host: str, stun_port: int = 3478) -> dict:

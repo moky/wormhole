@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -40,11 +40,76 @@ import time
 from abc import ABC, abstractmethod
 from typing import Union, Optional
 
-from udp import Hub
-from udp.hub import Cargo
+from udp.tlv import Data
+from udp import Hub, Cargo
 
 from .protocol import Package
 from .attributes import Attribute
+
+
+"""
+[RFC] https://www.ietf.org/rfc/rfc3489.txt
+
+Rosenberg, et al.           Standards Track                    [Page 21]
+
+RFC 3489                          STUN                        March 2003
+
+
+                        +--------+
+                        |  Test  |
+                        |   I    |
+                        +--------+
+                             |
+                             |
+                             V
+                            /\              /\
+                         N /  \ Y          /  \ Y             +--------+
+          UDP     <-------/Resp\--------->/ IP \------------->|  Test  |
+          Blocked         \ ?  /          \Same/              |   II   |
+                           \  /            \? /               +--------+
+                            \/              \/                    |
+                                             | N                  |
+                                             |                    V
+                                             V                    /\
+                                         +--------+  Sym.      N /  \
+                                         |  Test  |  UDP    <---/Resp\
+                                         |   II   |  Firewall   \ ?  /
+                                         +--------+              \  /
+                                             |                    \/
+                                             V                     |Y
+                  /\                         /\                    |
+   Symmetric  N  /  \       +--------+   N  /  \                   V
+      NAT  <--- / IP \<-----|  Test  |<--- /Resp\               Open
+                \Same/      |   I    |     \ ?  /               Internet
+                 \? /       +--------+      \  /
+                  \/                         \/
+                  |                           |Y
+                  |                           |
+                  |                           V
+                  |                           Full
+                  |                           Cone
+                  V              /\
+              +--------+        /  \ Y
+              |  Test  |------>/Resp\---->Restricted
+              |   III  |       \ ?  /
+              +--------+        \  /
+                                 \/
+                                  |N
+                                  |       Port
+                                  +------>Restricted
+
+                 Figure 2: Flow for type discovery process
+"""
+
+
+class NatType:
+    UDPBlocked = 'UDP Blocked'
+    OpenInternet = 'Open Internet'
+    SymmetricFirewall = 'Symmetric UDP Firewall'
+    SymmetricNAT = 'Symmetric NAT'
+    FullConeNAT = 'Full Cone NAT'
+    RestrictedNAT = 'Restricted Cone NAT'
+    PortRestrictedNAT = 'Port Restricted Cone NAT'
 
 
 class Node(ABC):
@@ -92,7 +157,7 @@ class Node(ABC):
         time_string = time.strftime('%y-%m-%d %H:%M:%S', time_array)
         print('[%s] %s' % (time_string, msg))
 
-    def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> int:
+    def send(self, data: Data, destination: tuple, source: Union[tuple, int] = None) -> int:
         """
         Send data to remote address
 
@@ -102,7 +167,7 @@ class Node(ABC):
         :return: count of sent bytes
         """
         try:
-            return self.hub.send(data=data, destination=destination, source=source)
+            return self.hub.send(data=data.get_bytes(), destination=destination, source=source)
         except socket.error:
             return -1
 
@@ -128,7 +193,7 @@ class Node(ABC):
         """
         raise NotImplemented
 
-    def parse_data(self, data: bytes, context: dict) -> bool:
+    def parse_data(self, data: Data, context: dict) -> bool:
         """
         Parse package data
 
@@ -139,7 +204,7 @@ class Node(ABC):
         # 1. parse STUN package
         pack = Package.parse(data=data)
         if pack is None:
-            self.info('failed to parse package data: %d' % len(data))
+            self.info('failed to parse package data: %d' % data.length)
             return False
         # 2. parse attributes
         attributes = Attribute.parse_all(data=pack.body)

@@ -125,7 +125,7 @@ class Data:
         elif index >= self._length:
             # too big
             raise IndexError('error index: %d, length: %d' % (index, self._length))
-        return self._buffer[index]
+        return self._buffer[self._offset + index]
 
     def get_bytes(self, start: int=0, end: int=None) -> bytes:
         if end is None:

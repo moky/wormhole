@@ -7,7 +7,7 @@
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2019 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,8 @@
 """
 
 from abc import ABC
+
+from udp.tlv import Data, MutableData
 
 from .protocol import Package, Header
 from .protocol import BindRequest, BindResponse
@@ -114,12 +116,12 @@ class Server(Node, ABC):
         """
         assert self.neighbour is not None, 'neighbour address not set'
         # create attributes
-        value = MappedAddressValue.new(ip=remote_ip, port=remote_port)
-        data1 = Attribute(MappedAddress, value).data
+        value = MappedAddressValue(ip=remote_ip, port=remote_port)
+        data1 = Attribute(tag=MappedAddress, value=value)
         # pack
         body = data1
         pack = Package.new(msg_type=head.type, trans_id=head.trans_id, body=body)
-        res = self.send(data=pack.data, destination=self.neighbour)
+        res = self.send(data=pack, destination=self.neighbour)
         return res == pack.length
 
     def _respond(self, head: Header, remote_ip: str, remote_port: int, local_port: int) -> bool:
@@ -132,30 +134,32 @@ class Server(Node, ABC):
         changed_ip = self.changed_address[0]
         changed_port = self.changed_address[1]
         # create attributes
-        value = MappedAddressValue.new(ip=remote_ip, port=remote_port)
-        data1 = Attribute(MappedAddress, value).data
+        value = MappedAddressValue(ip=remote_ip, port=remote_port)
+        data1 = Attribute(tag=MappedAddress, value=value)
         # Xor
-        value = XorMappedAddressValue.new(ip=remote_ip, port=remote_port, factor=head.trans_id.data)
-        data4 = Attribute(XorMappedAddress, value).data
+        value = XorMappedAddressValue(ip=remote_ip, port=remote_port, factor=head.trans_id)
+        data4 = Attribute(tag=XorMappedAddress, value=value)
         # Xor2
-        value = XorMappedAddressValue2.new(ip=remote_ip, port=remote_port, factor=head.trans_id.data)
-        data5 = Attribute(XorMappedAddress2, value).data
+        value = XorMappedAddressValue2(ip=remote_ip, port=remote_port, factor=head.trans_id)
+        data5 = Attribute(tag=XorMappedAddress2, value=value)
         # source address
-        value = SourceAddressValue.new(ip=local_ip, port=local_port)
-        data2 = Attribute(SourceAddress, value).data
+        value = SourceAddressValue(ip=local_ip, port=local_port)
+        data2 = Attribute(tag=SourceAddress, value=value)
         # changed address
-        value = ChangedAddressValue.new(ip=changed_ip, port=changed_port)
-        data3 = Attribute(ChangedAddress, value).data
+        value = ChangedAddressValue(ip=changed_ip, port=changed_port)
+        data3 = Attribute(tag=ChangedAddress, value=value)
         # software
-        value = SoftwareValue.new(description=self.software)
-        data6 = Attribute(Software, value).data
+        value = SoftwareValue(description=self.software)
+        data6 = Attribute(tag=Software, value=value)
         # pack
-        body = data1 + data2 + data3 + data4 + data5 + data6
+        length = data1.length + data2.length + data3.length + data4.length + data5.length + data6.length
+        body = MutableData(capacity=length)
+        body.append(data1).append(data2).append(data3).append(data4).append(data5).append(data6)
         pack = Package.new(msg_type=BindResponse, trans_id=head.trans_id, body=body)
-        res = self.send(data=pack.data, destination=(remote_ip, remote_port), source=(local_ip, local_port))
+        res = self.send(data=pack, destination=(remote_ip, remote_port), source=(local_ip, local_port))
         return res == pack.length
 
-    def handle(self, data: bytes, remote_ip: str, remote_port: int) -> bool:
+    def handle(self, data: Data, remote_ip: str, remote_port: int) -> bool:
         # parse request
         context = {}
         ok = self.parse_data(data=data, context=context)
