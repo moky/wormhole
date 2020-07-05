@@ -148,13 +148,15 @@ public class Package extends Data {
             data.append(fragments.get(index));
         }
         type = DataType.Message;
+        int bodyLen;
         if (first.head.bodyLength < 0) {
             // UDP (unlimited)
-            return create(type, sn, 1, 0, -1, data);
+            bodyLen = -1;
         } else {
             // TCP (should not happen)
-            return create(type, sn, 1, 0, data.getLength(), data);
+            bodyLen = data.getLength();
         }
+        return create(type, sn, 1, 0, bodyLen, data);
     }
 
     public static List<Package> sort(List<Package> packages) {
@@ -220,7 +222,7 @@ public class Package extends Data {
     }
 
     public static Package create(DataType type, int pages, int offset, Data body) {
-        return create(type, new TransactionID(), pages, offset, -1, body);
+        return create(type, TransactionID.generate(), pages, offset, -1, body);
     }
 
     public static Package create(DataType type, TransactionID sn, Data body) {
@@ -228,7 +230,7 @@ public class Package extends Data {
     }
 
     public static Package create(DataType type, Data body) {
-        return create(type, new TransactionID(), 1, 0, -1, body);
+        return create(type, TransactionID.generate(), 1, 0, -1, body);
     }
 
     //
@@ -242,6 +244,6 @@ public class Package extends Data {
 
     public static Package create(DataType type, int bodyLen, Data body) {
         assert bodyLen == body.getLength() : "body length error: " + bodyLen + ", " + body.getLength();
-        return create(type, new TransactionID(), 1, 0, bodyLen, body);
+        return create(type, TransactionID.generate(), 1, 0, bodyLen, body);
     }
 }

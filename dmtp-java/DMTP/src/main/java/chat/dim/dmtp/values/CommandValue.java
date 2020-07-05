@@ -36,35 +36,26 @@ import java.util.List;
 import chat.dim.dmtp.fields.Field;
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
+import chat.dim.dmtp.fields.FieldsValue;
 import chat.dim.tlv.Data;
 
 public class CommandValue extends FieldsValue {
 
-    private StringValue identifier = null;
+    private String identifier = null;
 
-    public CommandValue(Data data) {
-        super(data);
+    public CommandValue(Data data, List<Field> fields) {
+        super(data, fields);
     }
 
     public CommandValue(List<Field> fields) {
         super(fields);
     }
 
-    public StringValue getIdentifier() {
+    public String getIdentifier() {
+        if (identifier == null) {
+            identifier = (String) get(FieldName.ID);
+        }
         return identifier;
-    }
-
-    @Override
-    protected void setField(Field field) {
-        if (FieldName.ID.equals(field.tag))
-        {
-            assert field.value instanceof StringValue : "ID value error: " + field.value;
-            identifier = (StringValue) field.value;
-        }
-        else
-        {
-            super.setField(field);
-        }
     }
 
     public static CommandValue create(String identifier) {
@@ -77,8 +68,6 @@ public class CommandValue extends FieldsValue {
     public static CommandValue parse(Data data, FieldName type, FieldLength length) {
         // parse fields
         List<Field> fields = Field.parseFields(data);
-        CommandValue value = new CommandValue(data);
-        value.setFields(fields);
-        return value;
+        return new CommandValue(data, fields);
     }
 }

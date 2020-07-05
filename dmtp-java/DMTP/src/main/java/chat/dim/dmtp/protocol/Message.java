@@ -36,9 +36,9 @@ import java.util.List;
 import chat.dim.dmtp.fields.Field;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
+import chat.dim.dmtp.fields.FieldsValue;
 import chat.dim.dmtp.values.*;
 import chat.dim.tlv.Data;
-import chat.dim.tlv.Tag;
 
 /*     Message
  *     ~~~~~~~
@@ -97,8 +97,8 @@ public class Message extends FieldsValue {
     // file in message
     private String filename = null;
 
-    public Message(Data data) {
-        super(data);
+    public Message(Data data, List<Field> fields) {
+        super(data, fields);
     }
 
     public Message(List<Field> fields) {
@@ -109,18 +109,33 @@ public class Message extends FieldsValue {
     //  envelope
     //
     public String getSender() {
+        if (sender == null) {
+            sender = (String) get(SENDER);
+        }
         return sender;
     }
     public String getReceiver() {
+        if (receiver == null) {
+            receiver = (String) get(RECEIVER);
+        }
         return receiver;
     }
     public long getTimestamp() {
+        if (timestamp == 0) {
+            timestamp = (long) get(TIME);
+        }
         return timestamp;
     }
     public int getType() {
+        if (type == 0) {
+            type = (int) get(TYPE);
+        }
         return type;
     }
     public String getGroup() {
+        if (group == null) {
+            group = (String) get(GROUP);
+        }
         return group;
     }
 
@@ -128,12 +143,21 @@ public class Message extends FieldsValue {
     //  body
     //
     public Data getContent() {
+        if (content == null) {
+            content = (Data) get(CONTENT);
+        }
         return content;
     }
     public Data getSignature() {
+        if (signature == null) {
+            signature = (Data) get(CONTENT);
+        }
         return signature;
     }
     public Data getKey() {
+        if (key == null) {
+            key = (Data) get(CONTENT);
+        }
         return key;
     }
 
@@ -141,9 +165,15 @@ public class Message extends FieldsValue {
     //  attachments
     //
     public Data getMeta() {
+        if (meta == null) {
+            meta = (Data) get(CONTENT);
+        }
         return meta;
     }
     public Data getProfile() {
+        if (profile == null) {
+            profile = (Data) get(CONTENT);
+        }
         return profile;
     }
 
@@ -151,83 +181,10 @@ public class Message extends FieldsValue {
     //  file in message
     //
     public String getFilename() {
+        if (filename == null) {
+            filename = (String) get(FILENAME);
+        }
         return filename;
-    }
-
-    @Override
-    protected void setField(Field field) {
-        Tag tag = field.tag;
-        //
-        //  envelope
-        //
-        if (tag.equals(SENDER))
-        {
-            assert field.value instanceof StringValue : "sender ID error: " + field.value;
-            sender = ((StringValue) field.value).string;
-        }
-        else if (tag.equals(RECEIVER))
-        {
-            assert field.value instanceof StringValue : "receiver ID error: " + field.value;
-            receiver = ((StringValue) field.value).string;
-        }
-        else if (tag.equals(TIME))
-        {
-            assert field.value instanceof TimestampValue : "msg time error: " + field.value;
-            timestamp = ((TimestampValue) field.value).value;
-        }
-        else if (tag.equals(TYPE))
-        {
-            assert field.value instanceof ByteValue : "msg type error: " + field.value;
-            type = ((ByteValue) field.value).value;
-        }
-        else if (tag.equals(GROUP))
-        {
-            assert field.value instanceof StringValue : "group ID error: " + field.value;
-            group = ((StringValue) field.value).string;
-        }
-        //
-        //  body
-        //
-        else if (tag.equals(CONTENT))
-        {
-            assert field.value instanceof BinaryValue : "content data error: " + field.value;
-            content = field.value;
-        }
-        else if (tag.equals(SIGNATURE))
-        {
-            assert field.value instanceof BinaryValue : "signature error: " + field.value;
-            signature = field.value;
-        }
-        else if (tag.equals(KEY))
-        {
-            assert field.value instanceof BinaryValue : "symmetric key data error: " + field.value;
-            key = field.value;
-        }
-        //
-        //  attachments
-        //
-        else if (tag.equals(META))
-        {
-            assert field.value instanceof BinaryValue : "meta error: " + field.value;
-            meta = field.value;
-        }
-        else if (tag.equals(PROFILE))
-        {
-            assert field.value instanceof BinaryValue : "profile error: " + field.value;
-            profile = field.value;
-        }
-        //
-        //  file in message
-        //
-        else if (tag.equals(FILENAME))
-        {
-            assert field.value instanceof StringValue : "filename error: " + field.value;
-            filename = ((StringValue) field.value).string;
-        }
-        else
-        {
-            super.setField(field);
-        }
     }
 
     //
@@ -272,9 +229,7 @@ public class Message extends FieldsValue {
         //
         //  OK
         //
-        Message msg = new Message(fields);
-        msg.setFields(fields);
-        return msg;
+        return new Message(fields);
     }
 
     public static Message create(String sender, String receiver, long timestamp,

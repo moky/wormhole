@@ -38,94 +38,85 @@ import java.util.List;
 import chat.dim.dmtp.fields.Field;
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
+import chat.dim.dmtp.fields.FieldValue;
 import chat.dim.tlv.Data;
-import chat.dim.tlv.Tag;
 
 public class LocationValue extends CommandValue {
 
-    private SourceAddressValue sourceAddress = null;
-    private MappedAddressValue mappedAddress = null;
-    private RelayedAddressValue relayedAddress = null;
+    private SocketAddress sourceAddress = null;
+    private SocketAddress mappedAddress = null;
+    private SocketAddress relayedAddress = null;
 
-    private StringValue nat = null;
+    private String nat = null;
 
-    private TimestampValue timestamp = null; // time for signature (in seconds)
-    private BinaryValue signature = null;
+    private long timestamp = 0; // time for signature (in seconds)
+    private Data signature = null;
 
-    public LocationValue(Data data) {
-        super(data);
+    public LocationValue(Data data, List<Field> fields) {
+        super(data, fields);
     }
 
     public LocationValue(List<Field> fields) {
         super(fields);
     }
 
-    public SourceAddressValue getSourceAddress() {
+    public SocketAddress getSourceAddress() {
+        if (sourceAddress == null) {
+            sourceAddress = (SocketAddress) get(FieldName.SOURCE_ADDRESS);
+        }
         return sourceAddress;
     }
-    public MappedAddressValue getMappedAddress() {
+    public SocketAddress getMappedAddress() {
+        if (mappedAddress == null) {
+            mappedAddress = (SocketAddress) get(FieldName.MAPPED_ADDRESS);
+        }
         return mappedAddress;
     }
-    public RelayedAddressValue getRelayedAddress() {
+    public SocketAddress getRelayedAddress() {
+        if (relayedAddress == null) {
+            relayedAddress = (SocketAddress) get(FieldName.RELAYED_ADDRESS);
+        }
         return relayedAddress;
     }
 
-    public StringValue getNat() {
+    public String getNat() {
+        if (nat == null) {
+            nat = (String) get(FieldName.NAT);
+        }
         return nat;
     }
 
-    public TimestampValue getTimestamp() {
+    public long getTimestamp() {
+        if (timestamp == 0) {
+            timestamp = (long) get(FieldName.TIME);
+        }
         return timestamp;
     }
-    public BinaryValue getSignature() {
+    public Data getSignature() {
+        if (signature == null) {
+            signature = (Data) get(FieldName.SIGNATURE);
+        }
         return signature;
     }
 
     @Override
-    protected void setField(Field field) {
-        Tag type = field.tag;
-        if (type.equals(FieldName.SOURCE_ADDRESS))
-        {
-            assert field.value instanceof SourceAddressValue : "source address error: " + field.value;
-            sourceAddress = (SourceAddressValue) field.value;
-        }
-        else if (type.equals(FieldName.MAPPED_ADDRESS))
-        {
-            assert field.value instanceof MappedAddressValue : "mapped address error: " + field.value;
-            mappedAddress = (MappedAddressValue) field.value;
-        }
-        else if (type.equals(FieldName.RELAYED_ADDRESS))
-        {
-            assert field.value instanceof RelayedAddressValue : "relayed address error: " + field.value;
-            relayedAddress = (RelayedAddressValue) field.value;
-        }
-        else if (type.equals(FieldName.TIME))
-        {
-            assert field.value instanceof TimestampValue : "timestamp error: " + field.value;
-            timestamp = (TimestampValue) field.value;
-        }
-        else if (type.equals(FieldName.SIGNATURE))
-        {
-            assert field.value instanceof BinaryValue : "signature error: " + field.value;
-            signature = (BinaryValue) field.value;
-        }
-        else if (type.equals(FieldName.NAT))
-        {
-            assert field.value instanceof StringValue : "NAT error: " + field.value;
-            nat = (StringValue) field.value;
-        }
-        else
-        {
-            super.setField(field);
+    protected void setField(FieldName tag, FieldValue value) {
+        String key = tag.name;
+        if (value == null) {
+            dictionary.remove(key);
+        } else if (value instanceof MappedAddressValue) {
+            MappedAddressValue addressValue = (MappedAddressValue) value;
+            SocketAddress address = new InetSocketAddress(addressValue.ip, addressValue.port);
+            dictionary.put(key, address);
+        } else {
+            super.setField(tag, value);
         }
     }
 
     public static LocationValue parse(Data data, FieldName type, FieldLength length) {
         // parse fields
         List<Field> fields = Field.parseFields(data);
-        LocationValue value = new LocationValue(data);
-        value.setFields(fields);
-        return value;
+        return new LocationValue(data, fields);
     }
 
 
@@ -167,9 +158,7 @@ public class LocationValue extends CommandValue {
         if (nat != null) {
             fields.add(new Field(FieldName.NAT, nat));
         }
-        LocationValue value = new LocationValue(fields);
-        value.setFields(fields);
-        return value;
+        return new LocationValue(fields);
     }
 
     public static LocationValue create(String identifier,

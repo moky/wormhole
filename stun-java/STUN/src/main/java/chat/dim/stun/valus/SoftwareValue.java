@@ -58,11 +58,16 @@ public class SoftwareValue extends AttributeValue {
 
     private static Data build(String description) {
         byte[] bytes = description.getBytes(Charset.forName("UTF-8"));
-        MutableData data = new MutableData(bytes);
-        int tail = bytes.length & 3;
+        int length = bytes.length;
+        int tail = length & 3;
         if (tail > 0) {
-            // append '\0' to the tail
-            data.setByte(bytes.length - tail + 4, 0);
+            length += 4 - tail;
+        }
+        MutableData data = new MutableData(length);
+        data.copy(0, bytes);
+        if (tail > 0) {
+            // set '\0' to fill the tail spaces
+            data.setByte(length - 1, 0);
         }
         return data;
     }

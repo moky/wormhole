@@ -50,10 +50,6 @@ public class Tag extends Data {
         super(bytes);
     }
 
-    //
-    //  Factory
-    //
-
     public static Tag parse(Data data) {
         if (data.getLength() < 2) {
             throw new IndexOutOfBoundsException("TLV tag error: " + data.getLength());

@@ -41,6 +41,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import chat.dim.dmtp.values.*;
 import chat.dim.tlv.Data;
+import chat.dim.tlv.MutableData;
 import chat.dim.udp.Connection;
 
 public class Contact {
@@ -67,27 +68,26 @@ public class Contact {
      */
     protected boolean isExpired(LocationValue location, Peer peer) {
         if (peer == null) {
-            TimestampValue timestamp = location.getTimestamp();
-            if (timestamp == null) {
+            long timestamp = location.getTimestamp();
+            if (timestamp == 0) {
                 return true;
             }
             long now = (new Date()).getTime() / 1000;
-            return now > (timestamp.value + EXPIRES);
+            return now > (timestamp + EXPIRES);
         }
         // check connections for client node
-        SourceAddressValue sourceAddress = location.getSourceAddress();
-        if (isConnecting(sourceAddress.ip, sourceAddress.port, peer)) {
+        SocketAddress sourceAddress = location.getSourceAddress();
+        if (isConnecting(sourceAddress, peer)) {
             return false;
         }
-        MappedAddressValue mappedAddress = location.getMappedAddress();
-        if (isConnecting(mappedAddress.ip, mappedAddress.port, peer)) {
+        SocketAddress mappedAddress = location.getMappedAddress();
+        if (isConnecting(mappedAddress, peer)) {
             return false;
         }
         return true;
     }
 
-    private boolean isConnecting(String host, int port, Peer peer) {
-        SocketAddress address = new InetSocketAddress(host, port);
+    private boolean isConnecting(SocketAddress address, Peer peer) {
         Connection conn = peer.getConnection(address);
         if (conn == null) {
             return false;
@@ -154,23 +154,21 @@ public class Contact {
         readLock.lock();
         try {
             assert address instanceof InetSocketAddress : "address error: " + address;
-            String host = ((InetSocketAddress) address).getHostString();
-            int port = ((InetSocketAddress) address).getPort();
-            SourceAddressValue sourceAddress;
-            MappedAddressValue mappedAddress;
+            SocketAddress sourceAddress;
+            SocketAddress mappedAddress;
             LocationValue item;
             int index;
             for (index = locations.size() - 1; index >= 0; --index) {
                 item = locations.get(index);
                 // check source address
                 sourceAddress = item.getSourceAddress();
-                if (port == sourceAddress.port && host.equals(sourceAddress.ip)) {
+                if (address.equals(sourceAddress)) {
                     location = item;
                     break;
                 }
                 // check mapped address
                 mappedAddress = item.getMappedAddress();
-                if (port == mappedAddress.port && host.equals(mappedAddress.ip)) {
+                if (address.equals(mappedAddress)) {
                     location = item;
                     break;
                 }
@@ -196,9 +194,9 @@ public class Contact {
         Lock writeLock = locationLock.writeLock();
         writeLock.lock();
         try {
-            SourceAddressValue sourceAddress = location.getSourceAddress();
-            MappedAddressValue mappedAddress = location.getMappedAddress();
-            TimestampValue timestamp = location.getTimestamp();
+            SocketAddress sourceAddress = location.getSourceAddress();
+            SocketAddress mappedAddress = location.getMappedAddress();
+            long timestamp = location.getTimestamp();
 
             LocationValue item;
             int index;
@@ -210,7 +208,7 @@ public class Contact {
                 if (!mappedAddress.equals(item.getMappedAddress())) {
                     continue;
                 }
-                if (timestamp.value < item.getTimestamp().value) {
+                if (timestamp < item.getTimestamp()) {
                     ok = false;
                     break;
                 }
@@ -221,7 +219,7 @@ public class Contact {
                 // insert (ordered by time)
                 for (index = locations.size() - 1; index >= 0; --index) {
                     item = locations.get(index);
-                    if (timestamp.value >= item.getTimestamp().value) {
+                    if (timestamp >= item.getTimestamp()) {
                         // got the position
                         break;
                     }
@@ -250,8 +248,8 @@ public class Contact {
         Lock writeLock = locationLock.writeLock();
         writeLock.lock();
         try {
-            SourceAddressValue sourceAddress = location.getSourceAddress();
-            MappedAddressValue mappedAddress = location.getMappedAddress();
+            SocketAddress sourceAddress = location.getSourceAddress();
+            SocketAddress mappedAddress = location.getMappedAddress();
 
             LocationValue item;
             int index;
@@ -278,29 +276,30 @@ public class Contact {
     //
 
     private static Data getSignData(LocationValue location) {
-        SourceAddressValue sourceAddress = location.getSourceAddress();
-        MappedAddressValue mappedAddress = location.getMappedAddress();
-        RelayedAddressValue relayedAddress = location.getRelayedAddress();
-        TimestampValue timestamp = location.getTimestamp();
+        SocketAddress sourceAddress = location.getSourceAddress();
+        SocketAddress mappedAddress = location.getMappedAddress();
+        SocketAddress relayedAddress = location.getRelayedAddress();
+        long timestamp = location.getTimestamp();
         // data = "source_address" + "mapped_address" + "relayed_address" + "time"
         if (mappedAddress == null) {
             return null;
         }
-        Data data = mappedAddress;
-        if (sourceAddress != null) {
-            data = sourceAddress.concat(data);
-        }
-        if (relayedAddress != null) {
-            data = data.concat(relayedAddress);
-        }
-        if (timestamp != null) {
-            data = data.concat(timestamp);
-        }
-        return data;
+//        Data data = mappedAddress;
+//        if (sourceAddress != null) {
+//            data = sourceAddress.concat(data);
+//        }
+//        if (relayedAddress != null) {
+//            data = data.concat(relayedAddress);
+//        }
+//        if (timestamp != null) {
+//            data = data.concat(timestamp);
+//        }
+//        return data;
+        return new MutableData(0);
     }
 
     private static Data getSignature(LocationValue location) {
-        BinaryValue signature = location.getSignature();
+        Data signature = location.getSignature();
         if (signature == null) {
             return null;
         }
@@ -332,10 +331,10 @@ public class Contact {
     }
 
     public boolean verifyLocation(LocationValue location) {
-        StringValue identifier = location.getIdentifier();
-        SourceAddressValue sourceAddress = location.getSourceAddress();
-        TimestampValue timestamp = location.getTimestamp();
-        if (identifier == null || sourceAddress == null || timestamp == null) {
+        String identifier = location.getIdentifier();
+        SocketAddress sourceAddress = location.getSourceAddress();
+        long timestamp = location.getTimestamp();
+        if (identifier == null || sourceAddress == null || timestamp == 0) {
             return false;
         }
 

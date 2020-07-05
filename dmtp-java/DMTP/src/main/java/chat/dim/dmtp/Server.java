@@ -38,8 +38,6 @@ import java.util.List;
 import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.values.CommandValue;
 import chat.dim.dmtp.values.LocationValue;
-import chat.dim.dmtp.values.MappedAddressValue;
-import chat.dim.dmtp.values.StringValue;
 import chat.dim.mtp.Pool;
 
 public abstract class Server extends Node {
@@ -70,12 +68,12 @@ public abstract class Server extends Node {
 
     @Override
     protected boolean processHello(LocationValue location, SocketAddress source) {
-        MappedAddressValue mappedAddress = location.getMappedAddress();
+        InetSocketAddress mappedAddress = (InetSocketAddress) location.getMappedAddress();
         if (mappedAddress != null) {
             // check 'MAPPED-ADDRESS
             InetSocketAddress address = (InetSocketAddress) source;
-            if (address.getPort() == mappedAddress.port &&
-                    address.getHostString().equals(mappedAddress.ip)) {
+            if (address.getPort() == mappedAddress.getPort() &&
+                    address.getHostString().equals(mappedAddress.getHostString())) {
                 if (super.processHello(location, source)) {
                     // location info accepted
                     return true;
@@ -83,14 +81,14 @@ public abstract class Server extends Node {
             }
         }
         // respond 'SIGN' command with 'ID' and 'MAPPED-ADDRESS'
-        StringValue id = location.getIdentifier();
-        Command cmd = Command.Sign.create(id.string, source, null);
+        String id = location.getIdentifier();
+        Command cmd = Command.Sign.create(id, source, null);
         sendCommand(cmd, source);
         return true;
     }
 
-    protected boolean processCall(StringValue receiver, SocketAddress source) {
-        if (receiver == null || receiver.string == null) {
+    protected boolean processCall(String receiver, SocketAddress source) {
+        if (receiver == null) {
             //throw new NullPointerException("receiver ID not found: " + receiver);
             return false;
         }
@@ -98,11 +96,11 @@ public abstract class Server extends Node {
         assert delegate != null : "contact delegate not set yet";
         Command cmd;
         // get sessions of receiver
-        List<LocationValue> locations = delegate.getLocations(receiver.string);
+        List<LocationValue> locations = delegate.getLocations(receiver);
         if (locations.size() == 0) {
             // receiver offline
             // respond an empty "FROM" command to the sender
-            cmd = Command.From.create(receiver.string);
+            cmd = Command.From.create(receiver);
             sendCommand(cmd, source);
             return false;
         }
@@ -116,7 +114,7 @@ public abstract class Server extends Node {
             return false;
         }
         // sender online
-        MappedAddressValue address;
+        SocketAddress address;
         // send command for each address
         for (LocationValue loc : locations) {
             address = loc.getMappedAddress();
@@ -125,7 +123,7 @@ public abstract class Server extends Node {
             }
             // send "FROM" command with sender's location info to the receiver
             cmd = Command.From.create(senderLocation);
-            sendCommand(cmd, new InetSocketAddress(address.ip, address.port));
+            sendCommand(cmd, address);
             // respond "FROM" command with receiver's location info to sender
             cmd = Command.From.create(loc);
             sendCommand(cmd, source);

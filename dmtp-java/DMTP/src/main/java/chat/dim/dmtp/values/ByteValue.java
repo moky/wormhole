@@ -55,13 +55,6 @@ public class ByteValue extends FieldValue {
     }
 
     public static ByteValue parse(Data data, FieldName type, FieldLength length) {
-        if (length != null && length.value != 1) {
-            //throw new ArrayIndexOutOfBoundsException("length error: " + length);
-            return null;
-        } else if (data.getLength() < 1) {
-            //throw new ArrayIndexOutOfBoundsException("length error: " + length);
-            return null;
-        }
         return new ByteValue(data.getByte(0));
     }
 }

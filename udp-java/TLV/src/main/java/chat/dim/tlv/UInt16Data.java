@@ -47,6 +47,14 @@ public class UInt16Data extends IntegerData {
         super(bytes, value);
     }
 
+    public UInt16Data(Data data) {
+        super(data, data.getUInt16Value(0));
+    }
+
+    public UInt16Data(byte[] bytes) {
+        super(bytes, longFromBytes(bytes, 0, 2));
+    }
+
     public UInt16Data(int value) {
         super(bytesFromLong(value, 2), value);
     }

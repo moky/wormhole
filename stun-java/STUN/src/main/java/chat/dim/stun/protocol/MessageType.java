@@ -65,7 +65,9 @@ public class MessageType extends UInt16Data {
     }
 
     public MessageType(int value, String name) {
-        this(new UInt16Data(value), value, name);
+        super(value);
+        this.name = name;
+        s_types.put(value, this);
     }
 
     @Override

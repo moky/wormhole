@@ -30,17 +30,16 @@
  */
 package chat.dim.dmtp.protocol;
 
+import java.net.SocketAddress;
+import java.util.List;
+
 import chat.dim.dmtp.fields.Field;
-import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
 import chat.dim.dmtp.values.*;
 import chat.dim.tlv.Data;
 import chat.dim.tlv.Tag;
 import chat.dim.tlv.Value;
-
-import java.net.SocketAddress;
-import java.util.List;
 
 /*     Commands
  *     ~~~~~~~~

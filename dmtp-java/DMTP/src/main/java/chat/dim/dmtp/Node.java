@@ -263,8 +263,7 @@ public abstract class Node implements PeerHandler {
     public boolean onReceivedMessage(Data msg, SocketAddress source, SocketAddress destination) {
         // process after received message data
         List<Field> fields = Field.parseFields(msg);
-        Message pack = new Message(msg);
-        pack.setFields(fields);
+        Message pack = new Message(msg, fields);
         return processMessage(pack, source);
     }
 

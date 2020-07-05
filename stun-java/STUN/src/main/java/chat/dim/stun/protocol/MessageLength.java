@@ -43,8 +43,12 @@ public class MessageLength extends UInt16Data {
         super(data, value);
     }
 
+    public MessageLength(Data data) {
+        super(data);
+    }
+
     public MessageLength(int value) {
-        this(new UInt16Data(value), value);
+        super(value);
     }
 
     //
@@ -52,13 +56,12 @@ public class MessageLength extends UInt16Data {
     //
 
     public static MessageLength parse(Data data) {
-        if (data.getLength() < 2 || (data.getByte(0) & 0x03) != 0) {
-            // format: xxxx xxxx, xxxx, xx00
+        if (data.getLength() < 2 || (data.getByte(1) & 0x03) != 0) {
+            // format: xxxx xxxx, xxxx xx00
             return null;
         } else if (data.getLength() > 2) {
             data = data.slice(0, 2);
         }
-        int value = data.getUInt16Value(0);
-        return new MessageLength(data, value);
+        return new MessageLength(data);
     }
 }

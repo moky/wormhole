@@ -94,8 +94,4 @@ public class Package extends Data {
         Data body = data.slice(head.getLength());
         return new Package(data, head, body);
     }
-
-    // const body
-    public static final byte[] OK = {'O', 'K'};
-    public static final byte[] AGAIN = {'A', 'G', 'A', 'I', 'N'};
 }

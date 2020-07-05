@@ -197,7 +197,7 @@ public class MutableData extends Data {
                 buffer[offset + index] = value;
                 --offset;
                 ++length;
-            } else if (offset + index < bufLength){
+            } else if (offset + index < bufLength) {
                 // empty spaces exist after the queue,
                 // just insert to the tail, no need to move elements
                 buffer[offset + index] = value;
@@ -329,9 +329,5 @@ public class MutableData extends Data {
         }
         --length;
         return buffer[offset + length];
-    }
-
-    public boolean isEmpty() {
-        return length <= 0;
     }
 }

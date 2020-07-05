@@ -13,8 +13,6 @@ import chat.dim.dmtp.Session;
 import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.protocol.Message;
 import chat.dim.dmtp.values.LocationValue;
-import chat.dim.dmtp.values.MappedAddressValue;
-import chat.dim.dmtp.values.SourceAddressValue;
 import chat.dim.mtp.task.Departure;
 import chat.dim.tlv.Data;
 import chat.dim.udp.Connection;
@@ -85,28 +83,25 @@ public class Client extends chat.dim.dmtp.Client {
         List<Session> sessions = new ArrayList<>();
         LocationDelegate delegate = getDelegate();
         List<LocationValue> locations = delegate.getLocations(receiver);
-        SourceAddressValue sourceAddress;
-        MappedAddressValue mappedAddress;
-        SocketAddress address;
+        SocketAddress sourceAddress;
+        SocketAddress mappedAddress;
         Connection conn;
         for (LocationValue item : locations) {
             // source address
             sourceAddress = item.getSourceAddress();
             if (sourceAddress != null) {
-                address = new InetSocketAddress(sourceAddress.ip, sourceAddress.port);
-                conn = peer.getConnection(address);
+                conn = peer.getConnection(sourceAddress);
                 if (conn != null && conn.isConnected()) {
-                    sessions.add(new Session(item, address));
+                    sessions.add(new Session(item, sourceAddress));
                     continue;
                 }
             }
             // mapped address
             mappedAddress = item.getMappedAddress();
             if (mappedAddress != null) {
-                address = new InetSocketAddress(mappedAddress.ip, mappedAddress.port);
-                conn = peer.getConnection(address);
+                conn = peer.getConnection(mappedAddress);
                 if (conn != null && conn.isConnected()) {
-                    sessions.add(new Session(item, address));
+                    sessions.add(new Session(item, mappedAddress));
                     continue;
                 }
             }
@@ -139,7 +134,7 @@ public class Client extends chat.dim.dmtp.Client {
 
     public static void main(String args[]) throws SocketException, InterruptedException {
 
-        SocketAddress serverAddress = new InetSocketAddress(Server.SERVER_GZ1, Server.SERVER_PORT);
+        SocketAddress serverAddress = new InetSocketAddress(Server.SERVER_Test, Server.SERVER_PORT);
         System.out.printf("connecting to UDP server: %s ...\n", serverAddress);
 
         Client client = new Client("192.168.31.64", 9527);

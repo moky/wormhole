@@ -154,7 +154,7 @@ public class MappedAddressValue extends AttributeValue {
     }
 
     public static MappedAddressValue parse(Data data, AttributeType type, AttributeLength length) {
-        // checking
+        // checking head byte
         if (data.getByte(0) != 0) {
             return null;
         }

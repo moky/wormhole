@@ -47,6 +47,14 @@ public class UInt8Data extends IntegerData {
         super(bytes, value);
     }
 
+    public UInt8Data(Data data) {
+        super(data, data.getByte(0));
+    }
+
+    public UInt8Data(byte[] bytes) {
+        super(bytes, bytes[0]);
+    }
+
     public UInt8Data(int value) {
         super(bytesFromLong(value, 1), value);
     }

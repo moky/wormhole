@@ -47,6 +47,14 @@ public class UInt32Data extends IntegerData {
         super(bytes, value);
     }
 
+    public UInt32Data(Data data) {
+        super(data, data.getUInt32Value(0));
+    }
+
+    public UInt32Data(byte[] bytes) {
+        super(bytes, longFromBytes(bytes, 0, 4));
+    }
+
     public UInt32Data(long value) {
         super(bytesFromLong(value, 4), value);
     }

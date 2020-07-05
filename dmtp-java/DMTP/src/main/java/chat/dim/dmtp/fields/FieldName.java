@@ -84,18 +84,12 @@ public class FieldName extends Tag {
     }
 
     public static FieldName parse(Data data) {
-        int pos = 0;
-        int len = data.getLength();
-        for (; pos < len; ++pos) {
-            if (data.getByte(pos) == 0) {
-                break;
-            }
-        }
-        if (pos == 0 || pos == len) {
+        int pos = data.find('\0');
+        if (pos < 0) {
             return null;
         }
         ++pos;  // includes the tail '\0'
-        if (pos < len) {
+        if (pos < data.getLength()) {
             data = data.slice(0, pos);
         }
         String name = data.toString().trim();

@@ -227,20 +227,13 @@ public class Header extends Data {
         }
         // generate header data
         MutableData data = new MutableData(headLen);
-        data.append('D');
-        data.append('I');
-        data.append('M');
+        data.append('D').append('I').append('M');
         data.append((headLen << 2) | (type.value & 0x0F));
-        if (sn.equals(TransactionID.ZERO)) {
-            // simple header
-            if (options != null) {
-                data.append(options);
-            }
-        } else {
+        if (!sn.equals(TransactionID.ZERO)) {
             data.append(sn);
-            if (options != null) {
-                data.append(options);
-            }
+        }
+        if (options != null) {
+            data.append(options);
         }
         return new Header(data, type, sn, pages, offset, bodyLen);
     }
@@ -254,7 +247,7 @@ public class Header extends Data {
     }
 
     public static Header create(DataType type, int pages, int offset) {
-        return create(type, new TransactionID(), pages, offset, -1);
+        return create(type, TransactionID.generate(), pages, offset, -1);
     }
 
     public static Header create(DataType type, TransactionID sn) {
@@ -262,7 +255,7 @@ public class Header extends Data {
     }
 
     public static Header create(DataType type) {
-        return create(type, new TransactionID(), 1, 0, -1);
+        return create(type, TransactionID.generate(), 1, 0, -1);
     }
 
     //
@@ -274,6 +267,6 @@ public class Header extends Data {
     }
 
     public static Header create(DataType type, int bodyLen) {
-        return create(type, new TransactionID(), 1, 0, bodyLen);
+        return create(type, TransactionID.generate(), 1, 0, bodyLen);
     }
 }

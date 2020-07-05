@@ -31,7 +31,6 @@
 package chat.dim.dmtp;
 
 import java.lang.ref.WeakReference;
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Date;
 import java.util.HashMap;
@@ -104,55 +103,49 @@ public class ContactManager implements LocationDelegate {
 
     @Override
     public boolean storeLocation(LocationValue location) {
-        StringValue identifier = location.getIdentifier();
+        String identifier = location.getIdentifier();
         if (identifier == null) {
             // location ID not found
             return false;
         }
         // store by contact
-        Contact contact = getContact(identifier.string);
+        Contact contact = getContact(identifier);
         if (!contact.storeLocation(location)) {
             // location error
             return false;
         }
         // update the map
-        SocketAddress address;
-        SourceAddressValue sourceAddress = location.getSourceAddress();
+        SocketAddress sourceAddress = location.getSourceAddress();
         if (sourceAddress != null) {
-            address = new InetSocketAddress(sourceAddress.ip, sourceAddress.port);
-            locations.put(address, new WeakReference<>(location));
+            locations.put(sourceAddress, new WeakReference<>(location));
         }
-        MappedAddressValue mappedAddress = location.getMappedAddress();
+        SocketAddress mappedAddress = location.getMappedAddress();
         if (mappedAddress != null) {
-            address = new InetSocketAddress(mappedAddress.ip, mappedAddress.port);
-            locations.put(address, new WeakReference<>(location));
+            locations.put(mappedAddress, new WeakReference<>(location));
         }
         return true;
     }
 
     @Override
     public boolean clearLocation(LocationValue location) {
-        StringValue identifier = location.getIdentifier();
+        String identifier = location.getIdentifier();
         if (identifier == null) {
             // location ID not found
             return false;
         }
-        Contact contact = getContact(identifier.string);
+        Contact contact = getContact(identifier);
         if (!contact.clearLocation(location)) {
             // location error
             return false;
         }
         // update the map
-        SocketAddress address;
-        SourceAddressValue sourceAddress = location.getSourceAddress();
+        SocketAddress sourceAddress = location.getSourceAddress();
         if (sourceAddress != null) {
-            address = new InetSocketAddress(sourceAddress.ip, sourceAddress.port);
-            locations.remove(address);
+            locations.remove(sourceAddress);
         }
-        MappedAddressValue mappedAddress = location.getMappedAddress();
+        SocketAddress mappedAddress = location.getMappedAddress();
         if (mappedAddress != null) {
-            address = new InetSocketAddress(mappedAddress.ip, mappedAddress.port);
-            locations.remove(address);
+            locations.remove(mappedAddress);
         }
         return true;
     }
@@ -193,23 +186,17 @@ public class ContactManager implements LocationDelegate {
 
     @Override
     public LocationValue signLocation(LocationValue location) {
-        StringValue idValue = location.getIdentifier();
-        if (idValue == null || !identifier.equals(idValue.string)) {
+        String idValue = location.getIdentifier();
+        if (!identifier.equals(idValue)) {
             // ID not match
             return null;
         }
-        // source address
-        InetSocketAddress address = (InetSocketAddress) sourceAddress;
-        SourceAddressValue addressValue = new SourceAddressValue(address.getHostString(), address.getPort());
         // timestamp
         long now = (new Date()).getTime() / 1000;
-        TimestampValue timestampValue = new TimestampValue(now);
-        // NAT type
-        StringValue natValue = new StringValue(nat);
         // location value to be signed
         LocationValue value = LocationValue.create(location.getIdentifier(),
-                addressValue, location.getMappedAddress(), location.getRelayedAddress(),
-                timestampValue, null, natValue);
+                sourceAddress, location.getMappedAddress(), location.getRelayedAddress(),
+                now, null, nat);
         Contact contact = getContact(identifier);
         return contact.signLocation(value);
     }

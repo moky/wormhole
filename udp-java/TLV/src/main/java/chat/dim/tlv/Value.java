@@ -50,10 +50,6 @@ public class Value extends Data {
         super(bytes);
     }
 
-    //
-    //  Factory
-    //
-
     public static Value parse(Data data, Tag type, Length length) {
         /*
         if (length != null) {

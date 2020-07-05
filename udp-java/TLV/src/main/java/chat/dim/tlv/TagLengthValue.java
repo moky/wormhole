@@ -83,7 +83,7 @@ public class TagLengthValue extends Data {
 
     @Override
     public String toString() {
-        return "/* " + getClass().getSimpleName() + " */ " + tag + ": " + value;
+        return "/* " + getClass().getSimpleName() + " */ " + tag + ": \"" + value + "\"";
     }
 
     //
@@ -129,7 +129,7 @@ public class TagLengthValue extends Data {
             // get length
             Length length = parseLength(data.slice(offset), type);
             if (length == null) {
-                // get value unlimited length
+                // get value with unlimited length
                 value = parseValue(data.slice(offset), type, null);
             } else {
                 // get value with limited length

@@ -30,14 +30,11 @@
  */
 package chat.dim.dmtp;
 
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 
 import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.values.LocationValue;
-import chat.dim.dmtp.values.MappedAddressValue;
-import chat.dim.dmtp.values.SourceAddressValue;
 import chat.dim.mtp.Pool;
 
 public abstract class Client extends Node {
@@ -90,16 +87,13 @@ public abstract class Client extends Node {
             //throw new RuntimeException("failed to update location: " + location);
             return false;
         }
-        SocketAddress address;
-        SourceAddressValue sourceAddress = location.getSourceAddress();
-        if (sourceAddress != null) {
-            address = new InetSocketAddress(sourceAddress.ip, sourceAddress.port);
+        SocketAddress address = location.getSourceAddress();
+        if (address != null) {
             peer.connect(address);
             sayHello(address);
         }
-        MappedAddressValue mappedAddress = location.getMappedAddress();
-        if (mappedAddress != null) {
-            address = new InetSocketAddress(mappedAddress.ip, mappedAddress.port);
+        address = location.getMappedAddress();
+        if (address != null) {
             peer.connect(address);
             sayHello(address);
         }
