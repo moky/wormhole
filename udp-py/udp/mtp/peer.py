@@ -344,10 +344,9 @@ class Peer(threading.Thread):
             pages = UInt32Data(value=head.pages)
             offset = UInt32Data(value=head.offset)
             body = MutableData(capacity=10)
-            body.append(source=pages)
-            body.append(source=offset)
-            body.append(value='O')
-            body.append(value='K')
+            body.append(pages)
+            body.append(offset)
+            body.append(b'OK')
         else:
             raise TypeError('data type error: %s' % data_type)
         if head.body_length < 0:

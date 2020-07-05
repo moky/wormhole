@@ -103,11 +103,15 @@ class MutableData(Data):
             if index < 0:
                 # too small
                 raise IndexError('error index: %d, length: %d' % (index - self._length, self._length))
-        start = adjust(position=start, length=source.length)
-        if end is None:
-            end = source.length
+        if isinstance(source, Data):
+            source_length = source.length
         else:
-            end = adjust(position=end, length=source.length)
+            source_length = len(source)
+        start = adjust(position=start, length=source_length)
+        if end is None:
+            end = source_length
+        else:
+            end = adjust(position=end, length=source_length)
         if start < end:
             if isinstance(source, Data):
                 start += source._offset
@@ -178,28 +182,22 @@ class MutableData(Data):
             return self.set_byte(index=index, value=value)
         return True
 
-    def append(self, value: Union[int, str]=None,
-               source: Union[Data, bytes, bytearray]=None, start: int=0, end: int=None):  # -> MutableData
+    def append(self, data, start: int=0, end: int=None):  # -> MutableData
         """
         Append one element to the tail
         Append values from source buffer with range [start, end)
 
-        :param value:  element value
-        :param source: source buffer
-        :param start:  source start position (include)
-        :param end:    source end position (exclude)
+        :param data:  source buffer or element value
+        :param start: source start position (include)
+        :param end:   source end position (exclude)
         :return: self object
         """
-        if source is None:
-            if isinstance(value, str):
-                assert len(value) == 1, 'char value length error: %d' % len(value)
-                value = ord(value)
-            else:
-                assert isinstance(value, int), 'value error: %s' % value
-            self.set_byte(index=self._length, value=value)
+        if isinstance(data, int):
+            self.set_byte(index=self._length, value=data)
             return self
         else:
-            return self.copy(index=self._length, source=source, start=start, end=end)
+            # bytes, bytearray or Data
+            return self.copy(index=self._length, source=data, start=start, end=end)
 
     #
     #   Erasing

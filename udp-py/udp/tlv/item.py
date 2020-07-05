@@ -83,22 +83,37 @@ class Length(IntegerData):
 
 class Value(Data):
 
-    # noinspection PyUnusedLocal
     @classmethod
-    def parse(cls, data: Data, tag: Tag, length: Length=None):
-        # if length is not None:
-        #     if length.value == 0:
-        #         return None
-        #     elif data.length < length.value:
-        #         raise IndexError('TLV value error: %d' % data.length)
-        #     elif data.length > length.value:
-        #         data = data.slice(end=length.value)
+    def parse(cls, data: Data, tag: Tag, length: Length=None):  # -> Value:
+        if data is None or data.length == 0:
+            return None
+        elif cls is Value:
+            # get attribute parser with type
+            assert isinstance(tag, Value), 'attribute type error: %s' % tag
+            clazz = cls.__value_classes.get(tag)
+            if clazz is not None:
+                # create instance by subclass
+                return clazz.parse(data=data, tag=tag, length=length)
         return cls(data=data)
+
+    #
+    #   Runtime
+    #
+    __value_classes = {}  # tag -> class
+
+    @classmethod
+    def register(cls, tag: Tag, value_class):
+        if value_class is None:
+            cls.__value_classes.pop(tag)
+        elif issubclass(value_class, Value):
+            cls.__value_classes[tag] = value_class
+        else:
+            raise TypeError('%s must be subclass of AttributeValue' % value_class)
 
 
 class TagLengthValue(Data):
 
-    def __init__(self, data=None, tag: Tag=None, length: Length=None, value: Optional[Value]=None):
+    def __init__(self, data=None, tag: Tag=None, length: Length=None, value: Value=None):
         """
         Initialize with another TLV object
         Initialize with Data and Tag + Value

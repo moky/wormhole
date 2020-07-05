@@ -42,17 +42,20 @@ class IntegerData(Data):
 
     def __init__(self, data, value: int=None):
         super().__init__(data=data)
-        if isinstance(data, IntegerData):
-            self.__value = data.__value
-        else:
-            # bytes, bytearray or Data?
-            assert isinstance(value, int), 'value error: %s' % value
-            self.__value = value
+        if value is None:
+            if isinstance(data, IntegerData):
+                value = data.__value
+            else:
+                raise ValueError('integer value empty, data: %s' % data)
+        self.__value = value
 
     def __eq__(self, other) -> bool:
         if isinstance(other, IntegerData):
             return self.__value == other.__value
-        return super().__eq__(other=other)
+        elif isinstance(other, int):
+            return self.__value == other
+        else:
+            return super().__eq__(other=other)
 
     def __hash__(self) -> int:
         return hash(self.__value)
@@ -86,24 +89,44 @@ class IntegerData(Data):
         return cls.from_bytes(data=data._buffer, start=data._offset, end=end)
 
 
+def int_from_buffer(data: Union[bytes, bytearray], start: int, end: int) -> int:
+    result = 0
+    while start < end:
+        result = (result << 8) | (data[start] & 0xFF)
+        start += 1
+    return result
+
+
+def parse_data(data: Union[Data, bytes, bytearray], length: int) -> (Union[Data, bytes, bytearray], int):
+    if isinstance(data, Data):
+        data_len = data._length
+        assert data_len >= length, 'data length: %s' % data
+        start = data._offset
+        end = start + length
+        value = int_from_buffer(data=data._buffer, start=start, end=end)
+        if data_len > length:
+            data = data.slice(end=length)
+    else:
+        # bytes or bytearray
+        data_len = len(data)
+        assert data_len >= length, 'data length: %s' % data
+        value = int_from_buffer(data=data, start=0, end=length)
+        if data_len > length:
+            data = data[:length]
+    return data, value
+
+
 class UInt8Data(IntegerData):
     """
         Unsigned Char (8-bytes)
     """
 
-    def __init__(self, data: Union[Data, bytes]=None, value: int = None):
+    def __init__(self, data: Union[Data, bytes, bytearray]=None, value: int=None):
         if data is None:
             assert isinstance(value, int), 'value error: %s' % value
             data = int_to_bytes(value=value, length=1)
         elif value is None:
-            if isinstance(data, Data):
-                assert data._length > 0, 'data empty: %s' % data
-                value = data._buffer[data._offset] & 0xFF
-            elif isinstance(data, bytes):
-                assert len(data) > 0, 'data empty: %s' % data
-                value = data[0:1] & 0xFF
-            else:
-                raise TypeError('unknown data: ' % data)
+            data, value = parse_data(data=data, length=1)
         super().__init__(data=data, value=value)
 
 
@@ -112,21 +135,12 @@ class UInt16Data(IntegerData):
         Unsigned Short Integer (16-bytes)
     """
 
-    def __init__(self, data: Union[Data, bytes]=None, value: int = None):
+    def __init__(self, data: Union[Data, bytes, bytearray]=None, value: int=None):
         if data is None:
             assert isinstance(value, int), 'value error: %s' % value
             data = int_to_bytes(value=value, length=2)
         elif value is None:
-            if isinstance(data, Data):
-                assert data._length >= 2, 'data error: %s' % data
-                start = data._offset
-                end = start + 2
-                value = bytes_to_int(data=data._buffer[start:end])
-            elif isinstance(data, bytes):
-                assert len(data) >= 2, 'data error: %s' % data
-                value = bytes_to_int(data=data[0:2])
-            else:
-                raise TypeError('unknown data: ' % data)
+            data, value = parse_data(data=data, length=2)
         super().__init__(data=data, value=value)
 
 
@@ -135,21 +149,12 @@ class UInt32Data(IntegerData):
         Unsigned Integer (32-bytes)
     """
 
-    def __init__(self, data: Union[Data, bytes]=None, value: int = None):
+    def __init__(self, data: Union[Data, bytes, bytearray]=None, value: int=None):
         if data is None:
             assert isinstance(value, int), 'value error: %s' % value
             data = int_to_bytes(value=value, length=4)
         elif value is None:
-            if isinstance(data, Data):
-                assert data._length >= 4, 'data error: %s' % data
-                start = data._offset
-                end = start + 4
-                value = bytes_to_int(data=data._buffer[start:end])
-            elif isinstance(data, bytes):
-                assert len(data) >= 4, 'data error: %s' % data
-                value = bytes_to_int(data=data[0:4])
-            else:
-                raise TypeError('unknown data: ' % data)
+            data, value = parse_data(data=data, length=4)
         super().__init__(data=data, value=value)
 
 
@@ -158,7 +163,7 @@ class VarIntData(IntegerData):
         Variable Integer
     """
 
-    def __init__(self, data: Union[Data, bytes]=None, value: int = None):
+    def __init__(self, data: Union[Data, bytes, bytearray]=None, value: int=None):
         if data is None:
             assert isinstance(value, int), 'value error: %s' % value
             data = varint_to_bytes(value=value)
@@ -166,15 +171,14 @@ class VarIntData(IntegerData):
             if isinstance(data, Data):
                 assert data._length > 0, 'data empty: %s' % data
                 start = data._offset
-                end = start + 4
+                end = start + data._length
                 value, length = bytes_to_varint(data=data._buffer, start=start, end=end)
                 if length < data._length:
                     data = data.slice(end=length)
-            elif isinstance(data, bytes) or isinstance(data, bytearray):
-                assert len(data) > 0, 'data empty: %s' % data
-                value, length = bytes_to_varint(data=data, start=0, end=4)
-                if length < len(data):
-                    data = data[0:4]
             else:
-                raise TypeError('unknown data: ' % data)
+                # bytes or bytearray
+                assert len(data) > 0, 'data empty: %s' % data
+                value, length = bytes_to_varint(data=data)
+                if length < len(data):
+                    data = data[0:length]
         super().__init__(data=data, value=value)

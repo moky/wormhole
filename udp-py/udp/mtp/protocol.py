@@ -64,7 +64,7 @@ class DataType:
         super().__init__()
         self.__value = value
         self.__name = name
-        s_data_types[value] = self
+        self.__data_types[value] = self
 
     def __eq__(self, other) -> bool:
         if self is other:
@@ -80,13 +80,18 @@ class DataType:
     def __str__(self) -> str:
         return self.__name
 
+    def __repr__(self):
+        return self.__name
+
     @property
     def value(self) -> int:
         return self.__value
 
+    __data_types = {}  # int -> DataType
+
     @classmethod
     def new(cls, value: int):
-        t = s_data_types.get(value)
+        t = cls.__data_types.get(value)
         if t is None:
             # name = 'DataType-%d' % value
             # t = DataType(value=value, name=name)
@@ -95,7 +100,6 @@ class DataType:
 
 
 # data types
-s_data_types = {}
 Command = DataType(0, name='Command')
 CommandRespond = DataType(1, name='Command Respond')
 Message = DataType(2, name='Message')
@@ -111,6 +115,10 @@ class TransactionID(Data):
         super().__init__(data=data)
 
     def __str__(self) -> str:
+        clazz = self.__class__.__name__
+        return '<%s: %s />' % (clazz, self._buffer)
+
+    def __repr__(self) -> str:
         clazz = self.__class__.__name__
         return '<%s: %s />' % (clazz, self._buffer)
 
@@ -242,6 +250,17 @@ class Header(Data):
         else:
             return '<%s: %d, "%s" />' % (clazz, self.length, dt)
 
+    def __repr__(self) -> str:
+        clazz = self.__class__.__name__
+        dt = self.data_type
+        if dt == MessageFragment:
+            # fragment
+            pages = self.pages
+            offset = self.offset
+            return '<%s: %d, "%s" pages=%d offset=%d />' % (clazz, self.length, dt, pages, offset)
+        else:
+            return '<%s: %d, "%s" />' % (clazz, self.length, dt)
+
     @property
     def data_type(self) -> DataType:
         return self.__type
@@ -349,12 +368,12 @@ class Header(Data):
         # generate header data
         hl_ty = (head_len << 2) | (data_type.value & 0x0F)
         data = MutableData(capacity=head_len)
-        data.append(value='D').append(value='I').append(value='M')
-        data.append(value=hl_ty)
+        data.append(b'DIM')
+        data.append(hl_ty)
         if sn != TransactionID.ZERO:
-            data.append(source=sn)
+            data.append(sn)
         if options is not None:
-            data.append(source=options)
+            data.append(options)
         return cls(data=data, data_type=data_type, sn=sn, pages=pages, offset=offset, body_length=body_length)
 
 
@@ -385,6 +404,10 @@ class Package(Data):
         self.__body = body
 
     def __str__(self) -> str:
+        clazz = self.__class__.__name__
+        return '<%s: head=%s body_len=%d />' % (clazz, self.head, self.body.length)
+
+    def __repr__(self) -> str:
         clazz = self.__class__.__name__
         return '<%s: head=%s body_len=%d />' % (clazz, self.head, self.body.length)
 
