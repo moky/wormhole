@@ -56,11 +56,11 @@ class Client(Node, ABC):
         assert self.delegate is not None, 'contact delegate not set'
         if self.delegate.store_location(location=location):
             if location.source_address is not None:
-                address = (location.source_address.ip, location.source_address.port)
+                address = location.source_address
                 self.peer.connect(remote_address=address)
                 self.say_hello(destination=address)
             if location.mapped_address is not None:
-                address = (location.mapped_address.ip, location.mapped_address.port)
+                address = location.mapped_address
                 self.peer.connect(remote_address=address)
                 self.say_hello(destination=address)
             return True

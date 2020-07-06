@@ -118,17 +118,11 @@ class Contact:
     def get_location(self, address: tuple) -> Optional[LocationValue]:
         """ Get location by (IP, port) """
         with self.__locations_lock:
-            host = address[0]
-            port = address[1]
             for item in self.__locations:
                 assert isinstance(item, LocationValue), 'location error: %s' % item
-                if item.source_address is not None \
-                        and port == item.source_address.port \
-                        and host == item.source_address.ip:
+                if item.source_address == address:
                     return item
-                if item.mapped_address is not None \
-                        and port == item.mapped_address.port \
-                        and host == item.mapped_address.ip:
+                if item.mapped_address == address:
                     return item
 
     def store_location(self, location: LocationValue) -> bool:

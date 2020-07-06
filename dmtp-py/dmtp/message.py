@@ -85,79 +85,79 @@ class Message(FieldsValue):
         self.__type: int = None
         self.__group: str = None
         # body
-        self.__content: bytes = None
-        self.__signature: bytes = None
-        self.__key: bytes = None
+        self.__content: Data = None
+        self.__signature: Data = None
+        self.__key: Data = None
         # attachments
-        self.__meta: bytes = None
-        self.__profile: bytes = None
+        self.__meta: Data = None
+        self.__profile: Data = None
         # file in message
         self.__filename: str = None
 
     @property
     def sender(self) -> str:
         if self.__sender is None:
-            self.__sender = self.get(self.SENDER)
+            self.__sender = self.get_string_value(self.SENDER)
         return self.__sender
 
     @property
     def receiver(self) -> str:
         if self.__receiver is None:
-            self.__receiver = self.get(self.RECEIVER)
+            self.__receiver = self.get_string_value(self.RECEIVER)
         return self.__receiver
 
     @property
     def time(self) -> Optional[int]:
         if self.__time is None:
-            self.__time = self.get(self.RECEIVER, 0)
+            self.__time = self.get_int_value(self.TIME, 0)
         return self.__time
 
     @property
     def type(self) -> Optional[int]:
         if self.__type is None:
-            self.__type = self.get(self.RECEIVER, 0)
+            self.__type = self.get_int_value(self.TYPE, 0)
         return self.__type
 
     @property
     def group(self) -> Optional[str]:
         if self.__group is None:
-            self.__group = self.get(self.RECEIVER)
+            self.__group = self.get_string_value(self.GROUP)
         return self.__group
 
     @property
-    def content(self) -> bytes:
+    def content(self) -> Data:
         if self.__content is None:
-            self.__content = self.get(self.RECEIVER)
+            self.__content = self.get_binary_value(self.CONTENT)
         return self.__content
 
     @property
-    def signature(self) -> bytes:
+    def signature(self) -> Data:
         if self.__signature is None:
-            self.__signature = self.get(self.RECEIVER)
+            self.__signature = self.get_binary_value(self.SIGNATURE)
         return self.__signature
 
     @property
-    def key(self) -> Optional[bytes]:
+    def key(self) -> Optional[Data]:
         if self.__key is None:
-            self.__key = self.get(self.RECEIVER)
+            self.__key = self.get_binary_value(self.KEY)
         return self.__key
 
     @property
-    def meta(self) -> Optional[bytes]:
+    def meta(self) -> Optional[Data]:
         if self.__meta is None:
-            self.__meta = self.get(self.RECEIVER)
+            self.__meta = self.get_binary_value(self.META)
         return self.__meta
 
     @property
-    def profile(self) -> Optional[bytes]:
+    def profile(self) -> Optional[Data]:
         if self.__profile is None:
-            self.__profile = self.get(self.RECEIVER)
+            self.__profile = self.get_binary_value(self.PROFILE)
         return self.__profile
 
     @property
     def filename(self) -> Optional[str]:
         if self.__filename is None:
-            self.__filename = self.get(self.RECEIVER)
+            self.__filename = self.get_string_value(self.FILENAME)
         return self.__filename
 
     @classmethod

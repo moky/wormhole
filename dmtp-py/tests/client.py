@@ -23,7 +23,8 @@ SERVER_GZ2 = '203.195.224.155'
 SERVER_GZ3 = '129.204.94.164'
 
 # SERVER_HOST = '127.0.0.1'
-SERVER_HOST = SERVER_GZ1
+SERVER_HOST = '192.168.31.64'
+# SERVER_HOST = SERVER_GZ1
 SERVER_PORT = 9395
 
 CLIENT_HOST = stun.get_local_ip()
@@ -63,7 +64,7 @@ class Client(dmtp.Client):
         print('received msg from %s:\n\t%s' % (source, msg))
         content = msg.content
         if content is not None:
-            print('msg content: "%s"' % content.decode('utf-8'))
+            print('msg content: "%s"' % content)
         return super().process_message(msg=msg, source=source)
 
     def send_command(self, cmd: dmtp.Command, destination: tuple) -> dmtp.Departure:
@@ -90,12 +91,12 @@ class Client(dmtp.Client):
         for loc in locations:
             assert isinstance(loc, dmtp.LocationValue), 'location error: %s' % loc
             if loc.source_address is not None:
-                addr = (loc.source_address.ip, loc.source_address.port)
+                addr = loc.source_address
                 if self.peer.is_connected(remote_address=addr):
                     sessions.append(Session(location=loc, address=addr))
                     continue
             if loc.mapped_address is not None:
-                addr = (loc.mapped_address.ip, loc.mapped_address.port)
+                addr = loc.mapped_address
                 if self.peer.is_connected(remote_address=addr):
                     sessions.append(Session(location=loc, address=addr))
                     continue

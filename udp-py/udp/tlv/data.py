@@ -126,7 +126,10 @@ class Data:
         """
         # adjust positions
         start = self._offset + adjust(position=start, length=self._length)
-        end = self._offset + adjust(position=end, length=self._length)
+        if end is None:
+            end = self._offset + self._length
+        else:
+            end = self._offset + adjust(position=end, length=self._length)
         if isinstance(sub, Data):
             sub = sub.get_bytes()
         pos = self._buffer.find(sub, start, end)
@@ -158,11 +161,12 @@ class Data:
         :param end:   end position (exclude)
         :return: sub bytes
         """
-        if end is None:
-            end = self._length
         # adjust positions
         start = self._offset + adjust(position=start, length=self._length)
-        end = self._offset + adjust(position=end, length=self._length)
+        if end is None:
+            end = self._offset + self._length
+        else:
+            end = self._offset + adjust(position=end, length=self._length)
         # check range
         if start == 0 and end == self._buf_length:
             # whole buffer
@@ -217,11 +221,12 @@ class Data:
         :param end:   end position (exclude)
         :return: sub data
         """
-        if end is None:
-            end = self._length
         # adjust positions
         start = adjust(position=start, length=self._length)
-        end = adjust(position=end, length=self._length)
+        if end is None:
+            end = self._length
+        else:
+            end = adjust(position=end, length=self._length)
         if start == 0 and end == self._length:
             return self
         elif start >= end:
