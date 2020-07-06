@@ -59,20 +59,42 @@ public abstract class Node implements PeerHandler {
         peer.setHandler(this);
     }
 
-    public Node(SocketAddress address, Hub hub, Pool pool) {
-        this(new Peer(address, hub, pool));
+    public Node(SocketAddress address, Hub hub, Pool pool) throws SocketException {
+        super();
+        this.peer = createPeer(address, hub, pool);
+        this.peer.setHandler(this);
     }
 
-    public Node(SocketAddress address, Hub hub) {
-        this(new Peer(address, hub));
+    public Node(SocketAddress address, Hub hub) throws SocketException {
+        super();
+        this.peer = createPeer(address, hub, null);
+        this.peer.setHandler(this);
     }
 
     public Node(SocketAddress address, Pool pool) throws SocketException {
-        this(new Peer(address, pool));
+        super();
+        this.peer = createPeer(address, null, pool);
+        this.peer.setHandler(this);
     }
 
     public Node(SocketAddress address) throws SocketException {
-        this(new Peer(address));
+        super();
+        this.peer = createPeer(address, null, null);
+        this.peer.setHandler(this);
+    }
+
+    protected Peer createPeer(SocketAddress address, Hub hub, Pool pool) throws SocketException {
+        if (hub == null) {
+            if (pool == null) {
+                return new Peer(address);
+            } else {
+                return new Peer(address, pool);
+            }
+        } else if (pool == null) {
+            return new Peer(address, hub);
+        } else {
+            return new Peer(address, hub, pool);
+        }
     }
 
     public synchronized LocationDelegate getDelegate() {
@@ -110,7 +132,7 @@ public abstract class Node implements PeerHandler {
     /**
      *  Send command to destination address
      *
-     * @param cmd         -
+     * @param cmd         - command data
      * @param destination - remote IP and port
      * @return departure task with 'trans_id' in the payload
      */
@@ -122,7 +144,7 @@ public abstract class Node implements PeerHandler {
     /**
      *  Send message to destination address
      *
-     * @param msg         -
+     * @param msg         - message data
      * @param destination - remote address
      * @return departure task with 'trans_id' in the payload
      */
@@ -265,6 +287,11 @@ public abstract class Node implements PeerHandler {
         List<Field> fields = Field.parseFields(msg);
         Message pack = new Message(msg, fields);
         return processMessage(pack, source);
+    }
+
+    @Override
+    public void onReceivedError(Data data, SocketAddress source, SocketAddress destination) {
+        // TODO: process after received error data
     }
 
     @Override

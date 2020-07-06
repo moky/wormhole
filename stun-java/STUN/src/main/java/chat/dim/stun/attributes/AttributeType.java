@@ -118,26 +118,26 @@ public class AttributeType extends Tag {
     // Comprehension-optional range (0x8000-0xFFFF)
 
     // [RFC-3489]
-    public static AttributeType MappedAddress     = new AttributeType(0x0001, "MAPPED-ADDRESS");
-    public static AttributeType ResponseAddress   = new AttributeType(0x0002, "RESPONSE-ADDRESS");
-    public static AttributeType ChangeRequest     = new AttributeType(0x0003, "CHANGE-REQUEST");
-    public static AttributeType SourceAddress     = new AttributeType(0x0004, "SOURCE-ADDRESS");
-    public static AttributeType ChangedAddress    = new AttributeType(0x0005, "CHANGED-ADDRESS");
-    public static AttributeType Username          = new AttributeType(0x0006, "USERNAME");
-    public static AttributeType Password          = new AttributeType(0x0007, "PASSWORD");
-    public static AttributeType MessageIntegrity  = new AttributeType(0x0008, "MESSAGE-INTEGRITY");
-    public static AttributeType ErrorCode         = new AttributeType(0x0009, "ERROR-CODE");
-    public static AttributeType UnknownAttributes = new AttributeType(0x000A, "UNKNOWN-ATTRIBUTES");
-    public static AttributeType ReflectedFrom     = new AttributeType(0x000B, "REFLECTED-FROM");
+    public static final AttributeType MappedAddress     = new AttributeType(0x0001, "MAPPED-ADDRESS");
+    public static final AttributeType ResponseAddress   = new AttributeType(0x0002, "RESPONSE-ADDRESS");
+    public static final AttributeType ChangeRequest     = new AttributeType(0x0003, "CHANGE-REQUEST");
+    public static final AttributeType SourceAddress     = new AttributeType(0x0004, "SOURCE-ADDRESS");
+    public static final AttributeType ChangedAddress    = new AttributeType(0x0005, "CHANGED-ADDRESS");
+    public static final AttributeType Username          = new AttributeType(0x0006, "USERNAME");
+    public static final AttributeType Password          = new AttributeType(0x0007, "PASSWORD");
+    public static final AttributeType MessageIntegrity  = new AttributeType(0x0008, "MESSAGE-INTEGRITY");
+    public static final AttributeType ErrorCode         = new AttributeType(0x0009, "ERROR-CODE");
+    public static final AttributeType UnknownAttributes = new AttributeType(0x000A, "UNKNOWN-ATTRIBUTES");
+    public static final AttributeType ReflectedFrom     = new AttributeType(0x000B, "REFLECTED-FROM");
 
     // [RFC-5389]
-    public static AttributeType Realm             = new AttributeType(0x0014, "REALM");
-    public static AttributeType Nonce             = new AttributeType(0x0015, "NONCE");
-    public static AttributeType XorMappedAddress  = new AttributeType(0x0020, "XOR-MAPPED-ADDRESS(0020)");
+    public static final AttributeType Realm             = new AttributeType(0x0014, "REALM");
+    public static final AttributeType Nonce             = new AttributeType(0x0015, "NONCE");
+    public static final AttributeType XorMappedAddress  = new AttributeType(0x0020, "XOR-MAPPED-ADDRESS(0020)");
 
-    public static AttributeType XorMappedAddress2 = new AttributeType(0x8020, "XOR-MAPPED-ADDRESS(8020)");
-    public static AttributeType XorOnly           = new AttributeType(0x8021, "XOR-ONLY");
-    public static AttributeType Software          = new AttributeType(0x8022, "SOFTWARE");
-    public static AttributeType AlternateServer   = new AttributeType(0x8023, "ALTERNATE-SERVER");
-    public static AttributeType Fingerprint       = new AttributeType(0x8028, "FINGERPRINT");
+    public static final AttributeType XorMappedAddress2 = new AttributeType(0x8020, "XOR-MAPPED-ADDRESS(8020)");
+    public static final AttributeType XorOnly           = new AttributeType(0x8021, "XOR-ONLY");
+    public static final AttributeType Software          = new AttributeType(0x8022, "SOFTWARE");
+    public static final AttributeType AlternateServer   = new AttributeType(0x8023, "ALTERNATE-SERVER");
+    public static final AttributeType Fingerprint       = new AttributeType(0x8028, "FINGERPRINT");
 }

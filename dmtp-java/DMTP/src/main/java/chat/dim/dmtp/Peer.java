@@ -32,6 +32,7 @@ package chat.dim.dmtp;
 
 import java.net.SocketAddress;
 import java.net.SocketException;
+import java.util.Date;
 import java.util.Set;
 
 import chat.dim.mtp.Pool;
@@ -110,6 +111,15 @@ public class Peer extends chat.dim.mtp.Peer implements HubListener {
 
     public Connection getConnection(SocketAddress remoteAddress) {
         return hub.getConnection(remoteAddress, localAddress);
+    }
+
+    public boolean isConnected(SocketAddress remoteAddress) {
+        Connection conn = getConnection(remoteAddress);
+        if (conn == null) {
+            return false;
+        }
+        long now = (new Date()).getTime();
+        return conn.isConnected(now);
     }
 
     //

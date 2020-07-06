@@ -23,20 +23,42 @@ public class Node implements PeerHandler {
         peer.setHandler(this);
     }
 
-    public Node(SocketAddress address, Hub hub, Pool pool) {
-        this(new Peer(address, hub, pool));
+    public Node(SocketAddress address, Hub hub, Pool pool) throws SocketException {
+        super();
+        this.peer = createPeer(address, hub, pool);
+        this.peer.setHandler(this);
     }
 
-    public Node(SocketAddress address, Hub hub) {
-        this(new Peer(address, hub));
+    public Node(SocketAddress address, Hub hub) throws SocketException {
+        super();
+        this.peer = createPeer(address, hub, null);
+        this.peer.setHandler(this);
     }
 
     public Node(SocketAddress address, Pool pool) throws SocketException {
-        this(new Peer(address, pool));
+        super();
+        this.peer = createPeer(address, null, pool);
+        this.peer.setHandler(this);
     }
 
     public Node(SocketAddress address) throws SocketException {
-        this(new Peer(address));
+        super();
+        this.peer = createPeer(address, null, null);
+        this.peer.setHandler(this);
+    }
+
+    protected Peer createPeer(SocketAddress address, Hub hub, Pool pool) throws SocketException {
+        if (hub == null) {
+            if (pool == null) {
+                return new Peer(address);
+            } else {
+                return new Peer(address, pool);
+            }
+        } else if (pool == null) {
+            return new Peer(address, hub);
+        } else {
+            return new Peer(address, hub, pool);
+        }
     }
 
     public void start() {

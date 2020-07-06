@@ -46,11 +46,11 @@ public abstract class Server extends Node {
         super(peer);
     }
 
-    public Server(SocketAddress address, Hub hub, Pool pool) {
+    public Server(SocketAddress address, Hub hub, Pool pool) throws SocketException {
         super(address, hub, pool);
     }
 
-    public Server(SocketAddress address, Hub hub) {
+    public Server(SocketAddress address, Hub hub) throws SocketException {
         super(address, hub);
     }
 

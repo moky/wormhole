@@ -43,11 +43,11 @@ public abstract class Client extends Node {
         super(peer);
     }
 
-    public Client(SocketAddress address, Hub hub, Pool pool) {
+    public Client(SocketAddress address, Hub hub, Pool pool) throws SocketException {
         super(address, hub, pool);
     }
 
-    public Client(SocketAddress address, Hub hub) {
+    public Client(SocketAddress address, Hub hub) throws SocketException {
         super(address, hub);
     }
 

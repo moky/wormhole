@@ -92,7 +92,8 @@ public class Contact {
         if (conn == null) {
             return false;
         }
-        return !conn.isError();
+        long now = (new Date()).getTime();
+        return !conn.isError(now);
     }
 
     public void purge(Peer peer) {

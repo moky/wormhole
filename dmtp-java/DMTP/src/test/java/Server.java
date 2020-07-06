@@ -32,13 +32,16 @@ public class Server extends chat.dim.dmtp.Server {
     static final String SERVER_IP = SERVER_Test;
     static final int SERVER_PORT = 9395;
 
+    static Server server;
+    static ContactManager database;
+
     public static void main(String args[]) throws SocketException {
 
         System.out.printf("UDP server (%s:%d) starting ...\n", SERVER_IP, SERVER_PORT);
 
-        Server server = new Server(SERVER_IP, SERVER_PORT);
+        server = new Server(SERVER_IP, SERVER_PORT);
 
-        ContactManager database = new ContactManager(server.peer);
+        database = new ContactManager(server.peer);
 
         server.setDelegate(database);
         server.start();

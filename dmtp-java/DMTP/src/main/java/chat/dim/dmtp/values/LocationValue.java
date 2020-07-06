@@ -47,10 +47,10 @@ public class LocationValue extends CommandValue {
     private SocketAddress mappedAddress = null;
     private SocketAddress relayedAddress = null;
 
-    private String nat = null;
-
     private long timestamp = 0; // time for signature (in seconds)
     private Data signature = null;
+
+    private String nat = null;
 
     public LocationValue(Data data, List<Field> fields) {
         super(data, fields);
@@ -79,16 +79,12 @@ public class LocationValue extends CommandValue {
         return relayedAddress;
     }
 
-    public String getNat() {
-        if (nat == null) {
-            nat = (String) get(FieldName.NAT);
-        }
-        return nat;
-    }
-
     public long getTimestamp() {
         if (timestamp == 0) {
-            timestamp = (long) get(FieldName.TIME);
+            Object value = get(FieldName.TIME);
+            if (value != null) {
+                timestamp = (long) value;
+            }
         }
         return timestamp;
     }
@@ -97,6 +93,13 @@ public class LocationValue extends CommandValue {
             signature = (Data) get(FieldName.SIGNATURE);
         }
         return signature;
+    }
+
+    public String getNat() {
+        if (nat == null) {
+            nat = (String) get(FieldName.NAT);
+        }
+        return nat;
     }
 
     @Override

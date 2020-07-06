@@ -122,13 +122,19 @@ public class Message extends FieldsValue {
     }
     public long getTimestamp() {
         if (timestamp == 0) {
-            timestamp = (long) get(TIME);
+            Object value = get(TIME);
+            if (value != null) {
+                timestamp = (long) value;
+            }
         }
         return timestamp;
     }
     public int getType() {
         if (type == 0) {
-            type = (int) get(TYPE);
+            Object value = get(TYPE);
+            if (value != null) {
+                type = (int) value;
+            }
         }
         return type;
     }

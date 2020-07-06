@@ -78,7 +78,7 @@ public class FieldsValue extends FieldValue implements Map<String, Object> {
         } else if (value instanceof TimestampValue) {
             dictionary.put(key, ((TimestampValue) value).value);
         } else if (value instanceof BinaryValue) {
-            dictionary.put(key, new Data(value.getBytes()));
+            dictionary.put(key, value);
         } else {
             System.out.printf("%s> unknown field: %s -> %s\n", getClass(), tag, value);
         }
