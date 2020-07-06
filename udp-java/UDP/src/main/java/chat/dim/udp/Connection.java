@@ -30,36 +30,15 @@
  */
 package chat.dim.udp;
 
+import java.net.DatagramPacket;
 import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-/*    Finite States:
- *
- *             //===============\\          (Sent)          //==============\\
- *             ||               || -----------------------> ||              ||
- *             ||    Default    ||                          ||  Connecting  ||
- *             || (Not Connect) || <----------------------- ||              ||
- *             \\===============//         (Timeout)        \\==============//
- *                                                               |       |
- *             //===============\\                               |       |
- *             ||               || <-----------------------------+       |
- *             ||     Error     ||          (Error)                 (Received)
- *             ||               || <-----------------------------+       |
- *             \\===============//                               |       |
- *                 A       A                                     |       |
- *                 |       |            //===========\\          |       |
- *                 (Error) +----------- ||           ||          |       |
- *                 |                    ||  Expired  || <--------+       |
- *                 |       +----------> ||           ||          |       |
- *                 |       |            \\===========//          |       |
- *                 |       (Timeout)           |         (Timeout)       |
- *                 |       |                   |                 |       V
- *             //===============\\     (Sent)  |            //==============\\
- *             ||               || <-----------+            ||              ||
- *             ||  Maintaining  ||                          ||  Connected   ||
- *             ||               || -----------------------> ||              ||
- *             \\===============//       (Received)         \\==============//
- */
 public class Connection {
 
     public final SocketAddress remoteAddress;
@@ -72,6 +51,19 @@ public class Connection {
 
     public static long EXPIRES = 28 * 1000;  // milliseconds
 
+    /*  Max count for caching packages
+     *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     *
+     *  Each UDP data package is limited to no more than 576 bytes, so set the
+     *  MAX_CACHE_SPACES to about 200,000 means it would take up to 100MB memory
+     *  for caching in one connection.
+     */
+    public static int MAX_CACHE_SPACES = 1024 * 200;
+
+    // received packages
+    private final List<DatagramPacket> cargoes = new ArrayList<>();
+    private final ReadWriteLock cargoLock = new ReentrantReadWriteLock();
+
     public Connection(SocketAddress remoteAddress, SocketAddress localAddress) {
         super();
         this.localAddress = localAddress;
@@ -82,21 +74,16 @@ public class Connection {
         lastReceivedTime = now - EXPIRES - 1;
     }
 
-    public boolean isConnected() {
-        return getStatus().isConnected();
+    public boolean isConnected(long now) {
+        return getStatus(now).isConnected();
     }
 
-    public boolean isExpired() {
-        return getStatus().isExpired();
+    public boolean isExpired(long now) {
+        return getStatus(now).isExpired();
     }
 
-    public boolean isError() {
-        return getStatus().isError();
-    }
-
-    public ConnectionStatus getStatus() {
-        Date now = new Date();
-        return getStatus(now.getTime());
+    public boolean isError(long now) {
+        return getStatus(now).isError();
     }
 
     /**
@@ -197,5 +184,54 @@ public class Connection {
      */
     void updateReceivedTime(long now) {
         lastReceivedTime = now;
+    }
+
+    /**
+     *  Get received data package from buffer, non-blocked
+     *
+     * @return received package with data and source address
+     */
+    public DatagramPacket receive() {
+        DatagramPacket cargo = null;
+        Lock writeLock = cargoLock.writeLock();
+        writeLock.lock();
+        try {
+            if (cargoes.size() > 0) {
+                cargo = cargoes.remove(0);
+            }
+        } finally {
+            writeLock.unlock();
+        }
+        return cargo;
+    }
+
+    public DatagramPacket cache(DatagramPacket cargo) {
+        int offset = cargo.getOffset();
+        int length = cargo.getLength();
+        byte[] buf = cargo.getData();
+        if (offset > 0 || length < buf.length) {
+            // remove empty spaces
+            byte[] buffer = new byte[length];
+            System.arraycopy(buf, offset, buffer, 0, length);
+            cargo.setData(buffer);
+        }
+        DatagramPacket ejected = null;
+        Lock writeLock = cargoLock.writeLock();
+        writeLock.lock();
+        try {
+            if (isCacheFull(cargoes.size())) {
+                // drop the first package
+                ejected = cargoes.remove(0);
+            }
+            // append the new package to the end
+            cargoes.add(cargo);
+        } finally {
+            writeLock.unlock();
+        }
+        return ejected;
+    }
+
+    protected boolean isCacheFull(int count) {
+        return count > MAX_CACHE_SPACES;
     }
 }

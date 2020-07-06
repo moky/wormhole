@@ -734,6 +734,7 @@ public class Hub extends Thread implements ConnectionHandler {
 
     @Override
     public void onConnectionReceivedData(Connection connection) {
+        /*
         if (running) {
             // process by run()
             return;
@@ -753,5 +754,6 @@ public class Hub extends Thread implements ConnectionHandler {
         for (byte[] res : responses) {
             send(res, cargo.source);
         }
+         */
     }
 }

@@ -86,12 +86,13 @@ public class Client extends chat.dim.dmtp.Client {
         SocketAddress sourceAddress;
         SocketAddress mappedAddress;
         Connection conn;
+        long now = (new Date()).getTime();
         for (LocationValue item : locations) {
             // source address
             sourceAddress = item.getSourceAddress();
             if (sourceAddress != null) {
                 conn = peer.getConnection(sourceAddress);
-                if (conn != null && conn.isConnected()) {
+                if (conn != null && conn.isConnected(now)) {
                     sessions.add(new Session(item, sourceAddress));
                     continue;
                 }
@@ -100,7 +101,7 @@ public class Client extends chat.dim.dmtp.Client {
             mappedAddress = item.getMappedAddress();
             if (mappedAddress != null) {
                 conn = peer.getConnection(mappedAddress);
-                if (conn != null && conn.isConnected()) {
+                if (conn != null && conn.isConnected(now)) {
                     sessions.add(new Session(item, mappedAddress));
                     continue;
                 }

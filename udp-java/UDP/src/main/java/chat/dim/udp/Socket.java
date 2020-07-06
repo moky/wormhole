@@ -45,7 +45,7 @@ public class Socket extends Thread {
      *
      *  Each UDP data package is limited to no more than 576 bytes, so set the
      *  MAX_CACHE_SPACES to about 2,000,000 means it would take up to 1GB memory
-     *  for the caching.
+     *  for caching in one socket.
      */
     public static int MAX_CACHE_SPACES = 1024 * 1024 * 2;
 
@@ -69,9 +69,9 @@ public class Socket extends Thread {
     private final Set<Connection> connections = new LinkedHashSet<>();
     private final ReadWriteLock connectionLock = new ReentrantReadWriteLock();
 
-    // received packages
-    private final List<DatagramPacket> cargoes = new ArrayList<>();
-    private final ReadWriteLock cargoLock = new ReentrantReadWriteLock();
+    // declaration forms
+    private final List<SocketAddress> declarations = new ArrayList<>();
+    private final ReadWriteLock declarationLock = new ReentrantReadWriteLock();
 
     public Socket(SocketAddress address) throws SocketException {
         super();
@@ -201,6 +201,8 @@ public class Socket extends Thread {
         } finally {
             writeLock.unlock();
         }
+        // clear declaration forms
+        clearDeclarations(removedConnections);
         return removedConnections;
     }
 
@@ -220,7 +222,7 @@ public class Socket extends Thread {
             Connection item;
             while (iterator.hasNext()) {
                 item = iterator.next();
-                if (item.getStatus(now).isExpired()) {
+                if (item.isExpired(now)) {
                     // got it
                     connection = item;
                     break;
@@ -248,7 +250,7 @@ public class Socket extends Thread {
             Connection item;
             while (iterator.hasNext()) {
                 item = iterator.next();
-                if (item.getStatus(now).isError()) {
+                if (item.isError(now)) {
                     // got it
                     connection = item;
                     break;
@@ -261,80 +263,127 @@ public class Socket extends Thread {
     }
 
     //
+    //  Declaration forms
+    //
+
+    protected boolean isCacheFull(int count, SocketAddress remoteAddress) {
+        return count > MAX_CACHE_SPACES;
+    }
+
+    private SocketAddress getDeclaration() {
+        SocketAddress ejected;
+        Lock writeLock = declarationLock.writeLock();
+        writeLock.lock();
+        try {
+            // get first one
+            if (declarations.size() > 0) {
+                ejected = declarations.remove(0);
+            } else {
+                ejected = null;
+            }
+        } finally {
+            writeLock.unlock();
+        }
+        return ejected;
+    }
+
+    private SocketAddress addDeclaration(SocketAddress remoteAddress) {
+        SocketAddress ejecting = null;
+        Lock writeLock = declarationLock.writeLock();
+        writeLock.lock();
+        try {
+            if (isCacheFull(declarations.size(), remoteAddress)) {
+                // the first form to be dropped
+                ejecting = declarations.get(0);
+            }
+            // append the new form to the end
+            declarations.add(remoteAddress);
+        } finally {
+            writeLock.unlock();
+        }
+        return ejecting;
+    }
+
+    // remove one
+    private void removeDeclaration(SocketAddress remoteAddress) {
+        Lock writeLock = declarationLock.writeLock();
+        writeLock.lock();
+        try {
+            declarations.remove(remoteAddress);
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    // remove all
+    private void removeDeclarations(SocketAddress remoteAddress) {
+        Lock writeLock = declarationLock.writeLock();
+        writeLock.lock();
+        try {
+            int index = declarations.size() - 1;
+            for (; index >= 0; --index) {
+                if (remoteAddress.equals(declarations.get(index))) {
+                    declarations.remove(index);
+                }
+            }
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    private void clearDeclarations(Set<Connection> removedConnections) {
+        for (Connection conn : removedConnections) {
+            removeDeclarations(conn.remoteAddress);
+        }
+    }
+
+    //
     //  Connection Status
     //
 
     private void updateSentTime(SocketAddress remoteAddress) {
-        Connection connection = null;
-        ConnectionStatus oldStatus = null, newStatus = null;
-        long now = (new Date()).getTime();
-
-        Lock readLock = connectionLock.readLock();
-        readLock.lock();
-        try {
-            Iterator<Connection> iterator = connections.iterator();
-            Connection item;
-            while (iterator.hasNext()) {
-                item = iterator.next();
-                if (remoteAddress.equals(item.remoteAddress)) {
-                    // refresh time
-                    oldStatus = item.getStatus(now);
-                    item.updateSentTime(now);
-                    newStatus = item.getStatus(now);
-                    if (!oldStatus.equals(newStatus)) {
-                        connection = item;
-                        break;
-                    }
-                    //break;
-                }
-            }
-        } finally {
-            readLock.unlock();
+        Connection conn = getConnection(remoteAddress);
+        if (conn == null) {
+            return;
         }
-
+        long now = (new Date()).getTime();
+        // 1. get old status
+        ConnectionStatus oldStatus = conn.getStatus(now);
+        // 2. refresh time
+        conn.updateSentTime(now);
+        // 3. get new status
+        ConnectionStatus newStatus = conn.getStatus(now);
+        if (oldStatus.equals(newStatus)) {
+            // status not changed
+            return;
+        }
         // callback
-        if (connection != null) {
-            ConnectionHandler delegate = getHandler();
-            if (delegate != null) {
-                delegate.onConnectionStatusChanged(connection, oldStatus, newStatus);
-            }
+        ConnectionHandler delegate = getHandler();
+        if (delegate != null) {
+            delegate.onConnectionStatusChanged(conn, oldStatus, newStatus);
         }
     }
 
     private void updateReceivedTime(SocketAddress remoteAddress) {
-        Connection connection = null;
-        ConnectionStatus oldStatus = null, newStatus = null;
-        long now = (new Date()).getTime();
-
-        Lock readLock = connectionLock.readLock();
-        readLock.lock();
-        try {
-            Iterator<Connection> iterator = connections.iterator();
-            Connection item;
-            while (iterator.hasNext()) {
-                item = iterator.next();
-                if (remoteAddress.equals(item.remoteAddress)) {
-                    // refresh time
-                    oldStatus = item.getStatus(now);
-                    item.updateReceivedTime(now);
-                    newStatus = item.getStatus(now);
-                    if (!oldStatus.equals(newStatus)) {
-                        connection = item;
-                        break;
-                    }
-                    //break;
-                }
-            }
-        } finally {
-            readLock.unlock();
+        Connection conn = getConnection(remoteAddress);
+        if (conn == null) {
+            return;
         }
-
+        long now = (new Date()).getTime();
+        // 1. get old status
+        ConnectionStatus oldStatus = conn.getStatus(now);
+        // 2. refresh time
+        conn.updateReceivedTime(now);
+        // 3. get new status
+        ConnectionStatus newStatus = conn.getStatus(now);
+        if (oldStatus.equals(newStatus)) {
+            // status not changed
+            return;
+        }
         // callback
-        if (connection != null) {
-            ConnectionHandler delegate = getHandler();
-            if (delegate != null) {
-                delegate.onConnectionStatusChanged(connection, oldStatus, newStatus);
-            }
+        ConnectionHandler delegate = getHandler();
+        if (delegate != null) {
+            delegate.onConnectionStatusChanged(conn, oldStatus, newStatus);
         }
     }
 
@@ -388,48 +437,47 @@ public class Socket extends Thread {
      */
     public DatagramPacket receive() {
         DatagramPacket cargo = null;
-        Lock writeLock = cargoLock.writeLock();
-        writeLock.lock();
-        try {
-            if (cargoes.size() > 0) {
-                cargo = cargoes.remove(0);
+        SocketAddress remoteAddress;
+        Connection conn;
+        while (cargo == null) {
+            remoteAddress = getDeclaration();
+            if (remoteAddress == null) {
+                // no more declaration forms
+                break;
             }
-        } finally {
-            writeLock.unlock();
+            conn = getConnection(remoteAddress);
+            if (conn == null) {
+                // connection lost
+                removeDeclarations(remoteAddress);
+                continue;
+            }
+            cargo = conn.receive();
         }
         return cargo;
     }
 
     private void cache(DatagramPacket cargo) {
-        int offset = cargo.getOffset();
-        int length = cargo.getLength();
-        byte[] buf = cargo.getData();
-        if (offset > 0 || length < buf.length) {
-            // remove empty spaces
-            byte[] buffer = new byte[length];
-            System.arraycopy(buf, offset, buffer, 0, length);
-            cargo.setData(buffer);
+        SocketAddress remoteAddress = cargo.getSocketAddress();
+        Connection conn = getConnection(remoteAddress);
+        if (conn == null) {
+            conn = connect(remoteAddress);
         }
-        Lock writeLock = cargoLock.writeLock();
-        writeLock.lock();
-        try {
-            if (cargoes.size() >= MAX_CACHE_SPACES) {
-                // drop the first package
-                cargoes.remove(0);
-            }
-            // append the new package to the end
-            cargoes.add(cargo);
-        } finally {
-            writeLock.unlock();
+        DatagramPacket ejected = conn.cache(cargo);
+        if (ejected != null) {
+            // this connection is full, eject one declaration form from it
+            removeDeclaration(remoteAddress);
+            //removeDeclaration(ejectedCargo.getSocketAddress());
+        }
+        SocketAddress ejecting = addDeclaration(remoteAddress);
+        if (ejecting != null) {
+            // this socket is full, eject one cargo from the connection
+            receive();
         }
 
         // callback
         ConnectionHandler delegate = getHandler();
         if (delegate != null) {
-            Connection connection = getConnection(cargo.getSocketAddress());
-            if (connection != null) {
-                delegate.onConnectionReceivedData(connection);
-            }
+            delegate.onConnectionReceivedData(conn);
         }
     }
 
@@ -475,7 +523,7 @@ public class Socket extends Thread {
             try {
                 packet = receive(MTU);
                 if (packet == null) {
-                    // received nothing
+                    // received nothing, have a rest
                     _sleep(0.1);
                     continue;
                 }
