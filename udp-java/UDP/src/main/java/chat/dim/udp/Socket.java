@@ -206,6 +206,25 @@ public class Socket extends Thread {
         return removedConnections;
     }
 
+    private void clearDeclarations(Set<Connection> removedConnections) {
+        Lock writeLock = declarationLock.writeLock();
+        writeLock.lock();
+        try {
+            int index;
+            SocketAddress address;
+            for (Connection conn : removedConnections) {
+                address = conn.remoteAddress;
+                for (index = declarations.size() - 1; index >= 0; --index) {
+                    if (address.equals(declarations.get(index))) {
+                        declarations.remove(index);
+                    }
+                }
+            }
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
     /**
      *  Get any expired connection
      *
@@ -260,81 +279,6 @@ public class Socket extends Thread {
             readLock.unlock();
         }
         return connection;
-    }
-
-    //
-    //  Declaration forms
-    //
-
-    protected boolean isCacheFull(int count, SocketAddress remoteAddress) {
-        return count > MAX_CACHE_SPACES;
-    }
-
-    private SocketAddress getDeclaration() {
-        SocketAddress ejected;
-        Lock writeLock = declarationLock.writeLock();
-        writeLock.lock();
-        try {
-            // get first one
-            if (declarations.size() > 0) {
-                ejected = declarations.remove(0);
-            } else {
-                ejected = null;
-            }
-        } finally {
-            writeLock.unlock();
-        }
-        return ejected;
-    }
-
-    private SocketAddress addDeclaration(SocketAddress remoteAddress) {
-        SocketAddress ejecting = null;
-        Lock writeLock = declarationLock.writeLock();
-        writeLock.lock();
-        try {
-            if (isCacheFull(declarations.size(), remoteAddress)) {
-                // the first form to be dropped
-                ejecting = declarations.get(0);
-            }
-            // append the new form to the end
-            declarations.add(remoteAddress);
-        } finally {
-            writeLock.unlock();
-        }
-        return ejecting;
-    }
-
-    // remove one
-    private void removeDeclaration(SocketAddress remoteAddress) {
-        Lock writeLock = declarationLock.writeLock();
-        writeLock.lock();
-        try {
-            declarations.remove(remoteAddress);
-        } finally {
-            writeLock.unlock();
-        }
-    }
-
-    // remove all
-    private void removeDeclarations(SocketAddress remoteAddress) {
-        Lock writeLock = declarationLock.writeLock();
-        writeLock.lock();
-        try {
-            int index = declarations.size() - 1;
-            for (; index >= 0; --index) {
-                if (remoteAddress.equals(declarations.get(index))) {
-                    declarations.remove(index);
-                }
-            }
-        } finally {
-            writeLock.unlock();
-        }
-    }
-
-    private void clearDeclarations(Set<Connection> removedConnections) {
-        for (Connection conn : removedConnections) {
-            removeDeclarations(conn.remoteAddress);
-        }
     }
 
     //
@@ -437,41 +381,72 @@ public class Socket extends Thread {
      */
     public DatagramPacket receive() {
         DatagramPacket cargo = null;
-        SocketAddress remoteAddress;
-        Connection conn;
-        while (cargo == null) {
-            remoteAddress = getDeclaration();
-            if (remoteAddress == null) {
-                // no more declaration forms
-                break;
+        Lock writeLock = declarationLock.writeLock();
+        writeLock.lock();
+        try {
+            SocketAddress remoteAddress;
+            Connection conn;
+            int index;
+            while (declarations.size() > 0) {
+                // get first one
+                remoteAddress = declarations.remove(0);
+                conn = getConnection(remoteAddress);
+                if (conn != null) {
+                    cargo = conn.receive();
+                    if (cargo == null) {
+                        continue;
+                    } else {
+                        // got one packet
+                        break;
+                    }
+                }
+                // connection lost, remove all declaration forms with its socket address
+                for (index = declarations.size() - 1; index >= 0; --index) {
+                    if (declarations.get(index).equals(remoteAddress)) {
+                        declarations.remove(index);
+                    }
+                }
             }
-            conn = getConnection(remoteAddress);
-            if (conn == null) {
-                // connection lost
-                removeDeclarations(remoteAddress);
-                continue;
-            }
-            cargo = conn.receive();
+        } finally {
+            writeLock.unlock();
         }
         return cargo;
     }
 
     private void cache(DatagramPacket cargo) {
+        // 1. get connection by address in packet
         SocketAddress remoteAddress = cargo.getSocketAddress();
         Connection conn = getConnection(remoteAddress);
         if (conn == null) {
             conn = connect(remoteAddress);
         }
-        DatagramPacket ejected = conn.cache(cargo);
-        if (ejected != null) {
-            // this connection is full, eject one declaration form from it
-            removeDeclaration(remoteAddress);
-            //removeDeclaration(ejectedCargo.getSocketAddress());
-        }
-        SocketAddress ejecting = addDeclaration(remoteAddress);
-        if (ejecting != null) {
-            // this socket is full, eject one cargo from the connection
-            receive();
+
+        Lock writeLock = declarationLock.writeLock();
+        writeLock.lock();
+        try {
+            // 2. append packet to connection's cache
+            DatagramPacket ejected = conn.cache(cargo);
+            /*  NOTICE:
+             *      If something ejected, means this connection's cache is full,
+             *      don't append new form for it, just keep the old ones in queue,
+             *      this will let the old forms have a higher priority
+             *      to be processed as soon as possible.
+             */
+            if (ejected == null) {
+                // append the new form to the end
+                declarations.add(remoteAddress);
+            }
+
+            // 3. check socket memory cache
+            if (isCacheFull(declarations.size(), remoteAddress)) {
+                /* this socket is full, eject one cargo from any connection.
+                 * notice that the connection which cache is full will have
+                 * a higher priority to be ejected.
+                 */
+                receive();
+            }
+        } finally {
+            writeLock.unlock();
         }
 
         // callback
@@ -479,6 +454,10 @@ public class Socket extends Thread {
         if (delegate != null) {
             delegate.onConnectionReceivedData(conn);
         }
+    }
+
+    protected boolean isCacheFull(int count, SocketAddress remoteAddress) {
+        return count > MAX_CACHE_SPACES;
     }
 
     /*

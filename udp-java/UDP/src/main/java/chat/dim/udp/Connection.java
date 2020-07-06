@@ -35,9 +35,6 @@ import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Connection {
 
@@ -62,7 +59,6 @@ public class Connection {
 
     // received packages
     private final List<DatagramPacket> cargoes = new ArrayList<>();
-    private final ReadWriteLock cargoLock = new ReentrantReadWriteLock();
 
     public Connection(SocketAddress remoteAddress, SocketAddress localAddress) {
         super();
@@ -192,19 +188,18 @@ public class Connection {
      * @return received package with data and source address
      */
     public DatagramPacket receive() {
-        DatagramPacket cargo = null;
-        Lock writeLock = cargoLock.writeLock();
-        writeLock.lock();
-        try {
-            if (cargoes.size() > 0) {
-                cargo = cargoes.remove(0);
-            }
-        } finally {
-            writeLock.unlock();
+        if (cargoes.size() > 0) {
+            return cargoes.remove(0);
         }
-        return cargo;
+        return null;
     }
 
+    /**
+     *  Cache received data package into buffer
+     *
+     * @param cargo - received package with data and source address
+     * @return ejected package when memory cache is full
+     */
     public DatagramPacket cache(DatagramPacket cargo) {
         int offset = cargo.getOffset();
         int length = cargo.getLength();
@@ -215,20 +210,13 @@ public class Connection {
             System.arraycopy(buf, offset, buffer, 0, length);
             cargo.setData(buffer);
         }
-        DatagramPacket ejected = null;
-        Lock writeLock = cargoLock.writeLock();
-        writeLock.lock();
-        try {
-            if (isCacheFull(cargoes.size())) {
-                // drop the first package
-                ejected = cargoes.remove(0);
-            }
-            // append the new package to the end
-            cargoes.add(cargo);
-        } finally {
-            writeLock.unlock();
+        if (isCacheFull(cargoes.size())) {
+            // drop the first package
+            return cargoes.remove(0);
         }
-        return ejected;
+        // append the new package to the end
+        cargoes.add(cargo);
+        return null;
     }
 
     protected boolean isCacheFull(int count) {
