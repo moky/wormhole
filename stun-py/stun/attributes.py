@@ -626,12 +626,13 @@ class SoftwareValue(AttributeValue):
             tail = length & 3
             if tail > 0:
                 length += 4 - tail
-            data = MutableData(capacity=length)
-            data.copy(index=0, source=data)
+            mutable = MutableData(capacity=length)
+            mutable.copy(index=0, source=data)
             if tail > 0:
                 # set '\0' to fill the tail spaces
                 length -= 1
-                data.set_byte(index=length, value=0)
+                mutable.set_byte(index=length, value=0)
+            data = mutable
         super().__init__(data=data)
         self.__desc = description
 

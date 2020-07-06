@@ -75,14 +75,16 @@ class Client(Node, ABC):
                 data = XorMappedAddressValue.xor(data=value, factor=context['trans_id'])
                 length = AttributeLength(value=data.length)
                 value = XorMappedAddressValue.parse(data=data, tag=tag, length=length)
-            context['MAPPED-ADDRESS'] = value
+            if value is not None:
+                context['MAPPED-ADDRESS'] = value
         elif tag == XorMappedAddress2:
             if not isinstance(value, XorMappedAddressValue2):
                 # XOR and parse again
                 data = XorMappedAddressValue2.xor(data=value, factor=context['trans_id'])
                 length = AttributeLength(value=data.length)
                 value = XorMappedAddressValue2.parse(data=data, tag=tag, length=length)
-            context['MAPPED-ADDRESS'] = value
+            if value is not None:
+                context['MAPPED-ADDRESS'] = value
         elif tag == ChangedAddress:
             assert isinstance(value, ChangedAddressValue), 'changed address value error: %s' % value
             context['CHANGED-ADDRESS'] = value

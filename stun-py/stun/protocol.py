@@ -34,8 +34,11 @@
 
     [RFC] https://www.ietf.org/rfc/rfc5389.txt
 """
+
+import threading
 from typing import Union
 
+from udp.tlv.utils import random_bytes, bytes_to_int
 from udp.tlv import Data, MutableData, UInt16Data, UInt32Data
 
 
@@ -54,7 +57,7 @@ from udp.tlv import Data, MutableData, UInt16Data, UInt32Data
 
 class MessageType(UInt16Data):
 
-    def __init__(self, value: int, data: bytes=None, name: str=None):
+    def __init__(self, value: int, data: Union[Data, bytes, bytearray]=None, name: str=None):
         super().__init__(data=data, value=value)
         self.__name = name
         self.__message_types[value] = self
@@ -77,10 +80,10 @@ class MessageType(UInt16Data):
         value = data.get_uint16_value()
         t = cls.__message_types.get(value)
         if t is None:
-            name = 'MessageType-0x%04X' % value
-            return cls(value=value, data=data, name=name)
-        else:
-            return t
+            # name = 'MessageType-0x%04X' % value
+            # t = cls(value=value, data=data, name=name)
+            raise LookupError('msg type error: %d' % value)
+        return t
 
 
 # types for a STUN message
@@ -106,18 +109,48 @@ class MessageLength(UInt16Data):
 
 class TransactionID(Data):
 
+    def __str__(self) -> str:
+        clazz = self.__class__.__name__
+        return '<%s: %s />' % (clazz, self._buffer)
+
+    def __repr__(self) -> str:
+        clazz = self.__class__.__name__
+        return '<%s: %s />' % (clazz, self._buffer)
+
     @classmethod
     def parse(cls, data: Data):
         if data.length < 16:
+            # raise ValueError('transaction ID length error: %d' % data.length)
             return None
         elif data.length > 16:
             data = data.slice(end=16)
-        assert data.get_bytes(end=4) == MagicCookie, 'transaction ID not starts with magic cookie'
+        # assert data.get_bytes(end=4) == MagicCookie, 'transaction ID not starts with magic cookie'
         return cls(data=data)
+
+    __number_lock = threading.Lock()
+    __number_hi = bytes_to_int(random_bytes(4))
+    __number_mi = bytes_to_int(random_bytes(4))
+    __number_lo = bytes_to_int(random_bytes(4))
 
     @classmethod
     def generate(cls):  # -> TransactionID:
-        data = MagicCookie.concat(Data.random(length=12))
+        with cls.__number_lock:
+            if cls.__number_lo < 0xFFFFFFFF:
+                cls.__number_lo += 1
+            else:
+                cls.__number_lo = 0
+                if cls.__number_mi < 0xFFFFFFFF:
+                    cls.__number_mi += 1
+                else:
+                    cls.__number_mi = 0
+                    if cls.__number_hi < 0xFFFFFFFF:
+                        cls.__number_hi += 1
+                    else:
+                        cls.__number_hi = 0
+            hi = UInt32Data(value=cls.__number_hi)
+            mi = UInt32Data(value=cls.__number_mi)
+            lo = UInt32Data(value=cls.__number_lo)
+        data = MagicCookie.concat(hi).concat(mi).concat(lo)
         return cls(data=data)
 
 

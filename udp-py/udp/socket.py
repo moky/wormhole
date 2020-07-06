@@ -34,7 +34,7 @@ import time
 import weakref
 from typing import Optional
 
-from .connection import ConnectionStatus, ConnectionHandler, Connection, DatagramPacket
+from .connection import ConnectionHandler, Connection, DatagramPacket
 
 
 class Socket(threading.Thread):
@@ -168,7 +168,7 @@ class Socket(threading.Thread):
         with self.__connections_lock:
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
-                if ConnectionStatus.is_expired(status=conn.get_status(now=now)):
+                if conn.is_expired(now=now):
                     return conn
 
     def __error_connection(self) -> Optional[Connection]:
@@ -177,7 +177,7 @@ class Socket(threading.Thread):
         with self.__connections_lock:
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
-                if ConnectionStatus.is_error(status=conn.get_status(now=now)):
+                if conn.is_error(now=now):
                     return conn
 
     def __update_sent_time(self, remote_address: tuple):

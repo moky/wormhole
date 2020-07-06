@@ -28,6 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
+import time
 from typing import Optional
 
 from udp import Connection
@@ -50,12 +51,10 @@ class Peer(MTPPeer, HubListener):
         super().__init__(pool=pool)
         self.__local_address = local_address
         if hub is None:
-            hub = Hub()
-            hub.open(host=local_address[0], port=local_address[1])
-            # hub.start()
-            hub.add_listener(listener=self)
+            hub = self._create_hub(host=local_address[0], port=local_address[1])
         self.__hub = hub
         self.delegate = hub
+        hub.add_listener(listener=self)
 
     @property
     def local_address(self) -> tuple:
@@ -64,6 +63,13 @@ class Peer(MTPPeer, HubListener):
     @property
     def hub(self) -> Hub:
         return self.__hub
+
+    # noinspection PyMethodMayBeStatic
+    def _create_hub(self, host: str, port: int) -> Hub:
+        hub = Hub()
+        hub.open(host=host, port=port)
+        # hub.start()
+        return hub
 
     def start(self):
         # start peer
@@ -93,7 +99,7 @@ class Peer(MTPPeer, HubListener):
     def is_connected(self, remote_address: tuple) -> bool:
         conn = self.get_connection(remote_address=remote_address)
         if conn is not None:
-            return conn.is_connected
+            return conn.is_connected(now=time.time())
 
     #
     #   Send

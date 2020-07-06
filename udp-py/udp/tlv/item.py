@@ -59,7 +59,7 @@ class Tag(Data):
 
 class Length(IntegerData):
 
-    def __init__(self, data: Union[IntegerData, Data, bytes]=None, value: int=None):
+    def __init__(self, data: Union[IntegerData, Data, bytes, bytearray]=None, value: int=None):
         if data is None:
             assert isinstance(value, int), 'value error: %s' % value
             data = int_to_bytes(value=value, length=2)

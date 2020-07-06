@@ -154,7 +154,12 @@ class Server(Node, ABC):
         # pack
         length = data1.length + data2.length + data3.length + data4.length + data5.length + data6.length
         body = MutableData(capacity=length)
-        body.append(data1).append(data2).append(data3).append(data4).append(data5).append(data6)
+        body.append(data1)
+        body.append(data2)
+        body.append(data3)
+        body.append(data4)
+        body.append(data5)
+        body.append(data6)
         pack = Package.new(msg_type=BindResponse, trans_id=head.trans_id, body=body)
         res = self.send(data=pack, destination=(remote_ip, remote_port), source=(local_ip, local_port))
         return res == pack.length

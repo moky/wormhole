@@ -94,7 +94,7 @@ class DataType:
         t = cls.__data_types.get(value)
         if t is None:
             # name = 'DataType-%d' % value
-            # t = DataType(value=value, name=name)
+            # t = cls(value=value, name=name)
             # raise LookupError('data type error: %d' % value)
             return None
         return t
@@ -112,9 +112,6 @@ class TransactionID(Data):
 
     ZERO = None  # TransactionID(data=Data(b'\0\0\0\0\0\0\0\0'))
 
-    def __init__(self, data: Data):
-        super().__init__(data=data)
-
     def __str__(self) -> str:
         clazz = self.__class__.__name__
         return '<%s: %s />' % (clazz, self._buffer)
@@ -126,7 +123,7 @@ class TransactionID(Data):
     @classmethod
     def parse(cls, data: Data):  # -> TransactionID
         if data.length < 8:
-            # raise ValueError('transaction ID length error: %d' % data_len)
+            # raise ValueError('transaction ID length error: %d' % data.length)
             return None
         elif data.length > 8:
             data = data.slice(end=8)

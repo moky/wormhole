@@ -118,9 +118,7 @@ class Node(ABC):
         super().__init__()
         self.__local_address = (host, port)
         if hub is None:
-            hub = Hub()
-            hub.open(host=host, port=port)
-            # hub.start()
+            hub = self._create_hub(host=host, port=port)
         self.__hub = hub
 
     @property
@@ -143,6 +141,13 @@ class Node(ABC):
     def hub(self) -> Hub:
         return self.__hub
 
+    # noinspection PyMethodMayBeStatic
+    def _create_hub(self, host: str, port: int) -> Hub:
+        hub = Hub()
+        hub.open(host=host, port=port)
+        # hub.start()
+        return hub
+
     def start(self):
         # start hub
         self.hub.start()
@@ -157,7 +162,7 @@ class Node(ABC):
         time_string = time.strftime('%y-%m-%d %H:%M:%S', time_array)
         print('[%s] %s' % (time_string, msg))
 
-    def send(self, data: Data, destination: tuple, source: Union[tuple, int] = None) -> int:
+    def send(self, data: Data, destination: tuple, source: Union[tuple, int]=None) -> int:
         """
         Send data to remote address
 
@@ -167,6 +172,10 @@ class Node(ABC):
         :return: count of sent bytes
         """
         try:
+            if source is None:
+                source = self.source_address
+            elif isinstance(source, int):
+                source = (self.source_address[0], source)
             return self.hub.send(data=data.get_bytes(), destination=destination, source=source)
         except socket.error:
             return -1
