@@ -77,7 +77,7 @@ class ContactDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def update_location(self, location: LocationValue) -> bool:
+    def store_location(self, location: LocationValue) -> bool:
         """
         Check and update location info
 
@@ -87,7 +87,7 @@ class ContactDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def remove_location(self, location: LocationValue) -> bool:
+    def clear_location(self, location: LocationValue) -> bool:
         """
         Check and remove location info
 
@@ -131,7 +131,7 @@ class Contact:
                         and host == item.mapped_address.ip:
                     return item
 
-    def update_location(self, location: LocationValue) -> bool:
+    def store_location(self, location: LocationValue) -> bool:
         """
         When received 'HI' command, update the location in it
 
@@ -166,7 +166,7 @@ class Contact:
             self.__locations.insert(pos, location)
             return True
 
-    def remove_location(self, location: LocationValue):
+    def clear_location(self, location: LocationValue):
         """
         When receive 'BYE' command, remove the location in it
 

@@ -139,7 +139,7 @@ class ContactManager(ContactDelegate):
             assert isinstance(contact, Contact), 'contact error: %s' % contact
             return contact.locations
 
-    def update_location(self, location: LocationValue) -> bool:
+    def store_location(self, location: LocationValue) -> bool:
         identifier = location.identifier
         # TODO: verify signature
         # set with contact
@@ -150,7 +150,7 @@ class ContactManager(ContactDelegate):
                 contact = Contact(identifier=identifier)
                 self.__contacts[identifier] = contact
             # update location for this contact
-            if not contact.update_location(location=location):
+            if not contact.store_location(location=location):
                 return False
         # set with source address
         address = location.source_address
@@ -164,7 +164,7 @@ class ContactManager(ContactDelegate):
             self.__locations[address] = location
         return True
 
-    def remove_location(self, location: LocationValue) -> bool:
+    def clear_location(self, location: LocationValue) -> bool:
         identifier = location.identifier
         # TODO: verify signature
         # remove with source address
@@ -183,4 +183,4 @@ class ContactManager(ContactDelegate):
             if contact is None:
                 return False
             assert isinstance(contact, Contact), 'contact error: %s' % contact
-            return contact.remove_location(location=location)
+            return contact.clear_location(location=location)

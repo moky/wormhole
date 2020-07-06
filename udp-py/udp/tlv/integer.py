@@ -186,5 +186,5 @@ class VarIntData(IntegerData):
                 assert len(data) > 0, 'data empty: %s' % data
                 value, length = bytes_to_varint(data=data)
                 if length < len(data):
-                    data = data[0:length]
+                    data = data[:length]
         super().__init__(data=data, value=value)

@@ -31,7 +31,6 @@
 from abc import ABC
 
 from .command import Command, WhoCommand, SignCommand, FromCommand
-from .command import Call
 from .command import CommandValue, LocationValue
 
 from .node import Node
@@ -41,8 +40,7 @@ class Server(Node, ABC):
 
     def _process_hello(self, location: LocationValue, source: tuple) -> bool:
         address = location.mapped_address
-        if address is not None \
-                and address.port == source[1] and address.ip == source[0]:
+        if address == source:
             # check 'MAPPED-ADDRESS'
             if super()._process_hello(location=location, source=source):
                 # location info accepted
@@ -81,7 +79,7 @@ class Server(Node, ABC):
                 continue
             # send 'FROM' command with sender's location info to the receiver
             cmd = FromCommand.new(location=sender_location)
-            self.send_command(cmd=cmd, destination=(address.ip, address.port))
+            self.send_command(cmd=cmd, destination=address)
             # respond 'FROM' command with receiver's location info to sender
             cmd = FromCommand.new(location=loc)
             self.send_command(cmd=cmd, destination=source)
@@ -90,7 +88,7 @@ class Server(Node, ABC):
     def process_command(self, cmd: Command, source: tuple) -> bool:
         cmd_type = cmd.tag
         cmd_value = cmd.value
-        if cmd_type == Call:
+        if cmd_type == Command.CALL:
             assert isinstance(cmd_value, CommandValue), 'call cmd error: %s' % cmd_value
             return self._process_call(receiver=cmd_value.identifier, source=source)
         else:

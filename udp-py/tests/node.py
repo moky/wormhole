@@ -16,8 +16,8 @@ class Node(mtp.PeerHandler):
         self.__peer = peer
         peer.handler = self
 
-    @staticmethod
-    def __create_peer(local_address: tuple, hub: Hub=None, pool: mtp.Pool=None):
+    # noinspection PyMethodMayBeStatic
+    def __create_peer(self, local_address: tuple, hub: Hub=None, pool: mtp.Pool=None):
         peer = Peer(local_address=local_address, hub=hub, pool=pool)
         # peer.start()
         return peer

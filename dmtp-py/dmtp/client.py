@@ -31,7 +31,6 @@
 from abc import ABC
 
 from .command import Command
-from .command import Sign, From
 from .command import LocationValue
 from .node import Node
 
@@ -47,32 +46,32 @@ class Client(Node, ABC):
             raise LookupError('failed to sign the location: %s' % location)
             # return False
         # update the signed location
-        if self.delegate.update_location(location=mine):
+        if self.delegate.store_location(location=mine):
             # say hi with new location
-            return self.say_hi(destination=destination)
+            return self.say_hello(destination=destination)
 
     def _process_from(self, location: LocationValue) -> bool:
         # when someone is calling you
         # respond anything (say 'HI') to build the connection.
         assert self.delegate is not None, 'contact delegate not set'
-        if self.delegate.update_location(location=location):
+        if self.delegate.store_location(location=location):
             if location.source_address is not None:
                 address = (location.source_address.ip, location.source_address.port)
                 self.peer.connect(remote_address=address)
-                self.say_hi(destination=address)
+                self.say_hello(destination=address)
             if location.mapped_address is not None:
                 address = (location.mapped_address.ip, location.mapped_address.port)
                 self.peer.connect(remote_address=address)
-                self.say_hi(destination=address)
+                self.say_hello(destination=address)
             return True
 
     def process_command(self, cmd: Command, source: tuple) -> bool:
         cmd_type = cmd.tag
         cmd_value = cmd.value
-        if cmd_type == Sign:
+        if cmd_type == Command.SIGN:
             assert isinstance(cmd_value, LocationValue), 'sign cmd error: %s' % cmd_value
             return self._process_sign(location=cmd_value, destination=source)
-        elif cmd_type == From:
+        elif cmd_type == Command.FROM:
             assert isinstance(cmd_value, LocationValue), 'call from error: %s' % cmd_value
             return self._process_from(location=cmd_value)
         else:

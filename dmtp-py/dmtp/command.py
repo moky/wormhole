@@ -28,16 +28,15 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional
+from typing import Union
 
-from udp.tlv import Value
+from udp.tlv import Data
 
-from .tlv import VarName
-from .tlv import Field, FieldsValue
-from .tlv import BinaryValue, StringValue, TimestampValue
-from .tlv import s_value_parsers
+from .tlv import Field, FieldName, FieldValue
+from .values import BinaryValue, StringValue, TimestampValue
 
 from .address import SourceAddressValue, MappedAddressValue, RelayedAddressValue
+from .values import CommandValue, LocationValue
 
 
 """
@@ -105,22 +104,35 @@ from .address import SourceAddressValue, MappedAddressValue, RelayedAddressValue
 
 
 class Command(Field):
-    pass
+
+    # command names
+    WHO = FieldName(name='WHO')    # (S) location not found, ask receiver to say 'HI'
+    HELLO = FieldName(name='HI')   # (C) login with ID
+    SIGN = FieldName(name='SIGN')  # (S) ask client to login
+    CALL = FieldName(name='CALL')  # (C) ask server to help connecting with another user
+    FROM = FieldName(name='FROM')  # (S) help users connecting
+    BYE = FieldName(name='BYE')    # (C) logout with ID and address
 
 
 class WhoCommand(Command):
 
     @classmethod
     def new(cls) -> Command:
-        return cls(tag=Who)
+        return cls(tag=cls.WHO)
 
 
 class HelloCommand(Command):
 
     @classmethod
-    def new(cls, location: Value=None, identifier: str=None,
-            source_address=None, mapped_address=None, relayed_address=None,
-            timestamp: int=0, signature: bytes=None, nat: str=None) -> Command:
+    def new(cls, location: LocationValue=None,
+            identifier: Union[str, StringValue]=None,
+            source_address: Union[tuple, SourceAddressValue]=None,
+            mapped_address: Union[tuple, MappedAddressValue]=None,
+            relayed_address: Union[tuple, RelayedAddressValue]=None,
+            timestamp: Union[int, TimestampValue]=None,
+            signature: Union[bytes, bytearray, Data, BinaryValue]=None,
+            nat: Union[str, StringValue]=None) -> Command:
+        # check location
         if location is None:
             assert identifier is not None, 'user ID empty'
             location = LocationValue.new(identifier=identifier,
@@ -128,215 +140,61 @@ class HelloCommand(Command):
                                          mapped_address=mapped_address,
                                          relayed_address=relayed_address,
                                          timestamp=timestamp, signature=signature, nat=nat)
-        return cls(tag=Hello, value=location)
+        return cls(tag=cls.HELLO, value=location)
 
 
 class SignCommand(Command):
 
     @classmethod
-    def new(cls, identifier: str, source_address=None, mapped_address=None, relayed_address=None) -> Command:
+    def new(cls, identifier: Union[str, StringValue],
+            source_address: Union[tuple, SourceAddressValue]=None,
+            mapped_address: Union[tuple, MappedAddressValue]=None,
+            relayed_address: Union[tuple, RelayedAddressValue]=None) -> Command:
+        # create location
         value = LocationValue.new(identifier=identifier,
                                   source_address=source_address,
                                   mapped_address=mapped_address,
                                   relayed_address=relayed_address)
-        return cls(tag=Sign, value=value)
+        return cls(tag=cls.SIGN, value=value)
 
 
 class CallCommand(Command):
 
     @classmethod
-    def new(cls, identifier: str) -> Command:
+    def new(cls, identifier: Union[str, StringValue]) -> Command:
         value = LocationValue.new(identifier=identifier)
-        return cls(tag=Call, value=value)
+        return cls(tag=cls.CALL, value=value)
 
 
 class FromCommand(Command):
 
     @classmethod
-    def new(cls, location: Value=None, identifier: str=None) -> Command:
+    def new(cls, location: LocationValue=None, identifier: Union[str, StringValue]=None) -> Command:
         if location is None:
             assert identifier is not None, 'UID should not be empty'
             location = LocationValue.new(identifier=identifier)
-        return cls(tag=From, value=location)
+        return cls(tag=cls.FROM, value=location)
 
 
 class ByeCommand(Command):
 
     @classmethod
-    def new(cls, location: Value) -> Command:
-        return cls(tag=Bye, value=location)
+    def new(cls, location: LocationValue) -> Command:
+        return cls(tag=cls.BYE, value=location)
 
 
-"""
-    Command Values
-    ~~~~~~~~~~~~~~
-"""
+# classes for parsing command field
+FieldValue.register(tag=Command.HELLO, value_class=LocationValue)
+FieldValue.register(tag=Command.SIGN, value_class=LocationValue)
+FieldValue.register(tag=Command.CALL, value_class=CommandValue)
+FieldValue.register(tag=Command.FROM, value_class=LocationValue)
+FieldValue.register(tag=Command.BYE, value_class=LocationValue)
 
-
-class CommandValue(FieldsValue):
-
-    def __init__(self, fields: list, data: bytes=None):
-        self.__id: str = None
-        super().__init__(fields=fields, data=data)
-
-    @property
-    def identifier(self) -> str:
-        return self.__id
-
-    def _set_field(self, field: Field):
-        if field.tag == ID:
-            f_value = field.value
-            assert isinstance(f_value, StringValue), 'ID value error: %s' % f_value
-            self.__id = f_value.string
-        else:
-            clazz = self.__class__.__name__
-            print('%s> unknown field: %s -> %s' % (clazz, field.tag, field.value))
-
-    @classmethod
-    def new(cls, identifier: str):
-        f_id = Field(tag=ID, value=StringValue(string=identifier))
-        return cls(fields=[f_id])
-
-
-class LocationValue(CommandValue):
-    """
-        Defined for 'HI', 'SIGN', 'FROM' commands to show the user's location
-    """
-
-    def __init__(self, fields: list, data: bytes=None):
-        self.__source_address: SourceAddressValue = None    # local IP and port
-        self.__mapped_address: MappedAddressValue = None    # public IP and port
-        self.__relayed_address: RelayedAddressValue = None  # server IP and port
-        self.__timestamp: int = 0                           # time for signature
-        self.__signature: bytes = None                      # sign(addresses + timestamp)
-        self.__nat: str = None
-        super().__init__(fields=fields, data=data)
-
-    @property
-    def source_address(self) -> Optional[SourceAddressValue]:
-        return self.__source_address
-
-    @property
-    def mapped_address(self) -> Optional[MappedAddressValue]:
-        return self.__mapped_address
-
-    @property
-    def relayed_address(self) -> Optional[RelayedAddressValue]:
-        return self.__relayed_address
-
-    @property
-    def timestamp(self) -> int:
-        return self.__timestamp
-
-    @property
-    def signature(self) -> Optional[bytes]:
-        return self.__signature
-
-    @property
-    def nat(self) -> Optional[str]:
-        return self.__nat
-
-    def _set_field(self, field: Field):
-        f_type = field.tag
-        f_value = field.value
-        if f_type == SourceAddress:
-            assert isinstance(f_value, SourceAddressValue), 'source address error: %s' % f_value
-            self.__source_address = f_value
-        elif f_type == MappedAddress:
-            assert isinstance(f_value, MappedAddressValue), 'mapped address error: %s' % f_value
-            self.__mapped_address = f_value
-        elif f_type == RelayedAddress:
-            assert isinstance(f_value, RelayedAddressValue), 'relayed address error: %s' % f_value
-            self.__relayed_address = f_value
-        elif f_type == Time:
-            assert isinstance(f_value, TimestampValue), 'time value error: %s' % f_value
-            self.__timestamp = f_value.value
-        elif f_type == Signature:
-            assert isinstance(f_value, BinaryValue), 'signature value error: %s' % f_value
-            self.__signature = f_value.data
-        elif f_type == NAT:
-            assert isinstance(f_value, StringValue), 'NAT value error: %s' % f_value
-            self.__nat = f_value.string
-        else:
-            super()._set_field(field=field)
-
-    @classmethod
-    def new(cls, identifier: str, source_address=None, mapped_address=None, relayed_address=None,
-            timestamp: int=0, signature: bytes=None, nat: str=None):
-        f_id = Field(tag=ID, value=StringValue(string=identifier))
-        fields = [f_id]
-        # append SOURCE-ADDRESS
-        if source_address is not None:
-            if isinstance(source_address, SourceAddressValue):
-                value = source_address
-            else:
-                assert isinstance(source_address, tuple), 'source address error: %s' % source_address
-                value = SourceAddressValue(ip=source_address[0], port=source_address[1])
-            f_src = Field(tag=SourceAddress, value=value)
-            fields.append(f_src)
-        # append MAPPED-ADDRESS
-        if mapped_address is not None:
-            if isinstance(mapped_address, MappedAddressValue):
-                value = mapped_address
-            else:
-                assert isinstance(mapped_address, tuple), 'mapped address error: %s' % mapped_address
-                value = MappedAddressValue(ip=mapped_address[0], port=mapped_address[1])
-            f_src = Field(tag=MappedAddress, value=value)
-            fields.append(f_src)
-        # append RELAYED-ADDRESS
-        if relayed_address is not None:
-            if isinstance(relayed_address, RelayedAddressValue):
-                value = relayed_address
-            else:
-                assert isinstance(relayed_address, tuple), 'relayed address error: %s' % relayed_address
-                value = RelayedAddressValue(ip=relayed_address[0], port=relayed_address[1])
-            f_src = Field(tag=RelayedAddress, value=value)
-            fields.append(f_src)
-        if source_address is not None or mapped_address is not None or relayed_address is not None:
-            # append sign time
-            if timestamp > 0:
-                f_time = Field(tag=Time, value=TimestampValue(value=timestamp))
-                fields.append(f_time)
-            # append signature
-            if signature is not None:
-                f_sign = Field(tag=Signature, value=BinaryValue(data=signature))
-                fields.append(f_sign)
-            # append NAT type
-            if nat is not None:
-                f_nat = Field(tag=NAT, value=StringValue(string=nat))
-                fields.append(f_nat)
-        return cls(fields=fields)
-
-
-# command names
-Who = VarName(name='WHO')          # (S) location not found, ask receiver to say 'HI'
-Hello = VarName(name='HI')         # (C) login with ID
-Sign = VarName(name='SIGN')        # (S) ask client to login
-Call = VarName(name='CALL')        # (C) ask server to help connecting with another user
-From = VarName(name='FROM')        # (S) help users connecting
-Bye = VarName(name='BYE')          # (C) logout with ID and address
-
-# field names
-ID = VarName(name='ID')                           # user ID
-SourceAddress = VarName(name='SOURCE-ADDRESS')    # source-address (local IP and port)
-MappedAddress = VarName(name='MAPPED-ADDRESS')    # mapped-address (public IP and port)
-RelayedAddress = VarName(name='RELAYED-ADDRESS')  # relayed-address (server IP and port)
-Time = VarName(name='TIME')                       # timestamp (uint32) stored in network order (big endian)
-Signature = VarName(name='SIGNATURE')             # verify with ('ADDR' + 'TIME') and meta.key
-NAT = VarName(name='NAT')                         # NAT type
-
-
-# classes for parsing value
-s_value_parsers[Hello] = LocationValue
-s_value_parsers[Sign] = LocationValue
-s_value_parsers[Call] = CommandValue
-s_value_parsers[From] = LocationValue
-s_value_parsers[Bye] = LocationValue
-
-s_value_parsers[ID] = StringValue
-s_value_parsers[SourceAddress] = SourceAddressValue
-s_value_parsers[MappedAddress] = MappedAddressValue
-s_value_parsers[RelayedAddress] = RelayedAddressValue
-s_value_parsers[Time] = TimestampValue
-s_value_parsers[Signature] = BinaryValue
-s_value_parsers[NAT] = StringValue
+# classes for parsing other field
+FieldValue.register(tag=Field.ID, value_class=StringValue)
+FieldValue.register(tag=Field.SOURCE_ADDRESS, value_class=SourceAddressValue)
+FieldValue.register(tag=Field.MAPPED_ADDRESS, value_class=MappedAddressValue)
+FieldValue.register(tag=Field.RELAYED_ADDRESS, value_class=RelayedAddressValue)
+FieldValue.register(tag=Field.TIME, value_class=TimestampValue)
+FieldValue.register(tag=Field.SIGNATURE, value_class=BinaryValue)
+FieldValue.register(tag=Field.NAT, value_class=StringValue)

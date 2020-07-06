@@ -28,8 +28,9 @@
 # SOFTWARE.
 # ==============================================================================
 
-from udp.tlv import Tag, Value, Length
-from udp.tlv.data import bytes_to_int, uint8_to_bytes, uint16_to_bytes
+from udp.tlv import Data, MutableData, UInt16Data
+
+from .tlv import FieldName, FieldLength, FieldValue
 
 
 """
@@ -60,7 +61,7 @@ from udp.tlv.data import bytes_to_int, uint8_to_bytes, uint16_to_bytes
 """
 
 
-class MappedAddressValue(Value):
+class MappedAddressValue(FieldValue):
     """
         MAPPED-ADDRESS
         ~~~~~~~~~~~~~~
@@ -75,85 +76,83 @@ class MappedAddressValue(Value):
     family_ipv4 = 0x01
     family_ipv6 = 0x02
 
-    def __init__(self, ip: str, port: int, family: int = 0x01, data: bytes = None):
+    def __init__(self, data=None, ip: str=None, port: int=0, family: int=0):
         if data is None:
-            ip_data = self.ip_to_bytes(ip=ip, family=family)
-            port_data = uint16_to_bytes(value=port)
-            family_data = uint8_to_bytes(value=family)
-            data = b'\0' + family_data + port_data + ip_data
+            assert ip is not None and port is not 0, 'IP:port error: (%s:%d' % (ip, port)
+            if family is 0:
+                family = self.family_ipv4
+            if family == self.family_ipv4:
+                # IPv4
+                address = self.data_from_ipv4(ip=ip)
+            else:
+                # IPv6?
+                address = None
+            assert address is not None, 'failed to convert IP: %s, %d' % (ip, family)
+            data = MutableData(capacity=8)
+            data.append(0)
+            data.append(family)
+            data.append(UInt16Data(value=port))
+            data.append(address)
+        elif isinstance(data, MappedAddressValue):
+            ip = data.ip
+            port = data.port
+            family = data.family
         super().__init__(data=data)
-        self.__ip = ip
+        self.__family = family
         self.__port = port
+        self.__ip = ip
 
     def __str__(self):
-        return '"%s:%d"' % (self.ip, self.port)
+        return '(%s:%d)' % (self.ip, self.port)
 
     def __repr__(self):
-        return '"%s:%d"' % (self.ip, self.port)
+        return '(%s:%d)' % (self.ip, self.port)
 
     @property
-    def ip(self) -> str:
-        return self.__ip
+    def family(self) -> int:
+        return self.__family
 
     @property
     def port(self) -> int:
         return self.__port
 
-    @classmethod
-    def ip_to_bytes(cls, ip: str, family: int) -> bytes:
-        if family == cls.family_ipv4:
-            # IPv4
-            array = ip.split('.')
-            assert len(array) == 4, 'IP address error: %s' % ip
-            return bytes([int(x) for x in array])
-            pass
-        elif family == cls.family_ipv6:
-            # TODO: IPv6
-            assert False, 'implement me!'
-        else:
-            raise ValueError('unknown address family: %d' % family)
+    @property
+    def ip(self) -> str:
+        return self.__ip
 
     @classmethod
-    def bytes_to_ip(cls, address: bytes, family: int) -> str:
-        if family == cls.family_ipv4:
-            assert len(address) == 4, 'IPv4 data error: %s' % address
-            # IPv4
-            return '.'.join([
-                str(bytes_to_int(address[0:1])),
-                str(bytes_to_int(address[1:2])),
-                str(bytes_to_int(address[2:3])),
-                str(bytes_to_int(address[3:4])),
-            ])
-        elif family == cls.family_ipv6:
-            assert len(address) == 16, 'IPv6 data error: %s' % address
-            # TODO: IPv6
-            assert False, 'implement me!'
-        else:
-            raise ValueError('unknown address family: %d' % family)
+    def data_from_ipv4(cls, ip: str) -> Data:
+        # IPv4
+        array = ip.split('.')
+        assert len(array) == 4, 'IPv4 address error: %s' % ip
+        data = MutableData(capacity=4)
+        for i in range(4):
+            data.append(int(array[i]))
+        return data
 
     @classmethod
-    def parse(cls, data: bytes, tag: Tag, length: Length = None):
-        # check length
-        if length is None or length.value == 0:
-            return None
-        else:
-            length = length.value
-            data_len = len(data)
-            if data_len < length:
-                return None
-            elif data_len > length:
-                data = data[:length]
-            if length != 8 and length != 20:
-                # raise ValueError('mapped-address length error: %d' % length)
-                return None
-        if data[0] != 0:
-            return None
-        family = bytes_to_int(data[1:2])
-        if family != cls.family_ipv4 and family != cls.family_ipv6:
-            return None
-        port = bytes_to_int(data[2:4])
-        ip = cls.bytes_to_ip(address=data[4:], family=family)
-        return cls(data=data, ip=ip, port=port, family=family)
+    def data_to_ipv4(cls, address: Data) -> str:
+        # IPv4
+        assert address.length == 4, 'IPv4 data error: %s' % address
+        return '.'.join([
+            str(address.get_byte(index=0)),
+            str(address.get_byte(index=1)),
+            str(address.get_byte(index=2)),
+            str(address.get_byte(index=3)),
+        ])
+
+    @classmethod
+    def parse(cls, data: Data, tag: FieldName, length: FieldLength=None):
+        # checking head byte
+        if data.get_byte(index=0) != 0:
+            raise ValueError('mapped-address error: %s' % data)
+        family = data.get_byte(index=1)
+        if family == cls.family_ipv4:
+            # IPv4
+            if length.value == 8:
+                port = data.get_uint16_value(2)
+                ip = cls.data_to_ipv4(address=data.slice(start=4))
+                return cls(data=data, ip=ip, port=port, family=family)
 
 
 class SourceAddressValue(MappedAddressValue):

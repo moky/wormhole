@@ -21,7 +21,6 @@ class Server(dmtp.Server):
 
     def __init__(self, port: int, host: str='127.0.0.1'):
         super().__init__(local_address=(host, port))
-        self.identifier = 'station@anywhere'
 
     def process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
         print('received cmd: %s' % cmd)
@@ -33,13 +32,15 @@ class Server(dmtp.Server):
 
 
 if __name__ == '__main__':
-    # create server
+
     print('UDP server (%s:%d) starting ...' % (SERVER_HOST, SERVER_PORT))
-    g_server = Server(host=SERVER_HOST, port=SERVER_PORT)
 
+    # create database
     g_database = ContactManager()
-    g_database.identifier = g_server.identifier
-    g_database.source_address = g_server.peer.local_address
+    g_database.identifier = 'station@anywhere'
+    g_database.source_address = (SERVER_HOST, SERVER_PORT)
 
+    # create server
+    g_server = Server(host=SERVER_HOST, port=SERVER_PORT)
     g_server.delegate = g_database
     g_server.start()

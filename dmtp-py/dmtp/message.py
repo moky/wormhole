@@ -30,9 +30,10 @@
 
 from typing import Optional
 
-from .tlv import Field, FieldsValue
-from .tlv import VarName, BinaryValue, ByteValue, TimestampValue, StringValue
-from .tlv import s_value_parsers
+from udp.tlv import Data
+
+from .tlv import Field, FieldName, FieldValue
+from .values import FieldsValue, BinaryValue, ByteValue, TimestampValue, StringValue
 
 
 """
@@ -75,12 +76,13 @@ from .tlv import s_value_parsers
 
 class Message(FieldsValue):
 
-    def __init__(self, fields: list, data: bytes=None):
+    def __init__(self, fields: list, data: Data=None):
+        super().__init__(fields=fields, data=data)
         # envelope
         self.__sender: str = None
         self.__receiver: str = None
-        self.__time: int = 0
-        self.__type: int = 0
+        self.__time: int = None
+        self.__type: int = None
         self.__group: str = None
         # body
         self.__content: bytes = None
@@ -91,94 +93,75 @@ class Message(FieldsValue):
         self.__profile: bytes = None
         # file in message
         self.__filename: str = None
-        super().__init__(fields=fields, data=data)
 
     @property
     def sender(self) -> str:
+        if self.__sender is None:
+            self.__sender = self.get(self.SENDER)
         return self.__sender
 
     @property
     def receiver(self) -> str:
+        if self.__receiver is None:
+            self.__receiver = self.get(self.RECEIVER)
         return self.__receiver
 
     @property
     def time(self) -> Optional[int]:
+        if self.__time is None:
+            self.__time = self.get(self.RECEIVER, 0)
         return self.__time
 
     @property
     def type(self) -> Optional[int]:
+        if self.__type is None:
+            self.__type = self.get(self.RECEIVER, 0)
         return self.__type
 
     @property
     def group(self) -> Optional[str]:
+        if self.__group is None:
+            self.__group = self.get(self.RECEIVER)
         return self.__group
 
     @property
     def content(self) -> bytes:
+        if self.__content is None:
+            self.__content = self.get(self.RECEIVER)
         return self.__content
 
     @property
     def signature(self) -> bytes:
+        if self.__signature is None:
+            self.__signature = self.get(self.RECEIVER)
         return self.__signature
 
     @property
     def key(self) -> Optional[bytes]:
+        if self.__key is None:
+            self.__key = self.get(self.RECEIVER)
         return self.__key
 
     @property
     def meta(self) -> Optional[bytes]:
+        if self.__meta is None:
+            self.__meta = self.get(self.RECEIVER)
         return self.__meta
 
     @property
     def profile(self) -> Optional[bytes]:
+        if self.__profile is None:
+            self.__profile = self.get(self.RECEIVER)
         return self.__profile
 
     @property
     def filename(self) -> Optional[str]:
+        if self.__filename is None:
+            self.__filename = self.get(self.RECEIVER)
         return self.__filename
 
-    def _set_field(self, field: Field):
-        f_type = field.tag
-        f_value = field.value
-        if f_type == MsgSender:
-            assert isinstance(f_value, StringValue), 'sender ID error: %s' % f_value
-            self.__sender = f_value.string
-        elif f_type == MsgReceiver:
-            assert isinstance(f_value, StringValue), 'receiver ID error: %s' % f_value
-            self.__receiver = f_value.string
-        elif f_type == MsgTime:
-            assert isinstance(f_value, TimestampValue), 'time error: %s' % f_value
-            self.__time = f_value.value
-        elif f_type == MsgType:
-            assert isinstance(f_value, ByteValue), 'content type error: %s' % f_value
-            self.__type = f_value.value
-        elif f_type == MsgGroup:
-            assert isinstance(f_value, StringValue), 'group ID error: %s' % f_value
-            self.__group = f_value.string
-        elif f_type == MsgContent:
-            assert isinstance(f_value, BinaryValue), 'content data error: %s' % f_value
-            self.__content = f_value.data
-        elif f_type == MsgSignature:
-            assert isinstance(f_value, BinaryValue), 'signature error: %s' % f_value
-            self.__signature = f_value.data
-        elif f_type == MsgKey:
-            assert isinstance(f_value, BinaryValue), 'symmetric key error: %s' % f_value
-            self.__key = f_value.data
-        elif f_type == MsgMeta:
-            assert isinstance(f_value, BinaryValue), 'meta error: %s' % f_value
-            self.__meta = f_value.data
-        elif f_type == MsgProfile:
-            assert isinstance(f_value, BinaryValue), 'profile error: %s' % f_value
-            self.__profile = f_value.data
-        elif f_type == MsgFilename:
-            assert isinstance(f_value, StringValue), 'filename error: %s' % f_value
-            self.__filename = f_value.string
-        else:
-            clazz = self.__class__.__name__
-            print('%s> unknown field: %s -> %s' % (clazz, f_type, f_value))
-
     @classmethod
-    def __fetch_msg_field(cls, array: list, info: dict, s: str, name: str, tag: VarName, clazz):
+    def __fetch_msg_field(cls, array: list, info: dict, s: str, name: str, tag: FieldName, clazz):
         value = info.get(name)
         if value is None:
             value = info.get(s)
@@ -194,51 +177,51 @@ class Message(FieldsValue):
     def new(cls, info: dict):
         fields = []
         # envelope
-        cls.__fetch_msg_field(fields, info, 'S', 'sender', MsgSender, StringValue)
-        cls.__fetch_msg_field(fields, info, 'R', 'receiver', MsgReceiver, StringValue)
-        cls.__fetch_msg_field(fields, info, 'W', 'time', MsgTime, TimestampValue)
-        cls.__fetch_msg_field(fields, info, 'T', 'type', MsgType, ByteValue)
-        cls.__fetch_msg_field(fields, info, 'G', 'group', MsgGroup, StringValue)
+        cls.__fetch_msg_field(fields, info, 'S', 'sender', cls.SENDER, StringValue)
+        cls.__fetch_msg_field(fields, info, 'R', 'receiver', cls.RECEIVER, StringValue)
+        cls.__fetch_msg_field(fields, info, 'W', 'time', cls.TIME, TimestampValue)
+        cls.__fetch_msg_field(fields, info, 'T', 'type', cls.TYPE, ByteValue)
+        cls.__fetch_msg_field(fields, info, 'G', 'group', cls.GROUP, StringValue)
         # body
-        cls.__fetch_msg_field(fields, info, 'D', 'data', MsgContent, BinaryValue)
-        cls.__fetch_msg_field(fields, info, 'K', 'key', MsgKey, BinaryValue)
-        cls.__fetch_msg_field(fields, info, 'S', 'signature', MsgSignature, BinaryValue)
+        cls.__fetch_msg_field(fields, info, 'D', 'data', cls.CONTENT, BinaryValue)
+        cls.__fetch_msg_field(fields, info, 'K', 'key', cls.KEY, BinaryValue)
+        cls.__fetch_msg_field(fields, info, 'S', 'signature', cls.SIGNATURE, BinaryValue)
         # attachments
-        cls.__fetch_msg_field(fields, info, 'M', 'meta', MsgMeta, BinaryValue)
-        cls.__fetch_msg_field(fields, info, 'P', 'profile', MsgProfile, BinaryValue)
+        cls.__fetch_msg_field(fields, info, 'M', 'meta', cls.META, BinaryValue)
+        cls.__fetch_msg_field(fields, info, 'P', 'profile', cls.PROFILE, BinaryValue)
         # file
-        cls.__fetch_msg_field(fields, info, 'F', 'filename', MsgFilename, StringValue)
+        cls.__fetch_msg_field(fields, info, 'F', 'filename', cls.FILENAME, StringValue)
         return cls(fields=fields)
 
+    # message field names
+    SENDER = FieldName('S')     # sender ID
+    RECEIVER = FieldName('R')   # receiver ID
+    TIME = FieldName('W')       # message time
+    TYPE = FieldName('T')       # message type
+    GROUP = FieldName('G')      # group ID
 
-# message field names
-MsgSender = VarName('S')
-MsgReceiver = VarName('R')
-MsgTime = VarName('W')
-MsgType = VarName('T')
-MsgGroup = VarName('G')
+    CONTENT = FieldName('D')    # message content Data; or file content Data
+    SIGNATURE = FieldName('V')  # signature for Verify content data with sender's meta.key
+    KEY = FieldName('K')        # encryption key (symmetric key data encrypted by public key)
 
-MsgContent = VarName('D')    # message content Data; or file content Data
-MsgSignature = VarName('V')  # signature for Verify content data with sender's meta.key
-MsgKey = VarName('K')
+    META = FieldName('M')       # meta info
+    PROFILE = FieldName('P')    # profile
 
-MsgMeta = VarName('M')
-MsgProfile = VarName('P')
+    FILENAME = FieldName('F')   # Filename
 
-MsgFilename = VarName('F')   # Filename
 
 # classes for parsing message
-s_value_parsers[MsgSender] = StringValue
-s_value_parsers[MsgReceiver] = StringValue
-s_value_parsers[MsgTime] = TimestampValue
-s_value_parsers[MsgType] = ByteValue
-s_value_parsers[MsgGroup] = StringValue
+FieldValue.register(tag=Message.SENDER, value_class=StringValue)
+FieldValue.register(tag=Message.RECEIVER, value_class=StringValue)
+FieldValue.register(tag=Message.TIME, value_class=TimestampValue)
+FieldValue.register(tag=Message.TYPE, value_class=ByteValue)
+FieldValue.register(tag=Message.GROUP, value_class=StringValue)
 
-s_value_parsers[MsgContent] = BinaryValue
-s_value_parsers[MsgSignature] = BinaryValue
-s_value_parsers[MsgKey] = BinaryValue
+FieldValue.register(tag=Message.CONTENT, value_class=BinaryValue)
+FieldValue.register(tag=Message.SIGNATURE, value_class=BinaryValue)
+FieldValue.register(tag=Message.KEY, value_class=BinaryValue)
 
-s_value_parsers[MsgMeta] = BinaryValue
-s_value_parsers[MsgProfile] = BinaryValue
+FieldValue.register(tag=Message.META, value_class=BinaryValue)
+FieldValue.register(tag=Message.PROFILE, value_class=BinaryValue)
 
-s_value_parsers[MsgFilename] = StringValue
+FieldValue.register(tag=Message.FILENAME, value_class=StringValue)

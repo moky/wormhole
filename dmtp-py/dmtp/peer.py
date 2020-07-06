@@ -28,10 +28,12 @@
 # SOFTWARE.
 # ==============================================================================
 
+import time
 from typing import Optional
 
 from udp import Connection
 from udp import HubListener, Hub as UDPHub
+from udp.tlv import Data
 from udp.mtp import Package
 from udp.mtp import Departure, Arrival, Pool
 from udp.mtp import PeerDelegate, Peer as MTPPeer
@@ -39,8 +41,8 @@ from udp.mtp import PeerDelegate, Peer as MTPPeer
 
 class Hub(UDPHub, PeerDelegate):
 
-    def send_data(self, data: bytes, destination: tuple, source: tuple) -> int:
-        return self.send(data=data, destination=destination, source=source)
+    def send_data(self, data: Data, destination: tuple, source: tuple) -> int:
+        return self.send(data=data.get_bytes(), destination=destination, source=source)
 
 
 class Peer(MTPPeer, HubListener):
@@ -49,9 +51,7 @@ class Peer(MTPPeer, HubListener):
         super().__init__(pool=pool)
         self.__local_address = local_address
         if hub is None:
-            hub = Hub()
-            hub.open(host=local_address[0], port=local_address[1])
-            # hub.start()
+            hub = self._create_hub(host=local_address[0], port=local_address[1])
         self.__hub = hub
         self.delegate = hub
         hub.add_listener(listener=self)
@@ -63,6 +63,13 @@ class Peer(MTPPeer, HubListener):
     @property
     def hub(self) -> Hub:
         return self.__hub
+
+    # noinspection PyMethodMayBeStatic
+    def _create_hub(self, host: str, port: int) -> Hub:
+        hub = Hub()
+        hub.open(host=host, port=port)
+        # hub.start()
+        return hub
 
     def start(self):
         # start peer
@@ -92,7 +99,7 @@ class Peer(MTPPeer, HubListener):
     def is_connected(self, remote_address: tuple) -> bool:
         conn = self.get_connection(remote_address=remote_address)
         if conn is not None:
-            return conn.is_connected
+            return conn.is_connected(now=time.time())
 
     #
     #   Send
@@ -113,6 +120,6 @@ class Peer(MTPPeer, HubListener):
     #
 
     def data_received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
-        task = Arrival(payload=data, source=source, destination=destination)
+        task = Arrival(payload=Data(data=data), source=source, destination=destination)
         self.pool.append_arrival(task=task)
         return None
