@@ -170,6 +170,7 @@ public class Peer extends Thread {
         Package pack = Package.parse(task.payload);
         if (pack == null) {
             //throw new NullPointerException("package error: " + Arrays.toString(task.payload));
+            getHandler().onReceivedError(task.payload, task.source, task.destination);
             return;
         }
         boolean ok;

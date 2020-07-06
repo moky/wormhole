@@ -104,6 +104,15 @@ public interface PeerHandler {
      */
     boolean onReceivedMessage(Data msg, SocketAddress source, SocketAddress destination);
 
+    /**
+     *  Received error data from source address.
+     *
+     * @param data        - error data received
+     * @param source      - remote IP and port
+     * @param destination - local IP and port
+     */
+    void onReceivedError(Data data, SocketAddress source, SocketAddress destination);
+
     //
     //  Fragments
     //

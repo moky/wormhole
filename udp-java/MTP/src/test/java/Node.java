@@ -122,6 +122,13 @@ public class Node implements PeerHandler {
     }
 
     @Override
+    public void onReceivedError(Data data, SocketAddress source, SocketAddress destination) {
+        // TODO: process after received error data
+        String text = data.toString();
+        System.out.printf("received msg (%d bytes) from %s to %s: %s\n", data.getLength(), source, destination, text);
+    }
+
+    @Override
     public boolean checkFragment(Package fragment, SocketAddress source, SocketAddress destination) {
         // TODO: process after received command fragment
         return true;

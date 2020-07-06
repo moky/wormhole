@@ -230,7 +230,7 @@ public class MutableData extends Data {
     public MutableData append(byte element) {
         int index = offset + length;
         if (index >= bufLength) {
-            // expend the buffer
+            // expend the buffer for new element
             expends();
         }
         buffer[index] = element;
@@ -289,6 +289,12 @@ public class MutableData extends Data {
         index = adjustE(index, length);
         if (index >= length) {
             throw new ArrayIndexOutOfBoundsException("index error: " + index + ", length: " + length);
+        } else if (index == (length - 1)) {
+            // remove the last element
+            return pop();
+        } else if (index == 0) {
+            // remove the first element
+            return shift();
         }
         byte erased = buffer[index];
         System.arraycopy(buffer, index + 1, buffer, index, length - index - 1);

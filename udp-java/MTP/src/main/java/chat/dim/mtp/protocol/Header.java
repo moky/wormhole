@@ -186,6 +186,10 @@ public class Header extends Data {
             return null;
         }
         DataType type = DataType.getInstance(ch & 0x0F);
+        if (type == null) {
+            //throw new NullPointerException("data type error: " + (ch & 0x0F));
+            return null;
+        }
         return new Header(data.slice(0, headLen), type, sn, pages, offset, bodyLen);
     }
 

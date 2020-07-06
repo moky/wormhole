@@ -96,7 +96,8 @@ public class DataType {
         DataType type = s_types.get(value);
         if (type == null) {
             //type = new DataType(value, "DataType-" + Integer.toHexString(value));
-            throw new NullPointerException("data type error: " + value);
+            //throw new NullPointerException("data type error: " + value);
+            return null;
         }
         return type;
     }

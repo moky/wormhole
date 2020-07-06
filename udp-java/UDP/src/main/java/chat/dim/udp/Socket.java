@@ -210,18 +210,19 @@ public class Socket extends Thread {
         Lock writeLock = declarationLock.writeLock();
         writeLock.lock();
         try {
-            int index;
-            SocketAddress address;
             for (Connection conn : removedConnections) {
-                address = conn.remoteAddress;
-                for (index = declarations.size() - 1; index >= 0; --index) {
-                    if (address.equals(declarations.get(index))) {
-                        declarations.remove(index);
-                    }
-                }
+                removeDeclarations(conn.remoteAddress);
             }
         } finally {
             writeLock.unlock();
+        }
+    }
+
+    private void removeDeclarations(SocketAddress remoteAddress) {
+        for (int index = declarations.size() - 1; index >= 0; --index) {
+            if (remoteAddress.equals(declarations.get(index))) {
+                declarations.remove(index);
+            }
         }
     }
 
@@ -386,25 +387,19 @@ public class Socket extends Thread {
         try {
             SocketAddress remoteAddress;
             Connection conn;
-            int index;
             while (declarations.size() > 0) {
                 // get first one
                 remoteAddress = declarations.remove(0);
                 conn = getConnection(remoteAddress);
-                if (conn != null) {
-                    cargo = conn.receive();
-                    if (cargo == null) {
-                        continue;
-                    } else {
-                        // got one packet
-                        break;
-                    }
+                if (conn == null) {
+                    // connection lost, remove all declaration forms with its socket address
+                    removeDeclarations(remoteAddress);
+                    continue;
                 }
-                // connection lost, remove all declaration forms with its socket address
-                for (index = declarations.size() - 1; index >= 0; --index) {
-                    if (declarations.get(index).equals(remoteAddress)) {
-                        declarations.remove(index);
-                    }
+                cargo = conn.receive();
+                if (cargo != null) {
+                    // got one packet
+                    break;
                 }
             }
         } finally {
@@ -449,7 +444,7 @@ public class Socket extends Thread {
             writeLock.unlock();
         }
 
-        // callback
+        // 4. callback
         ConnectionHandler delegate = getHandler();
         if (delegate != null) {
             delegate.onConnectionReceivedData(conn);

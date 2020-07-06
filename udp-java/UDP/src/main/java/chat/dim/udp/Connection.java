@@ -201,6 +201,7 @@ public class Connection {
      * @return ejected package when memory cache is full
      */
     public DatagramPacket cache(DatagramPacket cargo) {
+        // 0. reduce memory occupied
         int offset = cargo.getOffset();
         int length = cargo.getLength();
         byte[] buf = cargo.getData();
@@ -210,13 +211,17 @@ public class Connection {
             System.arraycopy(buf, offset, buffer, 0, length);
             cargo.setData(buffer);
         }
+
+        // 1. check memory cache status
+        DatagramPacket ejected = null;
         if (isCacheFull(cargoes.size())) {
             // drop the first package
-            return cargoes.remove(0);
+            ejected = cargoes.remove(0);
         }
-        // append the new package to the end
+
+        // 2. append the new package to the end
         cargoes.add(cargo);
-        return null;
+        return ejected;
     }
 
     protected boolean isCacheFull(int count) {
