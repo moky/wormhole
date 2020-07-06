@@ -60,6 +60,12 @@ class IntegerData(Data):
     def __hash__(self) -> int:
         return hash(self.__value)
 
+    def __str__(self) -> str:
+        return str(self.__value)
+
+    def __repr__(self) -> str:
+        return str(self.__value)
+
     @property
     def value(self) -> int:
         return self.__value

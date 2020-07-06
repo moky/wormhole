@@ -59,3 +59,6 @@ class Node(mtp.PeerHandler):
     def received_message(self, msg: mtp.Data, source: tuple, destination: tuple) -> bool:
         self.info('received msg (%d bytes) from %s to %s: %s' % (msg.length, source, destination, msg.get_bytes()))
         return True
+
+    def received_error(self, data: mtp.Data, source: tuple, destination: tuple):
+        self.info('received error (%d bytes) from %s to %s: %s' % (data.length, source, destination, data.get_bytes()))

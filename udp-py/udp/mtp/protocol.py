@@ -80,7 +80,7 @@ class DataType:
     def __str__(self) -> str:
         return self.__name
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__name
 
     @property
@@ -95,7 +95,8 @@ class DataType:
         if t is None:
             # name = 'DataType-%d' % value
             # t = DataType(value=value, name=name)
-            raise LookupError('data type error: %d' % value)
+            # raise LookupError('data type error: %d' % value)
+            return None
         return t
 
 
@@ -332,6 +333,9 @@ class Header(Data):
             return None
         data_type = ch & 0x0F
         data_type = DataType.new(value=data_type)
+        if data_type is None:
+            # raise LookupError('data type error: %d' % (ch & 0x0F))
+            return None
         return cls(data=data.slice(end=head_len),
                    data_type=data_type, sn=sn, pages=pages, offset=offset, body_length=body_len)
 

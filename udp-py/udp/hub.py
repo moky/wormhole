@@ -456,15 +456,16 @@ class Hub(threading.Thread, ConnectionHandler):
                 listener.status_changed(connection=connection, old_status=old_status, new_status=new_status)
 
     def connection_received_data(self, connection: Connection):
-        if self.__running:
-            # process by run()
-            return True
-        address = connection.local_address
-        cargo = self.receive(host=address[0], port=address[1])
-        if cargo is None:
-            # assert False
-            return False
-        # dispatch data and got responses
-        responses = self.__dispatch(data=cargo.data, source=cargo.source, destination=cargo.destination)
-        for res in responses:
-            self.send(data=res, destination=cargo.source, source=cargo.destination)
+        # if self.__running:
+        #     # process by run()
+        #     return True
+        # address = connection.local_address
+        # cargo = self.receive(host=address[0], port=address[1])
+        # if cargo is None:
+        #     # assert False
+        #     return False
+        # # dispatch data and got responses
+        # responses = self.__dispatch(data=cargo.data, source=cargo.source, destination=cargo.destination)
+        # for res in responses:
+        #     self.send(data=res, destination=cargo.source, source=cargo.destination)
+        pass

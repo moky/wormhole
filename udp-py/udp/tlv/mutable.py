@@ -53,6 +53,9 @@ class MutableData(Data):
         super().__init__(data=data, offset=offset, length=length)
 
     def __resize(self, size: int=8):
+        padding = size - self._buf_length
+        if padding > 0:
+            self._buffer.extend(bytearray(padding))
         self._buf_length = size
 
     def __expends(self):
@@ -193,7 +196,12 @@ class MutableData(Data):
         :return: self object
         """
         if isinstance(data, int):
-            self.set_byte(index=self._length, value=data)
+            index = self._offset + self._length
+            if index >= self._buf_length:
+                # expend the buffer for new element
+                self.__expends()
+            self._buffer[index] = data
+            self._length += 1
             return self
         else:
             # bytes, bytearray or Data
@@ -215,6 +223,12 @@ class MutableData(Data):
         index = adjust_e(position=index, length=self._length)
         if index >= self._length:
             raise IndexError('error index: %d, length: %d' % (index, self._length))
+        elif index == (self._length - 1):
+            # remove the last element
+            return self.pop()
+        elif index == 0:
+            # remove the first element
+            return self.shift()
         erased = self._buffer[index]
         start = index + 1
         length = self._length - start

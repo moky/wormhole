@@ -144,7 +144,7 @@ class TagLengthValue(Data):
         clazz = self.__class__.__name__
         return '/* %s */ %s: "%s"' % (clazz, self.tag, self.value)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         clazz = self.__class__.__name__
         return '/* %s */ %s: "%s"' % (clazz, self.tag, self.value)
 

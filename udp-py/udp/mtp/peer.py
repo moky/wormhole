@@ -171,6 +171,18 @@ class PeerHandler(ABC):
         raise NotImplemented
 
     # @abstractmethod
+    def received_error(self, data: Data, source: tuple, destination: tuple):
+        """
+        Received error data from source address.
+
+        :param data:        error data (failed to parse) received
+        :param source:      remote address
+        :param destination: local address
+        :return:
+        """
+        pass
+
+    # @abstractmethod
     # noinspection PyUnusedLocal, PyMethodMayBeStatic
     def check_fragment(self, fragment: Package, source: tuple, destination: tuple) -> bool:
         """
@@ -293,6 +305,7 @@ class Peer(threading.Thread):
         pack = Package.parse(data=task.payload)
         if pack is None:
             # assert False, 'package error: %s' % task.payload
+            self.handler.received_error(data=task.payload, source=task.source, destination=task.destination)
             return False
         head = pack.head
         data_type = head.data_type

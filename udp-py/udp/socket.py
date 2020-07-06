@@ -34,39 +34,7 @@ import time
 import weakref
 from typing import Optional
 
-from .connection import ConnectionStatus, ConnectionHandler, Connection
-
-
-class DatagramPacket:
-
-    def __init__(self, data: bytes, address: tuple):
-        super().__init__()
-        self.__data = data
-        self.__address = address
-
-    @property
-    def data(self) -> bytes:
-        return self.__data
-
-    @property
-    def offset(self) -> int:
-        return 0
-
-    @property
-    def length(self) -> int:
-        return len(self.__data)
-
-    @property
-    def address(self) -> tuple:
-        return self.__address
-
-    @property
-    def ip(self) -> str:
-        return self.__address[0]
-
-    @property
-    def port(self) -> int:
-        return self.__address[1]
+from .connection import ConnectionStatus, ConnectionHandler, Connection, DatagramPacket
 
 
 class Socket(threading.Thread):
@@ -77,7 +45,7 @@ class Socket(threading.Thread):
 
         Each UDP data package is limited to no more than 576 bytes, so set the
         MAX_CACHE_SPACES to about 2,000,000 means it would take up to 1GB memory
-        for the caching.
+        for caching on one socket.
     """
     MAX_CACHE_SPACES = 1024 * 1024 * 2
 
@@ -101,9 +69,9 @@ class Socket(threading.Thread):
         # connection list
         self.__connections = set()
         self.__connections_lock = threading.Lock()
-        # received packages
-        self.__cargoes = []
-        self.__cargoes_lock = threading.Lock()
+        # declaration forms
+        self.__declarations = []
+        self.__declarations_lock = threading.Lock()
 
     @property
     def local_address(self) -> tuple:
@@ -168,8 +136,8 @@ class Socket(threading.Thread):
 
     def disconnect(self, remote_address: tuple) -> set:
         """ remove remote address from heartbeat tasks """
+        removed_connections = set()
         with self.__connections_lock:
-            removed_connections = set()
             for conn in self.__connections:
                 assert isinstance(conn, Connection), 'connection error: %s' % conn
                 if conn.remote_address == remote_address:
@@ -178,7 +146,21 @@ class Socket(threading.Thread):
                     # break
             for conn in removed_connections:
                 self.__connections.remove(conn)
-            return removed_connections
+        # clear declaration forms
+        self.__clear_declarations(connections=removed_connections)
+        return removed_connections
+
+    def __clear_declarations(self, connections: set):
+        with self.__declarations_lock:
+            for conn in connections:
+                self.__remove_declarations(remote_address=conn.remote_address)
+
+    def __remove_declarations(self, remote_address: tuple):
+        index = len(self.__declarations) - 1
+        while index >= 0:
+            if remote_address == self.__declarations[index]:
+                self.__declarations.pop(index)
+            index += 1
 
     def __expired_connection(self) -> Optional[Connection]:
         """ get any expired connection """
@@ -199,54 +181,40 @@ class Socket(threading.Thread):
                     return conn
 
     def __update_sent_time(self, remote_address: tuple):
-        connection = None
-        old_status = None
-        new_status = None
+        conn = self.get_connection(remote_address=remote_address)
+        if conn is None:
+            return
         now = time.time()
-        with self.__connections_lock:
-            for conn in self.__connections:
-                assert isinstance(conn, Connection), 'connection error: %s' % conn
-                if conn.remote_address == remote_address:
-                    # refresh time
-                    old_status = conn.get_status(now=now)
-                    conn.update_sent_time(now=now)
-                    new_status = conn.get_status(now=now)
-                    if old_status != new_status:
-                        connection = conn
-                        break
-                    # break
+        # 1. get old status
+        old_status = conn.get_status(now=now)
+        # 2. refresh time
+        conn.update_sent_time(now=now)
+        # 3. get new status
+        new_status = conn.get_status(now=now)
+        if old_status == new_status:
+            return
         # callback
-        if connection is not None:
-            handler = self.handler
-            if handler is not None:
-                handler.connection_status_changed(connection=connection,
-                                                  old_status=old_status,
-                                                  new_status=new_status)
+        handler = self.handler
+        if handler is not None:
+            handler.connection_status_changed(connection=conn, old_status=old_status, new_status=new_status)
 
     def __update_received_time(self, remote_address: tuple):
-        connection = None
-        old_status = None
-        new_status = None
+        conn = self.get_connection(remote_address=remote_address)
+        if conn is None:
+            return
         now = time.time()
-        with self.__connections_lock:
-            for conn in self.__connections:
-                assert isinstance(conn, Connection), 'connection error: %s' % conn
-                if conn.remote_address == remote_address:
-                    # refresh time
-                    old_status = conn.get_status(now=now)
-                    conn.update_received_time(now=now)
-                    new_status = conn.get_status(now=now)
-                    if old_status != new_status:
-                        connection = conn
-                        break
-                    # break
+        # 1. get old status
+        old_status = conn.get_status(now=now)
+        # 2. refresh time
+        conn.update_received_time(now=now)
+        # 3. get new status
+        new_status = conn.get_status(now=now)
+        if old_status == new_status:
+            return
         # callback
-        if connection is not None:
-            handler = self.handler
-            if handler is not None:
-                handler.connection_status_changed(connection=connection,
-                                                  old_status=old_status,
-                                                  new_status=new_status)
+        handler = self.handler
+        if handler is not None:
+            handler.connection_status_changed(connection=conn, old_status=old_status, new_status=new_status)
 
     def send(self, data: bytes, remote_address: tuple) -> int:
         """
@@ -282,23 +250,50 @@ class Socket(threading.Thread):
 
         :return: received data and source address
         """
-        with self.__cargoes_lock:
-            if len(self.__cargoes) > 0:
-                return self.__cargoes.pop(0)
+        with self.__declarations_lock:
+            while len(self.__declarations) > 0:
+                # get first one
+                address = self.__declarations.pop(0)
+                conn = self.get_connection(remote_address=address)
+                if conn is None:
+                    # connection lost, remove all declaration forms with its socket address
+                    self.__remove_declarations(remote_address=address)
+                cargo = conn.receive()
+                if cargo is not None:
+                    # got one packet
+                    return cargo
 
     def __cache(self, packet: DatagramPacket):
-        with self.__cargoes_lock:
-            if len(self.__cargoes) >= self.MAX_CACHE_SPACES:
-                # drop the first package
-                self.__cargoes.pop(0)
-            # append the new package to the end
-            self.__cargoes.append(packet)
-        # callback
-        handler = self.handler
-        if handler is not None:
-            connection = self.get_connection(remote_address=packet.address)
-            if connection is not None:
-                handler.connection_received_data(connection=connection)
+        # 1. get connection by address in packet
+        address = packet.address
+        conn = self.get_connection(remote_address=address)
+        if conn is None:
+            conn = self.connect(remote_address=address)
+        with self.__declarations_lock:
+            # 2. append packet to connection's cache
+            ejected = conn.cache(packet=packet)
+            # NOTICE:
+            #     If something ejected, means this connection's cache is full,
+            #     don't append new form for it, just keep the old ones in queue,
+            #     this will let the old forms have a higher priority
+            #     to be processed as soon as possible.
+            if ejected is None:
+                # append the new form to the end
+                self.__declarations.append(address)
+            # 3. check socket memory status
+            if self._is_cache_full(count=len(self.__declarations), remote_address=address):
+                # this socket is full, eject one cargo from any connection.
+                # notice that the connection which cache is full will have
+                # a higher priority to be ejected.
+                self.receive()
+        # 4. callback
+        delegate = self.handler
+        if delegate is not None:
+            delegate.connection_received_data(connection=conn)
+
+    # noinspection PyUnusedLocal
+    def _is_cache_full(self, count: int, remote_address: tuple) -> bool:
+        return count > self.MAX_CACHE_SPACES
 
     # def start(self):
     #     if self.isAlive():
