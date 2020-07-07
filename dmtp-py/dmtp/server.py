@@ -39,11 +39,11 @@ from .node import Node
 class Server(Node, ABC):
 
     def _process_hello(self, location: LocationValue, source: tuple) -> bool:
-        address = location.mapped_address
-        if address == source:
-            # check 'MAPPED-ADDRESS'
+        # check 'MAPPED-ADDRESS'
+        if location.mapped_address == source:
             if super()._process_hello(location=location, source=source):
-                # location info accepted
+                # location info accepted, create a connection to this source
+                self.peer.connect(remote_address=source)
                 return True
         # response 'SIGN' command with 'ID' and 'ADDR'
         cmd = SignCommand.new(identifier=location.identifier, mapped_address=source)

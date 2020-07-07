@@ -30,7 +30,6 @@
  */
 package chat.dim.dmtp;
 
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.util.List;
@@ -68,16 +67,13 @@ public abstract class Server extends Node {
 
     @Override
     protected boolean processHello(LocationValue location, SocketAddress source) {
-        InetSocketAddress mappedAddress = (InetSocketAddress) location.getMappedAddress();
-        if (mappedAddress != null) {
-            // check 'MAPPED-ADDRESS
-            InetSocketAddress address = (InetSocketAddress) source;
-            if (address.getPort() == mappedAddress.getPort() &&
-                    address.getHostString().equals(mappedAddress.getHostString())) {
-                if (super.processHello(location, source)) {
-                    // location info accepted
-                    return true;
-                }
+        // check 'MAPPED-ADDRESS
+        SocketAddress mappedAddress = location.getMappedAddress();
+        if (source.equals(mappedAddress)) {
+            if (super.processHello(location, source)) {
+                // location info accepted, create a connection to the source
+                peer.connect(source);
+                return true;
             }
         }
         // respond 'SIGN' command with 'ID' and 'MAPPED-ADDRESS'

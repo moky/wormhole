@@ -208,24 +208,38 @@ class Contact:
                     self.__locations.pop(pos)
 
     @classmethod
-    def is_expired(cls, location: LocationValue, peer: Peer) -> bool:
+    def is_expired(cls, location: LocationValue, peer: Peer=None) -> bool:
+        """
+        Check connection for client node; check timestamp for server node
+
+        :param location: user's location info
+        :param peer:     node peer
+        :return: true to remove location
+        """
         if peer is None:
+            # check timestamp
             timestamp = location.timestamp
             if timestamp <= 0:
                 return True
             return time.time() > (timestamp + cls.EXPIRES)
-        # check connections for client node
-        sa = location.source_address
-        if cls.__is_connecting(address=sa, peer=peer):
-            return False
-        ma = location.mapped_address
-        if cls.__is_connecting(address=ma, peer=peer):
-            return False
-        return True
-
-    @classmethod
-    def __is_connecting(cls, address: tuple, peer: Peer) -> bool:
-        conn = peer.get_connection(remote_address=address)
-        if conn is None:
-            return False
-        return not conn.is_error(now=time.time())
+        # check connections
+        error1 = False
+        error2 = False
+        now = time.time()
+        # check source-address
+        source_address = location.source_address
+        if source_address is None:
+            error1 = True
+        else:
+            conn = peer.get_connection(remote_address=source_address)
+            if conn is not None and conn.is_error(now=now):
+                error1 = True
+        # check mapped-address
+        mapped_address = location.mapped_address
+        if mapped_address is None:
+            error2 = True
+        else:
+            conn = peer.get_connection(remote_address=mapped_address)
+            if conn is not None:
+                return conn.is_error(now=now)
+        return error1 and error2

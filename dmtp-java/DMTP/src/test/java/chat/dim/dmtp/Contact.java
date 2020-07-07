@@ -285,37 +285,45 @@ public class Contact {
     /**
      *  Check connection for client node; check timestamp for server node
      *
-     * @param location - location info
+     * @param location - user's location info
      * @param peer     - node peer
-     * @return true to remove it
+     * @return true to remove location
      */
     public static boolean isExpired(LocationValue location, Peer peer) {
-        if (peer == null) {
-            long timestamp = location.getTimestamp();
-            if (timestamp == 0) {
-                return true;
-            }
-            long now = (new Date()).getTime();
-            return now > (timestamp * 1000 + EXPIRES);
-        }
-        // check connections for client node
+        boolean error1 = false, error2 = false;
+        long now = (new Date()).getTime();
+        Connection conn;
+        // check source-address
         SocketAddress sourceAddress = location.getSourceAddress();
-        if (isConnecting(sourceAddress, peer)) {
-            return false;
+        if (sourceAddress == null) {
+            error1 = true;
+        } else {
+            conn = peer.getConnection(sourceAddress);
+            if (conn != null && conn.isError(now)) {
+                error1 = true;
+            }
         }
+        // 2. if mapped-address's connection exists and not error,
+        //    location not expired too.
         SocketAddress mappedAddress = location.getMappedAddress();
-        if (isConnecting(mappedAddress, peer)) {
-            return false;
+        if (mappedAddress == null) {
+            error2 = true;
+        } else {
+            conn = peer.getConnection(mappedAddress);
+            if (conn != null && conn.isError(now)) {
+                error2 = true;
+            }
         }
-        return true;
+        // only two connections exist and error
+        return error1 && error2;
     }
 
-    private static boolean isConnecting(SocketAddress address, Peer peer) {
-        Connection conn = peer.getConnection(address);
-        if (conn == null) {
-            return false;
+    public static boolean isExpired(LocationValue location) {
+        long timestamp = location.getTimestamp();
+        if (timestamp <= 0) {
+            return true;
         }
         long now = (new Date()).getTime();
-        return !conn.isError(now);
+        return now > (timestamp * 1000 + EXPIRES);
     }
 }

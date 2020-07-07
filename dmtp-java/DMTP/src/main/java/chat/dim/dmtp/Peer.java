@@ -32,7 +32,6 @@ package chat.dim.dmtp;
 
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.util.Date;
 import java.util.Set;
 
 import chat.dim.mtp.Pool;
