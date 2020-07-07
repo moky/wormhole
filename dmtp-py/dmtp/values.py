@@ -28,12 +28,27 @@
 # SOFTWARE.
 # ==============================================================================
 
+import json
 from typing import Optional, Union
 
+from udp.tlv.utils import base64_encode
 from udp.tlv import Data, MutableData, IntegerData, UInt8Data, UInt32Data
 
 from .tlv import Field, FieldName, FieldLength, FieldValue
 from .address import SourceAddressValue, MappedAddressValue, RelayedAddressValue
+
+
+class FieldValueEncoder(json.JSONEncoder):
+
+    def default(self, value):
+        if isinstance(value, IntegerData):
+            return value.value
+        elif isinstance(value, StringValue):
+            return value.string
+        elif isinstance(value, BinaryValue):
+            return base64_encode(data=value.get_bytes())
+        else:
+            return super().default(value)
 
 
 class FieldsValue(FieldValue, dict):
@@ -52,11 +67,12 @@ class FieldsValue(FieldValue, dict):
         # set fields
         for item in fields:
             assert isinstance(item, Field), 'field item error: %s' % item
+            key = item.tag
+            assert isinstance(key, FieldName), 'field name error: %s' % item.tag
             if item.value is None:
-                self.pop(item.tag)
+                self.pop(key.name)
             else:
-                self[item.tag] = item.value
-        self.__fields = fields
+                self[key.name] = item.value
 
     def get_string_value(self, name: Union[str, FieldName]) -> Optional[str]:
         value = self.get(name)
@@ -100,18 +116,51 @@ class BinaryValue(FieldValue):
 
 
 class ByteValue(UInt8Data, FieldValue):
-    pass
+
+    def __init__(self, data: Union[int, bytes, bytearray, Data]=None, value: int=None):
+        if data is None:
+            assert value is not None, 'byte value empty'
+            data = UInt8Data(value=value)
+        elif value is None:
+            if isinstance(data, int):
+                value = data
+                data = UInt8Data(value=value)
+            else:
+                data = UInt8Data(data=data)
+                value = data.value
+        super().__init__(data=data, value=value)
 
 
 class TimestampValue(UInt32Data, FieldValue):
-    pass
+
+    def __init__(self, data: Union[int, bytes, bytearray, Data]=None, value: int=None):
+        if data is None:
+            assert value is not None, 'timestamp value empty'
+            data = UInt32Data(value=value)
+        elif value is None:
+            if isinstance(data, int):
+                value = data
+                data = UInt32Data(value=value)
+            else:
+                data = UInt32Data(data=data)
+                value = data.value
+        super().__init__(data=data, value=value)
 
 
 class StringValue(FieldValue):
 
-    def __init__(self, string: str, data: Data=None):
+    def __init__(self, data: Union[str, bytes, bytearray, Data]=None, string: str=None):
         if data is None:
-            data = Data(data=string.encode('utf-8'))
+            assert string is not None, 'string empty'
+            data = string.encode('utf-8')
+        elif string is None:
+            if isinstance(data, str):
+                string = data
+                data = string.encode('utf-8')
+            elif isinstance(data, Data):
+                string = data.get_bytes().decode('utf-8')
+            else:
+                string = data.decode('utf-i')
         super().__init__(data=data)
         self.__string = string
 

@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import json
 import sys
 import os
 
@@ -27,7 +28,7 @@ class Server(dmtp.Server):
         return super().process_command(cmd=cmd, source=source)
 
     def process_message(self, msg: dmtp.Message, source: tuple) -> bool:
-        print('received msg: %s' % msg)
+        print('received msg: %s' % json.dumps(msg, cls=dmtp.FieldValueEncoder))
         return True
 
 

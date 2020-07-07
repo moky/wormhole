@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import json
 import random
 
 import sys
@@ -23,8 +24,8 @@ SERVER_GZ2 = '203.195.224.155'
 SERVER_GZ3 = '129.204.94.164'
 
 # SERVER_HOST = '127.0.0.1'
-SERVER_HOST = '192.168.31.64'
-# SERVER_HOST = SERVER_GZ1
+# SERVER_HOST = '192.168.31.64'
+SERVER_HOST = SERVER_GZ1
 SERVER_PORT = 9395
 
 CLIENT_HOST = stun.get_local_ip()
@@ -61,7 +62,7 @@ class Client(dmtp.Client):
         return super().process_command(cmd=cmd, source=source)
 
     def process_message(self, msg: dmtp.Message, source: tuple) -> bool:
-        print('received msg from %s:\n\t%s' % (source, msg))
+        print('received msg from %s:\n\t%s' % (source, json.dumps(msg, cls=dmtp.FieldValueEncoder)))
         content = msg.content
         if content is not None:
             print('msg content: "%s"' % content)
@@ -72,7 +73,7 @@ class Client(dmtp.Client):
         return super().send_command(cmd=cmd, destination=destination)
 
     def send_message(self, msg: dmtp.Message, destination: tuple) -> dmtp.Departure:
-        print('sending msg to %s:\n\t%s' % (destination, msg))
+        print('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=dmtp.FieldValueEncoder)))
         return super().send_message(msg=msg, destination=destination)
 
     def get_sessions(self, identifier: str) -> list:

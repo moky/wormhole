@@ -194,20 +194,20 @@ class Message(FieldsValue):
         return cls(fields=fields)
 
     # message field names
-    SENDER = FieldName('S')     # sender ID
-    RECEIVER = FieldName('R')   # receiver ID
-    TIME = FieldName('W')       # message time
-    TYPE = FieldName('T')       # message type
-    GROUP = FieldName('G')      # group ID
+    SENDER = FieldName(name='S')     # sender ID
+    RECEIVER = FieldName(name='R')   # receiver ID
+    TIME = FieldName(name='W')       # message time
+    TYPE = FieldName(name='T')       # message type
+    GROUP = FieldName(name='G')      # group ID
 
-    CONTENT = FieldName('D')    # message content Data; or file content Data
-    SIGNATURE = FieldName('V')  # signature for Verify content data with sender's meta.key
-    KEY = FieldName('K')        # encryption key (symmetric key data encrypted by public key)
+    CONTENT = FieldName(name='D')    # message content Data; or file content Data
+    SIGNATURE = FieldName(name='V')  # signature for Verify content data with sender's meta.key
+    KEY = FieldName(name='K')        # encryption key (symmetric key data encrypted by public key)
 
-    META = FieldName('M')       # meta info
-    PROFILE = FieldName('P')    # profile
+    META = FieldName(name='M')       # meta info
+    PROFILE = FieldName(name='P')    # profile
 
-    FILENAME = FieldName('F')   # Filename
+    FILENAME = FieldName(name='F')   # Filename
 
 
 # classes for parsing message

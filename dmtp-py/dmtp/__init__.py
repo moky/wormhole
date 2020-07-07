@@ -28,6 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
+from .values import *
 from .address import *
 from .command import *
 from .message import *
@@ -45,37 +46,21 @@ __author__ = 'Albert Moky'
 __all__ = [
 
     # TLV
-    'VarName', 'Field', 'FieldsValue',
+    'FieldName', 'FieldLength', 'FieldValue', 'Field', 'FieldsValue',
     'BinaryValue', 'ByteValue', 'TimestampValue', 'StringValue',
+    'FieldValueEncoder',
 
     # commands
     'Command',
-    'Who', 'WhoCommand',
-    'Hello', 'HelloCommand',
-    'Sign', 'SignCommand',
-    'Call', 'CallCommand',
-    'From', 'FromCommand',
-    'Bye', 'ByeCommand',
+    'WhoCommand', 'HelloCommand', 'SignCommand', 'CallCommand', 'FromCommand', 'ByeCommand',
 
     # command values
     'CommandValue',
     'LocationValue',
-
-    # command fields
-    'ID',
-    'SourceAddress', 'SourceAddressValue',
-    'MappedAddress', 'MappedAddressValue',
-    'RelayedAddress', 'RelayedAddressValue',
-    'Time',
-    'Signature',
-    'NAT',
+    'SourceAddressValue', 'MappedAddressValue', 'RelayedAddressValue',
 
     # message
     'Message',
-    'MsgSender', 'MsgReceiver', 'MsgTime', 'MsgType', 'MsgGroup',
-    'MsgContent', 'MsgSignature', 'MsgKey',
-    'MsgMeta', 'MsgProfile',
-    'MsgFilename',
 
     # node
     'Hub', 'Peer',
