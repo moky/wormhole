@@ -38,7 +38,6 @@ import java.util.List;
 import chat.dim.dmtp.fields.Field;
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
-import chat.dim.dmtp.fields.FieldValue;
 import chat.dim.tlv.Data;
 
 public class LocationValue extends CommandValue {
@@ -60,62 +59,65 @@ public class LocationValue extends CommandValue {
         super(fields);
     }
 
+    protected SocketAddress getAddress(FieldName tag) {
+        MappedAddressValue value = (MappedAddressValue) get(tag.name);
+        if (value == null) {
+            return null;
+        }
+        return new InetSocketAddress(value.ip, value.port);
+    }
+
     public SocketAddress getSourceAddress() {
         if (sourceAddress == null) {
-            sourceAddress = (SocketAddress) get(FieldName.SOURCE_ADDRESS);
+            sourceAddress = getAddress(FieldName.SOURCE_ADDRESS);
         }
         return sourceAddress;
     }
     public SocketAddress getMappedAddress() {
         if (mappedAddress == null) {
-            mappedAddress = (SocketAddress) get(FieldName.MAPPED_ADDRESS);
+            mappedAddress = getAddress(FieldName.MAPPED_ADDRESS);
         }
         return mappedAddress;
     }
     public SocketAddress getRelayedAddress() {
         if (relayedAddress == null) {
-            relayedAddress = (SocketAddress) get(FieldName.RELAYED_ADDRESS);
+            relayedAddress = getAddress(FieldName.RELAYED_ADDRESS);
         }
         return relayedAddress;
     }
 
+    /**
+     *  Get signature time of location info
+     *
+     * @return timestamp in seconds
+     */
     public long getTimestamp() {
         if (timestamp == 0) {
-            Object value = get(FieldName.TIME);
+            TimestampValue value = (TimestampValue) get(FieldName.TIME);
             if (value != null) {
-                timestamp = (long) value;
+                timestamp = value.value;
             }
         }
         return timestamp;
     }
     public Data getSignature() {
         if (signature == null) {
-            signature = (Data) get(FieldName.SIGNATURE);
+            signature = (BinaryValue) get(FieldName.SIGNATURE);
         }
         return signature;
     }
 
     public String getNat() {
         if (nat == null) {
-            nat = (String) get(FieldName.NAT);
+            StringValue value = (StringValue) get(FieldName.NAT);
+            if (value != null) {
+                nat = value.string;
+            }
         }
         return nat;
     }
 
-    @Override
-    protected void setField(FieldName tag, FieldValue value) {
-        String key = tag.name;
-        if (value == null) {
-            dictionary.remove(key);
-        } else if (value instanceof MappedAddressValue) {
-            MappedAddressValue addressValue = (MappedAddressValue) value;
-            SocketAddress address = new InetSocketAddress(addressValue.ip, addressValue.port);
-            dictionary.put(key, address);
-        } else {
-            super.setField(tag, value);
-        }
-    }
-
+    @SuppressWarnings("unused")
     public static LocationValue parse(Data data, FieldName type, FieldLength length) {
         // parse fields
         List<Field> fields = Field.parseFields(data);

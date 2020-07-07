@@ -11,6 +11,15 @@ public class Server extends chat.dim.dmtp.Server {
 
     public Server(String host, int port) throws SocketException {
         super(new InetSocketAddress(host, port));
+        // database for location of contacts
+        database = createContactManager();
+        setDelegate(database);
+    }
+
+    protected ContactManager createContactManager() {
+        ContactManager db = new ContactManager(peer);
+        db.identifier = "station@anywhere";
+        return db;
     }
 
     @Override

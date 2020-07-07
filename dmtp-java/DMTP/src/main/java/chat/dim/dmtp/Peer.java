@@ -113,15 +113,6 @@ public class Peer extends chat.dim.mtp.Peer implements HubListener {
         return hub.getConnection(remoteAddress, localAddress);
     }
 
-    public boolean isConnected(SocketAddress remoteAddress) {
-        Connection conn = getConnection(remoteAddress);
-        if (conn == null) {
-            return false;
-        }
-        long now = (new Date()).getTime();
-        return conn.isConnected(now);
-    }
-
     //
     //  Send
     //

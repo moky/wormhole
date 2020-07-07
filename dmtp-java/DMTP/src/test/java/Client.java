@@ -19,7 +19,6 @@ import chat.dim.udp.Connection;
 
 public class Client extends chat.dim.dmtp.Client {
 
-    private String identifier;
     private SocketAddress serverAddress = null;
     public String nat = "Unknown";
 
@@ -27,9 +26,20 @@ public class Client extends chat.dim.dmtp.Client {
 
     public Client(String host, int port) throws SocketException {
         super(new InetSocketAddress(host, port));
-        database = new ContactManager(peer);
+        // database for location of contacts
+        database = createContactManager();
+        database.identifier = "moky-" + port;
         setDelegate(database);
-        identifier = "moky-" + port;
+    }
+
+    protected ContactManager createContactManager() {
+        ContactManager db = new ContactManager(peer);
+        db.identifier = "anyone@anywhere";
+        return db;
+    }
+
+    public String getIdentifier() {
+        return database.identifier;
     }
 
     @Override
@@ -61,7 +71,7 @@ public class Client extends chat.dim.dmtp.Client {
         if (super.sayHello(destination)) {
             return true;
         }
-        Command cmd = Command.Hello.create(identifier);
+        Command cmd = Command.Hello.create(getIdentifier());
         sendCommand(cmd, destination);
         return true;
     }
@@ -74,7 +84,6 @@ public class Client extends chat.dim.dmtp.Client {
 
     public void login(String identifier, SocketAddress remoteAddress) {
         this.database.identifier = identifier;
-        this.identifier = identifier;
         this.serverAddress = remoteAddress;
         this.peer.connect(remoteAddress);
         sayHello(remoteAddress);
@@ -83,6 +92,7 @@ public class Client extends chat.dim.dmtp.Client {
     public List<Session> getSessions(String receiver) {
         List<Session> sessions = new ArrayList<>();
         LocationDelegate delegate = getDelegate();
+        assert delegate != null : "location delegate not set";
         List<LocationValue> locations = delegate.getLocations(receiver);
         SocketAddress sourceAddress;
         SocketAddress mappedAddress;
@@ -104,7 +114,7 @@ public class Client extends chat.dim.dmtp.Client {
                 conn = peer.getConnection(mappedAddress);
                 if (conn != null && conn.isConnected(now)) {
                     sessions.add(new Session(item, mappedAddress));
-                    continue;
+                    //continue;
                 }
             }
         }
@@ -126,7 +136,7 @@ public class Client extends chat.dim.dmtp.Client {
         long timestamp = (new Date()).getTime() / 1000;
         byte[] bytes = text.getBytes(Charset.forName("UTF-8"));
         Data content = new Data(bytes);
-        Message msg = Message.create(identifier, receiver, timestamp, content, null, null);
+        Message msg = Message.create(getIdentifier(), receiver, timestamp, content, null, null);
         for (Session item : sessions) {
             System.out.printf("sending msg to %s:\n\t%s\n", item, msg);
             sendMessage(msg, item.address);
@@ -153,7 +163,7 @@ public class Client extends chat.dim.dmtp.Client {
         // test send
         String text = "你好 " + friend + "!";
         int index = 0;
-        while (true) {
+        while (index < 16777216) {
             Thread.sleep(5000);
             System.out.printf("---- [%d]\n", index);
             client.sendText(friend, text + " (" + index + ")");

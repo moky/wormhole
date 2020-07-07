@@ -110,37 +110,31 @@ public class Message extends FieldsValue {
     //
     public String getSender() {
         if (sender == null) {
-            sender = (String) get(SENDER);
+            sender = getString(SENDER);
         }
         return sender;
     }
     public String getReceiver() {
         if (receiver == null) {
-            receiver = (String) get(RECEIVER);
+            receiver = getString(RECEIVER);
         }
         return receiver;
     }
     public long getTimestamp() {
         if (timestamp == 0) {
-            Object value = get(TIME);
-            if (value != null) {
-                timestamp = (long) value;
-            }
+            timestamp = getTimestamp(TIME);
         }
         return timestamp;
     }
     public int getType() {
         if (type == 0) {
-            Object value = get(TYPE);
-            if (value != null) {
-                type = (int) value;
-            }
+            type = getByte(TYPE);
         }
         return type;
     }
     public String getGroup() {
         if (group == null) {
-            group = (String) get(GROUP);
+            group = getString(GROUP);
         }
         return group;
     }
@@ -150,19 +144,19 @@ public class Message extends FieldsValue {
     //
     public Data getContent() {
         if (content == null) {
-            content = (Data) get(CONTENT);
+            content = getBinary(CONTENT);
         }
         return content;
     }
     public Data getSignature() {
         if (signature == null) {
-            signature = (Data) get(CONTENT);
+            signature = getBinary(SIGNATURE);
         }
         return signature;
     }
     public Data getKey() {
         if (key == null) {
-            key = (Data) get(CONTENT);
+            key = getBinary(KEY);
         }
         return key;
     }
@@ -172,13 +166,13 @@ public class Message extends FieldsValue {
     //
     public Data getMeta() {
         if (meta == null) {
-            meta = (Data) get(CONTENT);
+            meta = getBinary(META);
         }
         return meta;
     }
     public Data getProfile() {
         if (profile == null) {
-            profile = (Data) get(CONTENT);
+            profile = getBinary(PROFILE);
         }
         return profile;
     }
@@ -188,7 +182,7 @@ public class Message extends FieldsValue {
     //
     public String getFilename() {
         if (filename == null) {
-            filename = (String) get(FILENAME);
+            filename = getString(FILENAME);
         }
         return filename;
     }

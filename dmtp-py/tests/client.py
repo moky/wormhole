@@ -9,14 +9,14 @@ import os
 import time
 from typing import Optional
 
+import dmtp
+import stun
+
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-import stun
-import dmtp
-
-from tests.contacts import ContactManager, Session
+from tests.database import ContactManager
 
 
 SERVER_GZ1 = '134.175.87.98'
@@ -32,16 +32,59 @@ CLIENT_HOST = stun.get_local_ip()
 CLIENT_PORT = random.choice(range(9900, 9999))
 
 
+class Session:
+
+    def __init__(self, location: dmtp.LocationValue, address: tuple):
+        super().__init__()
+        self.__location = location
+        self.__address = address
+
+    @property
+    def location(self) -> dmtp.LocationValue:
+        return self.__location
+
+    @property
+    def address(self) -> tuple:
+        return self.__address
+
+
 class Client(dmtp.Client):
 
     def __init__(self, port: int, host: str='127.0.0.1'):
         super().__init__(local_address=(host, port))
-        self.server_address = None
-        self.identifier = 'moky-%d' % port
-        self.nat = 'Port Restricted Cone NAT'
+        self.__server_address = None
+        self.nat = 'Unknown'
+        # database for location of contacts
+        db = self._create_contact_manager()
+        db.identifier = 'moky-%d' % port
+        self.__database = db
+        self.delegate = db
 
-    def connect(self, remote_address: tuple) -> Optional[dmtp.Connection]:
-        return self.peer.connect(remote_address=remote_address)
+    def _create_contact_manager(self) -> ContactManager:
+        db = ContactManager(peer=self.peer)
+        db.identifier = 'anyone@anywhere'
+        return db
+
+    @property
+    def identifier(self) -> str:
+        return self.__database.identifier
+
+    def process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
+        print('received cmd from %s:\n\t%s' % (source, cmd))
+        return super().process_command(cmd=cmd, source=source)
+
+    def process_message(self, msg: dmtp.Message, source: tuple) -> bool:
+        print('received msg from %s:\n\t%s' % (source, json.dumps(msg, cls=dmtp.FieldValueEncoder)))
+        # return super().process_message(msg=msg, source=source)
+        return True
+
+    def send_command(self, cmd: dmtp.Command, destination: tuple) -> dmtp.Departure:
+        print('sending cmd to %s:\n\t%s' % (destination, cmd))
+        return super().send_command(cmd=cmd, destination=destination)
+
+    def send_message(self, msg: dmtp.Message, destination: tuple) -> dmtp.Departure:
+        print('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=dmtp.FieldValueEncoder)))
+        return super().send_message(msg=msg, destination=destination)
 
     def say_hello(self, destination: tuple) -> bool:
         if super().say_hello(destination=destination):
@@ -54,34 +97,14 @@ class Client(dmtp.Client):
     def call(self, identifier: str) -> bool:
         cmd = dmtp.CallCommand.new(identifier=identifier)
         print('sending cmd: %s' % cmd)
-        self.send_command(cmd=cmd, destination=self.server_address)
+        self.send_command(cmd=cmd, destination=self.__server_address)
         return True
 
     def login(self, identifier: str, server_address: tuple):
-        self.identifier = identifier
-        self.server_address = server_address
+        self.__database.identifier = identifier
+        self.__server_address = server_address
         self.peer.connect(remote_address=server_address)
         self.say_hello(destination=server_address)
-
-    def process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
-        print('received cmd from %s:\n\t%s' % (source, cmd))
-        return super().process_command(cmd=cmd, source=source)
-
-    def process_message(self, msg: dmtp.Message, source: tuple) -> bool:
-        print('received msg from %s:\n\t%s' % (source, json.dumps(msg, cls=dmtp.FieldValueEncoder)))
-        content = msg.content
-        if content is not None:
-            print('msg content: "%s"' % content)
-        # return super().process_message(msg=msg, source=source)
-        return True
-
-    def send_command(self, cmd: dmtp.Command, destination: tuple) -> dmtp.Departure:
-        print('sending cmd to %s:\n\t%s' % (destination, cmd))
-        return super().send_command(cmd=cmd, destination=destination)
-
-    def send_message(self, msg: dmtp.Message, destination: tuple) -> dmtp.Departure:
-        print('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=dmtp.FieldValueEncoder)))
-        return super().send_message(msg=msg, destination=destination)
 
     def get_sessions(self, identifier: str) -> list:
         """
@@ -90,23 +113,23 @@ class Client(dmtp.Client):
         :param identifier: user ID
         :return: connected locations and addresses
         """
-        assert self.delegate is not None, 'contact delegate not set'
-        locations = self.delegate.get_locations(identifier=identifier)
-        if len(locations) == 0:
-            # locations not found
-            return []
         sessions = []
+        assert self.delegate is not None, 'location delegate not set'
+        locations = self.delegate.get_locations(identifier=identifier)
+        now = int(time.time())
         for loc in locations:
             assert isinstance(loc, dmtp.LocationValue), 'location error: %s' % loc
-            if loc.source_address is not None:
-                addr = loc.source_address
-                if self.peer.is_connected(remote_address=addr):
-                    sessions.append(Session(location=loc, address=addr))
+            source_address = loc.source_address
+            if source_address is not None:
+                conn = self.peer.get_connection(remote_address=source_address)
+                if conn is not None and conn.is_connected(now=now):
+                    sessions.append(Session(location=loc, address=source_address))
                     continue
-            if loc.mapped_address is not None:
-                addr = loc.mapped_address
-                if self.peer.is_connected(remote_address=addr):
-                    sessions.append(Session(location=loc, address=addr))
+            mapped_address = loc.mapped_address
+            if mapped_address is not None:
+                conn = self.peer.get_connection(remote_address=mapped_address)
+                if conn is not None and conn.is_connected(now=now):
+                    sessions.append(Session(location=loc, address=mapped_address))
                     continue
         return sessions
 
@@ -142,12 +165,7 @@ if __name__ == '__main__':
         user = sys.argv[1]
         friend = sys.argv[2]
 
-    g_database = ContactManager()
-    g_database.identifier = user
-    g_database.source_address = (CLIENT_HOST, CLIENT_PORT)
-
     g_client = Client(host=CLIENT_HOST, port=CLIENT_PORT)
-    g_client.delegate = g_database
     g_client.start()
 
     g_client.login(identifier=user, server_address=(SERVER_HOST, SERVER_PORT))

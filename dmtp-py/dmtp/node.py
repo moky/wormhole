@@ -28,7 +28,9 @@
 # SOFTWARE.
 # ==============================================================================
 
+import weakref
 from abc import abstractmethod
+from typing import Optional
 
 from udp.tlv import Data
 from udp.mtp import Package, Command as DataTypeCommand, Message as DataTypeMessage
@@ -39,8 +41,7 @@ from .tlv import Field
 from .values import LocationValue
 from .command import Command, HelloCommand
 from .message import Message
-from .peer import Hub, Peer
-from .contact import ContactDelegate
+from .peer import Hub, Peer, LocationDelegate
 
 
 class Node(PeerHandler):
@@ -51,8 +52,8 @@ class Node(PeerHandler):
             peer = self.__create_peer(local_address=local_address, hub=hub, pool=pool)
         self.__peer = peer
         peer.handler = self
-        # contact delegate
-        self.delegate: ContactDelegate = None
+        # location delegate
+        self.__delegate: weakref.ReferenceType = None
 
     # noinspection PyMethodMayBeStatic
     def __create_peer(self, local_address: tuple, hub: Hub=None, pool: Pool=None):
@@ -63,6 +64,18 @@ class Node(PeerHandler):
     @property
     def peer(self) -> Peer:
         return self.__peer
+
+    @property
+    def delegate(self) -> Optional[LocationDelegate]:
+        if self.__delegate is not None:
+            return self.__delegate()
+
+    @delegate.setter
+    def delegate(self, value: LocationDelegate):
+        if value is None:
+            self.__delegate = None
+        else:
+            self.__delegate = weakref.ref(value)
 
     def start(self):
         # start peer

@@ -46,8 +46,8 @@ public class ContactManager implements LocationDelegate {
 
     public String identifier = null;
 
-    private final SocketAddress sourceAddress;
     public String nat = "Unknown";
+    private final SocketAddress sourceAddress;
 
     private final Peer peer;
 
@@ -157,7 +157,7 @@ public class ContactManager implements LocationDelegate {
         }
         Contact contact = getContact(identifier);
         //contact.purge(peer);
-        return contact.anyLocation();
+        return contact.getLocation(sourceAddress);
     }
 
     @Override
@@ -170,8 +170,7 @@ public class ContactManager implements LocationDelegate {
         if (location == null) {
             return null;
         }
-        Contact contact = getContact(location.getIdentifier());
-        if (contact.isExpired(location, peer)) {
+        if (Contact.isExpired(location, peer)) {
             return null;
         }
         return location;
@@ -186,8 +185,7 @@ public class ContactManager implements LocationDelegate {
 
     @Override
     public LocationValue signLocation(LocationValue location) {
-        String idValue = location.getIdentifier();
-        if (!identifier.equals(idValue)) {
+        if (!identifier.equals(location.getIdentifier())) {
             // ID not match
             return null;
         }

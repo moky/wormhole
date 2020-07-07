@@ -39,14 +39,14 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.values.*;
 import chat.dim.tlv.Data;
-import chat.dim.tlv.MutableData;
 import chat.dim.udp.Connection;
 
 public class Contact {
 
-    public static long EXPIRES = 60 * 60 * 24; // 24 hours
+    public static long EXPIRES = 24 * 3600 * 1000; // 24 hours (milliseconds)
 
     public final String identifier;
 
@@ -57,74 +57,6 @@ public class Contact {
     public Contact(String id) {
         super();
         this.identifier = id;
-    }
-
-    /**
-     *  Check connection for client node; check timestamp for server node
-     *
-     * @param location - location info
-     * @param peer     - node peer
-     * @return true to remove it
-     */
-    protected boolean isExpired(LocationValue location, Peer peer) {
-        if (peer == null) {
-            long timestamp = location.getTimestamp();
-            if (timestamp == 0) {
-                return true;
-            }
-            long now = (new Date()).getTime() / 1000;
-            return now > (timestamp + EXPIRES);
-        }
-        // check connections for client node
-        SocketAddress sourceAddress = location.getSourceAddress();
-        if (isConnecting(sourceAddress, peer)) {
-            return false;
-        }
-        SocketAddress mappedAddress = location.getMappedAddress();
-        if (isConnecting(mappedAddress, peer)) {
-            return false;
-        }
-        return true;
-    }
-
-    private boolean isConnecting(SocketAddress address, Peer peer) {
-        Connection conn = peer.getConnection(address);
-        if (conn == null) {
-            return false;
-        }
-        long now = (new Date()).getTime();
-        return !conn.isError(now);
-    }
-
-    public void purge(Peer peer) {
-        Lock writeLock = locationLock.writeLock();
-        writeLock.lock();
-        try {
-            LocationValue item;
-            for (int index = locations.size() - 1; index >= 0; --index) {
-                item = locations.get(index);
-                if (isExpired(item, peer)) {
-                    locations.remove(index);
-                }
-            }
-        } finally {
-            writeLock.unlock();
-        }
-    }
-
-    public LocationValue anyLocation() {
-        LocationValue location = null;
-        Lock readLock = locationLock.readLock();
-        readLock.lock();
-        try {
-            int index = locations.size() - 1;
-            if (index >= 0) {
-                location = locations.get(index);
-            }
-        } finally {
-            readLock.unlock();
-        }
-        return location;
     }
 
     /**
@@ -155,21 +87,17 @@ public class Contact {
         readLock.lock();
         try {
             assert address instanceof InetSocketAddress : "address error: " + address;
-            SocketAddress sourceAddress;
-            SocketAddress mappedAddress;
             LocationValue item;
             int index;
             for (index = locations.size() - 1; index >= 0; --index) {
                 item = locations.get(index);
                 // check source address
-                sourceAddress = item.getSourceAddress();
-                if (address.equals(sourceAddress)) {
+                if (address.equals(item.getSourceAddress())) {
                     location = item;
                     break;
                 }
                 // check mapped address
-                mappedAddress = item.getMappedAddress();
-                if (address.equals(mappedAddress)) {
+                if (address.equals(item.getMappedAddress())) {
                     location = item;
                     break;
                 }
@@ -210,6 +138,7 @@ public class Contact {
                     continue;
                 }
                 if (timestamp < item.getTimestamp()) {
+                    // this location info is expired
                     ok = false;
                     break;
                 }
@@ -273,38 +202,29 @@ public class Contact {
     }
 
     //
-    //  Sign
+    //  Signature
     //
 
     private static Data getSignData(LocationValue location) {
-        SocketAddress sourceAddress = location.getSourceAddress();
-        SocketAddress mappedAddress = location.getMappedAddress();
-        SocketAddress relayedAddress = location.getRelayedAddress();
-        long timestamp = location.getTimestamp();
-        // data = "source_address" + "mapped_address" + "relayed_address" + "time"
+        MappedAddressValue mappedAddress = (MappedAddressValue) location.get(FieldName.MAPPED_ADDRESS);
         if (mappedAddress == null) {
             return null;
         }
-//        Data data = mappedAddress;
-//        if (sourceAddress != null) {
-//            data = sourceAddress.concat(data);
-//        }
-//        if (relayedAddress != null) {
-//            data = data.concat(relayedAddress);
-//        }
-//        if (timestamp != null) {
-//            data = data.concat(timestamp);
-//        }
-//        return data;
-        return new MutableData(0);
-    }
-
-    private static Data getSignature(LocationValue location) {
-        Data signature = location.getSignature();
-        if (signature == null) {
-            return null;
+        SourceAddressValue sourceAddress = (SourceAddressValue) location.get(FieldName.SOURCE_ADDRESS);
+        RelayedAddressValue relayedAddress = (RelayedAddressValue) location.get(FieldName.RELAYED_ADDRESS);
+        TimestampValue timestamp = (TimestampValue) location.get(FieldName.TIME);
+        // data = "source_address" + "mapped_address" + "relayed_address" + "time"
+        Data data = mappedAddress;
+        if (sourceAddress != null) {
+            data = sourceAddress.concat(data);
         }
-        return signature;
+        if (relayedAddress != null) {
+            data = data.concat(relayedAddress);
+        }
+        if (timestamp != null) {
+            data = data.concat(timestamp);
+        }
+        return data;
     }
 
     /**
@@ -333,18 +253,69 @@ public class Contact {
 
     public boolean verifyLocation(LocationValue location) {
         String identifier = location.getIdentifier();
-        SocketAddress sourceAddress = location.getSourceAddress();
-        long timestamp = location.getTimestamp();
-        if (identifier == null || sourceAddress == null || timestamp == 0) {
+        if (identifier == null) {
             return false;
         }
 
         Data data = getSignData(location);
-        Data signature = getSignature(location);
+        Data signature = location.getSignature();
         if (data == null || signature == null) {
             return false;
         }
         // TODO: verify data and signature with public key
         return true;
+    }
+
+    public void purge(Peer peer) {
+        Lock writeLock = locationLock.writeLock();
+        writeLock.lock();
+        try {
+            LocationValue item;
+            for (int index = locations.size() - 1; index >= 0; --index) {
+                item = locations.get(index);
+                if (isExpired(item, peer)) {
+                    locations.remove(index);
+                }
+            }
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    /**
+     *  Check connection for client node; check timestamp for server node
+     *
+     * @param location - location info
+     * @param peer     - node peer
+     * @return true to remove it
+     */
+    public static boolean isExpired(LocationValue location, Peer peer) {
+        if (peer == null) {
+            long timestamp = location.getTimestamp();
+            if (timestamp == 0) {
+                return true;
+            }
+            long now = (new Date()).getTime();
+            return now > (timestamp * 1000 + EXPIRES);
+        }
+        // check connections for client node
+        SocketAddress sourceAddress = location.getSourceAddress();
+        if (isConnecting(sourceAddress, peer)) {
+            return false;
+        }
+        SocketAddress mappedAddress = location.getMappedAddress();
+        if (isConnecting(mappedAddress, peer)) {
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean isConnecting(SocketAddress address, Peer peer) {
+        Connection conn = peer.getConnection(address);
+        if (conn == null) {
+            return false;
+        }
+        long now = (new Date()).getTime();
+        return !conn.isError(now);
     }
 }

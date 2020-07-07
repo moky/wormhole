@@ -70,7 +70,7 @@ class FieldsValue(FieldValue, dict):
             key = item.tag
             assert isinstance(key, FieldName), 'field name error: %s' % item.tag
             if item.value is None:
-                self.pop(key.name)
+                self.pop(key.name, None)
             else:
                 self[key.name] = item.value
 

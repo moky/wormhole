@@ -29,15 +29,11 @@
 # ==============================================================================
 
 from .values import *
-from .address import *
 from .command import *
 from .message import *
-from .contact import *
-from .peer import *
 from .node import *
 from .server import *
 from .client import *
-from .contact import *
 
 name = "DMTP"
 
@@ -46,26 +42,24 @@ __author__ = 'Albert Moky'
 __all__ = [
 
     # TLV
-    'FieldName', 'FieldLength', 'FieldValue', 'Field', 'FieldsValue',
+    'FieldName', 'FieldLength', 'FieldValue', 'Field',
+
+    # values
+    'FieldValueEncoder', 'FieldsValue',
     'BinaryValue', 'ByteValue', 'TimestampValue', 'StringValue',
-    'FieldValueEncoder',
+    # address values
+    'SourceAddressValue', 'MappedAddressValue', 'RelayedAddressValue',
 
     # commands
     'Command',
     'WhoCommand', 'HelloCommand', 'SignCommand', 'CallCommand', 'FromCommand', 'ByeCommand',
-
-    # command values
-    'CommandValue',
-    'LocationValue',
-    'SourceAddressValue', 'MappedAddressValue', 'RelayedAddressValue',
+    'CommandValue', 'LocationValue',
 
     # message
     'Message',
 
     # node
     'Hub', 'Peer',
+    'LocationDelegate',
     'Node', 'Server', 'Client',
-
-    # contact
-    'Contact', 'ContactDelegate',
 ]

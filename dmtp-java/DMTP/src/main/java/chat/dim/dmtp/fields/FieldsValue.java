@@ -32,10 +32,7 @@ package chat.dim.dmtp.fields;
 
 import java.util.*;
 
-import chat.dim.dmtp.values.BinaryValue;
-import chat.dim.dmtp.values.ByteValue;
-import chat.dim.dmtp.values.StringValue;
-import chat.dim.dmtp.values.TimestampValue;
+import chat.dim.dmtp.values.*;
 import chat.dim.tlv.Data;
 import chat.dim.tlv.MutableData;
 
@@ -47,7 +44,7 @@ public class FieldsValue extends FieldValue implements Map<String, Object> {
         super(data);
         dictionary = new HashMap<>();
         for (Field item : fields) {
-            setField((FieldName) item.tag, (FieldValue) item.value);
+            put((FieldName) item.tag, (FieldValue) item.value);
         }
     }
 
@@ -67,27 +64,54 @@ public class FieldsValue extends FieldValue implements Map<String, Object> {
         return data;
     }
 
-    protected void setField(FieldName tag, FieldValue value) {
-        String key = tag.name;
-        if (value == null) {
-            dictionary.remove(key);
-        } else if (value instanceof StringValue) {
-            dictionary.put(key, ((StringValue) value).string);
-        } else if (value instanceof ByteValue) {
-            dictionary.put(key, ((ByteValue) value).value);
-        } else if (value instanceof TimestampValue) {
-            dictionary.put(key, ((TimestampValue) value).value);
-        } else if (value instanceof BinaryValue) {
-            dictionary.put(key, value);
-        } else {
-            System.out.printf("%s> unknown field: %s -> %s\n", getClass(), tag, value);
-        }
-    }
-
     public static FieldsValue parse(Data data, FieldName type, FieldLength length) {
         // parse fields
         List<Field> fields = Field.parseFields(data);
         return new FieldsValue(data, fields);
+    }
+
+    private void put(FieldName tag, FieldValue value) {
+        if (value == null) {
+            dictionary.remove(tag.name);
+        } else {
+            dictionary.put(tag.name, value);
+        }
+    }
+
+    public Object get(FieldName tag) {
+        return get(tag.name);
+    }
+
+    protected String getString(FieldName tag) {
+        StringValue value = (StringValue) get(tag.name);
+        if (value == null) {
+            return null;
+        }
+        return value.string;
+    }
+
+    protected byte getByte(FieldName tag) {
+        ByteValue value = (ByteValue) get(tag.name);
+        if (value == null) {
+            return 0;
+        }
+        return (byte) value.value;
+    }
+
+    protected long getTimestamp(FieldName tag) {
+        TimestampValue value = (TimestampValue) get(tag.name);
+        if (value == null) {
+            return 0;
+        }
+        return value.value;
+    }
+
+    protected Data getBinary(FieldName tag) {
+        BinaryValue value = (BinaryValue) get(tag.name);
+        if (value == null) {
+            return null;
+        }
+        return value;
     }
 
     //
