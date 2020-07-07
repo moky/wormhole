@@ -8,6 +8,8 @@ from typing import Optional
 import stun
 import dmtp
 
+from .contacts import Session
+
 
 def time_string(timestamp: int) -> str:
     time_array = time.localtime(timestamp)
@@ -59,8 +61,8 @@ class DMTPClient(dmtp.Client):
             self.__keep_punching(destination=remote_address, source=local_address)
         return conn
 
-    def say_hi(self, destination: tuple) -> bool:
-        if super().say_hi(destination=destination):
+    def say_hello(self, destination: tuple) -> bool:
+        if super().say_hello(destination=destination):
             return True
         cmd = dmtp.HelloCommand.new(identifier=self.identifier)
         print('send cmd: %s' % cmd)
@@ -114,14 +116,61 @@ class DMTPClient(dmtp.Client):
         print('sending msg to %s:\n\t%s' % (destination, msg))
         return super().send_message(msg=msg, destination=destination)
 
+    def get_sessions(self, identifier: str) -> list:
+        """
+        Get connected locations for user ID
+
+        :param identifier: user ID
+        :return: connected locations and addresses
+        """
+        assert self.delegate is not None, 'contact delegate not set'
+        locations = self.delegate.get_locations(identifier=identifier)
+        if len(locations) == 0:
+            # locations not found
+            return []
+        sessions = []
+        for loc in locations:
+            assert isinstance(loc, dmtp.LocationValue), 'location error: %s' % loc
+            if loc.source_address is not None:
+                addr = loc.source_address
+                if self.peer.is_connected(remote_address=addr):
+                    sessions.append(Session(location=loc, address=addr))
+                    continue
+            if loc.mapped_address is not None:
+                addr = loc.mapped_address
+                if self.peer.is_connected(remote_address=addr):
+                    sessions.append(Session(location=loc, address=addr))
+                    continue
+        return sessions
+
+    def send_text(self, receiver: str, msg: str) -> Optional[dmtp.Message]:
+        sessions = self.get_sessions(identifier=receiver)
+        if len(sessions) == 0:
+            print('user (%s) not login ...' % receiver)
+            # ask the server to help building a connection
+            self.call(identifier=receiver)
+            return None
+        content = msg.encode('utf-8')
+        msg = dmtp.Message.new(info={
+            'sender': self.identifier,
+            'receiver': receiver,
+            'time': int(time.time()),
+            'data': content,
+        })
+        for item in sessions:
+            assert isinstance(item, Session), 'session error: %s' % item
+            print('sending msg to %s:\n\t%s' % (item.address, msg))
+            self.send_message(msg=msg, destination=item.address)
+        return msg
+
     #
     #   PeerDelegate
     #
-    def received_command(self, cmd: bytes, source: tuple, destination: tuple) -> bool:
+    def received_command(self, cmd: dmtp.Data, source: tuple, destination: tuple) -> bool:
         self.__stop_punching(destination=source)
         return super().received_command(cmd=cmd, source=source, destination=destination)
 
-    def received_message(self, msg: bytes, source: tuple, destination: tuple) -> bool:
+    def received_message(self, msg: dmtp.Data, source: tuple, destination: tuple) -> bool:
         self.__stop_punching(destination=source)
         return super().received_message(msg=msg, source=source, destination=destination)
 
@@ -151,7 +200,7 @@ class PunchThread(threading.Thread):
             time.sleep(0.5)
             now = int(time.time())
         # say HI after ping
-        client.say_hi(destination=remote)
+        client.say_hello(destination=remote)
 
 
 """

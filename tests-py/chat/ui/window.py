@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import time
 from typing import Optional
 
 from PyQt5.QtCore import Qt, pyqtSignal, QThread
@@ -154,7 +153,7 @@ class Window(QWidget, DMTPClientHandler):
         if mapped_address is None:
             text = '%s' % nat
         else:
-            text = '%s (%s:%d)' % (nat, mapped_address.ip, mapped_address.port)
+            text = '%s %s' % (nat, mapped_address)
         self.__nat.setText(text)
 
     def login(self):
@@ -162,7 +161,7 @@ class Window(QWidget, DMTPClientHandler):
         self.__display('try to login: %s' % self.sender)
         self.__dmtp_client.identifier = self.sender
         self.__dmtp_client.connect(remote_address=server_address)
-        self.__dmtp_client.say_hi(destination=server_address)
+        self.__dmtp_client.say_hello(destination=server_address)
 
     def call(self):
         self.__display('calling: %s' % self.receiver)
@@ -172,31 +171,12 @@ class Window(QWidget, DMTPClientHandler):
         receiver = self.receiver
         text = self.text
         self.set_text('')
-        msg = self.send_text(receiver=receiver, msg=text)
+        msg = self.__dmtp_client.send_text(receiver=receiver, msg=text)
         if msg is None:
             self.__display('failed to send message "%s" to %s' % (text, receiver))
         else:
             when = time_string(msg.time)
             self.__display('[%s] sent to %s: "%s"' % (when, receiver, text))
-        return msg
-
-    def send_text(self, receiver: str, msg: str) -> Optional[dmtp.Message]:
-        sessions = self.__dmtp_client.get_sessions(identifier=receiver)
-        if len(sessions) == 0:
-            print('user (%s) not login ...' % receiver)
-            # ask the server to help building a connection
-            self.__dmtp_client.call(identifier=receiver)
-            return None
-        content = msg.encode('utf-8')
-        msg = dmtp.Message.new(info={
-            'sender': self.__dmtp_client.identifier,
-            'receiver': receiver,
-            'time': int(time.time()),
-            'data': content,
-        })
-        for item in sessions:
-            assert isinstance(item, dmtp.Session), 'session error: %s' % item
-            self.__dmtp_client.send_message(msg=msg, destination=item.address)
         return msg
 
     #
@@ -205,18 +185,18 @@ class Window(QWidget, DMTPClientHandler):
     def process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
         cmd_type = cmd.tag
         cmd_value = cmd.value
-        if cmd_type == dmtp.Who:
+        if cmd_type == dmtp.Command.WHO:
             pass
-        elif cmd_type == dmtp.Sign:
+        elif cmd_type == dmtp.Command.SIGN:
             assert isinstance(cmd_value, dmtp.LocationValue), 'sign cmd error: %s' % cmd_value
             address = cmd_value.mapped_address
-            message = 'punching a hole at (%s:%d) for %s' % (address.ip, address.port, cmd_value.identifier)
+            message = 'punching a hole at %s for %s' % (address, cmd_value.identifier)
             self.display(message)
             return True
-        elif cmd_type == dmtp.From:
+        elif cmd_type == dmtp.Command.FROM:
             assert isinstance(cmd_value, dmtp.LocationValue), 'call from error: %s' % cmd_value
             address = cmd_value.mapped_address
-            message = '%s is calling from: (%s:%d)' % (cmd_value.identifier, address.ip, address.port)
+            message = '%s is calling from: %s' % (cmd_value.identifier, address)
             self.display(message)
             return True
 
@@ -226,7 +206,7 @@ class Window(QWidget, DMTPClientHandler):
         if content is None:
             text = ''
         else:
-            text = content.decode('utf-8')
+            text = content.get_bytes().decode('utf-8')
         when = time_string(msg.time)
         message = '[%s] %s %s: "%s"' % (when, source, sender, text)
         self.display(message=message)

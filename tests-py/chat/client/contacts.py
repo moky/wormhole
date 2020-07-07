@@ -33,8 +33,25 @@ import time
 from typing import Optional
 from weakref import WeakValueDictionary
 
+from dmtp import Field
 from dmtp import LocationValue, SourceAddressValue, TimestampValue
 from dmtp import ContactDelegate, Contact
+
+
+class Session:
+
+    def __init__(self, location: LocationValue, address: tuple):
+        super().__init__()
+        self.__location = location
+        self.__address = address
+
+    @property
+    def location(self) -> LocationValue:
+        return self.__location
+
+    @property
+    def address(self) -> tuple:
+        return self.__address
 
 
 class ContactManager(ContactDelegate):
@@ -61,13 +78,13 @@ class ContactManager(ContactDelegate):
         if contact is None:
             return False
         # data = "source_address" + "mapped_address" + "relayed_address" + "time"
-        data = location.mapped_address.data
+        data = location.get(Field.MAPPED_ADDRESS)
         if location.source_address is not None:
-            data = location.source_address.data + data
+            data = location.get(Field.SOURCE_ADDRESS).concat(data)
         if location.relayed_address is not None:
-            data = data + location.relayed_address.data
+            data = data.concat(location.get(Field.RELAYED_ADDRESS))
         timestamp = TimestampValue(value=location.timestamp)
-        data += timestamp.data
+        data = data.concat(timestamp)
         signature = location.signature
         # TODO: verify data and signature with public key
         assert data is not None and signature is not None
@@ -78,24 +95,24 @@ class ContactManager(ContactDelegate):
         if location.identifier != identifier:
             return None
         # sign(source_address + mapped_address + relayed_address + timestamp)
-        mapped_address = location.mapped_address
-        data = mapped_address.data
+        mapped_address = location.get(Field.MAPPED_ADDRESS)
+        data = mapped_address
         # source address
         source_ip = self.source_address[0]
         source_port = self.source_address[1]
         source_address = SourceAddressValue(ip=source_ip, port=source_port)
-        data = source_address.data + data
+        data = source_address.concat(data)
         # relayed address
         if location.relayed_address is None:
             relayed_address = None
         else:
-            relayed_address = location.relayed_address
-            data = data + relayed_address.data
+            relayed_address = location.get(Field.RELAYED_ADDRESS)
+            data = data.concat(relayed_address)
         # time
         timestamp = int(time.time())
-        data += TimestampValue(value=timestamp).data
+        data = data.concat(TimestampValue(value=timestamp))
         # TODO: sign it with private key
-        signature = b'sign(' + data + b')'
+        signature = b'sign(' + data.get_bytes() + b')'
         return LocationValue.new(identifier=identifier,
                                  source_address=source_address,
                                  mapped_address=mapped_address,
@@ -104,12 +121,9 @@ class ContactManager(ContactDelegate):
 
     def current_location(self) -> LocationValue:
         locations = self.get_locations(identifier=self.identifier)
-        host = self.source_address[0]
-        port = self.source_address[1]
         for loc in locations:
             assert isinstance(loc, LocationValue), 'location error: %s' % loc
-            if loc.source_address is not None \
-                    and port == loc.source_address.port and host == loc.source_address.ip:
+            if loc.source_address == self.source_address:
                 return loc
 
     def get_location(self, address: tuple) -> Optional[LocationValue]:
@@ -123,19 +137,9 @@ class ContactManager(ContactDelegate):
             assert isinstance(contact, Contact), 'contact error: %s' % contact
             return contact.locations
 
-    def update_location(self, location: LocationValue) -> bool:
+    def store_location(self, location: LocationValue) -> bool:
         identifier = location.identifier
         # TODO: verify signature
-        # set with source address
-        address = location.source_address
-        if address is not None:
-            address = (address.ip, address.port)
-            self.__locations[address] = location
-        # set with mapped address
-        address = location.mapped_address
-        if address is not None:
-            address = (address.ip, address.port)
-            self.__locations[address] = location
         # set with contact
         with self.__contacts_lock:
             contact = self.__contacts.get(identifier)
@@ -144,20 +148,28 @@ class ContactManager(ContactDelegate):
                 contact = Contact(identifier=identifier)
                 self.__contacts[identifier] = contact
             # update location for this contact
-            return contact.update_location(location=location)
+            if not contact.store_location(location=location):
+                return False
+        # set with source address
+        address = location.source_address
+        if address is not None:
+            self.__locations[address] = location
+        # set with mapped address
+        address = location.mapped_address
+        if address is not None:
+            self.__locations[address] = location
+        return True
 
-    def remove_location(self, location: LocationValue) -> bool:
+    def clear_location(self, location: LocationValue) -> bool:
         identifier = location.identifier
         # TODO: verify signature
         # remove with source address
         address = location.source_address
         if address is not None:
-            address = (address.ip, address.port)
             self.__locations.pop(address)
         # remove with mapped address
         address = location.mapped_address
         if address is not None:
-            address = (address.ip, address.port)
             self.__locations.pop(address)
         # remove with contact
         with self.__contacts_lock:
@@ -165,4 +177,4 @@ class ContactManager(ContactDelegate):
             if contact is None:
                 return False
             assert isinstance(contact, Contact), 'contact error: %s' % contact
-            return contact.remove_location(location=location)
+            return contact.clear_location(location=location)

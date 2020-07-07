@@ -29,6 +29,7 @@ public class Client extends chat.dim.dmtp.Client {
         super(new InetSocketAddress(host, port));
         database = new ContactManager(peer);
         setDelegate(database);
+        identifier = "moky-" + port;
     }
 
     @Override
@@ -133,18 +134,23 @@ public class Client extends chat.dim.dmtp.Client {
         return true;
     }
 
+    static final String CLIENT_IP = "192.168.31.64";
+    static final int CLIENT_PORT = Data.random(1).getUInt8Value(0) + 9900;
+
     public static void main(String args[]) throws SocketException, InterruptedException {
 
-        SocketAddress serverAddress = new InetSocketAddress(Server.SERVER_Test, Server.SERVER_PORT);
+        SocketAddress serverAddress = new InetSocketAddress(Server.SERVER_GZ1, Server.SERVER_PORT);
         System.out.printf("connecting to UDP server: %s ...\n", serverAddress);
 
-        Client client = new Client("192.168.31.64", 9527);
+        String user = "moky-" + CLIENT_PORT;
+        String friend = "moky";
+
+        Client client = new Client(CLIENT_IP, CLIENT_PORT);
         client.start();
 
-        client.login("moky", serverAddress);
+        client.login(user, serverAddress);
 
         // test send
-        String friend = "hulk";
         String text = "你好 " + friend + "!";
         int index = 0;
         while (true) {

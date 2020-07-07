@@ -57,6 +57,12 @@ class Client(dmtp.Client):
         self.send_command(cmd=cmd, destination=self.server_address)
         return True
 
+    def login(self, identifier: str, server_address: tuple):
+        self.identifier = identifier
+        self.server_address = server_address
+        self.peer.connect(remote_address=server_address)
+        self.say_hello(destination=server_address)
+
     def process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
         print('received cmd from %s:\n\t%s' % (source, cmd))
         return super().process_command(cmd=cmd, source=source)
@@ -66,7 +72,8 @@ class Client(dmtp.Client):
         content = msg.content
         if content is not None:
             print('msg content: "%s"' % content)
-        return super().process_message(msg=msg, source=source)
+        # return super().process_message(msg=msg, source=source)
+        return True
 
     def send_command(self, cmd: dmtp.Command, destination: tuple) -> dmtp.Departure:
         print('sending cmd to %s:\n\t%s' % (destination, cmd))
@@ -103,16 +110,16 @@ class Client(dmtp.Client):
                     continue
         return sessions
 
-    def send_text(self, receiver: str, msg: str) -> bool:
+    def send_text(self, receiver: str, msg: str) -> Optional[dmtp.Message]:
         sessions = self.get_sessions(identifier=receiver)
         if len(sessions) == 0:
             print('user (%s) not login ...' % receiver)
             # ask the server to help building a connection
             self.call(identifier=receiver)
-            return False
+            return None
         content = msg.encode('utf-8')
         msg = dmtp.Message.new(info={
-            'sender': g_client.identifier,
+            'sender': self.identifier,
             'receiver': receiver,
             'time': int(time.time()),
             'data': content,
@@ -121,31 +128,29 @@ class Client(dmtp.Client):
             assert isinstance(item, Session), 'session error: %s' % item
             print('sending msg to %s:\n\t%s' % (item.address, msg))
             self.send_message(msg=msg, destination=item.address)
-        return True
+        return msg
 
 
 if __name__ == '__main__':
     # create client
     print('UDP client %s -> %s starting ...' % ((CLIENT_HOST, CLIENT_PORT), (SERVER_HOST, SERVER_PORT)))
-    g_client = Client(host=CLIENT_HOST, port=CLIENT_PORT)
-    g_client.server_address = (SERVER_HOST, SERVER_PORT)
 
-    g_database = ContactManager()
-    g_database.identifier = g_client.identifier
-    g_database.source_address = g_client.peer.local_address
-
-    g_client.delegate = g_database
-    g_client.start()
-
+    user = 'moky-%d' % CLIENT_PORT
     friend = 'moky'
 
     if len(sys.argv) == 3:
-        g_client.identifier = sys.argv[1]
+        user = sys.argv[1]
         friend = sys.argv[2]
 
-    # login
-    g_client.connect(remote_address=g_client.server_address)
-    g_client.say_hello(destination=g_client.server_address)
+    g_database = ContactManager()
+    g_database.identifier = user
+    g_database.source_address = (CLIENT_HOST, CLIENT_PORT)
+
+    g_client = Client(host=CLIENT_HOST, port=CLIENT_PORT)
+    g_client.delegate = g_database
+    g_client.start()
+
+    g_client.login(identifier=user, server_address=(SERVER_HOST, SERVER_PORT))
 
     # test send
     text = '你好 %s！' % friend
