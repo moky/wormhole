@@ -51,7 +51,7 @@ public class MemPool implements Pool {
      *  1. Departure task should be expired after 2 minutes when receive no response.
      *  2. Assembling task should be expired after 2 minutes when receive nothing.
      */
-    public static long EXPIRES = 120; // milliseconds
+    public static long EXPIRES = 120 * 1000; // milliseconds
 
     // waiting list for responding
     private final List<Departure> departures = new ArrayList<>();
@@ -70,12 +70,12 @@ public class MemPool implements Pool {
     }
 
     private boolean isExpired(Departure task) {
-        float now = (new Date()).getTime() / 1000.0f;
+        long now = (new Date()).getTime();
         return (task.getLastTime() + EXPIRES) < now;
     }
 
     private boolean isExpired(Assemble task) {
-        float now = (new Date()).getTime() / 1000.0f;
+        long now = (new Date()).getTime();
         return (task.getLastTime() + EXPIRES) < now;
     }
 

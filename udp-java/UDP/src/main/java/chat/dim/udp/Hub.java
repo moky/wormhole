@@ -630,7 +630,7 @@ public class Hub extends Thread implements ConnectionHandler {
     @Override
     public void run() {
         long now = (new Date()).getTime();
-        long expired = now + Connection.EXPIRES * 1000;
+        long expired = now + Connection.EXPIRES;
         Cargo cargo;
         List<byte[]> responses;
 
