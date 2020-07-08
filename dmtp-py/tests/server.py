@@ -4,6 +4,7 @@
 import json
 import sys
 import os
+import traceback
 
 import dmtp
 
@@ -22,11 +23,9 @@ class Server(dmtp.Server):
 
     def __init__(self, port: int, host: str='127.0.0.1'):
         super().__init__(local_address=(host, port))
-        self.__identifier = 'station@anywhere'
-        self.__server_address = None
-        self.nat = 'Unknown'
         # database for location of contacts
         db = self._create_contact_manager()
+        db.identifier = 'station@anywhere'
         self.__database = db
         self.delegate = db
 
@@ -35,12 +34,45 @@ class Server(dmtp.Server):
         db.identifier = 'station@anywhere'
         return db
 
+    @property
+    def identifier(self) -> str:
+        return self.__database.identifier
+
+    @identifier.setter
+    def identifier(self, value: str):
+        self.__database.identifier = value
+
     def process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
-        print('received cmd: %s' % cmd)
-        return super().process_command(cmd=cmd, source=source)
+        print('received cmd from %s:\n\t%s' % (source, cmd))
+        # noinspection PyBroadException
+        try:
+            return super().process_command(cmd=cmd, source=source)
+        except Exception:
+            traceback.print_exc()
+            return False
 
     def process_message(self, msg: dmtp.Message, source: tuple) -> bool:
-        print('received msg: %s' % json.dumps(msg, cls=FieldValueEncoder))
+        print('received msg from %s:\n\t%s' % (source, json.dumps(msg, cls=FieldValueEncoder)))
+        # return super().process_message(msg=msg, source=source)
+        return True
+
+    def send_command(self, cmd: dmtp.Command, destination: tuple) -> dmtp.Departure:
+        print('sending cmd to %s:\n\t%s' % (destination, cmd))
+        return super().send_command(cmd=cmd, destination=destination)
+
+    def send_message(self, msg: dmtp.Message, destination: tuple) -> dmtp.Departure:
+        print('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=FieldValueEncoder)))
+        return super().send_message(msg=msg, destination=destination)
+
+    #
+    #   Server actions
+    #
+
+    def say_hello(self, destination: tuple) -> bool:
+        if super().say_hello(destination=destination):
+            return True
+        cmd = dmtp.HelloCommand.new(identifier=self.identifier)
+        self.send_command(cmd=cmd, destination=destination)
         return True
 
 

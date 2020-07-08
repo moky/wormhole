@@ -69,6 +69,10 @@ class Client(dmtp.Client):
     def identifier(self) -> str:
         return self.__database.identifier
 
+    @identifier.setter
+    def identifier(self, value: str):
+        self.__database.identifier = value
+
     def process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
         print('received cmd from %s:\n\t%s' % (source, cmd))
         return super().process_command(cmd=cmd, source=source)
@@ -85,6 +89,10 @@ class Client(dmtp.Client):
     def send_message(self, msg: dmtp.Message, destination: tuple) -> dmtp.Departure:
         print('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=FieldValueEncoder)))
         return super().send_message(msg=msg, destination=destination)
+
+    #
+    #   Client actions
+    #
 
     def say_hello(self, destination: tuple) -> bool:
         if super().say_hello(destination=destination):
