@@ -114,11 +114,11 @@ class TransactionID(Data):
 
     def __str__(self) -> str:
         clazz = self.__class__.__name__
-        return '<%s: %s />' % (clazz, self._buffer)
+        return '<%s: %s />' % (clazz, self.get_bytes())
 
     def __repr__(self) -> str:
         clazz = self.__class__.__name__
-        return '<%s: %s />' % (clazz, self._buffer)
+        return '<%s: %s />' % (clazz, self.get_bytes())
 
     @classmethod
     def parse(cls, data: Data):  # -> TransactionID
@@ -209,6 +209,8 @@ class Header(Data):
     MAX_BODY_LENGTH = 1024 * 1024 * 1024  # 1GB
     MAX_PAGES = 1024 * 1024 * 2           # 1GB
 
+    MAGIC_CODE = b'DIM'
+
     def __init__(self, data,
                  data_type: DataType, sn: TransactionID,
                  pages: int=1, offset: int=0, body_length: int=-1):
@@ -286,7 +288,9 @@ class Header(Data):
         if data._length < 4:
             # raise AssertionError('package error: %s' % data)
             return None
-        if data._buffer[0:3] != b'DIM':
+        if data.get_byte(index=0) != cls.MAGIC_CODE[0] or \
+                data.get_byte(index=1) != cls.MAGIC_CODE[1] or \
+                data.get_byte(index=2) != cls.MAGIC_CODE[2]:
             # raise AssertionError('not a DIM package: %s' % data)
             return None
         # get header length & data type
@@ -369,7 +373,7 @@ class Header(Data):
         # generate header data
         hl_ty = (head_len << 2) | (data_type.value & 0x0F)
         data = MutableData(capacity=head_len)
-        data.append(b'DIM')
+        data.append(cls.MAGIC_CODE)  # b'DIM'
         data.append(hl_ty)
         if sn != TransactionID.ZERO:
             data.append(sn)

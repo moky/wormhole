@@ -183,7 +183,7 @@ class Data:
         if isinstance(self._buffer, bytes):
             return self._buffer[start:end]
         else:
-            return bytes(self._buffer)[start:end]
+            return bytes(self._buffer[start:end])
 
     #
     #   To integer

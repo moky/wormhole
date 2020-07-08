@@ -93,6 +93,8 @@ public class Header extends Data {
     public static int MAX_BODY_LENGTH = 1024 * 1024 * 1024; // 1GB
     public static int MAX_PAGES       = 1024 * 1024 * 2;    // 1GB
 
+    public static final byte[] MAGIC_CODE = {'D', 'I', 'M'};
+
     public Header(Header head) {
         super(head);
         type = head.type;
@@ -135,7 +137,9 @@ public class Header extends Data {
             //throw new ArrayIndexOutOfBoundsException("package error: " + Arrays.toString(data));
             return null;
         }
-        if (data.getByte(0) != 'D' || data.getByte(1) != 'I' || data.getByte(2) != 'M') {
+        if (data.getByte(0) != MAGIC_CODE[0] ||
+                data.getByte(1) != MAGIC_CODE[1] ||
+                data.getByte(2) != MAGIC_CODE[2]) {
             //throw new IllegalArgumentException("not a DIM package: " + Arrays.toString(data));
             return null;
         }
@@ -231,7 +235,7 @@ public class Header extends Data {
         }
         // generate header data
         MutableData data = new MutableData(headLen);
-        data.append('D').append('I').append('M');
+        data.append(MAGIC_CODE);  // 'DIM'
         data.append((headLen << 2) | (type.value & 0x0F));
         if (!sn.equals(TransactionID.ZERO)) {
             data.append(sn);
