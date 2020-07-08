@@ -84,8 +84,8 @@ class DMTPClient(dmtp.Client):
         if t is None:
             print('start punching for %s ...' % str(destination))
             t = PunchThread(dmtp_client=self, remote_address=destination, local_address=source)
-            t.start()
             self.__punching[destination] = t
+            t.start()
 
     def __stop_punching(self, destination: tuple):
         t = self.__punching.get(destination)

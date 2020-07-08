@@ -153,7 +153,7 @@ class AttributeValue(Value):
     @classmethod
     def register(cls, tag: Tag, value_class):
         if value_class is None:
-            cls.__value_classes.pop(tag)
+            cls.__value_classes.pop(tag, None)
         elif issubclass(value_class, AttributeValue):
             cls.__value_classes[tag] = value_class
         else:
