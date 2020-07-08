@@ -11,7 +11,7 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from tests.database import ContactManager
+from tests.database import ContactManager, FieldValueEncoder
 
 
 SERVER_HOST = '0.0.0.0'
@@ -40,7 +40,7 @@ class Server(dmtp.Server):
         return super().process_command(cmd=cmd, source=source)
 
     def process_message(self, msg: dmtp.Message, source: tuple) -> bool:
-        print('received msg: %s' % json.dumps(msg, cls=dmtp.FieldValueEncoder))
+        print('received msg: %s' % json.dumps(msg, cls=FieldValueEncoder))
         return True
 
 

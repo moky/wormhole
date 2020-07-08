@@ -28,16 +28,32 @@
 # SOFTWARE.
 # ==============================================================================
 
+import json
 import threading
 import time
 from typing import Optional, Union
 from weakref import WeakValueDictionary
 
-from dmtp import LocationValue, StringValue
+from udp.tlv.utils import base64_encode
+from udp.tlv import IntegerData
+from dmtp import LocationValue, StringValue, BinaryValue
 from dmtp import LocationDelegate
 from dmtp import Peer
 
 from .contact import Contact
+
+
+class FieldValueEncoder(json.JSONEncoder):
+
+    def default(self, value):
+        if isinstance(value, IntegerData):
+            return value.value
+        elif isinstance(value, StringValue):
+            return value.string
+        elif isinstance(value, BinaryValue):
+            return base64_encode(data=value.get_bytes())
+        else:
+            return super().default(value)
 
 
 class ContactManager(LocationDelegate):

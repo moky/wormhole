@@ -33,7 +33,7 @@ from typing import Optional
 from udp.tlv import Data
 
 from .tlv import Field, FieldName, FieldValue
-from .values import FieldsValue, BinaryValue, ByteValue, TimestampValue, StringValue
+from .values import FieldsValue, BinaryValue, TypeValue, TimestampValue, StringValue
 
 
 """
@@ -97,67 +97,67 @@ class Message(FieldsValue):
     @property
     def sender(self) -> str:
         if self.__sender is None:
-            self.__sender = self.get_string_value(self.SENDER)
+            self.__sender = self._get_string_value(self.SENDER)
         return self.__sender
 
     @property
     def receiver(self) -> str:
         if self.__receiver is None:
-            self.__receiver = self.get_string_value(self.RECEIVER)
+            self.__receiver = self._get_string_value(self.RECEIVER)
         return self.__receiver
 
     @property
     def time(self) -> Optional[int]:
         if self.__time is None:
-            self.__time = self.get_int_value(self.TIME, 0)
+            self.__time = self._get_timestamp_value(self.TIME, 0)
         return self.__time
 
     @property
     def type(self) -> Optional[int]:
         if self.__type is None:
-            self.__type = self.get_int_value(self.TYPE, 0)
+            self.__type = self._get_type_value(self.TYPE, 0)
         return self.__type
 
     @property
     def group(self) -> Optional[str]:
         if self.__group is None:
-            self.__group = self.get_string_value(self.GROUP)
+            self.__group = self._get_string_value(self.GROUP)
         return self.__group
 
     @property
     def content(self) -> Data:
         if self.__content is None:
-            self.__content = self.get_binary_value(self.CONTENT)
+            self.__content = self._get_binary_value(self.CONTENT)
         return self.__content
 
     @property
     def signature(self) -> Data:
         if self.__signature is None:
-            self.__signature = self.get_binary_value(self.SIGNATURE)
+            self.__signature = self._get_binary_value(self.SIGNATURE)
         return self.__signature
 
     @property
     def key(self) -> Optional[Data]:
         if self.__key is None:
-            self.__key = self.get_binary_value(self.KEY)
+            self.__key = self._get_binary_value(self.KEY)
         return self.__key
 
     @property
     def meta(self) -> Optional[Data]:
         if self.__meta is None:
-            self.__meta = self.get_binary_value(self.META)
+            self.__meta = self._get_binary_value(self.META)
         return self.__meta
 
     @property
     def profile(self) -> Optional[Data]:
         if self.__profile is None:
-            self.__profile = self.get_binary_value(self.PROFILE)
+            self.__profile = self._get_binary_value(self.PROFILE)
         return self.__profile
 
     @property
     def filename(self) -> Optional[str]:
         if self.__filename is None:
-            self.__filename = self.get_string_value(self.FILENAME)
+            self.__filename = self._get_string_value(self.FILENAME)
         return self.__filename
 
     @classmethod
@@ -180,7 +180,7 @@ class Message(FieldsValue):
         cls.__fetch_msg_field(fields, info, 'S', 'sender', cls.SENDER, StringValue)
         cls.__fetch_msg_field(fields, info, 'R', 'receiver', cls.RECEIVER, StringValue)
         cls.__fetch_msg_field(fields, info, 'W', 'time', cls.TIME, TimestampValue)
-        cls.__fetch_msg_field(fields, info, 'T', 'type', cls.TYPE, ByteValue)
+        cls.__fetch_msg_field(fields, info, 'T', 'type', cls.TYPE, TypeValue)
         cls.__fetch_msg_field(fields, info, 'G', 'group', cls.GROUP, StringValue)
         # body
         cls.__fetch_msg_field(fields, info, 'D', 'data', cls.CONTENT, BinaryValue)
@@ -214,7 +214,7 @@ class Message(FieldsValue):
 FieldValue.register(tag=Message.SENDER, value_class=StringValue)
 FieldValue.register(tag=Message.RECEIVER, value_class=StringValue)
 FieldValue.register(tag=Message.TIME, value_class=TimestampValue)
-FieldValue.register(tag=Message.TYPE, value_class=ByteValue)
+FieldValue.register(tag=Message.TYPE, value_class=TypeValue)
 FieldValue.register(tag=Message.GROUP, value_class=StringValue)
 
 FieldValue.register(tag=Message.CONTENT, value_class=BinaryValue)

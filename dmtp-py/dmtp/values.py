@@ -28,27 +28,12 @@
 # SOFTWARE.
 # ==============================================================================
 
-import json
 from typing import Optional, Union
 
-from udp.tlv.utils import base64_encode
 from udp.tlv import Data, MutableData, IntegerData, UInt8Data, UInt32Data
 
 from .tlv import Field, FieldName, FieldLength, FieldValue
 from .address import SourceAddressValue, MappedAddressValue, RelayedAddressValue
-
-
-class FieldValueEncoder(json.JSONEncoder):
-
-    def default(self, value):
-        if isinstance(value, IntegerData):
-            return value.value
-        elif isinstance(value, StringValue):
-            return value.string
-        elif isinstance(value, BinaryValue):
-            return base64_encode(data=value.get_bytes())
-        else:
-            return super().default(value)
 
 
 class FieldsValue(FieldValue, dict):
@@ -74,30 +59,31 @@ class FieldsValue(FieldValue, dict):
             else:
                 self[key.name] = item.value
 
-    def get_string_value(self, name: Union[str, FieldName]) -> Optional[str]:
+    def _get_string_value(self, name: Union[str, FieldName]) -> Optional[str]:
         value = self.get(name)
         if value is not None:
             assert isinstance(value, StringValue), 'string value error: %s' % value
             return value.string
 
-    def get_int_value(self, name: Union[str, FieldName], default: int=0) -> Optional[int]:
+    def _get_type_value(self, name: Union[str, FieldName], default: int=0) -> Optional[int]:
         value = self.get(name)
         if value is not None:
-            assert isinstance(value, IntegerData), 'integer value error: %s' % value
+            assert isinstance(value, TypeValue), 'type value error: %s' % value
             return value.value
         return default
 
-    def get_binary_value(self, name: Union[str, FieldName]) -> Optional[Data]:
+    def _get_timestamp_value(self, name: Union[str, FieldName], default: int=0) -> Optional[int]:
+        value = self.get(name)
+        if value is not None:
+            assert isinstance(value, TimestampValue), 'timestamp value error: %s' % value
+            return value.value
+        return default
+
+    def _get_binary_value(self, name: Union[str, FieldName]) -> Optional[Data]:
         value = self.get(name)
         if value is not None:
             assert isinstance(value, Data), 'binary value error: %s' % value
             return value
-
-    def get_address_value(self, name: Union[str, FieldName]) -> Optional[tuple]:
-        value = self.get(name)
-        if value is not None:
-            assert isinstance(value, MappedAddressValue), 'binary value error: %s' % value
-            return value.ip, value.port
 
     @classmethod
     def parse(cls, data: Data, tag: FieldName, length: FieldLength=None):
@@ -115,7 +101,7 @@ class BinaryValue(FieldValue):
         return '%s' % self.get_bytes()
 
 
-class ByteValue(UInt8Data, FieldValue):
+class TypeValue(UInt8Data, FieldValue):
 
     def __init__(self, data: Union[int, bytes, bytearray, Data]=None, value: int=None):
         if data is None:
@@ -197,7 +183,7 @@ class CommandValue(FieldsValue):
     @property
     def identifier(self) -> str:
         if self.__id is None:
-            self.__id = self.get_string_value(Field.ID)
+            self.__id = self._get_string_value(Field.ID)
         return self.__id
 
     @classmethod
@@ -220,40 +206,46 @@ class LocationValue(CommandValue):
         self.__signature: Data = None         # sign(addresses + timestamp)
         self.__nat: str = None                # NAT type
 
+    def _get_address_value(self, name: Union[str, FieldName]) -> Optional[tuple]:
+        value = self.get(name)
+        if value is not None:
+            assert isinstance(value, MappedAddressValue), 'binary value error: %s' % value
+            return value.ip, value.port
+
     @property
     def source_address(self) -> Optional[tuple]:
         if self.__source_address is None:
-            self.__source_address = self.get_address_value(Field.SOURCE_ADDRESS)
+            self.__source_address = self._get_address_value(Field.SOURCE_ADDRESS)
         return self.__source_address
 
     @property
     def mapped_address(self) -> Optional[tuple]:
         if self.__mapped_address is None:
-            self.__mapped_address = self.get_address_value(Field.MAPPED_ADDRESS)
+            self.__mapped_address = self._get_address_value(Field.MAPPED_ADDRESS)
         return self.__mapped_address
 
     @property
     def relayed_address(self) -> Optional[tuple]:
         if self.__relayed_address is None:
-            self.__relayed_address = self.get_address_value(Field.RELAYED_ADDRESS)
+            self.__relayed_address = self._get_address_value(Field.RELAYED_ADDRESS)
         return self.__relayed_address
 
     @property
     def timestamp(self) -> Optional[int]:
         if self.__timestamp is None:
-            self.__timestamp = self.get_int_value(Field.TIME, 0)
+            self.__timestamp = self._get_timestamp_value(Field.TIME, 0)
         return self.__timestamp
 
     @property
     def signature(self) -> Optional[Data]:
         if self.__signature is None:
-            self.__signature = self.get_binary_value(Field.SIGNATURE)
+            self.__signature = self._get_binary_value(Field.SIGNATURE)
         return self.__signature
 
     @property
     def nat(self) -> Optional[str]:
         if self.__nat is None:
-            self.__nat = self.get_string_value(Field.NAT)
+            self.__nat = self._get_string_value(Field.NAT)
         return self.__nat
 
     @classmethod

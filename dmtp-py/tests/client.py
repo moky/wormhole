@@ -16,7 +16,7 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from tests.database import ContactManager
+from tests.database import ContactManager, FieldValueEncoder
 
 
 SERVER_GZ1 = '134.175.87.98'
@@ -74,7 +74,7 @@ class Client(dmtp.Client):
         return super().process_command(cmd=cmd, source=source)
 
     def process_message(self, msg: dmtp.Message, source: tuple) -> bool:
-        print('received msg from %s:\n\t%s' % (source, json.dumps(msg, cls=dmtp.FieldValueEncoder)))
+        print('received msg from %s:\n\t%s' % (source, json.dumps(msg, cls=FieldValueEncoder)))
         # return super().process_message(msg=msg, source=source)
         return True
 
@@ -83,7 +83,7 @@ class Client(dmtp.Client):
         return super().send_command(cmd=cmd, destination=destination)
 
     def send_message(self, msg: dmtp.Message, destination: tuple) -> dmtp.Departure:
-        print('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=dmtp.FieldValueEncoder)))
+        print('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=FieldValueEncoder)))
         return super().send_message(msg=msg, destination=destination)
 
     def say_hello(self, destination: tuple) -> bool:

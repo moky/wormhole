@@ -45,8 +45,8 @@ __all__ = [
     'FieldName', 'FieldLength', 'FieldValue', 'Field',
 
     # values
-    'FieldValueEncoder', 'FieldsValue',
-    'BinaryValue', 'ByteValue', 'TimestampValue', 'StringValue',
+    'FieldsValue',
+    'BinaryValue', 'TypeValue', 'TimestampValue', 'StringValue',
     # address values
     'SourceAddressValue', 'MappedAddressValue', 'RelayedAddressValue',
 
