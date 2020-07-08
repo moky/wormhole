@@ -7,7 +7,8 @@ import chat.dim.udp.*;
 
 public class Server implements HubListener {
 
-    static String HOST = "127.0.0.1";
+//    static String HOST = "127.0.0.1";
+    static String HOST = "192.168.31.64";
     static int PORT = 9394;
 
     //

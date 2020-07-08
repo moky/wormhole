@@ -59,6 +59,10 @@ public class UInt8Data extends IntegerData {
         super(bytesFromLong(value, 1), value);
     }
 
+    public byte getByteValue() {
+        return (byte) (value & 0xFF);
+    }
+
     //
     //  Factories
     //

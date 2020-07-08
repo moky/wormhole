@@ -1,9 +1,9 @@
 
-import chat.dim.tlv.Data;
-import chat.dim.tlv.MutableData;
-
 import java.net.InetSocketAddress;
 import java.net.SocketException;
+
+import chat.dim.tlv.Data;
+import chat.dim.tlv.MutableData;
 
 public class Client extends Node {
 

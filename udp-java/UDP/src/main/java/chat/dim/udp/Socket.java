@@ -413,6 +413,10 @@ public class Socket extends Thread {
         SocketAddress remoteAddress = cargo.getSocketAddress();
         Connection conn = getConnection(remoteAddress);
         if (conn == null) {
+            /*  NOTICE:
+             *      If received a package, not heartbeat (PING, PONG),
+             *      create a connection for caching it.
+             */
             conn = connect(remoteAddress);
         }
 
@@ -434,9 +438,10 @@ public class Socket extends Thread {
 
             // 3. check socket memory cache
             if (isCacheFull(declarations.size(), remoteAddress)) {
-                /* this socket is full, eject one cargo from any connection.
-                 * notice that the connection which cache is full will have
-                 * a higher priority to be ejected.
+                /*  NOTICE:
+                 *      this socket is full, eject one cargo from any connection.
+                 *      notice that the connection which cache is full will have
+                 *      a higher priority to be ejected.
                  */
                 receive();
             }
@@ -473,6 +478,7 @@ public class Socket extends Thread {
      */
 
     public void close() {
+        // TODO: disconnect all connections (clear declaration forms)
         socket.close();
     }
 
