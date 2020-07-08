@@ -59,7 +59,7 @@ public class LocationValue extends CommandValue {
         super(fields);
     }
 
-    protected SocketAddress getAddress(FieldName tag) {
+    private SocketAddress getAddressValue(FieldName tag) {
         MappedAddressValue value = (MappedAddressValue) get(tag.name);
         if (value == null) {
             return null;
@@ -69,19 +69,19 @@ public class LocationValue extends CommandValue {
 
     public SocketAddress getSourceAddress() {
         if (sourceAddress == null) {
-            sourceAddress = getAddress(FieldName.SOURCE_ADDRESS);
+            sourceAddress = getAddressValue(FieldName.SOURCE_ADDRESS);
         }
         return sourceAddress;
     }
     public SocketAddress getMappedAddress() {
         if (mappedAddress == null) {
-            mappedAddress = getAddress(FieldName.MAPPED_ADDRESS);
+            mappedAddress = getAddressValue(FieldName.MAPPED_ADDRESS);
         }
         return mappedAddress;
     }
     public SocketAddress getRelayedAddress() {
         if (relayedAddress == null) {
-            relayedAddress = getAddress(FieldName.RELAYED_ADDRESS);
+            relayedAddress = getAddressValue(FieldName.RELAYED_ADDRESS);
         }
         return relayedAddress;
     }

@@ -36,25 +36,25 @@ import chat.dim.dmtp.fields.FieldValue;
 import chat.dim.tlv.Data;
 import chat.dim.tlv.UInt8Data;
 
-public class ByteValue extends FieldValue {
+public class TypeValue extends FieldValue {
 
     public final int value;
 
-    public ByteValue(Data data, int value) {
+    public TypeValue(Data data, int value) {
         super(data);
         this.value = value;
     }
 
-    public ByteValue(int value) {
+    public TypeValue(int value) {
         this(new UInt8Data(value), value);
     }
 
     @Override
     public String toString() {
-        return Integer.toString(value & 0xFF);
+        return Integer.toString(value);
     }
 
-    public static ByteValue parse(Data data, FieldName type, FieldLength length) {
-        return new ByteValue(data.getByte(0));
+    public static TypeValue parse(Data data, FieldName type, FieldLength length) {
+        return new TypeValue(data.getByte(0));
     }
 }

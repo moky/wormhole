@@ -38,7 +38,7 @@ import chat.dim.tlv.MutableData;
 
 public class FieldsValue extends FieldValue implements Map<String, Object> {
 
-    protected final Map<String, Object> dictionary;
+    private final Map<String, Object> dictionary;
 
     public FieldsValue(Data data, List<Field> fields) {
         super(data);
@@ -64,6 +64,7 @@ public class FieldsValue extends FieldValue implements Map<String, Object> {
         return data;
     }
 
+    @SuppressWarnings("unused")
     public static FieldsValue parse(Data data, FieldName type, FieldLength length) {
         // parse fields
         List<Field> fields = Field.parseFields(data);
@@ -82,7 +83,7 @@ public class FieldsValue extends FieldValue implements Map<String, Object> {
         return get(tag.name);
     }
 
-    protected String getString(FieldName tag) {
+    protected String getStringValue(FieldName tag) {
         StringValue value = (StringValue) get(tag.name);
         if (value == null) {
             return null;
@@ -90,15 +91,15 @@ public class FieldsValue extends FieldValue implements Map<String, Object> {
         return value.string;
     }
 
-    protected byte getByte(FieldName tag) {
-        ByteValue value = (ByteValue) get(tag.name);
+    protected int getTypeValue(FieldName tag) {
+        TypeValue value = (TypeValue) get(tag.name);
         if (value == null) {
             return 0;
         }
-        return (byte) value.value;
+        return value.value;
     }
 
-    protected long getTimestamp(FieldName tag) {
+    protected long getTimestampValue(FieldName tag) {
         TimestampValue value = (TimestampValue) get(tag.name);
         if (value == null) {
             return 0;
@@ -106,7 +107,7 @@ public class FieldsValue extends FieldValue implements Map<String, Object> {
         return value.value;
     }
 
-    protected Data getBinary(FieldName tag) {
+    protected Data getBinaryValue(FieldName tag) {
         BinaryValue value = (BinaryValue) get(tag.name);
         if (value == null) {
             return null;

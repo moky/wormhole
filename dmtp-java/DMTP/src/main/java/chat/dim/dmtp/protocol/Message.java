@@ -110,31 +110,31 @@ public class Message extends FieldsValue {
     //
     public String getSender() {
         if (sender == null) {
-            sender = getString(SENDER);
+            sender = getStringValue(SENDER);
         }
         return sender;
     }
     public String getReceiver() {
         if (receiver == null) {
-            receiver = getString(RECEIVER);
+            receiver = getStringValue(RECEIVER);
         }
         return receiver;
     }
     public long getTimestamp() {
         if (timestamp == 0) {
-            timestamp = getTimestamp(TIME);
+            timestamp = getTimestampValue(TIME);
         }
         return timestamp;
     }
     public int getType() {
         if (type == 0) {
-            type = getByte(TYPE);
+            type = getTypeValue(TYPE);
         }
         return type;
     }
     public String getGroup() {
         if (group == null) {
-            group = getString(GROUP);
+            group = getStringValue(GROUP);
         }
         return group;
     }
@@ -144,19 +144,19 @@ public class Message extends FieldsValue {
     //
     public Data getContent() {
         if (content == null) {
-            content = getBinary(CONTENT);
+            content = getBinaryValue(CONTENT);
         }
         return content;
     }
     public Data getSignature() {
         if (signature == null) {
-            signature = getBinary(SIGNATURE);
+            signature = getBinaryValue(SIGNATURE);
         }
         return signature;
     }
     public Data getKey() {
         if (key == null) {
-            key = getBinary(KEY);
+            key = getBinaryValue(KEY);
         }
         return key;
     }
@@ -166,13 +166,13 @@ public class Message extends FieldsValue {
     //
     public Data getMeta() {
         if (meta == null) {
-            meta = getBinary(META);
+            meta = getBinaryValue(META);
         }
         return meta;
     }
     public Data getProfile() {
         if (profile == null) {
-            profile = getBinary(PROFILE);
+            profile = getBinaryValue(PROFILE);
         }
         return profile;
     }
@@ -182,7 +182,7 @@ public class Message extends FieldsValue {
     //
     public String getFilename() {
         if (filename == null) {
-            filename = getString(FILENAME);
+            filename = getStringValue(FILENAME);
         }
         return filename;
     }
@@ -198,7 +198,7 @@ public class Message extends FieldsValue {
     }
 
     public static Message create(StringValue sender, StringValue receiver, TimestampValue time,
-                                 ByteValue type, StringValue group,
+                                 TypeValue type, StringValue group,
                                  BinaryValue content, BinaryValue signature, BinaryValue key,
                                  BinaryValue meta, BinaryValue profile,
                                  StringValue filename) {
@@ -240,7 +240,7 @@ public class Message extends FieldsValue {
         StringValue senderValue = null;
         StringValue receiverValue = null;
         TimestampValue timestampValue = null;
-        ByteValue typeValue = null;
+        TypeValue typeValue = null;
         StringValue groupValue = null;
         BinaryValue contentValue = null;
         BinaryValue signatureValue = null;
@@ -261,7 +261,7 @@ public class Message extends FieldsValue {
             timestampValue = new TimestampValue(timestamp);
         }
         if (type > 0) {
-            typeValue = new ByteValue(type);
+            typeValue = new TypeValue(type);
         }
         if (group != null) {
             groupValue = new StringValue(group);
@@ -362,7 +362,7 @@ public class Message extends FieldsValue {
         register(SENDER,    StringValue.class);
         register(RECEIVER,  StringValue.class);
         register(TIME,      TimestampValue.class);
-        register(TYPE,      ByteValue.class);
+        register(TYPE,      TypeValue.class);
         register(GROUP,     StringValue.class);
 
         register(CONTENT,   BinaryValue.class);

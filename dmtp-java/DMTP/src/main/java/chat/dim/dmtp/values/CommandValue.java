@@ -53,7 +53,7 @@ public class CommandValue extends FieldsValue {
 
     public String getIdentifier() {
         if (identifier == null) {
-            identifier = getString(FieldName.ID);
+            identifier = getStringValue(FieldName.ID);
         }
         return identifier;
     }
