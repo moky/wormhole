@@ -9,6 +9,7 @@ import chat.dim.udp.Cargo;
 public class Server extends chat.dim.stun.Server {
 
     static final String SERVER_Test = "192.168.31.64"; // Test
+    static final String SERVER_GZ1 = "134.175.87.98"; // GZ-1
     static final String SERVER_HK2 = "129.226.128.17"; // HK-2
 
     static final SocketAddress CHANGED_ADDRESS = new InetSocketAddress(SERVER_HK2, 3478);

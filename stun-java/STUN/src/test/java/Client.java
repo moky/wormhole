@@ -7,7 +7,8 @@ import java.util.Map;
 public class Client extends chat.dim.stun.Client {
 
 //    static final SocketAddress SERVER_ADDRESS = new InetSocketAddress(Server.SERVER_IP, Server.SERVER_PORT);
-    static final SocketAddress SERVER_ADDRESS = new InetSocketAddress(Server.SERVER_HK2, Server.SERVER_PORT);
+    static final SocketAddress SERVER_ADDRESS = new InetSocketAddress(Server.SERVER_GZ1, Server.SERVER_PORT);
+//    static final SocketAddress SERVER_ADDRESS = new InetSocketAddress(Server.SERVER_HK2, Server.SERVER_PORT);
 
     static final String CLIENT_IP = "192.168.31.64"; // Test
     static final int CLIENT_PORT = 9527;

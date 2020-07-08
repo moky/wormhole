@@ -33,6 +33,7 @@ package chat.dim.stun.attributes;
 import java.util.HashMap;
 import java.util.Map;
 
+import chat.dim.stun.valus.*;
 import chat.dim.tlv.Data;
 import chat.dim.tlv.Tag;
 import chat.dim.tlv.UInt16Data;
@@ -140,4 +141,20 @@ public class AttributeType extends Tag {
     public static final AttributeType Software          = new AttributeType(0x8022, "SOFTWARE");
     public static final AttributeType AlternateServer   = new AttributeType(0x8023, "ALTERNATE-SERVER");
     public static final AttributeType Fingerprint       = new AttributeType(0x8028, "FINGERPRINT");
+
+    static {
+        //
+        //  Register attribute parsers
+        //
+        AttributeValue.register(MappedAddress,     MappedAddressValue.class);
+        //AttributeValue.register(XorMappedAddress,  XorMappedAddressValue.class);
+        //AttributeValue.register(XorMappedAddress2, XorMappedAddressValue2.class);
+
+        AttributeValue.register(ResponseAddress,   ResponseAddressValue.class);
+        AttributeValue.register(ChangeRequest,     ChangeRequestValue.class);
+        AttributeValue.register(SourceAddress,     SourceAddressValue.class);
+        AttributeValue.register(ChangedAddress,    ChangedAddressValue.class);
+
+        AttributeValue.register(Software,          SoftwareValue.class);
+    }
 }
