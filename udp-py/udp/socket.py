@@ -268,6 +268,9 @@ class Socket(threading.Thread):
         address = packet.address
         conn = self.get_connection(remote_address=address)
         if conn is None:
+            # NOTICE:
+            #     If received a package, not heartbeat (PING, PONG)
+            #     create a connection for caching it.
             conn = self.connect(remote_address=address)
         with self.__declarations_lock:
             # 2. append packet to connection's cache
@@ -282,9 +285,10 @@ class Socket(threading.Thread):
                 self.__declarations.append(address)
             # 3. check socket memory status
             if self._is_cache_full(count=len(self.__declarations), remote_address=address):
-                # this socket is full, eject one cargo from any connection.
-                # notice that the connection which cache is full will have
-                # a higher priority to be ejected.
+                # NOTICE:
+                #     this socket is full, eject one cargo from any connection.
+                #     notice that the connection which cache is full will have
+                #     a higher priority to be ejected.
                 self.receive()
         # 4. callback
         delegate = self.handler
@@ -304,6 +308,7 @@ class Socket(threading.Thread):
         self.close()
 
     def close(self):
+        # TODO: disconnect all connections (clear declaration forms)
         self.__socket.close()
 
     @property
