@@ -16,7 +16,7 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from tests.manager import ContactManager, FieldValueEncoder
+from tests.manager import ContactManager, FieldValueEncoder, Session
 
 
 SERVER_GZ1 = '134.175.87.98'
@@ -30,22 +30,6 @@ SERVER_PORT = 9395
 
 CLIENT_HOST = stun.get_local_ip()
 CLIENT_PORT = random.choice(range(9900, 9999))
-
-
-class Session:
-
-    def __init__(self, location: dmtp.LocationValue, address: tuple):
-        super().__init__()
-        self.__location = location
-        self.__address = address
-
-    @property
-    def location(self) -> dmtp.LocationValue:
-        return self.__location
-
-    @property
-    def address(self) -> tuple:
-        return self.__address
 
 
 class Client(dmtp.Client):

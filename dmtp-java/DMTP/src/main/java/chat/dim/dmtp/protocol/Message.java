@@ -30,8 +30,12 @@
  */
 package chat.dim.dmtp.protocol;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import chat.dim.dmtp.fields.Field;
 import chat.dim.dmtp.fields.FieldName;
@@ -191,114 +195,102 @@ public class Message extends FieldsValue {
     //  Factories
     //
 
-    private static void addField(List<Field> fields, FieldName name, FieldValue value) {
-        if (value != null) {
-            fields.add(new Field(name, value));
+    public static Message parse(Data data) {
+        // parse fields
+        List<Field> fields = Field.parseFields(data);
+        if (fields.size() == 0) {
+            return null;
         }
-    }
-
-    public static Message create(StringValue sender, StringValue receiver, TimestampValue time,
-                                 TypeValue type, StringValue group,
-                                 BinaryValue content, BinaryValue signature, BinaryValue key,
-                                 BinaryValue meta, BinaryValue profile,
-                                 StringValue filename) {
-        List<Field> fields = new ArrayList<>();
-        //
-        //  envelope
-        //
-        addField(fields, SENDER, sender);
-        addField(fields, RECEIVER, receiver);
-        addField(fields, TIME, time);
-        addField(fields, TYPE, type);
-        addField(fields, GROUP, group);
-        //
-        //  body
-        //
-        addField(fields, CONTENT, content);
-        addField(fields, SIGNATURE, signature);
-        addField(fields, KEY, key);
-        //
-        //  attachments
-        //
-        addField(fields, META, meta);
-        addField(fields, PROFILE, profile);
-        //
-        //  file in message
-        //
-        addField(fields, FILENAME, filename);
-        //
-        //  OK
-        //
         return new Message(fields);
     }
 
-    public static Message create(String sender, String receiver, long timestamp,
-                                 int type, String group,
-                                 Data content, Data signature, Data key,
-                                 Data meta, Data profile,
-                                 String filename) {
-        StringValue senderValue = null;
-        StringValue receiverValue = null;
-        TimestampValue timestampValue = null;
-        TypeValue typeValue = null;
-        StringValue groupValue = null;
-        BinaryValue contentValue = null;
-        BinaryValue signatureValue = null;
-        BinaryValue keyValue = null;
-        BinaryValue metaValue = null;
-        BinaryValue profileValue = null;
-        StringValue filenameValue = null;
-        //
-        //  envelope
-        //
-        if (sender != null) {
-            senderValue = new StringValue(sender);
+    @SuppressWarnings("unchecked")
+    private static void fetchMsgField(List<Field> fields, Map info,
+                                      String s, String name, FieldName tag, Class valueClass) {
+        Object object = info.get(name);
+        if (object == null) {
+            object = info.get(s);
+            if (object == null) {
+                // no this field
+                return;
+            }
         }
-        if (receiver != null) {
-            receiverValue = new StringValue(receiver);
+        FieldValue value;
+        if (object instanceof FieldValue) {
+            value = (FieldValue) object;
+        } else {
+            // try 'new Clazz(dict)'
+            try {
+                Constructor constructor = valueClass.getConstructor(object.getClass());
+                value = (FieldValue) constructor.newInstance(object);
+            } catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+                e.printStackTrace();
+                value = null;
+            }
         }
-        if (timestamp > 0) {
-            timestampValue = new TimestampValue(timestamp);
+        if (value == null) {
+            // value error
+            return;
         }
-        if (type > 0) {
-            typeValue = new TypeValue(type);
+        fields.add(new Field(tag, value));
+    }
+
+    public static Message create(Map info) {
+        List<Field> fields = new ArrayList<>();
+        // envelope
+        fetchMsgField(fields, info, "S", "sender",    SENDER,    StringValue.class);
+        fetchMsgField(fields, info, "R", "receiver",  RECEIVER,  StringValue.class);
+        fetchMsgField(fields, info, "W", "time",      TIME,      TimestampValue.class);
+        fetchMsgField(fields, info, "T", "type",      TYPE,      TypeValue.class);
+        fetchMsgField(fields, info, "G", "group",     GROUP,     StringValue.class);
+        // body
+        fetchMsgField(fields, info, "D", "data",      CONTENT,   BinaryValue.class);
+        fetchMsgField(fields, info, "V", "signature", SIGNATURE, BinaryValue.class);
+        fetchMsgField(fields, info, "K", "key",       KEY,       BinaryValue.class);
+        // attachments
+        fetchMsgField(fields, info, "M", "meta",      META,      BinaryValue.class);
+        fetchMsgField(fields, info, "P", "profile",   PROFILE,   BinaryValue.class);
+        // file
+        fetchMsgField(fields, info, "F", "filename",  FILENAME,  StringValue.class);
+        // create message with fields
+        return new Message(fields);
+    }
+
+    private static Message create(Object sender, Object receiver, Object timestamp,
+                                  Object type, Object group,
+                                  Object content, Object signature, Object key,
+                                  Object meta, Object profile,
+                                  Object filename) {
+        Map<Object, Object> info = new HashMap<>();
+        info.put("sender", sender);
+        info.put("receiver", receiver);
+        info.put("timestamp", timestamp);
+
+        if (type != null) {
+            info.put("type", type);
         }
         if (group != null) {
-            groupValue = new StringValue(group);
+            info.put("group", group);
         }
-        //
-        //  body
-        //
-        if (content != null) {
-            contentValue = new BinaryValue(content);
-        }
-        if (signature != null) {
-            signatureValue = new BinaryValue(signature);
-        }
+
+        info.put("data", content);
+        info.put("signature", signature);
+
         if (key != null) {
-            keyValue = new BinaryValue(key);
+            info.put("key", key);
         }
-        //
-        //  attachments
-        //
+
         if (meta != null) {
-            metaValue = new BinaryValue(meta);
+            info.put("meta", meta);
         }
         if (profile != null) {
-            profileValue = new BinaryValue(profile);
+            info.put("profile", profile);
         }
-        //
-        //  file in message
-        //
+
         if (filename != null) {
-            filenameValue = new StringValue(filename);
+            info.put("filename", filename);
         }
-        //
-        //  OK
-        //
-        return create(senderValue, receiverValue, timestampValue, typeValue, groupValue,
-                contentValue, signatureValue, keyValue,
-                metaValue, profileValue, filenameValue);
+        return create(info);
     }
 
     //
@@ -310,13 +302,15 @@ public class Message extends FieldsValue {
                                  Data content, Data signature, Data key,
                                  Data meta, Data profile) {
         return create(sender, receiver, timestamp, type, group,
-                content, signature, key, meta, profile, null);
+                content, signature, key, meta, profile,
+                null);
     }
 
     public static Message create(String sender, String receiver, long timestamp,
                                  Data content, Data signature, Data key) {
         return create(sender, receiver, timestamp, 0, null,
-                content, signature, key, null, null, null);
+                content, signature, key, null, null,
+                null);
     }
 
     //
@@ -324,15 +318,17 @@ public class Message extends FieldsValue {
     //
 
     public static Message create(String filename, Data content,
-                                 String sender, String receiver,
+                                 String sender, String receiver, long timestamp,
                                  Data signature, Data key) {
-        return create(sender, receiver, 0, 0, null,
-                content, signature, key, null, null, filename);
+        return create(sender, receiver, timestamp, 0, null,
+                content, signature, key, null, null,
+                filename);
     }
 
     public static Message create(String filename, Data content) {
         return create(null, null, 0, 0, null,
-                content, null, null, null, null, filename);
+                content, null, null, null, null,
+                filename);
     }
 
     //

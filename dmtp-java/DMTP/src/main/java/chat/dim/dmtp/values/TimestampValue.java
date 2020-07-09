@@ -40,6 +40,11 @@ public class TimestampValue extends FieldValue {
 
     public final long value;
 
+    public TimestampValue(Data data) {
+        super(data.slice(0, 4));
+        this.value = data.getUInt32Value(0);
+    }
+
     public TimestampValue(Data data, long value) {
         super(data);
         this.value = value;
@@ -47,6 +52,14 @@ public class TimestampValue extends FieldValue {
 
     public TimestampValue(long value) {
         this(new UInt32Data(value), value);
+    }
+
+    public TimestampValue(Integer value) {
+        this(value.longValue());
+    }
+
+    public TimestampValue(Long value) {
+        this(value.longValue());
     }
 
     @Override

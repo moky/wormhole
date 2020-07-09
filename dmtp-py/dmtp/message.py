@@ -184,13 +184,14 @@ class Message(FieldsValue):
         cls.__fetch_msg_field(fields, info, 'G', 'group', cls.GROUP, StringValue)
         # body
         cls.__fetch_msg_field(fields, info, 'D', 'data', cls.CONTENT, BinaryValue)
+        cls.__fetch_msg_field(fields, info, 'V', 'signature', cls.SIGNATURE, BinaryValue)
         cls.__fetch_msg_field(fields, info, 'K', 'key', cls.KEY, BinaryValue)
-        cls.__fetch_msg_field(fields, info, 'S', 'signature', cls.SIGNATURE, BinaryValue)
         # attachments
         cls.__fetch_msg_field(fields, info, 'M', 'meta', cls.META, BinaryValue)
         cls.__fetch_msg_field(fields, info, 'P', 'profile', cls.PROFILE, BinaryValue)
         # file
         cls.__fetch_msg_field(fields, info, 'F', 'filename', cls.FILENAME, StringValue)
+        # create message with fields
         return cls(fields=fields)
 
     # message field names

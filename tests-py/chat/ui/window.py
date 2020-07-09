@@ -192,8 +192,9 @@ class Window(QWidget, DMTPClientHandler):
             return True
         elif cmd_type == dmtp.Command.FROM:
             assert isinstance(cmd_value, dmtp.LocationValue), 'call from error: %s' % cmd_value
-            address = cmd_value.mapped_address
-            message = '%s is calling from: %s' % (cmd_value.identifier, address)
+            source_address = cmd_value.source_address
+            mapped_address = cmd_value.mapped_address
+            message = '%s is calling from: %s, %s' % (cmd_value.identifier, mapped_address, source_address)
             self.display(message)
             return True
 

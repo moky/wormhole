@@ -41,6 +41,11 @@ public class StringValue extends FieldValue {
 
     public final String string;
 
+    public StringValue(Data data) {
+        super(data);
+        this.string = new String(data.getBytes(), Charset.forName("UTF-8"));
+    }
+
     public StringValue(Data data, String string) {
         super(data);
         this.string = string;

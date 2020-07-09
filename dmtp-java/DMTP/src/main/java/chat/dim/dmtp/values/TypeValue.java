@@ -40,6 +40,11 @@ public class TypeValue extends FieldValue {
 
     public final int value;
 
+    public TypeValue(Data data) {
+        super(data.slice(0, 1));
+        this.value = data.getUInt8Value(0);
+    }
+
     public TypeValue(Data data, int value) {
         super(data);
         this.value = value;
@@ -47,6 +52,10 @@ public class TypeValue extends FieldValue {
 
     public TypeValue(int value) {
         this(new UInt8Data(value), value);
+    }
+
+    public TypeValue(Integer value) {
+        this(value.intValue());
     }
 
     @Override

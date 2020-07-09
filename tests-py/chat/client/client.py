@@ -9,28 +9,12 @@ from typing import Optional
 import stun
 import dmtp
 
-from .manager import ContactManager, FieldValueEncoder
+from .manager import ContactManager, FieldValueEncoder, Session
 
 
 def time_string(timestamp: int) -> str:
     time_array = time.localtime(timestamp)
     return time.strftime('%y-%m-%d %H:%M:%S', time_array)
-
-
-class Session:
-
-    def __init__(self, location: dmtp.LocationValue, address: tuple):
-        super().__init__()
-        self.__location = location
-        self.__address = address
-
-    @property
-    def location(self) -> dmtp.LocationValue:
-        return self.__location
-
-    @property
-    def address(self) -> tuple:
-        return self.__address
 
 
 """
