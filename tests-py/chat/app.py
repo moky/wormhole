@@ -14,7 +14,7 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from chat.client import STUNClient, DMTPClient, ContactManager
+from chat.client import STUNClient, DMTPClient
 from chat.ui import Window
 
 
@@ -50,12 +50,8 @@ g_stun_client.server_address = (STUN_SERVER_HOST, STUN_SERVER_PORT)
     DMTP Client
 """
 
-g_database = ContactManager()
-g_database.source_address = (CLIENT_HOST, CLIENT_PORT)
-
 g_dmtp_client = DMTPClient(host=CLIENT_HOST, port=CLIENT_PORT)
 g_dmtp_client.server_address = (DMTP_SERVER_HOST, DMTP_SERVER_PORT)
-g_dmtp_client.delegate = g_database
 g_dmtp_client.start()
 
 

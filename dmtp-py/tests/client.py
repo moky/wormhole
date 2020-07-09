@@ -16,7 +16,7 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from tests.database import ContactManager, FieldValueEncoder
+from tests.manager import ContactManager, FieldValueEncoder
 
 
 SERVER_GZ1 = '134.175.87.98'
@@ -104,7 +104,7 @@ class Client(dmtp.Client):
 
     def call(self, identifier: str) -> bool:
         cmd = dmtp.CallCommand.new(identifier=identifier)
-        print('sending cmd: %s' % cmd)
+        print('send cmd: %s' % cmd)
         self.send_command(cmd=cmd, destination=self.__server_address)
         return True
 
@@ -157,7 +157,7 @@ class Client(dmtp.Client):
         })
         for item in sessions:
             assert isinstance(item, Session), 'session error: %s' % item
-            print('sending msg to %s:\n\t%s' % (item.address, msg))
+            print('send msg to %s:\n\t%s' % (item.address, msg))
             self.send_message(msg=msg, destination=item.address)
         return msg
 

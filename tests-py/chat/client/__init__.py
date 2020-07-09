@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from .contacts import ContactManager
+from .manager import *
 from .client import *
 
 __all__ = [
-    'ContactManager',
+    'FieldValueEncoder',
+
+    'Contact', 'ContactManager',
 
     'STUNClient', 'STUNClientHandler',
     'DMTPClient', 'DMTPClientHandler',

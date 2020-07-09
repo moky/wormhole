@@ -12,7 +12,7 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from tests.database import ContactManager, FieldValueEncoder
+from tests.manager import ContactManager, FieldValueEncoder
 
 
 SERVER_HOST = '0.0.0.0'
