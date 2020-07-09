@@ -59,7 +59,8 @@ class Departure:
         # package header info
         assert len(packages) > 0, 'departure packages should not be empty'
         first = packages[0]
-        self.trans_id = first.head.trans_id
+        assert isinstance(first, Package), 'package error: %s' % first
+        self.sn = first.head.sn
         self.data_type = first.head.data_type
 
     def update_last_time(self):
@@ -92,7 +93,7 @@ class Assemble:
         # package header info
         assert fragment.head.data_type == MessageFragment, 'fragment data type error: %s' % fragment
         assert fragment.head.pages > 1, 'fragment pages error: %s' % fragment
-        self.trans_id = fragment.head.trans_id
+        self.sn = fragment.head.sn
         self.pages = fragment.head.pages
         self.update_last_time()
 
@@ -115,7 +116,7 @@ class Assemble:
         head = fragment.head
         offset = head.offset
         assert head.data_type == MessageFragment, 'data type error: %s' % head
-        assert head.trans_id == self.trans_id, 'transaction ID not match: %s' % head
+        assert head.sn == self.sn, 'transaction ID not match: %s' % head
         assert head.pages == self.pages, 'pages error: %s' % head
         assert head.pages > offset, 'offset error: %s' % head
         index = count

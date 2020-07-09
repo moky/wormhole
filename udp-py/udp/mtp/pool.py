@@ -200,7 +200,7 @@ class MemPool(Pool):
             self.__departures.append(task)
         return True
 
-    def __del_entire_task(self, trans_id: TransactionID, destination: tuple) -> bool:
+    def __del_entire_task(self, sn: TransactionID, destination: tuple) -> bool:
         count = 0
         with self.__departures_lock:
             pos = len(self.__departures)
@@ -208,7 +208,7 @@ class MemPool(Pool):
                 pos -= 1
                 task = self.__departures[pos]
                 assert isinstance(task, Departure), 'departure task error: %s' % task
-                if task.trans_id != trans_id:
+                if task.sn != sn:
                     # transaction ID not match
                     continue
                 elif task.destination != destination:
@@ -221,7 +221,7 @@ class MemPool(Pool):
                 # break
         return count > 0
 
-    def __del_task_fragment(self, trans_id: TransactionID, pages: int, offset: int, destination: tuple) -> bool:
+    def __del_task_fragment(self, sn: TransactionID, pages: int, offset: int, destination: tuple) -> bool:
         count = 0
         with self.__departures_lock:
             pos = len(self.__departures)
@@ -229,7 +229,7 @@ class MemPool(Pool):
                 pos -= 1
                 task = self.__departures[pos]
                 assert isinstance(task, Departure), 'departure task error: %s' % task
-                if task.trans_id != trans_id:
+                if task.sn != sn:
                     # transaction ID not match
                     continue
                 elif task.destination != destination:
@@ -242,7 +242,7 @@ class MemPool(Pool):
                     pos2 -= 1
                     pack = packages[pos2]
                     assert isinstance(pack, Package), 'package error: %s' % packages
-                    assert pack.head.trans_id == trans_id, 'task fragment error: %s' % pack.head
+                    assert pack.head.sn == sn, 'task fragment error: %s' % pack.head
                     assert pack.head.data_type == MessageFragment, 'task error: %s' % pack.head
                     assert pack.head.pages == pages, 'pages not match: %d, %s' % (pages, pack.head)
                     if pack.head.offset == offset:
@@ -264,11 +264,11 @@ class MemPool(Pool):
         body = response.body
         body_len = body.length
         data_type = head.data_type
-        trans_id = head.trans_id
+        trans_id = head.sn
         if data_type == CommandRespond:
             # response for Command
             assert body_len == 0 or body.get_bytes(end=2) == b'OK', 'CommandRespond error: %s' % body
-            return self.__del_entire_task(trans_id=trans_id, destination=destination)
+            return self.__del_entire_task(sn=trans_id, destination=destination)
         elif data_type == MessageRespond:
             # response for Message or Fragment
             if body_len >= 8:
@@ -278,10 +278,10 @@ class MemPool(Pool):
                 pages = body.get_uint32_value(start=0)
                 offset = body.get_uint32_value(start=4)
                 assert pages > 1 and pages > offset, 'pages error: %d, %d' % (pages, offset)
-                return self.__del_task_fragment(trans_id=trans_id, pages=pages, offset=offset, destination=destination)
+                return self.__del_task_fragment(sn=trans_id, pages=pages, offset=offset, destination=destination)
             elif body_len == 0 or body.get_bytes() == b'OK':
                 # Message
-                return self.__del_entire_task(trans_id=trans_id, destination=destination)
+                return self.__del_entire_task(sn=trans_id, destination=destination)
             else:
                 # respond for split message
                 assert body.get_bytes() == b'AGAIN', 'MessageRespond error: %s' % body
@@ -312,7 +312,7 @@ class MemPool(Pool):
     def insert_fragment(self, fragment: Package, source: tuple, destination: tuple) -> Optional[Package]:
         pack = None
         with self.__fragments_lock:
-            trans_id = fragment.head.trans_id
+            trans_id = fragment.head.sn
             assemble = self.__fragments.get(trans_id)
             if assemble is None:
                 # TODO: check incomplete message (fragment missed) from this source address

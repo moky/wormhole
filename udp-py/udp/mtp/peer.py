@@ -99,44 +99,44 @@ class PeerHandler(ABC):
     #
 
     # @abstractmethod
-    def send_command_success(self, trans_id: TransactionID, destination: tuple, source: tuple):
+    def send_command_success(self, sn: TransactionID, destination: tuple, source: tuple):
         """
         Callback for command success.
 
-        :param trans_id:    transaction ID
+        :param sn:          transaction ID
         :param destination: remote address
         :param source:      local address
         """
         pass
 
     # @abstractmethod
-    def send_command_timeout(self, trans_id: TransactionID, destination: tuple, source: tuple):
+    def send_command_timeout(self, sn: TransactionID, destination: tuple, source: tuple):
         """
         Callback for command failed.
 
-        :param trans_id:    transaction ID
+        :param sn:          transaction ID
         :param destination: remote address
         :param source:      local address
         """
         pass
 
     # @abstractmethod
-    def send_message_success(self, trans_id: TransactionID, destination: tuple, source: tuple):
+    def send_message_success(self, sn: TransactionID, destination: tuple, source: tuple):
         """
         Callback for message success.
 
-        :param trans_id:    transaction ID
+        :param sn:          transaction ID
         :param destination: remote address
         :param source:      local address
         """
         pass
 
     # @abstractmethod
-    def send_message_timeout(self, trans_id: TransactionID, destination: tuple, source: tuple):
+    def send_message_timeout(self, sn: TransactionID, destination: tuple, source: tuple):
         """
         Callback for message failed.
 
-        :param trans_id:    transaction ID
+        :param sn:          transaction ID
         :param destination: remote address
         :param source:      local address
         """
@@ -311,17 +311,17 @@ class Peer(threading.Thread):
         data_type = head.data_type
         if data_type == CommandRespond:
             # command response
-            trans_id = head.trans_id
+            trans_id = head.sn
             if self.pool.delete_departure(response=pack, destination=task.source, source=task.destination):
                 # if departure task is deleted, means it's finished
-                self.handler.send_command_success(trans_id=trans_id, destination=task.source, source=task.destination)
+                self.handler.send_command_success(sn=trans_id, destination=task.source, source=task.destination)
             return None
         elif data_type == MessageRespond:
             # message response
-            trans_id = head.trans_id
+            trans_id = head.sn
             if self.pool.delete_departure(response=pack, destination=task.source, source=task.destination):
                 # if departure task is deleted, means it's finished
-                self.handler.send_message_success(trans_id=trans_id, destination=task.source, source=task.destination)
+                self.handler.send_message_success(sn=trans_id, destination=task.source, source=task.destination)
             return None
         elif data_type == Command:
             # handle command
@@ -364,10 +364,10 @@ class Peer(threading.Thread):
             raise TypeError('data type error: %s' % data_type)
         if head.body_length < 0:
             # UDP (unlimited)
-            response = Package.new(data_type=data_type, sn=head.trans_id, body_length=-1, body=body)
+            response = Package.new(data_type=data_type, sn=head.sn, body_length=-1, body=body)
         else:
             # TCP
-            response = Package.new(data_type=data_type, sn=head.trans_id, body_length=body.length, body=body)
+            response = Package.new(data_type=data_type, sn=head.sn, body_length=body.length, body=body)
         # send response directly, don't add this task to waiting list
         res = self.delegate.send_data(data=response, destination=remote, source=local)
         assert res == response.length, 'failed to respond %s: %s' % (remote, data_type)
@@ -387,11 +387,11 @@ class Peer(threading.Thread):
         else:
             # mission failed
             data_type = task.data_type
-            trans_id = task.trans_id
+            trans_id = task.sn
             if data_type == Command:
-                self.handler.send_command_timeout(trans_id=trans_id, destination=task.destination, source=task.source)
+                self.handler.send_command_timeout(sn=trans_id, destination=task.destination, source=task.source)
             elif data_type == Message:
-                self.handler.send_message_timeout(trans_id=trans_id, destination=task.destination, source=task.source)
+                self.handler.send_message_timeout(sn=trans_id, destination=task.destination, source=task.source)
             else:
                 raise AssertionError('data type error: %s' % data_type)
 

@@ -266,7 +266,7 @@ class Header(Data):
         return self.__type
 
     @property
-    def trans_id(self) -> TransactionID:
+    def sn(self) -> TransactionID:
         return self.__sn
 
     @property
@@ -485,7 +485,7 @@ class Package(Data):
             fragments.append(body)
         # create packages with fragments
         data_type = MessageFragment
-        sn = head.trans_id
+        sn = head.sn
         packages = []
         if head.body_length < 0:
             # UDP (unlimited)
@@ -518,7 +518,7 @@ class Package(Data):
         assert count > 1, 'packages count error: %d' % count
         first = packages[0]
         assert isinstance(first, Package), 'first package error: %s' % first
-        sn = first.head.trans_id
+        trans_id = first.head.sn
         # get fragments count
         pages = first.head.pages
         assert pages == count, 'pages error: %d, %d' % (pages, count)
@@ -528,7 +528,7 @@ class Package(Data):
         for item in packages:
             assert isinstance(item, Package), 'package error: %s' % item
             assert item.head.data_type == MessageFragment, 'data type not fragment: %s' % item
-            assert item.head.trans_id == sn, 'transaction ID not match: %s' % item
+            assert item.head.sn == trans_id, 'transaction ID not match: %s' % item
             assert item.head.pages == pages, 'pages error: %s' % item
             assert item.head.offset == index, 'fragment missed: %d, %s' % (index, item)
             data += item.body.get_bytes()
@@ -542,4 +542,4 @@ class Package(Data):
         else:
             # TCP (should not happen)
             body_len = body.length
-        return cls.new(data_type=Message, sn=sn, body_length=body_len, body=body)
+        return cls.new(data_type=Message, sn=trans_id, body_length=body_len, body=body)
