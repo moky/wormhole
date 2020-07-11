@@ -161,6 +161,12 @@ class Message(FieldsValue):
         return self.__filename
 
     @classmethod
+    def parse(cls, data: Data, tag: FieldName=None, length=None):
+        fields = Field.parse_all(data=data)
+        assert len(fields) > 0, 'message error: %s' % data
+        return Message(fields=fields, data=data)
+
+    @classmethod
     def __fetch_msg_field(cls, array: list, info: dict, s: str, name: str, tag: FieldName, clazz):
         value = info.get(name)
         if value is None:
