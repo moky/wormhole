@@ -6,8 +6,10 @@ import time
 from abc import abstractmethod
 from typing import Optional
 
-import stun
+from dmtp.mtp import tlv
+from dmtp import mtp
 import dmtp
+import stun
 
 from .manager import ContactManager, FieldValueEncoder, Session
 
@@ -140,11 +142,11 @@ class DMTPClient(dmtp.Client):
         # return super().process_message(msg=msg, source=source)
         return True
 
-    def send_command(self, cmd: dmtp.Command, destination: tuple) -> dmtp.Departure:
+    def send_command(self, cmd: dmtp.Command, destination: tuple) -> mtp.Departure:
         print('sending cmd to %s:\n\t%s' % (destination, cmd))
         return super().send_command(cmd=cmd, destination=destination)
 
-    def send_message(self, msg: dmtp.Message, destination: tuple) -> dmtp.Departure:
+    def send_message(self, msg: dmtp.Message, destination: tuple) -> mtp.Departure:
         print('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=FieldValueEncoder)))
         return super().send_message(msg=msg, destination=destination)
 
@@ -202,11 +204,11 @@ class DMTPClient(dmtp.Client):
     #
     #   PeerHandler
     #
-    def received_command(self, cmd: dmtp.Data, source: tuple, destination: tuple) -> bool:
+    def received_command(self, cmd: tlv.Data, source: tuple, destination: tuple) -> bool:
         self.__stop_punching(destination=source)
         return super().received_command(cmd=cmd, source=source, destination=destination)
 
-    def received_message(self, msg: dmtp.Data, source: tuple, destination: tuple) -> bool:
+    def received_message(self, msg: tlv.Data, source: tuple, destination: tuple) -> bool:
         self.__stop_punching(destination=source)
         return super().received_message(msg=msg, source=source, destination=destination)
 
