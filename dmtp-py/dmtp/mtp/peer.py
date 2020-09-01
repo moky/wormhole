@@ -38,16 +38,17 @@
 import threading
 import time
 import weakref
-from abc import ABC, abstractmethod
 from typing import Optional
 
 from .tlv import Data, MutableData, UInt32Data
 
-from .protocol import Package, TransactionID
 from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment
+from .package import Package
 from .task import Departure, Arrival, Assemble
-from .pool import Pool, MemPool
+from .pool import Pool
+from .mem import MemPool
+from .handler import PeerHandler, PeerDelegate
 
 
 """
@@ -72,143 +73,6 @@ from .pool import Pool, MemPool
         |                      HUB                      |
         +-----------------------------------------------+
 """
-
-
-class PeerDelegate(ABC):
-
-    #
-    #  Send
-    #
-
-    @abstractmethod
-    def send_data(self, data: Data, destination: tuple, source: tuple) -> int:
-        """
-        Send data to destination address.
-
-        :param data:        data package to send
-        :param destination: remote address
-        :param source:      local address
-        :return: -1 on error
-        """
-        raise NotImplemented
-
-
-class PeerHandler(ABC):
-
-    #
-    #  Callbacks
-    #
-
-    # @abstractmethod
-    def send_command_success(self, sn: TransactionID, destination: tuple, source: tuple):
-        """
-        Callback for command success.
-
-        :param sn:          transaction ID
-        :param destination: remote address
-        :param source:      local address
-        """
-        pass
-
-    # @abstractmethod
-    def send_command_timeout(self, sn: TransactionID, destination: tuple, source: tuple):
-        """
-        Callback for command failed.
-
-        :param sn:          transaction ID
-        :param destination: remote address
-        :param source:      local address
-        """
-        pass
-
-    # @abstractmethod
-    def send_message_success(self, sn: TransactionID, destination: tuple, source: tuple):
-        """
-        Callback for message success.
-
-        :param sn:          transaction ID
-        :param destination: remote address
-        :param source:      local address
-        """
-        pass
-
-    # @abstractmethod
-    def send_message_timeout(self, sn: TransactionID, destination: tuple, source: tuple):
-        """
-        Callback for message failed.
-
-        :param sn:          transaction ID
-        :param destination: remote address
-        :param source:      local address
-        """
-        pass
-
-    #
-    #  Received
-    #
-
-    @abstractmethod
-    def received_command(self, cmd: Data, source: tuple, destination: tuple) -> bool:
-        """
-        Received command data from source address.
-
-        :param cmd:         command data (package body) received
-        :param source:      remote address
-        :param destination: local address
-        :return: False on error
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def received_message(self, msg: Data, source: tuple, destination: tuple) -> bool:
-        """
-        Received message data from source address.
-
-        :param msg:         message data (package body) received
-        :param source:      remote address
-        :param destination: local address
-        :return: False on error
-        """
-        raise NotImplemented
-
-    # @abstractmethod
-    def received_error(self, data: Data, source: tuple, destination: tuple):
-        """
-        Received error data from source address.
-
-        :param data:        error data (failed to parse) received
-        :param source:      remote address
-        :param destination: local address
-        :return:
-        """
-        pass
-
-    # @abstractmethod
-    # noinspection PyUnusedLocal, PyMethodMayBeStatic
-    def check_fragment(self, fragment: Package, source: tuple, destination: tuple) -> bool:
-        """
-        Check message fragment from the source address, if too many incomplete tasks
-        from the same address, return False to reject it to avoid 'DDoS' attack.
-
-        :param fragment:    message fragment
-        :param source:      remote address
-        :param destination: local address
-        :return: False on error
-        """
-        return True
-
-    # @abstractmethod
-    def recycle_fragments(self, fragments: list, source: tuple, destination: tuple):
-        """
-        Recycle incomplete message fragments from source address.
-        (Override for resuming the transaction)
-
-        :param fragments:   fragment packages
-        :param source:      remote address
-        :param destination: local address
-        :return:
-        """
-        pass
 
 
 class Peer(threading.Thread):

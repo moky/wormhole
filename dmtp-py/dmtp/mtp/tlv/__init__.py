@@ -28,10 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .data import *
-from .mutable import *
-from .integer import *
-from .item import *
+from .data import Data
+from .mutable import MutableData
+from .integer import IntegerData, UInt8Data, UInt16Data, UInt32Data, VarIntData
+from .item import Tag, Length, Value, TagLengthValue
 
 name = "TLV"
 

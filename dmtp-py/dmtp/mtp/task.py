@@ -42,7 +42,8 @@ from typing import Union
 
 from .tlv import Data
 
-from .protocol import Package, MessageFragment
+from .protocol import MessageFragment
+from .package import Package
 
 
 class Departure:

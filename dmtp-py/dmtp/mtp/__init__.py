@@ -28,10 +28,16 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .protocol import *
-from .task import *
-from .pool import *
-from .peer import *
+from .protocol import DataType, TransactionID
+from .protocol import Command, CommandRespond
+from .protocol import Message, MessageRespond, MessageFragment
+from .header import Header
+from .package import Package
+from .task import Departure, Arrival, Assemble
+from .pool import Pool
+from .mem import MemPool
+from .peer import Peer
+from .handler import PeerDelegate, PeerHandler
 
 name = "MTP"
 
@@ -55,7 +61,7 @@ __all__ = [
     #
     #   Pool
     #
-    'Pool',  # 'MemPool',
+    'Pool',  'MemPool',
 
     #
     #   Peer
