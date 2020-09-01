@@ -38,8 +38,8 @@
 import threading
 from typing import Union
 
-from udp.tlv.utils import random_bytes, bytes_to_int
-from udp.tlv import Data, MutableData, UInt16Data, UInt32Data
+from dmtp.mtp.tlv.utils import random_bytes, bytes_to_int
+from dmtp.mtp.tlv import Data, MutableData, UInt16Data, UInt32Data
 
 
 """

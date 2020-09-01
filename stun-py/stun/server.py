@@ -37,7 +37,7 @@
 
 from abc import ABC
 
-from udp.tlv import Data, MutableData
+from dmtp.mtp.tlv import Data, MutableData
 
 from .protocol import Package, Header
 from .protocol import BindRequest, BindResponse

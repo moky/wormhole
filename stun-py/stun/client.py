@@ -38,7 +38,7 @@
 from abc import ABC
 from typing import Optional
 
-from udp.tlv import Data
+from dmtp.mtp.tlv import Data
 
 from .protocol import Package
 from .protocol import BindRequest, BindResponse

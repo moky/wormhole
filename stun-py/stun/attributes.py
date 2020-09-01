@@ -38,8 +38,8 @@
 
 from typing import Optional
 
-from udp.tlv import Data, MutableData, UInt16Data, UInt32Data
-from udp.tlv import Tag, Length, Value, TagLengthValue
+from dmtp.mtp.tlv import Data, MutableData, UInt16Data, UInt32Data
+from dmtp.mtp.tlv import Tag, Length, Value, TagLengthValue
 
 """
     STUN Attributes
