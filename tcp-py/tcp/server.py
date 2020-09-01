@@ -28,51 +28,30 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import ABC, abstractmethod
+import socket
 from typing import Optional
 
+from .connection import Connection
 
-class Pool(ABC):
 
-    """
-        Memory cache for received data
-        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
+class ServerConnection(Connection):
+    """ Connection for Server Node """
 
-    @property
-    def is_full(self) -> bool:
-        """
-        Check whether cache is full
+    def __init__(self, sock: socket.socket):
+        address = sock.getpeername()
+        super().__init__(address=address, sock=sock)
 
-        :return: true on full
-        """
-        return False
+    def _read(self) -> Optional[bytes]:
+        try:
+            return super()._read()
+        except socket.error as error:
+            print('[TCP] failed to receive data: %s' % error)
+            self.stop()
 
-    @abstractmethod
-    def cache(self, data: bytes) -> Optional[bytes]:
-        """
-        Add received data to data
-
-        :param data: received data
-        :return: ejected data when cache pool full
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def received(self) -> Optional[bytes]:
-        """
-        Check received  data (not remove)
-
-        :return: received data
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def receive(self, length: int) -> Optional[bytes]:
-        """
-        Received data from pool with length (remove)
-
-        :param length: data length to remove
-        :return: remove data from the pool and return it
-        """
-        raise NotImplemented
+    def _write(self, data: bytes) -> int:
+        try:
+            return super()._write(data=data)
+        except socket.error as error:
+            print('[TCP] failed to receive data: %s' % error)
+            self.stop()
+            return -1

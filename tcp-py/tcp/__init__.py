@@ -28,10 +28,13 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .pool import *
-from .status import *
-from .connection import *
-from .handler import *
+from .pool import Pool
+from .mem import MemPool
+from .status import ConnectionStatus
+from .connection import Connection
+from .handler import ConnectionHandler
+from .server import ServerConnection
+from .client import ClientConnection
 
 name = "TCP"
 

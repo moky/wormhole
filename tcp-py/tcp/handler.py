@@ -28,10 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-import socket
-import time
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from .status import ConnectionStatus
 from .connection import Connection
@@ -70,100 +67,3 @@ class ConnectionHandler(ABC):
         :return:
         """
         pass
-
-
-#
-#   Connection for Server Node
-#
-
-class ServerConnection(Connection):
-
-    def __init__(self, sock: socket.socket):
-        address = sock.getpeername()
-        super().__init__(address=address, sock=sock)
-
-    def _read(self) -> Optional[bytes]:
-        try:
-            return super()._read()
-        except socket.error as error:
-            print('[TCP] failed to receive data: %s' % error)
-            self.stop()
-
-    def _write(self, data: bytes) -> int:
-        try:
-            return super()._write(data=data)
-        except socket.error as error:
-            print('[TCP] failed to receive data: %s' % error)
-            self.stop()
-            return -1
-
-
-#
-#   Connection for Client Node
-#
-
-class ClientConnection(Connection):
-
-    def __init__(self, address: tuple):
-        super().__init__(address=address)
-
-    def __connect(self) -> int:
-        if self.socket is not None:
-            # connected
-            return 0
-        self.status = ConnectionStatus.Connecting
-        try:
-            sock = socket.socket()
-            sock.connect(self.address)
-            self.status = ConnectionStatus.Connected
-            return 0
-        except socket.error as error:
-            print('[TCP] failed to connect server: %s, %s' % (self.address, error))
-            self.status = ConnectionStatus.Error
-            return -1
-
-    def _read(self) -> Optional[bytes]:
-        # 0. check current connection
-        if self.__connect() < 0:
-            return None
-        # 1. try to read from current connection
-        try:
-            return super()._read()
-        except socket.error as error:
-            print('[TCP] failed to read data: %s' % error)
-            self.socket = None
-        # 2. try to reconnect
-        time.sleep(0.5)
-        if self.__connect() < 0:
-            return None
-        # 3. try to read from new connection
-        try:
-            return super()._read()
-        except socket.error as error:
-            print('[TCP] failed to read data again: %s' % error)
-            self.socket = None
-        time.sleep(0.2)
-        return None
-
-    def _write(self, data: bytes) -> int:
-        # 0. check current connection
-        if self.__connect() < 0:
-            return -1
-        # 1. try to read from current connection
-        try:
-            return super()._write(data=data)
-        except socket.error as error:
-            print('[TCP] failed to write data: %s' % error)
-            self.socket = None
-        # 2. try to reconnect
-        time.sleep(0.5)
-        if self.__connect() < 0:
-            return -1
-        # 3. try to read from new connection
-        try:
-            return super()._write(data=data)
-        except socket.error as error:
-            print('[TCP] failed to write data again: %s' % error)
-            self.socket = None
-        time.sleep(0.2)
-        return -1

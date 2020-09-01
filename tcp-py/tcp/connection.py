@@ -34,7 +34,8 @@ import time
 import weakref
 from typing import Optional
 
-from .pool import Pool, MemPool
+from .pool import Pool
+from .mem import MemPool
 from .status import ConnectionStatus
 
 
