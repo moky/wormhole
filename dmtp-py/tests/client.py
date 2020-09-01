@@ -9,6 +9,7 @@ import os
 import time
 from typing import Optional
 
+from dmtp import mtp
 import dmtp
 import stun
 
@@ -23,9 +24,9 @@ SERVER_GZ1 = '134.175.87.98'
 SERVER_GZ2 = '203.195.224.155'
 SERVER_GZ3 = '129.204.94.164'
 
-# SERVER_HOST = '127.0.0.1'
+SERVER_HOST = '127.0.0.1'
 # SERVER_HOST = '192.168.31.64'
-SERVER_HOST = SERVER_GZ1
+# SERVER_HOST = SERVER_GZ1
 SERVER_PORT = 9395
 
 CLIENT_HOST = stun.get_local_ip()
@@ -66,11 +67,11 @@ class Client(dmtp.Client):
         # return super().process_message(msg=msg, source=source)
         return True
 
-    def send_command(self, cmd: dmtp.Command, destination: tuple) -> dmtp.Departure:
+    def send_command(self, cmd: dmtp.Command, destination: tuple) -> mtp.Departure:
         print('sending cmd to %s:\n\t%s' % (destination, cmd))
         return super().send_command(cmd=cmd, destination=destination)
 
-    def send_message(self, msg: dmtp.Message, destination: tuple) -> dmtp.Departure:
+    def send_message(self, msg: dmtp.Message, destination: tuple) -> mtp.Departure:
         print('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=FieldValueEncoder)))
         return super().send_message(msg=msg, destination=destination)
 

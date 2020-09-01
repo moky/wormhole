@@ -6,6 +6,7 @@ import sys
 import os
 import traceback
 
+from dmtp.mtp import Departure
 import dmtp
 
 curPath = os.path.abspath(os.path.dirname(__file__))
@@ -56,11 +57,11 @@ class Server(dmtp.Server):
         # return super().process_message(msg=msg, source=source)
         return True
 
-    def send_command(self, cmd: dmtp.Command, destination: tuple) -> dmtp.Departure:
+    def send_command(self, cmd: dmtp.Command, destination: tuple) -> Departure:
         print('sending cmd to %s:\n\t%s' % (destination, cmd))
         return super().send_command(cmd=cmd, destination=destination)
 
-    def send_message(self, msg: dmtp.Message, destination: tuple) -> dmtp.Departure:
+    def send_message(self, msg: dmtp.Message, destination: tuple) -> Departure:
         print('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=FieldValueEncoder)))
         return super().send_message(msg=msg, destination=destination)
 
