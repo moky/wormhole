@@ -28,35 +28,34 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .packet import DatagramPacket
-from .status import ConnectionStatus
-from .connection import Connection
-from .handler import ConnectionHandler
-from .filter import HubFilter
-from .listener import HubListener
-from .socket import Socket
-from .cargo import Cargo
-from .hub import Hub
 
-name = "UDP"
+class DatagramPacket:
 
-__author__ = 'Albert Moky'
+    def __init__(self, data: bytes, address: tuple):
+        super().__init__()
+        self.__data = data
+        self.__address = address
 
-__all__ = [
+    @property
+    def data(self) -> bytes:
+        return self.__data
 
-    #
-    #   Connection
-    #
-    'Connection', 'ConnectionStatus', 'ConnectionHandler',
+    @property
+    def offset(self) -> int:
+        return 0
 
-    #
-    #   Socket
-    #
-    'Socket', 'DatagramPacket',
+    @property
+    def length(self) -> int:
+        return len(self.__data)
 
-    #
-    #   Hub
-    #
-    'Cargo',
-    'Hub', 'HubFilter', 'HubListener',
-]
+    @property
+    def address(self) -> tuple:
+        return self.__address
+
+    @property
+    def ip(self) -> str:
+        return self.__address[0]
+
+    @property
+    def port(self) -> int:
+        return self.__address[1]

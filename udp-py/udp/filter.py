@@ -28,35 +28,31 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .packet import DatagramPacket
-from .status import ConnectionStatus
+from abc import ABC, abstractmethod
+
 from .connection import Connection
-from .handler import ConnectionHandler
-from .filter import HubFilter
-from .listener import HubListener
-from .socket import Socket
-from .cargo import Cargo
-from .hub import Hub
 
-name = "UDP"
 
-__author__ = 'Albert Moky'
+class HubFilter(ABC):
 
-__all__ = [
+    @abstractmethod
+    def check_data(self, data: bytes, source: tuple, destination: tuple) -> bool:
+        """
+        Check for observing message data
 
-    #
-    #   Connection
-    #
-    'Connection', 'ConnectionStatus', 'ConnectionHandler',
+        :param data:        UDP data received
+        :param source:      remote IP and port
+        :param destination: local IP and port
+        :return: False to ignore it
+        """
+        raise NotImplemented
 
-    #
-    #   Socket
-    #
-    'Socket', 'DatagramPacket',
+    # @abstractmethod
+    def check_connection(self, connection: Connection) -> bool:
+        """
+        Check for observing connection
 
-    #
-    #   Hub
-    #
-    'Cargo',
-    'Hub', 'HubFilter', 'HubListener',
-]
+        :param connection:
+        :return: False to ignore it
+        """
+        pass

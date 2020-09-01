@@ -28,35 +28,39 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .packet import DatagramPacket
+from abc import ABC, abstractmethod
+from typing import Optional
+
 from .status import ConnectionStatus
 from .connection import Connection
-from .handler import ConnectionHandler
 from .filter import HubFilter
-from .listener import HubListener
-from .socket import Socket
-from .cargo import Cargo
-from .hub import Hub
 
-name = "UDP"
 
-__author__ = 'Albert Moky'
+class HubListener(ABC):
 
-__all__ = [
+    @property
+    def filter(self) -> Optional[HubFilter]:
+        return None
 
-    #
-    #   Connection
-    #
-    'Connection', 'ConnectionStatus', 'ConnectionHandler',
+    @abstractmethod
+    def data_received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
+        """
+        New data package arrived
 
-    #
-    #   Socket
-    #
-    'Socket', 'DatagramPacket',
+        :param data:        UDP data received
+        :param source:      remote IP and port
+        :param destination: local IP and port
+        :return: response to the source address
+        """
+        raise NotImplemented
 
-    #
-    #   Hub
-    #
-    'Cargo',
-    'Hub', 'HubFilter', 'HubListener',
-]
+    # @abstractmethod
+    def status_changed(self, connection: Connection, old_status: ConnectionStatus, new_status: ConnectionStatus):
+        """
+        Status changed
+
+        :param connection:
+        :param old_status:
+        :param new_status:
+        """
+        pass

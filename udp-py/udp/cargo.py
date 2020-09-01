@@ -29,34 +29,29 @@
 # ==============================================================================
 
 from .packet import DatagramPacket
-from .status import ConnectionStatus
-from .connection import Connection
-from .handler import ConnectionHandler
-from .filter import HubFilter
-from .listener import HubListener
 from .socket import Socket
-from .cargo import Cargo
-from .hub import Hub
 
-name = "UDP"
 
-__author__ = 'Albert Moky'
+class Cargo:
 
-__all__ = [
+    def __init__(self, data: bytes, source: tuple, destination: tuple):
+        super().__init__()
+        self.__data = data
+        self.__source = source
+        self.__destination = destination
 
-    #
-    #   Connection
-    #
-    'Connection', 'ConnectionStatus', 'ConnectionHandler',
+    @property
+    def data(self) -> bytes:
+        return self.__data
 
-    #
-    #   Socket
-    #
-    'Socket', 'DatagramPacket',
+    @property
+    def source(self) -> tuple:
+        return self.__source
 
-    #
-    #   Hub
-    #
-    'Cargo',
-    'Hub', 'HubFilter', 'HubListener',
-]
+    @property
+    def destination(self) -> tuple:
+        return self.__destination
+
+    @classmethod
+    def create(cls, packet: DatagramPacket, socket: Socket):
+        return cls(data=packet.data, source=packet.address, destination=socket.local_address)

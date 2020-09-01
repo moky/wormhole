@@ -34,7 +34,9 @@ import time
 import weakref
 from typing import Optional
 
-from .connection import ConnectionHandler, Connection, DatagramPacket
+from .packet import DatagramPacket
+from .connection import Connection
+from .handler import ConnectionHandler
 
 
 class Socket(threading.Thread):

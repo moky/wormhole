@@ -31,11 +31,14 @@
 import threading
 import time
 from weakref import WeakSet
-from abc import ABC, abstractmethod
 from typing import Optional, Union
 
-from .connection import ConnectionStatus, ConnectionHandler, Connection
-from .socket import Socket, DatagramPacket
+from .status import ConnectionStatus
+from .connection import Connection
+from .handler import ConnectionHandler
+from .listener import HubListener
+from .socket import Socket
+from .cargo import Cargo
 
 """
     Topology:
@@ -59,86 +62,6 @@ from .socket import Socket, DatagramPacket
                  |    |                   |  |  |
                  V    |                   V  V  |
 """
-
-
-class HubFilter(ABC):
-
-    @abstractmethod
-    def check_data(self, data: bytes, source: tuple, destination: tuple) -> bool:
-        """
-        Check for observing message data
-
-        :param data:        UDP data received
-        :param source:      remote IP and port
-        :param destination: local IP and port
-        :return: False to ignore it
-        """
-        raise NotImplemented
-
-    # @abstractmethod
-    def check_connection(self, connection: Connection) -> bool:
-        """
-        Check for observing connection
-
-        :param connection:
-        :return: False to ignore it
-        """
-        pass
-
-
-class HubListener(ABC):
-
-    @property
-    def filter(self) -> Optional[HubFilter]:
-        return None
-
-    @abstractmethod
-    def data_received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
-        """
-        New data package arrived
-
-        :param data:        UDP data received
-        :param source:      remote IP and port
-        :param destination: local IP and port
-        :return: response to the source address
-        """
-        raise NotImplemented
-
-    # @abstractmethod
-    def status_changed(self, connection: Connection, old_status: ConnectionStatus, new_status: ConnectionStatus):
-        """
-        Status changed
-
-        :param connection:
-        :param old_status:
-        :param new_status:
-        """
-        pass
-
-
-class Cargo:
-
-    def __init__(self, data: bytes, source: tuple, destination: tuple):
-        super().__init__()
-        self.__data = data
-        self.__source = source
-        self.__destination = destination
-
-    @property
-    def data(self) -> bytes:
-        return self.__data
-
-    @property
-    def source(self) -> tuple:
-        return self.__source
-
-    @property
-    def destination(self) -> tuple:
-        return self.__destination
-
-    @classmethod
-    def create(cls, packet: DatagramPacket, socket: Socket):
-        return cls(data=packet.data, source=packet.address, destination=socket.local_address)
 
 
 class Hub(threading.Thread, ConnectionHandler):

@@ -28,35 +28,31 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .packet import DatagramPacket
+from abc import ABC, abstractmethod
+
 from .status import ConnectionStatus
 from .connection import Connection
-from .handler import ConnectionHandler
-from .filter import HubFilter
-from .listener import HubListener
-from .socket import Socket
-from .cargo import Cargo
-from .hub import Hub
 
-name = "UDP"
 
-__author__ = 'Albert Moky'
+class ConnectionHandler(ABC):
 
-__all__ = [
+    @abstractmethod
+    def connection_status_changed(self, connection: Connection,
+                                  old_status: ConnectionStatus, new_status: ConnectionStatus):
+        """
+        Call when connection status changed
 
-    #
-    #   Connection
-    #
-    'Connection', 'ConnectionStatus', 'ConnectionHandler',
+        :param connection:
+        :param old_status:
+        :param new_status:
+        """
+        pass
 
-    #
-    #   Socket
-    #
-    'Socket', 'DatagramPacket',
+    @abstractmethod
+    def connection_received_data(self, connection: Connection):
+        """
+        Call when received data from a connection
 
-    #
-    #   Hub
-    #
-    'Cargo',
-    'Hub', 'HubFilter', 'HubListener',
-]
+        :param connection:
+        """
+        pass

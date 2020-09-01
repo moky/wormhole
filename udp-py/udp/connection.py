@@ -29,116 +29,10 @@
 # ==============================================================================
 
 import time
-from abc import ABC, abstractmethod
-from enum import IntEnum
 from typing import Optional
 
-
-class ConnectionStatus(IntEnum):
-    """
-        @enum ConnectionStatus
-
-        @abstract Defined for indicating connection status
-
-        @discussion connection status.
-
-            Default     - 'initialized', or sent timeout
-            Connecting  - sent 'PING', waiting for response
-            Connected   - got response recently
-            Expired     - long time, needs maintaining (still connected)
-            Maintaining - sent 'PING', waiting for response
-            Error       - long long time no response, connection lost
-
-        Bits:
-            0000 0001 - indicates sent something just now
-            0000 0010 - indicates sent something not too long ago
-
-            0001 0000 - indicates received something just now
-            0010 0000 - indicates received something not too long ago
-
-            (All above are just some advices to help choosing numbers :P)
-    """
-
-    Default = 0x00      # 0000 0000
-    Connecting = 0x01   # 0000 0001, sent just now
-    Connected = 0x11    # 0001 0001, received just now
-    Maintaining = 0x21  # 0010 0001, received not long ago, sent just now
-    Expired = 0x22      # 0010 0010, received not long ago, needs sending
-    Error = 0x03        # 0000 0011, long time no response
-
-    @classmethod
-    def is_connected(cls, status: int) -> bool:
-        return (status & 0x30) != 0  # received something not long ago
-
-    @classmethod
-    def is_expired(cls, status: int) -> bool:
-        return (status & 0x01) == 0  # sent nothing in a period
-
-    @classmethod
-    def is_error(cls, status: int) -> bool:
-        return status == cls.Error.value  # sent for a long time, but received nothing
-
-
-"""
-    Finite States:
-
-            //===============\\          (Sent)          //==============\\
-            ||               || -----------------------> ||              ||
-            ||    Default    ||                          ||  Connecting  ||
-            || (Not Connect) || <----------------------- ||              ||
-            \\===============//         (Timeout)        \\==============//
-                                                              |       |
-            //===============\\                               |       |
-            ||               || <-----------------------------+       |
-            ||     Error     ||          (Error)                 (Received)
-            ||               || <-----------------------------+       |
-            \\===============//                               |       |
-                A       A                                     |       |
-                |       |            //===========\\          |       |
-                (Error) +----------- ||           ||          |       |
-                |                    ||  Expired  || <--------+       |
-                |       +----------> ||           ||          |       |
-                |       |            \\===========//          |       |
-                |       (Timeout)           |         (Timeout)       |
-                |       |                   |                 |       V
-            //===============\\     (Sent)  |            //==============\\
-            ||               || <-----------+            ||              ||
-            ||  Maintaining  ||                          ||  Connected   ||
-            ||               || -----------------------> ||              ||
-            \\===============//       (Received)         \\==============//
-"""
-
-
-class DatagramPacket:
-
-    def __init__(self, data: bytes, address: tuple):
-        super().__init__()
-        self.__data = data
-        self.__address = address
-
-    @property
-    def data(self) -> bytes:
-        return self.__data
-
-    @property
-    def offset(self) -> int:
-        return 0
-
-    @property
-    def length(self) -> int:
-        return len(self.__data)
-
-    @property
-    def address(self) -> tuple:
-        return self.__address
-
-    @property
-    def ip(self) -> str:
-        return self.__address[0]
-
-    @property
-    def port(self) -> int:
-        return self.__address[1]
+from .packet import DatagramPacket
+from .status import ConnectionStatus
 
 
 class Connection:
@@ -273,27 +167,3 @@ class Connection:
 
     def _is_cache_full(self, count: int) -> bool:
         return count > self.MAX_CACHE_SPACES
-
-
-class ConnectionHandler(ABC):
-
-    @abstractmethod
-    def connection_status_changed(self, connection: Connection,
-                                  old_status: ConnectionStatus, new_status: ConnectionStatus):
-        """
-        Call when connection status changed
-
-        :param connection:
-        :param old_status:
-        :param new_status:
-        """
-        pass
-
-    @abstractmethod
-    def connection_received_data(self, connection: Connection):
-        """
-        Call when received data from a connection
-
-        :param connection:
-        """
-        pass
