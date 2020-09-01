@@ -32,10 +32,10 @@ import weakref
 from abc import abstractmethod
 from typing import Optional
 
-from udp.tlv import Data
-from udp.mtp import Package, Command as DataTypeCommand, Message as DataTypeMessage
-from udp.mtp import PeerHandler, Pool
-from udp.mtp import Departure
+from .mtp.tlv import Data
+from .mtp import Package, Command as DataTypeCommand, Message as DataTypeMessage
+from .mtp import PeerHandler, Pool
+from .mtp import Departure
 
 from .tlv import Field
 from .values import LocationValue

@@ -30,7 +30,7 @@
 
 from typing import Optional, Union
 
-from udp.tlv import Data, MutableData, IntegerData, UInt8Data, UInt32Data
+from .mtp.tlv import Data, MutableData, UInt8Data, UInt32Data
 
 from .tlv import Field, FieldName, FieldLength, FieldValue
 from .address import SourceAddressValue, MappedAddressValue, RelayedAddressValue

@@ -30,8 +30,8 @@
 
 from typing import Optional
 
-from udp.tlv import Data, MutableData, VarIntData
-from udp.tlv import Tag, Length, Value, TagLengthValue
+from .mtp.tlv import Data, MutableData, VarIntData
+from .mtp.tlv import Tag, Length, Value, TagLengthValue
 
 
 class FieldName(Tag):

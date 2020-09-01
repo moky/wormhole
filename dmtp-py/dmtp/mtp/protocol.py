@@ -37,8 +37,8 @@
 
 import threading
 
-from ..tlv.utils import random_bytes, bytes_to_int
-from ..tlv import Data, UInt32Data, MutableData
+from .tlv.utils import random_bytes, bytes_to_int
+from .tlv import Data, UInt32Data, MutableData
 
 """
     Data Type:

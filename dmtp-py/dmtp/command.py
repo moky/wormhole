@@ -30,13 +30,12 @@
 
 from typing import Union
 
-from udp.tlv import Data
+from .mtp.tlv import Data
 
 from .tlv import Field, FieldName, FieldValue
 from .values import BinaryValue, StringValue, TimestampValue
-
-from .address import SourceAddressValue, MappedAddressValue, RelayedAddressValue
 from .values import CommandValue, LocationValue
+from .address import SourceAddressValue, MappedAddressValue, RelayedAddressValue
 
 
 """

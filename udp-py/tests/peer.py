@@ -31,12 +31,13 @@
 import time
 from typing import Optional
 
+from dmtp.mtp.tlv import Data
+from dmtp.mtp import Package
+from dmtp.mtp import Departure, Arrival, Pool
+from dmtp.mtp import PeerDelegate, Peer as MTPPeer
+
 from udp import Connection
 from udp import HubListener, Hub as UDPHub
-from udp.tlv import Data
-from udp.mtp import Package
-from udp.mtp import Departure, Arrival, Pool
-from udp.mtp import PeerDelegate, Peer as MTPPeer
 
 
 class Hub(UDPHub, PeerDelegate):

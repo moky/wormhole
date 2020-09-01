@@ -41,7 +41,8 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from ..tlv import Data, MutableData, UInt32Data
+from .tlv import Data, MutableData, UInt32Data
+
 from .protocol import Package, TransactionID
 from .protocol import Command, CommandRespond
 from .protocol import Message, MessageRespond, MessageFragment

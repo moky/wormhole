@@ -40,7 +40,8 @@
 import time
 from typing import Union
 
-from ..tlv import Data
+from .tlv import Data
+
 from .protocol import Package, MessageFragment
 
 

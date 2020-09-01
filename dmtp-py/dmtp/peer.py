@@ -33,10 +33,11 @@ from typing import Optional
 
 from udp import Connection
 from udp import HubListener, Hub as UDPHub
-from udp.tlv import Data
-from udp.mtp import Package
-from udp.mtp import Departure, Arrival, Pool
-from udp.mtp import PeerDelegate, Peer as MTPPeer
+
+from .mtp.tlv import Data
+from .mtp import Package
+from .mtp import Departure, Arrival, Pool
+from .mtp import PeerDelegate, Peer as MTPPeer
 
 from .values import LocationValue
 

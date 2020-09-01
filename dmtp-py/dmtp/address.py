@@ -28,7 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from udp.tlv import Data, MutableData, UInt16Data
+from .mtp.tlv import Data, MutableData, UInt16Data
 
 from .tlv import FieldName, FieldLength, FieldValue
 
