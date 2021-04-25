@@ -43,15 +43,16 @@ class Connection(threading.Thread):
 
     EXPIRES = 28  # seconds
 
-    def __init__(self, address: tuple, sock: socket.socket=None):
+    def __init__(self, address: tuple, sock: socket.socket = None):
         super().__init__()
         self.__sock = sock
         self.__address = address
         self.__host = address[0]
         self.__port = address[1]
+        self.__started = False
         self.__running = False
         self.__status = ConnectionStatus.Default
-        self.__delegate: weakref.ReferenceType = None
+        self.__delegate: Optional[weakref.ReferenceType] = None
         # initialize times to expired
         now = time.time()
         self.__last_sent_time = now - self.EXPIRES - 1
@@ -234,15 +235,26 @@ class Connection(threading.Thread):
         return self.__pool.receive(length=length)
 
     def start(self):
-        if not self.__running:
-            self.__running = True
+        # check running
+        tick = 0
+        while self.__running:
+            # waiting for last run loop exit
+            time.sleep(0.1)
+            tick += 1
+            if tick > 100:
+                # timeout (10 seconds)
+                break
+        # do start
+        if not self.__started:
             super().start()
 
     def stop(self):
-        self.__running = False
+        self.__started = False
 
     def run(self):
-        while self.__running:
+        self.__started = True
+        self.__running = True
+        while self.__started:
             # 1. try to read bytes
             try:
                 data = self._read()
@@ -262,3 +274,5 @@ class Connection(threading.Thread):
                     delegate.connection_received_data(connection=self)
                 else:
                     delegate.connection_overflowed(connection=self, ejected=data)
+        # stop running
+        self.__running = False
