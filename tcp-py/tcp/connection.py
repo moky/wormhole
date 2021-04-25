@@ -210,11 +210,8 @@ class Connection(threading.Thread):
         :param data: package
         :return: -1 on error
         """
-        try:
+        if self.__started:
             return self._write(data=data)
-        except socket.error as error:
-            print('[TCP] failed to send data: %s' % error)
-            return -1
 
     def received(self) -> Optional[bytes]:
         """
@@ -256,11 +253,7 @@ class Connection(threading.Thread):
         self.__running = True
         while self.__started:
             # 1. try to read bytes
-            try:
-                data = self._read()
-            except socket.error as error:
-                print('[TCP] failed to receive data: %s' % error)
-                break
+            data = self._read()
             if data is None:
                 # received nothing, have a rest ^_^
                 time.sleep(0.1)

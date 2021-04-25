@@ -48,19 +48,22 @@ class MemPool(Pool):
         self.__packages = []
         self.__packages_lock = threading.Lock()
 
+    def __is_full(self) -> bool:
+        length = 0
+        for pack in self.__packages:
+            length += len(pack)
+        return length >= self.MAX_CACHE_LENGTH
+
     @property
     def is_full(self) -> bool:
-        length = 0
         with self.__packages_lock:
-            for pack in self.__packages:
-                length += len(pack)
-        return length >= self.MAX_CACHE_LENGTH
+            return self.__is_full()
 
     def cache(self, data: bytes) -> Optional[bytes]:
         ejected = None
         with self.__packages_lock:
             # 1. check memory cache status
-            if self.is_full:
+            if self.__is_full():
                 ejected = self.__packages.pop(0)
             # 2. append the new package to the end
             self.__packages.append(data)

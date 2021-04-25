@@ -53,7 +53,7 @@ class ClientConnection(Connection):
             self.status = ConnectionStatus.Connected
             return 0
         except socket.error as error:
-            print('[TCP] failed to connect server: %s, %s' % (self.address, error))
+            print('[TCP Client] failed to connect server: %s, %s' % (self.address, error))
             self.status = ConnectionStatus.Error
             return -1
 
@@ -65,7 +65,7 @@ class ClientConnection(Connection):
         try:
             return super()._read()
         except socket.error as error:
-            print('[TCP] failed to read data: %s' % error)
+            print('[TCP Client] failed to read data: %s' % error)
             self.socket = None
         # 2. try to reconnect
         time.sleep(0.5)
@@ -75,7 +75,7 @@ class ClientConnection(Connection):
         try:
             return super()._read()
         except socket.error as error:
-            print('[TCP] failed to read data again: %s' % error)
+            print('[TCP Client] failed to read data again: %s' % error)
             self.socket = None
         time.sleep(0.2)
         return None
@@ -88,7 +88,7 @@ class ClientConnection(Connection):
         try:
             return super()._write(data=data)
         except socket.error as error:
-            print('[TCP] failed to write data: %s' % error)
+            print('[TCP Client] failed to write data: %s' % error)
             self.socket = None
         # 2. try to reconnect
         time.sleep(0.5)
@@ -98,7 +98,7 @@ class ClientConnection(Connection):
         try:
             return super()._write(data=data)
         except socket.error as error:
-            print('[TCP] failed to write data again: %s' % error)
+            print('[TCP Client] failed to write data again: %s' % error)
             self.socket = None
         time.sleep(0.2)
         return -1

@@ -45,13 +45,13 @@ class ServerConnection(Connection):
         try:
             return super()._read()
         except socket.error as error:
-            print('[TCP] failed to receive data: %s' % error)
+            print('[TCP Server] failed to read data: %s' % error)
             self.stop()
 
     def _write(self, data: bytes) -> int:
         try:
             return super()._write(data=data)
         except socket.error as error:
-            print('[TCP] failed to receive data: %s' % error)
+            print('[TCP Server] failed to write data: %s' % error)
             self.stop()
             return -1
