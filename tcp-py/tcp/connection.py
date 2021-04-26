@@ -41,7 +41,7 @@ from .status import ConnectionStatus
 
 class Connection(threading.Thread):
 
-    EXPIRES = 28  # seconds
+    EXPIRES = 16  # seconds
 
     def __init__(self, address: tuple, sock: socket.socket = None):
         super().__init__()
@@ -139,33 +139,26 @@ class Connection(threading.Thread):
         :return: new status
         """
         # pre-checks
-        if now < self.__last_received_time + self.EXPIRES:
-            # received response recently
+        if self.__status == ConnectionStatus.Default:
+            # case: 'default'
             if now < self.__last_sent_time + self.EXPIRES:
-                # sent recently, set status = 'connected'
-                self.__status = ConnectionStatus.Connected
-            else:
-                # long time no sending, set status = 'expired'
-                self.__status = ConnectionStatus.Expired
-            return self.__status
-        if self.__status != ConnectionStatus.Default:
+                # sent recently, change status to 'connecting'
+                self.__status = ConnectionStatus.Connecting
+                return self.__status
+        else:
+            if self.__status == ConnectionStatus.Connecting:
+                # case: 'connecting'
+                if now > self.__last_sent_time + self.EXPIRES:
+                    # long time no sending, change status to 'not_connect'
+                    self.__status = ConnectionStatus.Default
+                    return self.__status
             # any status except 'initialized'
             if now > self.__last_received_time + (self.EXPIRES << 2):
                 # long long time no response, set status = 'error'
                 self.__status = ConnectionStatus.Error
                 return self.__status
         # check with current status
-        if self.__status == ConnectionStatus.Default:
-            # case: 'default'
-            if now < self.__last_sent_time + self.EXPIRES:
-                # sent recently, change status to 'connecting'
-                self.__status = ConnectionStatus.Connecting
-        elif self.__status == ConnectionStatus.Connecting:
-            # case: 'connecting'
-            if now > self.__last_sent_time + self.EXPIRES:
-                # long time no sending, change status to 'not_connect'
-                self.__status = ConnectionStatus.Default
-        elif self.__status == ConnectionStatus.Connected:
+        if self.__status == ConnectionStatus.Connected:
             # case: 'connected'
             if now > self.__last_received_time + self.EXPIRES:
                 # long time no response, needs maintaining
@@ -177,14 +170,21 @@ class Connection(threading.Thread):
                     self.__status = ConnectionStatus.Expired
         elif self.__status == ConnectionStatus.Expired:
             # case: 'maintain_expired'
-            if now < self.__last_sent_time + self.EXPIRES:
+            if now < self.__last_received_time + self.EXPIRES:
+                # received recently, change status to 'connected'
+                self.__status = ConnectionStatus.Connected
+            elif now < self.__last_sent_time + self.EXPIRES:
                 # sent recently, change status to 'maintaining'
                 self.__status = ConnectionStatus.Maintaining
         elif self.__status == ConnectionStatus.Maintaining:
             # case: 'maintaining'
+            if now < self.__last_received_time + self.EXPIRES:
+                # received recently, change status to 'connected'
+                self.__status = ConnectionStatus.Connected
             if now > self.__last_sent_time + self.EXPIRES:
                 # long time no sending, change status to 'maintain_expired'
                 self.__status = ConnectionStatus.Expired
+        # return new status
         return self.__status
 
     def __update_sent_time(self, now: float):

@@ -48,8 +48,8 @@ class ClientConnection(Connection):
             return 0
         self.status = ConnectionStatus.Connecting
         try:
-            sock = socket.socket()
-            sock.connect(self.address)
+            self.socket = socket.socket()
+            self.socket.connect(self.address)
             self.status = ConnectionStatus.Connected
             return 0
         except socket.error as error:

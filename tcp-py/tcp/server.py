@@ -31,7 +31,7 @@
 import socket
 from typing import Optional
 
-from .connection import Connection
+from .connection import Connection, ConnectionStatus
 
 
 class ServerConnection(Connection):
@@ -40,6 +40,10 @@ class ServerConnection(Connection):
     def __init__(self, sock: socket.socket):
         address = sock.getpeername()
         super().__init__(address=address, sock=sock)
+        if getattr(sock, '_closed', False):
+            self.status = ConnectionStatus.Error
+        else:
+            self.status = ConnectionStatus.Connected
 
     def _read(self) -> Optional[bytes]:
         try:
