@@ -28,34 +28,41 @@
 # SOFTWARE.
 # ==============================================================================
 
-import socket
-from typing import Optional
+from abc import ABC, abstractmethod
 
-from .connection import Connection, ConnectionStatus
+from .status import ConnectionStatus
 
 
-class ServerConnection(Connection):
-    """ Connection for Server Node """
+class ConnectionDelegate(ABC):
 
-    def __init__(self, sock: socket.socket):
-        address = sock.getpeername()
-        super().__init__(address=address, sock=sock)
-        if getattr(sock, '_closed', False):
-            self.status = ConnectionStatus.Error
-        else:
-            self.status = ConnectionStatus.Connected
+    # @abstractmethod
+    def connection_changed(self, connection, old_status: ConnectionStatus, new_status: ConnectionStatus):
+        """
+        Call when connection status changed
 
-    def _read(self) -> Optional[bytes]:
-        try:
-            return super()._read()
-        except socket.error as error:
-            print('[TCP Server] failed to read data: %s' % error)
-            self.stop()
+        :param connection: current connection
+        :param old_status: status before
+        :param new_status: status after
+        """
+        pass
 
-    def _write(self, data: bytes) -> int:
-        try:
-            return super()._write(data=data)
-        except socket.error as error:
-            print('[TCP Server] failed to write data: %s' % error)
-            self.stop()
-            return -1
+    @abstractmethod
+    def connection_received(self, connection, data: bytes):
+        """
+        Call when received data from a connection
+
+        :param connection: current connection
+        :param data:       received data
+        """
+        pass
+
+    # @abstractmethod
+    def connection_overflowed(self, connection, ejected: bytes):
+        """
+        Call when connection's cache is full
+
+        :param connection: current connection
+        :param ejected:    dropped data
+        :return:
+        """
+        pass

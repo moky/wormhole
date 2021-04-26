@@ -29,7 +29,7 @@
 # ==============================================================================
 
 import threading
-from typing import Optional
+from typing import Optional, List
 
 from .pool import Pool
 
@@ -45,7 +45,7 @@ class MemPool(Pool):
     def __init__(self):
         super().__init__()
         # received packages
-        self.__packages = []
+        self.__packages: List[bytes] = []
         self.__packages_lock = threading.Lock()
 
     def __is_full(self) -> bool:
@@ -70,27 +70,23 @@ class MemPool(Pool):
         return ejected
 
     def received(self) -> Optional[bytes]:
-        data = None
         with self.__packages_lock:
             count = len(self.__packages)
             if count == 1:
-                data = self.__packages[0]
+                return self.__packages[0]
             elif count > 1:
                 data = b''
                 for pack in self.__packages:
                     data += pack
                 self.__packages.clear()
                 self.__packages.append(data)
-        return data
+                return data
 
     def receive(self, length: int) -> Optional[bytes]:
-        assert length > 0, 'receive length error: %d' % length
         with self.__packages_lock:
             if len(self.__packages) > 0:
                 data = self.__packages.pop(0)
-                data_len = len(data)
-                # assert data_len >= length, 'data length error, call "received()" first'
-                if data_len > length:
+                if len(data) > length:
                     # push the remaining data back to the queue head
                     self.__packages.insert(0, data[length:])
                     data = data[:length]
