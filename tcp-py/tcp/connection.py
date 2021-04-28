@@ -36,7 +36,7 @@ from typing import Optional
 
 from .pool import Pool
 from .mem import MemPool
-from .status import ConnectionStatus
+from .status import ConnectionStatus, get_status
 from .delegate import ConnectionDelegate
 
 
@@ -69,11 +69,7 @@ class Connection(threading.Thread):
     @property
     def address(self) -> Optional[tuple]:
         """ (IP, Port) """
-        if self.__address is None:
-            if self.__socket is not None:
-                return self.__socket.getpeername()
-        else:
-            return self.__address
+        return self.__address
 
     @property
     def socket(self) -> socket.socket:
@@ -131,16 +127,16 @@ class Connection(threading.Thread):
                 delegate.connection_changed(connection=self, old_status=old, new_status=value)
 
     def is_connected(self, now: float) -> bool:
-        status = self.get_status(now=now)
-        return ConnectionStatus.is_connected(status=status)
+        self.status = self.get_status(now=now)
+        return ConnectionStatus.is_connected(status=self.status)
 
     def is_expired(self, now: float) -> bool:
-        status = self.get_status(now=now)
-        return ConnectionStatus.is_expired(status=status)
+        self.status = self.get_status(now=now)
+        return ConnectionStatus.is_expired(status=self.status)
 
     def is_error(self, now: float) -> bool:
-        status = self.get_status(now=now)
-        return ConnectionStatus.is_error(status=status)
+        self.status = self.get_status(now=now)
+        return ConnectionStatus.is_error(status=self.status)
 
     def get_status(self, now: float):
         """
@@ -149,54 +145,10 @@ class Connection(threading.Thread):
         :param now: timestamp in seconds
         :return: new status
         """
-        # pre-checks
-        if self.__status == ConnectionStatus.Default:
-            # case: 'default'
-            if now < self.__last_sent_time + self.EXPIRES:
-                # sent recently, change status to 'connecting'
-                self.__status = ConnectionStatus.Connecting
-                return self.__status
-        else:
-            if self.__status == ConnectionStatus.Connecting:
-                # case: 'connecting'
-                if now > self.__last_sent_time + self.EXPIRES:
-                    # long time no sending, change status to 'not_connect'
-                    self.__status = ConnectionStatus.Default
-                    return self.__status
-            # any status except 'initialized'
-            if now > self.__last_received_time + (self.EXPIRES << 2):
-                # long long time no response, set status = 'error'
-                self.__status = ConnectionStatus.Error
-                return self.__status
-        # check with current status
-        if self.__status == ConnectionStatus.Connected:
-            # case: 'connected'
-            if now > self.__last_received_time + self.EXPIRES:
-                # long time no response, needs maintaining
-                if now < self.__last_sent_time + self.EXPIRES:
-                    # sent recently, change status to 'maintaining'
-                    self.__status = ConnectionStatus.Maintaining
-                else:
-                    # long time no sending, change status to 'maintain_expired'
-                    self.__status = ConnectionStatus.Expired
-        elif self.__status == ConnectionStatus.Expired:
-            # case: 'maintain_expired'
-            if now < self.__last_received_time + self.EXPIRES:
-                # received recently, change status to 'connected'
-                self.__status = ConnectionStatus.Connected
-            elif now < self.__last_sent_time + self.EXPIRES:
-                # sent recently, change status to 'maintaining'
-                self.__status = ConnectionStatus.Maintaining
-        elif self.__status == ConnectionStatus.Maintaining:
-            # case: 'maintaining'
-            if now < self.__last_received_time + self.EXPIRES:
-                # received recently, change status to 'connected'
-                self.__status = ConnectionStatus.Connected
-            if now > self.__last_sent_time + self.EXPIRES:
-                # long time no sending, change status to 'maintain_expired'
-                self.__status = ConnectionStatus.Expired
-        # return new status
-        return self.__status
+        return get_status(status=self.status, now=now,
+                          last_sent=self.__last_sent_time,
+                          last_received=self.__last_received_time,
+                          expires=self.EXPIRES)
 
     #
     #   Connection Delegate
