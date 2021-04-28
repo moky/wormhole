@@ -66,29 +66,24 @@ class Connection(threading.Thread):
         return self.__address
 
     @property
-    def socket(self) -> socket.socket:
+    def socket(self) -> Optional[socket.socket]:
         if self.__socket is None:
             if self.__address is None:
-                # server connection lost
+                return None
+            if self.__status != ConnectionStatus.Connecting:
+                return None
+            try:
+                sock = socket.socket()
+                sock.connect(self.__address)
+                self.__socket = sock
+            except socket.error as error:
+                print('[TCP] failed to connect: %s, %s' % (self.__address, error))
                 self.status = ConnectionStatus.Error
-            else:
-                # client connection
-                self.status = ConnectionStatus.Connecting
-                try:
-                    sock = socket.socket()
-                    sock.connect(self.__address)
-                    self.__socket = sock
-                    self.status = ConnectionStatus.Connected
-                except socket.error as error:
-                    print('[TCP] failed to connect: %s, %s' % (self.__address, error))
-                    self.status = ConnectionStatus.Error
-        return self.__socket
-
-    def __socket_closed(self) -> bool:
-        if self.__socket is None:
-            return True
-        else:
-            return getattr(self.__socket, '_closed', False)
+                return None
+        # check closed
+        sock = self.__socket
+        if sock is not None and not getattr(self.__socket, '_closed', False):
+            return sock
 
     def __write(self, data: bytes) -> int:
         sock = self.socket
@@ -129,17 +124,9 @@ class Connection(threading.Thread):
             if delegate is not None:
                 delegate.connection_changed(connection=self, old_status=old, new_status=value)
 
-    def is_connected(self, now: float) -> bool:
+    def get_status(self, now: float) -> ConnectionStatus:
         self.__tick(now=now)
-        return ConnectionStatus.is_connected(status=self.status)
-
-    def is_expired(self, now: float) -> bool:
-        self.__tick(now=now)
-        return ConnectionStatus.is_expired(status=self.status)
-
-    def is_error(self, now: float) -> bool:
-        self.__tick(now=now)
-        return ConnectionStatus.is_error(status=self.status)
+        return self.__status
 
     #
     #   Connection Delegate
@@ -191,16 +178,8 @@ class Connection(threading.Thread):
         except socket.error as error:
             print('[TCP] failed to send data: %d, %s' % (len(data), error))
             self.__socket = None
-        if self.__address is not None:
-            # reconnect and try again
-            time.sleep(0.1)
-            try:
-                return self.__write(data=data)
-            except socket.error as error:
-                print('[TCP] failed to send data again: %d, %s' % (len(data), error))
-                self.__socket = None
-        # failed
-        return -1
+            self.status = ConnectionStatus.Error
+            return -1
 
     def __receive(self) -> Optional[bytes]:
         try:
@@ -208,16 +187,7 @@ class Connection(threading.Thread):
         except socket.error as error:
             print('[TCP] failed to receive data: %s' % error)
             self.__socket = None
-        if self.__address is not None:
-            # reconnect and try again
-            time.sleep(0.1)
-            try:
-                return self.__read()
-            except socket.error as error:
-                print('[TCP] failed to receive data again: %s' % error)
-                self.__socket = None
-        # failed
-        return None
+            self.status = ConnectionStatus.Error
 
     def handle(self):
         # 1. try to read bytes
@@ -241,9 +211,13 @@ class Connection(threading.Thread):
 
     def stop(self):
         self.__running = False
-        if self.__socket is not None:
-            self.__socket.close()
-            self.__socket = None
+        # shutdown socket
+        sock = self.__socket
+        if isinstance(sock, socket.socket):
+            sock.shutdown(socket.SHUT_RDWR)
+            sock.close()
+        self.__socket = None
+        self.status = ConnectionStatus.Default
 
     #
     #   Finite State Machine
@@ -270,13 +244,13 @@ class Connection(threading.Thread):
         if not self.__running:
             # connection stopped, change status to 'not_connect'
             self.status = ConnectionStatus.Default
-        elif not self.__socket_closed():
+        elif self.socket is not None:
             # connection connected, change status to 'connected'
             self.status = ConnectionStatus.Connected
 
     def __tick_connected(self, now: float):
         """ Normal status of connection """
-        if self.__socket_closed():
+        if self.socket is None:
             # connection lost, change status to 'error'
             self.status = ConnectionStatus.Error
         elif now > self.__last_received_time + self.EXPIRES:
@@ -285,7 +259,7 @@ class Connection(threading.Thread):
 
     def __tick_expired(self, now: float):
         """ Long time no response, need maintaining """
-        if self.__socket_closed():
+        if self.socket is None:
             # connection lost, change status to 'error'
             self.status = ConnectionStatus.Error
         elif now < self.__last_sent_time + self.EXPIRES:
@@ -294,7 +268,7 @@ class Connection(threading.Thread):
 
     def __tick_maintaining(self, now: float):
         """ Heartbeat sent, waiting response """
-        if self.__socket_closed():
+        if self.socket is None:
             # connection lost, change status to 'error'
             self.status = ConnectionStatus.Error
         elif now > self.__last_received_time + (self.EXPIRES << 4):
@@ -311,11 +285,13 @@ class Connection(threading.Thread):
     def __tick_error(self, now: float):
         """ Connection lost """
         if not self.__running:
+            # connection stopped, change status to 'not_connect'
             self.status = ConnectionStatus.Default
-        elif not self.__socket_closed():
+        elif self.socket is not None:
+            # connection reconnected, change status to 'connected'
             self.status = ConnectionStatus.Connected
 
     def __tick(self, now: float):
-        tick = self.__fsm_evaluations.get(self.status)
+        tick = self.__fsm_evaluations.get(self.__status)
         if tick is not None:
             tick(now=now)

@@ -92,15 +92,3 @@ class ConnectionStatus(IntEnum):
     Maintaining = 0x21  # 0010 0001, received not long ago, sent just now
     Expired = 0x22      # 0010 0010, received not long ago, needs sending
     Error = 0x03        # 0000 0011, long time no response
-
-    @classmethod
-    def is_connected(cls, status: int) -> bool:
-        return (status & 0x30) != 0  # received something not long ago
-
-    @classmethod
-    def is_expired(cls, status: int) -> bool:
-        return (status & 0x01) == 0  # sent nothing in a period
-
-    @classmethod
-    def is_error(cls, status: int) -> bool:
-        return status == cls.Error.value  # sent for a long time, but received nothing
