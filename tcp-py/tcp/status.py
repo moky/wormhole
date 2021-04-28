@@ -31,6 +31,36 @@
 from enum import IntEnum
 
 
+"""
+    Finite States:
+
+            //===============\\          (Sent)          //==============\\
+            ||               || -----------------------> ||              ||
+            ||    Default    ||                          ||  Connecting  ||
+            || (Not Connect) || <----------------------- ||              ||
+            \\===============//         (Timeout)        \\==============//
+                                                              |       |
+            //===============\\                               |       |
+            ||               || <-----------------------------+       |
+            ||     Error     ||          (Error)                 (Received)
+            ||               || <-----------------------------+       |
+            \\===============//                               |       |
+                A       A                                     |       |
+                |       |            //===========\\          |       |
+                (Error) +----------- ||           ||          |       |
+                |                    ||  Expired  || <--------+       |
+                |       +----------> ||           ||          |       |
+                |       |            \\===========//          |       |
+                |       (Timeout)           |         (Timeout)       |
+                |       |                   |                 |       V
+            //===============\\     (Sent)  |            //==============\\
+            ||               || <-----------+            ||              ||
+            ||  Maintaining  ||                          ||  Connected   ||
+            ||               || -----------------------> ||              ||
+            \\===============//       (Received)         \\==============//
+"""
+
+
 class ConnectionStatus(IntEnum):
     """
         @enum ConnectionStatus
@@ -74,94 +104,3 @@ class ConnectionStatus(IntEnum):
     @classmethod
     def is_error(cls, status: int) -> bool:
         return status == cls.Error.value  # sent for a long time, but received nothing
-
-
-"""
-    Finite States:
-
-            //===============\\          (Sent)          //==============\\
-            ||               || -----------------------> ||              ||
-            ||    Default    ||                          ||  Connecting  ||
-            || (Not Connect) || <----------------------- ||              ||
-            \\===============//         (Timeout)        \\==============//
-                                                              |       |
-            //===============\\                               |       |
-            ||               || <-----------------------------+       |
-            ||     Error     ||          (Error)                 (Received)
-            ||               || <-----------------------------+       |
-            \\===============//                               |       |
-                A       A                                     |       |
-                |       |            //===========\\          |       |
-                (Error) +----------- ||           ||          |       |
-                |                    ||  Expired  || <--------+       |
-                |       +----------> ||           ||          |       |
-                |       |            \\===========//          |       |
-                |       (Timeout)           |         (Timeout)       |
-                |       |                   |                 |       V
-            //===============\\     (Sent)  |            //==============\\
-            ||               || <-----------+            ||              ||
-            ||  Maintaining  ||                          ||  Connected   ||
-            ||               || -----------------------> ||              ||
-            \\===============//       (Received)         \\==============//
-"""
-
-
-def get_status(status: ConnectionStatus, now: float,
-               last_sent: float, last_received: float, expires: int = 16) -> ConnectionStatus:
-    """
-    Get new status with last sent/received time
-
-    :param status:        current status
-    :param now:           timestamp
-    :param last_sent:     last time sending out data
-    :param last_received: last time received data
-    :param expires:       interval
-    :return:              new status
-    """
-    # pre-checks
-    if status == ConnectionStatus.Default:
-        # case: 'default'
-        if now < last_sent + expires:
-            # sent recently, change status to 'connecting'
-            return ConnectionStatus.Connecting
-    elif now > last_received + (expires << 4):  # 16 * 16 = 256 seconds
-        # any status except 'initialized'
-        # long long time no response, set status = 'error'
-        return ConnectionStatus.Error
-    # check with current status
-    if status == ConnectionStatus.Connecting:
-        # case: 'connecting'
-        if now < last_received + expires:
-            # received recently, change status to 'connected'
-            return ConnectionStatus.Connected
-        elif now > last_sent + expires:
-            # long time no sending, change status to 'not_connect'
-            return ConnectionStatus.Default
-    elif status == ConnectionStatus.Connected:
-        # case: 'connected'
-        if now > last_received + expires:
-            # long time no response, needs maintaining
-            if now < last_sent + expires:
-                # sent recently, change status to 'maintaining'
-                return ConnectionStatus.Maintaining
-            else:
-                # long time no sending, change status to 'maintain_expired'
-                return ConnectionStatus.Expired
-    elif status == ConnectionStatus.Expired:
-        # case: 'maintain_expired'
-        if now < last_received + expires:
-            # received recently, change status to 'connected'
-            return ConnectionStatus.Connected
-        elif now < last_sent + expires:
-            # sent recently, change status to 'maintaining'
-            return ConnectionStatus.Maintaining
-    elif status == ConnectionStatus.Maintaining:
-        # case: 'maintaining'
-        if now < last_received + expires:
-            # received recently, change status to 'connected'
-            return ConnectionStatus.Connected
-        elif now > last_sent + expires:
-            # long time no sending, change status to 'maintain_expired'
-            return ConnectionStatus.Expired
-    # return new status
-    return status

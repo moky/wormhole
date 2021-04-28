@@ -36,7 +36,7 @@ from typing import Optional
 
 from .pool import Pool
 from .mem import MemPool
-from .status import ConnectionStatus, get_status
+from .status import ConnectionStatus
 from .delegate import ConnectionDelegate
 
 
@@ -49,22 +49,16 @@ class Connection(threading.Thread):
         # 'address' and 'sock' should not be None both at same time
         self.__address = address
         self.__socket = sock
-        # connection status
-        if sock is None:
-            self.__status = ConnectionStatus.Default
-        elif getattr(sock, '_closed', False):
-            self.__status = ConnectionStatus.Error
-        else:
-            self.__status = ConnectionStatus.Connected
-        # connect delegate
+        self.__status = ConnectionStatus.Default
         self.__delegate: Optional[weakref.ReferenceType] = None
         self.__running = False
-        # initialize times to expired
-        now = time.time()
-        self.__last_sent_time = now - self.EXPIRES - 1
-        self.__last_received_time = now - self.EXPIRES - 1
+        self.__last_sent_time = 0
+        self.__last_received_time = 0
         # cache pool
         self.__pool = self._create_pool()
+        # FSM
+        self.__fsm_evaluations = {}
+        self.__fsm_init()
 
     @property
     def address(self) -> Optional[tuple]:
@@ -89,6 +83,12 @@ class Connection(threading.Thread):
                     print('[TCP] failed to connect: %s, %s' % (self.__address, error))
                     self.status = ConnectionStatus.Error
         return self.__socket
+
+    def __socket_closed(self) -> bool:
+        if self.__socket is None:
+            return True
+        else:
+            return getattr(self.__socket, '_closed', False)
 
     def __write(self, data: bytes) -> int:
         sock = self.socket
@@ -119,36 +119,27 @@ class Connection(threading.Thread):
         if self.__status != value:
             old = self.__status
             self.__status = value
+            if value == ConnectionStatus.Connected and old != ConnectionStatus.Maintaining:
+                # change status to 'connected', reset times to expired
+                now = time.time()
+                self.__last_sent_time = now - self.EXPIRES - 1
+                self.__last_received_time = now - self.EXPIRES - 1
             # callback
             delegate = self.delegate
             if delegate is not None:
-                # from .handler import ConnectionHandler
-                # assert isinstance(delegate, ConnectionHandler), 'connection delegate error: %s' % delegate
                 delegate.connection_changed(connection=self, old_status=old, new_status=value)
 
     def is_connected(self, now: float) -> bool:
-        self.status = self.get_status(now=now)
+        self.__tick(now=now)
         return ConnectionStatus.is_connected(status=self.status)
 
     def is_expired(self, now: float) -> bool:
-        self.status = self.get_status(now=now)
+        self.__tick(now=now)
         return ConnectionStatus.is_expired(status=self.status)
 
     def is_error(self, now: float) -> bool:
-        self.status = self.get_status(now=now)
+        self.__tick(now=now)
         return ConnectionStatus.is_error(status=self.status)
-
-    def get_status(self, now: float):
-        """
-        Get connection status
-
-        :param now: timestamp in seconds
-        :return: new status
-        """
-        return get_status(status=self.status, now=now,
-                          last_sent=self.__last_sent_time,
-                          last_received=self.__last_received_time,
-                          expires=self.EXPIRES)
 
     #
     #   Connection Delegate
@@ -243,6 +234,7 @@ class Connection(threading.Thread):
         self.__running = True
         while self.__running:
             try:
+                self.__tick(now=time.time())
                 self.handle()
             except Exception as error:
                 print('[TCP] failed to handle connection: %s' % error)
@@ -252,3 +244,78 @@ class Connection(threading.Thread):
         if self.__socket is not None:
             self.__socket.close()
             self.__socket = None
+
+    #
+    #   Finite State Machine
+    #
+
+    def __fsm_init(self):
+        self.__fsm_evaluations[ConnectionStatus.Default] = self.__tick_default
+        self.__fsm_evaluations[ConnectionStatus.Connecting] = self.__tick_connecting
+        self.__fsm_evaluations[ConnectionStatus.Connected] = self.__tick_connected
+        self.__fsm_evaluations[ConnectionStatus.Maintaining] = self.__tick_maintaining
+        self.__fsm_evaluations[ConnectionStatus.Expired] = self.__tick_expired
+        self.__fsm_evaluations[ConnectionStatus.Error] = self.__tick_error
+
+    # noinspection PyUnusedLocal
+    def __tick_default(self, now: float):
+        """ Connection not started yet """
+        if self.__running:
+            # connection started, change status to 'connecting'
+            self.status = ConnectionStatus.Connecting
+
+    # noinspection PyUnusedLocal
+    def __tick_connecting(self, now: float):
+        """ Connection started, not connected yet """
+        if not self.__running:
+            # connection stopped, change status to 'not_connect'
+            self.status = ConnectionStatus.Default
+        elif not self.__socket_closed():
+            # connection connected, change status to 'connected'
+            self.status = ConnectionStatus.Connected
+
+    def __tick_connected(self, now: float):
+        """ Normal status of connection """
+        if self.__socket_closed():
+            # connection lost, change status to 'error'
+            self.status = ConnectionStatus.Error
+        elif now > self.__last_received_time + self.EXPIRES:
+            # long time no response, change status to 'maintain_expired'
+            self.status = ConnectionStatus.Expired
+
+    def __tick_expired(self, now: float):
+        """ Long time no response, need maintaining """
+        if self.__socket_closed():
+            # connection lost, change status to 'error'
+            self.status = ConnectionStatus.Error
+        elif now < self.__last_sent_time + self.EXPIRES:
+            # sent recently, change status to 'maintaining'
+            self.status = ConnectionStatus.Maintaining
+
+    def __tick_maintaining(self, now: float):
+        """ Heartbeat sent, waiting response """
+        if self.__socket_closed():
+            # connection lost, change status to 'error'
+            self.status = ConnectionStatus.Error
+        elif now > self.__last_received_time + (self.EXPIRES << 4):
+            # long long time no response, change status to 'error'
+            self.status = ConnectionStatus.Error
+        elif now < self.__last_received_time + self.EXPIRES:
+            # received recently, change status to 'connected'
+            self.status = ConnectionStatus.Connected
+        elif now > self.__last_sent_time + self.EXPIRES:
+            # long time no sending, change status to 'maintain_expired'
+            self.status = ConnectionStatus.Expired
+
+    # noinspection PyUnusedLocal
+    def __tick_error(self, now: float):
+        """ Connection lost """
+        if not self.__running:
+            self.status = ConnectionStatus.Default
+        elif not self.__socket_closed():
+            self.status = ConnectionStatus.Connected
+
+    def __tick(self, now: float):
+        tick = self.__fsm_evaluations.get(self.status)
+        if tick is not None:
+            tick(now=now)
