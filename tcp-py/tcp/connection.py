@@ -70,12 +70,12 @@ class Connection(threading.Thread):
         if self.__socket is None:
             if self.__address is None:
                 return None
-            if self.__status != ConnectionStatus.Connecting:
-                return None
+            self.status = ConnectionStatus.Connecting
             try:
                 sock = socket.socket()
                 sock.connect(self.__address)
                 self.__socket = sock
+                self.status = ConnectionStatus.Connected
             except socket.error as error:
                 print('[TCP] failed to connect: %s, %s' % (self.__address, error))
                 self.status = ConnectionStatus.Error
@@ -88,9 +88,18 @@ class Connection(threading.Thread):
     def __write(self, data: bytes) -> int:
         sock = self.socket
         if sock is not None:
-            sock.sendall(data)
+            # sock.sendall(data)
+            sent = 0
+            rest = len(data)
+            while rest > 0:
+                cnt = sock.send(data)
+                if cnt > 0:
+                    sent += cnt
+                    rest -= cnt
+                    data = data[cnt:]
+            # done
             self.__last_sent_time = time.time()
-            return len(data)
+            return sent
         else:
             return -1
 
