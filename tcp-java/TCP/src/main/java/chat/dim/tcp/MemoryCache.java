@@ -49,15 +49,20 @@ public class MemoryCache implements CachePool {
 
     @Override
     public boolean isCacheFull() {
-        int length = 0;
+        boolean full;
         Lock readLock = packageLock.readLock();
         readLock.lock();
         try {
-            for (byte[] pack : packages) {
-                length += pack.length;
-            }
+            full = isFull();
         } finally {
             readLock.unlock();
+        }
+        return full;
+    }
+    private boolean isFull() {
+        int length = 0;
+        for (byte[] pack : packages) {
+            length += pack.length;
         }
         return length >= MAX_CACHE_LENGTH;
     }
@@ -69,7 +74,7 @@ public class MemoryCache implements CachePool {
         writeLock.lock();
         try {
             // 1. check memory cache status
-            if (isCacheFull()) {
+            if (isFull()) {
                 // drop the first package
                 ejected = packages.remove(0);
             }

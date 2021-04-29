@@ -34,57 +34,124 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.WeakReference;
+import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketAddress;
+import java.net.SocketException;
 import java.util.Date;
 
 public class Connection extends Thread {
 
     // remote address
-    public final SocketAddress address;
     public final String host;
     public final int port;
 
     // inner socket
-    Socket socket;
-    private boolean running = false;
+    private Socket socket;
+
+    private boolean running;
 
     // connection status
-    private ConnectionStatus status = ConnectionStatus.Default;
+    private ConnectionStatus status;
     private long lastSentTime;
     private long lastReceivedTime;
 
-    private WeakReference<ConnectionHandler> delegateRef = null;
+    private WeakReference<ConnectionDelegate> delegateRef;
 
-    public static long EXPIRES = 28 * 1000;  // milliseconds
+    public static long EXPIRES = 16 * 1000;  // milliseconds
 
     private final CachePool cachePool;
 
-    Connection(Socket connectedSocket,
-               SocketAddress remoteAddress,
-               String remoteHost, int remotePort) {
+    public Connection(Socket connectedSocket,
+                      String remoteHost, int remotePort) {
         super();
         socket = connectedSocket;
-        address = remoteAddress;
         host = remoteHost;
         port = remotePort;
-        // initialize times to expired
-        long now = (new Date()).getTime();
-        lastSentTime = now - EXPIRES - 1;
-        lastReceivedTime = now - EXPIRES - 1;
+        status = ConnectionStatus.Default;
+        delegateRef = null;
+        running = false;
+        lastSentTime = 0;
+        lastReceivedTime = 0;
         // cache pool
-        cachePool = new MemoryCache();
+        cachePool = createCachePool();
     }
 
-    public void setDelegate(ConnectionHandler delegate) {
-        delegateRef = new WeakReference<>(delegate);
+    public Connection(Socket clientSocket) {
+        this(clientSocket, null, 0);
     }
 
-    private ConnectionHandler getDelegate() {
-        if (delegateRef == null) {
+    public Connection(String serverHost, int serverPort) {
+        this(null, serverHost, serverPort);
+    }
+    public Connection(InetSocketAddress serverAddress) {
+        this(null, serverAddress.getHostString(), serverAddress.getPort());
+    }
+
+    protected CachePool createCachePool() {
+        return new MemoryCache();
+    }
+
+    /**
+     *  Get socket
+     *
+     * @return opened socket
+     */
+    public Socket getSocket() {
+        if (socket == null) {
+            if (host == null || port == 0) {
+                return null;
+            }
+            setStatus(ConnectionStatus.Connecting);
+            try {
+                socket = new Socket(host, port);
+                setStatus(ConnectionStatus.Connected);
+            } catch (IOException e) {
+                e.printStackTrace();
+                setStatus(ConnectionStatus.Error);
+                return null;
+            }
+        }
+        if (socket.isClosed()) {
             return null;
         }
-        return delegateRef.get();
+        return socket;
+    }
+
+    private int write(byte[] data) throws IOException {
+        Socket sock = getSocket();
+        if (sock == null) {
+            return -1;
+        }
+        OutputStream outputStream = sock.getOutputStream();
+        outputStream.write(data);
+        outputStream.flush();
+        lastSentTime = (new Date()).getTime();
+        return data.length;
+    }
+
+    private byte[] read() throws IOException {
+        Socket sock = getSocket();
+        if (sock == null) {
+            return null;
+        }
+        InputStream inputStream = sock.getInputStream();
+        int available = inputStream.available();
+        if (available <= 0) {
+            return null;
+        }
+        byte[] buffer = new byte[available];
+        int read = inputStream.read(buffer);
+        if (read <= 0) {
+            throw new SocketException("failed to read buffer: " + read + ", available=" + available);
+        }
+        if (read < available) {
+            // read partially
+            byte[] part = new byte[read];
+            System.arraycopy(buffer, 0, part, 0, read);
+            buffer = part;
+        }
+        lastReceivedTime = (new Date()).getTime();
+        return buffer;
     }
 
     //
@@ -97,150 +164,68 @@ public class Connection extends Thread {
         }
         ConnectionStatus oldStatus = status;
         status = newStatus;
+        if (newStatus.equals(ConnectionStatus.Connected) && !oldStatus.equals(ConnectionStatus.Maintaining)) {
+            // change status to 'connected', reset times to expired
+            long now = (new Date()).getTime();
+            lastSentTime = now - EXPIRES - 1;
+            lastReceivedTime = now - EXPIRES - 1;
+        }
         // callback
-        ConnectionHandler delegate = getDelegate();
+        ConnectionDelegate delegate = getDelegate();
         if (delegate != null) {
             delegate.onConnectionStatusChanged(this, oldStatus, newStatus);
         }
     }
 
-    public boolean isConnected(long now) {
-        return getStatus(now).isConnected();
-    }
-
-    public boolean isExpired(long now) {
-        return getStatus(now).isExpired();
-    }
-
-    public boolean isError(long now) {
-        return getStatus(now).isError();
-    }
-
-    /**
-     *  Get connection status
-     *
-     * @param now - timestamp in milliseconds
-     * @return new status
-     */
-    public ConnectionStatus getStatus(long now) {
-        // pre-checks
-        if (now < lastReceivedTime + EXPIRES) {
-            // received response recently
-            if (now < lastSentTime + EXPIRES) {
-                // sent recently, set status = 'connected'
-                setStatus(ConnectionStatus.Connected);
-            } else {
-                // long time no sending, set status = 'maintain_expired'
-                setStatus(ConnectionStatus.Expired);
-            }
-            return status;
-        }
-        if (!status.equals(ConnectionStatus.Default)) {
-            // any status except 'initialized'
-            if (now > lastReceivedTime + (EXPIRES << 2)) {
-                // long long time no response, set status = 'error'
-                setStatus(ConnectionStatus.Error);
-                return status;
-            }
-        }
-        // check with current status
-        switch (status) {
-            case Default: {
-                if (now < lastSentTime + EXPIRES) {
-                    // sent recently, change status to 'connecting'
-                    setStatus(ConnectionStatus.Connecting);
-                }
-                break;
-            }
-
-            case Connecting: {
-                if (now > lastSentTime + EXPIRES) {
-                    // long time no sending, change status to 'not_connect'
-                    setStatus(ConnectionStatus.Default);
-                }
-                break;
-            }
-
-            case Connected: {
-                if (now > lastReceivedTime + EXPIRES) {
-                    // long time no response, needs maintaining
-                    if (now < lastSentTime + EXPIRES) {
-                        // sent recently, change status to 'maintaining'
-                        setStatus(ConnectionStatus.Maintaining);
-                    } else {
-                        // long time no sending, change status to 'maintain_expired'
-                        setStatus(ConnectionStatus.Expired);
-                    }
-                }
-                break;
-            }
-
-            case Expired: {
-                if (now < lastSentTime + EXPIRES) {
-                    // sent recently, change status to 'maintaining'
-                    setStatus(ConnectionStatus.Maintaining);
-                }
-                break;
-            }
-
-            case Maintaining: {
-                if (now > lastSentTime + EXPIRES) {
-                    // long time no sending, change status to 'maintain_expired'
-                    setStatus(ConnectionStatus.Expired);
-                }
-                break;
-            }
-
-            default: {
-                break;
-            }
-        }
+    public ConnectionStatus getStatus() {
         return status;
     }
-
-    /**
-     *  Update last sent time
-     *
-     * @param now - milliseconds
-     */
-    private void updateSentTime(long now) {
-        lastSentTime = now;
+    public ConnectionStatus getStatus(long now) {
+        fsmTick(now);
+        return status;
+    }
+    public ConnectionStatus getStatus(Date now) {
+        return getStatus(now.getTime());
     }
 
-    /**
-     *  Update last received time
-     *
-     * @param now - milliseconds
-     */
-    private void updateReceivedTime(long now) {
-        lastReceivedTime = now;
+    //
+    //  Connection Delegate
+    //
+
+    public void setDelegate(ConnectionDelegate delegate) {
+        if (delegate == null) {
+            delegateRef = null;
+        } else {
+            delegateRef = new WeakReference<>(delegate);
+        }
     }
 
-    protected byte[] read() throws IOException {
-        InputStream inputStream = socket.getInputStream();
-        int length = inputStream.available();
-        if (length <= 0) {
+    public ConnectionDelegate getDelegate() {
+        if (delegateRef == null) {
             return null;
+        } else {
+            return delegateRef.get();
         }
-        byte[] buffer = new byte[length];
-        int count = inputStream.read(buffer);
-        long now = (new Date()).getTime();
-        updateReceivedTime(now);
-        if (count == length) {
-            return buffer;
-        }
-        assert count < length : "read error: " + count + ", " + length;
-        byte[] available = new byte[count];
-        System.arraycopy(buffer, 0, available, 0, count);
-        return available;
     }
 
-    protected int write(byte[] data) throws IOException {
-        OutputStream outputStream = socket.getOutputStream();
-        outputStream.write(data);
-        long now = (new Date()).getTime();
-        updateSentTime(now);
-        return data.length;
+    /**
+     *  Get received data from cache, but not remove
+     *
+     * @return received data
+     */
+    public byte[] received() {
+        return cachePool.received();
+    }
+
+    /**
+     *  Get received data from cache, and remove it
+     *  (call received() to check data first)
+     *
+     * @param length - how many bytes to receive
+     * @return received data
+     */
+    public byte[] receive(int length) {
+        return cachePool.receive(length);
     }
 
     /**
@@ -254,74 +239,164 @@ public class Connection extends Thread {
             return write(data);
         } catch (IOException e) {
             e.printStackTrace();
+            socket = null;
+            setStatus(ConnectionStatus.Error);
             return -1;
         }
     }
 
-    /**
-     *  Get received data from buffer, but not remove from the cache
-     *
-     * @return received data
-     */
-    public byte[] received() {
-        return cachePool.received();
-    }
-
-    /**
-     *  Get received data from buffer, and remove it from the cache
-     *  (remember call received() to check data first)
-     *
-     * @param length - how many bytes to receive
-     * @return received data
-     */
-    public byte[] receive(int length) {
-        return cachePool.receive(length);
-    }
-
-    void _sleep(long millis) {
+    private byte[] receive() {
         try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
+            return read();
+        } catch (IOException e) {
             e.printStackTrace();
+            socket = null;
+            setStatus(ConnectionStatus.Error);
+            return null;
+        }
+    }
+
+    public void handle() {
+        // 1. try to read bytes
+        byte[] data = receive();
+        if (data != null) {
+            // 2. cache it
+            byte[] ejected = cachePool.cache(data);
+            // 3. callback
+            ConnectionDelegate delegate = getDelegate();
+            if (delegate != null) {
+                if (ejected != null) {
+                    delegate.onConnectionOverflowed(this, ejected);
+                }
+                delegate.onConnectionReceivedData(this, data);
+            }
         }
     }
 
     @Override
-    public void start() {
+    public void run() {
         running = true;
-        super.start();
+        while (running) {
+            try {
+                fsmTick(new Date());
+                handle();
+            } catch (Exception error) {
+                error.printStackTrace();
+            }
+        }
     }
 
     public void close() {
         running = false;
-    }
-
-    @Override
-    public void run() {
-        byte[] data;
-        ConnectionHandler delegate;
-        while (running) {
-            // 1. try to read bytes
+        // shutdown socket
+        if (socket != null) {
             try {
-                data = read();
+                socket.close();
             } catch (IOException e) {
                 e.printStackTrace();
+            }
+            socket = null;
+        }
+        setStatus(ConnectionStatus.Default);
+    }
+
+    //
+    //  Finite State Machine
+    //
+
+    private void fsmTick(Date now) {
+        fsmTick(now.getTime());
+    }
+    private void fsmTick(long now) {
+        switch (status) {
+            case Connected: {
+                tickConnected(now);
                 break;
             }
-            if (data == null) {
-                // received nothing, have a rest, ^_^
-                _sleep(100);
-                continue;
-            }
-            data = cachePool.cache(data);
-            delegate = getDelegate();
-            if (delegate != null) {
-                if (data == null) {
-                    delegate.onConnectionReceivedData(this);
-                } else {
-                    delegate.onConnectionOverflowed(this, data);
-                }
-            }
+            case Maintaining:
+                tickMaintaining(now);
+                break;
+            case Expired:
+                tickExpired(now);
+                break;
+            case Connecting:
+                tickConnecting();
+                break;
+            case Error:
+                tickError();
+                break;
+            case Default:
+                tickDefault();
+                break;
+        }
+    }
+
+    // Connection not started yet
+    private void tickDefault() {
+        if (running) {
+            // connection started, change status to 'connecting'
+            setStatus(ConnectionStatus.Connecting);
+        }
+    }
+
+    // Connection started, not connected yet
+    private void tickConnecting() {
+        if (!running) {
+            // connection stopped, change status to 'not_connect'
+            setStatus(ConnectionStatus.Default);
+        } else if (getSocket() != null) {
+            // connection connected, change status to 'connected'
+            setStatus(ConnectionStatus.Connected);
+        }
+    }
+
+    // Normal status of connection
+    private void tickConnected(long now) {
+        if (getSocket() == null) {
+            // connection lost, change status to 'error'
+            setStatus(ConnectionStatus.Error);
+        } else if (now > lastReceivedTime + EXPIRES) {
+            // long time no response, change status to 'maintain_expired'
+            setStatus(ConnectionStatus.Expired);
+        }
+    }
+
+    // Long time no response, need maintaining
+    private void tickExpired(long now) {
+        if (getSocket() == null) {
+            // connection lost, change status to 'error'
+            setStatus(ConnectionStatus.Error);
+        } else if (now < lastSentTime + EXPIRES) {
+            // sent recently, change status to 'maintaining'
+            setStatus(ConnectionStatus.Maintaining);
+        }
+    }
+
+    // Heartbeat sent, waiting response
+    private void tickMaintaining(long now) {
+        if (getSocket() == null) {
+            // connection lost, change status to 'error'
+            setStatus(ConnectionStatus.Error);
+        } else if (now > lastReceivedTime + (EXPIRES << 4)) {
+            // long long time no response, change status to 'error
+            setStatus(ConnectionStatus.Error);
+        } else if (now < lastReceivedTime + EXPIRES) {
+            // received recently, change status to 'connected'
+            setStatus(ConnectionStatus.Connected);
+        } else if (now > lastSentTime + EXPIRES) {
+            // long time no sending, change status to 'maintain_expired'
+            setStatus(ConnectionStatus.Expired);
+        }
+    }
+
+    // Connection lost
+    private void tickError() {
+        if (!running) {
+            // connection stopped, change status to 'not_connect'
+            setStatus(ConnectionStatus.Default);
+        } else if (getSocket() != null) {
+            // connection reconnected, change status to 'connected'
+            setStatus(ConnectionStatus.Connected);
         }
     }
 }

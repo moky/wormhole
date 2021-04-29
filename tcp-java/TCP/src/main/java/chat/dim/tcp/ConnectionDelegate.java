@@ -30,7 +30,7 @@
  */
 package chat.dim.tcp;
 
-public interface ConnectionHandler {
+public interface ConnectionDelegate {
 
     /**
      *  Call when connection status changed
@@ -45,8 +45,9 @@ public interface ConnectionHandler {
      *  Call when received data from a connection
      *
      * @param connection - current connection
+     * @param data - received data
      */
-    void onConnectionReceivedData(Connection connection);
+    void onConnectionReceivedData(Connection connection, byte[] data);
 
     /**
      *  Call when connection's cache is full

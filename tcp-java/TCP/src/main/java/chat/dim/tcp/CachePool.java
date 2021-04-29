@@ -32,6 +32,10 @@ package chat.dim.tcp;
 
 import java.util.List;
 
+/**
+ *  Memory cache for received data
+ *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
 public interface CachePool {
 
     /**

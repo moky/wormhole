@@ -96,28 +96,4 @@ public enum ConnectionStatus {
     ConnectionStatus(int value) {
         this.value = value;
     }
-
-    public boolean isConnected() {
-        return isConnected(value);
-    }
-
-    public boolean isExpired() {
-        return isExpired(value);
-    }
-
-    public boolean isError() {
-        return isError(value);
-    }
-
-    public static boolean isConnected(int status) {
-        return (status & 0x30) != 0;  // received something not long ago
-    }
-
-    public static boolean isExpired(int status) {
-        return (status & 0x01) == 0;  // sent nothing in a period
-    }
-
-    public static boolean isError(int status) {
-        return status == Error.value;  // sent for a long time, but received nothing
-    }
 }
