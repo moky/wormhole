@@ -30,30 +30,39 @@
  */
 package chat.dim.tcp;
 
-public interface ConnectionDelegate {
+import java.util.List;
 
-    /**
-     *  Call when connection status changed
-     *
-     * @param connection - current connection
-     * @param oldStatus - status before
-     * @param newStatus - status after
-     */
-    void onConnectionStatusChanged(Connection connection, ConnectionStatus oldStatus, ConnectionStatus newStatus);
+final class BytesArray {
 
-    /**
-     *  Call when received data from a connection
-     *
-     * @param connection - current connection
-     * @param data - received data
-     */
-    void onConnectionReceivedData(Connection connection, byte[] data);
+    static byte[] slice(byte[] source, int start, int end) {
+        int length = end - start;
+        byte[] data = new byte[length];
+        System.arraycopy(source, start, data, 0, length);
+        return data;
+    }
 
-    /**
-     *  Call when connection's cache is full
-     *
-     * @param connection - current connection
-     * @param ejected - dropped data
-     */
-    void onConnectionOverflowed(Connection connection, byte[] ejected);
+    static byte[] concat(List<byte[]> array) {
+        int count = array.size();
+        int index;
+        byte[] item;
+        // 1. get buffer length
+        int length = 0;
+        for (index = 0; index < count; ++index) {
+            item = array.get(index);
+            length += item.length;
+        }
+        if (length == 0) {
+            return null;
+        }
+        // 2. create buffer to copy data
+        byte[] data = new byte[length];
+        int offset = 0;
+        // 3. get all data
+        for (index = 0; index < count; ++index) {
+            item = array.get(index);
+            System.arraycopy(item, 0, data, offset, item.length);
+            offset += item.length;
+        }
+        return data;
+    }
 }

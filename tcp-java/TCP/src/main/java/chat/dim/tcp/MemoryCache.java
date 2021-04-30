@@ -47,18 +47,6 @@ public class MemoryCache implements CachePool {
     private final List<byte[]> packages = new ArrayList<>();
     private final ReadWriteLock packageLock = new ReentrantReadWriteLock();
 
-    @Override
-    public boolean isCacheFull() {
-        boolean full;
-        Lock readLock = packageLock.readLock();
-        readLock.lock();
-        try {
-            full = isFull();
-        } finally {
-            readLock.unlock();
-        }
-        return full;
-    }
     private boolean isFull() {
         int length = 0;
         for (byte[] pack : packages) {
@@ -98,7 +86,7 @@ public class MemoryCache implements CachePool {
             } else if (count == 1) {
                 data = packages.get(0);
             } else {
-                data = CachePool.concat(packages);
+                data = BytesArray.concat(packages);
                 packages.clear();
                 packages.add(data);
             }
@@ -119,8 +107,9 @@ public class MemoryCache implements CachePool {
             data = packages.remove(0);
             if (data.length > length) {
                 // push the remaining data back to the queue head
-                packages.add(0, CachePool.slice(data, length));
-                data = CachePool.slice(data, 0, length);
+                packages.add(0, BytesArray.slice(data, length, data.length));
+                // cut the remaining data
+                data = BytesArray.slice(data, 0, length);
             }
         } finally {
             writeLock.unlock();
