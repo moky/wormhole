@@ -36,7 +36,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class MemoryCache implements CachePool {
+public final class MemoryCache implements CachePool {
 
     /*  Max length of memory cache
      *  ~~~~~~~~~~~~~~~~~~~~~~~~~~

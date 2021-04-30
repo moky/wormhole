@@ -51,8 +51,6 @@ public class BaseConnection implements Connection, Runnable {
     private long lastSentTime;
     private long lastReceivedTime;
 
-    public static long EXPIRES = 16 * 1000;  // 16 seconds
-
     public BaseConnection(Socket connectedSocket) {
         super();
         cachePool = createCachePool();
@@ -88,6 +86,9 @@ public class BaseConnection implements Connection, Runnable {
     //  Socket
     //
 
+    /**
+     *  Get connected socket
+     */
     protected Socket getSocket() {
         if (socket != null && socket.isConnected()) {
             return socket;
@@ -138,7 +139,7 @@ public class BaseConnection implements Connection, Runnable {
         }
     }
 
-    protected byte[] receive() {
+    byte[] receive() {
         Socket sock = getSocket();
         if (sock != null) {
             try {
@@ -160,9 +161,9 @@ public class BaseConnection implements Connection, Runnable {
                 return write(data);
             } catch (IOException e) {
                 e.printStackTrace();
+                close();
             }
         }
-        socket = null;
         setStatus(Status.Error);
         return -1;
     }
@@ -241,8 +242,8 @@ public class BaseConnection implements Connection, Runnable {
      *  Cleanup after handling
      */
     public void finish() {
-        // shutdown socket
         if (socket != null) {
+            // shutdown socket
             close();
         }
         setStatus(Status.Default);
@@ -253,10 +254,20 @@ public class BaseConnection implements Connection, Runnable {
      *  (it will call 'process()' circularly)
      */
     public void handle() {
+        boolean working;
         while (isRunning()) {
-            Status s = getStatus();
-            if (s.equals(Status.Connected) || s.equals(Status.Maintaining) || s.equals(Status.Expired)) {
-                process();
+            switch (getStatus()) {
+                case Connected:
+                case Maintaining:
+                case Expired:
+                    working = process();
+                    break;
+                default:
+                    working = false;
+                    break;
+            }
+            if (!working) {
+                idle();
             }
         }
     }
@@ -265,23 +276,32 @@ public class BaseConnection implements Connection, Runnable {
      *  Try to receive one data package,
      *  which will be cached into a memory pool
      */
-    public void process() {
+    public boolean process() {
         // 1. try to read bytes
         byte[] data = receive();
-        if (data == null) {
-            return;
+        if (data == null || data.length == 0) {
+            return false;
         }
         // 2. cache it
         byte[] ejected = cachePool.cache(data);
         Delegate delegate = getDelegate();
         if (delegate == null) {
-            return;
+            return true;
         }
         // 3. callback
         if (ejected != null) {
             delegate.onConnectionOverflowed(this, ejected);
         }
         delegate.onConnectionReceivedData(this, data);
+        return true;
+    }
+
+    protected void idle() {
+        try {
+            Thread.sleep(128);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     //

@@ -32,8 +32,12 @@ package chat.dim.tcp;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ActiveConnection extends BaseConnection {
+
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     // remote address
     public final String host;
@@ -68,19 +72,32 @@ public class ActiveConnection extends BaseConnection {
             return false;
         }
     }
+    private boolean reconnect() {
+        boolean redo;
+        Lock writeLock = lock.writeLock();
+        writeLock.lock();
+        try {
+            if (socket == null) {
+                redo = connect();
+            } else {
+                redo = false;
+            }
+        } finally {
+            writeLock.unlock();
+        }
+        return redo;
+    }
 
     @Override
     protected Socket getSocket() {
-        if (socket == null && !connect()) {
-            return null;
-        }
+        reconnect();
         return super.getSocket();
     }
 
     @Override
-    protected byte[] receive() {
+    byte[] receive() {
         byte[] data = super.receive();
-        if (data == null && socket == null && connect()) {
+        if (data == null && reconnect()) {
             // try again
             data = super.receive();
         }
@@ -90,7 +107,7 @@ public class ActiveConnection extends BaseConnection {
     @Override
     public int send(byte[] data) {
         int res = super.send(data);
-        if (res == -1 && socket == null && connect()) {
+        if (res == -1 && reconnect()) {
             // try again
             res = super.send(data);
         }
