@@ -87,4 +87,4 @@ class ActiveConnection(BaseConnection):
 
     @property
     def running(self) -> bool:
-        return self.__running
+        return self._running

@@ -47,8 +47,8 @@ class BaseConnection(Connection):
         self.__pool = self._create_pool()
         self.__delegate: Optional[weakref.ReferenceType] = None
         self._sock = sock
+        self._running = False
         self.__status = ConnectionStatus.Default
-        self.__running = False
         self.__last_sent_time = 0
         self.__last_received_time = 0
         # FSM
@@ -183,7 +183,7 @@ class BaseConnection(Connection):
 
     @property
     def running(self) -> bool:
-        return self.__running and self._sock is not None
+        return self._running and self._sock is not None
 
     #
     #   Running
@@ -197,11 +197,11 @@ class BaseConnection(Connection):
             self.finish()
 
     def stop(self):
-        self.__running = False
+        self._running = False
 
     def setup(self):
         """ Prepare before handling """
-        self.__running = True
+        self._running = True
         self.status = ConnectionStatus.Connecting
 
     def finish(self):
@@ -267,14 +267,14 @@ class BaseConnection(Connection):
     # noinspection PyUnusedLocal
     def __tick_default(self, now: float):
         """ Connection not started yet """
-        if self.__running:
+        if self._running:
             # connection started, change status to 'connecting'
             self.status = ConnectionStatus.Connecting
 
     # noinspection PyUnusedLocal
     def __tick_connecting(self, now: float):
         """ Connection started, not connected yet """
-        if not self.__running:
+        if not self._running:
             # connection stopped, change status to 'not_connect'
             self.status = ConnectionStatus.Default
         elif self.socket is not None:
@@ -317,7 +317,7 @@ class BaseConnection(Connection):
     # noinspection PyUnusedLocal
     def __tick_error(self, now: float):
         """ Connection lost """
-        if not self.__running:
+        if not self._running:
             # connection stopped, change status to 'not_connect'
             self.status = ConnectionStatus.Default
         elif self.socket is not None:
