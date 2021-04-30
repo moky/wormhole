@@ -30,9 +30,13 @@
 
 from .pool import Pool
 from .mem import MemPool
+
 from .status import ConnectionStatus
 from .delegate import ConnectionDelegate
 from .connection import Connection
+
+from .base import BaseConnection
+from .active import ActiveConnection
 
 name = "TCP"
 
@@ -52,4 +56,7 @@ __all__ = [
     'ConnectionStatus',
     'ConnectionDelegate',
     'Connection',
+
+    'BaseConnection',
+    'ActiveConnection',
 ]

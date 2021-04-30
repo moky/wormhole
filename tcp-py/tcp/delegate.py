@@ -50,6 +50,7 @@ class ConnectionDelegate(ABC):
     def connection_received(self, connection, data: bytes):
         """
         Call when received data from a connection
+        (if data processed, must call 'connection.receive(length=len(data))' to remove it from cache pool)
 
         :param connection: current connection
         :param data:       received data
