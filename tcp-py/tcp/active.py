@@ -29,6 +29,7 @@
 # ==============================================================================
 
 import socket
+import threading
 from typing import Optional
 
 from .status import ConnectionStatus
@@ -41,6 +42,7 @@ class ActiveConnection(BaseConnection):
         super().__init__(sock=sock)
         assert isinstance(address, tuple), 'remote address error: %s' % str(address)
         self.__address = address
+        self.__lock = threading.RLock()
 
     def __connect(self) -> bool:
         self.status = ConnectionStatus.Connecting
@@ -55,26 +57,30 @@ class ActiveConnection(BaseConnection):
             self.status = ConnectionStatus.Error
             return False
 
+    def __reconnect(self) -> bool:
+        with self.__lock:
+            if self._sock is None:
+                return self.__connect()
+
     @property
     def socket(self) -> Optional[socket.socket]:
         """ Get connected socket """
-        if self._sock is None and not self.__connect():
-            return None
-        # super
+        self.__reconnect()
+        # call super()
         sock = self._sock
         if sock is not None and not getattr(sock, '_closed', False):
             return sock
 
     def _receive(self) -> Optional[bytes]:
         data = super()._receive()
-        if data is None and self._sock is None and self.__connect():
+        if data is None and self.__reconnect():
             # try again
             data = super()._receive()
         return data
 
     def send(self, data: bytes) -> int:
         res = super().send(data=data)
-        if res < 0 and self._sock is None and self.__connect():
+        if res < 0 and self.__reconnect():
             # try again
             res = super().send(data=data)
         return res
