@@ -60,6 +60,10 @@ class Connection(threading.Thread):
         self.__fsm_evaluations = {}
         self.__fsm_init()
 
+    # noinspection PyMethodMayBeStatic
+    def _create_pool(self) -> Pool:
+        return MemPool()
+
     @property
     def address(self) -> Optional[tuple]:
         """ (IP, Port) """
@@ -81,9 +85,8 @@ class Connection(threading.Thread):
                 self.status = ConnectionStatus.Error
                 return None
         # check closed
-        sock = self.__socket
-        if sock is not None and not getattr(self.__socket, '_closed', False):
-            return sock
+        if not getattr(self.__socket, '_closed', False):
+            return self.__socket
 
     def __write(self, data: bytes) -> int:
         sock = self.socket
@@ -134,7 +137,7 @@ class Connection(threading.Thread):
                 delegate.connection_changed(connection=self, old_status=old, new_status=value)
 
     def get_status(self, now: float) -> ConnectionStatus:
-        self.__tick(now=now)
+        self.__fsm_tick(now=now)
         return self.__status
 
     #
@@ -152,10 +155,6 @@ class Connection(threading.Thread):
             self.__delegate = None
         else:
             self.__delegate = weakref.ref(value)
-
-    # noinspection PyMethodMayBeStatic
-    def _create_pool(self) -> Pool:
-        return MemPool()
 
     def received(self) -> Optional[bytes]:
         """
@@ -202,18 +201,23 @@ class Connection(threading.Thread):
         # 1. try to read bytes
         data = self.__receive()
         if data is not None:
+            # 2. cache it
             ejected = self.__pool.cache(data=data)
+            # 3. callback
             delegate = self.delegate
             if delegate is not None:
-                delegate.connection_received(connection=self, data=data)
                 if ejected is not None:
                     delegate.connection_overflowed(connection=self, ejected=ejected)
+                delegate.connection_received(connection=self, data=data)
 
     def run(self):
         self.__running = True
         while self.__running:
+            if self.__socket is None and self.__address is None:
+                # connection lost, and no address to reconnect
+                break
             try:
-                self.__tick(now=time.time())
+                self.__fsm_tick(now=time.time())
                 self.handle()
             except Exception as error:
                 print('[TCP] failed to handle connection: %s' % error)
@@ -239,6 +243,11 @@ class Connection(threading.Thread):
         self.__fsm_evaluations[ConnectionStatus.Maintaining] = self.__tick_maintaining
         self.__fsm_evaluations[ConnectionStatus.Expired] = self.__tick_expired
         self.__fsm_evaluations[ConnectionStatus.Error] = self.__tick_error
+
+    def __fsm_tick(self, now: float):
+        tick = self.__fsm_evaluations.get(self.__status)
+        if tick is not None:
+            tick(now=now)
 
     # noinspection PyUnusedLocal
     def __tick_default(self, now: float):
@@ -299,8 +308,3 @@ class Connection(threading.Thread):
         elif self.socket is not None:
             # connection reconnected, change status to 'connected'
             self.status = ConnectionStatus.Connected
-
-    def __tick(self, now: float):
-        tick = self.__fsm_evaluations.get(self.__status)
-        if tick is not None:
-            tick(now=now)
