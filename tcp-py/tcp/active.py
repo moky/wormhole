@@ -67,9 +67,8 @@ class ActiveConnection(BaseConnection):
         """ Get connected socket """
         self.__reconnect()
         # call super()
-        sock = self._sock
-        if sock is not None and not getattr(sock, '_closed', False):
-            return sock
+        if self._is_alive():
+            return self._sock
 
     def _receive(self) -> Optional[bytes]:
         data = super()._receive()

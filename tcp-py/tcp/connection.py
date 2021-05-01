@@ -61,7 +61,7 @@ class Connection:
     def receive(self, length: int) -> Optional[bytes]:
         """
         Get received data from cache, and remove it
-        (call received to check data first)
+        (call 'received()' to check data first)
 
         :param length: how many bytes to receive
         :return: received data

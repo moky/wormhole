@@ -78,9 +78,15 @@ class BaseConnection(Connection):
     @property
     def socket(self) -> Optional[socket.socket]:
         """ Get connected socket """
+        if self._is_alive():
+            return self._sock
+
+    def _is_alive(self) -> bool:
         sock = self._sock
-        if sock is not None and not getattr(sock, '_closed', False):
-            return sock
+        if sock is None or getattr(sock, '_closed', False):
+            return False
+        else:
+            return True
 
     def __write(self, data: bytes) -> int:
         # sock.sendall(data)
@@ -125,13 +131,8 @@ class BaseConnection(Connection):
                 self.__close()
         self.status = ConnectionStatus.Error
 
+    # Override
     def send(self, data: bytes) -> int:
-        """
-        Send data package
-
-        :param data: package
-        :return: -1 on error
-        """
         sock = self.socket
         if sock is not None:
             try:
@@ -142,22 +143,12 @@ class BaseConnection(Connection):
         self.status = ConnectionStatus.Error
         return -1
 
+    # Override
     def received(self) -> Optional[bytes]:
-        """
-        Get received data from cache, but not remove
-
-        :return: received data
-        """
         return self.__pool.received()
 
+    # Override
     def receive(self, length: int) -> Optional[bytes]:
-        """
-        Get received data from cache, and remove it
-        (call received to check data first)
-
-        :param length: how many bytes to receive
-        :return: received data
-        """
         return self.__pool.receive(length=length)
 
     #
@@ -186,7 +177,7 @@ class BaseConnection(Connection):
 
     @property
     def running(self) -> bool:
-        return self._running and self._sock is not None
+        return self._running and self._is_alive()
 
     #
     #   Running

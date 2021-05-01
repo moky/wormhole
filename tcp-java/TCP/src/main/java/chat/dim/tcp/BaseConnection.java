@@ -90,10 +90,22 @@ public class BaseConnection implements Connection, Runnable {
      *  Get connected socket
      */
     protected Socket getSocket() {
-        if (socket != null && socket.isConnected()) {
+        if (isActive()) {
             return socket;
         } else {
             return null;
+        }
+    }
+
+    private boolean isActive() {
+        if (socket == null) {
+            return false;
+        } else if (socket.isClosed()) {
+            return false;
+        } else if (socket.isConnected()) {
+            return true;
+        } else {
+            return socket.isBound();
         }
     }
 
@@ -209,7 +221,7 @@ public class BaseConnection implements Connection, Runnable {
     }
 
     public boolean isRunning() {
-        return running && socket != null;
+        return running && isActive();
     }
 
     //

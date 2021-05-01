@@ -54,11 +54,6 @@ class MemPool(Pool):
             length += len(pack)
         return length >= self.MAX_CACHE_LENGTH
 
-    @property
-    def is_full(self) -> bool:
-        with self.__packages_lock:
-            return self.__is_full()
-
     def cache(self, data: bytes) -> Optional[bytes]:
         ejected = None
         with self.__packages_lock:

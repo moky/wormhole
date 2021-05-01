@@ -39,15 +39,6 @@ class Pool(ABC):
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     """
 
-    @property
-    def is_full(self) -> bool:
-        """
-        Check whether cache is full
-
-        :return: true on full
-        """
-        return False
-
     @abstractmethod
     def cache(self, data: bytes) -> Optional[bytes]:
         """

@@ -31,12 +31,13 @@
 from abc import ABC, abstractmethod
 
 from .status import ConnectionStatus
+from .connection import Connection
 
 
 class ConnectionDelegate(ABC):
 
     # @abstractmethod
-    def connection_changed(self, connection, old_status: ConnectionStatus, new_status: ConnectionStatus):
+    def connection_changed(self, connection: Connection, old_status: ConnectionStatus, new_status: ConnectionStatus):
         """
         Call when connection status changed
 
@@ -47,7 +48,7 @@ class ConnectionDelegate(ABC):
         pass
 
     @abstractmethod
-    def connection_received(self, connection, data: bytes):
+    def connection_received(self, connection: Connection, data: bytes):
         """
         Call when received data from a connection
         (if data processed, must call 'connection.receive(length=len(data))' to remove it from cache pool)
@@ -58,7 +59,7 @@ class ConnectionDelegate(ABC):
         pass
 
     # @abstractmethod
-    def connection_overflowed(self, connection, ejected: bytes):
+    def connection_overflowed(self, connection: Connection, ejected: bytes):
         """
         Call when connection's cache is full
 
