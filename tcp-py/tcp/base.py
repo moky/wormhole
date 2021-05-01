@@ -88,7 +88,7 @@ class BaseConnection(Connection):
         assert sock is not None, 'cannot write data when socket is closed: %s' % sock
         sent = 0
         rest = len(data)
-        while rest > 0:
+        while rest > 0:  # and not getattr(sock, '_closed', False):
             cnt = sock.send(data)
             if cnt > 0:
                 sent += cnt
@@ -102,13 +102,16 @@ class BaseConnection(Connection):
         sock = self._sock
         assert sock is not None, 'cannot read data when socket is closed: %s' % sock
         data = sock.recv(512)
+        if data is None or len(data) == 0:
+            if sock.gettimeout() is None:
+                raise socket.error('remote peer reset socket')
         self.__last_received_time = time.time()
         return data
 
     def __close(self):
         sock = self._sock
         if isinstance(sock, socket.socket) and not getattr(sock, '_closed', False):
-            sock.shutdown(socket.SHUT_RDWR)
+            # sock.shutdown(socket.SHUT_RDWR)
             sock.close()
         self._sock = None
 
