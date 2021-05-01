@@ -123,14 +123,14 @@ class WhoCommand(Command):
 class HelloCommand(Command):
 
     @classmethod
-    def new(cls, location: LocationValue=None,
-            identifier: Union[str, StringValue]=None,
-            source_address: Union[tuple, SourceAddressValue]=None,
-            mapped_address: Union[tuple, MappedAddressValue]=None,
-            relayed_address: Union[tuple, RelayedAddressValue]=None,
-            timestamp: Union[int, TimestampValue]=None,
-            signature: Union[bytes, bytearray, Data, BinaryValue]=None,
-            nat: Union[str, StringValue]=None) -> Command:
+    def new(cls, location: LocationValue = None,
+            identifier: Union[str, StringValue] = None,
+            source_address: Union[tuple, SourceAddressValue] = None,
+            mapped_address: Union[tuple, MappedAddressValue] = None,
+            relayed_address: Union[tuple, RelayedAddressValue] = None,
+            timestamp: Union[int, TimestampValue] = None,
+            signature: Union[bytes, bytearray, Data, BinaryValue] = None,
+            nat: Union[str, StringValue] = None) -> Command:
         # check location
         if location is None:
             assert identifier is not None, 'user ID empty'
@@ -146,9 +146,9 @@ class SignCommand(Command):
 
     @classmethod
     def new(cls, identifier: Union[str, StringValue],
-            source_address: Union[tuple, SourceAddressValue]=None,
-            mapped_address: Union[tuple, MappedAddressValue]=None,
-            relayed_address: Union[tuple, RelayedAddressValue]=None) -> Command:
+            source_address: Union[tuple, SourceAddressValue] = None,
+            mapped_address: Union[tuple, MappedAddressValue] = None,
+            relayed_address: Union[tuple, RelayedAddressValue] = None) -> Command:
         # create location
         value = LocationValue.new(identifier=identifier,
                                   source_address=source_address,
@@ -168,7 +168,7 @@ class CallCommand(Command):
 class FromCommand(Command):
 
     @classmethod
-    def new(cls, location: LocationValue=None, identifier: Union[str, StringValue]=None) -> Command:
+    def new(cls, location: LocationValue = None, identifier: Union[str, StringValue] = None) -> Command:
         if location is None:
             assert identifier is not None, 'UID should not be empty'
             location = LocationValue.new(identifier=identifier)

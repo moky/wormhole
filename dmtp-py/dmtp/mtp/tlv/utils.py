@@ -57,11 +57,11 @@ def random_bytes(length: int) -> bytes:
     return hex_decode(a)
 
 
-def bytes_to_int(data: bytes, byteorder: str='big', signed: bool=False) -> int:
+def bytes_to_int(data: bytes, byteorder: str = 'big', signed: bool = False) -> int:
     return int.from_bytes(bytes=data, byteorder=byteorder, signed=signed)
 
 
-def int_to_bytes(value: int, length: int, byteorder: str='big', signed: bool=False) -> bytes:
+def int_to_bytes(value: int, length: int, byteorder: str = 'big', signed: bool = False) -> bytes:
     return value.to_bytes(length=length, byteorder=byteorder, signed=signed)
 
 
@@ -73,7 +73,7 @@ def int_to_bytes(value: int, length: int, byteorder: str='big', signed: bool=Fal
 """
 
 
-def bytes_to_varint(data: bytes, start: int=0, end: int=None) -> (int, int):
+def bytes_to_varint(data: bytes, start: int = 0, end: int = None) -> (int, int):
     if end is None:
         end = len(data)
     value = 0

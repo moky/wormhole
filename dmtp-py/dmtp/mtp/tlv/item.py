@@ -59,7 +59,7 @@ class Tag(Data):
 
 class Length(IntegerData):
 
-    def __init__(self, data: Union[IntegerData, Data, bytes, bytearray]=None, value: int=None):
+    def __init__(self, data: Union[IntegerData, Data, bytes, bytearray] = None, value: int = None):
         if data is None:
             assert isinstance(value, int), 'value error: %s' % value
             data = int_to_bytes(value=value, length=2)
@@ -84,7 +84,7 @@ class Length(IntegerData):
 class Value(Data):
 
     @classmethod
-    def parse(cls, data: Data, tag: Tag, length: Length=None):  # -> Value:
+    def parse(cls, data: Data, tag: Tag, length: Length = None):  # -> Value:
         if data is None or data.length == 0:
             return None
         elif cls is Value:
@@ -113,7 +113,7 @@ class Value(Data):
 
 class TagLengthValue(Data):
 
-    def __init__(self, data=None, tag: Tag=None, length: Length=None, value: Value=None):
+    def __init__(self, data=None, tag: Tag = None, length: Length = None, value: Value = None):
         """
         Initialize with another TLV object
         Initialize with Data and Tag + Value
@@ -212,11 +212,11 @@ class TagLengthValue(Data):
         return Length.parse(data=data, tag=tag)
 
     @classmethod
-    def parse_value(cls, data: Data, tag: Tag, length: Length=None) -> Optional[Value]:
+    def parse_value(cls, data: Data, tag: Tag, length: Length = None) -> Optional[Value]:
         # TODO: override for user-defined Value
         return Value.parse(data=data, tag=tag, length=length)
 
     @classmethod
-    def _create(cls, data: Data, tag: Tag, value: Value=None):
+    def _create(cls, data: Data, tag: Tag, value: Value = None):
         # TODO: override for user-defined TLV
         return cls(data=data, tag=tag, value=value)

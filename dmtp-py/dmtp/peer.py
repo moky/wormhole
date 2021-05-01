@@ -50,7 +50,7 @@ class Hub(UDPHub, PeerDelegate):
 
 class Peer(MTPPeer, HubListener):
 
-    def __init__(self, local_address: tuple, hub: Hub=None, pool: Pool=None):
+    def __init__(self, local_address: tuple, hub: Hub = None, pool: Pool = None):
         super().__init__(pool=pool)
         self.__local_address = local_address
         if hub is None:
@@ -103,12 +103,12 @@ class Peer(MTPPeer, HubListener):
     #   Send
     #
 
-    def send_command(self, pack: Package, destination: tuple, source: tuple=None) -> Departure:
+    def send_command(self, pack: Package, destination: tuple, source: tuple = None) -> Departure:
         if source is None:
             source = self.local_address
         return super().send_command(pack=pack, destination=destination, source=source)
 
-    def send_message(self, pack: Package, destination: tuple, source: tuple=None) -> Departure:
+    def send_message(self, pack: Package, destination: tuple, source: tuple = None) -> Departure:
         if source is None:
             source = self.local_address
         return super().send_message(pack=pack, destination=destination, source=source)

@@ -38,7 +38,7 @@ from .address import SourceAddressValue, MappedAddressValue, RelayedAddressValue
 
 class FieldsValue(FieldValue, dict):
 
-    def __init__(self, fields: list, data: Data=None):
+    def __init__(self, fields: list, data: Data = None):
         if data is None:
             length = 0
             for item in fields:
@@ -65,14 +65,14 @@ class FieldsValue(FieldValue, dict):
             assert isinstance(value, StringValue), 'string value error: %s' % value
             return value.string
 
-    def _get_type_value(self, name: Union[str, FieldName], default: int=0) -> Optional[int]:
+    def _get_type_value(self, name: Union[str, FieldName], default: int = 0) -> Optional[int]:
         value = self.get(name)
         if value is not None:
             assert isinstance(value, TypeValue), 'type value error: %s' % value
             return value.value
         return default
 
-    def _get_timestamp_value(self, name: Union[str, FieldName], default: int=0) -> Optional[int]:
+    def _get_timestamp_value(self, name: Union[str, FieldName], default: int = 0) -> Optional[int]:
         value = self.get(name)
         if value is not None:
             assert isinstance(value, TimestampValue), 'timestamp value error: %s' % value
@@ -86,7 +86,7 @@ class FieldsValue(FieldValue, dict):
             return value
 
     @classmethod
-    def parse(cls, data: Data, tag: FieldName, length: FieldLength=None):
+    def parse(cls, data: Data, tag: FieldName, length: FieldLength = None):
         # parse fields
         fields = Field.parse_all(data=data)
         return cls(data=data, fields=fields)
@@ -103,7 +103,7 @@ class BinaryValue(FieldValue):
 
 class TypeValue(UInt8Data, FieldValue):
 
-    def __init__(self, data: Union[int, bytes, bytearray, Data]=None, value: int=None):
+    def __init__(self, data: Union[int, bytes, bytearray, Data] = None, value: int = None):
         if data is None:
             assert value is not None, 'byte value empty'
             data = UInt8Data(value=value)
@@ -119,7 +119,7 @@ class TypeValue(UInt8Data, FieldValue):
 
 class TimestampValue(UInt32Data, FieldValue):
 
-    def __init__(self, data: Union[int, bytes, bytearray, Data]=None, value: int=None):
+    def __init__(self, data: Union[int, bytes, bytearray, Data] = None, value: int = None):
         if data is None:
             assert value is not None, 'timestamp value empty'
             data = UInt32Data(value=value)
@@ -135,7 +135,7 @@ class TimestampValue(UInt32Data, FieldValue):
 
 class StringValue(FieldValue):
 
-    def __init__(self, data: Union[str, bytes, bytearray, Data]=None, string: str=None):
+    def __init__(self, data: Union[str, bytes, bytearray, Data] = None, string: str = None):
         if data is None:
             assert string is not None, 'string empty'
             data = string.encode('utf-8')
@@ -161,7 +161,7 @@ class StringValue(FieldValue):
         return self.__string
 
     @classmethod
-    def parse(cls, data: Data, tag: FieldName, length: FieldLength=None):
+    def parse(cls, data: Data, tag: FieldName, length: FieldLength = None):
         # parse string value
         value = data.get_bytes()
         string = value.decode('utf-8')
@@ -176,9 +176,9 @@ class StringValue(FieldValue):
 
 class CommandValue(FieldsValue):
 
-    def __init__(self, fields: list, data: Data=None):
+    def __init__(self, fields: list, data: Data = None):
         super().__init__(fields=fields, data=data)
-        self.__id: str = None
+        self.__id: Optional[str] = None
 
     @property
     def identifier(self) -> str:
@@ -197,14 +197,14 @@ class LocationValue(CommandValue):
         Defined for 'HI', 'SIGN', 'FROM' commands to show the user's location
     """
 
-    def __init__(self, fields: list, data: Data=None):
+    def __init__(self, fields: list, data: Data = None):
         super().__init__(fields=fields, data=data)
-        self.__source_address: tuple = None   # local IP and port
-        self.__mapped_address: tuple = None   # public IP and port
-        self.__relayed_address: tuple = None  # server IP and port
-        self.__timestamp: int = None          # time for signature
-        self.__signature: Data = None         # sign(addresses + timestamp)
-        self.__nat: str = None                # NAT type
+        self.__source_address: Optional[tuple] = None   # local IP and port
+        self.__mapped_address: Optional[tuple] = None   # public IP and port
+        self.__relayed_address: Optional[tuple] = None  # server IP and port
+        self.__timestamp: Optional[int] = None          # time for signature
+        self.__signature: Optional[Data] = None         # sign(addresses + timestamp)
+        self.__nat: Optional[str] = None                # NAT type
 
     def _get_address_value(self, name: Union[str, FieldName]) -> Optional[tuple]:
         value = self.get(name)
@@ -250,12 +250,12 @@ class LocationValue(CommandValue):
 
     @classmethod
     def new(cls, identifier: Union[str, StringValue],
-            source_address: Union[tuple, SourceAddressValue]=None,
-            mapped_address: Union[tuple, MappedAddressValue]=None,
-            relayed_address: Union[tuple, RelayedAddressValue]=None,
-            timestamp: Union[int, TimestampValue]=None,
-            signature: Union[bytes, bytearray, Data, BinaryValue]=None,
-            nat: Union[str, StringValue]=None):
+            source_address: Union[tuple, SourceAddressValue] = None,
+            mapped_address: Union[tuple, MappedAddressValue] = None,
+            relayed_address: Union[tuple, RelayedAddressValue] = None,
+            timestamp: Union[int, TimestampValue] = None,
+            signature: Union[bytes, bytearray, Data, BinaryValue] = None,
+            nat: Union[str, StringValue] = None):
         # ID
         if isinstance(identifier, str):
             identifier = StringValue(string=identifier)

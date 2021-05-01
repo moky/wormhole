@@ -77,11 +77,11 @@ from .handler import PeerHandler, PeerDelegate
 
 class Peer(threading.Thread):
 
-    def __init__(self, pool: Pool=None):
+    def __init__(self, pool: Pool = None):
         super().__init__()
         self.__running = False
-        self.__delegate: weakref.ReferenceType = None
-        self.__handler: weakref.ReferenceType = None
+        self.__delegate: Optional[weakref.ReferenceType] = None
+        self.__handler: Optional[weakref.ReferenceType] = None
         if pool is None:
             pool = MemPool()
         self.__pool = pool
@@ -115,7 +115,7 @@ class Peer(threading.Thread):
             self.__handler = weakref.ref(value)
 
     def start(self):
-        if self.isAlive():
+        if self.is_alive():
             return
         self.__running = True
         super().start()

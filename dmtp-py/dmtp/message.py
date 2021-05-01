@@ -76,23 +76,23 @@ from .values import FieldsValue, BinaryValue, TypeValue, TimestampValue, StringV
 
 class Message(FieldsValue):
 
-    def __init__(self, fields: list, data: Data=None):
+    def __init__(self, fields: list, data: Data = None):
         super().__init__(fields=fields, data=data)
         # envelope
-        self.__sender: str = None
-        self.__receiver: str = None
-        self.__time: int = None
-        self.__type: int = None
-        self.__group: str = None
+        self.__sender: Optional[str] = None
+        self.__receiver: Optional[str] = None
+        self.__time: Optional[int] = None
+        self.__type: Optional[int] = None
+        self.__group: Optional[str] = None
         # body
-        self.__content: Data = None
-        self.__signature: Data = None
-        self.__key: Data = None
+        self.__content: Optional[Data] = None
+        self.__signature: Optional[Data] = None
+        self.__key: Optional[Data] = None
         # attachments
-        self.__meta: Data = None
-        self.__profile: Data = None
+        self.__meta: Optional[Data] = None
+        self.__profile: Optional[Data] = None
         # file in message
-        self.__filename: str = None
+        self.__filename: Optional[str] = None
 
     @property
     def sender(self) -> str:
@@ -161,7 +161,7 @@ class Message(FieldsValue):
         return self.__filename
 
     @classmethod
-    def parse(cls, data: Data, tag: FieldName=None, length=None):
+    def parse(cls, data: Data, tag: FieldName = None, length=None):
         fields = Field.parse_all(data=data)
         assert len(fields) > 0, 'message error: %s' % data
         return Message(fields=fields, data=data)

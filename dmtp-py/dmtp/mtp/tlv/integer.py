@@ -40,7 +40,7 @@ class IntegerData(Data):
         Integer data (network ordered)
     """
 
-    def __init__(self, data, value: int=None):
+    def __init__(self, data, value: int = None):
         super().__init__(data=data)
         if value is None:
             if isinstance(data, IntegerData):
@@ -80,7 +80,7 @@ class IntegerData(Data):
         return cls(data=data, value=value)
 
     @classmethod
-    def from_bytes(cls, data: bytes, start: int=0, end: int=None):
+    def from_bytes(cls, data: bytes, start: int = 0, end: int = None):
         length = len(data)
         if end is None:
             end = length
@@ -105,11 +105,11 @@ def int_from_buffer(data: Union[bytes, bytearray], start: int, end: int) -> int:
 
 def parse_data(data: Union[Data, bytes, bytearray], length: int) -> (Union[Data, bytes, bytearray], int):
     if isinstance(data, Data):
-        data_len = data._length
+        data_len = data.length
         assert data_len >= length, 'data length: %s' % data
-        start = data._offset
+        start = data.offset
         end = start + length
-        value = int_from_buffer(data=data._buffer, start=start, end=end)
+        value = int_from_buffer(data=data.buffer, start=start, end=end)
         if data_len > length:
             data = data.slice(end=length)
     else:
@@ -127,7 +127,7 @@ class UInt8Data(IntegerData):
         Unsigned Char (8-bytes)
     """
 
-    def __init__(self, data: Union[Data, bytes, bytearray]=None, value: int=None):
+    def __init__(self, data: Union[Data, bytes, bytearray] = None, value: int = None):
         if data is None:
             assert isinstance(value, int), 'value error: %s' % value
             data = int_to_bytes(value=value, length=1)
@@ -141,7 +141,7 @@ class UInt16Data(IntegerData):
         Unsigned Short Integer (16-bytes)
     """
 
-    def __init__(self, data: Union[Data, bytes, bytearray]=None, value: int=None):
+    def __init__(self, data: Union[Data, bytes, bytearray] = None, value: int = None):
         if data is None:
             assert isinstance(value, int), 'value error: %s' % value
             data = int_to_bytes(value=value, length=2)
@@ -155,7 +155,7 @@ class UInt32Data(IntegerData):
         Unsigned Integer (32-bytes)
     """
 
-    def __init__(self, data: Union[Data, bytes, bytearray]=None, value: int=None):
+    def __init__(self, data: Union[Data, bytes, bytearray] = None, value: int = None):
         if data is None:
             assert isinstance(value, int), 'value error: %s' % value
             data = int_to_bytes(value=value, length=4)
@@ -169,7 +169,7 @@ class VarIntData(IntegerData):
         Variable Integer
     """
 
-    def __init__(self, data: Union[Data, bytes, bytearray]=None, value: int=None):
+    def __init__(self, data: Union[Data, bytes, bytearray] = None, value: int = None):
         if data is None:
             assert isinstance(value, int), 'value error: %s' % value
             data = varint_to_bytes(value=value)

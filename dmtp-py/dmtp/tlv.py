@@ -36,7 +36,7 @@ from .mtp.tlv import Tag, Length, Value, TagLengthValue
 
 class FieldName(Tag):
 
-    def __init__(self, data=None, name: str=None):
+    def __init__(self, data=None, name: str = None):
         if data is None:
             assert name is not None, 'field name should not be empty'
             data = name.encode('utf-8')
@@ -92,7 +92,7 @@ class FieldLength(VarIntData, Length):
 class FieldValue(Value):
 
     @classmethod
-    def parse(cls, data: Data, tag: FieldName, length: FieldLength=None):  # -> FieldValue:
+    def parse(cls, data: Data, tag: FieldName, length: FieldLength = None):  # -> FieldValue:
         if data is None or data.length == 0:
             return None
         elif cls is FieldValue:
@@ -120,7 +120,7 @@ class FieldValue(Value):
 
 class Field(TagLengthValue):
 
-    def __init__(self, data=None, tag: FieldName=None, length: FieldLength=None, value: FieldValue=None):
+    def __init__(self, data=None, tag: FieldName = None, length: FieldLength = None, value: FieldValue = None):
         if data is None and length is None:
             if value is None:
                 length = FieldLength(value=0)

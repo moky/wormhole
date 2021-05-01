@@ -171,7 +171,7 @@ class Header(Data):
     @classmethod
     def parse(cls, data: Data):  # -> Header:
         if data._length < 4:
-            # raise AssertionError('package error: %s' % data)
+            # waiting for more data
             return None
         if data.get_byte(index=0) != cls.MAGIC_CODE[0] or \
                 data.get_byte(index=1) != cls.MAGIC_CODE[1] or \
@@ -181,6 +181,9 @@ class Header(Data):
         # get header length & data type
         ch = data.get_byte(index=3)
         head_len = (ch & 0xF0) >> 2  # in bytes
+        if data._length < head_len:
+            # waiting for more data
+            return None
         sn = None
         pages = 1
         offset = 0
@@ -258,7 +261,7 @@ class Header(Data):
         # generate header data
         hl_ty = (head_len << 2) | (data_type.value & 0x0F)
         data = MutableData(capacity=head_len)
-        data.append(cls.MAGIC_CODE)  # b'DIM'
+        data.append(cls.MAGIC_CODE)  # 'DIM'
         data.append(hl_ty)
         if sn != TransactionID.ZERO:
             data.append(sn)

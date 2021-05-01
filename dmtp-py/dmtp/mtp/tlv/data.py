@@ -42,7 +42,7 @@ class Data:
 
     ZERO = None  # Data(data=b'')
 
-    def __init__(self, data, offset: int=0, length: int=None):
+    def __init__(self, data, offset: int = 0, length: int = None):
         """
         Create data view
 
@@ -68,7 +68,7 @@ class Data:
             else:
                 self._length = length
 
-    def equals(self, buffer: Union[bytes, bytearray], offset: int=0, length: int=None) -> bool:
+    def equals(self, buffer: Union[bytes, bytearray], offset: int = 0, length: int = None) -> bool:
         if length is None:
             length = len(buffer)
         if self._buffer is buffer:
@@ -104,6 +104,14 @@ class Data:
         return result
 
     @property
+    def buffer(self) -> Union[bytes, bytearray]:
+        return self._buffer
+
+    @property
+    def offset(self) -> int:
+        return self._offset
+
+    @property
     def length(self) -> int:
         return self._length
 
@@ -115,7 +123,7 @@ class Data:
     #   Searching
     #
 
-    def find(self, sub, start: int=0, end: int=None) -> int:
+    def find(self, sub, start: int = 0, end: int = None) -> int:
         """
         Search sub value in range [start, end)
 
@@ -153,7 +161,7 @@ class Data:
             raise IndexError('error index: %d, length: %d' % (index, self._length))
         return self._buffer[self._offset + index]
 
-    def get_bytes(self, start: int=0, end: int=None) -> bytes:
+    def get_bytes(self, start: int = 0, end: int = None) -> bytes:
         """
         Get bytes within range [start, end)
 
@@ -200,20 +208,20 @@ class Data:
         end += self._offset
         return bytes_to_int(data=self._buffer[start:end])
 
-    def get_uint8_value(self, start: int=0) -> int:
+    def get_uint8_value(self, start: int = 0) -> int:
         return self.__get_integer_value(start=start, size=1)
 
-    def get_uint16_value(self, start: int=0) -> int:
+    def get_uint16_value(self, start: int = 0) -> int:
         return self.__get_integer_value(start=start, size=2)
 
-    def get_uint32_value(self, start: int=0) -> int:
+    def get_uint32_value(self, start: int = 0) -> int:
         return self.__get_integer_value(start=start, size=4)
 
     #
     #   To data view
     #
 
-    def slice(self, start: int=0, end: int=None):  # -> Data:
+    def slice(self, start: int = 0, end: int = None):  # -> Data:
         """
         Get sub data within range [start, end)
 
@@ -235,7 +243,7 @@ class Data:
         length = end - start
         return Data(data=self._buffer, offset=offset, length=length)
 
-    def concat(self, other, start: int=0, end: int=None):  # -> Data:
+    def concat(self, other, start: int = 0, end: int = None):  # -> Data:
         """
         Concat with another data view and return as a new data
 

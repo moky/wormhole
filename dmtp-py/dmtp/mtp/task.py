@@ -51,7 +51,7 @@ class Departure:
         Package(s) to sent out (waiting response)
     """
 
-    def __init__(self, packages: list, destination: tuple, source: Union[tuple, int]=0):
+    def __init__(self, packages: list, destination: tuple, source: Union[tuple, int] = 0):
         super().__init__()
         self.packages = packages
         self.destination = destination

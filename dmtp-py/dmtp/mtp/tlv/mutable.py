@@ -36,7 +36,7 @@ from .data import Data
 
 class MutableData(Data):
 
-    def __init__(self, data=None, offset: int=0, length: int=None, capacity: int=4):
+    def __init__(self, data=None, offset: int = 0, length: int = None, capacity: int = 4):
         if data is None:
             assert capacity > 0, 'capacity error'
             offset = 0
@@ -52,7 +52,7 @@ class MutableData(Data):
             assert isinstance(data, bytearray), 'data error: %s' % data
         super().__init__(data=data, offset=offset, length=length)
 
-    def __resize(self, size: int=8):
+    def __resize(self, size: int = 8):
         padding = size - self._buf_length
         if padding > 0:
             self._buffer.extend(bytearray(padding))
@@ -90,7 +90,7 @@ class MutableData(Data):
         self._buffer[self._offset + index] = value & 0xFF
         return True
 
-    def copy(self, index: int, source: Union[Data, bytes, bytearray], start: int=0, end: int=None):  # -> MutableData
+    def copy(self, index: int, source: Union[Data, bytes, bytearray], start: int = 0, end: int = None):  # MutableData
         """
         Copy values from source buffer with range [start, end)
 
@@ -185,7 +185,7 @@ class MutableData(Data):
             return self.set_byte(index=index, value=value)
         return True
 
-    def append(self, data, start: int=0, end: int=None):  # -> MutableData
+    def append(self, data, start: int = 0, end: int = None):  # -> MutableData
         """
         Append one element to the tail
         Append values from source buffer with range [start, end)

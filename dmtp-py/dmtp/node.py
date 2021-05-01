@@ -46,17 +46,17 @@ from .peer import Hub, Peer, LocationDelegate
 
 class Node(PeerHandler):
 
-    def __init__(self, peer: Peer=None, local_address: tuple=None, hub: Hub=None, pool: Pool=None):
+    def __init__(self, peer: Peer = None, local_address: tuple = None, hub: Hub = None, pool: Pool = None):
         super().__init__()
         if peer is None:
             peer = self.__create_peer(local_address=local_address, hub=hub, pool=pool)
         self.__peer = peer
         peer.handler = self
         # location delegate
-        self.__delegate: weakref.ReferenceType = None
+        self.__delegate: Optional[weakref.ReferenceType] = None
 
     # noinspection PyMethodMayBeStatic
-    def __create_peer(self, local_address: tuple, hub: Hub=None, pool: Pool=None):
+    def __create_peer(self, local_address: tuple, hub: Hub = None, pool: Pool = None):
         peer = Peer(local_address=local_address, hub=hub, pool=pool)
         # peer.start()
         return peer

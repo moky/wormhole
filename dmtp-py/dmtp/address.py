@@ -76,10 +76,10 @@ class MappedAddressValue(FieldValue):
     family_ipv4 = 0x01
     family_ipv6 = 0x02
 
-    def __init__(self, data=None, ip: str=None, port: int=0, family: int=0):
+    def __init__(self, data=None, ip: str = None, port: int = 0, family: int = 0):
         if data is None:
-            assert ip is not None and port is not 0, 'IP:port error: (%s:%d' % (ip, port)
-            if family is 0:
+            assert ip is not None and port != 0, 'IP:port error: (%s:%d' % (ip, port)
+            if family == 0:
                 family = self.family_ipv4
             if family == self.family_ipv4:
                 # IPv4
@@ -142,7 +142,7 @@ class MappedAddressValue(FieldValue):
         ])
 
     @classmethod
-    def parse(cls, data: Data, tag: FieldName, length: FieldLength=None):
+    def parse(cls, data: Data, tag: FieldName, length: FieldLength = None):
         # checking head byte
         if data.get_byte(index=0) != 0:
             raise ValueError('mapped-address error: %s' % data)
