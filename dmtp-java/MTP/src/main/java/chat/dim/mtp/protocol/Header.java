@@ -134,7 +134,7 @@ public class Header extends Data {
     public static Header parse(Data data) {
         int length = data.getLength();
         if (length < 4) {
-            //throw new ArrayIndexOutOfBoundsException("package error: " + Arrays.toString(data));
+            // waiting for more data
             return null;
         }
         if (data.getByte(0) != MAGIC_CODE[0] ||
@@ -146,6 +146,10 @@ public class Header extends Data {
         // get header length & data type
         byte ch = data.getByte(3);
         int headLen = (ch & 0xF0) >> 2; // in bytes
+        if (length < headLen) {
+            // waiting for more data
+            return null;
+        }
         TransactionID sn = null;
         int pages = 1;
         int offset = 0;
