@@ -42,7 +42,9 @@ class ActiveConnection(BaseConnection):
         super().__init__(sock=sock)
         assert isinstance(address, tuple), 'remote address error: %s' % str(address)
         self.__address = address
+        # lock for connecting
         self.__lock = threading.RLock()
+        self.__connecting = False
 
     def __connect(self) -> bool:
         self.status = ConnectionStatus.Connecting
@@ -59,8 +61,13 @@ class ActiveConnection(BaseConnection):
 
     def __reconnect(self) -> bool:
         with self.__lock:
-            if self._sock is None:
-                return self.__connect()
+            if self._sock is None and not self.__connecting:
+                try:
+                    self.__connecting = True
+                    redo = self.__connect()
+                finally:
+                    self.__connecting = False
+                return redo
 
     @property
     def socket(self) -> Optional[socket.socket]:

@@ -38,7 +38,7 @@ public interface Connection {
      *  Send data package
      *
      * @param data - package
-     * @return -1 on error
+     * @return count of bytes sent, -1 on error
      */
     int send(byte[] data);
 

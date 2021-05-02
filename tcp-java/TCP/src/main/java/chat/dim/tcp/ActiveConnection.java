@@ -38,6 +38,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class ActiveConnection extends BaseConnection {
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    private boolean connecting = false;
 
     // remote address
     public final String host;
@@ -77,12 +78,14 @@ public class ActiveConnection extends BaseConnection {
         Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            if (socket == null) {
+            if (socket == null && !connecting) {
+                connecting = true;
                 redo = connect();
             } else {
                 redo = false;
             }
         } finally {
+            connecting = false;
             writeLock.unlock();
         }
         return redo;
