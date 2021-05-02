@@ -78,15 +78,17 @@ class BaseConnection(Connection):
     @property
     def socket(self) -> Optional[socket.socket]:
         """ Get connected socket """
-        if self._is_alive():
+        if self.alive:
             return self._sock
 
-    def _is_alive(self) -> bool:
-        sock = self._sock
-        if sock is None or getattr(sock, '_closed', False):
-            return False
-        else:
-            return True
+    @property
+    def alive(self) -> bool:
+        if self._running:
+            sock = self._sock
+            if sock is None or getattr(sock, '_closed', False):
+                return False
+            else:
+                return True
 
     def __write(self, data: bytes) -> int:
         # sock.sendall(data)
@@ -175,10 +177,6 @@ class BaseConnection(Connection):
             if delegate is not None:
                 delegate.connection_changed(connection=self, old_status=old, new_status=value)
 
-    @property
-    def running(self) -> bool:
-        return self._running and self._is_alive()
-
     #
     #   Running
     #
@@ -209,7 +207,7 @@ class BaseConnection(Connection):
         """ Handling for receiving data packages
             (it will call 'process()' circularly)
         """
-        while self.running:
+        while self.alive:
             s = self.status
             if s in [ConnectionStatus.Connected, ConnectionStatus.Maintaining, ConnectionStatus.Expired]:
                 working = self.process()

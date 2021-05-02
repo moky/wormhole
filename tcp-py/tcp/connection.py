@@ -68,6 +68,13 @@ class Connection:
         """
         raise NotImplemented
 
+    @abstractmethod
+    @property
+    def alive(self) -> bool:
+        """ Check whether connection is alive: the thread is still running """
+        raise NotImplemented
+
+    @abstractmethod
     @property
     def status(self) -> ConnectionStatus:
         """ Get status """

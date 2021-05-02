@@ -72,10 +72,13 @@ class ActiveConnection(BaseConnection):
     @property
     def socket(self) -> Optional[socket.socket]:
         """ Get connected socket """
-        self.__reconnect()
-        # call super()
-        if self._is_alive():
+        if self.alive:
+            self.__reconnect()
             return self._sock
+
+    @property
+    def alive(self) -> bool:
+        return self._running
 
     def _receive(self) -> Optional[bytes]:
         data = super()._receive()
@@ -90,7 +93,3 @@ class ActiveConnection(BaseConnection):
             # try again
             res = super().send(data=data)
         return res
-
-    @property
-    def running(self) -> bool:
-        return self._running

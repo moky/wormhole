@@ -93,8 +93,17 @@ public class ActiveConnection extends BaseConnection {
 
     @Override
     protected Socket getSocket() {
-        reconnect();
-        return super.getSocket();
+        if (isAlive()) {
+            reconnect();
+            return socket;
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public boolean isAlive() {
+        return running;
     }
 
     @Override
@@ -115,10 +124,5 @@ public class ActiveConnection extends BaseConnection {
             res = super.send(data);
         }
         return res;
-    }
-
-    @Override
-    public boolean isRunning() {
-        return running;
     }
 }

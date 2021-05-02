@@ -59,6 +59,14 @@ public interface Connection {
     byte[] receive(int length);
 
     /**
+     *  Check whether connection is alive
+     *  (the thread is still running)
+     *
+     * @return true on running
+     */
+    boolean isAlive();
+
+    /**
      *  Get status
      *
      * @return connection status
