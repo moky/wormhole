@@ -77,6 +77,10 @@ class ActiveConnection(BaseConnection):
             return self._sock
 
     @property
+    def address(self) -> Optional[tuple]:
+        return self.__address
+
+    @property
     def alive(self) -> bool:
         return self._running
 

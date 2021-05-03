@@ -82,6 +82,12 @@ class BaseConnection(Connection):
             return self._sock
 
     @property
+    def address(self) -> Optional[tuple]:
+        sock = self._sock
+        if sock is not None:
+            return sock.getpeername()
+
+    @property
     def alive(self) -> bool:
         if self._running:
             sock = self._sock
