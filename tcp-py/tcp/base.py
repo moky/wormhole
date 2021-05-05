@@ -204,6 +204,7 @@ class BaseConnection(Connection):
 
     def finish(self):
         """ Cleanup after handling """
+        self._running = False
         if self._sock is not None:
             # shutdown socket
             self.__close()
