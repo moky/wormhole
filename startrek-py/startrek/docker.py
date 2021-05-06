@@ -58,7 +58,11 @@ class Docker:
 
     @abstractmethod
     def process(self) -> bool:
-        """ Process incoming/outgoing Ships """
+        """
+        Process incoming/outgoing Ships
+
+        :return: False on nothing to do
+        """
         raise NotImplemented
 
     @abstractmethod
@@ -68,5 +72,12 @@ class Docker:
 
     @abstractmethod
     def pack(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> StarShip:
-        """ Pack the payload to an outgo Ship """
+        """
+        Pack the payload to an outgo Ship
+
+        :param payload:  request data
+        :param priority: -1 is the most fast
+        :param delegate: callback
+        :return: False on error
+        """
         raise NotImplemented

@@ -193,9 +193,8 @@ class MTPDocker(StarDocker):
     # Override
     def _send_outgo_ship(self, outgo: StarShip) -> bool:
         assert isinstance(outgo, MTPShip), 'outgo ship error: %s' % outgo
-        mtp = outgo.mtp
         # check data type
-        if mtp.head.data_type == MTPMessage:
+        if outgo.retries == 0 and outgo.mtp.head.data_type == MTPMessage:
             # put back for response
             self.gate.park_ship(ship=outgo)
         # send out request data

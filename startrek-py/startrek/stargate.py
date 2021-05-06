@@ -54,7 +54,6 @@ class StarGate(Gate, ConnectionDelegate):
         self.__delegate: Optional[weakref.ReferenceType] = None
         self.__running = False
 
-    # Override
     @property
     def docker(self) -> Optional[Docker]:
         if self.__docker is None:
@@ -171,9 +170,8 @@ class StarGate(Gate, ConnectionDelegate):
             # waiting for docker
             self._idle()
         # setup docker
-        worker = self.docker
-        if worker is not None:
-            worker.setup()
+        if self.__docker is not None:
+            self.__docker.setup()
 
     def finish(self):
         self.__running = False
@@ -193,7 +191,8 @@ class StarGate(Gate, ConnectionDelegate):
 
     def process(self) -> bool:
         if self.__docker is None:
-            raise AssertionError('Star worker not found!')
+            # raise AssertionError('Star worker not found!')
+            return False
         else:
             return self.__docker.process()
 
@@ -203,11 +202,11 @@ class StarGate(Gate, ConnectionDelegate):
 
     # Override
     def connection_changed(self, connection, old_status: ConnectionStatus, new_status: ConnectionStatus):
-        delegate = self.delegate
-        if delegate is not None:
-            s1 = gate_status(status=old_status)
-            s2 = gate_status(status=new_status)
-            if s1 != s2:
+        s1 = gate_status(status=old_status)
+        s2 = gate_status(status=new_status)
+        if s1 != s2:
+            delegate = self.delegate
+            if delegate is not None:
                 delegate.gate_status_changed(gate=self, old_status=s1, new_status=s2)
 
     # Override

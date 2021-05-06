@@ -37,8 +37,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ActiveConnection extends BaseConnection {
 
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-    private boolean connecting = false;
+    private final ReentrantReadWriteLock lock;
+    private int connecting;
 
     // remote address
     public final String host;
@@ -49,6 +49,9 @@ public class ActiveConnection extends BaseConnection {
         assert remoteHost != null && remotePort > 0 : "remote address error (" + remoteHost + ":" + remotePort + ")";
         host = remoteHost;
         port = remotePort;
+        // lock for connecting
+        lock = new ReentrantReadWriteLock();
+        connecting = 0;
     }
 
     /**
@@ -78,14 +81,14 @@ public class ActiveConnection extends BaseConnection {
         Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            if (socket == null && !connecting) {
-                connecting = true;
+            connecting += 1;
+            if (connecting == 1 && socket == null) {
                 redo = connect();
             } else {
                 redo = false;
             }
         } finally {
-            connecting = false;
+            connecting -= 1;
             writeLock.unlock();
         }
         return redo;
@@ -107,7 +110,7 @@ public class ActiveConnection extends BaseConnection {
     }
 
     @Override
-    byte[] receive() {
+    protected byte[] receive() {
         byte[] data = super.receive();
         if (data == null && reconnect()) {
             // try again
@@ -119,7 +122,7 @@ public class ActiveConnection extends BaseConnection {
     @Override
     public int send(byte[] data) {
         int res = super.send(data);
-        if (res == -1 && reconnect()) {
+        if (res < 0 && reconnect()) {
             // try again
             res = super.send(data);
         }

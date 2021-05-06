@@ -98,11 +98,6 @@ class Gate:
     """ Star Gate of remote peer """
 
     @property
-    def docker(self) -> Optional[Docker]:
-        """ Get worker for processing packages """
-        raise NotImplemented
-
-    @property
     def delegate(self) -> GateDelegate:
         """ Get callback for receiving data """
         yield None
@@ -169,7 +164,7 @@ class Gate:
         raise NotImplemented
 
     #
-    #   Docking
+    #   Ship Docking
     #
 
     @abstractmethod

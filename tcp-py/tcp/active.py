@@ -44,7 +44,7 @@ class ActiveConnection(BaseConnection):
         self.__address = address
         # lock for connecting
         self.__lock = threading.RLock()
-        self.__connecting = False
+        self.__connecting = 0
 
     def __connect(self) -> bool:
         self.status = ConnectionStatus.Connecting
@@ -61,13 +61,15 @@ class ActiveConnection(BaseConnection):
 
     def __reconnect(self) -> bool:
         with self.__lock:
-            if self._sock is None and not self.__connecting:
-                try:
-                    self.__connecting = True
+            try:
+                self.__connecting += 1
+                if self.__connecting == 1 and self._sock is None:
                     redo = self.__connect()
-                finally:
-                    self.__connecting = False
-                return redo
+                else:
+                    redo = False
+            finally:
+                self.__connecting -= 1
+            return redo
 
     @property
     def socket(self) -> Optional[socket.socket]:

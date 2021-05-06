@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.WeakReference;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.Date;
@@ -98,6 +99,28 @@ public class BaseConnection implements Connection, Runnable {
     }
 
     @Override
+    public String getHost() {
+        if (socket == null) {
+            return null;
+        }
+        InetAddress address = socket.getInetAddress();
+        if (address == null) {
+            return null;
+        } else {
+            return address.getHostAddress();
+        }
+    }
+
+    @Override
+    public int getPort() {
+        if (socket == null) {
+            return 0;
+        } else {
+            return socket.getPort();
+        }
+    }
+
+    @Override
     public boolean isAlive() {
         if (!running) {
             return false;
@@ -154,7 +177,7 @@ public class BaseConnection implements Connection, Runnable {
         }
     }
 
-    byte[] receive() {
+    protected byte[] receive() {
         Socket sock = getSocket();
         if (sock != null) {
             try {
@@ -253,6 +276,7 @@ public class BaseConnection implements Connection, Runnable {
      *  Cleanup after handling
      */
     public void finish() {
+        running = false;
         if (socket != null) {
             // shutdown socket
             close();
@@ -340,6 +364,8 @@ public class BaseConnection implements Connection, Runnable {
             case Default:
                 tickDefault();
                 break;
+            default:
+                throw new IllegalStateException("Connection state error: " + status);
         }
     }
 

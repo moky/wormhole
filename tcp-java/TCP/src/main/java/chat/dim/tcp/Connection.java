@@ -59,6 +59,14 @@ public interface Connection {
     byte[] receive(int length);
 
     /**
+     *  Get remote address
+     *
+     * @return IP
+     */
+    String getHost();
+    int getPort();
+
+    /**
      *  Check whether connection is alive
      *  (the thread is still running)
      *
