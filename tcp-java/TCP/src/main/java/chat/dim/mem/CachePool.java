@@ -28,41 +28,41 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tcp;
+package chat.dim.mem;
 
-import java.util.List;
+/**
+ *  Memory cache for received data
+ *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+public interface CachePool {
 
-final class BytesArray {
+    /**
+     *  Get empty spaces
+     *
+     * @return bytes count of empty spaces
+     */
+    int spaces();
 
-    static byte[] slice(byte[] source, int start, int end) {
-        int length = end - start;
-        byte[] data = new byte[length];
-        System.arraycopy(source, start, data, 0, length);
-        return data;
-    }
+    /**
+     *  Add received data to cache
+     *
+     * @param data - received data
+     */
+    void cache(byte[] data);
 
-    static byte[] concat(List<byte[]> array) {
-        int count = array.size();
-        int index;
-        byte[] item;
-        // 1. get buffer length
-        int length = 0;
-        for (index = 0; index < count; ++index) {
-            item = array.get(index);
-            length += item.length;
-        }
-        if (length == 0) {
-            return null;
-        }
-        // 2. create buffer to copy data
-        byte[] data = new byte[length];
-        int offset = 0;
-        // 3. get all data
-        for (index = 0; index < count; ++index) {
-            item = array.get(index);
-            System.arraycopy(item, 0, data, offset, item.length);
-            offset += item.length;
-        }
-        return data;
-    }
+    /**
+     *  Check received data (not remove)
+     *
+     * @return received data, null on cache pool empty
+     */
+    byte[] received();
+
+    /**
+     *  Received data from pool with length (remove)
+     *  (must call 'received()' to check data length first)
+     *
+     * @param length - data length to remove
+     * @return remove data from the pool and return it
+     */
+    byte[] receive(int length);
 }

@@ -57,14 +57,3 @@ class ConnectionDelegate(ABC):
         :param data:       received data
         """
         pass
-
-    # @abstractmethod
-    def connection_overflowed(self, connection: Connection, ejected: bytes):
-        """
-        Call when connection's cache is full
-
-        :param connection: current connection
-        :param ejected:    dropped data
-        :return:
-        """
-        pass

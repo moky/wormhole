@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tcp;
+package chat.dim.mem;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,37 +41,36 @@ public final class MemoryCache implements CachePool {
     /*  Max length of memory cache
      *  ~~~~~~~~~~~~~~~~~~~~~~~~~~
      */
-    public static int MAX_CACHE_LENGTH = 1024 * 1024 * 128;  // 128 MB
+    public static int MAX_CACHE_LENGTH = 1024 * 1024 * 16;  // 16 MB
 
     // received packages
     private final List<byte[]> packages = new ArrayList<>();
     private final ReadWriteLock packageLock = new ReentrantReadWriteLock();
 
-    private boolean isFull() {
-        int length = 0;
-        for (byte[] pack : packages) {
-            length += pack.length;
-        }
-        return length >= MAX_CACHE_LENGTH;
-    }
-
     @Override
-    public byte[] cache(byte[] pack) {
-        byte[] ejected = null;
+    public int spaces() {
+        int length = 0;
         Lock writeLock = packageLock.writeLock();
         writeLock.lock();
         try {
-            // 1. check memory cache status
-            if (isFull()) {
-                // drop the first package
-                ejected = packages.remove(0);
+            for (byte[] pack : packages) {
+                length += pack.length;
             }
-            // 2. append the new package to the end
+        } finally {
+            writeLock.unlock();
+        }
+        return MAX_CACHE_LENGTH - length;
+    }
+
+    @Override
+    public void cache(byte[] pack) {
+        Lock writeLock = packageLock.writeLock();
+        writeLock.lock();
+        try {
             packages.add(pack);
         } finally {
             writeLock.unlock();
         }
-        return ejected;
     }
 
     @Override

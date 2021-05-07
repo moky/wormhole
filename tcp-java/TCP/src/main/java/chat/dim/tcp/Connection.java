@@ -168,13 +168,5 @@ public interface Connection {
          * @param data - received data
          */
         void onConnectionReceivedData(Connection connection, byte[] data);
-
-        /**
-         *  Call when connection's cache is full
-         *
-         * @param connection - current connection
-         * @param ejected - dropped data
-         */
-        void onConnectionOverflowed(Connection connection, byte[] ejected);
     }
 }

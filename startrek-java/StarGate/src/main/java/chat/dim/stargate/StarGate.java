@@ -258,11 +258,4 @@ public abstract class StarGate implements Gate, Connection.Delegate, Runnable {
         // received data will be processed in run loop,
         // do nothing here
     }
-
-    @Override
-    public void onConnectionOverflowed(Connection connection, byte[] ejected) {
-        // TODO: connection cache pool is full,
-        //       some received data will be ejected to here,
-        //       the application should try to process them.
-    }
 }

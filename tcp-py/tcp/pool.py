@@ -39,13 +39,17 @@ class Pool(ABC):
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     """
 
+    @property
+    def spaces(self) -> int:
+        """ Get empty spaces """
+        raise NotImplemented
+
     @abstractmethod
-    def cache(self, data: bytes) -> Optional[bytes]:
+    def cache(self, data: bytes):
         """
         Add received data to data
 
         :param data: received data
-        :return: ejected data when cache pool full
         """
         raise NotImplemented
 

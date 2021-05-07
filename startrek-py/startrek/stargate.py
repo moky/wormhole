@@ -214,10 +214,3 @@ class StarGate(Gate, ConnectionDelegate):
         # received data will be processed in run loop (StarDocker::handle),
         # do nothing here
         pass
-
-    # Override
-    def connection_overflowed(self, connection, ejected: bytes):
-        # TODO: connection cache pool is full,
-        #       some received data will be ejected to here,
-        #       the application should try to process them.
-        pass

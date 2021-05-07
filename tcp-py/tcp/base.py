@@ -227,19 +227,21 @@ class BaseConnection(Connection):
         """ Try to receive one data package,
             which will be cached into a memory pool
         """
+        # 0. check empty spaces
+        spaces = self.__pool.spaces
+        if spaces < 1024:
+            # not enough spaces
+            return False
         # 1. try to read bytes
         data = self._receive()
         if data is None or len(data) == 0:
             return False
         # 2. cache it
-        ejected = self.__pool.cache(data=data)
+        self.__pool.cache(data=data)
         delegate = self.delegate
-        if delegate is None:
-            return True
-        # 3. callback
-        if ejected is not None:
-            delegate.connection_overflowed(connection=self, ejected=ejected)
-        delegate.connection_received(connection=self, data=data)
+        if delegate is not None:
+            # 3. callback
+            delegate.connection_received(connection=self, data=data)
         return True
 
     # noinspection PyMethodMayBeStatic

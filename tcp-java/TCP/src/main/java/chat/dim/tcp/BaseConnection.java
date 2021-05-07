@@ -39,6 +39,9 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.util.Date;
 
+import chat.dim.mem.CachePool;
+import chat.dim.mem.MemoryCache;
+
 public class BaseConnection implements Connection, Runnable {
 
     private final CachePool cachePool;
@@ -312,22 +315,24 @@ public class BaseConnection implements Connection, Runnable {
      *  which will be cached into a memory pool
      */
     public boolean process() {
+        // 0. check empty spaces
+        int spaces = cachePool.spaces();
+        if (spaces < 1024) {
+            // not enough spaces
+            return false;
+        }
         // 1. try to read bytes
         byte[] data = receive();
         if (data == null || data.length == 0) {
             return false;
         }
         // 2. cache it
-        byte[] ejected = cachePool.cache(data);
+        cachePool.cache(data);
         Delegate delegate = getDelegate();
-        if (delegate == null) {
-            return true;
+        if (delegate != null) {
+            // 3. callback
+            delegate.onConnectionReceivedData(this, data);
         }
-        // 3. callback
-        if (ejected != null) {
-            delegate.onConnectionOverflowed(this, ejected);
-        }
-        delegate.onConnectionReceivedData(this, data);
         return true;
     }
 

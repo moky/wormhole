@@ -40,7 +40,7 @@ class MemPool(Pool):
         Max length of memory cache
         ~~~~~~~~~~~~~~~~~~~~~~~~~~
     """
-    MAX_CACHE_LENGTH = 1024 * 1024 * 1024  # 1GB
+    MAX_CACHE_LENGTH = 1024 * 1024 * 16  # 16 MB
 
     def __init__(self):
         super().__init__()
@@ -48,21 +48,17 @@ class MemPool(Pool):
         self.__packages: List[bytes] = []
         self.__packages_lock = threading.Lock()
 
-    def __is_full(self) -> bool:
-        length = 0
-        for pack in self.__packages:
-            length += len(pack)
-        return length >= self.MAX_CACHE_LENGTH
-
-    def cache(self, data: bytes) -> Optional[bytes]:
-        ejected = None
+    @property
+    def spaces(self) -> int:
         with self.__packages_lock:
-            # 1. check memory cache status
-            if self.__is_full():
-                ejected = self.__packages.pop(0)
-            # 2. append the new package to the end
+            length = 0
+            for pack in self.__packages:
+                length += len(pack)
+            return self.MAX_CACHE_LENGTH - length
+
+    def cache(self, data: bytes):
+        with self.__packages_lock:
             self.__packages.append(data)
-        return ejected
 
     def received(self) -> Optional[bytes]:
         with self.__packages_lock:
