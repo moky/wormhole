@@ -62,7 +62,9 @@ class MemPool(Pool):
                 # push the remaining data back to the queue head
                 self.__packages.insert(0, data[max_length:])
                 data = data[:max_length]
-            self.__count -= data_len
+                self.__count -= max_length
+            else:
+                self.__count -= data_len
             return data
 
     def all(self) -> Optional[bytes]:

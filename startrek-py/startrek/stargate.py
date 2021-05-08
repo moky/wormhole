@@ -88,7 +88,7 @@ class StarGate(Gate, ConnectionDelegate):
     def opened(self) -> bool:
         if self.__running:
             # connection not closed or still have data unprocessed
-            return self.__conn.alive or self.__conn.received() is not None
+            return self.__conn.alive or self.__conn.available > 0
 
     @property
     def expired(self) -> bool:
@@ -134,7 +134,9 @@ class StarGate(Gate, ConnectionDelegate):
     def received(self) -> Optional[bytes]:
         available = self.__conn.available
         if available > 0:
-            self.__cache(data=self.__conn.receive(max_length=available))
+            data = self.__conn.receive(max_length=available)
+            if data is not None:
+                self.__cache(data=data)
         return self.__fragment
 
     # Override

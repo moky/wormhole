@@ -87,7 +87,7 @@ public abstract class StarGate implements Gate, Connection.Delegate, Runnable {
     public boolean isOpened() {
         // 1. StarGate not stopped
         // 2. Connection not closed or still have data unprocessed
-        return running && (connection.isAlive() || connection.received() != null);
+        return running && (connection.isAlive() || connection.available() > 0);
     }
 
     @Override
@@ -154,7 +154,10 @@ public abstract class StarGate implements Gate, Connection.Delegate, Runnable {
     public byte[] received() {
         int available = connection.available();
         if (available > 0) {
-            cache(connection.receive(available));
+            byte[] data = connection.receive(available);
+            if (data != null) {
+                cache(data);
+            }
         }
         return fragment;
     }
