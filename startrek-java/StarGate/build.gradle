@@ -120,6 +120,52 @@ tasks.withType(Javadoc) {
     options.addStringOption('Xdoclint:none', '-quiet')
 }
 
+uploadArchives {
+
+    repositories {
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+
+            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+
+            pom.project {
+                packaging 'jar'
+                name 'StarGate'
+                description 'Network Connection Module'
+                url siteUrl
+                licenses {
+                    license {
+                        name 'MIT'
+                        url 'https://mit-license.org'
+                    }
+                }
+                developers {
+                    developer {
+                        id 'moky'
+                        name 'Albert Moky'
+                        email 'albert.moky@gmail.com'
+                        roles {
+                            role 'architect'
+                        }
+                        organization 'DIM Group'
+                    }
+                }
+                scm {
+                    connection gitUrl
+                    developerConnection gitUrl
+                    url siteUrl
+                }
+            }
+        }
+    }
+}
+
 bintray {
     Properties properties = new Properties()
     File file = project.rootProject.file('local.properties')
