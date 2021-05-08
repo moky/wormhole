@@ -38,45 +38,55 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public final class MemoryCache implements CachePool {
 
-    /*  Max length of memory cache
-     *  ~~~~~~~~~~~~~~~~~~~~~~~~~~
-     */
-    public static int MAX_CACHE_LENGTH = 1024 * 1024 * 16;  // 16 MB
-
     // received packages
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private final List<byte[]> packages = new ArrayList<>();
-    private final ReadWriteLock packageLock = new ReentrantReadWriteLock();
+    private int count = 0;
 
     @Override
-    public int spaces() {
-        int length = 0;
-        Lock writeLock = packageLock.writeLock();
-        writeLock.lock();
-        try {
-            for (byte[] pack : packages) {
-                length += pack.length;
-            }
-        } finally {
-            writeLock.unlock();
-        }
-        return MAX_CACHE_LENGTH - length;
+    public int length() {
+        return count;
     }
 
     @Override
-    public void cache(byte[] pack) {
-        Lock writeLock = packageLock.writeLock();
+    public void push(byte[] pack) {
+        assert pack != null && pack.length > 0: "data should not be empty";
+        Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
             packages.add(pack);
+            count += pack.length;
         } finally {
             writeLock.unlock();
         }
     }
 
     @Override
-    public byte[] received() {
+    public byte[] pop(int maxLength) {
         byte[] data;
-        Lock writeLock = packageLock.writeLock();
+        Lock writeLock = lock.writeLock();
+        writeLock.lock();
+        try {
+            assert maxLength > 0 : "max length must greater than 0";
+            assert packages.size() > 0 : "data empty, call 'get()/length()' to check data first";
+            data = packages.remove(0);
+            if (data.length > maxLength) {
+                // push the remaining data back to the queue head
+                packages.add(0, BytesArray.slice(data, maxLength, data.length));
+                // cut the remaining data
+                data = BytesArray.slice(data, 0, maxLength);
+            }
+            count -= data.length;
+        } finally {
+            writeLock.unlock();
+        }
+        return data;
+    }
+
+    @Override
+    public byte[] all() {
+        byte[] data;
+        Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
             int count = packages.size();
@@ -88,27 +98,6 @@ public final class MemoryCache implements CachePool {
                 data = BytesArray.concat(packages);
                 packages.clear();
                 packages.add(data);
-            }
-        } finally {
-            writeLock.unlock();
-        }
-        return data;
-    }
-
-    @Override
-    public byte[] receive(int length) {
-        byte[] data;
-        Lock writeLock = packageLock.writeLock();
-        writeLock.lock();
-        try {
-            assert packages.size() > 0 : "data empty, call 'received()' to check data first";
-            assert packages.get(0).length >= length : "data length error, call 'received()' first";
-            data = packages.remove(0);
-            if (data.length > length) {
-                // push the remaining data back to the queue head
-                packages.add(0, BytesArray.slice(data, length, data.length));
-                // cut the remaining data
-                data = BytesArray.slice(data, 0, length);
             }
         } finally {
             writeLock.unlock();

@@ -210,13 +210,18 @@ public class BaseConnection implements Connection, Runnable {
     }
 
     @Override
-    public byte[] received() {
-        return cachePool.received();
+    public int available() {
+        return cachePool.length();
     }
 
     @Override
-    public byte[] receive(int length) {
-        return cachePool.receive(length);
+    public byte[] received() {
+        return cachePool.all();
+    }
+
+    @Override
+    public byte[] receive(int maxLength) {
+        return cachePool.pop(maxLength);
     }
 
     //
@@ -231,10 +236,10 @@ public class BaseConnection implements Connection, Runnable {
     }
 
     protected void setStatus(Status newStatus) {
-        if (newStatus.equals(status)) {
+        Status oldStatus = status;
+        if (oldStatus.equals(newStatus)) {
             return;
         }
-        Status oldStatus = status;
         status = newStatus;
         if (newStatus.equals(Status.Connected) && !oldStatus.equals(Status.Maintaining)) {
             // change status to 'connected', reset times to just expired
@@ -316,8 +321,8 @@ public class BaseConnection implements Connection, Runnable {
      */
     public boolean process() {
         // 0. check empty spaces
-        int spaces = cachePool.spaces();
-        if (spaces < 1024) {
+        int count = cachePool.length();
+        if (count >= MAX_CACHE_LENGTH) {
             // not enough spaces
             return false;
         }
@@ -327,7 +332,7 @@ public class BaseConnection implements Connection, Runnable {
             return false;
         }
         // 2. cache it
-        cachePool.cache(data);
+        cachePool.push(data);
         Delegate delegate = getDelegate();
         if (delegate != null) {
             // 3. callback

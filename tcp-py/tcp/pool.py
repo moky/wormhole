@@ -39,35 +39,36 @@ class Pool(ABC):
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     """
 
-    @property
-    def spaces(self) -> int:
-        """ Get empty spaces """
-        raise NotImplemented
-
     @abstractmethod
-    def cache(self, data: bytes):
+    def push(self, data: bytes):
         """
-        Add received data to data
+        Add received data to cache
 
         :param data: received data
         """
         raise NotImplemented
 
     @abstractmethod
-    def received(self) -> Optional[bytes]:
+    def pop(self, max_length: int) -> Optional[bytes]:
         """
-        Check received  data (not remove)
+        Get received data from pool with max length (remove)
+        (must call 'get()/length()' to check data length first)
 
-        :return: received data
+        :param max_length: max data length to remove
+        :return: remove data from the pool and return it
         """
         raise NotImplemented
 
     @abstractmethod
-    def receive(self, length: int) -> Optional[bytes]:
+    def all(self) -> Optional[bytes]:
         """
-        Received data from pool with length (remove)
+        Get all received  data (not remove)
 
-        :param length: data length to remove
-        :return: remove data from the pool and return it
+        :return: received data, None on cache pool empty
         """
+        raise NotImplemented
+
+    @property
+    def length(self) -> int:
+        """ Get length of cached bytes """
         raise NotImplemented

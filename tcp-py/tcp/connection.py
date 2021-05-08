@@ -36,6 +36,12 @@ from .status import ConnectionStatus
 
 class Connection:
 
+    """
+        Max length of memory cache
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    """
+    MAX_CACHE_LENGTH = 65536  # 64 KB
+
     EXPIRES = 16  # seconds
 
     @abstractmethod
@@ -45,6 +51,15 @@ class Connection:
 
         :param data: package
         :return: count of bytes sent, -1 on error
+        """
+        raise NotImplemented
+
+    @property
+    def available(self) -> int:
+        """
+        Get received data count
+
+        :return: count of received data
         """
         raise NotImplemented
 
@@ -58,12 +73,12 @@ class Connection:
         raise NotImplemented
 
     @abstractmethod
-    def receive(self, length: int) -> Optional[bytes]:
+    def receive(self, max_length: int) -> Optional[bytes]:
         """
         Get received data from cache, and remove it
         (call 'received()' to check data first)
 
-        :param length: how many bytes to receive
+        :param max_length: how many bytes to receive
         :return: received data
         """
         raise NotImplemented

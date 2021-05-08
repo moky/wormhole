@@ -37,32 +37,32 @@ package chat.dim.mem;
 public interface CachePool {
 
     /**
-     *  Get empty spaces
-     *
-     * @return bytes count of empty spaces
-     */
-    int spaces();
-
-    /**
      *  Add received data to cache
      *
      * @param data - received data
      */
-    void cache(byte[] data);
+    void push(byte[] data);
 
     /**
-     *  Check received data (not remove)
+     *  Get received data from pool with max length (remove)
+     *  (must call 'get()/length()' to check data length first)
+     *
+     * @param maxLength - max data length to remove
+     * @return remove data from the pool and return it
+     */
+    byte[] pop(int maxLength);
+
+    /**
+     *  Get all received data (not remove)
      *
      * @return received data, null on cache pool empty
      */
-    byte[] received();
+    byte[] all();
 
     /**
-     *  Received data from pool with length (remove)
-     *  (must call 'received()' to check data length first)
+     *  Get length of cached bytes
      *
-     * @param length - data length to remove
-     * @return remove data from the pool and return it
+     * @return bytes count
      */
-    byte[] receive(int length);
+    int length();
 }

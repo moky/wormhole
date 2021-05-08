@@ -135,14 +135,47 @@ public abstract class StarGate implements Gate, Connection.Delegate, Runnable {
         return ok;
     }
 
+    private byte[] fragment = null;
+
+    private void cache(byte[] data) {
+        assert data != null && data.length > 0 : "data should not be empty";
+        if (fragment == null) {
+            fragment = data;
+        } else {
+            // merge(fragment, data)
+            byte[] buffer = new byte[fragment.length + data.length];
+            System.arraycopy(fragment, 0, buffer, 0, fragment.length);
+            System.arraycopy(data, 0, buffer, fragment.length, data.length);
+            fragment = buffer;
+        }
+    }
+
     @Override
     public byte[] received() {
-        return connection.received();
+        int available = connection.available();
+        if (available > 0) {
+            cache(connection.receive(available));
+        }
+        return fragment;
     }
 
     @Override
     public byte[] receive(int length) {
-        return connection.receive(length);
+        byte[] data;
+        assert fragment != null : "should not happen";
+        if (length < fragment.length) {
+            // slice(fragment, length)
+            data = new byte[length];
+            System.arraycopy(fragment, 0, data, 0, length);
+            byte[] remaining = new byte[fragment.length - length];
+            System.arraycopy(fragment, length, remaining, 0, fragment.length - length);
+            fragment = remaining;
+        } else {
+            assert length == fragment.length : "data not enough";
+            data = fragment;
+            fragment = null;
+        }
+        return data;
     }
 
     //

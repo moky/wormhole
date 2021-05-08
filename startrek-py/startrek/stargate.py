@@ -49,6 +49,7 @@ class StarGate(Gate, ConnectionDelegate):
         super().__init__()
         self.__dock = Dock()
         self.__conn = connection
+        self.__fragment: Optional[bytes] = None
         self.__lock = threading.RLock()
         self.__docker: Optional[Docker] = None
         self.__delegate: Optional[weakref.ReferenceType] = None
@@ -122,13 +123,31 @@ class StarGate(Gate, ConnectionDelegate):
         with self.__lock:
             return self.__conn.send(data=data) == len(data)
 
+    def __cache(self, data: bytes):
+        assert data is not None and len(data) > 0, 'data should not be empty'
+        if self.__fragment is None:
+            self.__fragment = data
+        else:
+            self.__fragment += data
+
     # Override
     def received(self) -> Optional[bytes]:
-        return self.__conn.received()
+        available = self.__conn.available
+        if available > 0:
+            self.__cache(data=self.__conn.receive(max_length=available))
+        return self.__fragment
 
     # Override
     def receive(self, length: int) -> Optional[bytes]:
-        return self.__conn.receive(length=length)
+        if length < len(self.__fragment):
+            # slice(fragment, length)
+            data = self.__fragment[:length]
+            self.__fragment = self.__fragment[length:]
+        else:
+            assert length == len(self.__fragment), 'data not enough'
+            data = self.__fragment
+            self.__fragment = None
+        return data
 
     #
     #   Docking

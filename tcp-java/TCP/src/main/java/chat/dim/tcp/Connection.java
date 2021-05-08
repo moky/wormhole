@@ -32,6 +32,11 @@ package chat.dim.tcp;
 
 public interface Connection {
 
+    /*  Max length of memory cache
+     *  ~~~~~~~~~~~~~~~~~~~~~~~~~~
+     */
+    int MAX_CACHE_LENGTH = 65536;  // 64 KB
+
     long EXPIRES = 16 * 1000;  // 16 seconds
 
     /**
@@ -41,6 +46,13 @@ public interface Connection {
      * @return count of bytes sent, -1 on error
      */
     int send(byte[] data);
+
+    /**
+     *  Get received data count
+     *
+     * @return count of received data
+     */
+    int available();
 
     /**
      *  Get received data from cache, but not remove
@@ -53,10 +65,10 @@ public interface Connection {
      *  Get received data from cache, and remove it
      *  (call received() to check data first)
      *
-     * @param length - how many bytes to receive
+     * @param maxLength - how many bytes to receive
      * @return received data
      */
-    byte[] receive(int length);
+    byte[] receive(int maxLength);
 
     /**
      *  Get remote address

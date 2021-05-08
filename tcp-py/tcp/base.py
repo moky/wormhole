@@ -151,13 +151,17 @@ class BaseConnection(Connection):
         self.status = ConnectionStatus.Error
         return -1
 
-    # Override
-    def received(self) -> Optional[bytes]:
-        return self.__pool.received()
+    @property
+    def available(self) -> int:
+        return self.__pool.length
 
     # Override
-    def receive(self, length: int) -> Optional[bytes]:
-        return self.__pool.receive(length=length)
+    def received(self) -> Optional[bytes]:
+        return self.__pool.all()
+
+    # Override
+    def receive(self, max_length: int) -> Optional[bytes]:
+        return self.__pool.pop(max_length=max_length)
 
     #
     #   Status
@@ -170,8 +174,8 @@ class BaseConnection(Connection):
 
     @status.setter
     def status(self, value: ConnectionStatus):
-        if self.__status != value:
-            old = self.__status
+        old = self.__status
+        if old != value:
             self.__status = value
             if value == ConnectionStatus.Connected and old != ConnectionStatus.Maintaining:
                 # change status to 'connected', reset times to expired
@@ -228,8 +232,8 @@ class BaseConnection(Connection):
             which will be cached into a memory pool
         """
         # 0. check empty spaces
-        spaces = self.__pool.spaces
-        if spaces < 1024:
+        count = self.__pool.length
+        if count >= self.MAX_CACHE_LENGTH:
             # not enough spaces
             return False
         # 1. try to read bytes
@@ -237,7 +241,7 @@ class BaseConnection(Connection):
         if data is None or len(data) == 0:
             return False
         # 2. cache it
-        self.__pool.cache(data=data)
+        self.__pool.push(data=data)
         delegate = self.delegate
         if delegate is not None:
             # 3. callback
