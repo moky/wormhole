@@ -102,14 +102,14 @@ class StarDocker(Docker):
         # 1. process income
         income = self._get_income_ship()
         if income is not None:
+            # 1.1. remove linked package
+            self._remove_linked_ship(income=income)
+            # 1.2. process income package
             res = self._process_income_ship(income=income)
             if res is not None:
-                if res.priority == StarShip.SLOWER:
-                    # put the response into waiting queue
-                    self.gate.park_ship(ship=res)
-                else:
-                    # send response directly
-                    self._send_outgo_ship(outgo=res)
+                # if ship.priority < 0, send the response immediately;
+                # or, put this ship into a waiting queue.
+                self.gate.send_ship(ship=res)
         # 2. process outgo
         outgo = self._get_outgo_ship()
         if outgo is not None:
@@ -118,8 +118,8 @@ class StarDocker(Docker):
                 delegate = outgo.delegate
                 if delegate is not None:
                     delegate.ship_sent(ship=outgo, error=TimeoutError('Request timeout'))
-            elif not self._send_outgo_ship(outgo=outgo):
-                # failed to send outgo Ship, callback
+            elif not self.gate.send(data=outgo.package):
+                # failed to send outgo package, callback
                 delegate = outgo.delegate
                 if delegate is not None:
                     delegate.ship_sent(ship=outgo, error=IOError('Connection error'))
@@ -146,14 +146,16 @@ class StarDocker(Docker):
 
     @abstractmethod
     def _process_income_ship(self, income: Ship) -> Optional[StarShip]:
-        """ Override to process income Ship """
+        """ Process income Ship """
+        raise NotImplemented
+
+    def _remove_linked_ship(self, income: Ship):
         linked = self._get_outgo_ship(income=income)
-        if linked is None:
-            return None
-        # callback for the linked outgo Ship and remove it
-        delegate = linked.delegate
-        if delegate is not None:
-            delegate.ship_sent(ship=linked)
+        if linked is not None:
+            # callback for the linked outgo Ship and remove it
+            delegate = linked.delegate
+            if delegate is not None:
+                delegate.ship_sent(ship=linked, error=None)
 
     def _get_outgo_ship(self, income: Optional[Ship] = None) -> Optional[StarShip]:
         """ Get outgo Ship from waiting queue """
@@ -167,10 +169,6 @@ class StarDocker(Docker):
             # get task with ID
             outgo = self.gate.pull_ship(sn=income.sn)
         return outgo
-
-    def _send_outgo_ship(self, outgo: StarShip) -> bool:
-        """ Send outgo Ship via current Connection """
-        return self.gate.send(data=outgo.package)
 
     def _get_heartbeat(self) -> Optional[StarShip]:
         """ Get an empty ship for keeping connection alive """

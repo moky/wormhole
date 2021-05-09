@@ -105,11 +105,14 @@ public abstract class StarGate implements Gate, Connection.Delegate, Runnable {
         Docker docker = getDocker();
         if (docker == null) {
             return false;
-        } else if (!getStatus().equals(Status.Connected)) {
-            return false;
+        } else {
+            return send(docker.pack(payload, priority, delegate));
         }
-        StarShip outgo = docker.pack(payload, priority, delegate);
-        if (priority < 0) {
+    }
+
+    @Override
+    public boolean send(StarShip outgo) {
+        if (outgo.priority < 0 && getStatus().equals(Status.Connected)) {
             // send out directly
             return send(outgo.getPackage());
         } else {

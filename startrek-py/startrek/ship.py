@@ -29,8 +29,7 @@
 # ==============================================================================
 
 from abc import abstractmethod
-from typing import Optional
-
+from typing import Union
 
 """
     Star Ship
@@ -63,7 +62,7 @@ class ShipDelegate:
     """ Star Ship Delegate """
 
     @abstractmethod
-    def ship_sent(self, ship: Ship, error: Optional[OSError] = None):
+    def ship_sent(self, ship: Ship, error: Union[OSError, IOError] = None):
         """
         Callback when package sent
 

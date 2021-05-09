@@ -56,13 +56,22 @@ public interface Gate {
     boolean isExpired();
 
     /**
-     *  Send data package to the connected server
+     *  Send data package to the remote peer
      *
      * @param payload  - request data
-     * @param priority - priority, -1 is the most fast
-     * @param delegate - callback
+     * @param priority - smaller is the faster, -1 means send it synchronously
+     * @param delegate - completion handler
+     * @return false on error
      */
     boolean send(byte[] payload, int priority, Ship.Delegate delegate);
+
+    /**
+     *  Send ship carrying payload
+     *
+     * @param outgo - outgo ship
+     * @return false on error
+     */
+    boolean send(StarShip outgo);
 
     //
     //  Connection

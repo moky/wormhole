@@ -36,7 +36,6 @@ from tcp import ConnectionStatus
 
 from .ship import Ship, ShipDelegate
 from .starship import StarShip
-from .docker import Docker
 
 
 """
@@ -125,7 +124,17 @@ class Gate:
         :param payload:  request data
         :param priority: smaller is the faster, -1 means send it synchronously
         :param delegate: completion handler
-        :return: false on error
+        :return: False on error
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def send_ship(self, ship: StarShip) -> bool:
+        """
+        Send ship carrying payload
+
+        :param ship: outgo ship
+        :return False on error
         """
         raise NotImplemented
 
@@ -139,7 +148,7 @@ class Gate:
         Send data package
 
         :param data: package
-        :return: false on error
+        :return: False on error
         """
         raise NotImplemented
 

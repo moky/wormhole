@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.startrek;
+package chat.dim.network;
 
 import chat.dim.mtp.protocol.DataType;
 import chat.dim.mtp.protocol.Header;
@@ -136,14 +136,12 @@ public class MTPDocker extends StarDocker {
             }
             return null;
         } else if (type.equals(DataType.CommandRespond)) {
-            // remove linked outgo Ship
-            return super.processIncomeShip(income);
+            // just ignore
+            return null;
         } else if (type.equals(DataType.MessageFragment)) {
             // just ignore
             return null;
         } else if (type.equals(DataType.MessageRespond)) {
-            // remove linked outgo Ship
-            super.processIncomeShip(income);
             if (body.getLength() == 0 || body.equals(OK)) {
                 // just ignore
                 return null;
@@ -165,25 +163,34 @@ public class MTPDocker extends StarDocker {
                 res = OK;
             }
             mtp = Package.create(DataType.MessageRespond, head.sn, res.length, new Data(res));
-            // send it directly
-            getGate().send(mtp.getBytes());
+            return new MTPShip(mtp);
         } else if (res != null && res.length > 0) {
             // push as new Message
             return pack(res, StarShip.SLOWER, null);
+        } else {
+            return null;
         }
-        return null;
     }
 
     @Override
-    protected boolean sendOutgoShip(StarShip outgo) {
-        MTPShip ship = (MTPShip) outgo;
-        // check data type
-        if (outgo.getRetries() == 0 && ship.mtp.head.type.equals(DataType.Message)) {
-            // put back for response
-            getGate().parkShip(outgo);
+    protected void removeLinkedShip(Ship income) {
+        MTPShip ship = (MTPShip) income;
+        if (ship.mtp.head.type.equals(DataType.MessageRespond)) {
+            super.removeLinkedShip(income);
         }
-        // send out request data
-        return super.sendOutgoShip(outgo);
+    }
+
+    @Override
+    protected StarShip getOutgoShip() {
+        StarShip outgo = super.getOutgoShip();
+        if (outgo instanceof MTPShip) {
+            MTPShip ship = (MTPShip) outgo;
+            if (outgo.getRetries() == 0 && ship.mtp.head.type.equals(DataType.Message)) {
+                // put back for response
+                getGate().parkShip(outgo);
+            }
+        }
+        return outgo;
     }
 
     @Override

@@ -28,60 +28,41 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.startrek;
+package chat.dim.network;
 
-import java.net.Socket;
+import chat.dim.mtp.protocol.Package;
+import chat.dim.stargate.StarShip;
 
-import chat.dim.stargate.Docker;
-import chat.dim.stargate.StarGate;
-import chat.dim.tcp.ActiveConnection;
-import chat.dim.tcp.BaseConnection;
+/**
+ *  Star Ship with MTP Package
+ */
+public class MTPShip extends StarShip {
 
-public class StarTrek extends StarGate {
+    public final Package mtp;
 
-    private final BaseConnection baseConnection;
-
-    public StarTrek(BaseConnection conn) {
-        super(conn);
-        baseConnection = conn;
+    public MTPShip(Package pack, int prior, Delegate delegate) {
+        super(prior, delegate);
+        mtp = pack;
     }
-
-    private static StarGate createGate(Socket socket) {
-        BaseConnection conn = new BaseConnection(socket);
-        StarGate gate = new StarTrek(conn);
-        conn.setDelegate(gate);
-        return gate;
+    public MTPShip(Package pack, int prior) {
+        this(pack, prior, null);
     }
-    private static StarGate createGate(String host, int port) {
-        ActiveConnection conn = new ActiveConnection(host, port);
-        StarGate gate = new StarTrek(conn);
-        conn.setDelegate(gate);
-        return gate;
-    }
-    private static StarGate createGate(String host, int port, Socket socket) {
-        ActiveConnection conn = new ActiveConnection(host, port, socket);
-        StarGate gate = new StarTrek(conn);
-        conn.setDelegate(gate);
-        return gate;
+    public MTPShip(Package pack) {
+        this(pack, StarShip.NORMAL, null);
     }
 
     @Override
-    protected Docker createDocker() {
-        if (MTPDocker.check(connection)) {
-            return new MTPDocker(this);
-        }
-        return null;
+    public byte[] getPackage() {
+        return mtp.getBytes();
     }
 
     @Override
-    public void setup() {
-        new Thread(baseConnection).start();
-        super.setup();
+    public byte[] getSN() {
+        return mtp.head.sn.getBytes();
     }
 
     @Override
-    public void finish() {
-        super.finish();
-        baseConnection.stop();
+    public byte[] getPayload() {
+        return mtp.body.getBytes();
     }
 }

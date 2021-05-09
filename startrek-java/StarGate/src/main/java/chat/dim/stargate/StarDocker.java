@@ -105,15 +105,14 @@ public abstract class StarDocker implements Docker, Runnable {
         // 1. process income
         Ship income = getIncomeShip();
         if (income != null) {
+            // 1.1. remove linked package
+            removeLinkedShip(income);
+            // 1.2. process income package
             StarShip res = processIncomeShip(income);
             if (res != null) {
-                if (res.priority == StarShip.SLOWER) {
-                    // put the response into waiting queue
-                    getGate().parkShip(res);
-                } else {
-                    // send response directly
-                    sendOutgoShip(res);
-                }
+                // if res.priority < 0, send the response immediately;
+                // or, put this ship into a waiting queue.
+                getGate().send(res);
             }
         }
         // 2. process outgo
@@ -125,8 +124,8 @@ public abstract class StarDocker implements Docker, Runnable {
                 if (delegate != null) {
                     delegate.onSent(outgo, new Gate.Error(outgo, "Request timeout"));
                 }
-            } else if (!sendOutgoShip(outgo)) {
-                // failed to send outgo Ship, callback
+            } else if (!getGate().send(outgo.getPackage())) {
+                // failed to send outgo package, callback
                 Ship.Delegate delegate = outgo.getDelegate();
                 if (delegate != null) {
                     delegate.onSent(outgo, new Gate.Error(outgo, "Connection error"));
@@ -157,8 +156,12 @@ public abstract class StarDocker implements Docker, Runnable {
      */
     protected abstract Ship getIncomeShip();
 
-    // Override to process income SHip
-    protected StarShip processIncomeShip(Ship income) {
+    /**
+     *  Process income Ship
+     */
+    protected abstract StarShip processIncomeShip(Ship income);
+
+    protected void removeLinkedShip(Ship income) {
         StarShip linked = getOutgoShip(income);
         if (linked != null) {
             // callback for the linked outgo Ship and remove it
@@ -167,7 +170,6 @@ public abstract class StarDocker implements Docker, Runnable {
                 delegate.onSent(linked, null);
             }
         }
-        return null;
     }
 
     /**
@@ -188,13 +190,6 @@ public abstract class StarDocker implements Docker, Runnable {
      */
     protected StarShip getOutgoShip(Ship income) {
         return getGate().pullShip(income.getSN());
-    }
-
-    /**
-     *  Send outgo Ship via current Connection
-     */
-    protected boolean sendOutgoShip(StarShip outgo) {
-        return getGate().send(outgo.getPackage());
     }
 
     /**

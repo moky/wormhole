@@ -102,17 +102,18 @@ class StarGate(Gate, ConnectionDelegate):
     # Override
     def send_payload(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> bool:
         worker = self.docker
-        if worker is None:
-            return False
-        if self.status != GateStatus.Connected:
-            return False
-        req = worker.pack(payload=payload, priority=priority, delegate=delegate)
-        if priority < 0:
+        if worker is not None:
+            outgo = worker.pack(payload=payload, priority=priority, delegate=delegate)
+            return self.send_ship(ship=outgo)
+
+    # Override
+    def send_ship(self, ship: StarShip) -> bool:
+        if ship.priority < 0 and self.status == GateStatus.Connected:
             # send out directly
-            return self.send(data=req.package)
+            return self.send(data=ship.package)
         else:
             # put the Ship into a waiting queue
-            return self.park_ship(ship=req)
+            return self.park_ship(ship=ship)
 
     #
     #   Connection
