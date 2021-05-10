@@ -34,6 +34,6 @@ setup(
         'Operating System :: OS Independent',
     ],
     install_requires=[
-        'tcp>=0.1.16',
+        'tcp>=0.1.17',
     ]
 )

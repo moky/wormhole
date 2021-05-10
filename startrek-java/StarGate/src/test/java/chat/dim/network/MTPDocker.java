@@ -50,13 +50,24 @@ public class MTPDocker extends StarDocker {
     public MTPDocker(StarGate gate) {
         super(gate);
     }
+    
+    public static Header parseHead(byte[] buffer) {
+        Header head = Header.parse(new Data(buffer));
+        if (head == null) {
+            return null;
+        }
+        if (head.bodyLength < 0) {
+            return null;
+        }
+        return head;
+    }
 
     public static boolean check(Gate gate) {
         byte[] buffer = gate.receive(MAX_HEAD_LENGTH, false);
         if (buffer == null) {
             return false;
         } else {
-            return Header.parse(new Data(buffer)) != null;
+            return parseHead(buffer) != null;
         }
     }
 
@@ -73,8 +84,7 @@ public class MTPDocker extends StarDocker {
             // received nothing
             return null;
         }
-        Data data = new Data(buffer);
-        Header head = Header.parse(data);
+        Header head = parseHead(buffer);
         if (head == null) {
             // not a MTP package?
             if (buffer.length < MAX_HEAD_LENGTH) {
@@ -82,6 +92,7 @@ public class MTPDocker extends StarDocker {
                 return null;
             }
             // locate next header
+            Data data = new Data(buffer);
             int pos = data.find(Header.MAGIC_CODE, 1);
             if (pos > 0) {
                 // found next head(starts with 'DIM'), skip data before it

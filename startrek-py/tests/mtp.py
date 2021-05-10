@@ -84,12 +84,19 @@ class MTPDocker(StarDocker):
         super().__init__(gate=gate)
 
     @classmethod
+    def parse_head(cls, buffer: bytes) -> Optional[Header]:
+        data = Data(data=buffer)
+        head = Header.parse(data=data)
+        if head is not None:
+            if head.body_length < 0:
+                return None
+            return head
+
+    @classmethod
     def check(cls, gate: Gate) -> bool:
         buffer = gate.receive(length=cls.MAX_HEAD_LENGTH, remove=False)
         if buffer is not None:
-            data = Data(data=buffer)
-            head = Header.parse(data=data)
-            return head is not None
+            return cls.parse_head(buffer=buffer) is not None
 
     # Override
     def pack(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> StarShip:
@@ -102,21 +109,21 @@ class MTPDocker(StarDocker):
         if buffer is None:
             # received nothing
             return None
-        data = Data(data=buffer)
-        head = Header.parse(data=data)
+        head = self.parse_head(buffer=buffer)
         if head is None:
+            buf_len = len(buffer)
             # not a MTP package?
-            if data.length < self.MAX_HEAD_LENGTH:
+            if buf_len < self.MAX_HEAD_LENGTH:
                 # wait for more data
                 return None
             # locate next header
-            pos = data.find(sub=Header.MAGIC_CODE, start=1)  # MAGIC_CODE_OFFSET = 0
+            pos = buffer.find(Header.MAGIC_CODE, 1)  # MAGIC_CODE_OFFSET = 0
             if pos > 0:
                 # found next head(starts with 'DIM'), skip data before it
                 self.gate.receive(length=pos, remove=True)
-            elif data.length > 500:
+            elif buf_len > 500:
                 # skip the whole buffer
-                self.gate.receive(length=data.length, remove=True)
+                self.gate.receive(length=buf_len, remove=True)
         return head
 
     def __receive_package(self) -> Optional[Package]:
