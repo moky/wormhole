@@ -37,12 +37,13 @@ public abstract class StarDocker implements Docker, Runnable {
 
     private final WeakReference<Gate> gateRef;
 
-    private boolean running = false;
+    private boolean running;
     private long heartbeatExpired;
 
     public StarDocker(Gate gate) {
         super();
         gateRef = new WeakReference<>(gate);
+        running = false;
         // time for checking heartbeat
         heartbeatExpired = (new Date()).getTime() + 2000;
     }
@@ -137,10 +138,12 @@ public abstract class StarDocker implements Docker, Runnable {
             // check time for next heartbeat
             long now = (new Date()).getTime();
             if (now > heartbeatExpired) {
-                StarShip beat = getHeartbeat();
-                if (beat != null) {
-                    // put the heartbeat into waiting queue
-                    getGate().parkShip(beat);
+                if (getGate().isExpired()) {
+                    StarShip beat = getHeartbeat();
+                    if (beat != null) {
+                        // put the heartbeat into waiting queue
+                        getGate().parkShip(beat);
+                    }
                 }
                 // try heartbeat next 2 seconds
                 heartbeatExpired = now + 2000;

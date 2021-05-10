@@ -39,14 +39,6 @@ from .docker import Docker
 from .gate import Gate
 
 
-"""
-    Star Worker
-    ~~~~~~~~~~~
-
-    Processor for Star Ships
-"""
-
-
 class StarDocker(Docker):
 
     def __init__(self, gate: Gate):
@@ -126,7 +118,7 @@ class StarDocker(Docker):
         # 3. heart beat
         if income is None and outgo is None:
             # check time for next heartbeat
-            now = time.time()
+            now = int(time.time())
             if now > self.__heartbeat_expired:
                 if self.gate.expired:
                     beat = self._get_heartbeat()

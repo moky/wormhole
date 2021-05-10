@@ -36,16 +36,18 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public final class Dock {
+/**
+ *  Star Dock
+ *  ~~~~~~~~~
+ *
+ *  Parking Star Ships
+ */
+public class Dock {
 
     // tasks for sending out
     private final List<Integer> priorities = new ArrayList<>();
     private final Map<Integer, List<StarShip>> fleets = new HashMap<>();
-    private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     /**
      *  Park this ship in the Dock for departure
@@ -54,42 +56,32 @@ public final class Dock {
      * @return false on duplicated
      */
     public boolean put(StarShip task) {
-        boolean duplicated = false;
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            // 1. choose an array with priority
-            int prior = task.priority;
-            List<StarShip> array = fleets.get(prior);
-            if (array == null) {
-                // 1.1. create new array for this priority
-                array = new ArrayList<>();
-                fleets.put(prior, array);
-                // 1.2. insert the priority in a sorted list
-                int index = 0;
-                for (; index < priorities.size(); ++index) {
-                    if (prior < priorities.get(index)) {
-                        // insert priority before the bigger one
-                        break;
-                    }
-                }
-                priorities.add(index, prior);
-            }
-            // 2. check duplicated task
-            for (StarShip item : array) {
-                if (item == task) {
-                    duplicated = true;
+        // 1. choose an array with priority
+        int prior = task.priority;
+        List<StarShip> array = fleets.get(prior);
+        if (array == null) {
+            // 1.1. create new array for this priority
+            array = new ArrayList<>();
+            fleets.put(prior, array);
+            // 1.2. insert the priority in a sorted list
+            int index = 0;
+            for (; index < priorities.size(); ++index) {
+                if (prior < priorities.get(index)) {
+                    // insert priority before the bigger one
                     break;
                 }
             }
-            // 3. append to the tail
-            if (!duplicated) {
-                array.add(task);
-            }
-        } finally {
-            writeLock.unlock();
+            priorities.add(index, prior);
         }
-        return !duplicated;
+        // 2. check duplicated task
+        for (StarShip item : array) {
+            if (item == task) {
+                return false;
+            }
+        }
+        // 3. append to the tail
+        array.add(task);
+        return true;
     }
 
     /**
@@ -98,34 +90,22 @@ public final class Dock {
      * @return outgo ship
      */
     public StarShip pop() {
-        StarShip task = null;
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            List<StarShip> array;
-            for (int prior : priorities) {
-                array = fleets.get(prior);
-                if (array == null) {
-                    continue;
-                }
-                for (StarShip item : array) {
-                    if (item.getTimestamp() == 0) {
-                        // update time and retry
-                        task = item;
-                        task.update();
-                        array.remove(item);
-                        break;
-                    }
-                }
-                if (task != null) {
-                    // got it
-                    break;
+        List<StarShip> array;
+        for (int prior : priorities) {
+            array = fleets.get(prior);
+            if (array == null) {
+                continue;
+            }
+            for (StarShip ship : array) {
+                if (ship.getTimestamp() == 0) {
+                    // update time and try
+                    ship.update();
+                    array.remove(ship);
+                    return ship;
                 }
             }
-        } finally {
-            writeLock.unlock();
         }
-        return task;
+        return null;
     }
 
     /**
@@ -135,33 +115,21 @@ public final class Dock {
      * @return outgo ship
      */
     public StarShip pop(byte[] sn) {
-        StarShip task = null;
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            List<StarShip> array;
-            for (int prior : priorities) {
-                array = fleets.get(prior);
-                if (array == null) {
-                    continue;
-                }
-                for (StarShip item : array) {
-                    if (Arrays.equals(item.getSN(), sn)) {
-                        // just remove it
-                        task = item;
-                        array.remove(item);
-                        break;
-                    }
-                }
-                if (task != null) {
-                    // got it
-                    break;
+        List<StarShip> array;
+        for (int prior : priorities) {
+            array = fleets.get(prior);
+            if (array == null) {
+                continue;
+            }
+            for (StarShip ship : array) {
+                if (Arrays.equals(ship.getSN(), sn)) {
+                    // just remove it
+                    array.remove(ship);
+                    return ship;
                 }
             }
-        } finally {
-            writeLock.unlock();
         }
-        return task;
+        return null;
     }
 
     /**
@@ -172,44 +140,31 @@ public final class Dock {
      * @return outgo ship
      */
     public StarShip any() {
-        StarShip task = null;
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            long expired = (new Date()).getTime() - StarShip.EXPIRES;
-            List<StarShip> array;
-            for (int prior : priorities) {
-                array = fleets.get(prior);
-                if (array == null) {
+        long expired = (new Date()).getTime() - StarShip.EXPIRES;
+        List<StarShip> array;
+        for (int prior : priorities) {
+            array = fleets.get(prior);
+            if (array == null) {
+                continue;
+            }
+            for (StarShip ship : array) {
+                if (ship.getTimestamp() > expired) {
+                    // not expired yet
                     continue;
                 }
-                for (StarShip item : array) {
-                    if (item.getTimestamp() > expired) {
-                        // not expired yet
-                        continue;
-                    }
-                    if (item.getRetries() <= StarShip.RETRIES) {
-                        // update time and retry
-                        task = item;
-                        task.update();
-                        break;
-                    }
-                    // retried too may times
-                    if (item.isExpired()) {
-                        // task expired, remove it and don't retry
-                        task = item;
-                        array.remove(item);
-                        break;
-                    }
+                if (ship.getRetries() <= StarShip.RETRIES) {
+                    // update time and retry
+                    ship.update();
+                    return ship;
                 }
-                if (task != null) {
-                    // got it
-                    break;
+                // retried too may times
+                if (ship.isExpired()) {
+                    // task expired, remove it and don't retry
+                    array.remove(ship);
+                    return ship;
                 }
             }
-        } finally {
-            writeLock.unlock();
         }
-        return task;
+        return null;
     }
 }

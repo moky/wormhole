@@ -32,8 +32,6 @@ import os
 import sys
 from typing import Optional
 
-from tcp import Connection
-
 from dmtp.mtp.tlv import Data
 from dmtp.mtp import Package, Header
 from dmtp.mtp import Command as MTPCommand, CommandRespond as MTPCommandRespond
@@ -80,13 +78,14 @@ class MTPShip(StarShip):
 class MTPDocker(StarDocker):
     """ Docker for MTP packages """
 
+    MAX_HEAD_LENGTH = 24
+
     def __init__(self, gate: Gate):
         super().__init__(gate=gate)
 
     @classmethod
-    def check(cls, connection: Connection) -> bool:
-        # 1. check received data
-        buffer = connection.received()
+    def check(cls, gate: Gate) -> bool:
+        buffer = gate.receive(length=cls.MAX_HEAD_LENGTH, remove=False)
         if buffer is not None:
             data = Data(data=buffer)
             head = Header.parse(data=data)
@@ -98,9 +97,8 @@ class MTPDocker(StarDocker):
         mtp = Package.new(data_type=MTPMessage, body_length=req.length, body=req)
         return MTPShip(mtp=mtp, priority=priority, delegate=delegate)
 
-    def __receive_package(self) -> Optional[Package]:
-        # 1. check received data
-        buffer = self.gate.received()
+    def __seek_header(self) -> Optional[Header]:
+        buffer = self.gate.receive(length=512, remove=False)
         if buffer is None:
             # received nothing
             return None
@@ -108,28 +106,35 @@ class MTPDocker(StarDocker):
         head = Header.parse(data=data)
         if head is None:
             # not a MTP package?
-            if data.length < 20:
+            if data.length < self.MAX_HEAD_LENGTH:
                 # wait for more data
                 return None
+            # locate next header
             pos = data.find(sub=Header.MAGIC_CODE, start=1)  # MAGIC_CODE_OFFSET = 0
             if pos > 0:
                 # found next head(starts with 'DIM'), skip data before it
-                self.gate.receive(length=pos)
-            else:
-                # skip the whole data
-                self.gate.receive(length=data.length)
+                self.gate.receive(length=pos, remove=True)
+            elif data.length > 500:
+                # skip the whole buffer
+                self.gate.receive(length=data.length, remove=True)
+        return head
+
+    def __receive_package(self) -> Optional[Package]:
+        # 1. seek header in received data
+        head = self.__seek_header()
+        if head is None:
+            # header not found
             return None
-        # 2. receive data with 'head.length + body.length'
         body_len = head.body_length
-        if body_len < 0:
-            # should not happen
-            body_len = data.length - head.length
+        assert body_len >= 0, 'body length error: %d' % body_len
         pack_len = head.length + body_len
-        if pack_len > data.length:
+        # 2. receive data with 'head.length + body.length'
+        buffer = self.gate.receive(length=pack_len, remove=False)
+        if len(buffer) < pack_len:
             # waiting for more data
             return None
-        # receive package
-        buffer = self.gate.receive(length=pack_len)
+        # receive package (remove from gate)
+        buffer = self.gate.receive(length=pack_len, remove=True)
         data = Data(data=buffer)
         body = data.slice(start=head.length)
         return Package(data=data, head=head, body=body)
@@ -198,9 +203,10 @@ class MTPDocker(StarDocker):
     def _get_outgo_ship(self, income: Optional[Ship] = None) -> Optional[StarShip]:
         outgo = super()._get_outgo_ship(income=income)
         if income is None and isinstance(outgo, MTPShip):
-            # check data type
+            # if retries == 0, means this ship is first time to be sent,
+            # and it would be removed from the dock.
             if outgo.retries == 0 and outgo.mtp.head.data_type == MTPMessage:
-                # put back for response
+                # put back for waiting response
                 self.gate.park_ship(ship=outgo)
         return outgo
 

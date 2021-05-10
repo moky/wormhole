@@ -32,7 +32,7 @@ from .ship import Ship, ShipDelegate
 from .gate import Gate, GateDelegate, GateStatus
 from .starship import StarShip
 from .stargate import StarGate
-from .dock import Dock
+from .dock import Dock, LockedDock
 from .docker import Docker
 from .stardocker import StarDocker
 
@@ -50,5 +50,6 @@ __all__ = [
     'Ship', 'ShipDelegate',
     'Gate', 'GateDelegate', 'GateStatus',
     'StarShip', 'StarGate',
-    'Dock', 'Docker', 'StarDocker',
+    'Dock', 'LockedDock',
+    'Docker', 'StarDocker',
 ]

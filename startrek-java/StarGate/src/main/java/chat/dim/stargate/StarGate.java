@@ -31,17 +31,14 @@
 package chat.dim.stargate;
 
 import java.lang.ref.WeakReference;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import chat.dim.mem.BytesArray;
 import chat.dim.tcp.Connection;
 
 public abstract class StarGate implements Gate, Connection.Delegate, Runnable {
 
-    public final Dock dock = new Dock();
+    public final Dock dock;
     public final Connection connection;
-    private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     private Docker docker = null;
     private WeakReference<Delegate> delegateRef = null;
@@ -50,7 +47,12 @@ public abstract class StarGate implements Gate, Connection.Delegate, Runnable {
 
     public StarGate(Connection conn) {
         super();
+        dock = createDock();
         connection = conn;
+    }
+
+    protected Dock createDock() {
+        return new LockedDock();
     }
 
     public Docker getDocker() {
@@ -102,17 +104,18 @@ public abstract class StarGate implements Gate, Connection.Delegate, Runnable {
 
     @Override
     public boolean send(byte[] payload, int priority, Ship.Delegate delegate) {
-        Docker docker = getDocker();
-        if (docker == null) {
+        Docker worker = getDocker();
+        if (worker == null) {
             return false;
         } else {
-            return send(docker.pack(payload, priority, delegate));
+            StarShip outgo = worker.pack(payload, priority, delegate);
+            return send(outgo);
         }
     }
 
     @Override
     public boolean send(StarShip outgo) {
-        if (outgo.priority < 0 && getStatus().equals(Status.Connected)) {
+        if (outgo.priority <= StarShip.URGENT && getStatus().equals(Status.Connected)) {
             // send out directly
             return send(outgo.getPackage());
         } else {
@@ -127,61 +130,61 @@ public abstract class StarGate implements Gate, Connection.Delegate, Runnable {
 
     @Override
     public boolean send(byte[] pack) {
-        boolean ok;
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            ok = connection.send(pack) == pack.length;
-        } finally {
-            writeLock.unlock();
-        }
-        return ok;
-    }
-
-    private byte[] fragment = null;
-
-    private void cache(byte[] data) {
-        assert data != null && data.length > 0 : "data should not be empty";
-        if (fragment == null) {
-            fragment = data;
+        if (connection.isAlive()) {
+            return connection.send(pack) == pack.length;
         } else {
-            // merge(fragment, data)
-            byte[] buffer = new byte[fragment.length + data.length];
-            System.arraycopy(fragment, 0, buffer, 0, fragment.length);
-            System.arraycopy(data, 0, buffer, fragment.length, data.length);
-            fragment = buffer;
+            return false;
         }
     }
 
     @Override
-    public byte[] received() {
-        int available = connection.available();
-        if (available > 0) {
-            byte[] data = connection.receive(available);
-            if (data != null) {
-                cache(data);
+    public byte[] receive(int length, boolean remove) {
+        byte[] fragment = receive(length);
+        if (fragment != null) {
+            if (fragment.length > length) {
+                if (remove) {
+                    // fragment[length:]
+                    chunks = BytesArray.slice(fragment, length);
+                }
+                // fragment[:length]
+                return BytesArray.slice(fragment, 0, length);
+            } else if (remove) {
+                //assert fragment.length == length : "fragment length error";
+                chunks = null;
             }
         }
         return fragment;
     }
 
-    @Override
-    public byte[] receive(int length) {
-        byte[] data;
-        assert fragment != null : "should not happen";
-        if (length < fragment.length) {
-            // slice(fragment, length)
-            data = new byte[length];
-            System.arraycopy(fragment, 0, data, 0, length);
-            byte[] remaining = new byte[fragment.length - length];
-            System.arraycopy(fragment, length, remaining, 0, fragment.length - length);
-            fragment = remaining;
-        } else {
-            assert length == fragment.length : "data not enough";
-            data = fragment;
-            fragment = null;
+    private byte[] chunks = null;
+
+    private byte[] receive(int length) {
+        int cached = 0;
+        if (chunks != null) {
+            cached = chunks.length;
         }
-        return data;
+        int available;
+        byte[] data;
+        while (cached < length) {
+            // check available length from connection
+            available = connection.available();
+            if (available <= 0) {
+                break;
+            }
+            // try to receive data from connection
+            data = connection.receive(available);
+            if (data == null || data.length == 0) {
+                break;
+            }
+            // append data
+            if (chunks == null) {
+                chunks = data;
+            } else {
+                chunks = BytesArray.concat(chunks, data);
+            }
+            cached += data.length;
+        }
+        return chunks;
     }
 
     //

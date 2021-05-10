@@ -31,7 +31,10 @@
 package chat.dim.stargate;
 
 /**
- *  Star Ship for carrying data package
+ *  Star Ship
+ *  ~~~~~~~~~
+ *
+ *  Container carrying data package
  */
 public interface Ship {
 

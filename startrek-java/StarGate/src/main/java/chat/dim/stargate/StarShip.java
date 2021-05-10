@@ -105,12 +105,9 @@ public abstract class StarShip implements Ship {
 
     /**
      *  Update retries count and time
-     *
-     * @return this Ship
      */
-    protected StarShip update() {
+    protected void update() {
         timestamp = (new Date()).getTime();
         retries += 1;
-        return this;
     }
 }

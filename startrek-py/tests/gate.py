@@ -34,48 +34,61 @@ import sys
 import threading
 from typing import Optional
 
-from tcp import BaseConnection, ActiveConnection, ConnectionDelegate
+from tcp import BaseConnection, ActiveConnection
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from startrek import StarGate as BaseGate
+from startrek import StarGate
 from startrek import Docker
 
 from tests.mtp import MTPDocker
 
 
-def create_connection(delegate: ConnectionDelegate,
-                      address: Optional[tuple] = None,
-                      sock: Optional[socket.socket] = None) -> BaseConnection:
-    if address is None:
-        conn = BaseConnection(sock=sock)
-    else:
-        conn = ActiveConnection(address=address, sock=sock)
-    conn.delegate = delegate
-    return conn
+class StarTrek(StarGate):
 
+    @classmethod
+    def create(cls, address: Optional[tuple] = None, sock: Optional[socket.socket] = None) -> StarGate:
+        if address is None:
+            conn = BaseConnection(sock=sock)
+        else:
+            conn = ActiveConnection(address=address, sock=sock)
+        gate = StarTrek(connection=conn)
+        conn.delegate = gate
+        return gate
 
-class StarGate(BaseGate):
-
-    def __init__(self, address: Optional[tuple] = None, sock: Optional[socket.socket] = None):
-        conn = create_connection(delegate=self, address=address, sock=sock)
-        super().__init__(connection=conn)
-        self.__conn = conn
+    def __init__(self, connection: BaseConnection):
+        super().__init__(connection=connection)
+        self.__send_lock = threading.RLock()
+        self.__receive_lock = threading.RLock()
 
     # Override
     def _create_docker(self) -> Optional[Docker]:
         # override to customize Docker
-        if MTPDocker.check(connection=self.__conn):
+        if MTPDocker.check(gate=self):
             return MTPDocker(gate=self)
 
     # Override
+    def send(self, data: bytes) -> bool:
+        with self.__send_lock:
+            return super().send(data=data)
+
+    # Override
+    def receive(self, length: int, remove: bool) -> Optional[bytes]:
+        with self.__receive_lock:
+            return super().receive(length=length, remove=remove)
+
+    # Override
     def setup(self):
-        threading.Thread(target=self.__conn.run).start()
+        conn = self.connection
+        assert isinstance(conn, BaseConnection), 'connection error: %s' % conn
+        threading.Thread(target=conn.run).start()
         super().setup()
 
     # Override
     def finish(self):
         super().finish()
-        self.__conn.stop()
+        conn = self.connection
+        assert isinstance(conn, BaseConnection), 'connection error: %s' % conn
+        conn.stop()

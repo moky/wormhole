@@ -153,21 +153,12 @@ class Gate:
         raise NotImplemented
 
     @abstractmethod
-    def received(self) -> Optional[bytes]:
+    def receive(self, length: int, remove: bool) -> Optional[bytes]:
         """
-        Get received data from cache, but not remove
-
-        :return: received data
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def receive(self, length: int) -> Optional[bytes]:
-        """
-        Get received data from cache, and remove it
-        (call 'received()' to check data first)
+        Get received data from cache
 
         :param length: how many bytes to receive
+        :param remove: whether remove from cache
         :return: received data
         """
         raise NotImplemented
@@ -180,16 +171,6 @@ class Gate:
     def park_ship(self, ship: StarShip) -> bool:
         """ Park this outgo Ship in a waiting queue for departure """
         raise NotImplemented
-
-    # @overload
-    # def pop(self) -> Optional[StarShip]:
-    #     """ Get a new Ship(time == 0) and remove it from the Dock """
-    #     pass
-    #
-    # @overload
-    # def pop(self, sn: bytes) -> Optional[StarShip]:
-    #     """ Get a Ship(with SN as ID) and remove it from the Dock """
-    #     pass
 
     @abstractmethod
     def pull_ship(self, sn: Optional[bytes] = None) -> Optional[StarShip]:

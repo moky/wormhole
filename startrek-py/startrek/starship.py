@@ -35,14 +35,6 @@ from typing import Optional
 from .ship import Ship, ShipDelegate
 
 
-"""
-    Star Ship
-    ~~~~~~~~~
-
-    Container carrying data package
-"""
-
-
 class StarShip(Ship):
     """ Star Ship carrying package to remote Star Gate """
 
@@ -98,4 +90,3 @@ class StarShip(Ship):
         """ Update retries count and time """
         self.__timestamp = int(time.time())
         self.__retries += 1
-        return self

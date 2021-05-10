@@ -38,7 +38,6 @@ import chat.dim.stargate.Ship;
 import chat.dim.stargate.StarDocker;
 import chat.dim.stargate.StarGate;
 import chat.dim.stargate.StarShip;
-import chat.dim.tcp.Connection;
 import chat.dim.tlv.Data;
 
 /**
@@ -46,12 +45,14 @@ import chat.dim.tlv.Data;
  */
 public class MTPDocker extends StarDocker {
 
+    public static final int MAX_HEAD_LENGTH = 24;
+
     public MTPDocker(StarGate gate) {
         super(gate);
     }
 
-    public static boolean check(Connection connection) {
-        byte[] buffer = connection.received();
+    public static boolean check(Gate gate) {
+        byte[] buffer = gate.receive(MAX_HEAD_LENGTH, false);
         if (buffer == null) {
             return false;
         } else {
@@ -66,9 +67,8 @@ public class MTPDocker extends StarDocker {
         return new MTPShip(mtp, priority, delegate);
     }
 
-    private Package receivePackage() {
-        // 1. check received data
-        byte[] buffer = getGate().received();
+    private Header seekHeader() {
+        byte[] buffer = getGate().receive(512, false);
         if (buffer == null) {
             // received nothing
             return null;
@@ -77,34 +77,42 @@ public class MTPDocker extends StarDocker {
         Header head = Header.parse(data);
         if (head == null) {
             // not a MTP package?
-            if (buffer.length < 20) {
+            if (buffer.length < MAX_HEAD_LENGTH) {
                 // wait for more data
                 return null;
             }
+            // locate next header
             int pos = data.find(Header.MAGIC_CODE, 1);
             if (pos > 0) {
                 // found next head(starts with 'DIM'), skip data before it
-                getGate().receive(pos);
-            } else {
-                // skip thw whole data
-                getGate().receive(buffer.length);
+                getGate().receive(pos, true);
+            } else if (buffer.length > 500) {
+                // skip the whole buffer
+                getGate().receive(buffer.length, true);
             }
+        }
+        return head;
+    }
+
+    private Package receivePackage() {
+        // 1. seek header received data
+        Header head = seekHeader();
+        if (head == null) {
+            // header not found
             return null;
         }
-        // 2. receive data with 'head.length + body.length'
         int bodyLen = head.bodyLength;
-        if (bodyLen < 0) {
-            // should not happen
-            bodyLen = buffer.length - head.getLength();
-        }
+        assert bodyLen >= 0 : "body length error: " + bodyLen;
         int packLen = head.getLength() + bodyLen;
-        if (packLen > buffer.length) {
+        // 2. receive data with 'head.length + body.length'
+        byte[] buffer = getGate().receive(packLen, false);
+        if (buffer.length < packLen) {
             // waiting for more data
             return null;
         }
         // receive package
-        buffer = getGate().receive(packLen);
-        data = new Data(buffer);
+        buffer = getGate().receive(packLen, true);
+        Data data = new Data(buffer);
         Data body = data.slice(head.getLength());
         return new Package(data, head, body);
     }
@@ -185,8 +193,10 @@ public class MTPDocker extends StarDocker {
         StarShip outgo = super.getOutgoShip();
         if (outgo instanceof MTPShip) {
             MTPShip ship = (MTPShip) outgo;
+            // if retries == 0, means this ship is first time to be sent,
+            // and it would be removed from the dock.
             if (outgo.getRetries() == 0 && ship.mtp.head.type.equals(DataType.Message)) {
-                // put back for response
+                // put back for waiting response
                 getGate().parkShip(outgo);
             }
         }

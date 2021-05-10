@@ -32,6 +32,12 @@ package chat.dim.stargate;
 
 import chat.dim.tcp.Connection;
 
+/**
+ *  Star Gate
+ *  ~~~~~~~~~
+ *
+ *  Connected remote peer
+ */
 public interface Gate {
 
     /**
@@ -86,20 +92,13 @@ public interface Gate {
     boolean send(byte[] pack);
 
     /**
-     *  Get received data from cache, but not remove
-     *
-     * @return received data
-     */
-    byte[] received();
-
-    /**
-     *  Get received data from cache, and remove it
-     *  (call 'received()' to check data first)
+     *  Get received data from cache
      *
      * @param length - how many bytes to receive
+     * @param remove - whether remove from cache
      * @return received data
      */
-    byte[] receive(int length);
+    byte[] receive(int length, boolean remove);
 
     //
     //  Ship Docking
@@ -185,7 +184,7 @@ public interface Gate {
          * @param oldStatus - last status
          * @param newStatus - current status
          */
-        void onStatusChanged(Gate gate, Gate.Status oldStatus, Gate.Status newStatus);
+        void onStatusChanged(Gate gate, Status oldStatus, Status newStatus);
 
         /**
          *  Callback when new package received

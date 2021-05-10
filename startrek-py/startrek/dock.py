@@ -50,35 +50,33 @@ class Dock:
         # tasks for sending out
         self.__priorities: List[int] = []
         self.__fleets: Dict[int, List[StarShip]] = {}
-        self.__lock = threading.Lock()
 
     def put(self, ship: StarShip) -> bool:
         """ Park this ship in the Dock for departure """
-        with self.__lock:
-            # 1. choose an array with priority
-            priority = ship.priority
-            fleet = self.__fleets.get(priority)
-            if fleet is None:
-                # 1.1. create new array for this priority
-                fleet = []
-                self.__fleets[priority] = fleet
-                # 1.2. insert the priority in a sorted list
-                index = 0
-                count = len(self.__priorities)
-                while index < count:
-                    if priority < self.__priorities[index]:
-                        # insert priority before the bigger one
-                        break
-                    else:
-                        index += 1
-                self.__priorities.insert(index, priority)
-            # 2. check duplicated task
-            for item in fleet:
-                if item is ship:
-                    return False
-            # 3. append to the tail
-            fleet.append(ship)
-            return True
+        # 1. choose an array with priority
+        priority = ship.priority
+        fleet = self.__fleets.get(priority)
+        if fleet is None:
+            # 1.1. create new array for this priority
+            fleet = []
+            self.__fleets[priority] = fleet
+            # 1.2. insert the priority in a sorted list
+            index = 0
+            count = len(self.__priorities)
+            while index < count:
+                if priority < self.__priorities[index]:
+                    # insert priority before the bigger one
+                    break
+                else:
+                    index += 1
+            self.__priorities.insert(index, priority)
+        # 2. check duplicated task
+        for item in fleet:
+            if item is ship:
+                return False
+        # 3. append to the tail
+        fleet.append(ship)
+        return True
 
     # @overload
     # def pop(self) -> Optional[StarShip]:
@@ -92,43 +90,61 @@ class Dock:
 
     def pop(self, sn: Optional[bytes] = None) -> Optional[StarShip]:
         # search in fleets ordered by priority
-        with self.__lock:
-            if sn is None:
-                # get next new ship
-                for priority in self.__priorities:
-                    fleet = self.__fleets.get(priority, [])
-                    for ship in fleet:
-                        if ship.time == 0:
-                            # update time and try
-                            ship.update()
-                            fleet.remove(ship)
-                            return ship
-            else:
-                # get ship with ID
-                for priority in self.__priorities:
-                    fleet = self.__fleets.get(priority, [])
-                    for ship in fleet:
-                        if ship.sn == sn:
-                            fleet.remove(ship)
-                            return ship
+        if sn is None:
+            # get next new ship
+            for priority in self.__priorities:
+                fleet = self.__fleets.get(priority, [])
+                for ship in fleet:
+                    if ship.time == 0:
+                        # update time and try
+                        ship.update()
+                        fleet.remove(ship)
+                        return ship
+        else:
+            # get ship with ID
+            for priority in self.__priorities:
+                fleet = self.__fleets.get(priority, [])
+                for ship in fleet:
+                    if ship.sn == sn:
+                        # just remove it
+                        fleet.remove(ship)
+                        return ship
 
     def any(self) -> Optional[StarShip]:
         """ Get any Ship timeout/expired """
+        expired = int(time.time()) - StarShip.EXPIRES
+        for priority in self.__priorities:
+            # search in fleets ordered by priority
+            fleet = self.__fleets.get(priority, [])
+            for ship in fleet:
+                if ship.time > expired:
+                    # not expired yet
+                    continue
+                if ship.retries <= StarShip.RETRIES:
+                    # update time and retry
+                    ship.update()
+                    return ship
+                # retried too many times
+                if ship.expired:
+                    # task expired, remove it and don't retry
+                    fleet.remove(ship)
+                    return ship
+
+
+class LockedDock(Dock):
+
+    def __init__(self):
+        super().__init__()
+        self.__lock = threading.Lock()
+
+    def put(self, ship: StarShip) -> bool:
         with self.__lock:
-            expired = int(time.time()) - StarShip.EXPIRES
-            for priority in self.__priorities:
-                # search in fleets ordered by priority
-                fleet = self.__fleets.get(priority, [])
-                for ship in fleet:
-                    if ship.time > expired:
-                        # not expired yet
-                        continue
-                    if ship.retries <= StarShip.RETRIES:
-                        # update time and retry
-                        ship.update()
-                        return ship
-                    # retried too many times
-                    if ship.expired:
-                        # task expired, remove it and don't retry
-                        fleet.remove(ship)
-                        return ship
+            return super().put(ship=ship)
+
+    def pop(self, sn: Optional[bytes] = None) -> Optional[StarShip]:
+        with self.__lock:
+            return super().pop(sn=sn)
+
+    def any(self) -> Optional[StarShip]:
+        with self.__lock:
+            return super().any()

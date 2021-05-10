@@ -30,6 +30,12 @@
  */
 package chat.dim.stargate;
 
+/**
+ *  Star Worker
+ *  ~~~~~~~~~~~
+ *
+ *  Processor for Star Ships
+ */
 public interface Docker {
 
     /**

@@ -28,7 +28,6 @@
 # SOFTWARE.
 # ==============================================================================
 
-import threading
 import time
 import weakref
 from typing import Optional
@@ -37,7 +36,7 @@ from tcp import Connection, ConnectionStatus, ConnectionDelegate
 
 from .ship import ShipDelegate
 from .starship import StarShip
-from .dock import Dock
+from .dock import Dock, LockedDock
 from .docker import Docker
 from .gate import gate_status
 from .gate import Gate, GateStatus, GateDelegate
@@ -47,13 +46,20 @@ class StarGate(Gate, ConnectionDelegate):
 
     def __init__(self, connection: Connection):
         super().__init__()
-        self.__dock = Dock()
+        self.__dock = self._create_dock()
         self.__conn = connection
-        self.__fragment: Optional[bytes] = None
-        self.__lock = threading.RLock()
+        self.__chunks: Optional[bytes] = None
         self.__docker: Optional[Docker] = None
         self.__delegate: Optional[weakref.ReferenceType] = None
         self.__running = False
+
+    # noinspection PyMethodMayBeStatic
+    def _create_dock(self) -> Dock:
+        return LockedDock()
+
+    @property
+    def connection(self) -> Connection:
+        return self.__conn
 
     @property
     def docker(self) -> Optional[Docker]:
@@ -108,7 +114,7 @@ class StarGate(Gate, ConnectionDelegate):
 
     # Override
     def send_ship(self, ship: StarShip) -> bool:
-        if ship.priority < 0 and self.status == GateStatus.Connected:
+        if ship.priority <= StarShip.URGENT and self.status == GateStatus.Connected:
             # send out directly
             return self.send(data=ship.package)
         else:
@@ -121,36 +127,42 @@ class StarGate(Gate, ConnectionDelegate):
 
     # Override
     def send(self, data: bytes) -> bool:
-        with self.__lock:
+        if self.__conn.alive:
             return self.__conn.send(data=data) == len(data)
 
-    def __cache(self, data: bytes):
-        assert data is not None and len(data) > 0, 'data should not be empty'
-        if self.__fragment is None:
-            self.__fragment = data
-        else:
-            self.__fragment += data
-
     # Override
-    def received(self) -> Optional[bytes]:
-        available = self.__conn.available
-        if available > 0:
+    def receive(self, length: int, remove: bool) -> Optional[bytes]:
+        fragment = self.__receive(length=length)
+        if fragment is not None:
+            if len(fragment) > length:
+                if remove:
+                    self.__chunks = fragment[length:]
+                return fragment[:length]
+            elif remove:
+                # assert len(fragment) == length, 'fragment length error'
+                self.__chunks = None
+            return fragment
+
+    def __receive(self, length: int) -> Optional[bytes]:
+        cached = 0
+        if self.__chunks is not None:
+            cached = len(self.__chunks)
+        while cached < length:
+            # check available length from connection
+            available = self.__conn.available
+            if available <= 0:
+                break
+            # try to receive data from connection
             data = self.__conn.receive(max_length=available)
-            if data is not None:
-                self.__cache(data=data)
-        return self.__fragment
-
-    # Override
-    def receive(self, length: int) -> Optional[bytes]:
-        if length < len(self.__fragment):
-            # slice(fragment, length)
-            data = self.__fragment[:length]
-            self.__fragment = self.__fragment[length:]
-        else:
-            assert length == len(self.__fragment), 'data not enough'
-            data = self.__fragment
-            self.__fragment = None
-        return data
+            if data is None:
+                break
+            # append data
+            if self.__chunks is None:
+                self.__chunks = data
+            else:
+                self.__chunks += data
+            cached += len(data)
+        return self.__chunks
 
     #
     #   Docking
