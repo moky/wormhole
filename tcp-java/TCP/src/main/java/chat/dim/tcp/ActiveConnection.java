@@ -37,7 +37,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ActiveConnection extends BaseConnection {
 
-    private final ReentrantReadWriteLock lock;
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private int connecting;
 
     // remote address
@@ -49,8 +49,6 @@ public class ActiveConnection extends BaseConnection {
         assert remoteHost != null && remotePort > 0 : "remote address error (" + remoteHost + ":" + remotePort + ")";
         host = remoteHost;
         port = remotePort;
-        // lock for connecting
-        lock = new ReentrantReadWriteLock();
         connecting = 0;
     }
 

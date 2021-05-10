@@ -2,12 +2,12 @@
  *
  *  TCP: Transmission Control Protocol
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,45 +30,47 @@
  */
 package chat.dim.mem;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public final class BytesArray {
+public final class LockedPool extends MemoryCache {
 
-    public static byte[] slice(byte[] source, int start) {
-        return slice(source, start, source.length);
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+    @Override
+    public void push(byte[] pack) {
+        Lock writeLock = lock.writeLock();
+        writeLock.lock();
+        try {
+            super.push(pack);
+        } finally {
+            writeLock.unlock();
+        }
     }
-    public static byte[] slice(byte[] source, int start, int end) {
-        int length = end - start;
-        byte[] data = new byte[length];
-        System.arraycopy(source, start, data, 0, length);
+
+    @Override
+    public byte[] pop(int maxLength) {
+        byte[] data;
+        Lock writeLock = lock.writeLock();
+        writeLock.lock();
+        try {
+            data = super.pop(maxLength);
+        } finally {
+            writeLock.unlock();
+        }
         return data;
     }
 
-    public static byte[] concat(byte[]... array) {
-        return concat(Arrays.asList(array));
-    }
-    public static byte[] concat(List<byte[]> array) {
-        int count = array.size();
-        int index;
-        byte[] item;
-        // 1. get buffer length
-        int length = 0;
-        for (index = 0; index < count; ++index) {
-            item = array.get(index);
-            length += item.length;
-        }
-        if (length == 0) {
-            return null;
-        }
-        // 2. create buffer to copy data
-        byte[] data = new byte[length];
-        int offset = 0;
-        // 3. get all data
-        for (index = 0; index < count; ++index) {
-            item = array.get(index);
-            System.arraycopy(item, 0, data, offset, item.length);
-            offset += item.length;
+    @Override
+    public byte[] all() {
+        byte[] data;
+        Lock writeLock = lock.writeLock();
+        writeLock.lock();
+        try {
+            data = super.all();
+        } finally {
+            writeLock.unlock();
         }
         return data;
     }

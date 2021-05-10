@@ -39,8 +39,9 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.util.Date;
 
+import chat.dim.mem.BytesArray;
 import chat.dim.mem.CachePool;
-import chat.dim.mem.MemoryCache;
+import chat.dim.mem.LockedPool;
 
 public class BaseConnection implements Connection, Runnable {
 
@@ -68,7 +69,7 @@ public class BaseConnection implements Connection, Runnable {
 
     // override for customized cache pool
     protected CachePool createCachePool() {
-        return new MemoryCache();
+        return new LockedPool();
     }
 
     public Delegate getDelegate() {
@@ -161,9 +162,7 @@ public class BaseConnection implements Connection, Runnable {
         }
         if (read < available) {
             // read partially
-            byte[] part = new byte[read];
-            System.arraycopy(buffer, 0, part, 0, read);
-            buffer = part;
+            buffer = BytesArray.slice(buffer, 0, read);
         }
         lastReceivedTime = (new Date()).getTime();
         return buffer;

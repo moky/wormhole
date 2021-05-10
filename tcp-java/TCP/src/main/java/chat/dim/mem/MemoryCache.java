@@ -32,76 +32,55 @@ package chat.dim.mem;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public final class MemoryCache implements CachePool {
+public class MemoryCache implements CachePool {
 
     // received packages
-    private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private final List<byte[]> packages = new ArrayList<>();
-    private int count = 0;
+    private int occupied = 0;
 
     @Override
     public int length() {
-        return count;
+        return occupied;
     }
 
     @Override
     public void push(byte[] pack) {
         assert pack != null && pack.length > 0: "data should not be empty";
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            packages.add(pack);
-            count += pack.length;
-        } finally {
-            writeLock.unlock();
-        }
+        packages.add(pack);
+        occupied += pack.length;
     }
 
     @Override
     public byte[] pop(int maxLength) {
-        byte[] data;
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            assert maxLength > 0 : "max length must greater than 0";
-            assert packages.size() > 0 : "data empty, call 'get()/length()' to check data first";
-            data = packages.remove(0);
-            if (data.length > maxLength) {
-                // push the remaining data back to the queue head
-                packages.add(0, BytesArray.slice(data, maxLength, data.length));
-                // cut the remaining data
-                data = BytesArray.slice(data, 0, maxLength);
-            }
-            count -= data.length;
-        } finally {
-            writeLock.unlock();
+        assert maxLength > 0 : "max length must greater than 0";
+        assert packages.size() > 0 : "pool empty, call 'length()' to check data first";
+        byte[] data = packages.remove(0);
+        if (data.length > maxLength) {
+            // push the remaining data back to the queue head
+            packages.add(0, BytesArray.slice(data, maxLength));
+            // cut the remaining data
+            data = BytesArray.slice(data, 0, maxLength);
         }
+        occupied -= data.length;
         return data;
     }
 
     @Override
     public byte[] all() {
-        byte[] data;
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            int count = packages.size();
-            if (count == 0) {
-                data = null;
-            } else if (count == 1) {
-                data = packages.get(0);
-            } else {
-                data = BytesArray.concat(packages);
-                packages.clear();
-                packages.add(data);
-            }
-        } finally {
-            writeLock.unlock();
+        int count = packages.size();
+        if (count == 0) {
+            // empty pool
+            return null;
+        } else if (count == 1) {
+            // only one package
+            return packages.get(0);
+        } else {
+            // concat all packages
+            byte[] data = BytesArray.concat(packages);
+            packages.clear();
+            packages.add(data);
+            return data;
         }
-        return data;
     }
 }

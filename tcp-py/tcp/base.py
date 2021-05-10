@@ -34,7 +34,7 @@ import weakref
 from typing import Optional
 
 from .pool import Pool
-from .mem import MemPool
+from .mem import LockedPool
 from .status import ConnectionStatus
 from .delegate import ConnectionDelegate
 from .connection import Connection
@@ -57,7 +57,7 @@ class BaseConnection(Connection):
 
     # noinspection PyMethodMayBeStatic
     def _create_pool(self) -> Pool:
-        return MemPool()
+        return LockedPool()
 
     @property
     def delegate(self) -> Optional[ConnectionDelegate]:

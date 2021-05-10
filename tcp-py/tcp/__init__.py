@@ -29,7 +29,7 @@
 # ==============================================================================
 
 from .pool import Pool
-from .mem import MemPool
+from .mem import MemPool, LockedPool
 
 from .status import ConnectionStatus
 from .delegate import ConnectionDelegate
@@ -49,6 +49,7 @@ __all__ = [
     #
     'Pool',
     'MemPool',
+    'LockedPool',
 
     #
     #   Connection
