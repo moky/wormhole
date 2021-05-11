@@ -30,7 +30,7 @@
  */
 package chat.dim.tcp;
 
-public interface Connection {
+public interface Connection extends Runnable {
 
     /*  Max length of memory cache
      *  ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -77,6 +77,11 @@ public interface Connection {
      */
     String getHost();
     int getPort();
+
+    /**
+     *  Stop running
+     */
+    void stop();
 
     /**
      *  Check whether connection is alive

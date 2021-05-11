@@ -28,12 +28,16 @@
 # SOFTWARE.
 # ==============================================================================
 
+from .runner import Runner
+
+from .dock import Dock, LockedDock
+
 from .ship import Ship, ShipDelegate
 from .gate import Gate, GateDelegate, GateStatus
+from .docker import Docker
+
 from .starship import StarShip
 from .stargate import StarGate
-from .dock import Dock, LockedDock
-from .docker import Docker
 from .stardocker import StarDocker
 
 
@@ -47,9 +51,14 @@ from .stardocker import StarDocker
 
 __all__ = [
 
+    'Runner',
+
+    'Dock', 'LockedDock',
+
     'Ship', 'ShipDelegate',
     'Gate', 'GateDelegate', 'GateStatus',
+    'Docker',
+
     'StarShip', 'StarGate',
-    'Dock', 'LockedDock',
-    'Docker', 'StarDocker',
+    'StarDocker',
 ]

@@ -28,9 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Optional
 
+from .runner import Handler, Processor
 from .ship import ShipDelegate
 from .starship import StarShip
 
@@ -43,32 +44,8 @@ from .starship import StarShip
 """
 
 
-class Docker:
+class Docker(Handler, Processor, ABC):
     """ Star Worker for packages in Ships """
-
-    @abstractmethod
-    def setup(self):
-        """ Set up connection """
-        raise NotImplemented
-
-    @abstractmethod
-    def handle(self):
-        """ Call 'process()' circularly """
-        raise NotImplemented
-
-    @abstractmethod
-    def process(self) -> bool:
-        """
-        Process incoming/outgoing Ships
-
-        :return: False on nothing to do
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def finish(self):
-        """ Do clean jobs """
-        raise NotImplemented
 
     @abstractmethod
     def pack(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> StarShip:

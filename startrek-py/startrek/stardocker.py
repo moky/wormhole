@@ -30,8 +30,10 @@
 
 import time
 import weakref
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Optional
+
+from .runner import Runner
 
 from .ship import Ship
 from .starship import StarShip
@@ -39,12 +41,27 @@ from .docker import Docker
 from .gate import Gate
 
 
-class StarDocker(Docker):
+class StarDocker(Runner, Docker, ABC):
+    """
+        Star Docker
+        ~~~~~~~~~~~
+
+        @abstract properties:
+            expired()
+            status()
+
+        @abstract methods:
+            - _create_docker()
+            - send(data)
+            - receive(length, remove)
+            - pack(payload, priority, delegate)
+            - get_income_ship()
+            - process_income_ship(income)
+    """
 
     def __init__(self, gate: Gate):
         super().__init__()
         self.__gate = weakref.ref(gate)
-        self.__running = False
         # time for checking heartbeat
         self.__heartbeat_expired = int(time.time()) + 2
 
@@ -53,57 +70,24 @@ class StarDocker(Docker):
         return self.__gate()
 
     #
-    #   Running
+    #   Runner
     #
-
-    def run(self):
-        self.setup()
-        try:
-            self.handle()
-        finally:
-            self.finish()
-
-    def stop(self):
-        self.__running = False
-
-    @property
-    def working(self) -> bool:
-        return self.__running and self.gate.opened
-
-    # Override
-    def setup(self):
-        self.__running = True
-
-    # Override
-    def finish(self):
-        # TODO: go through all outgo Ships parking in Dock and call 'sent failed' on their delegates
-        self.__running = False
-
-    # Override
-    def handle(self):
-        while self.working:
-            if not self.process():
-                self._idle()
-
-    # noinspection PyMethodMayBeStatic
-    def _idle(self):
-        time.sleep(0.1)
 
     # Override
     def process(self) -> bool:
         # 1. process income
-        income = self._get_income_ship()
+        income = self.get_income_ship()
         if income is not None:
             # 1.1. remove linked package
-            self._remove_linked_ship(income=income)
+            self.remove_linked_ship(income=income)
             # 1.2. process income package
-            res = self._process_income_ship(income=income)
+            res = self.process_income_ship(income=income)
             if res is not None:
                 # if ship.priority < 0, send the response immediately;
                 # or, put this ship into a waiting queue.
                 self.gate.send_ship(ship=res)
         # 2. process outgo
-        outgo = self._get_outgo_ship()
+        outgo = self.get_outgo_ship()
         if outgo is not None:
             if outgo.expired:
                 # outgo Ship expired, callback
@@ -121,7 +105,7 @@ class StarDocker(Docker):
             now = int(time.time())
             if now > self.__heartbeat_expired:
                 if self.gate.expired:
-                    beat = self._get_heartbeat()
+                    beat = self.get_heartbeat()
                     if beat is not None:
                         # put the heartbeat into waiting queue
                         self.gate.park_ship(ship=beat)
@@ -132,24 +116,24 @@ class StarDocker(Docker):
             return True
 
     @abstractmethod
-    def _get_income_ship(self) -> Optional[Ship]:
+    def get_income_ship(self) -> Optional[Ship]:
         """ Get income Ship from Connection """
         raise NotImplemented
 
     @abstractmethod
-    def _process_income_ship(self, income: Ship) -> Optional[StarShip]:
+    def process_income_ship(self, income: Ship) -> Optional[StarShip]:
         """ Process income Ship """
         raise NotImplemented
 
-    def _remove_linked_ship(self, income: Ship):
-        linked = self._get_outgo_ship(income=income)
+    def remove_linked_ship(self, income: Ship):
+        linked = self.get_outgo_ship(income=income)
         if linked is not None:
             # callback for the linked outgo Ship and remove it
             delegate = linked.delegate
             if delegate is not None:
                 delegate.ship_sent(ship=linked, error=None)
 
-    def _get_outgo_ship(self, income: Optional[Ship] = None) -> Optional[StarShip]:
+    def get_outgo_ship(self, income: Optional[Ship] = None) -> Optional[StarShip]:
         """ Get outgo Ship from waiting queue """
         if income is None:
             # get next new task (time == 0)
@@ -162,6 +146,6 @@ class StarDocker(Docker):
             outgo = self.gate.pull_ship(sn=income.sn)
         return outgo
 
-    def _get_heartbeat(self) -> Optional[StarShip]:
+    def get_heartbeat(self) -> Optional[StarShip]:
         """ Get an empty ship for keeping connection alive """
         pass

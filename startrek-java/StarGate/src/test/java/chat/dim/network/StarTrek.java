@@ -35,22 +35,18 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import chat.dim.stargate.Docker;
 import chat.dim.stargate.StarGate;
 import chat.dim.tcp.ActiveConnection;
 import chat.dim.tcp.BaseConnection;
 
-public class StarTrek extends StarGate {
-
-    private final ReadWriteLock sendLock = new ReentrantReadWriteLock();
-    private final ReadWriteLock receiveLock = new ReentrantReadWriteLock();
+public class StarTrek extends TCPGate {
 
     public StarTrek(BaseConnection conn) {
         super(conn);
     }
 
     private static StarGate createGate(BaseConnection conn) {
-        StarGate gate = new StarTrek(conn);
+        StarTrek gate = new StarTrek(conn);
         conn.setDelegate(gate);
         return gate;
     }
@@ -64,13 +60,8 @@ public class StarTrek extends StarGate {
         return createGate(new ActiveConnection(host, port, socket));
     }
 
-    @Override
-    protected Docker createDocker() {
-        if (MTPDocker.check(this)) {
-            return new MTPDocker(this);
-        }
-        return null;
-    }
+    private final ReadWriteLock sendLock = new ReentrantReadWriteLock();
+    private final ReadWriteLock receiveLock = new ReentrantReadWriteLock();
 
     @Override
     public boolean send(byte[] pack) {
@@ -100,13 +91,13 @@ public class StarTrek extends StarGate {
 
     @Override
     public void setup() {
-        new Thread((BaseConnection) connection).start();
+        new Thread(connection).start();
         super.setup();
     }
 
     @Override
     public void finish() {
         super.finish();
-        ((BaseConnection) connection).stop();
+        connection.stop();
     }
 }

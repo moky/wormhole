@@ -33,17 +33,17 @@ package chat.dim.stargate;
 import java.lang.ref.WeakReference;
 import java.util.Date;
 
-public abstract class StarDocker implements Docker, Runnable {
+import chat.dim.skywalker.Runner;
+
+public abstract class StarDocker extends Runner implements Docker {
 
     private final WeakReference<Gate> gateRef;
 
-    private boolean running;
     private long heartbeatExpired;
 
     public StarDocker(Gate gate) {
         super();
         gateRef = new WeakReference<>(gate);
-        running = false;
         // time for checking heartbeat
         heartbeatExpired = (new Date()).getTime() + 2000;
     }
@@ -53,55 +53,10 @@ public abstract class StarDocker implements Docker, Runnable {
     }
 
     //
-    //  Running
+    //  Runner
     //
 
     @Override
-    public void run() {
-        setup();
-        try {
-            handle();
-        } finally {
-            finish();
-        }
-    }
-
-    public void stop() {
-        running = false;
-    }
-
-    public boolean isWorking() {
-        return running && getGate().isOpened();
-    }
-
-    @Override
-    public void setup() {
-        running = true;
-    }
-
-    @Override
-    public void finish() {
-        // TODO: go through all outgo Ships parking in Dock and call 'sent failed' on their delegates
-        running = false;
-    }
-
-    @Override
-    public void handle() {
-        while (isWorking()) {
-            if (!process()) {
-                idle();
-            }
-        }
-    }
-
-    protected void idle() {
-        try {
-            Thread.sleep(128);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
     public boolean process() {
         // 1. process income
         Ship income = getIncomeShip();

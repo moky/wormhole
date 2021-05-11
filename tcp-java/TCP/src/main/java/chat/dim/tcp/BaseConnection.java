@@ -43,7 +43,7 @@ import chat.dim.mem.BytesArray;
 import chat.dim.mem.CachePool;
 import chat.dim.mem.LockedPool;
 
-public class BaseConnection implements Connection, Runnable {
+public class BaseConnection implements Connection {
 
     private final CachePool cachePool;
 
@@ -267,6 +267,7 @@ public class BaseConnection implements Connection, Runnable {
         }
     }
 
+    @Override
     public void stop() {
         running = false;
     }

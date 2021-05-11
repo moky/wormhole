@@ -36,7 +36,6 @@ import chat.dim.mtp.protocol.Package;
 import chat.dim.stargate.Gate;
 import chat.dim.stargate.Ship;
 import chat.dim.stargate.StarDocker;
-import chat.dim.stargate.StarGate;
 import chat.dim.stargate.StarShip;
 import chat.dim.tlv.Data;
 
@@ -47,7 +46,7 @@ public class MTPDocker extends StarDocker {
 
     public static final int MAX_HEAD_LENGTH = 24;
 
-    public MTPDocker(StarGate gate) {
+    public MTPDocker(Gate gate) {
         super(gate);
     }
     

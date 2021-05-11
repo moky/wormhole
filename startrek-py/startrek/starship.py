@@ -30,13 +30,22 @@
 
 import time
 import weakref
+from abc import ABC
 from typing import Optional
 
 from .ship import Ship, ShipDelegate
 
 
-class StarShip(Ship):
-    """ Star Ship carrying package to remote Star Gate """
+class StarShip(Ship, ABC):
+    """
+        Star Ship
+        ~~~~~~~~~
+
+        @abstract properties:
+            - package()
+            - sn()
+            - payload()
+    """
 
     # retry
     EXPIRES = 120  # 2 minutes

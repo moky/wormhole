@@ -2,12 +2,12 @@
  *
  *  Star Gate: Interfaces for network connection
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,26 +28,22 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.stargate;
+package chat.dim.skywalker;
 
-import chat.dim.skywalker.Handler;
-import chat.dim.skywalker.Processor;
-
-/**
- *  Star Worker
- *  ~~~~~~~~~~~
- *
- *  Processor for Star Ships
- */
-public interface Docker extends Handler, Processor {
+public interface Handler {
 
     /**
-     *  Pack the payload to an outgo Ship
-     *
-     * @param payload  - request data
-     * @param priority - -1 is the most fast
-     * @param delegate - callback
-     * @return false on error
+     *  Prepare for handling
      */
-    StarShip pack(byte[] payload, int priority, Ship.Delegate delegate);
+    void setup();
+
+    /**
+     *  Handling run loop
+     */
+    void handle();
+
+    /**
+     *  Cleanup after handled
+     */
+    void finish();
 }

@@ -27,46 +27,89 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ==============================================================================
-
+import time
 from abc import ABC, abstractmethod
-from typing import Union
-
-"""
-    Star Ship
-    ~~~~~~~~~
-
-    Container carrying data package
-"""
 
 
-class Ship(ABC):
-    """ Star Ship for carrying data package """
-
-    @property
-    def package(self) -> bytes:
-        """ Get the package in this Ship """
-        raise NotImplemented
-
-    @property
-    def sn(self) -> bytes:
-        """ Get ID for this Ship """
-        raise NotImplemented
-
-    @property
-    def payload(self) -> bytes:
-        """ Get data containing in the package """
-        raise NotImplemented
-
-
-class ShipDelegate(ABC):
-    """ Star Ship Delegate """
+class Handler(ABC):
 
     @abstractmethod
-    def ship_sent(self, ship: Ship, error: Union[OSError, IOError] = None):
-        """
-        Callback when package sent
+    def setup(self):
+        """ Prepare for Handling """
+        raise NotImplemented
+    
+    @abstractmethod
+    def handle(self):
+        """ Handling run loop """
+        raise NotImplemented
 
-        :param ship:       package container
-        :param error:      None on success
+    @abstractmethod
+    def finish(self):
+        """ Cleanup after handled """
+        raise NotImplemented
+
+
+class Processor(ABC):
+
+    @abstractmethod
+    def process(self) -> bool:
+        """
+        Do the job
+
+        :return: False on nothing to do
         """
         raise NotImplemented
+
+
+class Runnable(ABC):
+
+    def run(self):
+        """ Run in a thread """
+        raise NotImplemented
+
+
+class Runner(Runnable, Handler, Processor, ABC):
+    """
+        Runner
+        ~~~~~~
+
+        @abstract method:
+            - process()
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.__running = False
+
+    @property
+    def running(self) -> bool:
+        return self.__running
+
+    # noinspection PyMethodMayBeStatic
+    def _idle(self):
+        time.sleep(0.015625)
+
+    def stop(self):
+        self.__running = False
+
+    # Override
+    def run(self):
+        self.setup()
+        try:
+            self.handle()
+        finally:
+            self.finish()
+
+    # Override
+    def setup(self):
+        self.__running = True
+
+    # Override
+    def handle(self):
+        while self.running:
+            if not self.process():
+                self._idle()
+
+    # Override
+    def finish(self):
+        self.__running = False

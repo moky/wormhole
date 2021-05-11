@@ -28,13 +28,13 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Optional
 
 from .status import ConnectionStatus
 
 
-class Connection:
+class Connection(ABC):
 
     """
         Max length of memory cache
@@ -97,3 +97,13 @@ class Connection:
     def status(self) -> ConnectionStatus:
         """ Get status """
         raise NotImplemented
+
+    #
+    #   Runnable
+    #
+
+    def run(self):
+        pass
+
+    def stop(self):
+        pass

@@ -28,11 +28,9 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from enum import IntEnum
 from typing import Optional
-
-from tcp import ConnectionStatus
 
 from .ship import Ship, ShipDelegate
 from .starship import StarShip
@@ -55,19 +53,7 @@ class GateStatus(IntEnum):
     Connected = 2
 
 
-def gate_status(status: ConnectionStatus) -> GateStatus:
-    """ Convert Connection Status to Star Gate Status """
-    if status in [ConnectionStatus.Connected, ConnectionStatus.Maintaining, ConnectionStatus.Expired]:
-        return GateStatus.Connected
-    if status == ConnectionStatus.Connecting:
-        return GateStatus.Connecting
-    if status == ConnectionStatus.Error:
-        return GateStatus.Error
-    # Default
-    return GateStatus.Init
-
-
-class GateDelegate:
+class GateDelegate(ABC):
     """ Star Gate Delegate """
 
     @abstractmethod
@@ -93,7 +79,7 @@ class GateDelegate:
         raise NotImplemented
 
 
-class Gate:
+class Gate(ABC):
     """ Star Gate of remote peer """
 
     @property

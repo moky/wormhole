@@ -30,8 +30,6 @@
  */
 package chat.dim.stargate;
 
-import chat.dim.tcp.Connection;
-
 /**
  *  Star Gate
  *  ~~~~~~~~~
@@ -138,24 +136,6 @@ public interface Gate {
      * @return gate status
      */
     Status getStatus();
-
-    //
-    //  Connection Status -> Gate Status
-    //
-    static Status getStatus(Connection.Status status) {
-        switch (status) {
-            case Connecting:
-                return Status.Connecting;
-            case Connected:
-            case Maintaining:
-            case Expired:
-                return Status.Connected;
-            case Error:
-                return Status.Error;
-            default:
-                return Status.Init;
-        }
-    }
 
     enum Status {
 

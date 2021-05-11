@@ -188,9 +188,10 @@ class BaseConnection(Connection):
                 delegate.connection_changed(connection=self, old_status=old, new_status=value)
 
     #
-    #   Running
+    #   Runnable
     #
 
+    # Override
     def run(self):
         self.setup()
         try:
@@ -198,6 +199,7 @@ class BaseConnection(Connection):
         finally:
             self.finish()
 
+    # Override
     def stop(self):
         self._running = False
 
