@@ -30,8 +30,6 @@ repositories {
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
-    testCompile group: 'chat.dim', name: 'TCP', version: '0.1.4'
-    testCompile group: 'chat.dim', name: 'MTP', version: '0.1.1'
 }
 
 allprojects {
