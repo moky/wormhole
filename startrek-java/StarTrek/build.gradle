@@ -46,8 +46,8 @@ tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
 
-def gitUrl = 'https://github.com/dimchat/sdk-java.git'
-def siteUrl = 'https://github.com/dimchat/sdk-java'
+def gitUrl = 'https://github.com/moky/wormhole.git'
+def siteUrl = 'https://github.com/moky/wormhole'
 
 install {
     repositories.mavenInstaller {

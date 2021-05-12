@@ -28,11 +28,9 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.network;
+package chat.dim.startrek;
 
 import chat.dim.mem.BytesArray;
-import chat.dim.startrek.Docker;
-import chat.dim.startrek.StarGate;
 import chat.dim.tcp.Connection;
 
 public class TCPGate extends StarGate implements Connection.Delegate {

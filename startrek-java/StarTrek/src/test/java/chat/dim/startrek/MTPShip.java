@@ -28,10 +28,9 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.network;
+package chat.dim.startrek;
 
 import chat.dim.mtp.protocol.Package;
-import chat.dim.startrek.StarShip;
 
 /**
  *  Star Ship with MTP Package

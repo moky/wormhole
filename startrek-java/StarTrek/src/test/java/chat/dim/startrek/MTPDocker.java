@@ -28,15 +28,11 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.network;
+package chat.dim.startrek;
 
 import chat.dim.mtp.protocol.DataType;
 import chat.dim.mtp.protocol.Header;
 import chat.dim.mtp.protocol.Package;
-import chat.dim.startrek.Gate;
-import chat.dim.startrek.Ship;
-import chat.dim.startrek.StarDocker;
-import chat.dim.startrek.StarShip;
 import chat.dim.tlv.Data;
 
 /**

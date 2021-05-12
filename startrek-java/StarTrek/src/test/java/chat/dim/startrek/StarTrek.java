@@ -28,14 +28,13 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.network;
+package chat.dim.startrek;
 
 import java.net.Socket;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import chat.dim.startrek.StarGate;
 import chat.dim.tcp.ActiveConnection;
 import chat.dim.tcp.BaseConnection;
 
