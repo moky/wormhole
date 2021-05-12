@@ -34,7 +34,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public final class LockedPool extends MemoryCache {
+public class LockedPool extends MemoryCache {
 
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 

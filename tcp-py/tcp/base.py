@@ -57,6 +57,7 @@ class BaseConnection(Connection):
 
     # noinspection PyMethodMayBeStatic
     def _create_pool(self) -> Pool:
+        """ override for customized cache pool """
         return LockedPool()
 
     @property
@@ -130,8 +131,7 @@ class BaseConnection(Connection):
         self._sock = None
 
     def _receive(self) -> Optional[bytes]:
-        sock = self.socket
-        if sock is not None:
+        if self.socket is not None:
             try:
                 return self.__read()
             except socket.error as error:
@@ -141,8 +141,7 @@ class BaseConnection(Connection):
 
     # Override
     def send(self, data: bytes) -> int:
-        sock = self.socket
-        if sock is not None:
+        if self.socket is not None:
             try:
                 return self.__write(data=data)
             except socket.error as error:

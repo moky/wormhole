@@ -104,10 +104,11 @@ public class BaseConnection implements Connection {
 
     @Override
     public String getHost() {
-        if (socket == null) {
+        Socket sock = socket;
+        if (sock == null) {
             return null;
         }
-        InetAddress address = socket.getInetAddress();
+        InetAddress address = sock.getInetAddress();
         if (address == null) {
             return null;
         } else {
@@ -117,26 +118,23 @@ public class BaseConnection implements Connection {
 
     @Override
     public int getPort() {
-        if (socket == null) {
+        Socket sock = socket;
+        if (sock == null) {
             return 0;
         } else {
-            return socket.getPort();
+            return sock.getPort();
         }
     }
 
     @Override
     public boolean isAlive() {
-        if (!running) {
-            return false;
-        } else if (socket == null) {
-            return false;
-        } else if (socket.isClosed()) {
-            return false;
-        } else if (socket.isConnected()) {
-            return true;
-        } else {
-            return socket.isBound();
+        if (running) {
+            Socket sock = socket;
+            if (sock != null && !sock.isClosed()) {
+                return sock.isConnected() || sock.isBound();
+            }
         }
+        return false;
     }
 
     private int write(byte[] data) throws IOException {
@@ -180,8 +178,7 @@ public class BaseConnection implements Connection {
     }
 
     protected byte[] receive() {
-        Socket sock = getSocket();
-        if (sock != null) {
+        if (getSocket() != null) {
             try {
                 return read();
             } catch (IOException e) {
@@ -195,8 +192,7 @@ public class BaseConnection implements Connection {
 
     @Override
     public int send(byte[] data) {
-        Socket sock = getSocket();
-        if (sock != null) {
+        if (getSocket() != null) {
             try {
                 return write(data);
             } catch (IOException e) {
