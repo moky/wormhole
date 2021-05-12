@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Gate: Interfaces for network connection
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -33,10 +33,10 @@ package chat.dim.network;
 import chat.dim.mtp.protocol.DataType;
 import chat.dim.mtp.protocol.Header;
 import chat.dim.mtp.protocol.Package;
-import chat.dim.stargate.Gate;
-import chat.dim.stargate.Ship;
-import chat.dim.stargate.StarDocker;
-import chat.dim.stargate.StarShip;
+import chat.dim.startrek.Gate;
+import chat.dim.startrek.Ship;
+import chat.dim.startrek.StarDocker;
+import chat.dim.startrek.StarShip;
 import chat.dim.tlv.Data;
 
 /**

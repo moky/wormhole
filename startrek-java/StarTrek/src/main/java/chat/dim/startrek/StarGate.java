@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Gate: Interfaces for network connection
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.stargate;
+package chat.dim.startrek;
 
 import java.lang.ref.WeakReference;
 
@@ -41,7 +41,7 @@ public abstract class StarGate extends Runner implements Gate {
     private Docker docker = null;
     private WeakReference<Delegate> delegateRef = null;
 
-    public StarGate() {
+    protected StarGate() {
         super();
         dock = createDock();
     }

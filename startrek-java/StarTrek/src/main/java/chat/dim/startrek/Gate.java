@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Gate: Interfaces for network connection
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.stargate;
+package chat.dim.startrek;
 
 /**
  *  Star Gate
@@ -46,7 +46,7 @@ public interface Gate {
     Gate.Delegate getDelegate();
 
     /**
-     *  Check whether StarGate is not closed and the current Connection is active
+     *  Check whether the Gate is not closed and the current Connection is active
      *
      * @return false on error
      */

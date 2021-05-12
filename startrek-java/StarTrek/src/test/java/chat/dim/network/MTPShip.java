@@ -1,13 +1,13 @@
 /* license: https://mit-license.org
  *
- *  Star Gate: Interfaces for network connection
+ *  Star Trek: Interstellar Transport
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,45 +28,41 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.stargate;
+package chat.dim.network;
+
+import chat.dim.mtp.protocol.Package;
+import chat.dim.startrek.StarShip;
 
 /**
- *  Star Ship
- *  ~~~~~~~~~
- *
- *  Container carrying data package
+ *  Star Ship with MTP Package
  */
-public interface Ship {
+public class MTPShip extends StarShip {
 
-    /**
-     *  Get the data package in this Ship
-     *
-     * @return the whole package
-     */
-    byte[] getPackage();
+    public final Package mtp;
 
-    /**
-     *  Get ID for this Ship
-     *
-     * @return SN
-     */
-    byte[] getSN();
+    public MTPShip(Package pack, int prior, Delegate delegate) {
+        super(prior, delegate);
+        mtp = pack;
+    }
+    public MTPShip(Package pack, int prior) {
+        this(pack, prior, null);
+    }
+    public MTPShip(Package pack) {
+        this(pack, StarShip.NORMAL, null);
+    }
 
-    /**
-     *  Get data in this Ship
-     *
-     * @return payload
-     */
-    byte[] getPayload();
+    @Override
+    public byte[] getPackage() {
+        return mtp.getBytes();
+    }
 
-    interface Delegate {
+    @Override
+    public byte[] getSN() {
+        return mtp.head.sn.getBytes();
+    }
 
-        /**
-         *  Callback when package sent
-         *
-         * @param ship      - package container
-         * @param error     - null on success
-         */
-        void onSent(Ship ship, Error error);
+    @Override
+    public byte[] getPayload() {
+        return mtp.body.getBytes();
     }
 }

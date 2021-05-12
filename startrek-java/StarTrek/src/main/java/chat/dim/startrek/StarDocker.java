@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Gate: Interfaces for network connection
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.stargate;
+package chat.dim.startrek;
 
 import java.lang.ref.WeakReference;
 import java.util.Date;
@@ -41,7 +41,7 @@ public abstract class StarDocker extends Runner implements Docker {
 
     private long heartbeatExpired;
 
-    public StarDocker(Gate gate) {
+    protected StarDocker(Gate gate) {
         super();
         gateRef = new WeakReference<>(gate);
         // time for checking heartbeat

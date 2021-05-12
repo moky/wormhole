@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Gate: Interfaces for network connection
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.stargate;
+package chat.dim.startrek;
 
 import java.util.ArrayList;
 import java.util.Arrays;

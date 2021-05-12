@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Gate: Interfaces for network connection
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,26 +28,45 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.stargate;
-
-import chat.dim.skywalker.Handler;
-import chat.dim.skywalker.Processor;
+package chat.dim.startrek;
 
 /**
- *  Star Worker
- *  ~~~~~~~~~~~
+ *  Star Ship
+ *  ~~~~~~~~~
  *
- *  Processor for Star Ships
+ *  Container carrying data package
  */
-public interface Docker extends Handler, Processor {
+public interface Ship {
 
     /**
-     *  Pack the payload to an outgo Ship
+     *  Get the data package in this Ship
      *
-     * @param payload  - request data
-     * @param priority - -1 is the most fast
-     * @param delegate - callback
-     * @return false on error
+     * @return the whole package
      */
-    StarShip pack(byte[] payload, int priority, Ship.Delegate delegate);
+    byte[] getPackage();
+
+    /**
+     *  Get ID for this Ship
+     *
+     * @return SN
+     */
+    byte[] getSN();
+
+    /**
+     *  Get data in this Ship
+     *
+     * @return payload
+     */
+    byte[] getPayload();
+
+    interface Delegate {
+
+        /**
+         *  Callback when package sent
+         *
+         * @param ship      - package container
+         * @param error     - null on success
+         */
+        void onSent(Ship ship, Error error);
+    }
 }

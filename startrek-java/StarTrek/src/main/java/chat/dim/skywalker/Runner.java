@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Gate: Interfaces for network connection
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,65 +28,54 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.stargate;
+package chat.dim.skywalker;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+public abstract class Runner implements Runnable, Handler, Processor {
 
-public class LockedDock extends Dock {
+    private boolean running = false;
 
-    private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    protected boolean isRunning() {
+        return running;
+    }
 
-    @Override
-    public boolean put(StarShip task) {
-        boolean ok;
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
+    protected void idle() {
         try {
-            ok = super.put(task);
-        } finally {
-            writeLock.unlock();
+            Thread.sleep(8);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
-        return ok;
+    }
+
+    public void stop() {
+        running = false;
     }
 
     @Override
-    public StarShip pop() {
-        StarShip task;
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
+    public void run() {
+        setup();
         try {
-            task = super.pop();
+            handle();
         } finally {
-            writeLock.unlock();
+            finish();
         }
-        return task;
     }
 
     @Override
-    public StarShip pop(byte[] sn) {
-        StarShip task;
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            task = super.pop(sn);
-        } finally {
-            writeLock.unlock();
-        }
-        return task;
+    public void setup() {
+        running = true;
     }
 
     @Override
-    public StarShip any() {
-        StarShip task;
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            task = super.any();
-        } finally {
-            writeLock.unlock();
+    public void handle() {
+        while (isRunning()) {
+            if (!process()) {
+                idle();
+            }
         }
-        return task;
+    }
+
+    @Override
+    public void finish() {
+        running = false;
     }
 }

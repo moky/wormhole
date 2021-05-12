@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Gate: Interfaces for network connection
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,48 +28,23 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.network;
+package chat.dim.startrek;
 
-import java.net.Socket;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import chat.dim.stargate.StarGate;
-import chat.dim.tcp.ActiveConnection;
-import chat.dim.tcp.BaseConnection;
+public class LockedDock extends Dock {
 
-public class StarTrek extends TCPGate {
-
-    public StarTrek(BaseConnection conn) {
-        super(conn);
-    }
-
-    private static StarGate createGate(BaseConnection conn) {
-        StarTrek gate = new StarTrek(conn);
-        conn.setDelegate(gate);
-        return gate;
-    }
-    public static StarGate createGate(Socket socket) {
-        return createGate(new BaseConnection(socket));
-    }
-    public static StarGate createGate(String host, int port) {
-        return createGate(new ActiveConnection(host, port));
-    }
-    public static StarGate createGate(String host, int port, Socket socket) {
-        return createGate(new ActiveConnection(host, port, socket));
-    }
-
-    private final ReadWriteLock sendLock = new ReentrantReadWriteLock();
-    private final ReadWriteLock receiveLock = new ReentrantReadWriteLock();
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     @Override
-    public boolean send(byte[] pack) {
+    public boolean put(StarShip task) {
         boolean ok;
-        Lock writeLock = sendLock.writeLock();
+        Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            ok = super.send(pack);
+            ok = super.put(task);
         } finally {
             writeLock.unlock();
         }
@@ -77,27 +52,41 @@ public class StarTrek extends TCPGate {
     }
 
     @Override
-    public byte[] receive(int length, boolean remove) {
-        byte[] data;
-        Lock writeLock = receiveLock.writeLock();
+    public StarShip pop() {
+        StarShip task;
+        Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            data = super.receive(length, remove);
+            task = super.pop();
         } finally {
             writeLock.unlock();
         }
-        return data;
+        return task;
     }
 
     @Override
-    public void setup() {
-        new Thread(connection).start();
-        super.setup();
+    public StarShip pop(byte[] sn) {
+        StarShip task;
+        Lock writeLock = lock.writeLock();
+        writeLock.lock();
+        try {
+            task = super.pop(sn);
+        } finally {
+            writeLock.unlock();
+        }
+        return task;
     }
 
     @Override
-    public void finish() {
-        super.finish();
-        connection.stop();
+    public StarShip any() {
+        StarShip task;
+        Lock writeLock = lock.writeLock();
+        writeLock.lock();
+        try {
+            task = super.any();
+        } finally {
+            writeLock.unlock();
+        }
+        return task;
     }
 }

@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Gate: Interfaces for network connection
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -31,8 +31,8 @@
 package chat.dim.network;
 
 import chat.dim.mem.BytesArray;
-import chat.dim.stargate.Docker;
-import chat.dim.stargate.StarGate;
+import chat.dim.startrek.Docker;
+import chat.dim.startrek.StarGate;
 import chat.dim.tcp.Connection;
 
 public class TCPGate extends StarGate implements Connection.Delegate {

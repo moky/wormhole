@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Gate: Interfaces for network connection
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.stargate;
+package chat.dim.startrek;
 
 import java.lang.ref.WeakReference;
 import java.util.Date;
@@ -52,7 +52,7 @@ public abstract class StarShip implements Ship {
 
     private final WeakReference<Ship.Delegate> delegateRef;
 
-    public StarShip(int prior, Ship.Delegate delegate) {
+    protected StarShip(int prior, Ship.Delegate delegate) {
         super();
         priority = prior;
         if (delegate == null) {

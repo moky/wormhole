@@ -18,7 +18,7 @@ plugins {
 
 group 'chat.dim'
 //version '1.0-SNAPSHOT'
-version '0.2.10'
+version '0.1.0'
 
 sourceCompatibility = 1.8
 
@@ -55,8 +55,8 @@ install {
         pom {
             project {
                 packaging 'jar'
-                name 'StarGate'
-                description 'Network Connection Module'
+                name 'StarTrek'
+                description 'Interstellar Transport'
                 url siteUrl
                 licenses {
                     license {
@@ -135,8 +135,8 @@ uploadArchives {
 
             pom.project {
                 packaging 'jar'
-                name 'StarGate'
-                description 'Network Connection Module'
+                name 'StarTrek'
+                description 'Interstellar Transport'
                 url siteUrl
                 licenses {
                     license {
@@ -160,50 +160,6 @@ uploadArchives {
                     developerConnection gitUrl
                     url siteUrl
                 }
-            }
-        }
-    }
-}
-
-bintray {
-    Properties properties = new Properties()
-    File file = project.rootProject.file('local.properties')
-    if (file != null && file.exists()) {
-        properties.load(file.newDataInputStream())
-        user = properties.getProperty('bintray.user')
-        key = properties.getProperty('bintray.apikey')
-    } else {
-        user = System.getenv('bintray.user')
-        key = System.getenv('bintray.apikey')
-        String pwd = System.getenv('bintray.gpg.password')
-        if (user == null) {
-            user = bintray_user
-        }
-        if (key == null) {
-            key = bintray_apikey
-        }
-        if (pwd == null) {
-            pwd = bintray_gpg_password
-        }
-        properties.setProperty('bintray.user', user)
-        properties.setProperty('bintray.apikey', key)
-        properties.setProperty('bintray.gpg.password', pwd)
-    }
-
-    configurations = ['archives']
-    pkg {
-        userOrg = 'dimchat'
-        repo = 'common'
-        name = 'stargate'
-        desc = 'Network Connection Module'
-        websiteUrl = siteUrl
-        vcsUrl = gitUrl
-        licenses = ['MIT']
-        publish = true
-        version {
-            gpg {
-                sign = true
-                passphrase = properties.getProperty('bintray.gpg.password')
             }
         }
     }

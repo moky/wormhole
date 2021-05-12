@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Gate: Interfaces for network connection
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,41 +28,14 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.network;
+package chat.dim.skywalker;
 
-import chat.dim.mtp.protocol.Package;
-import chat.dim.stargate.StarShip;
+public interface Processor {
 
-/**
- *  Star Ship with MTP Package
- */
-public class MTPShip extends StarShip {
-
-    public final Package mtp;
-
-    public MTPShip(Package pack, int prior, Delegate delegate) {
-        super(prior, delegate);
-        mtp = pack;
-    }
-    public MTPShip(Package pack, int prior) {
-        this(pack, prior, null);
-    }
-    public MTPShip(Package pack) {
-        this(pack, StarShip.NORMAL, null);
-    }
-
-    @Override
-    public byte[] getPackage() {
-        return mtp.getBytes();
-    }
-
-    @Override
-    public byte[] getSN() {
-        return mtp.head.sn.getBytes();
-    }
-
-    @Override
-    public byte[] getPayload() {
-        return mtp.body.getBytes();
-    }
+    /**
+     *  Do the job
+     *
+     * @return false on nothing to do
+     */
+    boolean process();
 }

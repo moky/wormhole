@@ -1,13 +1,13 @@
 /* license: https://mit-license.org
  *
- *  Star Gate: Interfaces for network connection
+ *  Star Trek: Interstellar Transport
  *
- *                                Written in 2021 by Moky <albert.moky@gmail.com>
+ *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2021 Albert Moky
+ * Copyright (c) 2020 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,59 +28,26 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.skywalker;
+package chat.dim.startrek;
 
-public abstract class Runner implements Runnable, Handler, Processor {
+import chat.dim.skywalker.Handler;
+import chat.dim.skywalker.Processor;
 
-    private boolean running;
+/**
+ *  Star Worker
+ *  ~~~~~~~~~~~
+ *
+ *  Processor for Star Ships
+ */
+public interface Docker extends Handler, Processor {
 
-    protected Runner() {
-        super();
-        running = false;
-    }
-
-    protected boolean isRunning() {
-        return running;
-    }
-
-    protected void idle() {
-        try {
-            Thread.sleep(8);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void stop() {
-        running = false;
-    }
-
-    @Override
-    public void run() {
-        setup();
-        try {
-            handle();
-        } finally {
-            finish();
-        }
-    }
-
-    @Override
-    public void setup() {
-        running = true;
-    }
-
-    @Override
-    public void handle() {
-        while (isRunning()) {
-            if (!process()) {
-                idle();
-            }
-        }
-    }
-
-    @Override
-    public void finish() {
-        running = false;
-    }
+    /**
+     *  Pack the payload to an outgo Ship
+     *
+     * @param payload  - request data
+     * @param priority - -1 is the most fast
+     * @param delegate - callback
+     * @return false on error
+     */
+    StarShip pack(byte[] payload, int priority, Ship.Delegate delegate);
 }
