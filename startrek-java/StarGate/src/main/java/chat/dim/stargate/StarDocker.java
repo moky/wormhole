@@ -52,10 +52,6 @@ public abstract class StarDocker extends Runner implements Docker {
         return gateRef.get();
     }
 
-    //
-    //  Runner
-    //
-
     @Override
     public boolean process() {
         // 1. process income

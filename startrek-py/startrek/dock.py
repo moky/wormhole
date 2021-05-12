@@ -120,7 +120,7 @@ class Dock:
                 if ship.time > expired:
                     # not expired yet
                     continue
-                if ship.retries <= StarShip.RETRIES:
+                if ship.retries < StarShip.RETRIES:
                     # update time and retry
                     ship.update()
                     return ship

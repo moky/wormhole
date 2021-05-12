@@ -152,7 +152,7 @@ public class Dock {
                     // not expired yet
                     continue;
                 }
-                if (ship.getRetries() <= StarShip.RETRIES) {
+                if (ship.getRetries() < StarShip.RETRIES) {
                     // update time and retry
                     ship.update();
                     return ship;

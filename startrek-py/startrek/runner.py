@@ -68,7 +68,7 @@ class Runnable(ABC):
         raise NotImplemented
 
 
-class Runner(Runnable, Handler, Processor, ABC):
+class Runner(Runnable, Handler, Processor):
     """
         Runner
         ~~~~~~
@@ -87,13 +87,14 @@ class Runner(Runnable, Handler, Processor, ABC):
 
     # noinspection PyMethodMayBeStatic
     def _idle(self):
-        time.sleep(0.015625)
+        time.sleep(0.0078125)
 
     def stop(self):
         self.__running = False
 
     # Override
     def run(self):
+        """ Run in a thread """
         self.setup()
         try:
             self.handle()
@@ -113,3 +114,8 @@ class Runner(Runnable, Handler, Processor, ABC):
     # Override
     def finish(self):
         self.__running = False
+
+    @abstractmethod
+    def process(self) -> bool:
+        """ Override to do the job """
+        raise NotImplemented

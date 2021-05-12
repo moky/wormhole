@@ -30,7 +30,7 @@
 
 import time
 import weakref
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Optional
 
 from .runner import Runner
@@ -41,7 +41,7 @@ from .docker import Docker
 from .gate import Gate
 
 
-class StarDocker(Runner, Docker, ABC):
+class StarDocker(Runner, Docker):
     """
         Star Docker
         ~~~~~~~~~~~
@@ -68,10 +68,6 @@ class StarDocker(Runner, Docker, ABC):
     @property
     def gate(self) -> Gate:
         return self.__gate()
-
-    #
-    #   Runner
-    #
 
     # Override
     def process(self) -> bool:

@@ -99,14 +99,14 @@ public abstract class StarShip implements Ship {
      * @return true on failure
      */
     public boolean isExpired() {
-        long delta = (new Date()).getTime() - timestamp;
-        return delta > EXPIRES * RETRIES * 2L;
+        long now = (new Date()).getTime();
+        return now > timestamp + EXPIRES * (RETRIES + 2L);
     }
 
     /**
      *  Update retries count and time
      */
-    protected void update() {
+    public void update() {
         timestamp = (new Date()).getTime();
         retries += 1;
     }

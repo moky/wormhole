@@ -30,13 +30,12 @@
 
 import time
 import weakref
-from abc import ABC
 from typing import Optional
 
 from .ship import Ship, ShipDelegate
 
 
-class StarShip(Ship, ABC):
+class StarShip(Ship):
     """
         Star Ship
         ~~~~~~~~~
@@ -92,8 +91,8 @@ class StarShip(Ship, ABC):
     @property
     def expired(self) -> bool:
         """ Check whether retry too many times and no response """
-        delta = int(time.time()) - self.time
-        return delta > (self.EXPIRES * self.RETRIES * 2)
+        now = int(time.time())
+        return now > self.time + self.EXPIRES * (self.RETRIES + 2)
 
     def update(self):
         """ Update retries count and time """
