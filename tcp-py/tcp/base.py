@@ -44,10 +44,9 @@ class BaseConnection(Connection):
 
     def __init__(self, sock: Optional[socket.socket] = None):
         super().__init__()
+        self._sock = sock
         self.__pool = self._create_pool()
         self.__delegate: Optional[weakref.ReferenceType] = None
-        self._sock = sock
-        self._running = False
         self.__status = ConnectionStatus.Default
         self.__last_sent_time = 0
         self.__last_received_time = 0
@@ -79,7 +78,7 @@ class BaseConnection(Connection):
     @property
     def socket(self) -> Optional[socket.socket]:
         """ Get connected socket """
-        if self.alive:
+        if self.running:
             return self._sock
 
     @property
@@ -88,19 +87,11 @@ class BaseConnection(Connection):
         if sock is not None:
             return sock.getpeername()
 
-    @property
-    def alive(self) -> bool:
-        if self._running:
-            sock = self._sock
-            if sock is None or getattr(sock, '_closed', False):
-                return False
-            else:
-                return True
-
     def __write(self, data: bytes) -> int:
         # sock.sendall(data)
         sock = self._sock
-        assert sock is not None, 'cannot write data when socket is closed: %s' % sock
+        if sock is None:
+            raise socket.error('cannot write info closed socket: %s' % sock)
         sent = 0
         rest = len(data)
         while rest > 0:  # and not getattr(sock, '_closed', False):
@@ -115,7 +106,8 @@ class BaseConnection(Connection):
 
     def __read(self) -> Optional[bytes]:
         sock = self._sock
-        assert sock is not None, 'cannot read data when socket is closed: %s' % sock
+        if sock is None:
+            raise socket.error('cannot read from closed socket: %s' % sock)
         data = sock.recv(512)
         if data is None or len(data) == 0:
             if sock.gettimeout() is None:
@@ -190,6 +182,11 @@ class BaseConnection(Connection):
     #   Runnable
     #
 
+    @property
+    def running(self) -> bool:
+        sock = self._sock
+        return sock is not None and not getattr(sock, '_closed', False)
+
     # Override
     def run(self):
         self.setup()
@@ -200,26 +197,22 @@ class BaseConnection(Connection):
 
     # Override
     def stop(self):
-        self._running = False
+        self.__close()  # shutdown socket
 
     def setup(self):
         """ Prepare before handling """
-        self._running = True
         self.status = ConnectionStatus.Connecting
 
     def finish(self):
         """ Cleanup after handling """
-        self._running = False
-        if self._sock is not None:
-            # shutdown socket
-            self.__close()
+        self.__close()  # shutdown socket
         self.status = ConnectionStatus.Default
 
     def handle(self):
         """ Handling for receiving data packages
             (it will call 'process()' circularly)
         """
-        while self.alive:
+        while self.running:
             s = self.status
             if s in [ConnectionStatus.Connected, ConnectionStatus.Maintaining, ConnectionStatus.Expired]:
                 working = self.process()
@@ -273,14 +266,14 @@ class BaseConnection(Connection):
     # noinspection PyUnusedLocal
     def __tick_default(self, now: float):
         """ Connection not started yet """
-        if self._running:
+        if self.running:
             # connection started, change status to 'connecting'
             self.status = ConnectionStatus.Connecting
 
     # noinspection PyUnusedLocal
     def __tick_connecting(self, now: float):
         """ Connection started, not connected yet """
-        if not self._running:
+        if not self.running:
             # connection stopped, change status to 'not_connect'
             self.status = ConnectionStatus.Default
         elif self.socket is not None:
@@ -323,7 +316,7 @@ class BaseConnection(Connection):
     # noinspection PyUnusedLocal
     def __tick_error(self, now: float):
         """ Connection lost """
-        if not self._running:
+        if not self.running:
             # connection stopped, change status to 'not_connect'
             self.status = ConnectionStatus.Default
         elif self.socket is not None:

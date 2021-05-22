@@ -89,11 +89,6 @@ class Connection(ABC):
         raise NotImplemented
 
     @property
-    def alive(self) -> bool:
-        """ Check whether connection is alive: the thread is still running """
-        raise NotImplemented
-
-    @property
     def status(self) -> ConnectionStatus:
         """ Get status """
         raise NotImplemented
@@ -102,8 +97,15 @@ class Connection(ABC):
     #   Runnable
     #
 
+    @property
+    def running(self) -> bool:
+        """ Check whether connection is still running """
+        raise NotImplemented
+
     def run(self):
+        """ Run loop to be started in a thread """
         pass
 
     def stop(self):
+        """ Close the connection """
         pass
