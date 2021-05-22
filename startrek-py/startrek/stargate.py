@@ -29,7 +29,7 @@
 # ==============================================================================
 
 import weakref
-from abc import abstractmethod
+from abc import ABC
 from typing import Optional
 
 from .runner import Runner
@@ -41,7 +41,7 @@ from .docker import Docker
 from .gate import Gate, GateStatus, GateDelegate
 
 
-class StarGate(Runner, Gate):
+class StarGate(Runner, Gate, ABC):
     """
         Star Gate
         ~~~~~~~~~
@@ -95,10 +95,6 @@ class StarGate(Runner, Gate):
         else:
             self.__delegate = weakref.ref(handler)
 
-    @property
-    def opened(self) -> bool:
-        return self.running
-
     # Override
     def send_payload(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> bool:
         worker = self.docker
@@ -114,20 +110,6 @@ class StarGate(Runner, Gate):
         else:
             # put the Ship into a waiting queue
             return self.park_ship(ship=ship)
-
-    #
-    #   Connection
-    #
-
-    @abstractmethod
-    def send(self, data: bytes) -> bool:
-        """ Override to do sending data via a connection """
-        raise NotImplemented
-
-    @abstractmethod
-    def receive(self, length: int, remove: bool) -> Optional[bytes]:
-        """ Override to do receiving data from a connection/pool """
-        raise NotImplemented
 
     #
     #   Docking
@@ -153,11 +135,11 @@ class StarGate(Runner, Gate):
     def setup(self):
         super().setup()
         # check connection
-        if not self.opened:
+        if not self.running:
             # waiting for connection
             self._idle()
         # check docker
-        while self.docker is None and self.opened:
+        while self.docker is None and self.running:
             # waiting for docker
             self._idle()
         # setup docker

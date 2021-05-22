@@ -88,11 +88,6 @@ class Gate(ABC):
         yield None
 
     @property
-    def opened(self) -> bool:
-        """ Check whether StarGate is not closed and the current Connection is active """
-        raise NotImplemented
-
-    @property
     def expired(self) -> bool:
         """ Check whether Connection Status is expired for maintaining """
         raise NotImplemented

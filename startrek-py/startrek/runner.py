@@ -27,6 +27,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ==============================================================================
+
 import time
 from abc import ABC, abstractmethod
 
@@ -68,7 +69,7 @@ class Runnable(ABC):
         raise NotImplemented
 
 
-class Runner(Runnable, Handler, Processor):
+class Runner(Runnable, Handler, Processor, ABC):
     """
         Runner
         ~~~~~~
@@ -114,8 +115,3 @@ class Runner(Runnable, Handler, Processor):
     # Override
     def finish(self):
         self.__running = False
-
-    @abstractmethod
-    def process(self) -> bool:
-        """ Override to do the job """
-        raise NotImplemented
