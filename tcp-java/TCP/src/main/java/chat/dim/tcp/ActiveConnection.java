@@ -37,12 +37,14 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ActiveConnection extends BaseConnection {
 
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-    private int connecting;
-
     // remote address
     public final String host;
     public final int port;
+
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    private int connecting;
+
+    private boolean running;
 
     public ActiveConnection(String remoteHost, int remotePort, Socket connectedSocket) {
         super(connectedSocket);
@@ -50,6 +52,7 @@ public class ActiveConnection extends BaseConnection {
         host = remoteHost;
         port = remotePort;
         connecting = 0;
+        running = false;
     }
 
     /**
@@ -94,8 +97,10 @@ public class ActiveConnection extends BaseConnection {
 
     @Override
     protected Socket getSocket() {
-        if (isAlive()) {
-            reconnect();
+        if (running) {
+            if (socket == null) {
+                reconnect();
+            }
             return socket;
         } else {
             return null;
@@ -103,7 +108,7 @@ public class ActiveConnection extends BaseConnection {
     }
 
     @Override
-    public boolean isAlive() {
+    public boolean isRunning() {
         return running;
     }
 
@@ -125,5 +130,23 @@ public class ActiveConnection extends BaseConnection {
             res = super.send(data);
         }
         return res;
+    }
+
+    @Override
+    public void stop() {
+        running = false;
+        super.stop();
+    }
+
+    @Override
+    public void setup() {
+        running = true;
+        super.setup();
+    }
+
+    @Override
+    public void finish() {
+        running = false;
+        super.finish();
     }
 }

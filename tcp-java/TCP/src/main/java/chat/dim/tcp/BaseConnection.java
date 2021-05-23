@@ -52,7 +52,6 @@ public class BaseConnection implements Connection {
     protected Socket socket;
     private Status status;
 
-    protected boolean running;
     private long lastSentTime;
     private long lastReceivedTime;
 
@@ -62,7 +61,6 @@ public class BaseConnection implements Connection {
         delegateRef = null;
         socket = connectedSocket;
         status = Status.Default;
-        running = false;
         lastSentTime = 0;
         lastReceivedTime = 0;
     }
@@ -95,7 +93,7 @@ public class BaseConnection implements Connection {
      *  Get connected socket
      */
     protected Socket getSocket() {
-        if (isAlive()) {
+        if (isRunning()) {
             return socket;
         } else {
             return null;
@@ -127,19 +125,21 @@ public class BaseConnection implements Connection {
     }
 
     @Override
-    public boolean isAlive() {
-        if (running) {
-            Socket sock = socket;
-            if (sock != null && !sock.isClosed()) {
-                return sock.isConnected() || sock.isBound();
-            }
+    public boolean isRunning() {
+        Socket sock = socket;
+        if (sock == null || sock.isClosed()) {
+            return false;
+        } else {
+            return sock.isConnected() || sock.isBound();
         }
-        return false;
     }
 
     private int write(byte[] data) throws IOException {
-        assert !socket.isClosed() : "cannot write data when socket is closed: " + socket;
-        OutputStream outputStream = socket.getOutputStream();
+        Socket sock = getSocket();
+        if (sock == null) {
+            throw new SocketException("socket lost, cannot write data: " + data.length + " byte(s)");
+        }
+        OutputStream outputStream = sock.getOutputStream();
         outputStream.write(data);
         outputStream.flush();
         lastSentTime = (new Date()).getTime();
@@ -147,8 +147,11 @@ public class BaseConnection implements Connection {
     }
 
     private byte[] read() throws IOException {
-        assert !socket.isClosed() : "cannot read data when socket is closed: " + socket;
-        InputStream inputStream = socket.getInputStream();
+        Socket sock = getSocket();
+        if (sock == null) {
+            throw new SocketException("socket lost, cannot read data");
+        }
+        InputStream inputStream = sock.getInputStream();
         int available = inputStream.available();
         if (available <= 0) {
             return null;
@@ -167,9 +170,11 @@ public class BaseConnection implements Connection {
     }
 
     private void close() {
-        assert socket != null : "socket not found";
+        Socket sock = socket;
         try {
-            socket.close();
+            if (sock != null && !sock.isClosed()) {
+                sock.close();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -178,30 +183,28 @@ public class BaseConnection implements Connection {
     }
 
     protected byte[] receive() {
-        if (getSocket() != null) {
-            try {
-                return read();
-            } catch (IOException e) {
-                e.printStackTrace();
-                close();
-            }
+        try {
+            return read();
+        } catch (IOException e) {
+            // [TCP] failed to receive data
+            e.printStackTrace();
+            close();
+            setStatus(Status.Error);
+            return null;
         }
-        setStatus(Status.Error);
-        return null;
     }
 
     @Override
     public int send(byte[] data) {
-        if (getSocket() != null) {
-            try {
-                return write(data);
-            } catch (IOException e) {
-                e.printStackTrace();
-                close();
-            }
+        try {
+            return write(data);
+        } catch (IOException e) {
+            // [TCP] failed to send data
+            e.printStackTrace();
+            close();
+            setStatus(Status.Error);
+            return -1;
         }
-        setStatus(Status.Error);
-        return -1;
     }
 
     @Override
@@ -265,14 +268,13 @@ public class BaseConnection implements Connection {
 
     @Override
     public void stop() {
-        running = false;
+        close();  // shutdown socket
     }
 
     /**
      *  Prepare before handling
      */
     public void setup() {
-        running = true;
         setStatus(Status.Connecting);
     }
 
@@ -280,11 +282,7 @@ public class BaseConnection implements Connection {
      *  Cleanup after handling
      */
     public void finish() {
-        running = false;
-        if (socket != null) {
-            // shutdown socket
-            close();
-        }
+        close();  // shutdown socket
         setStatus(Status.Default);
     }
 
@@ -294,7 +292,7 @@ public class BaseConnection implements Connection {
      */
     public void handle() {
         boolean working;
-        while (isAlive()) {
+        while (isRunning()) {
             switch (getStatus()) {
                 case Connected:
                 case Maintaining:
@@ -377,7 +375,7 @@ public class BaseConnection implements Connection {
 
     // Connection not started yet
     private void tickDefault() {
-        if (running) {
+        if (isRunning()) {
             // connection started, change status to 'connecting'
             setStatus(Status.Connecting);
         }
@@ -385,7 +383,7 @@ public class BaseConnection implements Connection {
 
     // Connection started, not connected yet
     private void tickConnecting() {
-        if (!running) {
+        if (!isRunning()) {
             // connection stopped, change status to 'not_connect'
             setStatus(Status.Default);
         } else if (getSocket() != null) {
@@ -435,7 +433,7 @@ public class BaseConnection implements Connection {
 
     // Connection lost
     private void tickError() {
-        if (!running) {
+        if (!isRunning()) {
             // connection stopped, change status to 'not_connect'
             setStatus(Status.Default);
         } else if (getSocket() != null) {

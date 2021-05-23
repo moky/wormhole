@@ -88,10 +88,10 @@ class BaseConnection(Connection):
             return sock.getpeername()
 
     def __write(self, data: bytes) -> int:
-        # sock.sendall(data)
-        sock = self._sock
+        sock = self.socket
         if sock is None:
-            raise socket.error('cannot write info closed socket: %s' % sock)
+            raise socket.error('socket lost, cannot write data: %d byte(s)' % len(data))
+        # sock.sendall(data)
         sent = 0
         rest = len(data)
         while rest > 0:  # and not getattr(sock, '_closed', False):
@@ -105,9 +105,9 @@ class BaseConnection(Connection):
         return sent
 
     def __read(self) -> Optional[bytes]:
-        sock = self._sock
+        sock = self.socket
         if sock is None:
-            raise socket.error('cannot read from closed socket: %s' % sock)
+            raise socket.error('socket lost, cannot read data')
         data = sock.recv(512)
         if data is None or len(data) == 0:
             if sock.gettimeout() is None:
@@ -123,24 +123,22 @@ class BaseConnection(Connection):
         self._sock = None
 
     def _receive(self) -> Optional[bytes]:
-        if self.socket is not None:
-            try:
-                return self.__read()
-            except socket.error as error:
-                print('[TCP] failed to receive data: %s' % error)
-                self.__close()
-        self.status = ConnectionStatus.Error
+        try:
+            return self.__read()
+        except socket.error as error:
+            print('[TCP] failed to receive data: %s' % error)
+            self.__close()
+            self.status = ConnectionStatus.Error
 
     # Override
     def send(self, data: bytes) -> int:
-        if self.socket is not None:
-            try:
-                return self.__write(data=data)
-            except socket.error as error:
-                print('[TCP] failed to send data: %d, %s' % (len(data), error))
-                self.__close()
-        self.status = ConnectionStatus.Error
-        return -1
+        try:
+            return self.__write(data=data)
+        except socket.error as error:
+            print('[TCP] failed to send data: %d, %s' % (len(data), error))
+            self.__close()
+            self.status = ConnectionStatus.Error
+            return -1
 
     @property
     def available(self) -> int:

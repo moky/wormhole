@@ -79,17 +79,16 @@ public interface Connection extends Runnable {
     int getPort();
 
     /**
-     *  Stop running
+     *  Close the connection
      */
     void stop();
 
     /**
-     *  Check whether connection is alive
-     *  (the thread is still running)
+     *  Check whether connection is still running
      *
      * @return true on running
      */
-    boolean isAlive();
+    boolean isRunning();
 
     /**
      *  Get status
