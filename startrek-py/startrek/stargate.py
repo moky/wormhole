@@ -29,6 +29,7 @@
 # ==============================================================================
 
 import weakref
+from abc import abstractmethod
 from typing import Optional
 
 from .runner import Runner
@@ -112,6 +113,18 @@ class StarGate(Runner, Gate):
         else:
             # send out directly
             return self.send(data=ship.package)
+
+    #
+    #   Connection
+    #
+
+    @abstractmethod
+    def send(self, data: bytes) -> bool:
+        raise NotImplemented
+
+    @abstractmethod
+    def receive(self, length: int, remove: bool) -> Optional[bytes]:
+        raise NotImplemented
 
     #
     #   Docking

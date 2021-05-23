@@ -28,7 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Optional
 
 from .runner import Handler, Processor
@@ -44,7 +44,7 @@ from .starship import StarShip
 """
 
 
-class Docker(ABC, Handler, Processor):
+class Docker(Handler, Processor):
     """ Star Worker for packages in Ships """
 
     @abstractmethod

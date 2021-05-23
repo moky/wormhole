@@ -70,7 +70,7 @@ class Runnable(ABC):
         raise NotImplemented
 
 
-class Runner(ABC, Runnable, Handler, Processor):
+class Runner(Runnable, Handler, Processor):
     """
         Runner
         ~~~~~~
@@ -94,14 +94,21 @@ class Runner(ABC, Runnable, Handler, Processor):
     def stop(self):
         self.__running = False
 
+    #
+    #   Runnable
+    #
+
     # Override
     def run(self):
-        """ Run in a thread """
         self.setup()
         try:
             self.handle()
         finally:
             self.finish()
+
+    #
+    #   Handler
+    #
 
     # Override
     def setup(self):
@@ -116,3 +123,11 @@ class Runner(ABC, Runnable, Handler, Processor):
     # Override
     def finish(self):
         self.__running = False
+
+    #
+    #   Processor
+    #
+
+    # Override
+    def process(self) -> bool:
+        pass
