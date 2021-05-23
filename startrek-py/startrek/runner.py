@@ -64,12 +64,13 @@ class Processor(ABC):
 
 class Runnable(ABC):
 
+    @abstractmethod
     def run(self):
         """ Run in a thread """
         raise NotImplemented
 
 
-class Runner(Runnable, Handler, Processor, ABC):
+class Runner(ABC, Runnable, Handler, Processor):
     """
         Runner
         ~~~~~~

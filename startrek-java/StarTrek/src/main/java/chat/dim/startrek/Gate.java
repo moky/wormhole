@@ -46,13 +46,6 @@ public interface Gate {
     Gate.Delegate getDelegate();
 
     /**
-     *  Check whether the Gate is not closed and the current Connection is active
-     *
-     * @return false on error
-     */
-    boolean isOpened();
-
-    /**
      *  Check whether Connection Status is expired for maintaining
      *
      * @return true on waiting for heartbeat
@@ -60,10 +53,10 @@ public interface Gate {
     boolean isExpired();
 
     /**
-     *  Send data package to the remote peer
+     *  Send payload to the remote peer
      *
      * @param payload  - request data
-     * @param priority - smaller is the faster, -1 means send it synchronously
+     * @param priority - smaller is faster, -1 means send it synchronously
      * @param delegate - completion handler
      * @return false on error
      */

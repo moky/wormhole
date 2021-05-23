@@ -32,9 +32,13 @@ package chat.dim.skywalker;
 
 public abstract class Runner implements Runnable, Handler, Processor {
 
-    private boolean running = false;
+    private boolean running;
 
-    protected boolean isRunning() {
+    protected Runner() {
+        running = false;
+    }
+
+    public boolean isRunning() {
         return running;
     }
 

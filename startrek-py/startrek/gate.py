@@ -103,7 +103,7 @@ class Gate(ABC):
         Send payload to remote peer
 
         :param payload:  request data
-        :param priority: smaller is the faster, -1 means send it synchronously
+        :param priority: smaller is faster, -1 means send it synchronously
         :param delegate: completion handler
         :return: False on error
         """

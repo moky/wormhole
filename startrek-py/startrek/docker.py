@@ -44,7 +44,7 @@ from .starship import StarShip
 """
 
 
-class Docker(Handler, Processor, ABC):
+class Docker(ABC, Handler, Processor):
     """ Star Worker for packages in Ships """
 
     @abstractmethod

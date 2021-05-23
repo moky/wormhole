@@ -29,7 +29,6 @@
 # ==============================================================================
 
 import weakref
-from abc import ABC
 from typing import Optional
 
 from .runner import Runner
@@ -41,7 +40,7 @@ from .docker import Docker
 from .gate import Gate, GateStatus, GateDelegate
 
 
-class StarGate(Runner, Gate, ABC):
+class StarGate(Runner, Gate):
     """
         Star Gate
         ~~~~~~~~~
@@ -104,12 +103,15 @@ class StarGate(Runner, Gate, ABC):
 
     # Override
     def send_ship(self, ship: StarShip) -> bool:
-        if ship.priority <= StarShip.URGENT and self.status == GateStatus.Connected:
-            # send out directly
-            return self.send(data=ship.package)
-        else:
+        if self.status != GateStatus.Connected:
+            # not connect yet
+            return False
+        elif ship.priority > StarShip.URGENT:
             # put the Ship into a waiting queue
             return self.park_ship(ship=ship)
+        else:
+            # send out directly
+            return self.send(data=ship.package)
 
     #
     #   Docking
@@ -136,7 +138,7 @@ class StarGate(Runner, Gate, ABC):
         super().setup()
         # check connection
         if not self.running:
-            # waiting for connection
+            # wait a second for connecting
             self._idle()
         # check docker
         while self.docker is None and self.running:

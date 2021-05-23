@@ -38,12 +38,14 @@ public abstract class StarGate extends Runner implements Gate {
 
     public final Dock dock;
 
-    private Docker docker = null;
-    private WeakReference<Delegate> delegateRef = null;
+    private Docker docker;
+    private WeakReference<Delegate> delegateRef;
 
     protected StarGate() {
         super();
         dock = createDock();
+        docker = null;
+        delegateRef = null;
     }
 
     protected Dock createDock() {
@@ -81,11 +83,6 @@ public abstract class StarGate extends Runner implements Gate {
     }
 
     @Override
-    public boolean isOpened() {
-        return isRunning();
-    }
-
-    @Override
     public boolean send(byte[] payload, int priority, Ship.Delegate delegate) {
         Docker worker = getDocker();
         if (worker == null) {
@@ -98,12 +95,15 @@ public abstract class StarGate extends Runner implements Gate {
 
     @Override
     public boolean send(StarShip outgo) {
-        if (outgo.priority <= StarShip.URGENT && getStatus().equals(Status.Connected)) {
-            // send out directly
-            return send(outgo.getPackage());
-        } else {
+        if (!getStatus().equals(Status.Connected)) {
+            // not connect yet
+            return false;
+        } else if (outgo.priority > StarShip.URGENT) {
             // put the Ship into a waiting queue
             return parkShip(outgo);
+        } else {
+            // send out directly
+            return send(outgo.getPackage());
         }
     }
 
@@ -139,12 +139,12 @@ public abstract class StarGate extends Runner implements Gate {
     public void setup() {
         super.setup();
         // check connection
-        if (!isOpened()) {
-            // waiting for connection
+        if (!isRunning()) {
+            // wait a second for connecting
             idle();
         }
         // check docker
-        while (getDocker() == null && isOpened()) {
+        while (getDocker() == null && isRunning()) {
             // waiting for docker
             idle();
         }
