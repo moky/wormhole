@@ -45,7 +45,7 @@ public class MutableData extends Data {
     }
 
     public MutableData(int capacity) {
-        this(new byte[capacity], 0, 0);
+        super(new byte[capacity], 0, 0);
     }
 
     public MutableData() {
@@ -54,29 +54,6 @@ public class MutableData extends Data {
 
     public int getCapacity() {
         return buffer.length - offset;
-    }
-
-    private static void arraycopy(byte[] src,  int  srcPos,
-                                  byte[] dest, int destPos,
-                                  int length) {
-        if (src == dest) {
-            // the src and dest arguments refer to the same array object
-            // 'System.arraycopy()' would create a temporary array,
-            // to avoid memory waste, we do the job by ourself here.
-            if (srcPos < destPos) {
-                // move to right
-                for (int index = length - 1; index >= 0; --index) {
-                    dest[destPos + index] = src[srcPos + index];
-                }
-            } else if (srcPos > destPos) {
-                // move to left
-                for (int index = 0; index < length; ++index) {
-                    dest[destPos + index] = src[srcPos + index];
-                }
-            }
-        } else {
-            System.arraycopy(src, srcPos, dest, destPos, length);
-        }
     }
 
     private void resize(int size) {
@@ -124,7 +101,7 @@ public class MutableData extends Data {
                 // check empty spaces on the left
                 if (index < buffer.length) {
                     // move all data left
-                    arraycopy(buffer, offset, buffer, 0, length);
+                    System.arraycopy(buffer, offset, buffer, 0, length);
                     offset = 0;
                 } else {
                     // current space not enough, expand it
@@ -156,16 +133,15 @@ public class MutableData extends Data {
         }
         int copyLen = end - start;
         if (copyLen > 0) {
-            int destPos = offset + pos;
             int copyEnd = pos + copyLen;  // relative to offset
-            if (source != buffer || destPos != start) {
+            if (source != buffer || (offset + pos) != start) {
                 // not sticky data
                 if (getCapacity() < copyEnd) {
                     // expend the buffer to this size
                     resize(copyEnd);
                 }
                 // copy buffer
-                arraycopy(source, start, buffer, destPos, copyLen);
+                System.arraycopy(source, start, buffer, offset + pos, copyLen);
             }
             // reset view length
             if (copyEnd > length) {
@@ -197,11 +173,11 @@ public class MutableData extends Data {
 
     public void fill(int pos, Data source, int start) {
         start = adjust(start, source.length);
-        copyBuffer(pos, source.buffer, start, source.length);
+        copyBuffer(pos, source.buffer, source.offset + start, source.offset + source.length);
     }
 
     public void fill(int pos, Data source) {
-        copyBuffer(pos, source.buffer, 0, source.length);
+        copyBuffer(pos, source.buffer, source.offset, source.offset + source.length);
     }
 
     //
@@ -216,27 +192,45 @@ public class MutableData extends Data {
      * @param end    - source end position (exclude)
      */
     public void append(byte[] source, int start, int end) {
-        fill(length, source, start, end);
+        start = adjust(start, source.length);
+        end = adjust(end, source.length);
+        copyBuffer(length, source, start, end);
     }
 
     public void append(byte[] source, int start) {
-        fill(length, source, start);
+        start = adjust(start, source.length);
+        copyBuffer(length, source, start, source.length);
     }
 
     public void append(byte[] source) {
-        fill(length, source);
+        copyBuffer(length, source, 0, source.length);
+    }
+
+    public void append(byte[]... sources) {
+        for (byte[] src : sources) {
+            append(src);
+        }
     }
 
     public void append(Data source, int start, int end) {
-        fill(length, source, start, end);
+        start = adjust(start, source.length);
+        end = adjust(end, source.length);
+        copyBuffer(length, source.buffer, source.offset + start, source.offset + end);
     }
 
     public void append(Data source, int start) {
-        fill(length, source, start);
+        start = adjust(start, source.length);
+        copyBuffer(length, source.buffer, source.offset + start, source.offset + source.length);
     }
 
     public void append(Data source) {
-        fill(length, source);
+        copyBuffer(length, source.buffer, source.offset, source.offset + source.length);
+    }
+
+    public void append(Data... sources) {
+        for (Data src : sources) {
+            append(src);
+        }
     }
 
     /**
@@ -272,36 +266,37 @@ public class MutableData extends Data {
                     expands();
                 }
                 // move the queue to right
-                arraycopy(buffer, 0, buffer, 1, length);
+                System.arraycopy(buffer, 0, buffer, 1, length);
             }
         } else if (index < (length >> 1)) {
             // target position is near the head
             if (offset > 0) {
-                // empty spaces found before the queue, move left part
-                arraycopy(buffer, offset, buffer, offset - 1, index);
+                // empty spaces found before the queue, move the left part
+                System.arraycopy(buffer, offset, buffer, offset - 1, index);
                 offset -= 1;
             } else {
-                if ((offset + length) == buffer.length) {
+                // no empty space before the queue
+                if (length == buffer.length) {
                     // the space is full, expand it
                     expands();
                 }
-                // move right part
-                arraycopy(buffer, offset + index, buffer, offset + index + 1, length - index);
+                // move the right part
+                System.arraycopy(buffer, offset + index, buffer, offset + index + 1, length - index);
             }
         } else {
             // target position is near the tail
             if ((offset + length) < buffer.length) {
-                // empty spaces found after the queue, move right part
-                arraycopy(buffer, offset + index, buffer, offset + index + 1, length - index);
+                // empty spaces found after the queue, move the right part
+                System.arraycopy(buffer, offset + index, buffer, offset + index + 1, length - index);
             } else if (offset > 0) {
-                // empty spaces found before the queue, move left part
-                arraycopy(buffer, offset, buffer, offset - 1, index);
+                // empty spaces found before the queue, move the left part
+                System.arraycopy(buffer, offset, buffer, offset - 1, index);
                 offset -= 1;
             } else {
                 // the space is full, expand it
                 expands();
-                // move right part
-                arraycopy(buffer, offset + index, buffer, offset + index + 1, length - index);
+                // move the right part
+                System.arraycopy(buffer, offset + index, buffer, offset + index + 1, length - index);
             }
         }
         buffer[offset + index] = value;
@@ -336,12 +331,17 @@ public class MutableData extends Data {
         } else if (index == (length - 1)) {
             // remove the last element
             return pop();
-        } else {
-            // remove inside element
-            byte erased = buffer[index];
-            arraycopy(buffer, index + 1, buffer, index, length - index - 1);
-            return erased;
         }
+        // remove inside element
+        byte erased = buffer[index];
+        if (index < (length >> 1)) {
+            // target position is near the head, move the left part
+            System.arraycopy(buffer, offset, buffer, offset + 1, index);
+        } else {
+            // target position is near the tail, move the right part
+            System.arraycopy(buffer, index + 1, buffer, index, length - index - 1);
+        }
+        return erased;
     }
 
     /**
@@ -380,6 +380,6 @@ public class MutableData extends Data {
      * @param element - value
      */
     public void push(byte element) {
-        insert(length, element);
+        setByte(length, element);
     }
 }

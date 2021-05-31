@@ -97,7 +97,7 @@ public class Data implements Cloneable {
         this.length = length;
     }
 
-    public final static Data ZERO = new Data(new byte[0]);
+    public final static Data ZERO = new Data(new byte[0], 0, 0);
 
     @Override
     public boolean equals(Object other) {
@@ -131,13 +131,7 @@ public class Data implements Cloneable {
 
     @Override
     public int hashCode() {
-        /*
-        if (offset == 0 && length == buffer.length) {
-            return Arrays.hashCode(buffer);
-        } else {
-            return Arrays.hashCode(getBytes());
-        }
-         */
+        //return Arrays.hashCode(getBytes());
         int result = 1;
         int start = offset, end = offset + length;
         for (; start < end; ++start) {
@@ -234,14 +228,20 @@ public class Data implements Cloneable {
         }
         start += offset;
         end += offset - sub.length + 1;
+        int found = -1;
         if (buffer == sub.buffer) {
             // same buffer
             if (start == sub.offset) {
                 return start - offset;
             }
-            // NOTICE: if (start < sub.offset < end), then the position (sub.offset - this.offset) is right,
-            //         but we cannot confirm this is the first position it appeared,
-            //         so we still need to do searching.
+            if (start < sub.offset && sub.offset < end) {
+                // if sub.offset is in range [start, end),
+                // the position (sub.offset - this.offset) is matched,
+                // but we cannot confirm this is the first position it appeared,
+                // so we still need to do searching in range [start, sub.offset).
+                found = sub.offset - offset;
+                end = sub.offset;
+            }
         }
         int index;
         for (; start < end; ++start) {
@@ -256,7 +256,7 @@ public class Data implements Cloneable {
                 return start - offset;
             }
         }
-        return -1;
+        return found;
     }
 
     public int find(Data sub) {
@@ -298,8 +298,8 @@ public class Data implements Cloneable {
     public byte getByte(int index) {
         // check position
         if (index < 0) {
-            index += length;
-            if (index < 0) {
+            index += length;  // count from right hand
+            if (index < 0) {  // too small
                 throw new ArrayIndexOutOfBoundsException("error index: " + (index - length) + ", length: " + length);
             }
         } else if (index >= length) {
@@ -343,13 +343,13 @@ public class Data implements Cloneable {
     }
 
     public byte[] getBytes(int start) {
-        start = offset + adjust(start, length);
+        start = adjust(start, length);
         return getSubBytes(start, length);
     }
 
     public byte[] getBytes(int start, int end) {
-        start = offset + adjust(start, length);
-        end = offset + adjust(end, length);
+        start = adjust(start, length);
+        end = adjust(end, length);
         return getSubBytes(start, end);
     }
 
