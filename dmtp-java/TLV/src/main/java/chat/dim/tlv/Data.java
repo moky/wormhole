@@ -45,8 +45,6 @@ public class Data implements Cloneable {
 
     // data view
     byte[] buffer;
-    // buffer length
-    int bufLength;
     // view offset
     int offset;
     // view length
@@ -64,10 +62,6 @@ public class Data implements Cloneable {
         return length;
     }
 
-    public boolean isEmpty() {
-        return length <= 0;
-    }
-
     /**
      *  Clone data view
      *
@@ -76,7 +70,6 @@ public class Data implements Cloneable {
     public Data(Data data) {
         super();
         buffer = data.buffer;
-        bufLength = data.bufLength;
         offset = data.offset;
         length = data.length;
     }
@@ -100,62 +93,28 @@ public class Data implements Cloneable {
     public Data(byte[] bytes, int offset, int length) {
         super();
         this.buffer = bytes;
-        this.bufLength = bytes.length;
         this.offset = offset;
         this.length = length;
     }
 
     public final static Data ZERO = new Data(new byte[0]);
 
-    // adjust the position within range [0, len)
-    static int adjust(int pos, int len) {
-        if (pos < 0) {
-            pos += len;    // count from right hand
-            if (pos < 0) {
-                return 0;  // too small
-            }
-        } else if (pos > len) {
-            return len;    // too big
-        }
-        return pos;
-    }
-
-    static int adjustE(int pos, int len) {
-        if (pos < 0) {
-            pos += len;    // count from right hand
-            if (pos < 0) {
-                // too small
-                throw new ArrayIndexOutOfBoundsException("error index: " + (pos - len) + ", length: " + len);
-            }
-        } else if (pos > len) {
-            // too big
-            throw new ArrayIndexOutOfBoundsException("error index: " + pos + ", length: " + len);
-        }
-        return pos;
-    }
-
     @Override
     public boolean equals(Object other) {
         if (other instanceof Data) {
             return equals((Data) other);
+        } else {
+            return false;
         }
-        return this == other;
     }
     public boolean equals(Data other) {
-        if (this == other) {
-            return true;
-        }
-        return equals(other.buffer, other.offset, other.length);
+        return this == other || equals(other.buffer, other.offset, other.length);
     }
     public boolean equals(byte[] otherBuffer, int otherOffset, int otherLength) {
-        if (otherBuffer == buffer) {
-            // same buffer, checking range
-            if (otherLength == length && otherOffset == offset) {
-                return true;
-            }
-        }
         if (otherLength != length) {
             return false;
+        } else if (otherBuffer == buffer && otherOffset == offset) {
+            return true;
         }
         int pos1 = offset + length - 1;
         int pos2 = otherOffset + otherLength - 1;
@@ -173,7 +132,7 @@ public class Data implements Cloneable {
     @Override
     public int hashCode() {
         /*
-        if (offset == 0 && length == bufLength) {
+        if (offset == 0 && length == buffer.length) {
             return Arrays.hashCode(buffer);
         } else {
             return Arrays.hashCode(getBytes());
@@ -192,17 +151,22 @@ public class Data implements Cloneable {
         return new String(getBytes(), Charset.forName("UTF-8"));
     }
 
+    // adjust the position within range [0, len)
+    static int adjust(int pos, int len) {
+        if (pos < 0) {
+            pos += len;    // count from right hand
+            if (pos < 0) {
+                return 0;  // too small
+            }
+        } else if (pos > len) {
+            return len;    // too big
+        }
+        return pos;
+    }
+
     //
     //  Searching
     //
-
-    public int find(byte value) {
-        return find(value, 0, length);
-    }
-
-    public int find(byte value, int start) {
-        return find(value, start, length);
-    }
 
     /**
      *  Search value in range [start, end)
@@ -212,10 +176,9 @@ public class Data implements Cloneable {
      * @param end   - end position (exclude)
      * @return -1 on not found
      */
-    public int find(byte value, int start, int end) {
-        // adjust position
-        start = offset + adjust(start, length);
-        end = offset + adjust(end, length);
+    private int findValue(byte value, int start, int end) {
+        start += offset;
+        end += offset;
         for (; start < end; ++start) {
             if (buffer[start] == value) {
                 // got it
@@ -225,24 +188,34 @@ public class Data implements Cloneable {
         return -1;
     }
 
-    public int find(int value, int start, int end) {
-        return find((byte) (value & 0xFF), start, end);
+    public int find(byte value) {
+        return findValue(value, 0, length);
     }
 
-    public int find(int value, int start) {
-        return find((byte) (value & 0xFF), start);
+    public int find(byte value, int start) {
+        start = adjust(start, length);
+        return findValue(value, start, length);
+    }
+
+    public int find(byte value, int start, int end) {
+        start = adjust(start, length);
+        end = adjust(end, length);
+        return findValue(value, start, end);
     }
 
     public int find(int value) {
-        return find((byte) (value & 0xFF));
+        return findValue((byte) (value & 0xFF), 0, length);
     }
 
-    public int find(Data sub) {
-        return find(sub, 0, length);
+    public int find(int value, int start) {
+        start = adjust(start, length);
+        return findValue((byte) (value & 0xFF), start, length);
     }
 
-    public int find(Data sub, int start) {
-        return find(sub, start, length);
+    public int find(int value, int start, int end) {
+        start = adjust(start, length);
+        end = adjust(end, length);
+        return findValue((byte) (value & 0xFF), start, end);
     }
 
     /**
@@ -253,11 +226,9 @@ public class Data implements Cloneable {
      * @param end   - end position (exclude)
      * @return -1 on not found
      */
-    public int find(Data sub, int start, int end) {
+    private int findSub(Data sub, int start, int end) {
         assert sub.length > 0 : "sub data length error";
-        // adjust position
-        start = adjust(start, length);
-        end = adjust(end, length);
+        assert end >= start : "range error: " + start + ", " + end;
         if ((end - start) < sub.length) {
             return -1;
         }
@@ -268,12 +239,9 @@ public class Data implements Cloneable {
             if (start == sub.offset) {
                 return start - offset;
             }
-            /*
-            if (start <= sub.offset && sub.offset < end) {
-                // found in the range!
-                return sub.offset - offset;
-            }
-             */
+            // NOTICE: if (start < sub.offset < end), then the position (sub.offset - this.offset) is right,
+            //         but we cannot confirm this is the first position it appeared,
+            //         so we still need to do searching.
         }
         int index;
         for (; start < end; ++start) {
@@ -291,18 +259,42 @@ public class Data implements Cloneable {
         return -1;
     }
 
-    public int find(byte[] sub, int start, int end) {
-        return find(new Data(sub), start, end);
+    public int find(Data sub) {
+        return findSub(sub, 0, length);
     }
 
-    public int find(byte[] sub, int start) {
-        return find(new Data(sub), start, length);
+    public int find(Data sub, int start) {
+        start = adjust(start, length);
+        return findSub(sub, start, length);
+    }
+
+    public int find(Data sub, int start, int end) {
+        start = adjust(start, length);
+        end = adjust(end, length);
+        return findSub(sub, start, end);
     }
 
     public int find(byte[] sub) {
-        return find(new Data(sub), 0, length);
+        return findSub(new Data(sub), 0, length);
     }
 
+    public int find(byte[] sub, int start) {
+        start = adjust(start, length);
+        return findSub(new Data(sub), start, length);
+    }
+
+    public int find(byte[] sub, int start, int end) {
+        start = adjust(start, length);
+        end = adjust(end, length);
+        return findSub(new Data(sub), start, end);
+    }
+
+    /**
+     *  Get item value with position
+     *
+     * @param index - item position
+     * @return item value
+     */
     public byte getByte(int index) {
         // check position
         if (index < 0) {
@@ -320,14 +312,6 @@ public class Data implements Cloneable {
     //  To bytes
     //
 
-    public byte[] getBytes() {
-        return getBytes(0, length);
-    }
-
-    public byte[] getBytes(int start) {
-        return getBytes(start, length);
-    }
-
     /**
      *  Get bytes within range [start, end)
      *
@@ -335,22 +319,38 @@ public class Data implements Cloneable {
      * @param end   - end position (exclude)
      * @return sub bytes
      */
-    public byte[] getBytes(int start, int end) {
-        // adjust positions
-        start = offset + adjust(start, length);
-        end = offset + adjust(end, length);
+    private byte[] getSubBytes(int start, int end) {
+        start += offset;
+        end += offset;
         // check range
-        if (start == 0 && end == bufLength) {
+        if (start == 0 && end == buffer.length) {
             // whole buffer
             return buffer;
-        } else if (start >= end) {
+        } else if (start < end) {
+            // copy sub-array
+            int copyLen = end - start;
+            byte[] bytes = new byte[copyLen];
+            System.arraycopy(buffer, start, bytes, 0, copyLen);
+            return bytes;
+        } else {
             // empty buffer
             return ZERO.getBytes();
         }
-        // copy sub-array
-        byte[] bytes = new byte[end - start];
-        System.arraycopy(buffer, start, bytes, 0, end - start);
-        return bytes;
+    }
+
+    public byte[] getBytes() {
+        return getSubBytes(0, length);
+    }
+
+    public byte[] getBytes(int start) {
+        start = offset + adjust(start, length);
+        return getSubBytes(start, length);
+    }
+
+    public byte[] getBytes(int start, int end) {
+        start = offset + adjust(start, length);
+        end = offset + adjust(end, length);
+        return getSubBytes(start, end);
     }
 
     //
@@ -359,11 +359,17 @@ public class Data implements Cloneable {
 
     private long getIntegerValue(int start, int size) {
         assert size > 0 : "data size error";
-        // check position
-        start = adjustE(start, length);
+        // adjust start position
+        if (start < 0) {
+            start += length;  // count from right hand
+            if (start < 0) {  // too small
+                throw new ArrayIndexOutOfBoundsException("error index: " + (start - length) + ", length: " + length);
+            }
+        }
+        // check end position
         int end = start + size;
         if (end > length) {
-            throw new ArrayIndexOutOfBoundsException("error index: " + start + ", size: " + size);
+            throw new ArrayIndexOutOfBoundsException("error index: " + start + " + " + size + ", length: " + length);
         }
         return IntegerData.longFromBytes(buffer, offset + start, offset + end);
     }
@@ -384,10 +390,6 @@ public class Data implements Cloneable {
     //  To another data view
     //
 
-    public Data slice(int start) {
-        return slice(start, length);
-    }
-
     /**
      *  Get sub data within range [start, end)
      *
@@ -396,68 +398,71 @@ public class Data implements Cloneable {
      * @return sub data
      */
     public Data slice(int start, int end) {
-        // adjust positions
         start = adjust(start, length);
         end = adjust(end, length);
-        if (start == 0 && end == length) {
-            return this;
-        } else if (start >= end) {
-            return ZERO;
-        }
-        return new Data(buffer, offset + start, end - start);
+        return slice(this, start, end);
     }
 
-    public Data concat(Data other) {
-        return concat(other.buffer, other.offset, other.offset + other.length);
+    public Data slice(int start) {
+        start = adjust(start, length);
+        return slice(this, start, length);
+    }
+
+    private static Data slice(Data data, int start, int end) {
+        if (start == 0 && end == data.length) {
+            // whole data
+            return data;
+        } else if (start < end) {
+            // sub view
+            return new Data(data.buffer, data.offset + start, end - start);
+        } else {
+            // error
+            return ZERO;
+        }
     }
 
     /**
-     *  Concat with bytes and return as a new data
+     *  Combines two or more data.
      *
-     * @param bytes - data bytes
-     * @param start - start position (include) of data bytes
-     * @param end   - end position (exclude) of data bytes
-     * @return new data view
+     * @param others - other data
+     * @return combined data view
      */
-    public Data concat(byte[] bytes, int start, int end) {
-        int otherLen = bytes.length;
-        // adjust positions
-        start = adjust(start, otherLen);
-        end = adjust(end, otherLen);
-        int copyLen = end - start;
-        if (copyLen < 0) {
-            throw new IndexOutOfBoundsException("error index: " + start + ", " + end + ", length: " + otherLen);
-        } else if (copyLen == 0) {
-            // copy view empty, return this view directly
-            return this;
-        } else if (length == 0) {
-            // this view empty, return new view on the other bytes
-            return new Data(bytes, start, copyLen);
-        } else if (buffer == bytes) {
-            // same buffer
-            if (offset + length == start) {
-                // join the neighbour views
-                return new Data(buffer, offset, length + copyLen);
-            }
+    public Data concat(Data... others) {
+        Data result = this;
+        for (Data other : others) {
+            result = concat(result, other);
         }
-        // copy two data view into a new buffer
-        byte[] joined = new byte[length + copyLen];
-        System.arraycopy(buffer, offset, joined, 0, length);
-        System.arraycopy(bytes, start, joined, length, copyLen);
-        return new Data(joined);
+        return result;
     }
 
-    public Data concat(byte[] bytes, int start) {
-        return concat(bytes, start, bytes.length);
+    public Data concat(byte[]... others) {
+        Data result = this;
+        Data other;
+        for (byte[] bytes : others) {
+            other = new Data(bytes);
+            result = concat(result, other);
+        }
+        return result;
     }
 
-    public Data concat(byte[] bytes) {
-        return concat(bytes, 0, bytes.length);
+    private static Data concat(Data left, Data right) {
+        if (left.length == 0) {
+            return right;
+        } else if (right.length == 0) {
+            return left;
+        } else if (left.buffer == right.buffer && (left.offset + left.length) == right.offset) {
+            // sticky data
+            return new Data(left.buffer, left.offset, left.length + right.length);
+        } else {
+            byte[] joined = new byte[left.length + right.length];
+            System.arraycopy(left.buffer, left.offset, joined, 0, left.length);
+            System.arraycopy(right.buffer, right.offset, joined, left.length, right.length);
+            return new Data(joined);
+        }
     }
 
     @Override
     public Data clone() {
-        // deep copy
         Data copy;
         try {
             copy = (Data) super.clone();
@@ -465,11 +470,8 @@ public class Data implements Cloneable {
             e.printStackTrace();
             return null;
         }
-        byte[] bytes = new byte[length];
-        System.arraycopy(buffer, offset, bytes, 0, length);
-        copy.buffer = bytes;
-        copy.bufLength = length;
-        copy.offset = 0;
+        copy.buffer = buffer;
+        copy.offset = offset;
         copy.length = length;
         return copy;
     }
