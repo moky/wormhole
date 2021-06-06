@@ -58,7 +58,7 @@ public class FieldName extends Tag {
         byte[] bytes = name.getBytes(Charset.forName("UTF-8"));
         MutableData data = new MutableData(bytes.length + 1);
         data.append(bytes);
-        data.append(0);  // add '\0' for tail
+        data.push((byte) 0);  // add '\0' for tail
         return data;
     }
 

@@ -64,10 +64,10 @@ public class SoftwareValue extends AttributeValue {
             length += 4 - tail;
         }
         MutableData data = new MutableData(length);
-        data.copy(0, bytes);
+        data.fill(0, bytes);
         if (tail > 0) {
             // set '\0' to fill the tail spaces
-            data.setByte(length - 1, 0);
+            data.setByte(length - 1, (byte) 0);
         }
         return data;
     }

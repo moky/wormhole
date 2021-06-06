@@ -187,6 +187,6 @@ class Node(PeerHandler):
 
     def received_message(self, msg: Data, source: tuple, destination: tuple) -> bool:
         fields = Field.parse_all(data=msg)
-        assert len(fields) > 0, 'message error: %s' % msg
+        assert len(fields) > 0, 'message error: %s' % msg.get_bytes()
         pack = Message(fields=fields, data=msg)
         return self.process_message(msg=pack, source=source)

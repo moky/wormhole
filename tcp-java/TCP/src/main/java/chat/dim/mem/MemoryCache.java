@@ -52,7 +52,7 @@ public class MemoryCache implements CachePool {
     }
 
     @Override
-    public byte[] pop(int maxLength) {
+    public byte[] shift(int maxLength) {
         assert maxLength > 0 : "max length must greater than 0";
         assert packages.size() > 0 : "pool empty, call 'length()' to check data first";
         byte[] data = packages.remove(0);

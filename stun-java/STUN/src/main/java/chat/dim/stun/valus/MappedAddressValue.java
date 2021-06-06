@@ -122,10 +122,10 @@ public class MappedAddressValue extends AttributeValue {
         }
         assert address != null : "failed to convert IP: " + ip + ", " + family;
         MutableData data = new MutableData(8);
-        data.append(0);
-        data.append(family);
-        data.append((port & 0xFF00) >> 8);
-        data.append(port & 0xFF);
+        data.push((byte) 0);
+        data.push(family);
+        data.push((byte) ((port & 0xFF00) >> 8));
+        data.push((byte) (port & 0xFF));
         data.append(address);
         return data;
     }
@@ -137,7 +137,7 @@ public class MappedAddressValue extends AttributeValue {
         }
         MutableData address = new MutableData(4);
         for (int index = 0; index < 4; ++index) {
-            address.append(Integer.parseInt(array[index]));
+            address.push((byte) Integer.parseInt(array[index]));
         }
         return address;
     }

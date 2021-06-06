@@ -50,12 +50,12 @@ public class LockedPool extends MemoryCache {
     }
 
     @Override
-    public byte[] pop(int maxLength) {
+    public byte[] shift(int maxLength) {
         byte[] data;
         Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            data = super.pop(maxLength);
+            data = super.shift(maxLength);
         } finally {
             writeLock.unlock();
         }

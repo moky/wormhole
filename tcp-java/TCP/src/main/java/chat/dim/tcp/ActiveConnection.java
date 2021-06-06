@@ -31,6 +31,7 @@
 package chat.dim.tcp;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -105,6 +106,16 @@ public class ActiveConnection extends BaseConnection {
         } else {
             return null;
         }
+    }
+
+    @Override
+    public String getHost() {
+        return host;
+    }
+
+    @Override
+    public int getPort() {
+        return port;
     }
 
     @Override

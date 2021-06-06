@@ -50,7 +50,7 @@ public interface CachePool {
      * @param maxLength - max data length to remove
      * @return remove data from the pool and return it
      */
-    byte[] pop(int maxLength);
+    byte[] shift(int maxLength);
 
     /**
      *  Get all received data (not remove)

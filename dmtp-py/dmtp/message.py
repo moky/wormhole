@@ -163,7 +163,7 @@ class Message(FieldsValue):
     @classmethod
     def parse(cls, data: Data, tag: FieldName = None, length=None):
         fields = Field.parse_all(data=data)
-        assert len(fields) > 0, 'message error: %s' % data
+        assert len(fields) > 0, 'message error: %s' % data.get_bytes()
         return Message(fields=fields, data=data)
 
     @classmethod

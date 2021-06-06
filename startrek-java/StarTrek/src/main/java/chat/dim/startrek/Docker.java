@@ -45,9 +45,9 @@ public interface Docker extends Handler, Processor {
      *  Pack the payload to an outgo Ship
      *
      * @param payload  - request data
-     * @param priority - -1 is the most fast
+     * @param priority - smaller is faster (-1 is the most fast)
      * @param delegate - callback
-     * @return false on error
+     * @return StarShip containing payload
      */
     StarShip pack(byte[] payload, int priority, Ship.Delegate delegate);
 }

@@ -240,7 +240,7 @@ public class Header extends Data {
         // generate header data
         MutableData data = new MutableData(headLen);
         data.append(MAGIC_CODE);  // 'DIM'
-        data.append((headLen << 2) | (type.value & 0x0F));
+        data.push((byte) ((headLen << 2) | (type.value & 0x0F)));
         if (!sn.equals(TransactionID.ZERO)) {
             data.append(sn);
         }

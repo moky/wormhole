@@ -219,7 +219,7 @@ public class BaseConnection implements Connection {
 
     @Override
     public byte[] receive(int maxLength) {
-        return cachePool.pop(maxLength);
+        return cachePool.shift(maxLength);
     }
 
     //

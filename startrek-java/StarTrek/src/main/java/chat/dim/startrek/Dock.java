@@ -157,7 +157,7 @@ public class Dock {
                     ship.update();
                     return ship;
                 }
-                // retried too may times
+                // retried too many times
                 if (ship.isExpired()) {
                     // task expired, remove it and don't retry
                     array.remove(ship);
