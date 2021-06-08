@@ -60,7 +60,7 @@ public class BaseConnection implements Connection {
         cachePool = createCachePool();
         delegateRef = null;
         socket = connectedSocket;
-        status = Status.Default;
+        status = Status.DEFAULT;
         lastSentTime = 0;
         lastReceivedTime = 0;
     }
@@ -189,7 +189,7 @@ public class BaseConnection implements Connection {
             // [TCP] failed to receive data
             e.printStackTrace();
             close();
-            setStatus(Status.Error);
+            setStatus(Status.ERROR);
             return null;
         }
     }
@@ -202,7 +202,7 @@ public class BaseConnection implements Connection {
             // [TCP] failed to send data
             e.printStackTrace();
             close();
-            setStatus(Status.Error);
+            setStatus(Status.ERROR);
             return -1;
         }
     }
@@ -239,7 +239,7 @@ public class BaseConnection implements Connection {
             return;
         }
         status = newStatus;
-        if (newStatus.equals(Status.Connected) && !oldStatus.equals(Status.Maintaining)) {
+        if (newStatus.equals(Status.CONNECTED) && !oldStatus.equals(Status.MAINTAINING)) {
             // change status to 'connected', reset times to just expired
             long now = (new Date()).getTime();
             lastSentTime = now - EXPIRES - 1;
@@ -275,7 +275,7 @@ public class BaseConnection implements Connection {
      *  Prepare before handling
      */
     public void setup() {
-        setStatus(Status.Connecting);
+        setStatus(Status.CONNECTING);
     }
 
     /**
@@ -283,7 +283,7 @@ public class BaseConnection implements Connection {
      */
     public void finish() {
         close();  // shutdown socket
-        setStatus(Status.Default);
+        setStatus(Status.DEFAULT);
     }
 
     /**
@@ -294,9 +294,9 @@ public class BaseConnection implements Connection {
         boolean working;
         while (isRunning()) {
             switch (getStatus()) {
-                case Connected:
-                case Maintaining:
-                case Expired:
+                case CONNECTED:
+                case MAINTAINING:
+                case EXPIRED:
                     working = process();
                     break;
                 default:
@@ -349,23 +349,23 @@ public class BaseConnection implements Connection {
 
     private void fsmTick(long now) {
         switch (status) {
-            case Connected: {
+            case CONNECTED: {
                 tickConnected(now);
                 break;
             }
-            case Maintaining:
+            case MAINTAINING:
                 tickMaintaining(now);
                 break;
-            case Expired:
+            case EXPIRED:
                 tickExpired(now);
                 break;
-            case Connecting:
+            case CONNECTING:
                 tickConnecting();
                 break;
-            case Error:
+            case ERROR:
                 tickError();
                 break;
-            case Default:
+            case DEFAULT:
                 tickDefault();
                 break;
             default:
@@ -377,7 +377,7 @@ public class BaseConnection implements Connection {
     private void tickDefault() {
         if (isRunning()) {
             // connection started, change status to 'connecting'
-            setStatus(Status.Connecting);
+            setStatus(Status.CONNECTING);
         }
     }
 
@@ -385,10 +385,10 @@ public class BaseConnection implements Connection {
     private void tickConnecting() {
         if (!isRunning()) {
             // connection stopped, change status to 'not_connect'
-            setStatus(Status.Default);
+            setStatus(Status.DEFAULT);
         } else if (getSocket() != null) {
             // connection connected, change status to 'connected'
-            setStatus(Status.Connected);
+            setStatus(Status.CONNECTED);
         }
     }
 
@@ -396,10 +396,10 @@ public class BaseConnection implements Connection {
     private void tickConnected(long now) {
         if (getSocket() == null) {
             // connection lost, change status to 'error'
-            setStatus(Status.Error);
+            setStatus(Status.ERROR);
         } else if (now > lastReceivedTime + EXPIRES) {
             // long time no response, change status to 'maintain_expired'
-            setStatus(Status.Expired);
+            setStatus(Status.EXPIRED);
         }
     }
 
@@ -407,10 +407,10 @@ public class BaseConnection implements Connection {
     private void tickExpired(long now) {
         if (getSocket() == null) {
             // connection lost, change status to 'error'
-            setStatus(Status.Error);
+            setStatus(Status.ERROR);
         } else if (now < lastSentTime + EXPIRES) {
             // sent recently, change status to 'maintaining'
-            setStatus(Status.Maintaining);
+            setStatus(Status.MAINTAINING);
         }
     }
 
@@ -418,16 +418,16 @@ public class BaseConnection implements Connection {
     private void tickMaintaining(long now) {
         if (getSocket() == null) {
             // connection lost, change status to 'error'
-            setStatus(Status.Error);
+            setStatus(Status.ERROR);
         } else if (now > lastReceivedTime + (EXPIRES << 4)) {
             // long long time no response, change status to 'error
-            setStatus(Status.Error);
+            setStatus(Status.ERROR);
         } else if (now < lastReceivedTime + EXPIRES) {
             // received recently, change status to 'connected'
-            setStatus(Status.Connected);
+            setStatus(Status.CONNECTED);
         } else if (now > lastSentTime + EXPIRES) {
             // long time no sending, change status to 'maintain_expired'
-            setStatus(Status.Expired);
+            setStatus(Status.EXPIRED);
         }
     }
 
@@ -435,10 +435,10 @@ public class BaseConnection implements Connection {
     private void tickError() {
         if (!isRunning()) {
             // connection stopped, change status to 'not_connect'
-            setStatus(Status.Default);
+            setStatus(Status.DEFAULT);
         } else if (getSocket() != null) {
             // connection reconnected, change status to 'connected'
-            setStatus(Status.Connected);
+            setStatus(Status.CONNECTED);
         }
     }
 }

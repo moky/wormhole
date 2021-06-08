@@ -67,14 +67,14 @@ public class ActiveConnection extends BaseConnection {
     }
 
     private boolean connect() {
-        setStatus(Status.Connecting);
+        setStatus(Status.CONNECTING);
         try {
             socket = new Socket(host, port);
-            setStatus(Status.Connected);
+            setStatus(Status.CONNECTED);
             return true;
         } catch (IOException e) {
             e.printStackTrace();
-            setStatus(Status.Error);
+            setStatus(Status.ERROR);
             return false;
         }
     }

@@ -95,7 +95,7 @@ public abstract class StarGate extends Runner implements Gate {
 
     @Override
     public boolean send(StarShip outgo) {
-        if (!getStatus().equals(Status.Connected)) {
+        if (!getStatus().equals(Status.CONNECTED)) {
             // not connect yet
             return false;
         } else if (outgo.priority > StarShip.URGENT) {

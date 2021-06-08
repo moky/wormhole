@@ -132,10 +132,10 @@ public interface Gate {
 
     enum Status {
 
-        Error     (-1),
-        Init       (0),
-        Connecting (1),
-        Connected  (2);
+        ERROR     (-1),
+        INIT       (0),
+        CONNECTING (1),
+        CONNECTED  (2);
 
         public final int value;
 

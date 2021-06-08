@@ -104,12 +104,12 @@ public interface Connection extends Runnable {
      *
      *  @discussion connection status.
      *
-     *      Default     - 'initialized', or sent timeout
-     *      Connecting  - sent 'PING', waiting for response
-     *      Connected   - got response recently
-     *      Expired     - long time, needs maintaining (still connected)
-     *      Maintaining - sent 'PING', waiting for response
-     *      Error       - long long time no response, connection lost
+     *      DEFAULT     - 'initialized', or sent timeout
+     *      CONNECTING  - sent 'PING', waiting for response
+     *      CONNECTED   - got response recently
+     *      EXPIRED     - long time, needs maintaining (still connected)
+     *      MAINTAINING - sent 'PING', waiting for response
+     *      ERROR       - long long time no response, connection lost
      *
      *  Bits:
      *      0000 0001 - indicates sent something just now
@@ -122,12 +122,12 @@ public interface Connection extends Runnable {
      */
     enum Status {
 
-        Default     (0x00),  // 0000 0000
-        Connecting  (0x01),  // 0000 0001, sent just now
-        Connected   (0x11),  // 0001 0001, received just now
-        Maintaining (0x21),  // 0010 0001, received not long ago, sent just now
-        Expired     (0x22),  // 0010 0010, received not long ago, needs sending
-        Error       (0x88);  // 1000 1000, long time no response
+        DEFAULT     (0x00),  // 0000 0000
+        CONNECTING  (0x01),  // 0000 0001, sent just now
+        CONNECTED   (0x11),  // 0001 0001, received just now
+        MAINTAINING (0x21),  // 0010 0001, received not long ago, sent just now
+        EXPIRED     (0x22),  // 0010 0010, received not long ago, needs sending
+        ERROR       (0x88);  // 1000 1000, long time no response
 
         public final int value;
 
