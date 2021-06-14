@@ -68,7 +68,10 @@ public abstract class StarDocker extends Runner implements Docker {
             }
         }
         // 2. process outgo
-        StarShip outgo = getOutgoShip();
+        StarShip outgo = null;
+        if (getGate().getStatus().equals(Gate.Status.CONNECTED)) {
+            outgo = getOutgoShip();
+        }
         if (outgo != null) {
             if (outgo.isExpired()) {
                 // outgo Ship expired, callback

@@ -55,7 +55,7 @@ public class Dock {
      * @param task - outgo ship
      * @return false on duplicated
      */
-    public boolean put(StarShip task) {
+    public boolean park(StarShip task) {
         // 1. choose an array with priority
         int prior = task.priority;
         List<StarShip> array = fleets.get(prior);
@@ -85,11 +85,11 @@ public class Dock {
     }
 
     /**
-     *  Get next new ship, remove it from the park
+     *  Get next new ship(time == 0), remove it from the Dock
      *
      * @return outgo ship
      */
-    public StarShip pop() {
+    public StarShip pull() {
         List<StarShip> array;
         for (int prior : priorities) {
             array = fleets.get(prior);
@@ -98,7 +98,7 @@ public class Dock {
             }
             for (StarShip ship : array) {
                 if (ship.getTimestamp() == 0) {
-                    // update time and try
+                    // update time and retires
                     ship.update();
                     array.remove(ship);
                     return ship;
@@ -109,12 +109,12 @@ public class Dock {
     }
 
     /**
-     *  Get ship with ID, remove it from the park
+     *  Get ship with ID, remove it from the Dock
      *
      * @param sn - ship ID
      * @return outgo ship
      */
-    public StarShip pop(byte[] sn) {
+    public StarShip pull(byte[] sn) {
         List<StarShip> array;
         for (int prior : priorities) {
             array = fleets.get(prior);

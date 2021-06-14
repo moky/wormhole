@@ -117,45 +117,47 @@ tasks.withType(Javadoc) {
     options.addStringOption('Xdoclint:none', '-quiet')
 }
 
-bintray {
-    Properties properties = new Properties()
-    File file = project.rootProject.file('local.properties')
-    if (file != null && file.exists()) {
-        properties.load(file.newDataInputStream())
-        user = properties.getProperty('bintray.user')
-        key = properties.getProperty('bintray.apikey')
-    } else {
-        user = System.getenv('bintray.user')
-        key = System.getenv('bintray.apikey')
-        String pwd = System.getenv('bintray.gpg.password')
-        if (user == null) {
-            user = bintray_user
-        }
-        if (key == null) {
-            key = bintray_apikey
-        }
-        if (pwd == null) {
-            pwd = bintray_gpg_password
-        }
-        properties.setProperty('bintray.user', user)
-        properties.setProperty('bintray.apikey', key)
-        properties.setProperty('bintray.gpg.password', pwd)
-    }
+uploadArchives {
 
-    configurations = ['archives']
-    pkg {
-        userOrg = 'dimchat'
-        repo = 'network'
-        name = 'tlv'
-        desc = 'Tag Length Value'
-        websiteUrl = siteUrl
-        vcsUrl = gitUrl
-        licenses = ['MIT']
-        publish = true
-        version {
-            gpg {
-                sign = true
-                passphrase = properties.getProperty('bintray.gpg.password')
+    repositories {
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+
+            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+
+            pom.project {
+                packaging 'jar'
+                name 'TLV'
+                description 'Tag Length Value'
+                url siteUrl
+                licenses {
+                    license {
+                        name 'MIT'
+                        url 'https://mit-license.org'
+                    }
+                }
+                developers {
+                    developer {
+                        id 'moky'
+                        name 'Albert Moky'
+                        email 'albert.moky@gmail.com'
+                        roles {
+                            role 'architect'
+                        }
+                        organization 'DIM Group'
+                    }
+                }
+                scm {
+                    connection gitUrl
+                    developerConnection gitUrl
+                    url siteUrl
+                }
             }
         }
     }

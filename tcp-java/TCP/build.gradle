@@ -5,7 +5,7 @@ buildscript {
 
     dependencies {
         //classpath "com.novoda:bintray-release:0.3.4"
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6'
+        //classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6'
     }
 }
 
@@ -37,8 +37,6 @@ allprojects {
         jcenter()
     }
 }
-
-apply plugin: 'com.jfrog.bintray'
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
@@ -158,50 +156,6 @@ uploadArchives {
                     developerConnection gitUrl
                     url siteUrl
                 }
-            }
-        }
-    }
-}
-
-bintray {
-    Properties properties = new Properties()
-    File file = project.rootProject.file('local.properties')
-    if (file != null && file.exists()) {
-        properties.load(file.newDataInputStream())
-        user = properties.getProperty('bintray.user')
-        key = properties.getProperty('bintray.apikey')
-    } else {
-        user = System.getenv('bintray.user')
-        key = System.getenv('bintray.apikey')
-        String pwd = System.getenv('bintray.gpg.password')
-        if (user == null) {
-            user = bintray_user
-        }
-        if (key == null) {
-            key = bintray_apikey
-        }
-        if (pwd == null) {
-            pwd = bintray_gpg_password
-        }
-        properties.setProperty('bintray.user', user)
-        properties.setProperty('bintray.apikey', key)
-        properties.setProperty('bintray.gpg.password', pwd)
-    }
-
-    configurations = ['archives']
-    pkg {
-        userOrg = 'dimchat'
-        repo = 'network'
-        name = 'tcp'
-        desc = 'Transmission Control Protocol'
-        websiteUrl = siteUrl
-        vcsUrl = gitUrl
-        licenses = ['MIT']
-        publish = true
-        version {
-            gpg {
-                sign = true
-                passphrase = properties.getProperty('bintray.gpg.password')
             }
         }
     }

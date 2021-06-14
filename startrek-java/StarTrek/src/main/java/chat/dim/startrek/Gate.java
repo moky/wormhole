@@ -104,13 +104,19 @@ public interface Gate {
     boolean parkShip(StarShip outgo);
 
     /**
+     *  Get a new Ship(time == 0) and remove it from the Dock
+     *
+     * @return outgo Ship
+     */
+    StarShip pullShip();
+
+    /**
      *  Pull out an outgo Ship from waiting queue
      *
      * @param sn - ship ID
      * @return outgo Ship
      */
     StarShip pullShip(byte[] sn);  // Get a Ship(with SN as ID) and remove it from the Dock
-    StarShip pullShip();           // Get a new Ship(time == 0) and remove it from the Dock
 
     /**
      *  Get any Ship timeout/expired (keep it in the waiting queue)

@@ -124,14 +124,17 @@ public class BaseConnection implements Connection {
         }
     }
 
-    @Override
-    public boolean isRunning() {
-        Socket sock = socket;
+    private static boolean isAvailable(Socket sock) {
         if (sock == null || sock.isClosed()) {
             return false;
         } else {
             return sock.isConnected() || sock.isBound();
         }
+    }
+
+    @Override
+    public boolean isRunning() {
+        return isAvailable(socket);
     }
 
     private int write(byte[] data) throws IOException {
@@ -172,7 +175,7 @@ public class BaseConnection implements Connection {
     private void close() {
         Socket sock = socket;
         try {
-            if (sock != null && !sock.isClosed()) {
+            if (isAvailable(sock)) {
                 sock.close();
             }
         } catch (IOException e) {
@@ -291,19 +294,8 @@ public class BaseConnection implements Connection {
      *  (it will call 'process()' circularly)
      */
     public void handle() {
-        boolean working;
         while (isRunning()) {
-            switch (getStatus()) {
-                case CONNECTED:
-                case MAINTAINING:
-                case EXPIRED:
-                    working = process();
-                    break;
-                default:
-                    working = false;
-                    break;
-            }
-            if (!working) {
+            if (!process()) {
                 idle();
             }
         }
@@ -319,6 +311,16 @@ public class BaseConnection implements Connection {
         if (count >= MAX_CACHE_LENGTH) {
             // not enough spaces
             return false;
+        }
+        // check connection status
+        switch (getStatus()) {
+            case CONNECTED:
+            case MAINTAINING:
+            case EXPIRED:
+                // socket connected
+                break;
+            default:
+                return false;
         }
         // 1. try to read bytes
         byte[] data = receive();
@@ -386,7 +388,7 @@ public class BaseConnection implements Connection {
         if (!isRunning()) {
             // connection stopped, change status to 'not_connect'
             setStatus(Status.DEFAULT);
-        } else if (getSocket() != null) {
+        } else if (isAvailable(getSocket())) {
             // connection connected, change status to 'connected'
             setStatus(Status.CONNECTED);
         }
@@ -394,7 +396,7 @@ public class BaseConnection implements Connection {
 
     // Normal status of connection
     private void tickConnected(long now) {
-        if (getSocket() == null) {
+        if (!isAvailable(getSocket())) {
             // connection lost, change status to 'error'
             setStatus(Status.ERROR);
         } else if (now > lastReceivedTime + EXPIRES) {
@@ -405,7 +407,7 @@ public class BaseConnection implements Connection {
 
     // Long time no response, need maintaining
     private void tickExpired(long now) {
-        if (getSocket() == null) {
+        if (!isAvailable(getSocket())) {
             // connection lost, change status to 'error'
             setStatus(Status.ERROR);
         } else if (now < lastSentTime + EXPIRES) {
@@ -416,7 +418,7 @@ public class BaseConnection implements Connection {
 
     // Heartbeat sent, waiting response
     private void tickMaintaining(long now) {
-        if (getSocket() == null) {
+        if (!isAvailable(getSocket())) {
             // connection lost, change status to 'error'
             setStatus(Status.ERROR);
         } else if (now > lastReceivedTime + (EXPIRES << 4)) {
@@ -436,7 +438,7 @@ public class BaseConnection implements Connection {
         if (!isRunning()) {
             // connection stopped, change status to 'not_connect'
             setStatus(Status.DEFAULT);
-        } else if (getSocket() != null) {
+        } else if (isAvailable(getSocket())) {
             // connection reconnected, change status to 'connected'
             setStatus(Status.CONNECTED);
         }

@@ -31,7 +31,6 @@
 package chat.dim.tcp;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.Socket;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -98,7 +97,7 @@ public class ActiveConnection extends BaseConnection {
 
     @Override
     protected Socket getSocket() {
-        if (running) {
+        if (isRunning()) {
             if (socket == null) {
                 reconnect();
             }
@@ -144,20 +143,14 @@ public class ActiveConnection extends BaseConnection {
     }
 
     @Override
-    public void stop() {
-        running = false;
-        super.stop();
-    }
-
-    @Override
-    public void setup() {
+    public void run() {
         running = true;
-        super.setup();
+        super.run();
     }
 
     @Override
-    public void finish() {
+    public void stop() {
+        super.stop();
         running = false;
-        super.finish();
     }
 }

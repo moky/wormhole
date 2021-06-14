@@ -113,17 +113,17 @@ public abstract class StarGate extends Runner implements Gate {
 
     @Override
     public boolean parkShip(StarShip outgo) {
-        return dock.put(outgo);
-    }
-
-    @Override
-    public StarShip pullShip(byte[] sn) {
-        return dock.pop(sn);
+        return dock.park(outgo);
     }
 
     @Override
     public StarShip pullShip() {
-        return dock.pop();
+        return dock.pull();
+    }
+
+    @Override
+    public StarShip pullShip(byte[] sn) {
+        return dock.pull(sn);
     }
 
     @Override

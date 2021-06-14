@@ -39,12 +39,12 @@ public class LockedDock extends Dock {
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     @Override
-    public boolean put(StarShip task) {
+    public boolean park(StarShip task) {
         boolean ok;
         Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            ok = super.put(task);
+            ok = super.park(task);
         } finally {
             writeLock.unlock();
         }
@@ -52,12 +52,12 @@ public class LockedDock extends Dock {
     }
 
     @Override
-    public StarShip pop() {
+    public StarShip pull() {
         StarShip task;
         Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            task = super.pop();
+            task = super.pull();
         } finally {
             writeLock.unlock();
         }
@@ -65,12 +65,12 @@ public class LockedDock extends Dock {
     }
 
     @Override
-    public StarShip pop(byte[] sn) {
+    public StarShip pull(byte[] sn) {
         StarShip task;
         Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            task = super.pop(sn);
+            task = super.pull(sn);
         } finally {
             writeLock.unlock();
         }
