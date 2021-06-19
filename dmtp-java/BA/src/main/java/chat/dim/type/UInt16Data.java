@@ -42,19 +42,16 @@ public class UInt16Data extends Data implements IntegerData {
         this.value = data.value;
     }
 
-    public UInt16Data(Data data, int value) {
-        super(data.slice(0, 2));
+    public UInt16Data(ByteArray data, int value) {
+        super(data);
+        assert data.getLength() == 2 : "UInt16Data error: " + data.getLength();
         this.value = value;
     }
 
-    public UInt16Data(Data data, Endian endian) {
-        super(data.slice(0, 2));
+    public UInt16Data(ByteArray data, Endian endian) {
+        super(data);
+        assert data.getLength() == 2 : "UInt16Data error: " + data.getLength();
         this.value = (int) IntegerData.getValue(data, 0, 2, endian);
-    }
-
-    public UInt16Data(Data data, int start, Endian endian) {
-        super(data.slice(start, 2));
-        this.value = (int) IntegerData.getValue(data, start, 2, endian);
     }
 
     public UInt16Data(byte[] bytes, int value) {

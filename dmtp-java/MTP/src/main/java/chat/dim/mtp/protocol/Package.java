@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 import chat.dim.type.MutableData;
 
@@ -50,15 +51,15 @@ public class Package extends Data {
     public static int OPTIMAL_BODY_LENGTH = 512;
 
     public final Header head;
-    public final Data body;
+    public final ByteArray body;
 
-    public Package(Data data, Header head, Data body) {
+    public Package(ByteArray data, Header head, ByteArray body) {
         super(data);
         this.head = head;
         this.body = body;
     }
 
-    public Package(Header head, Data body) {
+    public Package(Header head, ByteArray body) {
         this(head.concat(body), head, body);
     }
 
@@ -78,7 +79,7 @@ public class Package extends Data {
     public List<Package> split() {
         assert head.type.equals(DataType.Message) : "cannot split this type: " + head.type;
         // split body
-        List<Data> fragments = new ArrayList<>();
+        List<ByteArray> fragments = new ArrayList<>();
         int count = 1;
         int start = 0, end = OPTIMAL_BODY_LENGTH;
         int length = body.getLength();
@@ -95,7 +96,7 @@ public class Package extends Data {
         List<Package> packages = new ArrayList<>();
         DataType type = DataType.MessageFragment;
         TransactionID sn = head.sn;
-        Data data;
+        ByteArray data;
         if (head.bodyLength < 0) {
             // UDP (unlimited)
             for (int index = 0; index < count; ++index) {
@@ -128,7 +129,7 @@ public class Package extends Data {
         int pages = first.head.pages;
         assert pages == count : "pages error: " + pages + ", " + count;
         // add message fragments part by part
-        List<Data> fragments = new ArrayList<>();
+        List<ByteArray> fragments = new ArrayList<>();
         int length = 0;
         int index;
         Package item;
@@ -164,7 +165,7 @@ public class Package extends Data {
         return packages;
     }
 
-    public static Package parse(Data data) {
+    public static Package parse(ByteArray data) {
         // get package head
         Header head = Header.parse(data);
         if (head == null) {
@@ -187,7 +188,7 @@ public class Package extends Data {
             data = data.slice(0, packLen);
         }
         // get body
-        Data body;
+        ByteArray body;
         if (bodyLen == 0) {
             body = Data.ZERO;
         } else {
@@ -200,11 +201,11 @@ public class Package extends Data {
     //  Factories
     //
 
-    public static Package create(DataType type, TransactionID sn, int pages, int offset, int bodyLen, Data body) {
+    public static Package create(DataType type, TransactionID sn, int pages, int offset, int bodyLen, ByteArray body) {
         assert body != null : "package body should not be null";
         // create package with header
         Header head = Header.create(type, sn, pages, offset, bodyLen);
-        Data data;
+        ByteArray data;
         if (body.getLength() > 0) {
             data = head.concat(body);
         } else {
@@ -217,19 +218,19 @@ public class Package extends Data {
     //  UDP
     //
 
-    public static Package create(DataType type, TransactionID sn, int pages, int offset, Data body) {
+    public static Package create(DataType type, TransactionID sn, int pages, int offset, ByteArray body) {
         return create(type, sn, pages, offset, -1, body);
     }
 
-    public static Package create(DataType type, int pages, int offset, Data body) {
+    public static Package create(DataType type, int pages, int offset, ByteArray body) {
         return create(type, TransactionID.generate(), pages, offset, -1, body);
     }
 
-    public static Package create(DataType type, TransactionID sn, Data body) {
+    public static Package create(DataType type, TransactionID sn, ByteArray body) {
         return create(type, sn, 1, 0, -1, body);
     }
 
-    public static Package create(DataType type, Data body) {
+    public static Package create(DataType type, ByteArray body) {
         return create(type, TransactionID.generate(), 1, 0, -1, body);
     }
 
@@ -237,12 +238,12 @@ public class Package extends Data {
     //  TCP
     //
 
-    public static Package create(DataType type, TransactionID sn, int bodyLen , Data body) {
+    public static Package create(DataType type, TransactionID sn, int bodyLen , ByteArray body) {
         assert bodyLen == body.getLength() : "body length error: " + bodyLen + ", " + body.getLength();
         return create(type, sn, 1, 0, bodyLen, body);
     }
 
-    public static Package create(DataType type, int bodyLen, Data body) {
+    public static Package create(DataType type, int bodyLen, ByteArray body) {
         assert bodyLen == body.getLength() : "body length error: " + bodyLen + ", " + body.getLength();
         return create(type, TransactionID.generate(), 1, 0, bodyLen, body);
     }

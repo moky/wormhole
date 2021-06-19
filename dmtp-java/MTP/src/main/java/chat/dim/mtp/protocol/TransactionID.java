@@ -32,6 +32,7 @@ package chat.dim.mtp.protocol;
 
 import java.util.Random;
 
+import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 import chat.dim.type.UInt32Data;
 
@@ -39,7 +40,7 @@ import static chat.dim.type.IntegerData.Endian.BigEndian;
 
 public class TransactionID extends Data {
 
-    public TransactionID(Data data) {
+    public TransactionID(ByteArray data) {
         super(data);
     }
 
@@ -47,7 +48,7 @@ public class TransactionID extends Data {
     //  Factory
     //
 
-    public static TransactionID parse(Data data) {
+    public static TransactionID parse(ByteArray data) {
         int length = data.getLength();
         if (length < 8) {
             //throw new ArrayIndexOutOfBoundsException("Transaction ID length error: " + length);

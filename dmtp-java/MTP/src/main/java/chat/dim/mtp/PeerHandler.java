@@ -35,7 +35,7 @@ import java.util.List;
 
 import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.protocol.TransactionID;
-import chat.dim.type.Data;
+import chat.dim.type.ByteArray;
 
 public interface PeerHandler {
 
@@ -92,7 +92,7 @@ public interface PeerHandler {
      * @param destination - local IP and port
      * @return false on error
      */
-    boolean onReceivedCommand(Data cmd, SocketAddress source, SocketAddress destination);
+    boolean onReceivedCommand(ByteArray cmd, SocketAddress source, SocketAddress destination);
 
     /**
      *  Received command data from source address.
@@ -102,7 +102,7 @@ public interface PeerHandler {
      * @param destination - local IP and port
      * @return false on error
      */
-    boolean onReceivedMessage(Data msg, SocketAddress source, SocketAddress destination);
+    boolean onReceivedMessage(ByteArray msg, SocketAddress source, SocketAddress destination);
 
     /**
      *  Received error data from source address.
@@ -111,7 +111,7 @@ public interface PeerHandler {
      * @param source      - remote IP and port
      * @param destination - local IP and port
      */
-    void onReceivedError(Data data, SocketAddress source, SocketAddress destination);
+    void onReceivedError(ByteArray data, SocketAddress source, SocketAddress destination);
 
     //
     //  Fragments

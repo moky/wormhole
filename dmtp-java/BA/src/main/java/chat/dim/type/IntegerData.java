@@ -33,7 +33,7 @@ package chat.dim.type;
 /**
  *  Integer Data
  */
-public interface IntegerData {
+public interface IntegerData extends ByteArray {
 
     enum Endian {
         BigEndian,    // Network Byte Order
@@ -73,17 +73,18 @@ public interface IntegerData {
         }
         return result;
     }
-    static long getValue(Data data, int start, int size, Endian endian) {
-        assert start + size < data.length : "out of range: start=" + start + ", size=" + size + ", len=" + data.length;
-        return getValue(data.buffer, data.offset + start, size, endian);
+    static long getValue(ByteArray data, int start, int size, Endian endian) {
+        assert start + size < data.getLength()
+                : "out of range: start=" + start + ", size=" + size + ", len=" + data.getLength();
+        return getValue(data.getBuffer(), data.getOffset() + start, size, endian);
     }
-    static long getValue(Data data, int size, Endian endian) {
-        assert size < data.length : "out of range: size=" + size + ", len=" + data.length;
-        return getValue(data.buffer, data.offset, size, endian);
+    static long getValue(ByteArray data, int size, Endian endian) {
+        assert size < data.getLength() : "out of range: size=" + size + ", len=" + data.getLength();
+        return getValue(data.getBuffer(), data.getOffset(), size, endian);
     }
-    static long getValue(Data data, Endian endian) {
-        assert 0 < data.length : "data empty";
-        return getValue(data.buffer, data.offset, data.length, endian);
+    static long getValue(ByteArray data, Endian endian) {
+        assert 0 < data.getLength() : "data empty";
+        return getValue(data.getBuffer(), data.getOffset(), data.getLength(), endian);
     }
 
     /**
@@ -111,15 +112,15 @@ public interface IntegerData {
             }
         }
     }
-    static void setValue(long value, MutableData data, int start, int size, Endian endian) {
+    static void setValue(long value, MutableByteArray data, int start, int size, Endian endian) {
         data.setByte(start + size - 1, (byte) 0x00);
-        setValue(value, data.buffer, data.offset + start, size, endian);
+        setValue(value, data.getBuffer(), data.getOffset() + start, size, endian);
     }
-    static void setValue(long value, MutableData data, int size, Endian endian) {
+    static void setValue(long value, MutableByteArray data, int size, Endian endian) {
         data.setByte(size - 1, (byte) 0x00);
-        setValue(value, data.buffer, data.offset, size, endian);
+        setValue(value, data.getBuffer(), data.getOffset(), size, endian);
     }
-    static void setValue(long value, MutableData data, Endian endian) {
-        setValue(value, data.buffer, data.offset, data.length, endian);
+    static void setValue(long value, MutableByteArray data, Endian endian) {
+        setValue(value, data.getBuffer(), data.getOffset(), data.getLength(), endian);
     }
 }

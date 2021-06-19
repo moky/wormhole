@@ -30,6 +30,10 @@
  */
 package chat.dim.mtp;
 
+import java.net.SocketAddress;
+
+import chat.dim.type.ByteArray;
+
 /*    Topology:
  *
  *        +-----------------------------------------------+
@@ -52,10 +56,6 @@ package chat.dim.mtp;
  *        +-----------------------------------------------+
  */
 
-import java.net.SocketAddress;
-
-import chat.dim.type.Data;
-
 public interface PeerDelegate {
 
     //
@@ -70,5 +70,5 @@ public interface PeerDelegate {
      * @param source      - local IP and port
      * @return -1 on error
      */
-    int sendData(Data data, SocketAddress destination, SocketAddress source);
+    int sendData(ByteArray data, SocketAddress destination, SocketAddress source);
 }

@@ -54,31 +54,36 @@ final class DataUtils {
         return pos;
     }
 
-    static Data slice(Data data, int start, int end) {
-        if (start == 0 && end == data.length) {
+    static ByteArray slice(ByteArray data, int start, int end) {
+        if (start == 0 && end == data.getLength()) {
             // whole data
             return data;
         } else if (start < end) {
             // sub view
-            return new Data(data.buffer, data.offset + start, end - start);
+            return new Data(data.getBuffer(), data.getOffset() + start, end - start);
         } else {
             // error
             return Data.ZERO;
         }
     }
 
-    static Data concat(Data left, Data right) {
-        if (left.length == 0) {
-            return right;
-        } else if (right.length == 0) {
+    static ByteArray concat(ByteArray left, ByteArray right) {
+        if (right.getLength() == 0) {
+            // right is empty, return left directly
             return left;
-        } else if (left.buffer == right.buffer && (left.offset + left.length) == right.offset) {
-            // sticky data
-            return new Data(left.buffer, left.offset, left.length + right.length);
+        } else if (left.getLength() == 0) {
+            // left is empty, create new data from right
+            byte[] joined = new byte[right.getLength()];
+            System.arraycopy(right.getBuffer(), right.getOffset(), joined, 0, right.getLength());
+            return new Data(joined);
+        } else if (left.getBuffer() == right.getBuffer() && (left.getOffset() + left.getLength()) == right.getOffset()) {
+            // sticky data, create new data on the same buffer
+            return new Data(left.getBuffer(), left.getOffset(), left.getLength() + right.getLength());
         } else {
-            byte[] joined = new byte[left.length + right.length];
-            System.arraycopy(left.buffer, left.offset, joined, 0, left.length);
-            System.arraycopy(right.buffer, right.offset, joined, left.length, right.length);
+            // create new data and copy left + right
+            byte[] joined = new byte[left.getLength() + right.getLength()];
+            System.arraycopy(left.getBuffer(), left.getOffset(), joined, 0, left.getLength());
+            System.arraycopy(right.getBuffer(), right.getOffset(), joined, left.getLength(), right.getLength());
             return new Data(joined);
         }
     }
@@ -92,13 +97,14 @@ final class DataUtils {
      * @param end   - end position (exclude)
      * @return -1 on not found
      */
-    static int find(Data data, byte value, int start, int end) {
-        start += data.offset;
-        end += data.offset;
+    static int find(ByteArray data, byte value, int start, int end) {
+        byte[] buffer = data.getBuffer();
+        start += data.getOffset();
+        end += data.getOffset();
         for (; start < end; ++start) {
-            if (data.buffer[start] == value) {
+            if (buffer[start] == value) {
                 // got it
-                return start - data.offset;
+                return start - data.getOffset();
             }
         }
         return -1;
@@ -115,41 +121,42 @@ final class DataUtils {
      * @param end       - end position (exclude)
      * @return -1 on not found
      */
-    static int find(Data data, byte[] subBuffer, int subOffset, int subLength, int start, int end) {
+    static int find(ByteArray data, byte[] subBuffer, int subOffset, int subLength, int start, int end) {
         assert subOffset >= 0 : "sub data offset error: " + subOffset;
         assert subLength >= 0 : "sub data length error: " + subLength;
         assert start < end : "search range error: [" + start + ", " + end + ")";
         if ((end - start) < subLength || subLength <= 0) {
             return -1;
         }
-        start += data.offset;
-        end += data.offset - subLength + 1;
+        byte[] buffer = data.getBuffer();
+        start += data.getOffset();
+        end += data.getOffset() - subLength + 1;
         int found = -1;
-        if (data.buffer == subBuffer) {
+        if (buffer == subBuffer) {
             // same buffer
             if (start == subOffset) {
-                return start - data.offset;
+                return start - data.getOffset();
             }
             if (start < subOffset && subOffset < end) {
                 // if sub.offset is in range (start, end),
                 // the position (sub.offset - this.offset) is matched,
                 // but we cannot confirm this is the first position it appeared,
                 // so we still need to do searching in range [start, sub.offset).
-                found = subOffset - data.offset;
+                found = subOffset - data.getOffset();
                 end = subOffset;
             }
         }
         int index;
         for (; start < end; ++start) {
             for (index = 0; index < subLength; ++index) {
-                if (data.buffer[start + index] != subBuffer[subOffset + index]) {
+                if (buffer[start + index] != subBuffer[subOffset + index]) {
                     // not match
                     break;
                 }
             }
             if (index == subLength) {
                 // got it
-                return start - data.offset;
+                return start - data.getOffset();
             }
         }
         return found;
@@ -163,18 +170,19 @@ final class DataUtils {
      * @param end   - end position (exclude)
      * @return sub bytes
      */
-    static byte[] getBytes(Data data, int start, int end) {
-        start += data.offset;
-        end += data.offset;
+    static byte[] getBytes(ByteArray data, int start, int end) {
+        byte[] buffer = data.getBuffer();
+        start += data.getOffset();
+        end += data.getOffset();
         // check range
-        if (start == 0 && end == data.buffer.length) {
+        if (start == 0 && end == buffer.length) {
             // whole buffer
-            return data.buffer;
+            return buffer;
         } else if (start < end) {
             // copy sub-array
             int copyLen = end - start;
             byte[] bytes = new byte[copyLen];
-            System.arraycopy(data.buffer, start, bytes, 0, copyLen);
+            System.arraycopy(buffer, start, bytes, 0, copyLen);
             return bytes;
         } else {
             // empty buffer

@@ -42,7 +42,7 @@ public class VarIntData extends Data implements IntegerData {
         this.value = data.value;
     }
 
-    public VarIntData(Data data, long value) {
+    public VarIntData(ByteArray data, long value) {
         super(data);
         this.value = value;
     }
@@ -62,12 +62,12 @@ public class VarIntData extends Data implements IntegerData {
         return value;
     }
 
-    public static VarIntData from(Data data) {
-        return getValue(data.buffer, data.offset, data.length);
+    public static VarIntData from(ByteArray data) {
+        return getValue(data.getBuffer(), data.getOffset(), data.getLength());
     }
 
-    public static VarIntData from(Data data, int start) {
-        return getValue(data.buffer, data.offset + start, data.length - start);
+    public static VarIntData from(ByteArray data, int start) {
+        return getValue(data.getBuffer(), data.getOffset() + start, data.getLength() - start);
     }
 
     public static VarIntData from(byte[] bytes) {

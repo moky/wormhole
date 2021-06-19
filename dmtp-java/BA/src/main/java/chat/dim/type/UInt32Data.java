@@ -42,19 +42,16 @@ public class UInt32Data extends Data implements IntegerData {
         this.value = data.value;
     }
 
-    public UInt32Data(Data data, long value) {
-        super(data.slice(0, 4));
+    public UInt32Data(ByteArray data, long value) {
+        super(data);
+        assert data.getLength() == 4 : "UInt32Data error: " + data.getLength();
         this.value = value;
     }
 
-    public UInt32Data(Data data, Endian endian) {
-        super(data.slice(0, 4));
+    public UInt32Data(ByteArray data, Endian endian) {
+        super(data);
+        assert data.getLength() == 4 : "UInt32Data error: " + data.getLength();
         this.value = IntegerData.getValue(data, 0, 4, endian);
-    }
-
-    public UInt32Data(Data data, int start, Endian endian) {
-        super(data.slice(start, 4));
-        this.value = IntegerData.getValue(data, start, 4, endian);
     }
 
     public UInt32Data(byte[] bytes, long value) {

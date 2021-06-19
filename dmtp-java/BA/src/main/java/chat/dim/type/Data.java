@@ -36,7 +36,7 @@ import java.util.Random;
 /**
  *  Data View
  */
-public class Data implements Cloneable {
+public class Data implements ByteArray, Cloneable {
 
     /*
      * The fields of this class are package-private since MutableData
@@ -76,31 +76,34 @@ public class Data implements Cloneable {
      *
      * @param data - other data view
      */
-    public Data(Data data) {
-        this(data.buffer, data.offset, data.length);
+    public Data(ByteArray data) {
+        this(data.getBuffer(), data.getOffset(), data.getLength());
     }
 
+    @Override
     public byte[] getBuffer() {
         return buffer;
     }
 
+    @Override
     public int getOffset() {
         return offset;
     }
 
+    @Override
     public int getLength() {
         return length;
     }
 
     @Override
     public boolean equals(Object other) {
-        if (other instanceof Data) {
-            return equals((Data) other);
+        if (other instanceof ByteArray) {
+            return equals((ByteArray) other);
         } else {
             return false;
         }
     }
-    public boolean equals(Data other) {
+    public boolean equals(ByteArray other) {
         return this == other || equals(other.getBuffer(), other.getOffset(), other.getLength());
     }
     public boolean equals(byte[] otherBuffer, int otherOffset, int otherLength) {
@@ -139,64 +142,64 @@ public class Data implements Cloneable {
         return new String(getBytes(), Charset.forName("UTF-8"));
     }
 
-    /**
-     *  Search value in range [start, end)
-     *
-     * @param value - element value
-     * @param start - start position (include)
-     * @param end   - end position (exclude)
-     * @return -1 on not found
-     */
+    //
+    //  Searching
+    //
+
+    @Override
     public int find(byte value, int start, int end) {
         return DataUtils.find(this, value, DataUtils.adjust(start, length), DataUtils.adjust(end, length));
     }
+    @Override
     public int find(byte value, int start) {
         return DataUtils.find(this, value, DataUtils.adjust(start, length), length);
     }
+    @Override
     public int find(byte value) {
         return DataUtils.find(this, value, 0, length);
     }
 
+    @Override
     public int find(int value, int start, int end) {
         return DataUtils.find(this, (byte) (value & 0xFF),
                 DataUtils.adjust(start, length), DataUtils.adjust(end, length));
     }
+    @Override
     public int find(int value, int start) {
         return DataUtils.find(this, (byte) (value & 0xFF), DataUtils.adjust(start, length), length);
     }
+    @Override
     public int find(int value) {
         return DataUtils.find(this, (byte) (value & 0xFF), 0, length);
     }
 
-    /**
-     *  Search sub bytes in range [start, end)
-     *
-     * @param bytes - sub view
-     * @param start - start position (include)
-     * @param end   - end position (exclude)
-     * @return -1 on not found
-     */
+    @Override
     public int find(byte[] bytes, int start, int end) {
         return DataUtils.find(this, bytes, 0, bytes.length,
                 DataUtils.adjust(start, length), DataUtils.adjust(end, length));
     }
+    @Override
     public int find(byte[] bytes, int start) {
         return DataUtils.find(this, bytes, 0, bytes.length,
                 DataUtils.adjust(start, length), length);
     }
+    @Override
     public int find(byte[] bytes) {
         return DataUtils.find(this, bytes, 0, bytes.length, 0, length);
     }
 
-    public int find(Data sub, int start, int end) {
+    @Override
+    public int find(ByteArray sub, int start, int end) {
         return DataUtils.find(this, sub.getBuffer(), sub.getOffset(), sub.getLength(),
                 DataUtils.adjust(start, length), DataUtils.adjust(end, length));
     }
-    public int find(Data sub, int start) {
+    @Override
+    public int find(ByteArray sub, int start) {
         return DataUtils.find(this, sub.getBuffer(), sub.getOffset(), sub.getLength(),
                 DataUtils.adjust(start, length), length);
     }
-    public int find(Data sub) {
+    @Override
+    public int find(ByteArray sub) {
         return DataUtils.find(this, sub.getBuffer(), sub.getOffset(), sub.getLength(), 0, length);
     }
 
@@ -204,12 +207,7 @@ public class Data implements Cloneable {
     //  Reading
     //
 
-    /**
-     *  Get item value with position
-     *
-     * @param index - item position
-     * @return item value
-     */
+    @Override
     public byte getByte(int index) {
         // check position
         if (index < 0) {
@@ -223,14 +221,17 @@ public class Data implements Cloneable {
         return buffer[offset + index];
     }
 
+    @Override
     public byte[] getBytes() {
         return DataUtils.getBytes(this, 0, length);
     }
 
+    @Override
     public byte[] getBytes(int start) {
         return DataUtils.getBytes(this, DataUtils.adjust(start, length), length);
     }
 
+    @Override
     public byte[] getBytes(int start, int end) {
         return DataUtils.getBytes(this, DataUtils.adjust(start, length), DataUtils.adjust(end, length));
     }
@@ -246,11 +247,13 @@ public class Data implements Cloneable {
      * @param end   - end position (exclude)
      * @return sub data
      */
-    public Data slice(int start, int end) {
+    @Override
+    public ByteArray slice(int start, int end) {
         return DataUtils.slice(this, DataUtils.adjust(start, length), DataUtils.adjust(end, length));
     }
 
-    public Data slice(int start) {
+    @Override
+    public ByteArray slice(int start) {
         return DataUtils.slice(this, DataUtils.adjust(start, length), length);
     }
 
@@ -260,16 +263,18 @@ public class Data implements Cloneable {
      * @param others - other data
      * @return combined data view
      */
-    public Data concat(Data... others) {
-        Data result = this;
-        for (Data other : others) {
+    @Override
+    public ByteArray concat(ByteArray... others) {
+        ByteArray result = this;
+        for (ByteArray other : others) {
             result = DataUtils.concat(result, other);
         }
         return result;
     }
 
-    public Data concat(byte[]... others) {
-        Data result = this;
+    @Override
+    public ByteArray concat(byte[]... others) {
+        ByteArray result = this;
         for (byte[] bytes : others) {
             result = DataUtils.concat(result, new Data(bytes));
         }
@@ -297,7 +302,7 @@ public class Data implements Cloneable {
         return new MutableData(bytes);
     }
 
-    public static Data random(int length) {
+    public static ByteArray random(int length) {
         byte[] bytes = new byte[length];
         Random random = new Random();
         random.nextBytes(bytes);

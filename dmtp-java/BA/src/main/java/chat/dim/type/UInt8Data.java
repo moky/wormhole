@@ -42,14 +42,10 @@ public class UInt8Data extends Data implements IntegerData {
         this.value = data.value;
     }
 
-    public UInt8Data(Data data) {
-        super(data.slice(0, 1));
+    public UInt8Data(ByteArray data) {
+        super(data);
+        assert data.getLength() == 1 : "UInt8Data error: " + data.getLength();
         this.value = data.getByte(0) & 0xFF;
-    }
-
-    public UInt8Data(Data data, int index) {
-        super(data.slice(index, 1));
-        this.value = data.getByte(index) & 0xFF;
     }
 
     public UInt8Data(byte[] bytes) {

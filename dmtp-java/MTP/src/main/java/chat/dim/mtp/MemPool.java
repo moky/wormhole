@@ -48,7 +48,7 @@ import chat.dim.mtp.protocol.TransactionID;
 import chat.dim.mtp.task.Arrival;
 import chat.dim.mtp.task.Assemble;
 import chat.dim.mtp.task.Departure;
-import chat.dim.type.Data;
+import chat.dim.type.ByteArray;
 import chat.dim.type.IntegerData;
 
 import static chat.dim.type.IntegerData.Endian.BigEndian;
@@ -130,7 +130,7 @@ public class MemPool implements Pool {
     @Override
     public boolean deleteDeparture(Package response, SocketAddress destination, SocketAddress source) {
         Header head = response.head;
-        Data body = response.body;
+        ByteArray body = response.body;
         int bodyLen = body.getLength();
         TransactionID sn = head.sn;
         DataType type = head.type;

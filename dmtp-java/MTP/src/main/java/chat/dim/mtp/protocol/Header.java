@@ -30,6 +30,7 @@
  */
 package chat.dim.mtp.protocol;
 
+import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 import chat.dim.type.IntegerData;
 import chat.dim.type.MutableData;
@@ -117,7 +118,7 @@ public class Header extends Data {
      * @param offset  - fragment index [OPTIONAL], default is 0
      * @param bodyLen - length of body [OPTIONAL], default is -1 (unlimited)
      */
-    public Header(Data data, DataType type, TransactionID sn, int pages, int offset, int bodyLen) {
+    public Header(ByteArray data, DataType type, TransactionID sn, int pages, int offset, int bodyLen) {
         super(data);
         this.type = type;
         this.sn = sn;
@@ -126,15 +127,15 @@ public class Header extends Data {
         this.bodyLength = bodyLen;
     }
 
-    public Header(Data data, DataType type, TransactionID sn, int bodyLen) {
+    public Header(ByteArray data, DataType type, TransactionID sn, int bodyLen) {
         this(data, type, sn, 1, 0, bodyLen);
     }
 
-    public Header(Data data, DataType type, TransactionID sn) {
+    public Header(ByteArray data, DataType type, TransactionID sn) {
         this(data, type, sn, 1, 0, -1);
     }
 
-    public static Header parse(Data data) {
+    public static Header parse(ByteArray data) {
         int length = data.getLength();
         if (length < 4) {
             // waiting for more data
@@ -215,14 +216,14 @@ public class Header extends Data {
         if (!sn.equals(TransactionID.ZERO)) {
             headLen += 8;
         }
-        Data options;
+        ByteArray options;
         // pages & offset
         assert type != null : "data type should not be null";
         if (type.equals(DataType.MessageFragment)) {
             // message fragment (or its respond)
             assert pages > 1 && pages > offset : "pages error: " + pages + ", " + offset;
-            Data d1 = UInt32Data.from(pages, BigEndian);
-            Data d2 = UInt32Data.from(offset, BigEndian);
+            ByteArray d1 = UInt32Data.from(pages, BigEndian);
+            ByteArray d2 = UInt32Data.from(offset, BigEndian);
             options = d1.concat(d2);
             headLen += 8;
         } else {
@@ -232,7 +233,7 @@ public class Header extends Data {
         }
         // body length
         if (bodyLen >= 0) {
-            Data d3 = UInt32Data.from(bodyLen, BigEndian);
+            ByteArray d3 = UInt32Data.from(bodyLen, BigEndian);
             if (options == null) {
                 options = d3;
             } else {
@@ -243,7 +244,7 @@ public class Header extends Data {
         // generate header data
         MutableData data = new MutableData(headLen);
         data.append(MAGIC_CODE);  // 'DIM'
-        data.push((byte) ((headLen << 2) | (type.value & 0x0F)));
+        data.append((byte) ((headLen << 2) | (type.value & 0x0F)));
         if (!sn.equals(TransactionID.ZERO)) {
             data.append(sn);
         }

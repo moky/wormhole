@@ -33,7 +33,7 @@ package chat.dim.dmtp;
 import java.net.SocketAddress;
 
 import chat.dim.mtp.PeerDelegate;
-import chat.dim.type.Data;
+import chat.dim.type.ByteArray;
 
 public class Hub extends chat.dim.udp.Hub implements PeerDelegate {
 
@@ -42,7 +42,7 @@ public class Hub extends chat.dim.udp.Hub implements PeerDelegate {
     //
 
     @Override
-    public int sendData(Data data, SocketAddress destination, SocketAddress source) {
+    public int sendData(ByteArray data, SocketAddress destination, SocketAddress source) {
         return send(data.getBytes(), destination, source);
     }
 }

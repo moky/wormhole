@@ -238,8 +238,8 @@ public class Peer extends Thread {
             body = new MutableData(10);
             body.append(pages);
             body.append(offset);
-            body.push((byte) 'O');
-            body.push((byte) 'K');
+            body.append((byte) 'O');
+            body.append((byte) 'K');
         } else {
             throw new IllegalArgumentException("data type error: " + type);
         }

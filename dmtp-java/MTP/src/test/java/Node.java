@@ -11,7 +11,7 @@ import chat.dim.mtp.protocol.DataType;
 import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.protocol.TransactionID;
 import chat.dim.mtp.task.Departure;
-import chat.dim.type.Data;
+import chat.dim.type.ByteArray;
 
 public class Node implements PeerHandler {
 
@@ -86,7 +86,7 @@ public class Node implements PeerHandler {
      * @param destination - remote IP and port
      * @return departure task with 'trans_id' in the payload
      */
-    public Departure sendCommand(Data cmd, SocketAddress destination) {
+    public Departure sendCommand(ByteArray cmd, SocketAddress destination) {
         Package pack = Package.create(DataType.Command, cmd);
         return peer.sendCommand(pack, destination);
     }
@@ -98,7 +98,7 @@ public class Node implements PeerHandler {
      * @param destination - remote IP and port
      * @return departure task with 'trans_id' in the payload
      */
-    public Departure sendMessage(Data msg, SocketAddress destination) {
+    public Departure sendMessage(ByteArray msg, SocketAddress destination) {
         Package pack = Package.create(DataType.Command, msg);
         return peer.sendMessage(pack, destination);
     }
@@ -128,7 +128,7 @@ public class Node implements PeerHandler {
     }
 
     @Override
-    public boolean onReceivedCommand(Data cmd, SocketAddress source, SocketAddress destination) {
+    public boolean onReceivedCommand(ByteArray cmd, SocketAddress source, SocketAddress destination) {
         // TODO: process after received command data
         String text = cmd.toString();
         System.out.printf("received cmd (%d bytes) from %s to %s: %s\n", cmd.getLength(), source, destination, text);
@@ -136,7 +136,7 @@ public class Node implements PeerHandler {
     }
 
     @Override
-    public boolean onReceivedMessage(Data msg, SocketAddress source, SocketAddress destination) {
+    public boolean onReceivedMessage(ByteArray msg, SocketAddress source, SocketAddress destination) {
         // TODO: process after received message data
         String text = msg.toString();
         System.out.printf("received msg (%d bytes) from %s to %s: %s\n", msg.getLength(), source, destination, text);
@@ -144,7 +144,7 @@ public class Node implements PeerHandler {
     }
 
     @Override
-    public void onReceivedError(Data data, SocketAddress source, SocketAddress destination) {
+    public void onReceivedError(ByteArray data, SocketAddress source, SocketAddress destination) {
         // TODO: process after received error data
         String text = data.toString();
         System.out.printf("received msg (%d bytes) from %s to %s: %s\n", data.getLength(), source, destination, text);
