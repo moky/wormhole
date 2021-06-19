@@ -30,49 +30,50 @@
  */
 package chat.dim.tlv;
 
-/**
- *  Unsigned Char (8-bytes)
+import java.util.List;
+
+import chat.dim.type.ByteArray;
+import chat.dim.type.IntegerData;
+
+/*
+ *       0                   1                   2                   3
+ *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |         Type                  |            Length             |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |                         Value (variable)                ....
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-public class UInt8Data extends IntegerData {
 
-    public UInt8Data(UInt8Data data) {
-        super(data);
+public interface Triad extends ByteArray {
+
+    Tag getTagField();
+    Length getLengthField();
+    Value getValueField();
+
+    interface Tag extends ByteArray {
     }
 
-    public UInt8Data(Data data, int value) {
-        super(data, value);
+    interface Length extends ByteArray, IntegerData {
     }
 
-    public UInt8Data(byte[] bytes, int value) {
-        super(bytes, value);
+    interface Value extends ByteArray {
     }
 
-    public UInt8Data(Data data) {
-        super(data, data.getByte(0));
-    }
+    /**
+     *  Tag-Length-Value Parser
+     *  ~~~~~~~~~~~~~~~~~~~~~~~
+     */
+    interface Parser {
 
-    public UInt8Data(byte[] bytes) {
-        super(bytes, bytes[0]);
-    }
+        Tag parseTag(ByteArray data);
 
-    public UInt8Data(int value) {
-        super(bytesFromLong(value, 1), value);
-    }
+        Length parseLength(ByteArray data, Tag type);
 
-    public byte getByteValue() {
-        return (byte) (value & 0xFF);
-    }
+        Value parseValue(ByteArray data, Tag type, Length length);
 
-    //
-    //  Factories
-    //
+        Triad parseTriad(ByteArray data);
 
-    public static UInt8Data fromBytes(byte[] bytes) {
-        return fromData(new Data(bytes, 0, 1));
-    }
-
-    public static UInt8Data fromData(Data data) {
-        data = data.slice(0, 1);
-        return new UInt8Data(data, data.getUInt8Value(0));
+        List<Triad> parse(ByteArray data);
     }
 }

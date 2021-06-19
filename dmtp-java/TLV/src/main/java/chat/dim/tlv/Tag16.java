@@ -30,6 +30,9 @@
  */
 package chat.dim.tlv;
 
+import chat.dim.type.ByteArray;
+import chat.dim.type.UInt16Data;
+
 /*
  *       0                   1                   2                   3
  *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -40,30 +43,17 @@ package chat.dim.tlv;
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
-public class Length extends IntegerData {
+public class Tag16 extends UInt16Data implements Triad.Tag {
 
-    public Length(IntegerData length) {
-        super(length);
+    public Tag16(ByteArray data) {
+        super(data, Endian.BigEndian);
     }
 
-    public Length(Data data, int value) {
-        super(data, value);
+    public Tag16(byte[] bytes) {
+        super(bytes, Endian.BigEndian);
     }
 
-    public Length(byte[] bytes, int value) {
-        super(bytes, value);
-    }
-
-    public Length(int value) {
-        super(bytesFromLong(value, 2), value);
-    }
-
-    public static Length parse(Data data, Tag type) {
-        if (data.getLength() < 2) {
-            throw new IndexOutOfBoundsException("TLV length error: " + data.getLength());
-        } else if (data.getLength() > 2) {
-            data = data.slice(0, 2);
-        }
-        return new Length(data, data.getUInt16Value(0));
+    public Tag16(byte[] bytes, int start) {
+        super(bytes, start, Endian.BigEndian);
     }
 }

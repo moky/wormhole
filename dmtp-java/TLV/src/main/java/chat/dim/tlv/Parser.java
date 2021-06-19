@@ -31,7 +31,9 @@
 package chat.dim.tlv;
 
 import chat.dim.type.ByteArray;
-import chat.dim.type.Data;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /*
  *       0                   1                   2                   3
@@ -43,50 +45,77 @@ import chat.dim.type.Data;
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
-public class TagLengthValue extends Data implements Triad {
+public class Parser implements Triad.Parser {
 
-    public final Tag tag;
-    public final Length length;
-    public final Value value;
-
-    public TagLengthValue(Triad tlv) {
-        super(tlv);
-        tag = tlv.getTagField();
-        length = tlv.getLengthField();
-        value = tlv.getValueField();
-    }
-
-    public TagLengthValue(ByteArray data, Tag type, Length length, Value value) {
-        super(data);
-        this.tag = type;
-        this.length = length;
-        this.value = value;
-    }
-
-    public TagLengthValue(byte[] bytes, Tag type, Length length, Value value) {
-        super(bytes);
-        this.tag = type;
-        this.length = length;
-        this.value = value;
+    @Override
+    public Triad.Tag parseTag(ByteArray data) {
+        if (data.getLength() < 2) {
+            // error
+            return null;
+        }
+        return new Tag16(data.slice(0, 2));
     }
 
     @Override
-    public Tag getTagField() {
-        return tag;
+    public Triad.Length parseLength(ByteArray data, Triad.Tag type) {
+        if (data.getLength() < 2) {
+            // error
+            return null;
+        }
+        return new Length16(data.slice(0, 2));
     }
 
     @Override
-    public Length getLengthField() {
-        return null;
+    public Triad.Value parseValue(ByteArray data, Triad.Tag type, Triad.Length length) {
+        int size;
+        if (length == null) {
+            size = data.getLength();
+        } else {
+            size = length.getIntValue();
+            if (size > data.getLength()) {
+                // error
+                return null;
+            }
+        }
+        return new RawValue(data.slice(0, size));
     }
 
     @Override
-    public Value getValueField() {
-        return value;
+    public Triad parseTriad(ByteArray data) {
+        // get tag field
+        Triad.Tag type = parseTag(data);
+        if (type == null) {
+            return null;
+        }
+        int offset = type.getLength();
+        // get length field
+        Triad.Length length = parseLength(data.slice(offset), type);
+        if (length != null) {
+            offset += length.getLength();
+        }
+        // get value field
+        Triad.Value value = parseValue(data.slice(offset), type, length);
+        if (value != null) {
+            offset += value.getLength();
+        }
+        return new TagLengthValue(data.slice(0, offset), type, length, value);
     }
 
     @Override
-    public String toString() {
-        return "/* " + getClass().getSimpleName() + " */ " + tag + ": \"" + value + "\"";
+    public List<Triad> parse(ByteArray data) {
+        List<Triad> array = new ArrayList<>();
+        Triad item;
+        while (data.getLength() > 0) {
+            item = parseTriad(data);
+            if (item == null) {
+                // data error
+                break;
+            }
+            array.add(item);
+            // next item
+            assert item.getLength() > 0 : "Triad error";
+            data.slice(item.getLength());
+        }
+        return array;
     }
 }

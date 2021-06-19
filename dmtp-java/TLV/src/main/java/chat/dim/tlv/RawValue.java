@@ -30,6 +30,9 @@
  */
 package chat.dim.tlv;
 
+import chat.dim.type.ByteArray;
+import chat.dim.type.Data;
+
 /*
  *       0                   1                   2                   3
  *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -40,28 +43,17 @@ package chat.dim.tlv;
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
-public class Value extends Data {
+public class RawValue extends Data implements Triad.Value {
 
-    public Value(Data data) {
-        super(data);
+    public RawValue(byte[] buffer, int offset, int length) {
+        super(buffer, offset, length);
     }
 
-    public Value(byte[] bytes) {
+    public RawValue(byte[] bytes) {
         super(bytes);
     }
 
-    public static Value parse(Data data, Tag type, Length length) {
-        /*
-        if (length != null) {
-            if (length.value == 0) {
-                return null;
-            } else if (data.length < length.value) {
-                throw new IndexOutOfBoundsException("TLV value error: " + data.length);
-            } else if (data.length > length.value) {
-                data = data.slice(0, (int) length.value);
-            }
-        }
-         */
-        return new Value(data);
+    public RawValue(ByteArray data) {
+        super(data);
     }
 }

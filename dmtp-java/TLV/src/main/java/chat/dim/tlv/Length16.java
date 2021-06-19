@@ -30,45 +30,30 @@
  */
 package chat.dim.tlv;
 
-/**
- *  Unsigned Integer (32-bytes)
+import chat.dim.type.ByteArray;
+import chat.dim.type.UInt16Data;
+
+/*
+ *       0                   1                   2                   3
+ *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |         Type                  |            Length             |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |                         Value (variable)                ....
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-public class UInt32Data extends IntegerData {
 
-    public UInt32Data(UInt32Data data) {
-        super(data);
+public class Length16 extends UInt16Data implements Triad.Length {
+
+    public Length16(ByteArray data) {
+        super(data, Endian.BigEndian);
     }
 
-    public UInt32Data(Data data, long value) {
-        super(data, value);
+    public Length16(byte[] bytes) {
+        super(bytes, Endian.BigEndian);
     }
 
-    public UInt32Data(byte[] bytes, long value) {
-        super(bytes, value);
-    }
-
-    public UInt32Data(Data data) {
-        super(data, data.getUInt32Value(0));
-    }
-
-    public UInt32Data(byte[] bytes) {
-        super(bytes, longFromBytes(bytes, 0, 4));
-    }
-
-    public UInt32Data(long value) {
-        super(bytesFromLong(value, 4), value);
-    }
-
-    //
-    //  Factories
-    //
-
-    public static UInt32Data fromBytes(byte[] bytes) {
-        return fromData(new Data(bytes, 0, 4));
-    }
-
-    public static UInt32Data fromData(Data data) {
-        data = data.slice(0, 4);
-        return new UInt32Data(data, data.getUInt32Value(0));
+    public Length16(byte[] bytes, int start) {
+        super(bytes, start, Endian.BigEndian);
     }
 }
