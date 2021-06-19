@@ -35,7 +35,7 @@ import java.util.List;
 
 import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.protocol.TransactionID;
-import chat.dim.tlv.Data;
+import chat.dim.type.Data;
 
 public interface PeerHandler {
 

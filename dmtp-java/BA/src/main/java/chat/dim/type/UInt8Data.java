@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  DMTP: Direct Message Transfer Protocol
+ *  BA: Byte Array
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,21 +28,63 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.dmtp;
+package chat.dim.type;
 
-import java.net.SocketAddress;
+/**
+ *  Unsigned Char (8-bytes)
+ */
+public class UInt8Data extends Data implements IntegerData {
 
-import chat.dim.mtp.PeerDelegate;
-import chat.dim.type.Data;
+    public final int value;
 
-public class Hub extends chat.dim.udp.Hub implements PeerDelegate {
+    public UInt8Data(UInt8Data data) {
+        super(data);
+        this.value = data.value;
+    }
 
-    //
-    //  PeerDelegate
-    //
+    public UInt8Data(Data data) {
+        super(data.slice(0, 1));
+        this.value = data.getByte(0) & 0xFF;
+    }
+
+    public UInt8Data(Data data, int index) {
+        super(data.slice(index, 1));
+        this.value = data.getByte(index) & 0xFF;
+    }
+
+    public UInt8Data(byte[] bytes) {
+        super(bytes, 0, 1);
+        this.value = bytes[0] & 0xFF;
+    }
+
+    public UInt8Data(byte[] bytes, int index) {
+        super(bytes, index, 1);
+        this.value = bytes[index] & 0xFF;
+    }
+
+    public UInt8Data(byte value) {
+        super(new byte[1]);
+        this.buffer[0] = value;
+        this.value = value & 0xFF;
+    }
+
+    public UInt8Data(int value) {
+        super(new byte[1]);
+        this.buffer[0] = (byte) (value & 0xFF);
+        this.value = value;
+    }
 
     @Override
-    public int sendData(Data data, SocketAddress destination, SocketAddress source) {
-        return send(data.getBytes(), destination, source);
+    public int getIntValue() {
+        return value;
+    }
+
+    @Override
+    public long getLongValue() {
+        return value;
+    }
+
+    public byte getByteValue() {
+        return (byte) (value & 0xFF);
     }
 }

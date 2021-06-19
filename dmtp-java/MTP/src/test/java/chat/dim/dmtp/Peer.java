@@ -38,7 +38,7 @@ import chat.dim.mtp.Pool;
 import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.task.Arrival;
 import chat.dim.mtp.task.Departure;
-import chat.dim.tlv.Data;
+import chat.dim.type.Data;
 import chat.dim.udp.Connection;
 import chat.dim.udp.ConnectionStatus;
 import chat.dim.udp.HubFilter;

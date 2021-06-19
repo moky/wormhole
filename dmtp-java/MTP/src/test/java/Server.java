@@ -4,8 +4,8 @@ import java.net.SocketException;
 
 public class Server extends Node {
 
-//    static String HOST = "127.0.0.1";
-    static String HOST = "192.168.31.64";
+//    static String HOST = "0.0.0.0";
+    static String HOST = "192.168.31.91";
     static int PORT = 9394;
 
     public Server(String host, int port) throws SocketException {

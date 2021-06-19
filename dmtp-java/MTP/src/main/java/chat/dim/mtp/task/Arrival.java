@@ -32,7 +32,7 @@ package chat.dim.mtp.task;
 
 import java.net.SocketAddress;
 
-import chat.dim.tlv.Data;
+import chat.dim.type.Data;
 
 /**
  *  Data package received (waiting process)

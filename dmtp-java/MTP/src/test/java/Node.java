@@ -11,7 +11,7 @@ import chat.dim.mtp.protocol.DataType;
 import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.protocol.TransactionID;
 import chat.dim.mtp.task.Departure;
-import chat.dim.tlv.Data;
+import chat.dim.type.Data;
 
 public class Node implements PeerHandler {
 

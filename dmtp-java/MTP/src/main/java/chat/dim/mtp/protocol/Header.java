@@ -30,9 +30,12 @@
  */
 package chat.dim.mtp.protocol;
 
-import chat.dim.tlv.Data;
-import chat.dim.tlv.MutableData;
-import chat.dim.tlv.UInt32Data;
+import chat.dim.type.Data;
+import chat.dim.type.IntegerData;
+import chat.dim.type.MutableData;
+import chat.dim.type.UInt32Data;
+
+import static chat.dim.type.IntegerData.Endian.BigEndian;
 
 /*    Package Header:
  *
@@ -160,20 +163,20 @@ public class Header extends Data {
         } else if (headLen == 8) {
             // simple header with body length
             sn = TransactionID.ZERO;
-            bodyLen = (int) data.getUInt32Value(4);
+            bodyLen = (int) IntegerData.getValue(data, 4, 4, BigEndian);
         } else if (headLen >= 12) {
             // command/message/fragment header
             sn = TransactionID.parse(data.slice(4));
             if (headLen == 16) {
                 // command/message header with body length
-                bodyLen = (int) data.getUInt32Value(12);
+                bodyLen = (int) IntegerData.getValue(data, 12, 4, BigEndian);
             } else if (headLen >= 20) {
                 // fragment header
-                pages = (int) data.getUInt32Value(12);
-                offset = (int) data.getUInt32Value(16);
+                pages = (int) IntegerData.getValue(data, 12, 4, BigEndian);
+                offset = (int) IntegerData.getValue(data, 16, 4, BigEndian);
                 if (headLen == 24) {
                     // fragment header with body length
-                    bodyLen = (int) data.getUInt32Value(20);
+                    bodyLen = (int) IntegerData.getValue(data, 20, 4, BigEndian);
                 }
             }
         }
@@ -218,8 +221,8 @@ public class Header extends Data {
         if (type.equals(DataType.MessageFragment)) {
             // message fragment (or its respond)
             assert pages > 1 && pages > offset : "pages error: " + pages + ", " + offset;
-            Data d1 = new UInt32Data(pages);
-            Data d2 = new UInt32Data(offset);
+            Data d1 = UInt32Data.from(pages, BigEndian);
+            Data d2 = UInt32Data.from(offset, BigEndian);
             options = d1.concat(d2);
             headLen += 8;
         } else {
@@ -229,7 +232,7 @@ public class Header extends Data {
         }
         // body length
         if (bodyLen >= 0) {
-            Data d3 = new UInt32Data(bodyLen);
+            Data d3 = UInt32Data.from(bodyLen, BigEndian);
             if (options == null) {
                 options = d3;
             } else {

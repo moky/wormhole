@@ -34,8 +34,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import chat.dim.tlv.Data;
-import chat.dim.tlv.MutableData;
+import chat.dim.type.Data;
+import chat.dim.type.MutableData;
 
 public class Package extends Data {
 

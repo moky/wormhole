@@ -54,7 +54,7 @@ package chat.dim.mtp;
 
 import java.net.SocketAddress;
 
-import chat.dim.tlv.Data;
+import chat.dim.type.Data;
 
 public interface PeerDelegate {
 

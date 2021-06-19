@@ -31,7 +31,12 @@
 package chat.dim.mtp;
 
 import java.net.SocketAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -43,7 +48,10 @@ import chat.dim.mtp.protocol.TransactionID;
 import chat.dim.mtp.task.Arrival;
 import chat.dim.mtp.task.Assemble;
 import chat.dim.mtp.task.Departure;
-import chat.dim.tlv.Data;
+import chat.dim.type.Data;
+import chat.dim.type.IntegerData;
+
+import static chat.dim.type.IntegerData.Endian.BigEndian;
 
 public class MemPool implements Pool {
 
@@ -136,8 +144,8 @@ public class MemPool implements Pool {
                 // MessageFragment
                 assert bodyLen == 8 || (body.getByte(8) == 'O' && body.getByte(9) == 'K') : "MessageRespond error: " + body;
                 // get pages count and index
-                int pages = (int) body.getUInt32Value(0);
-                int offset = (int) body.getUInt32Value(4);
+                int pages = (int) IntegerData.getValue(body, 0, 4, BigEndian);
+                int offset = (int) IntegerData.getValue(body, 4, 4, BigEndian);
                 assert pages > 1 && pages > offset : "pages error: " + pages + ", " + offset;
                 return deleteFragment(sn, offset, destination);
             } else if (bodyLen == 0 || (body.getByte(0) == 'O' && body.getByte(1) == 'K')) {
