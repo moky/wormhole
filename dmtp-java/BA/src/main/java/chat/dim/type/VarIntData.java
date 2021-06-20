@@ -97,7 +97,7 @@ public class VarIntData extends Data implements IntegerData {
      * @param length - data length limit
      * @return VarIntData
      */
-    public static VarIntData getValue(byte[] buffer, int offset, int length) {
+    private static VarIntData getValue(byte[] buffer, int offset, int length) {
         long value = 0;
         int pos, bits;
         byte ch = (byte) 0x80;
@@ -119,7 +119,7 @@ public class VarIntData extends Data implements IntegerData {
      * @param length - data length limit
      * @return occupied data length
      */
-    public static int setValue(long value, byte[] buffer, int offset, int length) {
+    private static int setValue(long value, byte[] buffer, int offset, int length) {
         int pos;
         for (pos = offset; value > 0x7F; ++pos) {
             assert pos < (offset + length) : "out of range: [" + offset + ", " + length + ")";

@@ -73,10 +73,8 @@ public class UInt32Data extends Data implements IntegerData {
     public boolean equals(Object other) {
         if (other instanceof IntegerData) {
             return value == ((IntegerData) other).getLongValue();
-        } else if (other instanceof ByteArray) {
-            return equals((ByteArray) other);
         } else {
-            return false;
+            return super.equals(other);
         }
     }
 
