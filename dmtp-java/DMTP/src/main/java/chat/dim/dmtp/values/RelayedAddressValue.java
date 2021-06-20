@@ -32,7 +32,7 @@ package chat.dim.dmtp.values;
 
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
-import chat.dim.tlv.Data;
+import chat.dim.type.ByteArray;
 
 public class RelayedAddressValue extends MappedAddressValue {
 
@@ -48,7 +48,7 @@ public class RelayedAddressValue extends MappedAddressValue {
         super(addressValue);
     }
 
-    public RelayedAddressValue(Data data, String ip, int port, byte family) {
+    public RelayedAddressValue(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 
@@ -60,7 +60,7 @@ public class RelayedAddressValue extends MappedAddressValue {
         super(ip, port);
     }
 
-    public static RelayedAddressValue parse(Data data, FieldName type, FieldLength length) {
+    public static RelayedAddressValue parse(ByteArray data, FieldName type, FieldLength length) {
         MappedAddressValue value = MappedAddressValue.parse(data, type, length);
         if (value == null) {
             return null;

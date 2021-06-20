@@ -41,8 +41,11 @@ import chat.dim.dmtp.fields.Field;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
 import chat.dim.dmtp.fields.FieldsValue;
-import chat.dim.dmtp.values.*;
-import chat.dim.tlv.Data;
+import chat.dim.dmtp.values.BinaryValue;
+import chat.dim.dmtp.values.StringValue;
+import chat.dim.dmtp.values.TimestampValue;
+import chat.dim.dmtp.values.TypeValue;
+import chat.dim.type.ByteArray;
 
 /*     Message
  *     ~~~~~~~
@@ -90,18 +93,18 @@ public class Message extends FieldsValue {
     private String group = null;
 
     // body
-    private Data content = null;
-    private Data signature = null;
-    private Data key = null;
+    private ByteArray content = null;
+    private ByteArray signature = null;
+    private ByteArray key = null;
 
     // attachments
-    private Data meta = null;
-    private Data profile = null;
+    private ByteArray meta = null;
+    private ByteArray profile = null;
 
     // file in message
     private String filename = null;
 
-    public Message(Data data, List<Field> fields) {
+    public Message(ByteArray data, List<Field> fields) {
         super(data, fields);
     }
 
@@ -146,19 +149,19 @@ public class Message extends FieldsValue {
     //
     //  body
     //
-    public Data getContent() {
+    public ByteArray getContent() {
         if (content == null) {
             content = getBinaryValue(CONTENT);
         }
         return content;
     }
-    public Data getSignature() {
+    public ByteArray getSignature() {
         if (signature == null) {
             signature = getBinaryValue(SIGNATURE);
         }
         return signature;
     }
-    public Data getKey() {
+    public ByteArray getKey() {
         if (key == null) {
             key = getBinaryValue(KEY);
         }
@@ -168,13 +171,13 @@ public class Message extends FieldsValue {
     //
     //  attachments
     //
-    public Data getMeta() {
+    public ByteArray getMeta() {
         if (meta == null) {
             meta = getBinaryValue(META);
         }
         return meta;
     }
-    public Data getProfile() {
+    public ByteArray getProfile() {
         if (profile == null) {
             profile = getBinaryValue(PROFILE);
         }
@@ -195,9 +198,9 @@ public class Message extends FieldsValue {
     //  Factories
     //
 
-    public static Message parse(Data data) {
+    public static Message parse(ByteArray data) {
         // parse fields
-        List<Field> fields = Field.parseFields(data);
+        List<Field> fields = Field.parseAll(data);
         if (fields.size() == 0) {
             return null;
         }
@@ -299,15 +302,15 @@ public class Message extends FieldsValue {
 
     public static Message create(String sender, String receiver, long timestamp,
                                  int type, String group,
-                                 Data content, Data signature, Data key,
-                                 Data meta, Data profile) {
+                                 ByteArray content, ByteArray signature, ByteArray key,
+                                 ByteArray meta, ByteArray profile) {
         return create(sender, receiver, timestamp, type, group,
                 content, signature, key, meta, profile,
                 null);
     }
 
     public static Message create(String sender, String receiver, long timestamp,
-                                 Data content, Data signature, Data key) {
+                                 ByteArray content, ByteArray signature, ByteArray key) {
         return create(sender, receiver, timestamp, 0, null,
                 content, signature, key, null, null,
                 null);
@@ -317,15 +320,15 @@ public class Message extends FieldsValue {
     //  file in message
     //
 
-    public static Message create(String filename, Data content,
+    public static Message create(String filename, ByteArray content,
                                  String sender, String receiver, long timestamp,
-                                 Data signature, Data key) {
+                                 ByteArray signature, ByteArray key) {
         return create(sender, receiver, timestamp, 0, null,
                 content, signature, key, null, null,
                 filename);
     }
 
-    public static Message create(String filename, Data content) {
+    public static Message create(String filename, ByteArray content) {
         return create(null, null, 0, 0, null,
                 content, null, null, null, null,
                 filename);

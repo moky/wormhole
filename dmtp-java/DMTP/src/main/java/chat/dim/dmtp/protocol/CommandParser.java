@@ -28,45 +28,51 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.dmtp.values;
+package chat.dim.dmtp.protocol;
 
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
+import chat.dim.dmtp.fields.FieldValue;
+import chat.dim.tlv.Parser;
 import chat.dim.type.ByteArray;
+import chat.dim.type.VarIntData;
 
-public class SourceAddressValue extends MappedAddressValue {
-    private MappedAddressValue value;
+public class CommandParser extends Parser<Command, FieldName, FieldLength, FieldValue> {
 
-    /*  SOURCE-ADDRESS
-     *  ~~~~~~~~~~~~~~
-     *
-     *  The SOURCE-ADDRESS attribute is present in Binding Responses.  It
-     *  indicates the source IP address and port that the server is sending
-     *  the response from.  Its syntax is identical to that of MAPPED-
-     *  ADDRESS.
-     */
-
-    public SourceAddressValue(MappedAddressValue addressValue) {
-        super(addressValue);
-    }
-
-    public SourceAddressValue(ByteArray data, String ip, int port, byte family) {
-        super(data, ip, port, family);
-    }
-
-    public SourceAddressValue(String ip, int port, byte family) {
-        super(ip, port, family);
-    }
-
-    public SourceAddressValue(String ip, int port) {
-        super(ip, port);
-    }
-
-    public static SourceAddressValue parse(ByteArray data, FieldName type, FieldLength length) {
-        MappedAddressValue value = MappedAddressValue.parse(data, type, length);
-        if (value == null) {
-            return null;
+    @Override
+    public FieldName parseTagField(ByteArray data) {
+        int pos = data.find('\0');
+        if (pos < 0) {
+            throw new IndexOutOfBoundsException("Field name error: " + data);
         }
-        return new SourceAddressValue(data, value.ip, value.port, value.family);
+        ++pos;  // includes the tail '\0'
+        if (pos < data.getLength()) {
+            data = data.slice(0, pos);
+        }
+        return new FieldName(data);
+    }
+
+    @Override
+    public FieldLength parseLengthField(ByteArray data, FieldName type) {
+        if (data.getLength() < 1) {
+            throw new IndexOutOfBoundsException("Field length error: " + data);
+        }
+        return new FieldLength(VarIntData.from(data));
+    }
+
+    @Override
+    public FieldValue parseValueField(ByteArray data, FieldName type, FieldLength length) {
+        int valueLength = length.getIntValue();
+        if (data.getLength() < valueLength) {
+            throw new IndexOutOfBoundsException("Field value error: " + data.getLength() + ", " + valueLength);
+        } else if (data.getLength() > valueLength) {
+            data = data.slice(0, valueLength);
+        }
+        return FieldValue.parse(data, type, length);
+    }
+
+    @Override
+    protected Command createTriad(ByteArray data, FieldName type, FieldLength length, FieldValue value) {
+        return new Command(data, type, length, value);
     }
 }

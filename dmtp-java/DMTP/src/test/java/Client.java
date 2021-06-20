@@ -14,7 +14,7 @@ import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.protocol.Message;
 import chat.dim.dmtp.values.LocationValue;
 import chat.dim.mtp.task.Departure;
-import chat.dim.tlv.Data;
+import chat.dim.type.Data;
 import chat.dim.udp.Connection;
 
 public class Client extends chat.dim.dmtp.Client {
@@ -144,12 +144,12 @@ public class Client extends chat.dim.dmtp.Client {
         return true;
     }
 
-    static final String CLIENT_IP = "192.168.31.64";
-    static final int CLIENT_PORT = Data.random(1).getUInt8Value(0) + 9900;
+    static final String CLIENT_IP = "192.168.31.91";
+    static final int CLIENT_PORT = Data.random(1).getByte(0) + 9900;
 
     public static void main(String args[]) throws SocketException, InterruptedException {
 
-        SocketAddress serverAddress = new InetSocketAddress(Server.SERVER_GZ1, Server.SERVER_PORT);
+        SocketAddress serverAddress = new InetSocketAddress(Server.SERVER_IP, Server.SERVER_PORT);
         System.out.printf("connecting to UDP server: %s ...\n", serverAddress);
 
         String user = "moky-" + CLIENT_PORT;

@@ -37,13 +37,13 @@ import chat.dim.dmtp.fields.Field;
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldsValue;
-import chat.dim.tlv.Data;
+import chat.dim.type.ByteArray;
 
 public class CommandValue extends FieldsValue {
 
     private String identifier = null;
 
-    public CommandValue(Data data, List<Field> fields) {
+    public CommandValue(ByteArray data, List<Field> fields) {
         super(data, fields);
     }
 
@@ -65,9 +65,9 @@ public class CommandValue extends FieldsValue {
         return new CommandValue(fields);
     }
 
-    public static CommandValue parse(Data data, FieldName type, FieldLength length) {
+    public static CommandValue parse(ByteArray data, FieldName type, FieldLength length) {
         // parse fields
-        List<Field> fields = Field.parseFields(data);
+        List<Field> fields = Field.parseAll(data);
         return new CommandValue(data, fields);
     }
 }

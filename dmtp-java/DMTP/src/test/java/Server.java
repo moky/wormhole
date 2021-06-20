@@ -34,7 +34,7 @@ public class Server extends chat.dim.dmtp.Server {
         return true;
     }
 
-    static final String SERVER_Test = "192.168.31.64"; // Test
+    static final String SERVER_Test = "192.168.31.91"; // Test
     static final String SERVER_GZ1 = "134.175.87.98"; // GZ-1
     static final String SERVER_HK2 = "129.226.128.17"; // HK-2
 

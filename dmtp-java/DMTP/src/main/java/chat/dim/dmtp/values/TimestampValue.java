@@ -33,33 +33,35 @@ package chat.dim.dmtp.values;
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
-import chat.dim.tlv.Data;
-import chat.dim.tlv.UInt32Data;
+import chat.dim.type.ByteArray;
+import chat.dim.type.IntegerData;
+import chat.dim.type.UInt32Data;
 
 public class TimestampValue extends FieldValue {
 
     public final long value;
 
-    public TimestampValue(Data data) {
-        super(data.slice(0, 4));
-        this.value = data.getUInt32Value(0);
+    public TimestampValue(ByteArray data) {
+        this(data, getValue(data));
     }
 
-    public TimestampValue(Data data, long value) {
+    public TimestampValue(ByteArray data, long value) {
         super(data);
         this.value = value;
     }
 
     public TimestampValue(long value) {
-        this(new UInt32Data(value), value);
+        this(getData(value), value);
     }
 
-    public TimestampValue(Integer value) {
-        this(value.longValue());
+    private static long getValue(ByteArray data) {
+        if (data.getLength() != 4) {
+            throw new IndexOutOfBoundsException("Timestamp value data error: " + data);
+        }
+        return IntegerData.getValue(data, IntegerData.Endian.BigEndian);
     }
-
-    public TimestampValue(Long value) {
-        this(value.longValue());
+    private static ByteArray getData(long value) {
+        return UInt32Data.from(value, IntegerData.Endian.BigEndian);
     }
 
     @Override
@@ -67,8 +69,7 @@ public class TimestampValue extends FieldValue {
         return Long.toString(value);
     }
 
-    public static TimestampValue parse(Data data, FieldName type, FieldLength length) {
-        long value = data.getUInt32Value(0);
-        return new TimestampValue(data, value);
+    public static TimestampValue parse(ByteArray data, FieldName type, FieldLength length) {
+        return new TimestampValue(data, getValue(data));
     }
 }

@@ -31,7 +31,6 @@
 package chat.dim.stun.attributes;
 
 import chat.dim.tlv.TagLengthValue;
-import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
 import java.util.List;
@@ -55,10 +54,12 @@ public class Attribute extends TagLengthValue<AttributeType, AttributeLength, At
     }
 
     protected static AttributeLength getLength(AttributeLength length, AttributeValue value) {
-        if (length == null && value != null) {
+        if (length != null) {
+            return length;
+        } else if (value != null) {
             return new AttributeLength(value.getLength());
         } else {
-            return length;
+            return new AttributeLength(0);
         }
     }
 

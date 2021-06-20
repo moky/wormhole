@@ -33,11 +33,11 @@ package chat.dim.dmtp.values;
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
-import chat.dim.tlv.Data;
+import chat.dim.type.ByteArray;
 
 public class BinaryValue extends FieldValue {
 
-    public BinaryValue(Data data) {
+    public BinaryValue(ByteArray data) {
         super(data);
     }
 
@@ -45,7 +45,7 @@ public class BinaryValue extends FieldValue {
         super(bytes);
     }
 
-    public static BinaryValue parse(Data data, FieldName type, FieldLength length) {
+    public static BinaryValue parse(ByteArray data, FieldName type, FieldLength length) {
         return new BinaryValue(data);
     }
 }

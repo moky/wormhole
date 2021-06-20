@@ -41,12 +41,12 @@ import chat.dim.dmtp.values.SourceAddressValue;
 import chat.dim.dmtp.values.BinaryValue;
 import chat.dim.dmtp.values.StringValue;
 import chat.dim.dmtp.values.TimestampValue;
-import chat.dim.tlv.Data;
-import chat.dim.tlv.Value;
+import chat.dim.tlv.RawValue;
+import chat.dim.type.ByteArray;
 
-public class FieldValue extends Value {
+public class FieldValue extends RawValue {
 
-    public FieldValue(Data data) {
+    public FieldValue(ByteArray data) {
         super(data);
     }
 
@@ -54,7 +54,7 @@ public class FieldValue extends Value {
         super(bytes);
     }
 
-    public static FieldValue parse(Data data, FieldName type, FieldLength length) {
+    public static FieldValue parse(ByteArray data, FieldName type, FieldLength length) {
         Class clazz = fieldValueClasses.get(type);
         if (clazz != null) {
             // create instance by subclass
@@ -65,7 +65,7 @@ public class FieldValue extends Value {
 
     //-------- Runtime --------
 
-    private static Map<FieldName, Class> fieldValueClasses = new HashMap<>();
+    private static final Map<FieldName, Class> fieldValueClasses = new HashMap<>();
 
     public static void register(FieldName type, Class clazz) {
         if (clazz == null) {
@@ -79,10 +79,10 @@ public class FieldValue extends Value {
     }
 
     @SuppressWarnings("unchecked")
-    private static FieldValue create(Class clazz, Data data, FieldName type, FieldLength length) {
+    private static FieldValue create(Class clazz, ByteArray data, FieldName type, FieldLength length) {
         // try 'Clazz.parse(data, type, length)'
         try {
-            Method method = clazz.getMethod("parse", Data.class, FieldName.class, FieldLength.class);
+            Method method = clazz.getMethod("parse", ByteArray.class, FieldName.class, FieldLength.class);
             if (method.getDeclaringClass().equals(clazz)) {
                 // only invoke the method 'parse()' declared in this class
                 return (FieldValue) method.invoke(null, data, type, length);

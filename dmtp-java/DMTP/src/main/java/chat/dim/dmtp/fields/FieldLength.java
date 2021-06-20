@@ -30,27 +30,25 @@
  */
 package chat.dim.dmtp.fields;
 
-import chat.dim.tlv.Data;
-import chat.dim.tlv.IntegerData;
-import chat.dim.tlv.Length;
-import chat.dim.tlv.VarIntData;
+import chat.dim.tlv.Triad;
+import chat.dim.type.ByteArray;
+import chat.dim.type.VarIntData;
 
-public class FieldLength extends Length {
+public class FieldLength extends VarIntData implements Triad.Length {
 
-    public FieldLength(IntegerData length) {
-        super(length);
+    public FieldLength(VarIntData data) {
+        super(data);
     }
 
-    public FieldLength(Data data, int value) {
+    public FieldLength(ByteArray data, int value) {
         super(data, value);
     }
 
-    public FieldLength(int value) {
-        this(new VarIntData(value), value);
+    public FieldLength(ByteArray data) {
+        super(VarIntData.from(data));
     }
 
-    public static FieldLength parse(Data data, FieldName type) {
-        VarIntData varInt = VarIntData.fromData(data);
-        return new FieldLength(varInt);
+    public FieldLength(int value) {
+        this(VarIntData.from(value), value);
     }
 }

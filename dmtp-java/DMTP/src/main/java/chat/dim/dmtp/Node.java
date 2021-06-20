@@ -45,7 +45,7 @@ import chat.dim.mtp.protocol.DataType;
 import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.protocol.TransactionID;
 import chat.dim.mtp.task.Departure;
-import chat.dim.tlv.Data;
+import chat.dim.type.ByteArray;
 
 public abstract class Node implements PeerHandler {
 
@@ -272,7 +272,7 @@ public abstract class Node implements PeerHandler {
     }
 
     @Override
-    public boolean onReceivedCommand(Data cmd, SocketAddress source, SocketAddress destination) {
+    public boolean onReceivedCommand(ByteArray cmd, SocketAddress source, SocketAddress destination) {
         // process after received command data
         List<Command> commands = Command.parseCommands(cmd);
         for (Command pack : commands) {
@@ -282,15 +282,15 @@ public abstract class Node implements PeerHandler {
     }
 
     @Override
-    public boolean onReceivedMessage(Data msg, SocketAddress source, SocketAddress destination) {
+    public boolean onReceivedMessage(ByteArray msg, SocketAddress source, SocketAddress destination) {
         // process after received message data
-        List<Field> fields = Field.parseFields(msg);
+        List<Field> fields = Field.parseAll(msg);
         Message pack = new Message(msg, fields);
         return processMessage(pack, source);
     }
 
     @Override
-    public void onReceivedError(Data data, SocketAddress source, SocketAddress destination) {
+    public void onReceivedError(ByteArray data, SocketAddress source, SocketAddress destination) {
         // TODO: process after received error data
     }
 

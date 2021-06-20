@@ -34,12 +34,18 @@ import java.net.SocketAddress;
 import java.util.List;
 
 import chat.dim.dmtp.fields.Field;
+import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
-import chat.dim.dmtp.values.*;
-import chat.dim.tlv.Data;
-import chat.dim.tlv.Tag;
-import chat.dim.tlv.Value;
+import chat.dim.dmtp.values.BinaryValue;
+import chat.dim.dmtp.values.CommandValue;
+import chat.dim.dmtp.values.LocationValue;
+import chat.dim.dmtp.values.MappedAddressValue;
+import chat.dim.dmtp.values.RelayedAddressValue;
+import chat.dim.dmtp.values.SourceAddressValue;
+import chat.dim.dmtp.values.StringValue;
+import chat.dim.dmtp.values.TimestampValue;
+import chat.dim.type.ByteArray;
 
 /*     Commands
  *     ~~~~~~~~
@@ -105,8 +111,12 @@ import chat.dim.tlv.Value;
 
 public class Command extends Field {
 
-    public Command(Data data, FieldName type, FieldValue value) {
-        super(data, type, value);
+    public Command(ByteArray data, FieldName type, FieldLength length, FieldValue value) {
+        super(data, type, length, value);
+    }
+
+    public Command(FieldName type, FieldLength length, FieldValue value) {
+        super(type, length, value);
     }
 
     public Command(FieldName type, FieldValue value) {
@@ -119,8 +129,8 @@ public class Command extends Field {
 
     public static class Who extends Command {
 
-        public Who(Data data) {
-            super(data, WHO, null);
+        public Who(ByteArray data) {
+            super(data, WHO, null, null);
         }
 
         public Who() {
@@ -134,8 +144,8 @@ public class Command extends Field {
 
     public static class Hello extends Command {
 
-        public Hello(Data data, FieldValue value) {
-            super(data, HELLO, value);
+        public Hello(ByteArray data, FieldValue value) {
+            super(data, HELLO, null, value);
         }
 
         public Hello(FieldValue value) {
@@ -167,7 +177,7 @@ public class Command extends Field {
                                    SocketAddress mappedAddress,
                                    SocketAddress relayedAddress,
                                    long timestamp,
-                                   Data signature,
+                                   ByteArray signature,
                                    String nat) {
             return create(LocationValue.create(identifier,
                     sourceAddress, mappedAddress, relayedAddress,
@@ -187,8 +197,8 @@ public class Command extends Field {
 
     public static class Sign extends Command {
 
-        public Sign(Data data, FieldValue value) {
-            super(data, SIGN, value);
+        public Sign(ByteArray data, FieldValue value) {
+            super(data, SIGN, null, value);
         }
 
         public Sign(FieldValue value) {
@@ -220,8 +230,8 @@ public class Command extends Field {
 
     public static class Call extends Command {
 
-        public Call(Data data, FieldValue value) {
-            super(data, CALL, value);
+        public Call(ByteArray data, FieldValue value) {
+            super(data, CALL, null, value);
         }
 
         public Call(FieldValue value) {
@@ -247,8 +257,8 @@ public class Command extends Field {
 
     public static class From extends Command {
 
-        public From(Data data, FieldValue value) {
-            super(data, FROM, value);
+        public From(ByteArray data, FieldValue value) {
+            super(data, FROM, null, value);
         }
 
         public From(FieldValue value) {
@@ -274,8 +284,8 @@ public class Command extends Field {
 
     public static class Bye extends Command {
 
-        public Bye(Data data, FieldValue value) {
-            super(data, BYE, value);
+        public Bye(ByteArray data, FieldValue value) {
+            super(data, BYE, null, value);
         }
 
         public Bye(FieldValue value) {
@@ -296,19 +306,10 @@ public class Command extends Field {
     //  Parser
     //
 
-    private static final Parser parser = new Parser();
+    private static final CommandParser parser = new CommandParser();
 
-    public static List<Command> parseCommands(Data data) {
-        //noinspection unchecked
-        return (List<Command>) parser.parseAll(data);
-    }
-
-    protected static class Parser extends Field.Parser {
-
-        @Override
-        protected Field create(Data data, Tag type, Value value) {
-            return new Command(data, (FieldName) type, (FieldValue) value);
-        }
+    public static List<Command> parseCommands(ByteArray data) {
+        return parser.parseAll(data);
     }
 
     //

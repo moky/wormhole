@@ -30,21 +30,28 @@
  */
 package chat.dim.dmtp.fields;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import chat.dim.dmtp.values.*;
-import chat.dim.tlv.Data;
-import chat.dim.tlv.MutableData;
+import chat.dim.dmtp.values.BinaryValue;
+import chat.dim.dmtp.values.StringValue;
+import chat.dim.dmtp.values.TimestampValue;
+import chat.dim.dmtp.values.TypeValue;
+import chat.dim.type.ByteArray;
+import chat.dim.type.MutableData;
 
 public class FieldsValue extends FieldValue implements Map<String, Object> {
 
     private final Map<String, Object> dictionary;
 
-    public FieldsValue(Data data, List<Field> fields) {
+    public FieldsValue(ByteArray data, List<Field> fields) {
         super(data);
         dictionary = new HashMap<>();
         for (Field item : fields) {
-            put((FieldName) item.tag, (FieldValue) item.value);
+            put(item.tag, item.value);
         }
     }
 
@@ -52,7 +59,7 @@ public class FieldsValue extends FieldValue implements Map<String, Object> {
         this(build(fields), fields);
     }
 
-    private static Data build(List<Field> fields) {
+    private static ByteArray build(List<Field> fields) {
         int length = 0;
         for (Field item : fields) {
             length += item.getLength();
@@ -65,9 +72,9 @@ public class FieldsValue extends FieldValue implements Map<String, Object> {
     }
 
     @SuppressWarnings("unused")
-    public static FieldsValue parse(Data data, FieldName type, FieldLength length) {
+    public static FieldsValue parse(ByteArray data, FieldName type, FieldLength length) {
         // parse fields
-        List<Field> fields = Field.parseFields(data);
+        List<Field> fields = Field.parseAll(data);
         return new FieldsValue(data, fields);
     }
 
@@ -107,12 +114,8 @@ public class FieldsValue extends FieldValue implements Map<String, Object> {
         return value.value;
     }
 
-    protected Data getBinaryValue(FieldName tag) {
-        BinaryValue value = (BinaryValue) get(tag.name);
-        if (value == null) {
-            return null;
-        }
-        return value;
+    protected ByteArray getBinaryValue(FieldName tag) {
+        return (BinaryValue) get(tag.name);
     }
 
     //

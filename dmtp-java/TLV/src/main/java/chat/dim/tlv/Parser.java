@@ -87,7 +87,7 @@ public abstract class Parser<A extends Triad<T,L,V>, T extends Triad.Tag, L exte
             array.add(item);
             // next item
             assert item.getLength() > 0 : "Triad error";
-            data.slice(item.getLength());
+            data = data.slice(item.getLength());
         }
         return array;
     }

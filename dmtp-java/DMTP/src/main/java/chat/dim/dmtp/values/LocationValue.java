@@ -38,7 +38,7 @@ import java.util.List;
 import chat.dim.dmtp.fields.Field;
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
-import chat.dim.tlv.Data;
+import chat.dim.type.ByteArray;
 
 public class LocationValue extends CommandValue {
 
@@ -47,11 +47,11 @@ public class LocationValue extends CommandValue {
     private SocketAddress relayedAddress = null;
 
     private long timestamp = 0; // time for signature (in seconds)
-    private Data signature = null;
+    private ByteArray signature = null;
 
     private String nat = null;
 
-    public LocationValue(Data data, List<Field> fields) {
+    public LocationValue(ByteArray data, List<Field> fields) {
         super(data, fields);
     }
 
@@ -100,7 +100,7 @@ public class LocationValue extends CommandValue {
         }
         return timestamp;
     }
-    public Data getSignature() {
+    public ByteArray getSignature() {
         if (signature == null) {
             signature = (BinaryValue) get(FieldName.SIGNATURE);
         }
@@ -118,9 +118,9 @@ public class LocationValue extends CommandValue {
     }
 
     @SuppressWarnings("unused")
-    public static LocationValue parse(Data data, FieldName type, FieldLength length) {
+    public static LocationValue parse(ByteArray data, FieldName type, FieldLength length) {
         // parse fields
-        List<Field> fields = Field.parseFields(data);
+        List<Field> fields = Field.parseAll(data);
         return new LocationValue(data, fields);
     }
 
@@ -171,7 +171,7 @@ public class LocationValue extends CommandValue {
                                        SocketAddress mappedAddress,
                                        SocketAddress relayedAddress,
                                        long timestamp,
-                                       Data signature,
+                                       ByteArray signature,
                                        String nat) {
         StringValue identifierValue = new StringValue(identifier);
         SourceAddressValue sourceAddressValue = null;

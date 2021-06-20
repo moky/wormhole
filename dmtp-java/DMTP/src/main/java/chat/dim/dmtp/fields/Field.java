@@ -30,61 +30,45 @@
  */
 package chat.dim.dmtp.fields;
 
+import chat.dim.tlv.TagLengthValue;
+import chat.dim.type.ByteArray;
+
 import java.util.List;
 
-import chat.dim.tlv.*;
+public class Field extends TagLengthValue<FieldName, FieldLength, FieldValue> {
 
-public class Field extends TagLengthValue {
-
-    public Field(TagLengthValue field) {
+    public Field(TagLengthValue<FieldName, FieldLength, FieldValue> field) {
         super(field);
     }
 
-    public Field(Data data, FieldName type, FieldValue value) {
-        super(data, type, value);
+    public Field(ByteArray data, FieldName type, FieldLength length, FieldValue value) {
+        super(data, type, length, value);
+    }
+
+    public Field(FieldName type, FieldLength length, FieldValue value) {
+        super(type, getLength(length, value), value);
     }
 
     public Field(FieldName type, FieldValue value) {
-        super(type, new FieldLength(value == null ? 0 : value.getLength()), value);
+        super(type, getLength(null, value), value);
     }
 
+    protected static FieldLength getLength(FieldLength length, FieldValue value) {
+        if (length != null) {
+            return length;
+        } else if (value != null) {
+            return new FieldLength(value.getLength());
+        } else {
+            return new FieldLength(0);
+        }
+    }
 
     //
     //  Parser
     //
+    private static final FieldParser parser = new FieldParser();
 
-    private static final Parser parser = new Parser();
-
-    public static List<Field> parseFields(Data data) {
-        //noinspection unchecked
-        return (List<Field>) parser.parseAll(data);
-    }
-
-    protected static class Parser extends TagLengthValue.Parser {
-
-        @Override
-        protected FieldName parseTag(Data data) {
-            return FieldName.parse(data);
-        }
-
-        @Override
-        protected FieldLength parseLength(Data data, Tag type) {
-            assert type instanceof FieldName : "field name error: " + type;
-            return FieldLength.parse(data, (FieldName) type);
-        }
-
-        @Override
-        protected FieldValue parseValue(Data data, Tag type, Length length) {
-            assert type instanceof FieldName : "field name error: " + type;
-            assert length instanceof FieldLength : "field length error: " + length;
-            return FieldValue.parse(data, (FieldName) type, (FieldLength) length);
-        }
-
-        @Override
-        protected Field create(Data data, Tag type, Value value) {
-            assert type instanceof FieldName : "field name error: " + type;
-            assert value == null || value instanceof FieldValue : "field value error: " + value;
-            return new Field(data, (FieldName) type, (FieldValue) value);
-        }
+    public static List<Field> parseAll(ByteArray data) {
+        return parser.parseAll(data);
     }
 }

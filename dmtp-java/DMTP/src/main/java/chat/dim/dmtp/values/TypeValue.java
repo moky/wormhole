@@ -33,19 +33,19 @@ package chat.dim.dmtp.values;
 import chat.dim.dmtp.fields.FieldLength;
 import chat.dim.dmtp.fields.FieldName;
 import chat.dim.dmtp.fields.FieldValue;
-import chat.dim.tlv.Data;
-import chat.dim.tlv.UInt8Data;
+import chat.dim.type.ByteArray;
+import chat.dim.type.UInt8Data;
 
 public class TypeValue extends FieldValue {
 
     public final int value;
 
-    public TypeValue(Data data) {
+    public TypeValue(ByteArray data) {
         super(data.slice(0, 1));
-        this.value = data.getUInt8Value(0);
+        this.value = data.getByte(0) & 0xFF;
     }
 
-    public TypeValue(Data data, int value) {
+    public TypeValue(ByteArray data, int value) {
         super(data);
         this.value = value;
     }
@@ -63,7 +63,7 @@ public class TypeValue extends FieldValue {
         return Integer.toString(value);
     }
 
-    public static TypeValue parse(Data data, FieldName type, FieldLength length) {
+    public static TypeValue parse(ByteArray data, FieldName type, FieldLength length) {
         return new TypeValue(data.getByte(0));
     }
 }

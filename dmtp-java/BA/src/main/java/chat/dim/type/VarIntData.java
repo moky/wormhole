@@ -106,7 +106,7 @@ public class VarIntData extends Data implements IntegerData {
             ch = buffer[pos];
             value |= (ch & 0x7FL) << bits;
         }
-        Data data = new Data(buffer, offset, pos - offset + 1);
+        Data data = new Data(buffer, offset, pos - offset);
         return new VarIntData(data, value);
     }
 
