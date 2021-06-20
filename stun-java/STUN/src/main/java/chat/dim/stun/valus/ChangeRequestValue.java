@@ -36,7 +36,9 @@ import java.util.Map;
 import chat.dim.stun.attributes.AttributeLength;
 import chat.dim.stun.attributes.AttributeType;
 import chat.dim.stun.attributes.AttributeValue;
-import chat.dim.tlv.*;
+import chat.dim.type.ByteArray;
+import chat.dim.type.IntegerData;
+import chat.dim.type.UInt32Data;
 
 /*  11.2.4 CHANGE-REQUEST
  *
@@ -75,7 +77,7 @@ public class ChangeRequestValue extends AttributeValue {
         name = requestValue.name;
     }
 
-    public ChangeRequestValue(Data data, int value, String name) {
+    public ChangeRequestValue(ByteArray data, int value, String name) {
         super(data);
         this.value = value;
         this.name = name;
@@ -83,7 +85,7 @@ public class ChangeRequestValue extends AttributeValue {
     }
 
     public ChangeRequestValue(int value, String name) {
-        this(new UInt32Data(value), value, name);
+        this(UInt32Data.from(value, IntegerData.Endian.BigEndian), value, name);
     }
 
     public ChangeRequestValue(int value) {
@@ -114,11 +116,15 @@ public class ChangeRequestValue extends AttributeValue {
         return name;
     }
 
-    public static ChangeRequestValue parse(Data data, AttributeType type, AttributeLength length) {
-        int value = (int) data.getUInt32Value(0);
-        return getInstance(value);
+    public static ChangeRequestValue parse(ByteArray data, AttributeType type, AttributeLength length) {
+        return getInstance(data);
     }
 
+    public static synchronized ChangeRequestValue getInstance(ByteArray data) {
+        assert data.getLength() == 4 : "data length error";
+        int value = (int) IntegerData.getValue(data, IntegerData.Endian.BigEndian);
+        return getInstance(value);
+    }
     public static synchronized ChangeRequestValue getInstance(int value) {
         ChangeRequestValue type = s_values.get(value);
         if (type == null) {

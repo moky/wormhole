@@ -33,8 +33,8 @@ package chat.dim.stun.valus;
 import chat.dim.stun.attributes.AttributeLength;
 import chat.dim.stun.attributes.AttributeType;
 import chat.dim.stun.attributes.AttributeValue;
-import chat.dim.tlv.Data;
-import chat.dim.tlv.MutableData;
+import chat.dim.type.ByteArray;
+import chat.dim.type.MutableData;
 
 /*  Rosenberg, et al.           Standards Track                    [Page 32]
  *
@@ -94,7 +94,7 @@ public class MappedAddressValue extends AttributeValue {
         family = addressValue.family;
     }
 
-    public MappedAddressValue(Data data, String ip, int port, byte family) {
+    public MappedAddressValue(ByteArray data, String ip, int port, byte family) {
         super(data);
         this.ip = ip;
         this.port = port;
@@ -114,35 +114,35 @@ public class MappedAddressValue extends AttributeValue {
         return "(" + ip + ":" + port + ")";
     }
 
-    private static Data build(String ip, int port, byte family) {
-        Data address = null;
+    private static ByteArray build(String ip, int port, byte family) {
+        ByteArray address = null;
         if (family == FAMILY_IPV4) {
             // IPv4
             address = dataFromIPv4(ip);
         }
         assert address != null : "failed to convert IP: " + ip + ", " + family;
         MutableData data = new MutableData(8);
-        data.push((byte) 0);
-        data.push(family);
-        data.push((byte) ((port & 0xFF00) >> 8));
-        data.push((byte) (port & 0xFF));
+        data.append((byte) 0);
+        data.append(family);
+        data.append((byte) ((port & 0xFF00) >> 8));
+        data.append((byte) (port & 0xFF));
         data.append(address);
         return data;
     }
 
-    private static Data dataFromIPv4(String ip) {
+    private static ByteArray dataFromIPv4(String ip) {
         String[] array = ip.split("\\.");
         if (array.length != 4) {
             throw new IndexOutOfBoundsException("IP error: " + ip);
         }
         MutableData address = new MutableData(4);
         for (int index = 0; index < 4; ++index) {
-            address.push((byte) Integer.parseInt(array[index]));
+            address.append((byte) Integer.parseInt(array[index]));
         }
         return address;
     }
 
-    private static String dataToIPv4(Data address) {
+    private static String dataToIPv4(ByteArray address) {
         if (address.getLength() != 4) {
             throw new IndexOutOfBoundsException("address error: " + address);
         }
@@ -153,7 +153,7 @@ public class MappedAddressValue extends AttributeValue {
         return array[0] + "." + array[1] + "." + array[2] + "." + array[3];
     }
 
-    public static MappedAddressValue parse(Data data, AttributeType type, AttributeLength length) {
+    public static MappedAddressValue parse(ByteArray data, AttributeType type, AttributeLength length) {
         // checking head byte
         if (data.getByte(0) != 0) {
             return null;

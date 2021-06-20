@@ -32,7 +32,8 @@ package chat.dim.stun.valus;
 
 import chat.dim.stun.attributes.AttributeLength;
 import chat.dim.stun.attributes.AttributeType;
-import chat.dim.tlv.Data;
+import chat.dim.type.ByteArray;
+import chat.dim.type.Data;
 
 /* Rosenberg, et al.           Standards Track                    [Page 33]
  *
@@ -94,21 +95,21 @@ public class XorMappedAddressValue extends MappedAddressValue {
         super(addressValue);
     }
 
-    public XorMappedAddressValue(Data data, String ip, int port, byte family) {
+    public XorMappedAddressValue(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 
-    public static XorMappedAddressValue create(String ip, int port, byte family, Data factor) {
+    public static XorMappedAddressValue create(String ip, int port, byte family, ByteArray factor) {
         MappedAddressValue addressValue = new MappedAddressValue(ip, port, family);
-        Data data = xor(addressValue, factor);
+        ByteArray data = xor(addressValue, factor);
         return new XorMappedAddressValue(data, ip, port, family);
     }
 
-    public static XorMappedAddressValue create(String ip, int port, Data factor) {
+    public static XorMappedAddressValue create(String ip, int port, ByteArray factor) {
         return create(ip, port, FAMILY_IPV4, factor);
     }
 
-    public static Data xor(Data addressValue, Data trans_id) {
+    public static ByteArray xor(ByteArray addressValue, ByteArray trans_id) {
         int addressLen = addressValue.getLength();
         int factorLen = trans_id.getLength();
         if (addressLen != 8 && addressLen != 20) {
@@ -141,7 +142,7 @@ public class XorMappedAddressValue extends MappedAddressValue {
         return new Data(array);
     }
 
-    public static XorMappedAddressValue parse(Data data, AttributeType type, AttributeLength length) {
+    public static XorMappedAddressValue parse(ByteArray data, AttributeType type, AttributeLength length) {
         MappedAddressValue value = MappedAddressValue.parse(data, type, length);
         if (value == null) {
             return null;

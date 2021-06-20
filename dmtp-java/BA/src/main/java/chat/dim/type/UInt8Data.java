@@ -71,6 +71,27 @@ public class UInt8Data extends Data implements IntegerData {
     }
 
     @Override
+    public boolean equals(Object other) {
+        if (other instanceof IntegerData) {
+            return value == ((IntegerData) other).getIntValue();
+        } else if (other instanceof ByteArray) {
+            return equals((ByteArray) other);
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(value);
+    }
+
+    @Override
+    public String toString() {
+        return Integer.toString(value);
+    }
+
+    @Override
     public int getIntValue() {
         return value;
     }

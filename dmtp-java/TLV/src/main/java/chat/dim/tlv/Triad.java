@@ -45,35 +45,30 @@ import chat.dim.type.IntegerData;
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
-public interface Triad extends ByteArray {
+public interface Triad<T extends Triad.Tag, L extends Triad.Length, V extends Triad.Value> extends ByteArray {
 
-    Tag getTagField();
-    Length getLengthField();
-    Value getValueField();
+    T getTagField();
+    L getLengthField();
+    V getValueField();
 
-    interface Tag extends ByteArray {
-    }
-
-    interface Length extends ByteArray, IntegerData {
-    }
-
-    interface Value extends ByteArray {
-    }
+    interface Tag extends ByteArray { }
+    interface Length extends ByteArray, IntegerData { }
+    interface Value extends ByteArray { }
 
     /**
      *  Tag-Length-Value Parser
      *  ~~~~~~~~~~~~~~~~~~~~~~~
      */
-    interface Parser {
+    interface Parser<A extends Triad<T, L, V>, T extends Tag, L extends Length, V extends Value> {
 
-        Tag parseTag(ByteArray data);
+        T parseTagField(ByteArray data);
 
-        Length parseLength(ByteArray data, Tag type);
+        L parseLengthField(ByteArray data, T type);
 
-        Value parseValue(ByteArray data, Tag type, Length length);
+        V parseValueField(ByteArray data, T type, L length);
 
-        Triad parseTriad(ByteArray data);
+        A parseTriad(ByteArray data);
 
-        List<Triad> parse(ByteArray data);
+        List<A> parseAll(ByteArray data);
     }
 }

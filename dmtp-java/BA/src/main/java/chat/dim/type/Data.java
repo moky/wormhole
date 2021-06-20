@@ -30,7 +30,6 @@
  */
 package chat.dim.type;
 
-import java.nio.charset.Charset;
 import java.util.Random;
 
 /**
@@ -138,8 +137,11 @@ public class Data implements ByteArray, Cloneable {
 
     @Override
     public String toString() {
-        //noinspection CharsetObjectCanBeUsed
-        return new String(getBytes(), Charset.forName("UTF-8"));
+        return toHexString();
+    }
+
+    public String toHexString() {
+        return DataUtils.hexEncode(buffer, offset, length);
     }
 
     //

@@ -42,11 +42,15 @@ import chat.dim.stun.attributes.AttributeValue;
 import chat.dim.stun.protocol.Header;
 import chat.dim.stun.protocol.MessageType;
 import chat.dim.stun.protocol.Package;
-import chat.dim.stun.valus.*;
-import chat.dim.tlv.Data;
-import chat.dim.tlv.MutableData;
-import chat.dim.tlv.Tag;
-import chat.dim.tlv.Value;
+import chat.dim.stun.valus.ChangeRequestValue;
+import chat.dim.stun.valus.ChangedAddressValue;
+import chat.dim.stun.valus.MappedAddressValue;
+import chat.dim.stun.valus.SoftwareValue;
+import chat.dim.stun.valus.SourceAddressValue;
+import chat.dim.stun.valus.XorMappedAddressValue;
+import chat.dim.stun.valus.XorMappedAddressValue2;
+import chat.dim.type.ByteArray;
+import chat.dim.type.MutableData;
 
 /**
  *  Session Traversal Utilities for NAT
@@ -96,8 +100,8 @@ public class Server extends Node {
 
     @Override
     public boolean parseAttribute(Attribute attribute, Map<String, Object> context) {
-        Tag type = attribute.tag;
-        Value value = attribute.value;
+        AttributeType type = attribute.tag;
+        AttributeValue value = attribute.value;
         if (type.equals(AttributeType.MappedAddress)) {
             assert value instanceof MappedAddressValue : "mapped address value error: " + value;
             context.put("MAPPED-ADDRESS", value);
@@ -147,22 +151,22 @@ public class Server extends Node {
         AttributeValue value;
         // mapped address
         value = new MappedAddressValue(remoteIP, remotePort);
-        Data data1 = (new Attribute(AttributeType.MappedAddress, value));
+        ByteArray data1 = (new Attribute(AttributeType.MappedAddress, value));
         // xor
         value = XorMappedAddressValue.create(remoteIP, remotePort, head.sn);
-        Data data4 = (new Attribute(AttributeType.XorMappedAddress, value));
+        ByteArray data4 = (new Attribute(AttributeType.XorMappedAddress, value));
         // xor2
         value = XorMappedAddressValue2.create(remoteIP, remotePort, head.sn);
-        Data data5 = (new Attribute(AttributeType.XorMappedAddress2, value));
+        ByteArray data5 = (new Attribute(AttributeType.XorMappedAddress2, value));
         // source address
         value = new SourceAddressValue(localIP, localPort);
-        Data data2 = (new Attribute(AttributeType.SourceAddress, value));
+        ByteArray data2 = (new Attribute(AttributeType.SourceAddress, value));
         // changed address
         value = new ChangedAddressValue(changedIP, changedPort);
-        Data data3 = (new Attribute(AttributeType.ChangedAddress, value));
+        ByteArray data3 = (new Attribute(AttributeType.ChangedAddress, value));
         // software
         value = new SoftwareValue(software);
-        Data data6 = (new Attribute(AttributeType.Software, value));
+        ByteArray data6 = (new Attribute(AttributeType.Software, value));
         // pack
         MutableData body = new MutableData(data1.getLength() + data2.getLength() + data3.getLength()
                 + data4.getLength() + data5.getLength() + data6.getLength());
@@ -177,7 +181,7 @@ public class Server extends Node {
         return res == pack.getLength();
     }
 
-    public boolean handle(Data data, SocketAddress clientAddress) {
+    public boolean handle(ByteArray data, SocketAddress clientAddress) {
         // parse request data
         Map<String, Object> context = new HashMap<>();
         boolean ok = parseData(data, context);

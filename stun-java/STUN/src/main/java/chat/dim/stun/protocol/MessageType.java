@@ -33,8 +33,9 @@ package chat.dim.stun.protocol;
 import java.util.HashMap;
 import java.util.Map;
 
-import chat.dim.tlv.Data;
-import chat.dim.tlv.UInt16Data;
+import chat.dim.type.ByteArray;
+import chat.dim.type.IntegerData;
+import chat.dim.type.UInt16Data;
 
 /*  [RFC] https://www.ietf.org/rfc/rfc5389.txt
  *
@@ -58,16 +59,36 @@ public class MessageType extends UInt16Data {
         s_types.put(type.getIntValue(), this);
     }
 
-    public MessageType(Data data, int value, String name) {
+    public MessageType(UInt16Data data, String name) {
+        super(data);
+        this.name = name;
+        s_types.put(value, this);
+    }
+
+    public MessageType(ByteArray data, int value, String name) {
         super(data, value);
         this.name = name;
         s_types.put(value, this);
     }
 
-    public MessageType(int value, String name) {
-        super(value);
+    public MessageType(ByteArray data, String name) {
+        super(data, getValue(data));
         this.name = name;
         s_types.put(value, this);
+    }
+
+    public MessageType(int value, String name) {
+        super(getData(value), value);
+        this.name = name;
+        s_types.put(value, this);
+    }
+
+    protected static int getValue(ByteArray data) {
+        assert data.getLength() == 2 : "data length not enough";
+        return (int) IntegerData.getValue(data, Endian.BigEndian);
+    }
+    protected static UInt16Data getData(int value) {
+        return UInt16Data.from(value, Endian.BigEndian);
     }
 
     @Override
@@ -79,6 +100,9 @@ public class MessageType extends UInt16Data {
     //  Factory
     //
 
+    public static MessageType getInstance(ByteArray data) {
+        return getInstance(getValue(data));
+    }
     public static synchronized MessageType getInstance(int value) {
         MessageType type = s_types.get(value);
         if (type == null) {
@@ -88,15 +112,14 @@ public class MessageType extends UInt16Data {
         return type;
     }
 
-    public static MessageType parse(Data data) {
+    public static MessageType parse(ByteArray data) {
         if (data.getLength() < 2 || (data.getByte(0) & 0xC0) != 0) {
             // format: 00xx xxxx, xxxx, xxxx
             return null;
         } else if (data.getLength() > 2) {
             data = data.slice(0, 2);
         }
-        int value = data.getUInt16Value(0);
-        return getInstance(value);
+        return getInstance(data);
     }
 
     private static final Map<Integer, MessageType> s_types = new HashMap<>();

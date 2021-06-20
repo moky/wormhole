@@ -45,14 +45,6 @@ import chat.dim.type.Data;
 
 public class RawValue extends Data implements Triad.Value {
 
-    public RawValue(byte[] buffer, int offset, int length) {
-        super(buffer, offset, length);
-    }
-
-    public RawValue(byte[] bytes) {
-        super(bytes);
-    }
-
     public RawValue(ByteArray data) {
         super(data);
     }

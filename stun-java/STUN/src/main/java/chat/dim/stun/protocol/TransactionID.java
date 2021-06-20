@@ -32,9 +32,11 @@ package chat.dim.stun.protocol;
 
 import java.util.Random;
 
-import chat.dim.tlv.Data;
-import chat.dim.tlv.MutableData;
-import chat.dim.tlv.UInt32Data;
+import chat.dim.type.ByteArray;
+import chat.dim.type.Data;
+import chat.dim.type.IntegerData;
+import chat.dim.type.MutableData;
+import chat.dim.type.UInt32Data;
 
 /*  [RFC] https://www.ietf.org/rfc/rfc5389.txt
  *
@@ -71,7 +73,7 @@ import chat.dim.tlv.UInt32Data;
  */
 public class TransactionID extends Data {
 
-    public TransactionID(Data data) {
+    public TransactionID(ByteArray data) {
         super(data);
     }
 
@@ -83,7 +85,7 @@ public class TransactionID extends Data {
     //  Factory
     //
 
-    public static TransactionID parse(Data data) {
+    public static TransactionID parse(ByteArray data) {
         int length = data.getLength();
         if (length < 16) {
             //throw new ArrayIndexOutOfBoundsException("Transaction ID length error: " + length);
@@ -94,7 +96,7 @@ public class TransactionID extends Data {
         return new TransactionID(data);
     }
 
-    private static synchronized Data generate() {
+    private static synchronized ByteArray generate() {
         if (s_low < 0xFFFFFFFFL) {
             s_low += 1;
         } else {
@@ -111,10 +113,10 @@ public class TransactionID extends Data {
             }
         }
 
-        Data mc = MagicCookie;
-        Data hi = new UInt32Data(s_high);
-        Data mi = new UInt32Data(s_middle);
-        Data lo = new UInt32Data(s_low);
+        ByteArray mc = MagicCookie;
+        ByteArray hi = UInt32Data.from(s_high, IntegerData.Endian.BigEndian);
+        ByteArray mi = UInt32Data.from(s_middle, IntegerData.Endian.BigEndian);
+        ByteArray lo = UInt32Data.from(s_low, IntegerData.Endian.BigEndian);
 
         MutableData data = new MutableData(16);
         data.append(mc);
@@ -125,7 +127,7 @@ public class TransactionID extends Data {
     }
 
     // Magic Cookie
-    public static UInt32Data MagicCookie = new UInt32Data(0x2112A442);
+    public static UInt32Data MagicCookie = UInt32Data.from(0x2112A442, IntegerData.Endian.BigEndian);
 
     private static long s_high;
     private static long s_middle;

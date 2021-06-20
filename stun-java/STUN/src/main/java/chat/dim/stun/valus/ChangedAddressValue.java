@@ -32,7 +32,7 @@ package chat.dim.stun.valus;
 
 import chat.dim.stun.attributes.AttributeLength;
 import chat.dim.stun.attributes.AttributeType;
-import chat.dim.tlv.Data;
+import chat.dim.type.ByteArray;
 
 /*  11.2.3  CHANGED-ADDRESS
  *
@@ -52,7 +52,7 @@ public class ChangedAddressValue extends MappedAddressValue {
         super(addressValue);
     }
 
-    public ChangedAddressValue(Data data, String ip, int port, byte family) {
+    public ChangedAddressValue(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 
@@ -64,7 +64,7 @@ public class ChangedAddressValue extends MappedAddressValue {
         super(ip, port);
     }
 
-    public static ChangedAddressValue parse(Data data, AttributeType type, AttributeLength length) {
+    public static ChangedAddressValue parse(ByteArray data, AttributeType type, AttributeLength length) {
         MappedAddressValue value = MappedAddressValue.parse(data, type, length);
         if (value == null) {
             return null;

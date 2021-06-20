@@ -35,8 +35,8 @@ import java.nio.charset.Charset;
 import chat.dim.stun.attributes.AttributeLength;
 import chat.dim.stun.attributes.AttributeType;
 import chat.dim.stun.attributes.AttributeValue;
-import chat.dim.tlv.Data;
-import chat.dim.tlv.MutableData;
+import chat.dim.type.ByteArray;
+import chat.dim.type.MutableData;
 
 public class SoftwareValue extends AttributeValue {
 
@@ -47,7 +47,7 @@ public class SoftwareValue extends AttributeValue {
         description = softwareValue.description;
     }
 
-    public SoftwareValue(Data data, String description) {
+    public SoftwareValue(ByteArray data, String description) {
         super(data);
         this.description = description;
     }
@@ -56,7 +56,7 @@ public class SoftwareValue extends AttributeValue {
         this(build(description), description);
     }
 
-    private static Data build(String description) {
+    private static ByteArray build(String description) {
         byte[] bytes = description.getBytes(Charset.forName("UTF-8"));
         int length = bytes.length;
         int tail = length & 3;
@@ -64,7 +64,7 @@ public class SoftwareValue extends AttributeValue {
             length += 4 - tail;
         }
         MutableData data = new MutableData(length);
-        data.fill(0, bytes);
+        data.append(bytes);
         if (tail > 0) {
             // set '\0' to fill the tail spaces
             data.setByte(length - 1, (byte) 0);
@@ -77,8 +77,8 @@ public class SoftwareValue extends AttributeValue {
         return description;
     }
 
-    public static SoftwareValue parse(Data data, AttributeType type, AttributeLength length) {
-        String desc = data.toString();
+    public static SoftwareValue parse(ByteArray data, AttributeType type, AttributeLength length) {
+        String desc = new String(data.getBytes(), Charset.forName("UTF-8"));
         return new SoftwareValue(data, desc.trim());
     }
 }

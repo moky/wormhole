@@ -30,12 +30,13 @@
  */
 package chat.dim.stun.protocol;
 
-import chat.dim.tlv.Data;
+import chat.dim.type.ByteArray;
+import chat.dim.type.Data;
 
 public class Package extends Data {
 
     public final Header head;
-    public final Data body;
+    public final ByteArray body;
 
     public Package(Package pack) {
         super(pack);
@@ -43,13 +44,13 @@ public class Package extends Data {
         body = pack.body;
     }
 
-    public Package(Data data, Header head, Data body) {
+    public Package(ByteArray data, Header head, ByteArray body) {
         super(data);
         this.head = head;
         this.body = body;
     }
 
-    public Package(Header head, Data body) {
+    public Package(Header head, ByteArray body) {
         this(head.concat(body), head, body);
     }
 
@@ -61,7 +62,7 @@ public class Package extends Data {
     //  Factories
     //
 
-    public static Package create(MessageType type, TransactionID sn, Data body) {
+    public static Package create(MessageType type, TransactionID sn, ByteArray body) {
         if (sn == null) {
             sn = new TransactionID();
         }
@@ -70,11 +71,11 @@ public class Package extends Data {
         }
         MessageLength len = new MessageLength(body.getLength());
         Header head = new Header(type, len, sn);
-        Data data = head.concat(body);
+        ByteArray data = head.concat(body);
         return new Package(data, head, body);
     }
 
-    public static Package parse(Data data) {
+    public static Package parse(ByteArray data) {
         // get STUN head
         Header head = Header.parse(data);
         if (head == null) {
@@ -91,7 +92,7 @@ public class Package extends Data {
             data = data.slice(0, packLen);
         }
         // get attributes body
-        Data body = data.slice(head.getLength());
+        ByteArray body = data.slice(head.getLength());
         return new Package(data, head, body);
     }
 }

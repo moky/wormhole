@@ -32,7 +32,8 @@ package chat.dim.stun.valus;
 
 import chat.dim.stun.attributes.AttributeLength;
 import chat.dim.stun.attributes.AttributeType;
-import chat.dim.tlv.Data;
+import chat.dim.type.ByteArray;
+import chat.dim.type.Data;
 
 /*  https://tools.ietf.org/id/draft-ietf-behave-rfc3489bis-02.txt
  *
@@ -77,21 +78,21 @@ public class XorMappedAddressValue2 extends MappedAddressValue {
         super(addressValue);
     }
 
-    public XorMappedAddressValue2(Data data, String ip, int port, byte family) {
+    public XorMappedAddressValue2(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 
-    public static XorMappedAddressValue2 create(String ip, int port, byte family, Data factor) {
+    public static XorMappedAddressValue2 create(String ip, int port, byte family, ByteArray factor) {
         MappedAddressValue addressValue = new MappedAddressValue(ip, port, family);
-        Data data = xor(addressValue, factor);
+        ByteArray data = xor(addressValue, factor);
         return new XorMappedAddressValue2(data, ip, port, family);
     }
 
-    public static XorMappedAddressValue2 create(String ip, int port, Data factor) {
+    public static XorMappedAddressValue2 create(String ip, int port, ByteArray factor) {
         return create(ip, port, FAMILY_IPV4, factor);
     }
 
-    public static Data xor(Data addressValue, Data trans_id) {
+    public static ByteArray xor(ByteArray addressValue, ByteArray trans_id) {
         int addressLen = addressValue.getLength();
         int factorLen = trans_id.getLength();
         if (addressLen != 8 && addressLen != 20) {
@@ -124,7 +125,7 @@ public class XorMappedAddressValue2 extends MappedAddressValue {
         return new Data(array);
     }
 
-    public static XorMappedAddressValue2 parse(Data data, AttributeType type, AttributeLength length) {
+    public static XorMappedAddressValue2 parse(ByteArray data, AttributeType type, AttributeLength length) {
         MappedAddressValue value = MappedAddressValue.parse(data, type, length);
         if (value == null) {
             return null;

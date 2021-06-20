@@ -30,8 +30,9 @@
  */
 package chat.dim.stun.protocol;
 
-import chat.dim.tlv.Data;
-import chat.dim.tlv.MutableData;
+import chat.dim.type.ByteArray;
+import chat.dim.type.Data;
+import chat.dim.type.MutableData;
 
 /*  [RFC] https://www.ietf.org/rfc/rfc5389.txt
  *
@@ -83,7 +84,7 @@ public class Header extends Data {
         sn = head.sn;
     }
 
-    public Header(Data data, MessageType type, MessageLength length, TransactionID sn) {
+    public Header(ByteArray data, MessageType type, MessageLength length, TransactionID sn) {
         super(data);
         this.type = type;
         this.msgLength = length;
@@ -98,7 +99,7 @@ public class Header extends Data {
         this(type, length, new TransactionID());
     }
 
-    private static Data build(MessageType type, MessageLength length, TransactionID sn) {
+    private static ByteArray build(MessageType type, MessageLength length, TransactionID sn) {
         MutableData data = new MutableData(type.getLength() + length.getLength() + sn.getLength());
         data.append(type);
         data.append(length);
@@ -106,7 +107,7 @@ public class Header extends Data {
         return data;
     }
 
-    public static Header parse(Data data) {
+    public static Header parse(ByteArray data) {
         int pos;
         // get message type
         MessageType type = MessageType.parse(data);

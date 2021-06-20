@@ -40,7 +40,7 @@ import java.util.Map;
 
 import chat.dim.stun.attributes.Attribute;
 import chat.dim.stun.protocol.Package;
-import chat.dim.tlv.Data;
+import chat.dim.type.ByteArray;
 import chat.dim.udp.Cargo;
 import chat.dim.udp.Hub;
 
@@ -99,16 +99,16 @@ public abstract class Node {
      * @param source      - local IP and port
      * @return count of sent bytes
      */
-    public int send(Data data, SocketAddress destination, SocketAddress source) {
+    public int send(ByteArray data, SocketAddress destination, SocketAddress source) {
         return hub.send(data.getBytes(), destination, source);
     }
 
-    public int send(Data data, SocketAddress destination, int source) {
+    public int send(ByteArray data, SocketAddress destination, int source) {
         SocketAddress address = new InetSocketAddress(source);
         return send(data, destination, address);
     }
 
-    public int send(Data data, SocketAddress destination) {
+    public int send(ByteArray data, SocketAddress destination) {
         return send(data, destination, sourceAddress);
     }
 
@@ -142,7 +142,7 @@ public abstract class Node {
      * @param context - return with package head and results from body
      * @return false on failed`
      */
-    public boolean parseData(Data data, Map<String, Object> context) {
+    public boolean parseData(ByteArray data, Map<String, Object> context) {
         // 1. parse STUN package
         Package pack = Package.parse(data);
         if (pack == null) {
@@ -150,7 +150,7 @@ public abstract class Node {
             return false;
         }
         // 2. parse attributes
-        List<Attribute> attributes = Attribute.parseAttributes(pack.body);
+        List<Attribute> attributes = Attribute.parseAll(pack.body);
         for (Attribute item : attributes) {
             // 3. process attribute
             parseAttribute(item, context);

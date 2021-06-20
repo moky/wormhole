@@ -3,12 +3,12 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 
-import chat.dim.tlv.Data;
+import chat.dim.type.Data;
 import chat.dim.udp.Cargo;
 
 public class Server extends chat.dim.stun.Server {
 
-    static final String SERVER_Test = "192.168.31.64"; // Test
+    static final String SERVER_Test = "192.168.31.91"; // Test
     static final String SERVER_GZ1 = "134.175.87.98"; // GZ-1
     static final String SERVER_HK2 = "129.226.128.17"; // HK-2
 

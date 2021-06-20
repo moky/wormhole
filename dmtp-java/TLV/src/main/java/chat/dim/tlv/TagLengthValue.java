@@ -43,45 +43,54 @@ import chat.dim.type.Data;
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
-public class TagLengthValue extends Data implements Triad {
+public class TagLengthValue<T extends Triad.Tag, L extends Triad.Length, V extends Triad.Value>
+        extends Data implements Triad<T, L, V> {
 
-    public final Tag tag;
-    public final Length length;
-    public final Value value;
+    public final T tag;
+    public final L length;
+    public final V value;
 
-    public TagLengthValue(Triad tlv) {
+    public TagLengthValue(Triad<T, L, V> tlv) {
         super(tlv);
         tag = tlv.getTagField();
         length = tlv.getLengthField();
         value = tlv.getValueField();
     }
 
-    public TagLengthValue(ByteArray data, Tag type, Length length, Value value) {
+    public TagLengthValue(ByteArray data, T type, L length, V value) {
         super(data);
         this.tag = type;
         this.length = length;
         this.value = value;
     }
 
-    public TagLengthValue(byte[] bytes, Tag type, Length length, Value value) {
-        super(bytes);
-        this.tag = type;
-        this.length = length;
-        this.value = value;
+    public TagLengthValue(T type, L length, V value) {
+        this(build(type, length, value), type, length, value);
+    }
+
+    private static ByteArray build(ByteArray type, ByteArray length, ByteArray value) {
+        ByteArray data = type;
+        if (length != null) {
+            data = data.concat(length);
+        }
+        if (value != null) {
+            data = data.concat(value);
+        }
+        return data;
     }
 
     @Override
-    public Tag getTagField() {
+    public T getTagField() {
         return tag;
     }
 
     @Override
-    public Length getLengthField() {
-        return null;
+    public L getLengthField() {
+        return length;
     }
 
     @Override
-    public Value getValueField() {
+    public V getValueField() {
         return value;
     }
 

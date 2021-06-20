@@ -33,55 +33,58 @@ package chat.dim.stun.attributes;
 import java.util.HashMap;
 import java.util.Map;
 
-import chat.dim.stun.valus.*;
-import chat.dim.tlv.Data;
-import chat.dim.tlv.Tag;
-import chat.dim.tlv.UInt16Data;
+import chat.dim.stun.valus.ChangeRequestValue;
+import chat.dim.stun.valus.ChangedAddressValue;
+import chat.dim.stun.valus.MappedAddressValue;
+import chat.dim.stun.valus.ResponseAddressValue;
+import chat.dim.stun.valus.SoftwareValue;
+import chat.dim.stun.valus.SourceAddressValue;
+import chat.dim.tlv.Tag16;
+import chat.dim.type.ByteArray;
+import chat.dim.type.UInt16Data;
 
-public class AttributeType extends Tag {
+public class AttributeType extends Tag16 {
 
-    public final int value;
     private final String name;
 
-    public AttributeType(AttributeType type) {
-        super(type);
-        value = type.value;
-        name = type.name;
-    }
-
-    public AttributeType(Data data, int value, String name) {
+    public AttributeType(UInt16Data data, String name) {
         super(data);
-        this.value = value;
         this.name = name;
         s_types.put(value, this);
     }
 
-    public AttributeType(Data data, int value) {
-        this(data, value, "Attribute-" + Integer.toHexString(value));
+    public AttributeType(ByteArray data, String name) {
+        super(data);
+        this.name = name;
+        s_types.put(value, this);
+    }
+
+    public AttributeType(ByteArray data, int value, String name) {
+        super(data, value);
+        this.name = name;
+        s_types.put(value, this);
     }
 
     public AttributeType(int value, String name) {
-        this(new UInt16Data(value), value, name);
+        super(value);
+        this.name = name;
+        s_types.put(value, this);
+    }
+
+    public AttributeType(UInt16Data data) {
+        this(data, "Attribute-" + Integer.toHexString(data.value));
+    }
+
+    public AttributeType(ByteArray data) {
+        this(data, "Attribute-" + Integer.toHexString(getValue(data)));
+    }
+
+    public AttributeType(ByteArray data, int value) {
+        this(data, value, "Attribute-" + Integer.toHexString(value));
     }
 
     public AttributeType(int value) {
-        this(new UInt16Data(value), value);
-    }
-
-    @Override
-    public boolean equals(Object other) {
-        if (other instanceof AttributeType) {
-            return equals(((AttributeType) other).value);
-        }
-        return super.equals(other);
-    }
-    public boolean equals(int other) {
-        return value == other;
-    }
-
-    @Override
-    public int hashCode() {
-        return Integer.hashCode(value);
+        this(value, "Attribute-" + Integer.toHexString(value));
     }
 
     @Override
@@ -93,17 +96,9 @@ public class AttributeType extends Tag {
     //  Factory
     //
 
-    public static AttributeType parse(Data data) {
-        int length = data.getLength();
-        if (length < 2) {
-            return null;
-        } else if (length > 2) {
-            data = data.slice(0, 2);
-        }
-        int value = data.getUInt16Value(0);
-        return getInstance(value);
+    public static AttributeType getInstance(ByteArray data) {
+        return getInstance(getValue(data));
     }
-
     public static synchronized AttributeType getInstance(int value) {
         AttributeType type = s_types.get(value);
         if (type == null) {

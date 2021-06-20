@@ -51,7 +51,7 @@ public class UInt16Data extends Data implements IntegerData {
     public UInt16Data(ByteArray data, Endian endian) {
         super(data);
         assert data.getLength() == 2 : "UInt16Data error: " + data.getLength();
-        this.value = (int) IntegerData.getValue(data, 0, 2, endian);
+        this.value = (int) IntegerData.getValue(data, endian);
     }
 
     public UInt16Data(byte[] bytes, int value) {
@@ -67,6 +67,27 @@ public class UInt16Data extends Data implements IntegerData {
     public UInt16Data(byte[] bytes, int start, Endian endian) {
         super(bytes, start, 2);
         this.value = (int) IntegerData.getValue(bytes, start, 2, endian);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof IntegerData) {
+            return value == ((IntegerData) other).getIntValue();
+        } else if (other instanceof ByteArray) {
+            return equals((ByteArray) other);
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(value);
+    }
+
+    @Override
+    public String toString() {
+        return Integer.toString(value);
     }
 
     @Override

@@ -51,7 +51,7 @@ public class UInt32Data extends Data implements IntegerData {
     public UInt32Data(ByteArray data, Endian endian) {
         super(data);
         assert data.getLength() == 4 : "UInt32Data error: " + data.getLength();
-        this.value = IntegerData.getValue(data, 0, 4, endian);
+        this.value = IntegerData.getValue(data, endian);
     }
 
     public UInt32Data(byte[] bytes, long value) {
@@ -67,6 +67,27 @@ public class UInt32Data extends Data implements IntegerData {
     public UInt32Data(byte[] bytes, int start, Endian endian) {
         super(bytes, start, 4);
         this.value = IntegerData.getValue(bytes, start, 4, endian);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof IntegerData) {
+            return value == ((IntegerData) other).getLongValue();
+        } else if (other instanceof ByteArray) {
+            return equals((ByteArray) other);
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return Long.hashCode(value);
+    }
+
+    @Override
+    public String toString() {
+        return Long.toString(value);
     }
 
     @Override

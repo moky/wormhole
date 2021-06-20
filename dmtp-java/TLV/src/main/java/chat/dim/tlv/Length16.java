@@ -31,6 +31,7 @@
 package chat.dim.tlv;
 
 import chat.dim.type.ByteArray;
+import chat.dim.type.IntegerData;
 import chat.dim.type.UInt16Data;
 
 /*
@@ -45,15 +46,27 @@ import chat.dim.type.UInt16Data;
 
 public class Length16 extends UInt16Data implements Triad.Length {
 
+    public Length16(UInt16Data data) {
+        super(data);
+    }
+
+    public Length16(ByteArray data, int value) {
+        super(data, value);
+    }
+
     public Length16(ByteArray data) {
-        super(data, Endian.BigEndian);
+        super(data, getValue(data));
     }
 
-    public Length16(byte[] bytes) {
-        super(bytes, Endian.BigEndian);
+    public Length16(int value) {
+        super(getData(value), value);
     }
 
-    public Length16(byte[] bytes, int start) {
-        super(bytes, start, Endian.BigEndian);
+    protected static int getValue(ByteArray data) {
+        assert data.getLength() == 2 : "data length not enough";
+        return (int) IntegerData.getValue(data, Endian.BigEndian);
+    }
+    protected static UInt16Data getData(int value) {
+        return UInt16Data.from(value, Endian.BigEndian);
     }
 }

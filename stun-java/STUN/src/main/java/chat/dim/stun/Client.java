@@ -39,13 +39,20 @@ import java.util.Map;
 import chat.dim.stun.attributes.Attribute;
 import chat.dim.stun.attributes.AttributeLength;
 import chat.dim.stun.attributes.AttributeType;
+import chat.dim.stun.attributes.AttributeValue;
 import chat.dim.stun.protocol.Header;
 import chat.dim.stun.protocol.MessageType;
 import chat.dim.stun.protocol.Package;
 import chat.dim.stun.protocol.TransactionID;
-import chat.dim.stun.valus.*;
-import chat.dim.tlv.Data;
-import chat.dim.tlv.Value;
+import chat.dim.stun.valus.ChangeRequestValue;
+import chat.dim.stun.valus.ChangedAddressValue;
+import chat.dim.stun.valus.MappedAddressValue;
+import chat.dim.stun.valus.SoftwareValue;
+import chat.dim.stun.valus.SourceAddressValue;
+import chat.dim.stun.valus.XorMappedAddressValue;
+import chat.dim.stun.valus.XorMappedAddressValue2;
+import chat.dim.type.ByteArray;
+import chat.dim.type.Data;
 import chat.dim.udp.Cargo;
 
 /**
@@ -66,15 +73,15 @@ public class Client extends Node {
     @Override
     public boolean parseAttribute(Attribute attribute, Map<String, Object> context) {
         AttributeType type = (AttributeType) attribute.tag;
-        Value value = attribute.value;
+        AttributeValue value = attribute.value;
         if (type.equals(AttributeType.MappedAddress)) {
             assert value instanceof MappedAddressValue : "mapped address value error: " + value;
             context.put("MAPPED-ADDRESS", value);
         } else if (type.equals(AttributeType.XorMappedAddress)) {
             if (!(value instanceof XorMappedAddressValue)) {
                 // XOR and parse again
-                Data factor = (Data) context.get("trans_id");
-                Data data = XorMappedAddressValue.xor(value, factor);
+                ByteArray factor = (ByteArray) context.get("trans_id");
+                ByteArray data = XorMappedAddressValue.xor(value, factor);
                 AttributeLength length = new AttributeLength(data.getLength());
                 value = XorMappedAddressValue.parse(new Data(data), type, length);
             }
@@ -84,8 +91,8 @@ public class Client extends Node {
         } else if (type.equals(AttributeType.XorMappedAddress2)) {
             if (!(value instanceof XorMappedAddressValue2)) {
                 // XOR and parse again
-                Data factor = (Data) context.get("trans_id");
-                Data data = XorMappedAddressValue2.xor(value, factor);
+                ByteArray factor = (ByteArray) context.get("trans_id");
+                ByteArray data = XorMappedAddressValue2.xor(value, factor);
                 AttributeLength length = new AttributeLength(data.getLength());
                 value = XorMappedAddressValue2.parse(new Data(data), type, length);
             }
@@ -109,7 +116,7 @@ public class Client extends Node {
         return true;
     }
 
-    private Map<String, Object> bindRequest(Data body, SocketAddress serverAddress) {
+    private Map<String, Object> bindRequest(ByteArray body, SocketAddress serverAddress) {
         // 1. create STUN message package
         Package req = Package.create(MessageType.BindRequest, null, body);
         TransactionID sn = req.head.sn;
