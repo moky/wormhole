@@ -32,7 +32,7 @@ package chat.dim.turn.values;
 
 import chat.dim.stun.valus.MappedAddressValue;
 import chat.dim.stun.valus.XorMappedAddressValue;
-import chat.dim.tlv.Data;
+import chat.dim.type.ByteArray;
 
 public class XorPeerAddressValue extends XorMappedAddressValue {
 
@@ -48,7 +48,7 @@ public class XorPeerAddressValue extends XorMappedAddressValue {
         super(addressValue);
     }
 
-    public XorPeerAddressValue(Data data, String ip, int port, byte family) {
+    public XorPeerAddressValue(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 }

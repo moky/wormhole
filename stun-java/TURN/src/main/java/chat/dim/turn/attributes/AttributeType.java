@@ -31,9 +31,9 @@
 package chat.dim.turn.attributes;
 
 import chat.dim.stun.attributes.AttributeValue;
-import chat.dim.tlv.Data;
 import chat.dim.turn.values.XorPeerAddressValue;
 import chat.dim.turn.values.XorRelayedAddressValue;
+import chat.dim.type.ByteArray;
 
 /*  Mahy, et al.                 Standards Track                    [Page 5]
  *
@@ -78,11 +78,11 @@ public class AttributeType extends chat.dim.stun.attributes.AttributeType {
         super(type);
     }
 
-    public AttributeType(Data data, int value, String name) {
+    public AttributeType(ByteArray data, int value, String name) {
         super(data, value, name);
     }
 
-    public AttributeType(Data data, int value) {
+    public AttributeType(ByteArray data, int value) {
         super(data, value);
     }
 
