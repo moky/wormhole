@@ -74,6 +74,10 @@ public class MutableData extends Data implements MutableByteArray {
     //
 
     @Override
+    public void setChar(int index, char value) {
+        setByte(index, (byte) value);
+    }
+    @Override
     public void setByte(int index, byte value) {
         index = DataUtils.adjustE(index, length);
         if (index >= length) {
@@ -299,5 +303,9 @@ public class MutableData extends Data implements MutableByteArray {
     @Override
     public void append(byte element) {
         setByte(length, element);
+    }
+    @Override
+    public void append(char element) {
+        setChar(length, element);
     }
 }

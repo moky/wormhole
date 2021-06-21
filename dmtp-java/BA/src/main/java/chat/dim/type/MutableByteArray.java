@@ -39,6 +39,7 @@ public interface MutableByteArray extends ByteArray {
      * @param value - byte value
      */
     void setByte(int index, byte value);
+    void setChar(int index, char value);
 
     /**
      *  Update values from source buffer with range [start, end)
@@ -127,6 +128,7 @@ public interface MutableByteArray extends ByteArray {
      *
      * @param element - value
      */
+    void append(char element);
     void append(byte element);
     void push(byte element);
 }

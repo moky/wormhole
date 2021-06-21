@@ -33,6 +33,9 @@ package chat.dim.mtp.protocol;
 import java.util.HashMap;
 import java.util.Map;
 
+import chat.dim.type.ByteArray;
+import chat.dim.type.UInt8Data;
+
 /*    Data Type:
  *
  *          0   1   2   3   4   5   6   7
@@ -48,39 +51,13 @@ import java.util.Map;
  *        Message Respond          : 0x03 (0000 0011)
  *        Message Fragment         : 0x0A (0000 1010)
  */
-public class DataType {
+public class DataType extends UInt8Data {
 
-    public final byte value;
     public final String name;
 
-    public DataType(byte value, String name) {
-        super();
-        this.value = value;
+    public DataType(ByteArray data, String name) {
+        super(data);
         this.name = name;
-        s_types.put(value, this);
-    }
-
-    public DataType(int value, String name) {
-        this((byte) (value & 0xFF), name);
-    }
-
-    @Override
-    public boolean equals(Object other) {
-        if (this == other) {
-            return true;
-        }
-        if (other instanceof DataType) {
-            return equals(((DataType) other).value);
-        }
-        return false;
-    }
-    public boolean equals(int other) {
-        return value == other;
-    }
-
-    @Override
-    public int hashCode() {
-        return Byte.hashCode(value);
     }
 
     @Override
@@ -92,25 +69,22 @@ public class DataType {
     //  Factories
     //
 
-    public static synchronized DataType getInstance(byte value) {
-        DataType type = s_types.get(value);
-        if (type == null) {
-            //type = new DataType(value, "DataType-" + Integer.toHexString(value));
-            //throw new NullPointerException("data type error: " + value);
-            return null;
-        }
+    public static DataType from(int value) {
+        return s_types.get(value);
+    }
+
+    public static DataType create(int value, String name) {
+        UInt8Data data = UInt8Data.from(value);
+        DataType type = new DataType(data, name);
+        s_types.put(data.value, type);
         return type;
     }
 
-    public static synchronized DataType getInstance(int value) {
-        return getInstance((byte) (value & 0xFF));
-    }
+    private static final Map<Integer, DataType> s_types = new HashMap<>();
 
-    private static final Map<Byte, DataType> s_types = new HashMap<>();
-
-    public static DataType Command         = new DataType(0x00, "Command");
-    public static DataType CommandRespond  = new DataType(0x01, "Command Respond");
-    public static DataType Message         = new DataType(0x02, "Message");
-    public static DataType MessageRespond  = new DataType(0x03, "Message Respond");
-    public static DataType MessageFragment = new DataType(0x0A, "Message Fragment");
+    public static DataType Command         = create(0x00, "Command");
+    public static DataType CommandRespond  = create(0x01, "Command Respond");
+    public static DataType Message         = create(0x02, "Message");
+    public static DataType MessageRespond  = create(0x03, "Message Respond");
+    public static DataType MessageFragment = create(0x0A, "Message Fragment");
 }

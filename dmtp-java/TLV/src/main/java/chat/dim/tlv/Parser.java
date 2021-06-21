@@ -30,10 +30,10 @@
  */
 package chat.dim.tlv;
 
-import chat.dim.type.ByteArray;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import chat.dim.type.ByteArray;
 
 /*
  *       0                   1                   2                   3

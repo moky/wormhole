@@ -33,6 +33,7 @@ package chat.dim.stun.attributes;
 import java.util.HashMap;
 import java.util.Map;
 
+import chat.dim.network.DataConvert;
 import chat.dim.stun.valus.ChangeRequestValue;
 import chat.dim.stun.valus.ChangedAddressValue;
 import chat.dim.stun.valus.MappedAddressValue;
@@ -62,13 +63,12 @@ public class AttributeType extends Tag16 {
     //
 
     public static AttributeType parse(ByteArray data) {
-        UInt16Data ui16 = UInt16Data.from(data, Endian.BIG_ENDIAN);
-        return ui16 == null ? null : get(ui16);
-    }
-
-    public static AttributeType from(int value) {
-        UInt16Data ui16 = UInt16Data.from(value, Endian.BIG_ENDIAN);
-        return get(ui16);
+        if (data.getLength() < 2) {
+            return null;
+        } else if (data.getLength() > 2) {
+            data = data.slice(0, 2);
+        }
+        return get(DataConvert.getUInt16Data(data));
     }
 
     private static synchronized AttributeType get(UInt16Data data) {
@@ -84,7 +84,7 @@ public class AttributeType extends Tag16 {
         return type;
     }
     public static synchronized AttributeType create(int value, String name) {
-        UInt16Data data = UInt16Data.from(value, Endian.BIG_ENDIAN);
+        UInt16Data data = DataConvert.getUInt16Data(value);
         return create(data, name);
     }
 

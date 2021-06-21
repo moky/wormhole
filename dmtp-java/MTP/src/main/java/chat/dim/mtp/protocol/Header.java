@@ -30,11 +30,10 @@
  */
 package chat.dim.mtp.protocol;
 
+import chat.dim.network.DataConvert;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
-import chat.dim.type.IntegerData;
 import chat.dim.type.MutableData;
-import chat.dim.type.UInt32Data;
 
 /*    Package Header:
  *
@@ -97,15 +96,6 @@ public class Header extends Data {
 
     public static final byte[] MAGIC_CODE = {'D', 'I', 'M'};
 
-    public Header(Header head) {
-        super(head);
-        type = head.type;
-        sn = head.sn;
-        pages = head.pages;
-        offset = head.offset;
-        bodyLength = head.bodyLength;
-    }
-
     /**
      *  Create package header
      *
@@ -123,21 +113,6 @@ public class Header extends Data {
         this.pages = pages;
         this.offset = offset;
         this.bodyLength = bodyLen;
-    }
-
-    public Header(ByteArray data, DataType type, TransactionID sn, int bodyLen) {
-        this(data, type, sn, 1, 0, bodyLen);
-    }
-
-    public Header(ByteArray data, DataType type, TransactionID sn) {
-        this(data, type, sn, 1, 0, -1);
-    }
-
-    protected static int getValue(ByteArray data, int start, int size) {
-        return (int) IntegerData.getValue(data, start, size, IntegerData.Endian.BIG_ENDIAN);
-    }
-    protected static ByteArray getData(int value) {
-        return UInt32Data.from(value, IntegerData.Endian.BIG_ENDIAN);
     }
 
     public static Header parse(ByteArray data) {
@@ -169,20 +144,20 @@ public class Header extends Data {
         } else if (headLen == 8) {
             // simple header with body length
             sn = TransactionID.ZERO;
-            bodyLen = getValue(data, 4, 4);
+            bodyLen = DataConvert.getInt32Value(data, 4);
         } else if (headLen >= 12) {
             // command/message/fragment header
             sn = TransactionID.parse(data.slice(4));
             if (headLen == 16) {
                 // command/message header with body length
-                bodyLen = getValue(data, 12, 4);
+                bodyLen = DataConvert.getInt32Value(data, 12);
             } else if (headLen >= 20) {
                 // fragment header
-                pages = getValue(data, 12, 4);
-                offset = getValue(data, 16, 4);
+                pages = DataConvert.getInt32Value(data, 12);
+                offset = DataConvert.getInt32Value(data, 16);
                 if (headLen == 24) {
                     // fragment header with body length
-                    bodyLen = getValue(data, 20, 4);
+                    bodyLen = DataConvert.getInt32Value(data, 20);
                 }
             }
         }
@@ -202,7 +177,7 @@ public class Header extends Data {
             //throw new IllegalArgumentException("body length error: " + bodyLen);
             return null;
         }
-        DataType type = DataType.getInstance(ch & 0x0F);
+        DataType type = DataType.from(ch & 0x0F);
         if (type == null) {
             //throw new NullPointerException("data type error: " + (ch & 0x0F));
             return null;
@@ -227,8 +202,8 @@ public class Header extends Data {
         if (type.equals(DataType.MessageFragment)) {
             // message fragment (or its respond)
             assert pages > 1 && pages > offset : "pages error: " + pages + ", " + offset;
-            ByteArray d1 = getData(pages);
-            ByteArray d2 = getData(offset);
+            ByteArray d1 = DataConvert.getUInt32Data(pages);
+            ByteArray d2 = DataConvert.getUInt32Data(offset);
             options = d1.concat(d2);
             headLen += 8;
         } else {
@@ -238,7 +213,7 @@ public class Header extends Data {
         }
         // body length
         if (bodyLen >= 0) {
-            ByteArray d3 = getData(bodyLen);
+            ByteArray d3 = DataConvert.getUInt32Data(bodyLen);
             if (options == null) {
                 options = d3;
             } else {

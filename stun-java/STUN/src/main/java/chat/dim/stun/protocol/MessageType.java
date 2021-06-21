@@ -33,6 +33,7 @@ package chat.dim.stun.protocol;
 import java.util.HashMap;
 import java.util.Map;
 
+import chat.dim.network.DataConvert;
 import chat.dim.type.ByteArray;
 import chat.dim.type.UInt16Data;
 
@@ -70,21 +71,16 @@ public class MessageType extends UInt16Data {
         if (data.getLength() < 2 || (data.getByte(0) & 0xC0) != 0) {
             // format: 00xx xxxx, xxxx, xxxx
             return null;
+        } else if (data.getLength() > 2) {
+            data = data.slice(0, 2);
         }
-        UInt16Data ui16 = UInt16Data.from(data, Endian.BIG_ENDIAN);
-        return ui16 == null ? null : get(ui16);
-    }
-
-    public static MessageType from(int value) {
-        UInt16Data ui16 = UInt16Data.from(value, Endian.BIG_ENDIAN);
-        return get(ui16);
+        return get(DataConvert.getUInt16Data(data));
     }
 
     private static synchronized MessageType get(UInt16Data data) {
         MessageType type = s_types.get(data.value);
         if (type == null) {
-            //type = new MessageType(value, "MsgType-" + Integer.toHexString(value));
-            throw new NullPointerException("msg type error: " + data.value);
+            type = create(data, "MsgType-" + Integer.toHexString(data.value));
         }
         return type;
     }
@@ -94,7 +90,7 @@ public class MessageType extends UInt16Data {
         return type;
     }
     public static synchronized MessageType create(int value, String name) {
-        UInt16Data data = UInt16Data.from(value, Endian.BIG_ENDIAN);
+        UInt16Data data = DataConvert.getUInt16Data(value);
         return create(data, name);
     }
 

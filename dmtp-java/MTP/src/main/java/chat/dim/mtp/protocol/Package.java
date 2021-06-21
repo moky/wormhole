@@ -59,16 +59,13 @@ public class Package extends Data {
         this.body = body;
     }
 
-    public Package(Header head, ByteArray body) {
-        this(head.concat(body), head, body);
-    }
-
-    public Package(Header head) {
-        this(head, head, Data.ZERO);
-    }
-
     private int getFragmentOffset() {
         return head.offset;
+    }
+
+    public static List<Package> sort(List<Package> packages) {
+        packages.sort(Comparator.comparingInt(Package::getFragmentOffset));
+        return packages;
     }
 
     /**
@@ -158,11 +155,6 @@ public class Package extends Data {
             bodyLen = data.getLength();
         }
         return create(type, sn, 1, 0, bodyLen, data);
-    }
-
-    public static List<Package> sort(List<Package> packages) {
-        packages.sort(Comparator.comparingInt(Package::getFragmentOffset));
-        return packages;
     }
 
     public static Package parse(ByteArray data) {

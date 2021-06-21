@@ -41,7 +41,7 @@ import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.task.Arrival;
 import chat.dim.mtp.task.Assemble;
 import chat.dim.mtp.task.Departure;
-import chat.dim.type.IntegerData;
+import chat.dim.network.DataConvert;
 import chat.dim.type.MutableData;
 import chat.dim.type.UInt32Data;
 
@@ -223,22 +223,22 @@ public class Peer extends Thread {
         if (type.equals(DataType.Command)) {
             type = DataType.CommandRespond;
             body = new MutableData(2);
-            body.setByte(0, (byte) 'O');
-            body.setByte(1, (byte) 'K');
+            body.setChar(0, 'O');
+            body.setChar(1, 'K');
         } else if (type.equals(DataType.Message)) {
             type = DataType.MessageRespond;
             body = new MutableData(2);
-            body.setByte(0, (byte) 'O');
-            body.setByte(1, (byte) 'K');
+            body.setChar(0, 'O');
+            body.setChar(1, 'K');
         } else if (type.equals(DataType.MessageFragment)) {
             type = DataType.MessageRespond;
-            UInt32Data pages = UInt32Data.from(head.pages, IntegerData.Endian.BIG_ENDIAN);
-            UInt32Data offset = UInt32Data.from(head.offset, IntegerData.Endian.BIG_ENDIAN);
+            UInt32Data pages = DataConvert.getUInt32Data(head.pages);
+            UInt32Data offset = DataConvert.getUInt32Data(head.offset);
             body = new MutableData(10);
             body.append(pages);
             body.append(offset);
-            body.append((byte) 'O');
-            body.append((byte) 'K');
+            body.append('O');
+            body.append('K');
         } else {
             throw new IllegalArgumentException("data type error: " + type);
         }

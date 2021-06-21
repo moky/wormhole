@@ -126,15 +126,16 @@ public class UInt16Data extends Data implements IntegerData {
     //  Converting
     //
 
-    protected static int getValue(ByteArray data, Endian endian) {
+    private static int getValue(ByteArray data, Endian endian) {
         assert data.getLength() == 2 : "UInt16Data error: length=" + data.getLength();
         return (int) IntegerData.getValue(data, endian);
     }
-    protected static int getValue(byte[] bytes, int offset, Endian endian) {
+    private static int getValue(byte[] bytes, int offset, Endian endian) {
         assert bytes.length == offset + 2 : "UInt16Data error: offset=" + offset + ", length=" + bytes.length;
         return (int) IntegerData.getValue(bytes, offset, 2, endian);
     }
-    protected static ByteArray getData(int value, Endian endian) {
+
+    private static ByteArray getData(int value, Endian endian) {
         byte[] buffer = new byte[2];
         IntegerData.setValue(value, buffer, 0, 2, endian);
         return new Data(buffer);

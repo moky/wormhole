@@ -33,12 +33,11 @@ package chat.dim.stun.valus;
 import java.util.HashMap;
 import java.util.Map;
 
+import chat.dim.network.DataConvert;
 import chat.dim.stun.attributes.AttributeLength;
 import chat.dim.stun.attributes.AttributeType;
 import chat.dim.stun.attributes.AttributeValue;
 import chat.dim.type.ByteArray;
-import chat.dim.type.IntegerData;
-import chat.dim.type.UInt32Data;
 
 /*  11.2.4 CHANGE-REQUEST
  *
@@ -85,7 +84,7 @@ public class ChangeRequestValue extends AttributeValue {
     }
 
     public ChangeRequestValue(int value, String name) {
-        this(UInt32Data.from(value, IntegerData.Endian.BIG_ENDIAN), value, name);
+        this(DataConvert.getUInt32Data(value), value, name);
     }
 
     public ChangeRequestValue(int value) {
@@ -122,7 +121,7 @@ public class ChangeRequestValue extends AttributeValue {
 
     public static synchronized ChangeRequestValue getInstance(ByteArray data) {
         assert data.getLength() == 4 : "data length error";
-        int value = (int) IntegerData.getValue(data, IntegerData.Endian.BIG_ENDIAN);
+        int value = DataConvert.getInt32Value(data);
         return getInstance(value);
     }
     public static synchronized ChangeRequestValue getInstance(int value) {

@@ -30,6 +30,7 @@
  */
 package chat.dim.stun.attributes;
 
+import chat.dim.network.DataConvert;
 import chat.dim.tlv.Length16;
 import chat.dim.type.ByteArray;
 import chat.dim.type.UInt16Data;
@@ -45,12 +46,15 @@ public class AttributeLength extends Length16 {
     //
 
     public static AttributeLength parse(ByteArray data, AttributeType type) {
-        UInt16Data ui16 = UInt16Data.from(data, Endian.BIG_ENDIAN);
-        return ui16 == null ? null : new AttributeLength(ui16);
+        if (data.getLength() < 2) {
+            return null;
+        } else if (data.getLength() > 2) {
+            data = data.slice(0, 2);
+        }
+        return new AttributeLength(DataConvert.getUInt16Data(data));
     }
 
     public static AttributeLength from(int value) {
-        UInt16Data ui16 = UInt16Data.from(value, Endian.BIG_ENDIAN);
-        return new AttributeLength(ui16);
+        return new AttributeLength(DataConvert.getUInt16Data(value));
     }
 }

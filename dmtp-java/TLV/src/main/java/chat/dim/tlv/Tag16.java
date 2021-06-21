@@ -30,6 +30,7 @@
  */
 package chat.dim.tlv;
 
+import chat.dim.network.DataConvert;
 import chat.dim.type.ByteArray;
 import chat.dim.type.UInt16Data;
 
@@ -71,12 +72,10 @@ public class Tag16 extends UInt16Data implements Triad.Tag {
         } else if (data.getLength() > 2) {
             data = data.slice(0, 2);
         }
-        int value = getValue(data, Endian.BIG_ENDIAN);
-        return new Tag16(data, value, Endian.BIG_ENDIAN);
+        return new Tag16(DataConvert.getUInt16Data(data));
     }
 
     public static Tag16 from(int value) {
-        ByteArray data = getData(value, Endian.BIG_ENDIAN);
-        return new Tag16(data, value, Endian.BIG_ENDIAN);
+        return new Tag16(DataConvert.getUInt16Data(value));
     }
 }

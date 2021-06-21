@@ -32,9 +32,9 @@ package chat.dim.mtp.protocol;
 
 import java.util.Random;
 
+import chat.dim.network.DataConvert;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
-import chat.dim.type.IntegerData;
 import chat.dim.type.UInt32Data;
 
 public class TransactionID extends Data {
@@ -69,8 +69,8 @@ public class TransactionID extends Data {
                 s_high = 0;
             }
         }
-        UInt32Data hi = UInt32Data.from(s_high, IntegerData.Endian.BIG_ENDIAN);
-        UInt32Data lo = UInt32Data.from(s_low, IntegerData.Endian.BIG_ENDIAN);
+        UInt32Data hi = DataConvert.getUInt32Data(s_high);
+        UInt32Data lo = DataConvert.getUInt32Data(s_low);
         return new TransactionID(hi.concat(lo));
     }
 
