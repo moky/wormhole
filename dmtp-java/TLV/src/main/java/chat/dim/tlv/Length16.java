@@ -45,6 +45,10 @@ import chat.dim.type.UInt16Data;
 
 public class Length16 extends UInt16Data implements Triad.Length {
 
+    public Length16(UInt16Data data) {
+        super(data, data.value, data.endian);
+    }
+
     public Length16(ByteArray data, int value, Endian endian) {
         super(data, value, endian);
     }

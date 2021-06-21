@@ -37,18 +37,20 @@ import chat.dim.type.UInt16Data;
 public class AttributeLength extends Length16 {
 
     public AttributeLength(UInt16Data data) {
-        super(data);
+        super(data, data.value, data.endian);
     }
 
-    public AttributeLength(ByteArray data) {
-        super(data);
+    //
+    //  Factories
+    //
+
+    public static AttributeLength parse(ByteArray data, AttributeType type) {
+        UInt16Data ui16 = UInt16Data.from(data, Endian.BIG_ENDIAN);
+        return ui16 == null ? null : new AttributeLength(ui16);
     }
 
-    public AttributeLength(ByteArray data, int value) {
-        super(data, value);
-    }
-
-    public AttributeLength(int value) {
-        super(value);
+    public static AttributeLength from(int value) {
+        UInt16Data ui16 = UInt16Data.from(value, Endian.BIG_ENDIAN);
+        return new AttributeLength(ui16);
     }
 }

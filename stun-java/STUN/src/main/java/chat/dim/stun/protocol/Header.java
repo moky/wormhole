@@ -77,13 +77,6 @@ public class Header extends Data {
     public final MessageLength msgLength;
     public final TransactionID sn;
 
-    public Header(Header head) {
-        super(head);
-        type = head.type;
-        msgLength = head.msgLength;
-        sn = head.sn;
-    }
-
     public Header(ByteArray data, MessageType type, MessageLength length, TransactionID sn) {
         super(data);
         this.type = type;
@@ -91,20 +84,20 @@ public class Header extends Data {
         this.sn = sn;
     }
 
-    public Header(MessageType type, MessageLength length, TransactionID sn) {
-        this(build(type, length, sn), type, length, sn);
+    //
+    //  Factories
+    //
+
+    public static Header create(MessageType type, MessageLength length) {
+        return create(type, length, new TransactionID());
     }
 
-    public Header(MessageType type, MessageLength length) {
-        this(type, length, new TransactionID());
-    }
-
-    private static ByteArray build(MessageType type, MessageLength length, TransactionID sn) {
+    public static Header create(MessageType type, MessageLength length, TransactionID sn) {
         MutableData data = new MutableData(type.getLength() + length.getLength() + sn.getLength());
         data.append(type);
         data.append(length);
         data.append(sn);
-        return data;
+        return new Header(data, type, length, sn);
     }
 
     public static Header parse(ByteArray data) {

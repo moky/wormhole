@@ -76,7 +76,7 @@ public class Server extends Node {
 
     /*  "Change IP and Port"
      *
-     *        When this server A received ChangeRequest with "change IP" and
+     *        When this server A received CHANGE-REQUEST with "change IP" and
      *        "change port" flags set, it should redirect this request to the
      *        neighbour server B to (use another address) respond the client.
      *
@@ -87,7 +87,7 @@ public class Server extends Node {
 
     /*  "Change Port"
      *
-     *        When this server received ChangeRequest with "change port" flag set,
+     *        When this server received CHANGE-REQUEST with "change port" flag set,
      *        it should respond the client with another port.
      */
     public int changePort;
@@ -102,10 +102,10 @@ public class Server extends Node {
     public boolean parseAttribute(Attribute attribute, Map<String, Object> context) {
         AttributeType type = attribute.tag;
         AttributeValue value = attribute.value;
-        if (type.equals(AttributeType.MappedAddress)) {
+        if (type.equals(AttributeType.MAPPED_ADDRESS)) {
             assert value instanceof MappedAddressValue : "mapped address value error: " + value;
             context.put("MAPPED-ADDRESS", value);
-        } else if (type.equals(AttributeType.ChangeRequest)) {
+        } else if (type.equals(AttributeType.CHANGE_REQUEST)) {
             assert value instanceof ChangeRequestValue : "change request value error: " + value;
             context.put("CHANGE-REQUEST", value);
         } else {
@@ -125,7 +125,7 @@ public class Server extends Node {
     protected boolean redirect(Header head, SocketAddress clientAddress) {
         InetSocketAddress address = (InetSocketAddress) clientAddress;
         MappedAddressValue value = new MappedAddressValue(address.getHostString(), address.getPort());
-        Attribute attribute = new Attribute(AttributeType.MappedAddress, value);
+        Attribute attribute = Attribute.create(AttributeType.MAPPED_ADDRESS, value);
         // pack
         Package pack = Package.create(head.type, head.sn, attribute);
         assert neighbour != null : "neighbour address not set yet";
@@ -151,22 +151,22 @@ public class Server extends Node {
         AttributeValue value;
         // mapped address
         value = new MappedAddressValue(remoteIP, remotePort);
-        ByteArray data1 = (new Attribute(AttributeType.MappedAddress, value));
+        ByteArray data1 = Attribute.create(AttributeType.MAPPED_ADDRESS, value);
         // xor
         value = XorMappedAddressValue.create(remoteIP, remotePort, head.sn);
-        ByteArray data4 = (new Attribute(AttributeType.XorMappedAddress, value));
+        ByteArray data4 = Attribute.create(AttributeType.XOR_MAPPED_ADDRESS, value);
         // xor2
         value = XorMappedAddressValue2.create(remoteIP, remotePort, head.sn);
-        ByteArray data5 = (new Attribute(AttributeType.XorMappedAddress2, value));
+        ByteArray data5 = Attribute.create(AttributeType.XOR_MAPPED_ADDRESS_8020, value);
         // source address
         value = new SourceAddressValue(localIP, localPort);
-        ByteArray data2 = (new Attribute(AttributeType.SourceAddress, value));
+        ByteArray data2 = Attribute.create(AttributeType.SOURCE_ADDRESS, value);
         // changed address
         value = new ChangedAddressValue(changedIP, changedPort);
-        ByteArray data3 = (new Attribute(AttributeType.ChangedAddress, value));
+        ByteArray data3 = Attribute.create(AttributeType.CHANGED_ADDRESS, value);
         // software
         value = new SoftwareValue(software);
-        ByteArray data6 = (new Attribute(AttributeType.Software, value));
+        ByteArray data6 = Attribute.create(AttributeType.SOFTWARE, value);
         // pack
         MutableData body = new MutableData(data1.getLength() + data2.getLength() + data3.getLength()
                 + data4.getLength() + data5.getLength() + data6.getLength());

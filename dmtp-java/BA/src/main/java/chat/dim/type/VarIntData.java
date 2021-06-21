@@ -37,6 +37,8 @@ public class VarIntData extends Data implements IntegerData {
 
     public final long value;
 
+    public static final VarIntData ZERO = from(0);
+
     public VarIntData(ByteArray data, long value) {
         super(data);
         this.value = value;

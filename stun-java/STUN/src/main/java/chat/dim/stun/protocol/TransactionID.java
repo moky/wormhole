@@ -114,9 +114,9 @@ public class TransactionID extends Data {
         }
 
         ByteArray mc = MagicCookie;
-        ByteArray hi = UInt32Data.from(s_high, IntegerData.Endian.BigEndian);
-        ByteArray mi = UInt32Data.from(s_middle, IntegerData.Endian.BigEndian);
-        ByteArray lo = UInt32Data.from(s_low, IntegerData.Endian.BigEndian);
+        ByteArray hi = UInt32Data.from(s_high, IntegerData.Endian.BIG_ENDIAN);
+        ByteArray mi = UInt32Data.from(s_middle, IntegerData.Endian.BIG_ENDIAN);
+        ByteArray lo = UInt32Data.from(s_low, IntegerData.Endian.BIG_ENDIAN);
 
         MutableData data = new MutableData(16);
         data.append(mc);
@@ -127,7 +127,7 @@ public class TransactionID extends Data {
     }
 
     // Magic Cookie
-    public static UInt32Data MagicCookie = UInt32Data.from(0x2112A442, IntegerData.Endian.BigEndian);
+    public static UInt32Data MagicCookie = UInt32Data.from(0x2112A442, IntegerData.Endian.BIG_ENDIAN);
 
     private static long s_high;
     private static long s_middle;

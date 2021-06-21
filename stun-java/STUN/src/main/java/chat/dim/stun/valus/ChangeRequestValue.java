@@ -85,7 +85,7 @@ public class ChangeRequestValue extends AttributeValue {
     }
 
     public ChangeRequestValue(int value, String name) {
-        this(UInt32Data.from(value, IntegerData.Endian.BigEndian), value, name);
+        this(UInt32Data.from(value, IntegerData.Endian.BIG_ENDIAN), value, name);
     }
 
     public ChangeRequestValue(int value) {
@@ -122,7 +122,7 @@ public class ChangeRequestValue extends AttributeValue {
 
     public static synchronized ChangeRequestValue getInstance(ByteArray data) {
         assert data.getLength() == 4 : "data length error";
-        int value = (int) IntegerData.getValue(data, IntegerData.Endian.BigEndian);
+        int value = (int) IntegerData.getValue(data, IntegerData.Endian.BIG_ENDIAN);
         return getInstance(value);
     }
     public static synchronized ChangeRequestValue getInstance(int value) {

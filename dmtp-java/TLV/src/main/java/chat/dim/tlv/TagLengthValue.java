@@ -64,21 +64,6 @@ public class TagLengthValue<T extends Triad.Tag, L extends Triad.Length, V exten
         this.value = value;
     }
 
-    public TagLengthValue(T type, L length, V value) {
-        this(build(type, length, value), type, length, value);
-    }
-
-    private static ByteArray build(ByteArray type, ByteArray length, ByteArray value) {
-        ByteArray data = type;
-        if (length != null) {
-            data = data.concat(length);
-        }
-        if (value != null) {
-            data = data.concat(value);
-        }
-        return data;
-    }
-
     @Override
     public T getTagField() {
         return tag;

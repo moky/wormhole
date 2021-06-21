@@ -41,10 +41,9 @@ import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.task.Arrival;
 import chat.dim.mtp.task.Assemble;
 import chat.dim.mtp.task.Departure;
+import chat.dim.type.IntegerData;
 import chat.dim.type.MutableData;
 import chat.dim.type.UInt32Data;
-
-import static chat.dim.type.IntegerData.Endian.BigEndian;
 
 public class Peer extends Thread {
 
@@ -233,8 +232,8 @@ public class Peer extends Thread {
             body.setByte(1, (byte) 'K');
         } else if (type.equals(DataType.MessageFragment)) {
             type = DataType.MessageRespond;
-            UInt32Data pages = UInt32Data.from(head.pages, BigEndian);
-            UInt32Data offset = UInt32Data.from(head.offset, BigEndian);
+            UInt32Data pages = UInt32Data.from(head.pages, IntegerData.Endian.BIG_ENDIAN);
+            UInt32Data offset = UInt32Data.from(head.offset, IntegerData.Endian.BIG_ENDIAN);
             body = new MutableData(10);
             body.append(pages);
             body.append(offset);

@@ -31,33 +31,14 @@
 package chat.dim.stun.protocol;
 
 import chat.dim.type.ByteArray;
-import chat.dim.type.IntegerData;
 import chat.dim.type.UInt16Data;
 
 public class MessageLength extends UInt16Data {
 
+    public static final MessageLength ZERO = from(0);
+
     public MessageLength(UInt16Data data) {
-        super(data);
-    }
-
-    public MessageLength(ByteArray data, int value) {
-        super(data, value);
-    }
-
-    public MessageLength(ByteArray data) {
-        super(data, getValue(data));
-    }
-
-    public MessageLength(int value) {
-        super(getData(value), value);
-    }
-
-    protected static int getValue(ByteArray data) {
-        assert data.getLength() == 2 : "data length not enough";
-        return (int) IntegerData.getValue(data, Endian.BigEndian);
-    }
-    protected static UInt16Data getData(int value) {
-        return UInt16Data.from(value, Endian.BigEndian);
+        super(data, data.value, data.endian);
     }
 
     //
@@ -68,9 +49,13 @@ public class MessageLength extends UInt16Data {
         if (data.getLength() < 2 || (data.getByte(1) & 0x03) != 0) {
             // format: xxxx xxxx, xxxx xx00
             return null;
-        } else if (data.getLength() > 2) {
-            data = data.slice(0, 2);
         }
-        return new MessageLength(data);
+        UInt16Data ui16 = UInt16Data.from(data, Endian.BIG_ENDIAN);
+        return new MessageLength(ui16);
+    }
+
+    public static MessageLength from(int value) {
+        UInt16Data ui16 = UInt16Data.from(value, Endian.BIG_ENDIAN);
+        return new MessageLength(ui16);
     }
 }

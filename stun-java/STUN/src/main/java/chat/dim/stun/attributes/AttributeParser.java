@@ -58,32 +58,16 @@ public class AttributeParser extends Parser<Attribute, AttributeType, AttributeL
 
     @Override
     public AttributeType parseTagField(ByteArray data) {
-        if (data.getLength() < 2) {
-            throw new IndexOutOfBoundsException("Attribute type error: " + data.getLength());
-        } else if (data.getLength() > 2) {
-            data = data.slice(0, 2);
-        }
-        return AttributeType.getInstance(data);
+        return AttributeType.parse(data);
     }
 
     @Override
     public AttributeLength parseLengthField(ByteArray data, AttributeType type) {
-        if (data.getLength() < 2) {
-            throw new IndexOutOfBoundsException("Attribute length error: " + data.getLength());
-        } else if (data.getLength() > 2) {
-            data = data.slice(0, 2);
-        }
-        return new AttributeLength(data);
+        return AttributeLength.parse(data, type);
     }
 
     @Override
     public AttributeValue parseValueField(ByteArray data, AttributeType type, AttributeLength length) {
-        int valueLength = length.getIntValue();
-        if (data.getLength() < valueLength) {
-            throw new IndexOutOfBoundsException("Attribute value error: " + data.getLength());
-        } else if (data.getLength() > valueLength) {
-            data = data.slice(0, valueLength);
-        }
         return AttributeValue.parse(data, type, length);
     }
 

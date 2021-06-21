@@ -38,6 +38,8 @@ public class UInt16Data extends Data implements IntegerData {
     public final int value;
     public final Endian endian;
 
+    public static final UInt16Data ZERO = from(0, Endian.BIG_ENDIAN);
+
     public UInt16Data(ByteArray data, int value, Endian endian) {
         super(data);
         this.value = value;

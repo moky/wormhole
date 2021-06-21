@@ -34,9 +34,8 @@ import java.util.Random;
 
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
+import chat.dim.type.IntegerData;
 import chat.dim.type.UInt32Data;
-
-import static chat.dim.type.IntegerData.Endian.BigEndian;
 
 public class TransactionID extends Data {
 
@@ -70,8 +69,8 @@ public class TransactionID extends Data {
                 s_high = 0;
             }
         }
-        UInt32Data hi = UInt32Data.from(s_high, BigEndian);
-        UInt32Data lo = UInt32Data.from(s_low, BigEndian);
+        UInt32Data hi = UInt32Data.from(s_high, IntegerData.Endian.BIG_ENDIAN);
+        UInt32Data lo = UInt32Data.from(s_low, IntegerData.Endian.BIG_ENDIAN);
         return new TransactionID(hi.concat(lo));
     }
 

@@ -38,6 +38,8 @@ public class UInt32Data extends Data implements IntegerData {
     public final long value;
     public final Endian endian;
 
+    public static final UInt32Data ZERO = from(0, Endian.BIG_ENDIAN);
+
     public UInt32Data(ByteArray data, long value, Endian endian) {
         super(data);
         this.value = value;
@@ -115,7 +117,7 @@ public class UInt32Data extends Data implements IntegerData {
         return new UInt32Data(bytes, offset, value, endian);
     }
 
-    public static UInt32Data from(int value, Endian endian) {
+    public static UInt32Data from(long value, Endian endian) {
         ByteArray data = getData(value, endian);
         return new UInt32Data(data, value, endian);
     }
@@ -133,7 +135,7 @@ public class UInt32Data extends Data implements IntegerData {
         assert bytes.length == offset + 4 : "UInt32Data error: offset=" + offset + ", length=" + bytes.length;
         return IntegerData.getValue(bytes, offset, 4, endian);
     }
-    protected static ByteArray getData(int value, Endian endian) {
+    protected static ByteArray getData(long value, Endian endian) {
         byte[] buffer = new byte[4];
         IntegerData.setValue(value, buffer, 0, 4, endian);
         return new Data(buffer);

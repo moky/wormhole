@@ -45,6 +45,10 @@ import chat.dim.type.UInt16Data;
 
 public class Tag16 extends UInt16Data implements Triad.Tag {
 
+    public Tag16(UInt16Data data) {
+        super(data, data.value, data.endian);
+    }
+
     public Tag16(ByteArray data, int value, Endian endian) {
         super(data, value, endian);
     }

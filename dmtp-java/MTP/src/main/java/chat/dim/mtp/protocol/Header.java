@@ -36,8 +36,6 @@ import chat.dim.type.IntegerData;
 import chat.dim.type.MutableData;
 import chat.dim.type.UInt32Data;
 
-import static chat.dim.type.IntegerData.Endian.BigEndian;
-
 /*    Package Header:
  *
  *         0                   1                   2                   3
@@ -135,6 +133,13 @@ public class Header extends Data {
         this(data, type, sn, 1, 0, -1);
     }
 
+    protected static int getValue(ByteArray data, int start, int size) {
+        return (int) IntegerData.getValue(data, start, size, IntegerData.Endian.BIG_ENDIAN);
+    }
+    protected static ByteArray getData(int value) {
+        return UInt32Data.from(value, IntegerData.Endian.BIG_ENDIAN);
+    }
+
     public static Header parse(ByteArray data) {
         int length = data.getLength();
         if (length < 4) {
@@ -164,20 +169,20 @@ public class Header extends Data {
         } else if (headLen == 8) {
             // simple header with body length
             sn = TransactionID.ZERO;
-            bodyLen = (int) IntegerData.getValue(data, 4, 4, BigEndian);
+            bodyLen = getValue(data, 4, 4);
         } else if (headLen >= 12) {
             // command/message/fragment header
             sn = TransactionID.parse(data.slice(4));
             if (headLen == 16) {
                 // command/message header with body length
-                bodyLen = (int) IntegerData.getValue(data, 12, 4, BigEndian);
+                bodyLen = getValue(data, 12, 4);
             } else if (headLen >= 20) {
                 // fragment header
-                pages = (int) IntegerData.getValue(data, 12, 4, BigEndian);
-                offset = (int) IntegerData.getValue(data, 16, 4, BigEndian);
+                pages = getValue(data, 12, 4);
+                offset = getValue(data, 16, 4);
                 if (headLen == 24) {
                     // fragment header with body length
-                    bodyLen = (int) IntegerData.getValue(data, 20, 4, BigEndian);
+                    bodyLen = getValue(data, 20, 4);
                 }
             }
         }
@@ -222,8 +227,8 @@ public class Header extends Data {
         if (type.equals(DataType.MessageFragment)) {
             // message fragment (or its respond)
             assert pages > 1 && pages > offset : "pages error: " + pages + ", " + offset;
-            ByteArray d1 = UInt32Data.from(pages, BigEndian);
-            ByteArray d2 = UInt32Data.from(offset, BigEndian);
+            ByteArray d1 = getData(pages);
+            ByteArray d2 = getData(offset);
             options = d1.concat(d2);
             headLen += 8;
         } else {
@@ -233,7 +238,7 @@ public class Header extends Data {
         }
         // body length
         if (bodyLen >= 0) {
-            ByteArray d3 = UInt32Data.from(bodyLen, BigEndian);
+            ByteArray d3 = getData(bodyLen);
             if (options == null) {
                 options = d3;
             } else {

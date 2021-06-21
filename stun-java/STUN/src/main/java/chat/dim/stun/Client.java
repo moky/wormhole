@@ -72,40 +72,40 @@ public class Client extends Node {
 
     @Override
     public boolean parseAttribute(Attribute attribute, Map<String, Object> context) {
-        AttributeType type = (AttributeType) attribute.tag;
+        AttributeType type = attribute.tag;
         AttributeValue value = attribute.value;
-        if (type.equals(AttributeType.MappedAddress)) {
+        if (type.equals(AttributeType.MAPPED_ADDRESS)) {
             assert value instanceof MappedAddressValue : "mapped address value error: " + value;
             context.put("MAPPED-ADDRESS", value);
-        } else if (type.equals(AttributeType.XorMappedAddress)) {
+        } else if (type.equals(AttributeType.XOR_MAPPED_ADDRESS)) {
             if (!(value instanceof XorMappedAddressValue)) {
                 // XOR and parse again
                 ByteArray factor = (ByteArray) context.get("trans_id");
                 ByteArray data = XorMappedAddressValue.xor(value, factor);
-                AttributeLength length = new AttributeLength(data.getLength());
+                AttributeLength length = AttributeLength.from(data.getLength());
                 value = XorMappedAddressValue.parse(new Data(data), type, length);
             }
             if (value != null) {
                 context.put("MAPPED-ADDRESS", value);
             }
-        } else if (type.equals(AttributeType.XorMappedAddress2)) {
+        } else if (type.equals(AttributeType.XOR_MAPPED_ADDRESS_8020)) {
             if (!(value instanceof XorMappedAddressValue2)) {
                 // XOR and parse again
                 ByteArray factor = (ByteArray) context.get("trans_id");
                 ByteArray data = XorMappedAddressValue2.xor(value, factor);
-                AttributeLength length = new AttributeLength(data.getLength());
+                AttributeLength length = AttributeLength.from(data.getLength());
                 value = XorMappedAddressValue2.parse(new Data(data), type, length);
             }
             if (value != null) {
                 context.put("MAPPED-ADDRESS", value);
             }
-        } else if (type.equals(AttributeType.ChangedAddress)) {
+        } else if (type.equals(AttributeType.CHANGED_ADDRESS)) {
             assert value instanceof ChangedAddressValue : "change address value error: " + value;
             context.put("CHANGED-ADDRESS", value);
-        } else if (type.equals(AttributeType.SourceAddress)) {
+        } else if (type.equals(AttributeType.SOURCE_ADDRESS)) {
             assert value instanceof SourceAddressValue : "source address value error: " + value;
             context.put("SOURCE-ADDRESS", value);
-        } else if (type.equals(AttributeType.Software)) {
+        } else if (type.equals(AttributeType.SOFTWARE)) {
             assert value instanceof SoftwareValue : "software value error: " + value;
             context.put("SOFTWARE", value);
         } else {
@@ -182,13 +182,13 @@ public class Client extends Node {
 
     private Map<String, Object> test_2(SocketAddress serverAddress) {
         info("[Test 2] sending ChangeIPAndPort request ... " + serverAddress);
-        Attribute item = new Attribute(AttributeType.ChangeRequest, ChangeRequestValue.ChangeIPAndPort);
+        Attribute item = Attribute.create(AttributeType.CHANGE_REQUEST, ChangeRequestValue.ChangeIPAndPort);
         return bindRequest(item, serverAddress);
     }
 
     private Map<String, Object> test_3(SocketAddress serverAddress) {
         info("[Test 1] sending ChangePort request ... " + serverAddress);
-        Attribute item = new Attribute(AttributeType.ChangeRequest, ChangeRequestValue.ChangePort);
+        Attribute item = Attribute.create(AttributeType.CHANGE_REQUEST, ChangeRequestValue.ChangePort);
         return bindRequest(item, serverAddress);
     }
 

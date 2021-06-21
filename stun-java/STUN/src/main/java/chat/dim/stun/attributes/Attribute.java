@@ -30,38 +30,40 @@
  */
 package chat.dim.stun.attributes;
 
+import java.util.List;
+
 import chat.dim.tlv.TagLengthValue;
 import chat.dim.type.ByteArray;
 
-import java.util.List;
-
 public class Attribute extends TagLengthValue<AttributeType, AttributeLength, AttributeValue> {
-
-    public Attribute(TagLengthValue<AttributeType, AttributeLength, AttributeValue> attribute) {
-        super(attribute);
-    }
 
     public Attribute(ByteArray data, AttributeType type, AttributeLength length, AttributeValue value) {
         super(data, type, length, value);
-    }
-
-    public Attribute(AttributeType type, AttributeLength length, AttributeValue value) {
-        super(type, getLength(length, value), value);
-    }
-
-    public Attribute(AttributeType type, AttributeValue value) {
-        super(type, getLength(null, value), value);
     }
 
     protected static AttributeLength getLength(AttributeLength length, AttributeValue value) {
         if (length != null) {
             return length;
         } else if (value != null) {
-            return new AttributeLength(value.getLength());
+            return AttributeLength.from(value.getLength());
         } else {
-            return new AttributeLength(0);
+            return AttributeLength.from(0);
         }
     }
+
+    //
+    //  Factories
+    //
+
+    public static Attribute create(AttributeType type, AttributeValue value) {
+        return create(type, null, value);
+    }
+    public static Attribute create(AttributeType type, AttributeLength length, AttributeValue value) {
+        length = getLength(length, value);
+        ByteArray data = type.concat(length, value);
+        return new Attribute(data, type, length, value);
+    }
+
 
     //
     //  Parser

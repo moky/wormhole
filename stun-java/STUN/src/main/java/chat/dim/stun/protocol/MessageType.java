@@ -34,7 +34,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import chat.dim.type.ByteArray;
-import chat.dim.type.IntegerData;
 import chat.dim.type.UInt16Data;
 
 /*  [RFC] https://www.ietf.org/rfc/rfc5389.txt
@@ -53,42 +52,9 @@ public class MessageType extends UInt16Data {
 
     private final String name;
 
-    public MessageType(MessageType type) {
-        super(type);
-        name = type.name;
-        s_types.put(type.getIntValue(), this);
-    }
-
     public MessageType(UInt16Data data, String name) {
-        super(data);
+        super(data, data.value, data.endian);
         this.name = name;
-        s_types.put(value, this);
-    }
-
-    public MessageType(ByteArray data, int value, String name) {
-        super(data, value);
-        this.name = name;
-        s_types.put(value, this);
-    }
-
-    public MessageType(ByteArray data, String name) {
-        super(data, getValue(data));
-        this.name = name;
-        s_types.put(value, this);
-    }
-
-    public MessageType(int value, String name) {
-        super(getData(value), value);
-        this.name = name;
-        s_types.put(value, this);
-    }
-
-    protected static int getValue(ByteArray data) {
-        assert data.getLength() == 2 : "data length not enough";
-        return (int) IntegerData.getValue(data, Endian.BigEndian);
-    }
-    protected static UInt16Data getData(int value) {
-        return UInt16Data.from(value, Endian.BigEndian);
     }
 
     @Override
@@ -97,37 +63,47 @@ public class MessageType extends UInt16Data {
     }
 
     //
-    //  Factory
+    //  Factories
     //
-
-    public static MessageType getInstance(ByteArray data) {
-        return getInstance(getValue(data));
-    }
-    public static synchronized MessageType getInstance(int value) {
-        MessageType type = s_types.get(value);
-        if (type == null) {
-            //type = new MessageType(value, "MsgType-" + Integer.toHexString(value));
-            throw new NullPointerException("msg type error: " + value);
-        }
-        return type;
-    }
 
     public static MessageType parse(ByteArray data) {
         if (data.getLength() < 2 || (data.getByte(0) & 0xC0) != 0) {
             // format: 00xx xxxx, xxxx, xxxx
             return null;
-        } else if (data.getLength() > 2) {
-            data = data.slice(0, 2);
         }
-        return getInstance(data);
+        UInt16Data ui16 = UInt16Data.from(data, Endian.BIG_ENDIAN);
+        return ui16 == null ? null : get(ui16);
+    }
+
+    public static MessageType from(int value) {
+        UInt16Data ui16 = UInt16Data.from(value, Endian.BIG_ENDIAN);
+        return get(ui16);
+    }
+
+    private static synchronized MessageType get(UInt16Data data) {
+        MessageType type = s_types.get(data.value);
+        if (type == null) {
+            //type = new MessageType(value, "MsgType-" + Integer.toHexString(value));
+            throw new NullPointerException("msg type error: " + data.value);
+        }
+        return type;
+    }
+    private static MessageType create(UInt16Data data, String name) {
+        MessageType type = new MessageType(data, name);
+        s_types.put(data.value, type);
+        return type;
+    }
+    public static synchronized MessageType create(int value, String name) {
+        UInt16Data data = UInt16Data.from(value, Endian.BIG_ENDIAN);
+        return create(data, name);
     }
 
     private static final Map<Integer, MessageType> s_types = new HashMap<>();
 
-    public static MessageType BindRequest = new MessageType(0x0001, "Bind Request");
-    public static MessageType BindResponse = new MessageType(0x0101, "Bind Response");
-    public static MessageType BindErrorResponse = new MessageType(0x0111, "Bind Error Response");
-    public static MessageType SharedSecretRequest = new MessageType(0x0002, "Shared Secret Request");
-    public static MessageType SharedSecretResponse = new MessageType(0x0102, "Shared Secret Response");
-    public static MessageType SharedSecretErrorResponse = new MessageType(0x0112, "Shared Secret Error Response");
+    public static MessageType BindRequest               = create(0x0001, "Bind Request");
+    public static MessageType BindResponse              = create(0x0101, "Bind Response");
+    public static MessageType BindErrorResponse         = create(0x0111, "Bind Error Response");
+    public static MessageType SharedSecretRequest       = create(0x0002, "Shared Secret Request");
+    public static MessageType SharedSecretResponse      = create(0x0102, "Shared Secret Response");
+    public static MessageType SharedSecretErrorResponse = create(0x0112, "Shared Secret Error Response");
 }

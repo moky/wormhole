@@ -37,6 +37,8 @@ public class UInt8Data extends Data implements IntegerData {
 
     public final int value;
 
+    public static final UInt8Data ZERO = from(0);
+
     public UInt8Data(ByteArray data) {
         super(data);
         assert data.getLength() == 1 : "UInt8Data error: length=" + data.getLength();

@@ -38,24 +38,10 @@ public class Package extends Data {
     public final Header head;
     public final ByteArray body;
 
-    public Package(Package pack) {
-        super(pack);
-        head = pack.head;
-        body = pack.body;
-    }
-
     public Package(ByteArray data, Header head, ByteArray body) {
         super(data);
         this.head = head;
         this.body = body;
-    }
-
-    public Package(Header head, ByteArray body) {
-        this(head.concat(body), head, body);
-    }
-
-    public Package(Header head) {
-        this(head, head, Data.ZERO);
     }
 
     //
@@ -63,14 +49,19 @@ public class Package extends Data {
     //
 
     public static Package create(MessageType type, TransactionID sn, ByteArray body) {
-        if (sn == null) {
-            sn = new TransactionID();
-        }
+        MessageLength length;
         if (body == null) {
             body = Data.ZERO;
+            length = MessageLength.ZERO;
+        } else {
+            length = MessageLength.from(body.getLength());
         }
-        MessageLength len = new MessageLength(body.getLength());
-        Header head = new Header(type, len, sn);
+        Header head;
+        if (sn == null) {
+            head = Header.create(type, length);
+        } else {
+            head = Header.create(type, length, sn);
+        }
         ByteArray data = head.concat(body);
         return new Package(data, head, body);
     }

@@ -51,8 +51,6 @@ import chat.dim.mtp.task.Departure;
 import chat.dim.type.ByteArray;
 import chat.dim.type.IntegerData;
 
-import static chat.dim.type.IntegerData.Endian.BigEndian;
-
 public class MemPool implements Pool {
 
     /**
@@ -144,8 +142,8 @@ public class MemPool implements Pool {
                 // MessageFragment
                 assert bodyLen == 8 || (body.getByte(8) == 'O' && body.getByte(9) == 'K') : "MessageRespond error: " + body;
                 // get pages count and index
-                int pages = (int) IntegerData.getValue(body, 0, 4, BigEndian);
-                int offset = (int) IntegerData.getValue(body, 4, 4, BigEndian);
+                int pages = (int) IntegerData.getValue(body, 0, 4, IntegerData.Endian.BIG_ENDIAN);
+                int offset = (int) IntegerData.getValue(body, 4, 4, IntegerData.Endian.BIG_ENDIAN);
                 assert pages > 1 && pages > offset : "pages error: " + pages + ", " + offset;
                 return deleteFragment(sn, offset, destination);
             } else if (bodyLen == 0 || (body.getByte(0) == 'O' && body.getByte(1) == 'K')) {
