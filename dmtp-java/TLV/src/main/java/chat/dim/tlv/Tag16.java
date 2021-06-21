@@ -31,7 +31,6 @@
 package chat.dim.tlv;
 
 import chat.dim.type.ByteArray;
-import chat.dim.type.IntegerData;
 import chat.dim.type.UInt16Data;
 
 /*
@@ -46,27 +45,34 @@ import chat.dim.type.UInt16Data;
 
 public class Tag16 extends UInt16Data implements Triad.Tag {
 
-    public Tag16(UInt16Data data) {
-        super(data);
+    public Tag16(ByteArray data, int value, Endian endian) {
+        super(data, value, endian);
     }
 
-    public Tag16(ByteArray data, int value) {
-        super(data, value);
+    //
+    //  Factories
+    //
+
+    public static Tag16 from(Tag16 tag) {
+        return tag;
     }
 
-    public Tag16(ByteArray data) {
-        super(data, getValue(data));
+    public static Tag16 from(UInt16Data data) {
+        return new Tag16(data, data.value, data.endian);
     }
 
-    public Tag16(int value) {
-        super(getData(value), value);
+    public static Tag16 from(ByteArray data) {
+        if (data.getLength() < 2) {
+            return null;
+        } else if (data.getLength() > 2) {
+            data = data.slice(0, 2);
+        }
+        int value = getValue(data, Endian.BIG_ENDIAN);
+        return new Tag16(data, value, Endian.BIG_ENDIAN);
     }
 
-    protected static int getValue(ByteArray data) {
-        assert data.getLength() == 2 : "data length not enough";
-        return (int) IntegerData.getValue(data, Endian.BigEndian);
-    }
-    protected static UInt16Data getData(int value) {
-        return UInt16Data.from(value, Endian.BigEndian);
+    public static Tag16 from(int value) {
+        ByteArray data = getData(value, Endian.BIG_ENDIAN);
+        return new Tag16(data, value, Endian.BIG_ENDIAN);
     }
 }

@@ -36,8 +36,8 @@ package chat.dim.type;
 public interface IntegerData extends ByteArray {
 
     enum Endian {
-        BigEndian,    // Network Byte Order
-        LittleEndian  // Host Byte Order
+        BIG_ENDIAN,    // Network Byte Order
+        LITTLE_ENDIAN  // Host Byte Order
     }
 
     int getIntValue();
@@ -59,12 +59,12 @@ public interface IntegerData extends ByteArray {
      */
     static long getValue(byte[] buffer, int offset, int length, Endian endian) {
         long result = 0;
-        if (endian == Endian.LittleEndian) {
+        if (endian == Endian.LITTLE_ENDIAN) {
             // [12 34 56 78] => 0x78563412
             for (int pos = offset + length - 1; pos >= offset; --pos) {
                 result = (result << 8) | (buffer[pos] & 0xFF);
             }
-        } else if (endian == Endian.BigEndian) {
+        } else if (endian == Endian.BIG_ENDIAN) {
             // [12 34 56 78] => 0x12345678
             int end = offset + length;
             for (int pos = offset; pos < end; ++pos) {
@@ -97,14 +97,14 @@ public interface IntegerData extends ByteArray {
      * @param endian - network order
      */
     static void setValue(long value, byte[] buffer, int offset, int length, Endian endian) {
-        if (endian == Endian.LittleEndian) {
+        if (endian == Endian.LITTLE_ENDIAN) {
             // 0x12345678 => [78 56 34 12]
             int end = offset + length;
             for (int pos = offset; pos < end; ++pos) {
                 buffer[pos] = (byte) (value & 0xFF);
                 value >>= 8;
             }
-        } else if (endian == Endian.BigEndian) {
+        } else if (endian == Endian.BIG_ENDIAN) {
             // 0x12345678 => [12 34 56 78]
             for (int pos = offset + length - 1; pos >= offset; --pos) {
                 buffer[pos] = (byte) (value & 0xFF);

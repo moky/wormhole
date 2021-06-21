@@ -37,21 +37,10 @@ public class UInt8Data extends Data implements IntegerData {
 
     public final int value;
 
-    public UInt8Data(UInt8Data data) {
-        super(data);
-        this.value = data.value;
-    }
-
     public UInt8Data(ByteArray data) {
         super(data);
         assert data.getLength() == 1 : "UInt8Data error: length=" + data.getLength();
         this.value = data.getByte(0) & 0xFF;
-    }
-
-    public UInt8Data(byte[] bytes) {
-        super(bytes, 0, 1);
-        assert bytes.length >= 1 : "UInt8Data error: length=" + bytes.length;
-        this.value = bytes[0] & 0xFF;
     }
 
     public UInt8Data(byte[] bytes, int offset) {
@@ -126,7 +115,7 @@ public class UInt8Data extends Data implements IntegerData {
         if (bytes.length < 1) {
             return null;
         }
-        return new UInt8Data(bytes);
+        return new UInt8Data(bytes, 0);
     }
     public static UInt8Data from(byte[] bytes, int offset) {
         if (bytes.length < (offset + 1)) {

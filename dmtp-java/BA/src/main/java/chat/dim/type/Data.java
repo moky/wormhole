@@ -60,6 +60,7 @@ public class Data implements ByteArray, Cloneable {
         this.buffer = buffer;
         this.offset = offset;
         this.length = length;
+        assert buffer.length >= (offset + length) : "Data length error: " + length + " < " + offset + " + " + length;
     }
 
     /**
@@ -295,16 +296,12 @@ public class Data implements ByteArray, Cloneable {
     }
 
     @Override
-    public Data clone() {
-        Data copy;
-        try {
-            copy = (Data) super.clone();
-        } catch (CloneNotSupportedException e) {
-            e.printStackTrace();
-            return null;
-        }
-        copy.buffer = buffer;
-        copy.offset = offset;
+    public Data clone() throws CloneNotSupportedException {
+        Data copy = (Data) super.clone();
+        byte[] bytes = new byte[length];
+        System.arraycopy(buffer, offset, bytes, 0, length);
+        copy.buffer = bytes;
+        copy.offset = 0;
         copy.length = length;
         return copy;
     }

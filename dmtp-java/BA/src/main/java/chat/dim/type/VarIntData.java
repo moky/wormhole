@@ -37,35 +37,14 @@ public class VarIntData extends Data implements IntegerData {
 
     public final long value;
 
-    public VarIntData(VarIntData data) {
-        super(data);
-        this.value = data.value;
-    }
-
     public VarIntData(ByteArray data, long value) {
         super(data);
-        this.value = value;
-    }
-
-    public VarIntData(byte[] bytes, long value) {
-        super(bytes);
         this.value = value;
     }
 
     public VarIntData(byte[] bytes, int offset, int length, long value) {
         super(bytes, offset, length);
         this.value = value;
-    }
-
-    public VarIntData(long value) {
-        super(getData(value));
-        this.value = value;
-    }
-
-    protected static ByteArray getData(long value) {
-        byte[] buffer = new byte[10];
-        int length = setValue(value, buffer, 0, buffer.length);
-        return new Data(buffer, 0, length);
     }
 
     @Override
@@ -109,10 +88,6 @@ public class VarIntData extends Data implements IntegerData {
         return parse(data.getBuffer(), data.getOffset(), data.getLength());
     }
 
-    public static VarIntData from(ByteArray data, int start) {
-        return parse(data.getBuffer(), data.getOffset() + start, data.getLength() - start);
-    }
-
     public static VarIntData from(byte[] bytes) {
         return parse(bytes, 0, bytes.length);
     }
@@ -122,7 +97,9 @@ public class VarIntData extends Data implements IntegerData {
     }
 
     public static VarIntData from(long value) {
-        return new VarIntData(getData(value), value);
+        byte[] buffer = new byte[10];
+        int length = setValue(value, buffer, 0, buffer.length);
+        return new VarIntData(buffer, 0, length, value);
     }
 
     //
@@ -151,8 +128,7 @@ public class VarIntData extends Data implements IntegerData {
             ch = buffer[pos];
             value |= (ch & 0x7FL) << bits;
         }
-        Data data = new Data(buffer, offset, pos - offset);
-        return new VarIntData(data, value);
+        return new VarIntData(buffer, offset, pos - offset, value);
     }
 
     /**
