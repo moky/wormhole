@@ -44,29 +44,57 @@ public class UInt16Data extends Data implements IntegerData {
 
     public UInt16Data(ByteArray data, int value) {
         super(data);
-        assert data.getLength() == 2 : "UInt16Data error: " + data.getLength();
+        assert data.getLength() == 2 : "UInt16Data error: length=" + data.getLength();
         this.value = value;
     }
 
     public UInt16Data(ByteArray data, Endian endian) {
         super(data);
-        assert data.getLength() == 2 : "UInt16Data error: " + data.getLength();
-        this.value = (int) IntegerData.getValue(data, endian);
+        assert data.getLength() == 2 : "UInt16Data error: length=" + data.getLength();
+        this.value = getValue(data, endian);
     }
 
     public UInt16Data(byte[] bytes, int value) {
         super(bytes, 0, 2);
+        assert bytes.length >= 2 : "UInt16Data error: length=" + bytes.length;
+        this.value = value;
+    }
+
+    public UInt16Data(byte[] bytes, int offset, int value) {
+        super(bytes, offset, 2);
+        assert bytes.length >= (offset + 2) : "UInt16Data error: offset=" + offset + ", length=" + bytes.length;
         this.value = value;
     }
 
     public UInt16Data(byte[] bytes, Endian endian) {
         super(bytes, 0, 2);
-        this.value = (int) IntegerData.getValue(bytes, 0, 2, endian);
+        assert bytes.length >= 2 : "UInt16Data error: length=" + bytes.length;
+        this.value = getValue(bytes, 0, endian);
     }
 
-    public UInt16Data(byte[] bytes, int start, Endian endian) {
-        super(bytes, start, 2);
-        this.value = (int) IntegerData.getValue(bytes, start, 2, endian);
+    public UInt16Data(byte[] bytes, int offset, Endian endian) {
+        super(bytes, offset, 2);
+        assert bytes.length >= (offset + 2) : "UInt16Data error: offset=" + offset + ", length=" + bytes.length;
+        this.value = getValue(bytes, offset, endian);
+    }
+
+    public UInt16Data(int value, Endian endian) {
+        super(getData(value, endian));
+        this.value = value;
+    }
+
+    protected static int getValue(ByteArray data, Endian endian) {
+        assert data.getLength() == 2 : "UInt16Data error: length=" + data.getLength();
+        return (int) IntegerData.getValue(data, endian);
+    }
+    protected static int getValue(byte[] bytes, int offset, Endian endian) {
+        assert bytes.length == offset + 2 : "UInt16Data error: offset=" + offset + ", length=" + bytes.length;
+        return (int) IntegerData.getValue(bytes, offset, 2, endian);
+    }
+    protected static ByteArray getData(int value, Endian endian) {
+        byte[] buffer = new byte[2];
+        IntegerData.setValue(value, buffer, 0, 2, endian);
+        return new Data(buffer);
     }
 
     @Override
@@ -98,9 +126,38 @@ public class UInt16Data extends Data implements IntegerData {
         return value;
     }
 
+    //
+    //  Factories
+    //
+
+    public static UInt16Data from(UInt16Data data) {
+        return data;
+    }
+
+    public static UInt16Data from(ByteArray data, Endian endian) {
+        if (data.getLength() < 2) {
+            return null;
+        } else if (data.getLength() > 2) {
+            data = data.slice(0, 2);
+        }
+        return new UInt16Data(data, getValue(data, endian));
+    }
+
+    public static UInt16Data from(byte[] bytes, Endian endian) {
+        if (bytes.length < 2) {
+            return null;
+        }
+        return new UInt16Data(bytes, getValue(bytes, 0, endian));
+    }
+
+    public static UInt16Data from(byte[] bytes, int offset, Endian endian) {
+        if (bytes.length < (offset + 2)) {
+            return null;
+        }
+        return new UInt16Data(bytes, offset, getValue(bytes, offset, endian));
+    }
+
     public static UInt16Data from(int value, Endian endian) {
-        byte[] buffer = new byte[2];
-        IntegerData.setValue(value, buffer, 0, 2, endian);
-        return new UInt16Data(buffer, value);
+        return new UInt16Data(getData(value, endian), value);
     }
 }

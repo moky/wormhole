@@ -44,18 +44,20 @@ public class UInt8Data extends Data implements IntegerData {
 
     public UInt8Data(ByteArray data) {
         super(data);
-        assert data.getLength() == 1 : "UInt8Data error: " + data.getLength();
+        assert data.getLength() == 1 : "UInt8Data error: length=" + data.getLength();
         this.value = data.getByte(0) & 0xFF;
     }
 
     public UInt8Data(byte[] bytes) {
         super(bytes, 0, 1);
+        assert bytes.length >= 1 : "UInt8Data error: length=" + bytes.length;
         this.value = bytes[0] & 0xFF;
     }
 
-    public UInt8Data(byte[] bytes, int index) {
-        super(bytes, index, 1);
-        this.value = bytes[index] & 0xFF;
+    public UInt8Data(byte[] bytes, int offset) {
+        super(bytes, offset, 1);
+        assert bytes.length >= (offset + 1) : "UInt8Data error: offset=" + offset + ", length=" + bytes.length;
+        this.value = bytes[offset] & 0xFF;
     }
 
     public UInt8Data(byte value) {
@@ -101,5 +103,42 @@ public class UInt8Data extends Data implements IntegerData {
 
     public byte getByteValue() {
         return (byte) (value & 0xFF);
+    }
+
+    //
+    //  Factories
+    //
+
+    public static UInt8Data from(UInt8Data data) {
+        return data;
+    }
+
+    public static UInt8Data from(ByteArray data) {
+        if (data.getLength() < 1) {
+            return null;
+        } else if (data.getLength() > 1) {
+            data = data.slice(0, 1);
+        }
+        return new UInt8Data(data);
+    }
+
+    public static UInt8Data from(byte[] bytes) {
+        if (bytes.length < 1) {
+            return null;
+        }
+        return new UInt8Data(bytes);
+    }
+    public static UInt8Data from(byte[] bytes, int offset) {
+        if (bytes.length < (offset + 1)) {
+            return null;
+        }
+        return new UInt8Data(bytes, offset);
+    }
+
+    public static UInt8Data from(byte value) {
+        return new UInt8Data(value);
+    }
+    public static UInt8Data from(int value) {
+        return new UInt8Data(value);
     }
 }

@@ -52,6 +52,41 @@ public class VarIntData extends Data implements IntegerData {
         this.value = value;
     }
 
+    public VarIntData(byte[] bytes, int offset, int length, long value) {
+        super(bytes, offset, length);
+        this.value = value;
+    }
+
+    public VarIntData(long value) {
+        super(getData(value));
+        this.value = value;
+    }
+
+    protected static ByteArray getData(long value) {
+        byte[] buffer = new byte[10];
+        int length = setValue(value, buffer, 0, buffer.length);
+        return new Data(buffer, 0, length);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof IntegerData) {
+            return value == ((IntegerData) other).getIntValue();
+        } else {
+            return super.equals(other);
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return Long.hashCode(value);
+    }
+
+    @Override
+    public String toString() {
+        return Long.toString(value);
+    }
+
     @Override
     public int getIntValue() {
         return (int) value;
@@ -62,27 +97,32 @@ public class VarIntData extends Data implements IntegerData {
         return value;
     }
 
+    //
+    //  Factories
+    //
+
+    public static VarIntData from(VarIntData data) {
+        return data;
+    }
+
     public static VarIntData from(ByteArray data) {
-        return getValue(data.getBuffer(), data.getOffset(), data.getLength());
+        return parse(data.getBuffer(), data.getOffset(), data.getLength());
     }
 
     public static VarIntData from(ByteArray data, int start) {
-        return getValue(data.getBuffer(), data.getOffset() + start, data.getLength() - start);
+        return parse(data.getBuffer(), data.getOffset() + start, data.getLength() - start);
     }
 
     public static VarIntData from(byte[] bytes) {
-        return getValue(bytes, 0, bytes.length);
+        return parse(bytes, 0, bytes.length);
     }
 
     public static VarIntData from(byte[] bytes, int start) {
-        return getValue(bytes, start, bytes.length - start);
+        return parse(bytes, start, bytes.length - start);
     }
 
     public static VarIntData from(long value) {
-        byte[] buffer = new byte[10];
-        int length = setValue(value, buffer, 0, 10);
-        Data data = new Data(buffer, 0, length);
-        return new VarIntData(data, value);
+        return new VarIntData(getData(value), value);
     }
 
     //
@@ -97,12 +137,17 @@ public class VarIntData extends Data implements IntegerData {
      * @param length - data length limit
      * @return VarIntData
      */
-    private static VarIntData getValue(byte[] buffer, int offset, int length) {
+    private static VarIntData parse(byte[] buffer, int offset, int length) {
         long value = 0;
-        int pos, bits;
+        int bits = 0;
+        int pos = offset;
+        int end = offset + length;
         byte ch = (byte) 0x80;
-        for (pos = offset, bits = 0; (ch & 0x80) != 0; pos += 1, bits += 7) {
-            assert pos < (offset + length) : "out of range: [" + offset + ", " + length + ")";
+        for (; (ch & 0x80) != 0; pos += 1, bits += 7) {
+            if (pos >= end) {
+                //throw new ArrayIndexOutOfBoundsException("out of range: [" + offset + ", " + length + ")");
+                return null;
+            }
             ch = buffer[pos];
             value |= (ch & 0x7FL) << bits;
         }

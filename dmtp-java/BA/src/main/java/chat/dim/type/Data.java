@@ -143,11 +143,11 @@ public class Data implements ByteArray, Cloneable {
         return new String(getBytes(), Charset.forName("UTF-8"));
         //return toHexString();
     }
-    /*
+
+    @Override
     public String toHexString() {
         return DataUtils.hexEncode(buffer, offset, length);
     }
-     */
 
     //
     //  Searching
@@ -273,8 +273,11 @@ public class Data implements ByteArray, Cloneable {
     @Override
     public ByteArray concat(ByteArray... others) {
         ByteArray result = this;
-        for (ByteArray other : others) {
-            result = DataUtils.concat(result, other);
+        for (ByteArray item : others) {
+            if (item == null) {
+                continue;
+            }
+            result = DataUtils.concat(result, item);
         }
         return result;
     }
@@ -282,8 +285,11 @@ public class Data implements ByteArray, Cloneable {
     @Override
     public ByteArray concat(byte[]... others) {
         ByteArray result = this;
-        for (byte[] bytes : others) {
-            result = DataUtils.concat(result, new Data(bytes));
+        for (byte[] item : others) {
+            if (item == null) {
+                continue;
+            }
+            result = DataUtils.concat(result, new Data(item));
         }
         return result;
     }

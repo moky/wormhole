@@ -39,6 +39,8 @@ public interface ByteArray {
     // get data length
     int getLength();
 
+    String toHexString();
+
     /**
      *  Get item value with position
      *

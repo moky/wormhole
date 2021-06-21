@@ -44,29 +44,57 @@ public class UInt32Data extends Data implements IntegerData {
 
     public UInt32Data(ByteArray data, long value) {
         super(data);
-        assert data.getLength() == 4 : "UInt32Data error: " + data.getLength();
+        assert data.getLength() == 4 : "UInt32Data error: length=" + data.getLength();
         this.value = value;
     }
 
     public UInt32Data(ByteArray data, Endian endian) {
         super(data);
-        assert data.getLength() == 4 : "UInt32Data error: " + data.getLength();
-        this.value = IntegerData.getValue(data, endian);
+        assert data.getLength() == 4 : "UInt32Data error: length=" + data.getLength();
+        this.value = getValue(data, endian);
     }
 
     public UInt32Data(byte[] bytes, long value) {
         super(bytes, 0, 4);
+        assert bytes.length >= 4 : "UInt32Data error: length=" + bytes.length;
+        this.value = value;
+    }
+
+    public UInt32Data(byte[] bytes, int offset, int value) {
+        super(bytes, offset, 4);
+        assert bytes.length >= (offset + 4) : "UInt32Data error: offset=" + offset + ", length=" + bytes.length;
         this.value = value;
     }
 
     public UInt32Data(byte[] bytes, Endian endian) {
         super(bytes, 0, 4);
-        this.value = IntegerData.getValue(bytes, 0, 4, endian);
+        assert bytes.length >= 4 : "UInt32Data error: length=" + bytes.length;
+        this.value = getValue(bytes, 0, endian);
     }
 
-    public UInt32Data(byte[] bytes, int start, Endian endian) {
-        super(bytes, start, 4);
-        this.value = IntegerData.getValue(bytes, start, 4, endian);
+    public UInt32Data(byte[] bytes, int offset, Endian endian) {
+        super(bytes, offset, 4);
+        assert bytes.length >= (offset + 4) : "UInt32Data error: offset=" + offset + ", length=" + bytes.length;
+        this.value = getValue(bytes, offset, endian);
+    }
+
+    public UInt32Data(int value, Endian endian) {
+        super(getData(value, endian));
+        this.value = value;
+    }
+
+    protected static int getValue(ByteArray data, Endian endian) {
+        assert data.getLength() == 4 : "UInt32Data error: length=" + data.getLength();
+        return (int) IntegerData.getValue(data, endian);
+    }
+    protected static int getValue(byte[] bytes, int offset, Endian endian) {
+        assert bytes.length == offset + 4 : "UInt32Data error: offset=" + offset + ", length=" + bytes.length;
+        return (int) IntegerData.getValue(bytes, offset, 2, endian);
+    }
+    protected static ByteArray getData(int value, Endian endian) {
+        byte[] buffer = new byte[4];
+        IntegerData.setValue(value, buffer, 0, 4, endian);
+        return new Data(buffer);
     }
 
     @Override
@@ -98,9 +126,38 @@ public class UInt32Data extends Data implements IntegerData {
         return value;
     }
 
-    public static UInt32Data from(long value, Endian endian) {
-        byte[] buffer = new byte[4];
-        IntegerData.setValue(value, buffer, 0, 4, endian);
-        return new UInt32Data(buffer, value);
+    //
+    //  Factories
+    //
+
+    public static UInt32Data from(UInt32Data data) {
+        return data;
+    }
+
+    public static UInt32Data from(ByteArray data, Endian endian) {
+        if (data.getLength() < 4) {
+            return null;
+        } else if (data.getLength() > 4) {
+            data = data.slice(0, 4);
+        }
+        return new UInt32Data(data, getValue(data, endian));
+    }
+
+    public static UInt32Data from(byte[] bytes, Endian endian) {
+        if (bytes.length < 4) {
+            return null;
+        }
+        return new UInt32Data(bytes, getValue(bytes, 0, endian));
+    }
+
+    public static UInt32Data from(byte[] bytes, int offset, Endian endian) {
+        if (bytes.length < (offset + 4)) {
+            return null;
+        }
+        return new UInt32Data(bytes, offset, getValue(bytes, offset, endian));
+    }
+
+    public static UInt32Data from(int value, Endian endian) {
+        return new UInt32Data(getData(value, endian), value);
     }
 }

@@ -32,7 +32,6 @@ package chat.dim.type;
 
 final class DataUtils {
 
-    /*
     private static final char[] HEX_CHARS = {
             '0', '1', '2', '3', '4', '5', '6', '7',
             '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
@@ -52,7 +51,6 @@ final class DataUtils {
         }
         return sb.toString();
     }
-     */
 
     // adjust the position within range [0, len)
     static int adjust(int pos, int len) {
