@@ -41,7 +41,7 @@ public class UInt8Data extends Data implements IntegerData {
 
     public UInt8Data(ByteArray data) {
         super(data);
-        assert data.getLength() == 1 : "UInt8Data error: length=" + data.getLength();
+        assert data.getSize() == 1 : "UInt8Data error: size=" + data.getSize();
         this.value = data.getByte(0) & 0xFF;
     }
 
@@ -105,9 +105,9 @@ public class UInt8Data extends Data implements IntegerData {
     }
 
     public static UInt8Data from(ByteArray data) {
-        if (data.getLength() < 1) {
+        if (data.getSize() < 1) {
             return null;
-        } else if (data.getLength() > 1) {
+        } else if (data.getSize() > 1) {
             data = data.slice(0, 1);
         }
         return new UInt8Data(data);

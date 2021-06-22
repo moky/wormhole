@@ -44,7 +44,7 @@ public class UInt32Data extends Data implements IntegerData {
         super(data);
         this.value = value;
         this.endian = endian;
-        assert data.getLength() == 4 : "UInt32Data error: length=" + data.getLength();
+        assert data.getSize() == 4 : "UInt32Data error: size=" + data.getSize();
     }
 
     public UInt32Data(byte[] bytes, int offset, long value, Endian endian) {
@@ -92,9 +92,9 @@ public class UInt32Data extends Data implements IntegerData {
     }
 
     public static UInt32Data from(ByteArray data, Endian endian) {
-        if (data.getLength() < 4) {
+        if (data.getSize() < 4) {
             return null;
-        } else if (data.getLength() > 4) {
+        } else if (data.getSize() > 4) {
             data = data.slice(0, 4);
         }
         long value = getValue(data, endian);
@@ -127,7 +127,7 @@ public class UInt32Data extends Data implements IntegerData {
     //
 
     private static long getValue(ByteArray data, Endian endian) {
-        assert data.getLength() == 4 : "UInt32Data error: length=" + data.getLength();
+        assert data.getSize() == 4 : "UInt32Data error: size=" + data.getSize();
         return IntegerData.getValue(data, endian);
     }
     private static long getValue(byte[] bytes, int offset, Endian endian) {

@@ -34,12 +34,16 @@ public interface ByteArray {
 
     // get inner buffer
     byte[] getBuffer();
-    // get data offset
+    // get view offset
     int getOffset();
-    // get data length
-    int getLength();
+    // get view size
+    int getSize();
 
     String toHexString();
+
+    boolean equals(ByteArray other);
+    boolean equals(byte[] other);
+    boolean equals(byte[] otherBuffer, int otherOffset, int otherCount);
 
     /**
      *  Get item value with position

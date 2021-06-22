@@ -44,7 +44,7 @@ public class UInt16Data extends Data implements IntegerData {
         super(data);
         this.value = value;
         this.endian = endian;
-        assert data.getLength() == 2 : "UInt16Data error: length=" + data.getLength();
+        assert data.getSize() == 2 : "UInt16Data error: size=" + data.getSize();
     }
 
     public UInt16Data(byte[] bytes, int offset, int value, Endian endian) {
@@ -92,9 +92,9 @@ public class UInt16Data extends Data implements IntegerData {
     }
 
     public static UInt16Data from(ByteArray data, Endian endian) {
-        if (data.getLength() < 2) {
+        if (data.getSize() < 2) {
             return null;
-        } else if (data.getLength() > 2) {
+        } else if (data.getSize() > 2) {
             data = data.slice(0, 2);
         }
         int value = getValue(data, endian);
@@ -127,7 +127,7 @@ public class UInt16Data extends Data implements IntegerData {
     //
 
     private static int getValue(ByteArray data, Endian endian) {
-        assert data.getLength() == 2 : "UInt16Data error: length=" + data.getLength();
+        assert data.getSize() == 2 : "UInt16Data error: size=" + data.getSize();
         return (int) IntegerData.getValue(data, endian);
     }
     private static int getValue(byte[] bytes, int offset, Endian endian) {

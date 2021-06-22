@@ -44,8 +44,8 @@ public class VarIntData extends Data implements IntegerData {
         this.value = value;
     }
 
-    public VarIntData(byte[] bytes, int offset, int length, long value) {
-        super(bytes, offset, length);
+    public VarIntData(byte[] bytes, int offset, int size, long value) {
+        super(bytes, offset, size);
         this.value = value;
     }
 
@@ -87,7 +87,7 @@ public class VarIntData extends Data implements IntegerData {
     }
 
     public static VarIntData from(ByteArray data) {
-        return parse(data.getBuffer(), data.getOffset(), data.getLength());
+        return parse(data.getBuffer(), data.getOffset(), data.getSize());
     }
 
     public static VarIntData from(byte[] bytes) {
@@ -112,15 +112,15 @@ public class VarIntData extends Data implements IntegerData {
      *  Deserialize VarIntData to integer value
      *
      * @param buffer - data buffer
-     * @param offset - data offset
-     * @param length - data length limit
+     * @param offset - data view offset
+     * @param size   - data view size
      * @return VarIntData
      */
-    private static VarIntData parse(byte[] buffer, int offset, int length) {
+    private static VarIntData parse(byte[] buffer, int offset, int size) {
         long value = 0;
         int bits = 0;
         int pos = offset;
-        int end = offset + length;
+        int end = offset + size;
         byte ch = (byte) 0x80;
         for (; (ch & 0x80) != 0; pos += 1, bits += 7) {
             if (pos >= end) {

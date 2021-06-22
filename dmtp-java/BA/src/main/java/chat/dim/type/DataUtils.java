@@ -36,13 +36,13 @@ final class DataUtils {
             '0', '1', '2', '3', '4', '5', '6', '7',
             '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
     };
-    static String hexEncode(byte[] buffer, int offset, int length) {
-        if (length < 1) {
+    static String hexEncode(byte[] buffer, int offset, int size) {
+        if (size < 1) {
             return "";
         }
-        StringBuilder sb = new StringBuilder(length << 1);
+        StringBuilder sb = new StringBuilder(size << 1);
         int pos = offset;
-        int end = offset + length;
+        int end = offset + size;
         byte ch;
         for (; pos < end; ++pos) {
             ch = buffer[pos];
@@ -66,7 +66,7 @@ final class DataUtils {
     }
     static int adjustE(int pos, int len) {
         if (pos < 0) {
-            pos += len;  // count from right hand
+            pos += len;    // count from right hand
             if (pos < 0) {
                 throw new ArrayIndexOutOfBoundsException("error position: " + (pos - len) + ", length: " + len);
             }
@@ -75,7 +75,7 @@ final class DataUtils {
     }
 
     static ByteArray slice(ByteArray data, int start, int end) {
-        if (start == 0 && end == data.getLength()) {
+        if (start == 0 && end == data.getSize()) {
             // whole data
             return data;
         } else if (start < end) {
@@ -88,22 +88,22 @@ final class DataUtils {
     }
 
     static ByteArray concat(ByteArray left, ByteArray right) {
-        if (right.getLength() == 0) {
+        if (right.getSize() == 0) {
             // right is empty, return left directly
             return left;
-        } else if (left.getLength() == 0) {
+        } else if (left.getSize() == 0) {
             // left is empty, create new data from right
-            byte[] joined = new byte[right.getLength()];
-            System.arraycopy(right.getBuffer(), right.getOffset(), joined, 0, right.getLength());
+            byte[] joined = new byte[right.getSize()];
+            System.arraycopy(right.getBuffer(), right.getOffset(), joined, 0, right.getSize());
             return new Data(joined);
-        } else if (left.getBuffer() == right.getBuffer() && (left.getOffset() + left.getLength()) == right.getOffset()) {
+        } else if (left.getBuffer() == right.getBuffer() && (left.getOffset() + left.getSize()) == right.getOffset()) {
             // sticky data, create new data on the same buffer
-            return new Data(left.getBuffer(), left.getOffset(), left.getLength() + right.getLength());
+            return new Data(left.getBuffer(), left.getOffset(), left.getSize() + right.getSize());
         } else {
             // create new data and copy left + right
-            byte[] joined = new byte[left.getLength() + right.getLength()];
-            System.arraycopy(left.getBuffer(), left.getOffset(), joined, 0, left.getLength());
-            System.arraycopy(right.getBuffer(), right.getOffset(), joined, left.getLength(), right.getLength());
+            byte[] joined = new byte[left.getSize() + right.getSize()];
+            System.arraycopy(left.getBuffer(), left.getOffset(), joined, 0, left.getSize());
+            System.arraycopy(right.getBuffer(), right.getOffset(), joined, left.getSize(), right.getSize());
             return new Data(joined);
         }
     }
@@ -135,22 +135,22 @@ final class DataUtils {
      *
      * @param data      - this data object
      * @param subBuffer - sub data buffer
-     * @param subOffset - sub data offset
-     * @param subLength - sub data length
+     * @param subOffset - sub view offset
+     * @param subSize   - sub view size
      * @param start     - start position (include)
      * @param end       - end position (exclude)
      * @return -1 on not found
      */
-    static int find(ByteArray data, byte[] subBuffer, int subOffset, int subLength, int start, int end) {
-        assert subOffset >= 0 : "sub data offset error: " + subOffset;
-        assert subLength >= 0 : "sub data length error: " + subLength;
+    static int find(ByteArray data, byte[] subBuffer, int subOffset, int subSize, int start, int end) {
+        assert subOffset >= 0 : "sub view offset error: " + subOffset;
+        assert subSize >= 0 : "sub view size error: " + subSize;
         assert start < end : "search range error: [" + start + ", " + end + ")";
-        if ((end - start) < subLength || subLength <= 0) {
+        if ((end - start) < subSize || subSize <= 0) {
             return -1;
         }
         byte[] buffer = data.getBuffer();
         start += data.getOffset();
-        end += data.getOffset() - subLength + 1;
+        end += data.getOffset() - subSize + 1;
         int found = -1;
         if (buffer == subBuffer) {
             // same buffer
@@ -168,13 +168,13 @@ final class DataUtils {
         }
         int index;
         for (; start < end; ++start) {
-            for (index = 0; index < subLength; ++index) {
+            for (index = 0; index < subSize; ++index) {
                 if (buffer[start + index] != subBuffer[subOffset + index]) {
                     // not match
                     break;
                 }
             }
-            if (index == subLength) {
+            if (index == subSize) {
                 // got it
                 return start - data.getOffset();
             }
@@ -240,16 +240,16 @@ final class DataUtils {
                     data.resize(copyEnd);
                 } else {
                     // move data to left
-                    System.arraycopy(data.buffer, data.offset, data.buffer, 0, data.length);
+                    System.arraycopy(data.buffer, data.offset, data.buffer, 0, data.size);
                     data.offset = 0;
                 }
             }
             // copy source buffer
             System.arraycopy(source, start, data.buffer, data.offset + index, copyLen);
         }
-        // reset view length
-        if (copyEnd > data.length) {
-            data.length = copyEnd;
+        // reset view size
+        if (copyEnd > data.size) {
+            data.size = copyEnd;
         }
     }
 
@@ -269,17 +269,17 @@ final class DataUtils {
         int copyLen = end - start;
         assert copyLen > 0 : "source range error: [" + start + ", " + end + ")";
         int newLen;
-        if (index < data.length) {
-            newLen = data.length + copyLen;
+        if (index < data.size) {
+            newLen = data.size + copyLen;
         } else {
-            // target position out of range [0, length)
+            // target position out of range [0, size)
             newLen = index + copyLen;
         }
         if (data.buffer == source || newLen > data.buffer.length) {
             // just expend the buffer if it is same to source buffer,
             // even though empty spaces are enough
             data.resize(newLen);
-        } else if (index < (data.length >> 1)) {
+        } else if (index < (data.size >> 1)) {
             // target position is near the head
             if (data.offset >= copyLen) {
                 // left spaces are enough
@@ -290,49 +290,49 @@ final class DataUtils {
                 data.offset -= copyLen;
             } else if ((data.offset + newLen) < data.buffer.length) {
                 // right spaces are enough
-                if (index < data.length) {
+                if (index < data.size) {
                     // move the right part (steps: copyLen)
                     System.arraycopy(data.buffer, data.offset + index,
-                            data.buffer, data.offset + index + copyLen, data.length - index);
+                            data.buffer, data.offset + index + copyLen, data.size - index);
                 }
             } else {
                 // move left part
                 System.arraycopy(data.buffer, data.offset, data.buffer, 0, index);
                 // move the right part
                 System.arraycopy(data.buffer, data.offset + index,
-                        data.buffer, index + copyLen, data.length - index);
+                        data.buffer, index + copyLen, data.size - index);
                 data.offset = 0;
             }
         } else {
             // target position is near the tail?
             if ((data.offset + newLen) < data.buffer.length) {
                 // right spaces are enough
-                if (index < data.length) {
+                if (index < data.size) {
                     // move the right part (steps: copyLen)
                     System.arraycopy(data.buffer, data.offset + index,
-                            data.buffer, data.offset + index + copyLen, data.length - index);
+                            data.buffer, data.offset + index + copyLen, data.size - index);
                 }
-            } else if (data.offset >= (newLen - data.length)) {
+            } else if (data.offset >= (newLen - data.size)) {
                 // left spaces are enough, move left part/whole data (steps: -copyLen)
                 System.arraycopy(data.buffer, data.offset,
-                        data.buffer, data.offset - copyLen, Math.min(index, data.length));
+                        data.buffer, data.offset - copyLen, Math.min(index, data.size));
                 data.offset -= copyLen;
-            } else if (index < data.length) {
+            } else if (index < data.size) {
                 // move left part
                 System.arraycopy(data.buffer, data.offset, data.buffer, 0, index);
                 // move the right part
                 System.arraycopy(data.buffer, data.offset + index,
-                        data.buffer, index + copyLen, data.length - index);
+                        data.buffer, index + copyLen, data.size - index);
                 data.offset = 0;
             } else {
                 // move the whole buffer
-                System.arraycopy(data.buffer, data.offset, data.buffer, 0, data.length);
+                System.arraycopy(data.buffer, data.offset, data.buffer, 0, data.size);
                 data.offset = 0;
             }
         }
         // copy source buffer
         System.arraycopy(source, start, data.buffer, data.offset + index, copyLen);
-        data.length = newLen;
+        data.size = newLen;
     }
 
     /**
@@ -343,7 +343,7 @@ final class DataUtils {
      * @param value - byte value
      */
     static void insert(MutableData data, int index, byte value) {
-        assert 0 <= index && index < data.length : "index out of range: " + index + ", " + data.length;
+        assert 0 <= index && index < data.size : "index out of range: " + index + ", " + data.size;
         if (index == 0) {
             // insert to the head
             if (data.offset > 0) {
@@ -351,14 +351,14 @@ final class DataUtils {
                 data.offset -= 1;
             } else {
                 // no empty space before the queue
-                if (data.length >= data.buffer.length) {
+                if (data.size >= data.buffer.length) {
                     // the buffer is full, expand it
                     data.expands();
                 }
                 // move the queue to right
-                System.arraycopy(data.buffer, 0, data.buffer, 1, data.length);
+                System.arraycopy(data.buffer, 0, data.buffer, 1, data.size);
             }
-        } else if (index < (data.length >> 1)) {
+        } else if (index < (data.size >> 1)) {
             // target position is near the head
             if (data.offset > 0) {
                 // empty spaces found before the queue, move the left part
@@ -366,20 +366,20 @@ final class DataUtils {
                 data.offset -= 1;
             } else {
                 // no empty space before the queue
-                if (data.length >= data.buffer.length) {
+                if (data.size >= data.buffer.length) {
                     // the space is full, expand it
                     data.expands();
                 }
                 // move the right part
                 System.arraycopy(data.buffer, data.offset + index,
-                        data.buffer, data.offset + index + 1, data.length - index);
+                        data.buffer, data.offset + index + 1, data.size - index);
             }
         } else {
             // target position is near the tail
-            if ((data.offset + data.length) < data.buffer.length) {
+            if ((data.offset + data.size) < data.buffer.length) {
                 // empty spaces found after the queue, move the right part
                 System.arraycopy(data.buffer, data.offset + index,
-                        data.buffer, data.offset + index + 1, data.length - index);
+                        data.buffer, data.offset + index + 1, data.size - index);
             } else if (data.offset > 0) {
                 // empty spaces found before the queue, move the left part
                 System.arraycopy(data.buffer, data.offset, data.buffer, data.offset - 1, index);
@@ -389,11 +389,11 @@ final class DataUtils {
                 data.expands();
                 // move the right part
                 System.arraycopy(data.buffer, data.offset + index,
-                        data.buffer, data.offset + index + 1, data.length - index);
+                        data.buffer, data.offset + index + 1, data.size - index);
             }
         }
         data.buffer[data.offset + index] = value;
-        data.length += 1;
+        data.size += 1;
     }
 
     /**
@@ -404,19 +404,19 @@ final class DataUtils {
      * @return element value removed
      */
     static byte remove(MutableData data, int index) {
-        assert 0 < index && index < (data.length - 1) : "index out of range: " + index + ", " + data.length;
+        assert 0 < index && index < (data.size - 1) : "index out of range: " + index + ", " + data.size;
         // remove inside element
         byte erased = data.buffer[data.offset + index];
-        if (index < (data.length >> 1)) {
+        if (index < (data.size >> 1)) {
             // target position is near the head, move the left part
             System.arraycopy(data.buffer, data.offset, data.buffer, data.offset + 1, index);
             data.offset += 1;
         } else {
             // target position is near the tail, move the right part
             System.arraycopy(data.buffer, data.offset + index + 1,
-                    data.buffer, data.offset + index, data.length - index - 1);
+                    data.buffer, data.offset + index, data.size - index - 1);
         }
-        data.length -= 1;
+        data.size -= 1;
         return erased;
     }
 }

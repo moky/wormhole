@@ -49,64 +49,64 @@ public interface IntegerData extends ByteArray {
     //
 
     /**
-     *  Get long integer value from data buffer with range [offset, offset + length)
+     *  Get long integer value from data buffer with range [offset, offset + size)
      *
      * @param buffer - data buffer
-     * @param offset - data offset
-     * @param length - data length
+     * @param start  - data view offset
+     * @param size   - data view size
      * @param endian - network order
      * @return long value
      */
-    static long getValue(byte[] buffer, int offset, int length, Endian endian) {
+    static long getValue(byte[] buffer, int start, int size, Endian endian) {
         long result = 0;
         if (endian == Endian.LITTLE_ENDIAN) {
             // [12 34 56 78] => 0x78563412
-            for (int pos = offset + length - 1; pos >= offset; --pos) {
+            for (int pos = start + size - 1; pos >= start; --pos) {
                 result = (result << 8) | (buffer[pos] & 0xFF);
             }
         } else if (endian == Endian.BIG_ENDIAN) {
             // [12 34 56 78] => 0x12345678
-            int end = offset + length;
-            for (int pos = offset; pos < end; ++pos) {
+            int end = start + size;
+            for (int pos = start; pos < end; ++pos) {
                 result = (result << 8) | (buffer[pos] & 0xFF);
             }
         }
         return result;
     }
     static long getValue(ByteArray data, int start, int size, Endian endian) {
-        assert start + size < data.getLength()
-                : "out of range: start=" + start + ", size=" + size + ", len=" + data.getLength();
+        assert start + size < data.getSize()
+                : "out of range: start=" + start + ", size=" + size + ", view length=" + data.getSize();
         return getValue(data.getBuffer(), data.getOffset() + start, size, endian);
     }
     static long getValue(ByteArray data, int size, Endian endian) {
-        assert size < data.getLength() : "out of range: size=" + size + ", len=" + data.getLength();
+        assert size < data.getSize() : "out of range: size=" + size + ", view length=" + data.getSize();
         return getValue(data.getBuffer(), data.getOffset(), size, endian);
     }
     static long getValue(ByteArray data, Endian endian) {
-        assert 0 < data.getLength() : "data empty";
-        return getValue(data.getBuffer(), data.getOffset(), data.getLength(), endian);
+        assert 0 < data.getSize() : "data empty";
+        return getValue(data.getBuffer(), data.getOffset(), data.getSize(), endian);
     }
 
     /**
-     *  Set long integer value into data buffer with length
+     *  Set long integer value into data buffer with size
      *
      * @param value  - integer value
      * @param buffer - data buffer
      * @param offset - data offset
-     * @param length - data length
+     * @param size   - data size
      * @param endian - network order
      */
-    static void setValue(long value, byte[] buffer, int offset, int length, Endian endian) {
+    static void setValue(long value, byte[] buffer, int offset, int size, Endian endian) {
         if (endian == Endian.LITTLE_ENDIAN) {
             // 0x12345678 => [78 56 34 12]
-            int end = offset + length;
+            int end = offset + size;
             for (int pos = offset; pos < end; ++pos) {
                 buffer[pos] = (byte) (value & 0xFF);
                 value >>= 8;
             }
         } else if (endian == Endian.BIG_ENDIAN) {
             // 0x12345678 => [12 34 56 78]
-            for (int pos = offset + length - 1; pos >= offset; --pos) {
+            for (int pos = offset + size - 1; pos >= offset; --pos) {
                 buffer[pos] = (byte) (value & 0xFF);
                 value >>= 8;
             }
@@ -121,6 +121,6 @@ public interface IntegerData extends ByteArray {
         setValue(value, data.getBuffer(), data.getOffset(), size, endian);
     }
     static void setValue(long value, MutableByteArray data, Endian endian) {
-        setValue(value, data.getBuffer(), data.getOffset(), data.getLength(), endian);
+        setValue(value, data.getBuffer(), data.getOffset(), data.getSize(), endian);
     }
 }
