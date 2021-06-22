@@ -52,9 +52,9 @@ public class TagLengthValue<T extends Triad.Tag, L extends Triad.Length, V exten
 
     public TagLengthValue(Triad<T, L, V> tlv) {
         super(tlv);
-        tag = tlv.getTagField();
-        length = tlv.getLengthField();
-        value = tlv.getValueField();
+        tag = tlv.getTag();
+        length = tlv.getLength();
+        value = tlv.getValue();
     }
 
     public TagLengthValue(ByteArray data, T type, L length, V value) {
@@ -65,17 +65,17 @@ public class TagLengthValue<T extends Triad.Tag, L extends Triad.Length, V exten
     }
 
     @Override
-    public T getTagField() {
+    public T getTag() {
         return tag;
     }
 
     @Override
-    public L getLengthField() {
+    public L getLength() {
         return length;
     }
 
     @Override
-    public V getValueField() {
+    public V getValue() {
         return value;
     }
 

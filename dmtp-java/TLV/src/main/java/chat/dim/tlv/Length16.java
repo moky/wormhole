@@ -67,9 +67,9 @@ public class Length16 extends UInt16Data implements Triad.Length {
     }
 
     public static Length16 from(ByteArray data) {
-        if (data.getLength() < 2) {
+        if (data.getSize() < 2) {
             return null;
-        } else if (data.getLength() > 2) {
+        } else if (data.getSize() > 2) {
             data = data.slice(0, 2);
         }
         return new Length16(DataConvert.getUInt16Data(data));

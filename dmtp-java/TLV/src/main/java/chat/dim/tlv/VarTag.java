@@ -57,16 +57,16 @@ public class VarTag extends Data implements Triad.Tag {
         this.length = length;
         this.content = content;
         assert content != null : "Variable Tag error";
-        assert data.getLength() == (length.getLength() + content.getLength()) : "VarTag error: " + data.getLength();
+        assert data.getSize() == (length.getSize() + content.getSize()) : "VarTag error: " + data.getSize();
     }
 
     protected static IntegerData getLength(ByteArray data) {
         return VarIntData.from(data);
     }
     protected static ByteArray getContent(ByteArray data, IntegerData length) {
-        int offset = length.getLength();
+        int offset = length.getSize();
         int size = length.getIntValue();
-        if ((offset + size) > data.getLength()) {
+        if ((offset + size) > data.getSize()) {
             return null;
         }
         return data.slice(offset, offset + size);
@@ -89,18 +89,18 @@ public class VarTag extends Data implements Triad.Tag {
         if (content == null) {
             return null;
         }
-        int size = length.getLength() + content.getLength();
-        if (size < data.getLength()) {
+        int size = length.getSize() + content.getSize();
+        if (size < data.getSize()) {
             data = data.slice(0, size);
         }
         return new VarTag(data, length, content);
     }
     public static VarTag from(IntegerData length, ByteArray content) {
         if (length == null) {
-            length = VarIntData.from(content.getLength());
+            length = VarIntData.from(content.getSize());
         } else {
-            assert length.getIntValue() == content.getLength() :
-                    "VarTag error: " + length.getIntValue() + ", " + content.getLength();
+            assert length.getIntValue() == content.getSize() :
+                    "VarTag error: " + length.getIntValue() + ", " + content.getSize();
         }
         ByteArray data = length.concat(content);
         return new VarTag(data, length, content);

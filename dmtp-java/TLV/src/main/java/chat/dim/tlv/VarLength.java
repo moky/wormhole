@@ -2,12 +2,12 @@
  *
  *  TLV: Tag Length Value
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,52 +30,36 @@
  */
 package chat.dim.tlv;
 
-import chat.dim.network.DataConvert;
 import chat.dim.type.ByteArray;
-import chat.dim.type.UInt16Data;
+import chat.dim.type.VarIntData;
 
-/*
- *       0                   1                   2                   3
- *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |         Type                  |            Length             |
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |                         Value (variable)                ....
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- */
+public class VarLength extends VarIntData implements Triad.Length {
 
-public class Tag16 extends UInt16Data implements Triad.Tag {
-
-    public Tag16(UInt16Data data) {
-        super(data, data.value, data.endian);
+    public VarLength(VarIntData data) {
+        super(data, data.value);
     }
 
-    public Tag16(ByteArray data, int value, Endian endian) {
-        super(data, value, endian);
+    public VarLength(ByteArray data, long value) {
+        super(data, value);
     }
 
     //
     //  Factories
     //
 
-    public static Tag16 from(Tag16 tag) {
-        return tag;
+    public static VarLength from(VarLength length) {
+        return length;
     }
 
-    public static Tag16 from(UInt16Data data) {
-        return new Tag16(data, data.value, data.endian);
+    public static VarLength from(VarIntData data) {
+        return new VarLength(data, data.value);
     }
 
-    public static Tag16 from(ByteArray data) {
-        if (data.getSize() < 2) {
-            return null;
-        } else if (data.getSize() > 2) {
-            data = data.slice(0, 2);
-        }
-        return new Tag16(DataConvert.getUInt16Data(data));
+    public static VarLength from(ByteArray data) {
+        return new VarLength(VarIntData.from(data));
     }
 
-    public static Tag16 from(int value) {
-        return new Tag16(DataConvert.getUInt16Data(value));
+    public static VarLength from(long value) {
+        return new VarLength(VarIntData.from(value));
     }
 }

@@ -51,24 +51,25 @@ public abstract class Parser<A extends Triad<T,L,V>, T extends Triad.Tag, L exte
     @Override
     public A parseTriad(ByteArray data) {
         // get tag field
-        T type = parseTagField(data);
+        T type = parseTag(data);
         if (type == null) {
             return null;
         }
-        int offset = type.getLength();
+        int offset = type.getSize();
         int valueLength;
         // get length field
-        L length = parseLengthField(data.slice(offset), type);
+        L length = parseLength(data.slice(offset), type);
         if (length == null) {
-            valueLength = data.getLength() - offset;
+            // if length not defined, use the rest data as value
+            valueLength = data.getSize() - offset;
         } else {
             valueLength = length.getIntValue();
-            offset += length.getLength();
+            offset += length.getSize();
         }
         // get value field
-        V value = parseValueField(data.slice(offset, offset + valueLength), type, length);
+        V value = parseValue(data.slice(offset, offset + valueLength), type, length);
         if (value != null) {
-            offset += value.getLength();
+            offset += value.getSize();
         }
         return createTriad(data.slice(0, offset), type, length, value);
     }
@@ -78,7 +79,7 @@ public abstract class Parser<A extends Triad<T,L,V>, T extends Triad.Tag, L exte
     public List<A> parseAll(ByteArray data) {
         List<A> array = new ArrayList<>();
         A item;
-        while (data.getLength() > 0) {
+        while (data.getSize() > 0) {
             item = parseTriad(data);
             if (item == null) {
                 // data error
@@ -86,8 +87,8 @@ public abstract class Parser<A extends Triad<T,L,V>, T extends Triad.Tag, L exte
             }
             array.add(item);
             // next item
-            assert item.getLength() > 0 : "Triad error";
-            data = data.slice(item.getLength());
+            assert item.getSize() > 0 : "Triad error";
+            data = data.slice(item.getSize());
         }
         return array;
     }

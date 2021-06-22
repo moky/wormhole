@@ -47,9 +47,9 @@ import chat.dim.type.IntegerData;
 
 public interface Triad<T extends Triad.Tag, L extends Triad.Length, V extends Triad.Value> extends ByteArray {
 
-    T getTagField();
-    L getLengthField();
-    V getValueField();
+    T getTag();
+    L getLength();
+    V getValue();
 
     interface Tag extends ByteArray { }
     interface Length extends ByteArray, IntegerData { }
@@ -61,11 +61,11 @@ public interface Triad<T extends Triad.Tag, L extends Triad.Length, V extends Tr
      */
     interface Parser<A extends Triad<T, L, V>, T extends Tag, L extends Length, V extends Value> {
 
-        T parseTagField(ByteArray data);
+        T parseTag(ByteArray data);
 
-        L parseLengthField(ByteArray data, T type);
+        L parseLength(ByteArray data, T type);
 
-        V parseValueField(ByteArray data, T type, L length);
+        V parseValue(ByteArray data, T type, L length);
 
         A parseTriad(ByteArray data);
 

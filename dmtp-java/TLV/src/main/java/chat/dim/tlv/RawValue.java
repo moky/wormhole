@@ -49,8 +49,8 @@ public class RawValue extends Data implements Triad.Value {
         super(data);
     }
 
-    public RawValue(byte[] bytes, int offset, int length) {
-        super(bytes, offset, length);
+    public RawValue(byte[] bytes, int offset, int size) {
+        super(bytes, offset, size);
     }
 
     public RawValue(byte[] bytes) {
