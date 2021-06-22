@@ -2,12 +2,12 @@
  *
  *  DMTP: Direct Message Transfer Protocol
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.dmtp.fields;
+package chat.dim.tlv;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -36,96 +36,86 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import chat.dim.dmtp.values.BinaryValue;
-import chat.dim.dmtp.values.StringValue;
-import chat.dim.dmtp.values.TimestampValue;
-import chat.dim.dmtp.values.TypeValue;
 import chat.dim.type.ByteArray;
-import chat.dim.type.MutableData;
 
-public class FieldsValue extends FieldValue implements Map<String, Object> {
+public class MapValue<F extends Field> extends RawValue implements Map<Triad.Tag, Triad.Value> {
 
-    private final Map<String, Object> dictionary;
+    private final Map<Triad.Tag, Triad.Value> dictionary = new HashMap<>();
 
-    public FieldsValue(ByteArray data, List<Field> fields) {
+    public MapValue(ByteArray data, List<F> fields) {
         super(data);
-        dictionary = new HashMap<>();
-        for (Field item : fields) {
-            put(item.tag, item.value);
+        for (F item : fields) {
+            if (item.getValue() == null) {
+                dictionary.remove(item.getTag());
+            } else {
+                dictionary.put(item.getTag(), item.getValue());
+            }
         }
     }
 
-    public FieldsValue(List<Field> fields) {
-        this(build(fields), fields);
+    public MapValue(List<F> fields) {
+        this(concat(fields), fields);
     }
 
-    private static ByteArray build(List<Field> fields) {
-        int length = 0;
-        for (Field item : fields) {
-            length += item.getLength();
+    private static<F extends Field> ByteArray concat(List<F> fields) {
+        if (fields == null || fields.isEmpty()) {
+            return null;
         }
-        MutableData data = new MutableData(length);
-        for (Field item : fields) {
-            data.append(item);
+        ByteArray data = fields.get(0);
+        for (int i = 1; i < fields.size(); ++i) {
+            data = data.concat(fields.get(i));
         }
         return data;
     }
 
-    @SuppressWarnings("unused")
-    public static FieldsValue parse(ByteArray data, FieldName type, FieldLength length) {
-        // parse fields
-        List<Field> fields = Field.parseAll(data);
-        return new FieldsValue(data, fields);
-    }
-
-    private void put(FieldName tag, FieldValue value) {
-        if (value == null) {
-            dictionary.remove(tag.name);
+    public String getStringValue(StringTag tag) {
+        Triad.Value value = dictionary.get(tag);
+        if (value instanceof StringValue) {
+            return ((StringValue) value).string;
         } else {
-            dictionary.put(tag.name, value);
-        }
-    }
-
-    public Object get(FieldName tag) {
-        return get(tag.name);
-    }
-
-    protected String getStringValue(FieldName tag) {
-        StringValue value = (StringValue) get(tag.name);
-        if (value == null) {
             return null;
         }
-        return value.string;
     }
 
-    protected int getTypeValue(FieldName tag) {
-        TypeValue value = (TypeValue) get(tag.name);
-        if (value == null) {
+    public long getLongValue(StringTag tag) {
+        Triad.Value value = dictionary.get(tag);
+        if (value instanceof Value32) {
+            return ((Value32) value).value;
+        } else {
             return 0;
         }
-        return value.value;
     }
 
-    protected long getTimestampValue(FieldName tag) {
-        TimestampValue value = (TimestampValue) get(tag.name);
-        if (value == null) {
+    public int getShortValue(StringTag tag) {
+        Triad.Value value = dictionary.get(tag);
+        if (value instanceof Value16) {
+            return ((Value16) value).value;
+        } else {
             return 0;
         }
-        return value.value;
     }
 
-    protected ByteArray getBinaryValue(FieldName tag) {
-        return (BinaryValue) get(tag.name);
+    public int getByteValue(StringTag tag) {
+        Triad.Value value = dictionary.get(tag);
+        if (value instanceof Value8) {
+            return ((Value8) value).value;
+        } else {
+            return 0;
+        }
     }
 
-    //
-    //  Map interfaces
-    //
+    protected ByteArray getBinaryValue(StringTag tag) {
+        return dictionary.get(tag);
+    }
 
     @Override
     public String toString() {
         return dictionary.toString();
     }
+
+    //
+    //  Map
+    //
 
     @Override
     public int size() {
@@ -139,9 +129,6 @@ public class FieldsValue extends FieldValue implements Map<String, Object> {
 
     @Override
     public boolean containsKey(Object key) {
-        if (key instanceof FieldName) {
-            key = ((FieldName) key).name;
-        }
         return dictionary.containsKey(key);
     }
 
@@ -151,27 +138,22 @@ public class FieldsValue extends FieldValue implements Map<String, Object> {
     }
 
     @Override
-    public Object get(Object key) {
-        if (key instanceof FieldName) {
-            key = ((FieldName) key).name;
-        }
+    public Triad.Value get(Object key) {
         return dictionary.get(key);
     }
 
     @Override
-    public Object put(String key, Object value) {
+    public Triad.Value put(Triad.Tag key, Triad.Value value) {
         throw new UnsupportedOperationException("immutable!");
-        //return dictionary.put(key, value);
     }
 
     @Override
-    public Object remove(Object key) {
+    public Triad.Value remove(Object key) {
         throw new UnsupportedOperationException("immutable!");
-        //return dictionary.remove(key);
     }
 
     @Override
-    public void putAll(Map<? extends String, ?> m) {
+    public void putAll(Map<? extends Triad.Tag, ? extends Triad.Value> m) {
         throw new UnsupportedOperationException("immutable!");
     }
 
@@ -181,17 +163,17 @@ public class FieldsValue extends FieldValue implements Map<String, Object> {
     }
 
     @Override
-    public Set<String> keySet() {
+    public Set<Triad.Tag> keySet() {
         return dictionary.keySet();
     }
 
     @Override
-    public Collection<Object> values() {
+    public Collection<Triad.Value> values() {
         return dictionary.values();
     }
 
     @Override
-    public Set<Entry<String, Object>> entrySet() {
+    public Set<Entry<Triad.Tag, Triad.Value>> entrySet() {
         return dictionary.entrySet();
     }
 }

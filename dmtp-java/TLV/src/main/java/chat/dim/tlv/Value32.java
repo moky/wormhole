@@ -1,13 +1,13 @@
 /* license: https://mit-license.org
  *
- *  DMTP: Direct Message Transfer Protocol
+ *  TLV: Tag Length Value
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,42 +28,57 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.dmtp.values;
+package chat.dim.tlv;
 
-import chat.dim.dmtp.fields.FieldLength;
-import chat.dim.dmtp.fields.FieldName;
-import chat.dim.dmtp.fields.FieldValue;
+import chat.dim.network.DataConvert;
 import chat.dim.type.ByteArray;
-import chat.dim.type.UInt8Data;
+import chat.dim.type.UInt32Data;
 
-public class TypeValue extends FieldValue {
+/**
+ *  Integer Value (32 bits)
+ *  ~~~~~~~~~~~~~~~~~~~~~~~
+ *
+ *  Network Byte Order
+ */
+public class Value32 extends UInt32Data implements Triad.Value {
 
-    public final int value;
+    public static final Value32 ZERO = from(UInt32Data.ZERO);
 
-    public TypeValue(ByteArray data) {
-        super(data.slice(0, 1));
-        this.value = data.getByte(0) & 0xFF;
+    public Value32(UInt32Data data) {
+        super(data, data.value, data.endian);
     }
 
-    public TypeValue(ByteArray data, int value) {
-        super(data);
-        this.value = value;
+    public Value32(ByteArray data, long value, Endian endian) {
+        super(data, value, endian);
     }
 
-    public TypeValue(int value) {
-        this(new UInt8Data(value), value);
+    //
+    //  Factories
+    //
+
+    public static Value32 from(Value32 tag) {
+        return tag;
     }
 
-    public TypeValue(Integer value) {
-        this(value.intValue());
+    public static Value32 from(UInt32Data data) {
+        return new Value32(data, data.value, data.endian);
     }
 
-    @Override
-    public String toString() {
-        return Integer.toString(value);
+    public static Value32 from(ByteArray data) {
+        if (data.getSize() < 4) {
+            return null;
+        } else if (data.getSize() > 4) {
+            data = data.slice(0, 4);
+        }
+        return new Value32(DataConvert.getUInt32Data(data));
     }
 
-    public static TypeValue parse(ByteArray data, FieldName type, FieldLength length) {
-        return new TypeValue(data.getByte(0));
+    public static Value32 from(long value) {
+        return new Value32(DataConvert.getUInt32Data(value));
+    }
+
+    // parse value with tag & length
+    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+        return from(data);
     }
 }

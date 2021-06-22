@@ -34,7 +34,7 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 
 import chat.dim.dmtp.protocol.Command;
-import chat.dim.dmtp.values.LocationValue;
+import chat.dim.dmtp.protocol.LocationValue;
 import chat.dim.mtp.Pool;
 
 public abstract class Client extends Node {

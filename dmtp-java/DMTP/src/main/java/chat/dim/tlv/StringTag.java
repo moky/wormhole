@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  TLV: Tag Length Value
+ *  DMTP: Direct Message Transfer Protocol
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -30,48 +30,69 @@
  */
 package chat.dim.tlv;
 
+import java.nio.charset.Charset;
+
 import chat.dim.type.ByteArray;
+import chat.dim.type.Data;
+import chat.dim.type.IntegerData;
 import chat.dim.type.VarIntData;
 
-/**
- *  Variable Length
- *  ~~~~~~~~~~~~~~~
- */
-public class VarLength extends VarIntData implements Triad.Length {
+public class StringTag extends VarTag {
 
-    public static final VarLength ZERO = from(VarIntData.ZERO);
+    public final String string;
 
-    public VarLength(VarIntData data) {
-        super(data, data.value);
+    public StringTag(VarTag tag, String string) {
+        super(tag, tag.length, tag.content);
+        this.string = string;
     }
 
-    public VarLength(ByteArray data, long value) {
-        super(data, value);
+    public StringTag(ByteArray data, IntegerData length, ByteArray content, String string) {
+        super(data, length, content);
+        this.string = string;
+    }
+
+    @Override
+    public String toString() {
+        return string;
     }
 
     //
     //  Factories
     //
 
-    public static VarLength from(VarLength length) {
-        return length;
+    public static StringTag from(StringTag tag) {
+        return tag;
     }
 
-    public static VarLength from(VarIntData data) {
-        return new VarLength(data, data.value);
+    public static StringTag from(VarTag tag) {
+        return new StringTag(tag, getString(tag.content));
     }
 
-    public static VarLength from(ByteArray data) {
-        VarIntData var = VarIntData.from(data);
-        return var == null ? null : new VarLength(var);
+    public static StringTag from(ByteArray data) {
+        VarTag tag = VarTag.from(data);
+        return tag == null ? null : new StringTag(tag, getString(tag.content));
     }
 
-    public static VarLength from(long value) {
-        return new VarLength(VarIntData.from(value));
+    public static StringTag from(String name) {
+        ByteArray content = getContent(name);
+        IntegerData length = VarIntData.from(content.getSize());
+        ByteArray data = length.concat(content);
+        return new StringTag(data, length, content, name);
     }
 
-    // parse length with tag
-    public static Triad.Length parse(ByteArray data, Triad.Tag tag) {
+    // parse tag
+    public static Triad.Tag parse(ByteArray data) {
         return from(data);
+    }
+
+    //
+    //  Converting
+    //
+
+    private static String getString(ByteArray content) {
+        return new String(content.getBytes(), Charset.forName("UTF-8"));
+    }
+    private static ByteArray getContent(String name) {
+        return new Data(name.getBytes(Charset.forName("UTF-8")));
     }
 }

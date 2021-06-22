@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  TLV: Tag Length Value
+ *  DMTP: Direct Message Transfer Protocol
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,55 +28,54 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tlv;
+package chat.dim.dmtp.protocol;
 
+import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
-import chat.dim.type.Data;
 
-/*
- *       0                   1                   2                   3
- *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |         Type                  |            Length             |
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |                         Value (variable)                ....
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- */
+public class SourceAddressValue extends MappedAddressValue {
 
-public class RawValue extends Data implements Triad.Value {
+    /*  SOURCE-ADDRESS
+     *  ~~~~~~~~~~~~~~
+     *
+     *  The SOURCE-ADDRESS attribute is present in Binding Responses.  It
+     *  indicates the source IP address and port that the server is sending
+     *  the response from.  Its syntax is identical to that of MAPPED-
+     *  ADDRESS.
+     */
 
-    public static final RawValue ZERO = from(Data.ZERO);
-
-    public RawValue(ByteArray data) {
-        super(data);
+    public SourceAddressValue(MappedAddressValue value) {
+        super(value, value.ip, value.port, value.family);
     }
 
-    public RawValue(byte[] bytes, int offset, int size) {
-        super(bytes, offset, size);
-    }
-
-    public RawValue(byte[] bytes) {
-        super(bytes, 0, bytes.length);
+    public SourceAddressValue(ByteArray data, String ip, int port, byte family) {
+        super(data, ip, port, family);
     }
 
     //
     //  Factories
     //
 
-    public static RawValue from(RawValue value) {
+    public static SourceAddressValue from(SourceAddressValue value) {
         return value;
     }
 
-    public static RawValue from(ByteArray data) {
-        return new RawValue(data);
+    public static SourceAddressValue from(MappedAddressValue value) {
+        return new SourceAddressValue(value);
     }
 
-    public static RawValue from(byte[] bytes) {
-        return new RawValue(bytes);
+    public static SourceAddressValue from(ByteArray data) {
+        MappedAddressValue value = MappedAddressValue.from(data);
+        return value == null ? null : new SourceAddressValue(value);
     }
 
-    public static RawValue from(byte[] bytes, int offset, int size) {
-        return new RawValue(bytes, offset, size);
+    public static SourceAddressValue from(String ip, int port, byte family) {
+        MappedAddressValue value = MappedAddressValue.from(ip, port, family);
+        return new SourceAddressValue(value, ip, port, family);
+    }
+    public static SourceAddressValue from(String ip, int port) {
+        MappedAddressValue value = MappedAddressValue.from(ip, port);
+        return new SourceAddressValue(value, ip, port, value.family);
     }
 
     // parse value with tag & length

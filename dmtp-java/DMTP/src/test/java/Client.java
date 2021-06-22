@@ -11,8 +11,8 @@ import chat.dim.dmtp.ContactManager;
 import chat.dim.dmtp.LocationDelegate;
 import chat.dim.dmtp.Session;
 import chat.dim.dmtp.protocol.Command;
+import chat.dim.dmtp.protocol.LocationValue;
 import chat.dim.dmtp.protocol.Message;
-import chat.dim.dmtp.values.LocationValue;
 import chat.dim.mtp.task.Departure;
 import chat.dim.type.Data;
 import chat.dim.udp.Connection;
@@ -71,13 +71,13 @@ public class Client extends chat.dim.dmtp.Client {
         if (super.sayHello(destination)) {
             return true;
         }
-        Command cmd = Command.Hello.create(getIdentifier());
+        Command cmd = Command.createHelloCommand(getIdentifier());
         sendCommand(cmd, destination);
         return true;
     }
 
     public boolean call(String identifier) {
-        Command cmd = Command.Call.create(identifier);
+        Command cmd = Command.createCallCommand(identifier);
         sendCommand(cmd, serverAddress);
         return true;
     }

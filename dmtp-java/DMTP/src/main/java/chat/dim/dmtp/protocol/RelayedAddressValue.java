@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  TLV: Tag Length Value
+ *  DMTP: Direct Message Transfer Protocol
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,55 +28,53 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tlv;
+package chat.dim.dmtp.protocol;
 
+import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
-import chat.dim.type.Data;
 
-/*
- *       0                   1                   2                   3
- *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |         Type                  |            Length             |
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |                         Value (variable)                ....
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- */
+public class RelayedAddressValue extends MappedAddressValue {
 
-public class RawValue extends Data implements Triad.Value {
+    /*  RELAYED-ADDRESS
+     *  ~~~~~~~~~~~~~~~
+     *
+     *  The RELAYED-ADDRESS attribute is present in Allocate responses.  It
+     *  specifies the address and port that the server allocated to the
+     *  client.  It is encoded in the same way as MAPPED-ADDRESS.
+     */
 
-    public static final RawValue ZERO = from(Data.ZERO);
-
-    public RawValue(ByteArray data) {
-        super(data);
+    public RelayedAddressValue(MappedAddressValue value) {
+        super(value, value.ip, value.port, value.family);
     }
 
-    public RawValue(byte[] bytes, int offset, int size) {
-        super(bytes, offset, size);
-    }
-
-    public RawValue(byte[] bytes) {
-        super(bytes, 0, bytes.length);
+    public RelayedAddressValue(ByteArray data, String ip, int port, byte family) {
+        super(data, ip, port, family);
     }
 
     //
     //  Factories
     //
 
-    public static RawValue from(RawValue value) {
+    public static RelayedAddressValue from(RelayedAddressValue value) {
         return value;
     }
 
-    public static RawValue from(ByteArray data) {
-        return new RawValue(data);
+    public static RelayedAddressValue from(MappedAddressValue value) {
+        return new RelayedAddressValue(value);
     }
 
-    public static RawValue from(byte[] bytes) {
-        return new RawValue(bytes);
+    public static RelayedAddressValue from(ByteArray data) {
+        MappedAddressValue value = MappedAddressValue.from(data);
+        return value == null ? null : new RelayedAddressValue(value);
     }
 
-    public static RawValue from(byte[] bytes, int offset, int size) {
-        return new RawValue(bytes, offset, size);
+    public static RelayedAddressValue from(String ip, int port, byte family) {
+        MappedAddressValue value = MappedAddressValue.from(ip, port, family);
+        return new RelayedAddressValue(value, ip, port, family);
+    }
+    public static RelayedAddressValue from(String ip, int port) {
+        MappedAddressValue value = MappedAddressValue.from(ip, port);
+        return new RelayedAddressValue(value, ip, port, value.family);
     }
 
     // parse value with tag & length

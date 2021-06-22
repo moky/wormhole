@@ -33,7 +33,7 @@ package chat.dim.dmtp;
 import java.net.SocketAddress;
 import java.util.List;
 
-import chat.dim.dmtp.values.LocationValue;
+import chat.dim.dmtp.protocol.LocationValue;
 
 public interface LocationDelegate {
 

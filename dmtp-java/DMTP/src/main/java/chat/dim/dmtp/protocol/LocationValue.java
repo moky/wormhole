@@ -28,16 +28,20 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.dmtp.values;
+package chat.dim.dmtp.protocol;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
-import chat.dim.dmtp.fields.Field;
-import chat.dim.dmtp.fields.FieldLength;
-import chat.dim.dmtp.fields.FieldName;
+import chat.dim.tlv.Field;
+import chat.dim.tlv.RawValue;
+import chat.dim.tlv.StringTag;
+import chat.dim.tlv.StringValue;
+import chat.dim.tlv.Triad;
+import chat.dim.tlv.Value32;
+import chat.dim.tlv.VarLength;
 import chat.dim.type.ByteArray;
 
 public class LocationValue extends CommandValue {
@@ -59,8 +63,8 @@ public class LocationValue extends CommandValue {
         super(fields);
     }
 
-    private SocketAddress getAddressValue(FieldName tag) {
-        MappedAddressValue value = (MappedAddressValue) get(tag.name);
+    private SocketAddress getAddressValue(StringTag tag) {
+        MappedAddressValue value = (MappedAddressValue) get(tag);
         if (value == null) {
             return null;
         }
@@ -69,19 +73,19 @@ public class LocationValue extends CommandValue {
 
     public SocketAddress getSourceAddress() {
         if (sourceAddress == null) {
-            sourceAddress = getAddressValue(FieldName.SOURCE_ADDRESS);
+            sourceAddress = getAddressValue(Command.SOURCE_ADDRESS);
         }
         return sourceAddress;
     }
     public SocketAddress getMappedAddress() {
         if (mappedAddress == null) {
-            mappedAddress = getAddressValue(FieldName.MAPPED_ADDRESS);
+            mappedAddress = getAddressValue(Command.MAPPED_ADDRESS);
         }
         return mappedAddress;
     }
     public SocketAddress getRelayedAddress() {
         if (relayedAddress == null) {
-            relayedAddress = getAddressValue(FieldName.RELAYED_ADDRESS);
+            relayedAddress = getAddressValue(Command.RELAYED_ADDRESS);
         }
         return relayedAddress;
     }
@@ -93,34 +97,32 @@ public class LocationValue extends CommandValue {
      */
     public long getTimestamp() {
         if (timestamp == 0) {
-            TimestampValue value = (TimestampValue) get(FieldName.TIME);
-            if (value != null) {
-                timestamp = value.value;
+            Triad.Value value = get(Command.TIME);
+            if (value instanceof Value32) {
+                timestamp = ((Value32) value).value;
             }
         }
         return timestamp;
     }
     public ByteArray getSignature() {
         if (signature == null) {
-            signature = (BinaryValue) get(FieldName.SIGNATURE);
+            signature = get(Command.SIGNATURE);
         }
         return signature;
     }
 
     public String getNat() {
         if (nat == null) {
-            StringValue value = (StringValue) get(FieldName.NAT);
-            if (value != null) {
-                nat = value.string;
+            Triad.Value value = get(Command.NAT);
+            if (value instanceof StringValue) {
+                nat = ((StringValue) value).string;
             }
         }
         return nat;
     }
 
-    @SuppressWarnings("unused")
-    public static LocationValue parse(ByteArray data, FieldName type, FieldLength length) {
-        // parse fields
-        List<Field> fields = Field.parseAll(data);
+    public static LocationValue parse(ByteArray data, StringTag type, VarLength length) {
+        List<Field> fields = Field.parseFields(data);
         return new LocationValue(data, fields);
     }
 
@@ -133,35 +135,35 @@ public class LocationValue extends CommandValue {
                                        SourceAddressValue sourceAddress,
                                        MappedAddressValue mappedAddress,
                                        RelayedAddressValue relayedAddress,
-                                       TimestampValue timestamp,
-                                       BinaryValue signature,
+                                       Value32 timestamp,
+                                       RawValue signature,
                                        StringValue nat) {
         List<Field> fields = new ArrayList<>();
         // ID
-        fields.add(new Field(FieldName.ID, identifier));
+        fields.add(Field.from(Command.ID, identifier));
         // SOURCE-ADDRESS
         if (sourceAddress != null) {
-            fields.add(new Field(FieldName.SOURCE_ADDRESS, sourceAddress));
+            fields.add(Field.from(Command.SOURCE_ADDRESS, sourceAddress));
         }
         // MAPPED-ADDRESS
         if (mappedAddress != null) {
-            fields.add(new Field(FieldName.MAPPED_ADDRESS, mappedAddress));
+            fields.add(Field.from(Command.MAPPED_ADDRESS, mappedAddress));
         }
         // RELAYED-ADDRESS
         if (relayedAddress != null) {
-            fields.add(new Field(FieldName.RELAYED_ADDRESS, relayedAddress));
+            fields.add(Field.from(Command.RELAYED_ADDRESS, relayedAddress));
         }
         // TIME
         if (timestamp != null) {
-            fields.add(new Field(FieldName.TIME, timestamp));
+            fields.add(Field.from(Command.TIME, timestamp));
         }
         // SIGNATURE
         if (signature != null) {
-            fields.add(new Field(FieldName.SIGNATURE, signature));
+            fields.add(Field.from(Command.SIGNATURE, signature));
         }
         // NAT
         if (nat != null) {
-            fields.add(new Field(FieldName.NAT, nat));
+            fields.add(Field.from(Command.NAT, nat));
         }
         return new LocationValue(fields);
     }
@@ -173,41 +175,41 @@ public class LocationValue extends CommandValue {
                                        long timestamp,
                                        ByteArray signature,
                                        String nat) {
-        StringValue identifierValue = new StringValue(identifier);
+        StringValue identifierValue = StringValue.from(identifier);
         SourceAddressValue sourceAddressValue = null;
         MappedAddressValue mappedAddressValue = null;
         RelayedAddressValue relayedAddressValue = null;
-        TimestampValue timestampValue = null;
-        BinaryValue signatureValue = null;
+        Value32 timestampValue = null;
+        RawValue signatureValue = null;
         StringValue natValue = null;
 
         InetSocketAddress address;
         // SOURCE-ADDRESS
         if (sourceAddress instanceof InetSocketAddress) {
             address = (InetSocketAddress) sourceAddress;
-            sourceAddressValue = new SourceAddressValue(address.getHostString(), address.getPort());
+            sourceAddressValue = SourceAddressValue.from(address.getHostString(), address.getPort());
         }
         // MAPPED-ADDRESS
         if (mappedAddress instanceof InetSocketAddress) {
             address = (InetSocketAddress) mappedAddress;
-            mappedAddressValue = new MappedAddressValue(address.getHostString(), address.getPort());
+            mappedAddressValue = MappedAddressValue.from(address.getHostString(), address.getPort());
         }
         // RELAYED-ADDRESS
         if (relayedAddress instanceof InetSocketAddress) {
             address = (InetSocketAddress) relayedAddress;
-            relayedAddressValue = new RelayedAddressValue(address.getHostString(), address.getPort());
+            relayedAddressValue = RelayedAddressValue.from(address.getHostString(), address.getPort());
         }
         // TIME
         if (timestamp > 0) {
-            timestampValue = new TimestampValue(timestamp);
+            timestampValue = Value32.from(timestamp);
         }
         // SIGNATURE
         if (signature != null) {
-            signatureValue = new BinaryValue(signature);
+            signatureValue = RawValue.from(signature);
         }
         // NAT
         if (nat != null) {
-            natValue = new StringValue(nat);
+            natValue = StringValue.from(nat);
         }
         return create(identifierValue, sourceAddressValue, mappedAddressValue, relayedAddressValue,
                 timestampValue, signatureValue, natValue);

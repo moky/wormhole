@@ -79,8 +79,8 @@ public class Package extends Data {
         List<ByteArray> fragments = new ArrayList<>();
         int count = 1;
         int start = 0, end = OPTIMAL_BODY_LENGTH;
-        int length = body.getLength();
-        for (; end < length; start = end, end += OPTIMAL_BODY_LENGTH) {
+        int bodySize = body.getSize();
+        for (; end < bodySize; start = end, end += OPTIMAL_BODY_LENGTH) {
             fragments.add(body.slice(start, end));
             count += 1;
         }
@@ -104,7 +104,7 @@ public class Package extends Data {
             // TCP (should not happen)
             for (int index = 0; index < count; ++index) {
                 data = fragments.get(index);
-                packages.add(create(type, sn, count, index, data.getLength(), data));
+                packages.add(create(type, sn, count, index, data.getSize(), data));
             }
         }
         return packages;
@@ -137,7 +137,7 @@ public class Package extends Data {
             assert pages == item.head.pages : "pages error: " + item;
             assert index == item.head.offset : "fragment missed: " + index;
             fragments.add(item.body);
-            length += item.body.getLength();
+            length += item.body.getSize();
         }
         assert index == pages : "fragment error: " + index + ", " + pages;
         // join fragments
@@ -146,15 +146,15 @@ public class Package extends Data {
             data.append(fragments.get(index));
         }
         type = DataType.Message;
-        int bodyLen;
+        int bodySize;
         if (first.head.bodyLength < 0) {
             // UDP (unlimited)
-            bodyLen = -1;
+            bodySize = -1;
         } else {
             // TCP (should not happen)
-            bodyLen = data.getLength();
+            bodySize = data.getSize();
         }
-        return create(type, sn, 1, 0, bodyLen, data);
+        return create(type, sn, 1, 0, bodySize, data);
     }
 
     public static Package parse(ByteArray data) {
@@ -165,8 +165,8 @@ public class Package extends Data {
             return null;
         }
         // check lengths
-        int dataLen = data.getLength();
-        int headLen = head.getLength();
+        int dataLen = data.getSize();
+        int headLen = head.getSize();
         int bodyLen = head.bodyLength;
         if (bodyLen < 0) {
             // unlimited
@@ -193,12 +193,12 @@ public class Package extends Data {
     //  Factories
     //
 
-    public static Package create(DataType type, TransactionID sn, int pages, int offset, int bodyLen, ByteArray body) {
+    public static Package create(DataType type, TransactionID sn, int pages, int offset, int bodySize, ByteArray body) {
         assert body != null : "package body should not be null";
         // create package with header
-        Header head = Header.create(type, sn, pages, offset, bodyLen);
+        Header head = Header.create(type, sn, pages, offset, bodySize);
         ByteArray data;
-        if (body.getLength() > 0) {
+        if (body.getSize() > 0) {
             data = head.concat(body);
         } else {
             data = head;
@@ -230,13 +230,13 @@ public class Package extends Data {
     //  TCP
     //
 
-    public static Package create(DataType type, TransactionID sn, int bodyLen , ByteArray body) {
-        assert bodyLen == body.getLength() : "body length error: " + bodyLen + ", " + body.getLength();
-        return create(type, sn, 1, 0, bodyLen, body);
+    public static Package create(DataType type, TransactionID sn, int bodySize , ByteArray body) {
+        assert bodySize == body.getSize() : "body size error: " + bodySize + ", " + body.getSize();
+        return create(type, sn, 1, 0, bodySize, body);
     }
 
-    public static Package create(DataType type, int bodyLen, ByteArray body) {
-        assert bodyLen == body.getLength() : "body length error: " + bodyLen + ", " + body.getLength();
-        return create(type, TransactionID.generate(), 1, 0, bodyLen, body);
+    public static Package create(DataType type, int bodySize, ByteArray body) {
+        assert bodySize == body.getSize() : "body size error: " + bodySize + ", " + body.getSize();
+        return create(type, TransactionID.generate(), 1, 0, bodySize, body);
     }
 }

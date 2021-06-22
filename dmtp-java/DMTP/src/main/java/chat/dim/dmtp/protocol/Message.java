@@ -37,14 +37,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import chat.dim.dmtp.fields.Field;
-import chat.dim.dmtp.fields.FieldName;
-import chat.dim.dmtp.fields.FieldValue;
-import chat.dim.dmtp.fields.FieldsValue;
-import chat.dim.dmtp.values.BinaryValue;
-import chat.dim.dmtp.values.StringValue;
-import chat.dim.dmtp.values.TimestampValue;
-import chat.dim.dmtp.values.TypeValue;
+import chat.dim.tlv.Field;
+import chat.dim.tlv.MapValue;
+import chat.dim.tlv.RawValue;
+import chat.dim.tlv.StringTag;
+import chat.dim.tlv.StringValue;
+import chat.dim.tlv.Triad;
+import chat.dim.tlv.Value32;
+import chat.dim.tlv.Value8;
 import chat.dim.type.ByteArray;
 
 /*     Message
@@ -67,7 +67,7 @@ import chat.dim.type.ByteArray;
  *
  *             <Attachments>
  *             M - sender's Meta info (OPTIONAL)
- *             P - sender's Profile info (OPTIONAL)
+ *             P - sender's Visa info (OPTIONAL)
  *
  *     File
  *     ~~~~
@@ -83,7 +83,7 @@ import chat.dim.type.ByteArray;
  *             K - symmetric key (OPTIONAL)
  */
 
-public class Message extends FieldsValue {
+public class Message extends MapValue<Field> {
 
     // envelope
     private String sender = null;
@@ -99,7 +99,7 @@ public class Message extends FieldsValue {
 
     // attachments
     private ByteArray meta = null;
-    private ByteArray profile = null;
+    private ByteArray visa = null;
 
     // file in message
     private String filename = null;
@@ -129,13 +129,13 @@ public class Message extends FieldsValue {
     }
     public long getTimestamp() {
         if (timestamp == 0) {
-            timestamp = getTimestampValue(TIME);
+            timestamp = getLongValue(WHEN);
         }
         return timestamp;
     }
     public int getType() {
         if (type == 0) {
-            type = getTypeValue(TYPE);
+            type = getByteValue(TYPE);
         }
         return type;
     }
@@ -157,7 +157,7 @@ public class Message extends FieldsValue {
     }
     public ByteArray getSignature() {
         if (signature == null) {
-            signature = getBinaryValue(SIGNATURE);
+            signature = getBinaryValue(VERIFY);
         }
         return signature;
     }
@@ -177,11 +177,11 @@ public class Message extends FieldsValue {
         }
         return meta;
     }
-    public ByteArray getProfile() {
-        if (profile == null) {
-            profile = getBinaryValue(PROFILE);
+    public ByteArray getVisa() {
+        if (visa == null) {
+            visa = getBinaryValue(VISA);
         }
-        return profile;
+        return visa;
     }
 
     //
@@ -199,17 +199,15 @@ public class Message extends FieldsValue {
     //
 
     public static Message parse(ByteArray data) {
-        // parse fields
-        List<Field> fields = Field.parseAll(data);
+        List<Field> fields = Field.parseFields(data);
         if (fields.size() == 0) {
             return null;
         }
-        return new Message(fields);
+        return new Message(data, fields);
     }
 
-    @SuppressWarnings("unchecked")
-    private static void fetchMsgField(List<Field> fields, Map info,
-                                      String s, String name, FieldName tag, Class valueClass) {
+    private static void fetchMsgField(List<Field> fields, Map<Object, Object> info,
+                                      String s, String name, StringTag tag, Class<?> valueClass) {
         Object object = info.get(name);
         if (object == null) {
             object = info.get(s);
@@ -218,14 +216,14 @@ public class Message extends FieldsValue {
                 return;
             }
         }
-        FieldValue value;
-        if (object instanceof FieldValue) {
-            value = (FieldValue) object;
+        Triad.Value value;
+        if (object instanceof Triad.Value) {
+            value = (Triad.Value) object;
         } else {
             // try 'new Clazz(dict)'
             try {
-                Constructor constructor = valueClass.getConstructor(object.getClass());
-                value = (FieldValue) constructor.newInstance(object);
+                Constructor<?> constructor = valueClass.getConstructor(object.getClass());
+                value = (Triad.Value) constructor.newInstance(object);
             } catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
                 e.printStackTrace();
                 value = null;
@@ -235,24 +233,24 @@ public class Message extends FieldsValue {
             // value error
             return;
         }
-        fields.add(new Field(tag, value));
+        fields.add(Field.from(tag, value));
     }
 
-    public static Message create(Map info) {
+    public static Message create(Map<Object, Object> info) {
         List<Field> fields = new ArrayList<>();
         // envelope
         fetchMsgField(fields, info, "S", "sender",    SENDER,    StringValue.class);
         fetchMsgField(fields, info, "R", "receiver",  RECEIVER,  StringValue.class);
-        fetchMsgField(fields, info, "W", "time",      TIME,      TimestampValue.class);
-        fetchMsgField(fields, info, "T", "type",      TYPE,      TypeValue.class);
+        fetchMsgField(fields, info, "W", "time",      WHEN,      Value32.class);
+        fetchMsgField(fields, info, "T", "type",      TYPE,      Value8.class);
         fetchMsgField(fields, info, "G", "group",     GROUP,     StringValue.class);
         // body
-        fetchMsgField(fields, info, "D", "data",      CONTENT,   BinaryValue.class);
-        fetchMsgField(fields, info, "V", "signature", SIGNATURE, BinaryValue.class);
-        fetchMsgField(fields, info, "K", "key",       KEY,       BinaryValue.class);
+        fetchMsgField(fields, info, "D", "data",      CONTENT,   RawValue.class);
+        fetchMsgField(fields, info, "V", "signature", VERIFY,    RawValue.class);
+        fetchMsgField(fields, info, "K", "key",       KEY,       RawValue.class);
         // attachments
-        fetchMsgField(fields, info, "M", "meta",      META,      BinaryValue.class);
-        fetchMsgField(fields, info, "P", "profile",   PROFILE,   BinaryValue.class);
+        fetchMsgField(fields, info, "M", "meta",      META,      RawValue.class);
+        fetchMsgField(fields, info, "P", "visa",      VISA,      RawValue.class);
         // file
         fetchMsgField(fields, info, "F", "filename",  FILENAME,  StringValue.class);
         // create message with fields
@@ -262,7 +260,7 @@ public class Message extends FieldsValue {
     private static Message create(Object sender, Object receiver, Object timestamp,
                                   Object type, Object group,
                                   Object content, Object signature, Object key,
-                                  Object meta, Object profile,
+                                  Object meta, Object visa,
                                   Object filename) {
         Map<Object, Object> info = new HashMap<>();
         info.put("sender", sender);
@@ -286,8 +284,8 @@ public class Message extends FieldsValue {
         if (meta != null) {
             info.put("meta", meta);
         }
-        if (profile != null) {
-            info.put("profile", profile);
+        if (visa != null) {
+            info.put("visa", visa);
         }
 
         if (filename != null) {
@@ -303,9 +301,9 @@ public class Message extends FieldsValue {
     public static Message create(String sender, String receiver, long timestamp,
                                  int type, String group,
                                  ByteArray content, ByteArray signature, ByteArray key,
-                                 ByteArray meta, ByteArray profile) {
+                                 ByteArray meta, ByteArray visa) {
         return create(sender, receiver, timestamp, type, group,
-                content, signature, key, meta, profile,
+                content, signature, key, meta, visa,
                 null);
     }
 
@@ -338,39 +336,39 @@ public class Message extends FieldsValue {
     //  Message field names
     //
 
-    public static final FieldName SENDER    = new FieldName("S");
-    public static final FieldName RECEIVER  = new FieldName("R");
-    public static final FieldName TIME      = new FieldName("W");
-    public static final FieldName TYPE      = new FieldName("T");
-    public static final FieldName GROUP     = new FieldName("G");
+    public static final StringTag SENDER    = StringTag.from("S");
+    public static final StringTag RECEIVER  = StringTag.from("R");
+    public static final StringTag WHEN      = StringTag.from("W");
+    public static final StringTag TYPE      = StringTag.from("T");
+    public static final StringTag GROUP     = StringTag.from("G");
 
-    public static final FieldName CONTENT   = new FieldName("D");  // message content Data; or file content Data
-    public static final FieldName SIGNATURE = new FieldName("V");  // signature for Verify content data with sender's meta.key
-    public static final FieldName KEY       = new FieldName("K");
+    public static final StringTag CONTENT   = StringTag.from("D");  // message content Data; or file content Data
+    public static final StringTag VERIFY    = StringTag.from("V");  // signature for Verify content data with sender's meta.key
+    public static final StringTag KEY       = StringTag.from("K");
 
-    public static final FieldName META      = new FieldName("M");
-    public static final FieldName PROFILE   = new FieldName("P");
+    public static final StringTag META      = StringTag.from("M");
+    public static final StringTag VISA      = StringTag.from("P");
 
-    public static final FieldName FILENAME  = new FieldName("F");  // file in message
+    public static final StringTag FILENAME  = StringTag.from("F");  // file in message
 
     static {
         //
         //  classes for parsing message fields
         //
 
-        register(SENDER,    StringValue.class);
-        register(RECEIVER,  StringValue.class);
-        register(TIME,      TimestampValue.class);
-        register(TYPE,      TypeValue.class);
-        register(GROUP,     StringValue.class);
+        Field.register(SENDER,    StringValue::parse);
+        Field.register(RECEIVER,  StringValue::parse);
+        Field.register(WHEN,      Value32::parse);
+        Field.register(TYPE,      Value8::parse);
+        Field.register(GROUP,     StringValue::parse);
 
-        register(CONTENT,   BinaryValue.class);
-        register(SIGNATURE, BinaryValue.class);
-        register(KEY,       BinaryValue.class);
+        Field.register(CONTENT,   RawValue::parse);
+        Field.register(VERIFY,    RawValue::parse);
+        Field.register(KEY,       RawValue::parse);
 
-        register(META,      BinaryValue.class);
-        register(PROFILE,   BinaryValue.class);
+        Field.register(META,      RawValue::parse);
+        Field.register(VISA,      RawValue::parse);
 
-        register(FILENAME,  StringValue.class);
+        Field.register(FILENAME,  StringValue::parse);
     }
 }

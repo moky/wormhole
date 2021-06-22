@@ -116,8 +116,8 @@ public class Header extends Data {
     }
 
     public static Header parse(ByteArray data) {
-        int length = data.getLength();
-        if (length < 4) {
+        int dataSize = data.getSize();
+        if (dataSize < 4) {
             // waiting for more data
             return null;
         }
@@ -130,7 +130,7 @@ public class Header extends Data {
         // get header length & data type
         byte ch = data.getByte(3);
         int headLen = (ch & 0xF0) >> 2; // in bytes
-        if (length < headLen) {
+        if (dataSize < headLen) {
             // waiting for more data
             return null;
         }

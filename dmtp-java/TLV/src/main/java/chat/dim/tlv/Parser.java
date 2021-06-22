@@ -46,19 +46,27 @@ import chat.dim.type.ByteArray;
  */
 
 public abstract class Parser<A extends Triad<T,L,V>, T extends Triad.Tag, L extends Triad.Length, V extends Triad.Value>
-        implements Triad.Parser<A, T, L, V> {
+        implements Triad.Parser<A> {
+
+    // get TLV parsers
+    protected abstract Triad.Tag.Parser<T> getTagParser();
+    protected abstract Triad.Length.Parser<T, L> getLengthParser();
+    protected abstract Triad.Value.Parser<T, L, V> getValueParser();
+
+    // create TLV triad
+    protected abstract A createTriad(ByteArray data, T type, L length, V value);
 
     @Override
     public A parseTriad(ByteArray data) {
-        // get tag field
-        T type = parseTag(data);
+        // 1. get tag field
+        T type = getTagParser().parseTag(data);
         if (type == null) {
             return null;
         }
         int offset = type.getSize();
         int valueLength;
-        // get length field
-        L length = parseLength(data.slice(offset), type);
+        // 2. get length field
+        L length = getLengthParser().parseLength(data.slice(offset), type);
         if (length == null) {
             // if length not defined, use the rest data as value
             valueLength = data.getSize() - offset;
@@ -66,17 +74,16 @@ public abstract class Parser<A extends Triad<T,L,V>, T extends Triad.Tag, L exte
             valueLength = length.getIntValue();
             offset += length.getSize();
         }
-        // get value field
-        V value = parseValue(data.slice(offset, offset + valueLength), type, length);
+        // 3. get value field
+        V value = getValueParser().parseValue(data.slice(offset, offset + valueLength), type, length);
         if (value != null) {
             offset += value.getSize();
         }
         return createTriad(data.slice(0, offset), type, length, value);
     }
-    protected abstract A createTriad(ByteArray data, T type, L length, V value);
 
     @Override
-    public List<A> parseAll(ByteArray data) {
+    public List<A> parseTriads(ByteArray data) {
         List<A> array = new ArrayList<>();
         A item;
         while (data.getSize() > 0) {
@@ -87,7 +94,7 @@ public abstract class Parser<A extends Triad<T,L,V>, T extends Triad.Tag, L exte
             }
             array.add(item);
             // next item
-            assert item.getSize() > 0 : "Triad error";
+            assert item.getSize() > 0 : "Triads error";
             data = data.slice(item.getSize());
         }
         return array;

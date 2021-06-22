@@ -51,24 +51,48 @@ public interface Triad<T extends Triad.Tag, L extends Triad.Length, V extends Tr
     L getLength();
     V getValue();
 
-    interface Tag extends ByteArray { }
-    interface Length extends ByteArray, IntegerData { }
-    interface Value extends ByteArray { }
+    interface Tag extends ByteArray {
+        /**
+         *  Tag Parser
+         *  ~~~~~~~~~~
+         */
+        interface Parser<T> {
+            T parseTag(ByteArray data);
+        }
+    }
+    interface Length extends ByteArray, IntegerData {
+        /**
+         *  Length Parser
+         *  ~~~~~~~~~~~~~
+         */
+        interface Parser<T, L> {
+            L parseLength(ByteArray data, T tag);
+        }
+    }
+    interface Value extends ByteArray {
+        /**
+         *  Value Parser
+         *  ~~~~~~~~~~~~
+         */
+        interface Parser<T, L, V> {
+            V parseValue(ByteArray data, T tag, L length);
+        }
+    }
 
     /**
      *  Tag-Length-Value Parser
      *  ~~~~~~~~~~~~~~~~~~~~~~~
      */
-    interface Parser<A extends Triad<T, L, V>, T extends Tag, L extends Length, V extends Value> {
-
-        T parseTag(ByteArray data);
-
-        L parseLength(ByteArray data, T type);
-
-        V parseValue(ByteArray data, T type, L length);
+    interface Parser<A> {
 
         A parseTriad(ByteArray data);
 
-        List<A> parseAll(ByteArray data);
+        /**
+         *  Parse all TLV triads
+         *
+         * @param data - data received
+         * @return TLV list
+         */
+        List<A> parseTriads(ByteArray data);
     }
 }

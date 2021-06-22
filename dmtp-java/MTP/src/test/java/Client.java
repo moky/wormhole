@@ -38,7 +38,7 @@ public class Client extends Node {
             data = new MutableData(1024);
             data.append((index + " sheep:").getBytes());
             data.append(fixed);
-            System.out.printf("sending (%d bytes): %s\n", data.getLength(), data);
+            System.out.printf("sending (%d bytes): %s\n", data.getSize(), data);
             client.sendCommand(data, destination);
             client.sendMessage(data, destination);
             Thread.sleep(2000);

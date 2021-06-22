@@ -1,13 +1,13 @@
 /* license: https://mit-license.org
  *
- *  DMTP: Direct Message Transfer Protocol
+ *  TLV: Tag Length Value
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,27 +28,61 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.dmtp.fields;
+package chat.dim.tlv;
 
-import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
-import chat.dim.type.VarIntData;
+import chat.dim.type.UInt8Data;
 
-public class FieldLength extends VarIntData implements Triad.Length {
+/**
+ *  Char Value (8 bits)
+ *  ~~~~~~~~~~~~~~~~~~~
+ */
+public class Value8 extends UInt8Data implements Triad.Value {
 
-    public FieldLength(VarIntData data) {
+    public static final Value8 ZERO = from(UInt8Data.ZERO);
+
+    public Value8(ByteArray data) {
         super(data);
     }
 
-    public FieldLength(ByteArray data, int value) {
-        super(data, value);
+    public Value8(byte value) {
+        super(value);
     }
 
-    public FieldLength(ByteArray data) {
-        super(VarIntData.from(data));
+    public Value8(int value) {
+        super(value);
     }
 
-    public FieldLength(int value) {
-        this(VarIntData.from(value), value);
+    //
+    //  Factories
+    //
+
+    public static Value8 from(Value8 data) {
+        return data;
+    }
+
+    public static Value8 from(UInt8Data data) {
+        return new Value8(data);
+    }
+
+    public static Value8 from(ByteArray data) {
+        if (data.getSize() < 1) {
+            return null;
+        } else if (data.getSize() > 1) {
+            data = data.slice(0, 1);
+        }
+        return new Value8(data);
+    }
+
+    public static Value8 from(byte value) {
+        return new Value8(value);
+    }
+    public static Value8 from(int value) {
+        return new Value8(value);
+    }
+
+    // parse value with tag & length
+    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+        return from(data);
     }
 }

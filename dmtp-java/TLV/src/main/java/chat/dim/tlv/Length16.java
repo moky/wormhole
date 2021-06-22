@@ -44,7 +44,15 @@ import chat.dim.type.UInt16Data;
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
+/**
+ *  Fixed Length (16 bits)
+ *  ~~~~~~~~~~~~~~~~~~~~~~
+ *
+ *  Network Byte Order
+ */
 public class Length16 extends UInt16Data implements Triad.Length {
+
+    public static final Length16 ZERO = from(UInt16Data.ZERO);
 
     public Length16(UInt16Data data) {
         super(data, data.value, data.endian);
@@ -77,5 +85,10 @@ public class Length16 extends UInt16Data implements Triad.Length {
 
     public static Length16 from(int value) {
         return new Length16(DataConvert.getUInt16Data(value));
+    }
+
+    // parse length with tag
+    public static Triad.Length parse(ByteArray data, Triad.Tag tag) {
+        return from(data);
     }
 }

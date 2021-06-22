@@ -33,18 +33,14 @@ package chat.dim.dmtp.protocol;
 import java.net.SocketAddress;
 import java.util.List;
 
-import chat.dim.dmtp.fields.Field;
-import chat.dim.dmtp.fields.FieldLength;
-import chat.dim.dmtp.fields.FieldName;
-import chat.dim.dmtp.fields.FieldValue;
-import chat.dim.dmtp.values.BinaryValue;
-import chat.dim.dmtp.values.CommandValue;
-import chat.dim.dmtp.values.LocationValue;
-import chat.dim.dmtp.values.MappedAddressValue;
-import chat.dim.dmtp.values.RelayedAddressValue;
-import chat.dim.dmtp.values.SourceAddressValue;
-import chat.dim.dmtp.values.StringValue;
-import chat.dim.dmtp.values.TimestampValue;
+import chat.dim.tlv.Field;
+import chat.dim.tlv.FieldParser;
+import chat.dim.tlv.RawValue;
+import chat.dim.tlv.StringTag;
+import chat.dim.tlv.StringValue;
+import chat.dim.tlv.Triad;
+import chat.dim.tlv.Value32;
+import chat.dim.tlv.VarLength;
 import chat.dim.type.ByteArray;
 
 /*     Commands
@@ -111,223 +107,187 @@ import chat.dim.type.ByteArray;
 
 public class Command extends Field {
 
-    public Command(ByteArray data, FieldName type, FieldLength length, FieldValue value) {
+    public Command(Triad<StringTag, VarLength, Triad.Value> tlv) {
+        super(tlv);
+    }
+
+    public Command(ByteArray data, StringTag type, VarLength length, Triad.Value value) {
         super(data, type, length, value);
     }
 
-    public Command(FieldName type, FieldLength length, FieldValue value) {
-        super(type, length, value);
-    }
+    //
+    //  Factories
+    //
 
-    public Command(FieldName type, FieldValue value) {
-        super(type, value);
+    public static Command createCommand(StringTag tag, VarLength length, Triad.Value value) {
+        if (value == null) {
+            value = RawValue.ZERO;
+            length = VarLength.ZERO;
+        } else if (length == null) {
+            length = VarLength.from(value.getSize());
+        }
+        return new Command(tag.concat(length, value), tag, length, value);
+    }
+    public static Command createCommand(StringTag tag, Triad.Value value) {
+        return createCommand(tag, null, value);
+    }
+    public static Command createCommand(StringTag tag) {
+        return createCommand(tag, null, null);
     }
 
     //
-    //  Commands
+    //  Who
     //
-
-    public static class Who extends Command {
-
-        public Who(ByteArray data) {
-            super(data, WHO, null, null);
-        }
-
-        public Who() {
-            super(WHO, null);
-        }
-
-        public static Who create() {
-            return new Who();
-        }
+    public static Command createWhoCommand() {
+        return createCommand(WHO);
     }
 
-    public static class Hello extends Command {
-
-        public Hello(ByteArray data, FieldValue value) {
-            super(data, HELLO, null, value);
-        }
-
-        public Hello(FieldValue value) {
-            super(HELLO, value);
-        }
-
-        //
-        //  Factories
-        //
-
-        public static Hello create(LocationValue locationValue) {
-            return new Hello(locationValue);
-        }
-
-        public static Hello create(StringValue identifier,
-                                   SourceAddressValue sourceAddress,
-                                   MappedAddressValue mappedAddress,
-                                   RelayedAddressValue relayedAddress,
-                                   TimestampValue timestamp,
-                                   BinaryValue signature,
-                                   StringValue nat) {
-            return create(LocationValue.create(identifier,
-                    sourceAddress, mappedAddress, relayedAddress,
-                    timestamp, signature, nat));
-        }
-
-        public static Hello create(String identifier,
-                                   SocketAddress sourceAddress,
-                                   SocketAddress mappedAddress,
-                                   SocketAddress relayedAddress,
-                                   long timestamp,
-                                   ByteArray signature,
-                                   String nat) {
-            return create(LocationValue.create(identifier,
-                    sourceAddress, mappedAddress, relayedAddress,
-                    timestamp, signature, nat));
-        }
-
-        public static Hello create(StringValue identifier) {
-            return create(identifier, null, null, null,
-                    null, null, null);
-        }
-
-        public static Hello create(String identifier) {
-            return create(identifier, null, null, null,
-                    0, null, null);
-        }
+    //
+    //  Hello
+    //
+    public static Command createHelloCommand(LocationValue locationValue) {
+        return createCommand(HELLO, locationValue);
+    }
+    public static Command createHelloCommand(StringValue identifier,
+                                             SourceAddressValue sourceAddress,
+                                             MappedAddressValue mappedAddress,
+                                             RelayedAddressValue relayedAddress,
+                                             Value32 timestamp,
+                                             RawValue signature,
+                                             StringValue nat) {
+        return createCommand(HELLO, LocationValue.create(identifier,
+                sourceAddress, mappedAddress, relayedAddress,
+                timestamp, signature, nat));
+    }
+    public static Command createHelloCommand(String identifier,
+                               SocketAddress sourceAddress,
+                               SocketAddress mappedAddress,
+                               SocketAddress relayedAddress,
+                               long timestamp,
+                               ByteArray signature,
+                               String nat) {
+        return createCommand(HELLO, LocationValue.create(identifier,
+                sourceAddress, mappedAddress, relayedAddress,
+                timestamp, signature, nat));
+    }
+    public static Command createHelloCommand(StringValue identifier) {
+        return createHelloCommand(identifier, null, null, null,
+                null, null, null);
+    }
+    public static Command createHelloCommand(String identifier) {
+        return createHelloCommand(identifier, null, null, null,
+                0, null, null);
     }
 
-    public static class Sign extends Command {
-
-        public Sign(ByteArray data, FieldValue value) {
-            super(data, SIGN, null, value);
-        }
-
-        public Sign(FieldValue value) {
-            super(SIGN, value);
-        }
-
-        //
-        //  Factories
-        //
-
-        public static Sign create(LocationValue locationValue) {
-            return new Sign(locationValue);
-        }
-
-        public static Sign create(StringValue identifier,
-                                  MappedAddressValue mappedAddress,
-                                  RelayedAddressValue relayedAddress) {
-            return create(LocationValue.create(identifier,
-                    null, mappedAddress, relayedAddress));
-        }
-
-        public static Sign create(String identifier,
-                                  SocketAddress mappedAddress,
-                                  SocketAddress relayedAddress) {
-            return create(LocationValue.create(identifier,
-                    null, mappedAddress, relayedAddress));
-        }
+    //
+    //  Sign
+    //
+    public static Command createSignCommand(LocationValue locationValue) {
+        return createCommand(SIGN, locationValue);
+    }
+    public static Command createSignCommand(StringValue identifier,
+                              MappedAddressValue mappedAddress,
+                              RelayedAddressValue relayedAddress) {
+        return createCommand(SIGN, LocationValue.create(identifier,
+                null, mappedAddress, relayedAddress));
     }
 
-    public static class Call extends Command {
-
-        public Call(ByteArray data, FieldValue value) {
-            super(data, CALL, null, value);
-        }
-
-        public Call(FieldValue value) {
-            super(CALL, value);
-        }
-
-        //
-        //  Factories
-        //
-
-        public static Call create(LocationValue locationValue) {
-            return new Call(locationValue);
-        }
-
-        public static Call create(StringValue identifier) {
-            return create(LocationValue.create(identifier));
-        }
-
-        public static Call create(String identifier) {
-            return create(LocationValue.create(identifier));
-        }
+    public static Command createSignCommand(String identifier,
+                              SocketAddress mappedAddress,
+                              SocketAddress relayedAddress) {
+        return createCommand(SIGN, LocationValue.create(identifier,
+                null, mappedAddress, relayedAddress));
     }
 
-    public static class From extends Command {
-
-        public From(ByteArray data, FieldValue value) {
-            super(data, FROM, null, value);
-        }
-
-        public From(FieldValue value) {
-            super(FROM, value);
-        }
-
-        //
-        //  Factories
-        //
-
-        public static From create(LocationValue locationValue) {
-            return new From(locationValue);
-        }
-
-        public static From create(StringValue identifier) {
-            return create(LocationValue.create(identifier));
-        }
-
-        public static From create(String identifier) {
-            return create(LocationValue.create(identifier));
-        }
+    //
+    //  Call
+    //
+    public static Command createCallCommand(LocationValue locationValue) {
+        return createCommand(CALL, locationValue);
     }
 
-    public static class Bye extends Command {
-
-        public Bye(ByteArray data, FieldValue value) {
-            super(data, BYE, null, value);
-        }
-
-        public Bye(FieldValue value) {
-            super(BYE, value);
-        }
-
-        //
-        //  Factories
-        //
-
-        public static Bye create(LocationValue locationValue) {
-            return new Bye(locationValue);
-        }
+    public static Command createCallCommand(StringValue identifier) {
+        return createCommand(CALL, LocationValue.create(identifier));
     }
 
+    public static Command createCallCommand(String identifier) {
+        return createCommand(CALL, LocationValue.create(identifier));
+    }
+
+    //
+    //  From
+    //
+    public static Command createFromCommand(LocationValue locationValue) {
+        return createCommand(FROM, locationValue);
+    }
+
+    public static Command createFromCommand(StringValue identifier) {
+        return createCommand(FROM, LocationValue.create(identifier));
+    }
+
+    public static Command createFromCommand(String identifier) {
+        return createCommand(FROM, LocationValue.create(identifier));
+    }
+
+    //
+    //  Bye
+    //
+    public static Command createByeCommand(LocationValue locationValue) {
+        return createCommand(BYE, locationValue);
+    }
 
     //
     //  Parser
     //
-
-    private static final CommandParser parser = new CommandParser();
+    private static final FieldParser<Command> parser = new FieldParser<Command>() {
+        @Override
+        protected Command createTriad(ByteArray data, StringTag type, VarLength length, Value value) {
+            return new Command(data, type, length, value);
+        }
+    };
 
     public static List<Command> parseCommands(ByteArray data) {
-        return parser.parseAll(data);
+        return parser.parseTriads(data);
+    }
+
+    //
+    //  Field names
+    //
+
+    public static final StringTag ID              = StringTag.from("ID");    // user ID
+    public static final StringTag SOURCE_ADDRESS  = StringTag.from("SOURCE-ADDRESS");
+    public static final StringTag MAPPED_ADDRESS  = StringTag.from("MAPPED-ADDRESS");
+    public static final StringTag RELAYED_ADDRESS = StringTag.from("RELAYED-ADDRESS");
+    public static final StringTag TIME            = StringTag.from("TIME");  // timestamp (uint32, big endian)
+    public static final StringTag SIGNATURE       = StringTag.from("SIGNATURE");
+    public static final StringTag NAT             = StringTag.from("NAT");   // NAT type
+
+    static {
+        register(ID,              StringValue::parse);
+        register(SOURCE_ADDRESS,  SourceAddressValue::parse);
+        register(MAPPED_ADDRESS,  MappedAddressValue::parse);
+        register(RELAYED_ADDRESS, RelayedAddressValue::parse);
+        register(TIME,            Value32::parse);
+        register(SIGNATURE,       RawValue::parse);
+        register(NAT,             StringValue::parse);
     }
 
     //
     //  Command names
     //
 
-    public static final FieldName WHO   = new FieldName("WHO");   // (S) location not found, ask receiver to say 'HI'
-    public static final FieldName HELLO = new FieldName("HI");    // (C) login with ID
-    public static final FieldName SIGN  = new FieldName("SIGN");  // (S) ask client to login
-    public static final FieldName CALL  = new FieldName("CALL");  // (C) ask server to help connecting with another user
-    public static final FieldName FROM  = new FieldName("FROM");  // (S) help users connecting
-    public static final FieldName BYE   = new FieldName("BYE");   // (C) logout with ID and address
+    public static final StringTag WHO   = StringTag.from("WHO");   // (S) location not found, ask receiver to say 'HI'
+    public static final StringTag HELLO = StringTag.from("HI");    // (C) login with ID
+    public static final StringTag SIGN  = StringTag.from("SIGN");  // (S) ask client to login
+    public static final StringTag CALL  = StringTag.from("CALL");  // (C) ask server to help connecting with another user
+    public static final StringTag FROM  = StringTag.from("FROM");  // (S) help users connecting
+    public static final StringTag BYE   = StringTag.from("BYE");   // (C) logout with ID and address
 
     static {
-        FieldValue.register(HELLO, LocationValue.class);
-        FieldValue.register(SIGN, LocationValue.class);
-        FieldValue.register(CALL, CommandValue.class);
-        FieldValue.register(FROM, LocationValue.class);
-        FieldValue.register(BYE, LocationValue.class);
+        register(HELLO, LocationValue::parse);
+        register(SIGN,  LocationValue::parse);
+        register(CALL,  CommandValue::parse);
+        register(FROM,  LocationValue::parse);
+        register(BYE,   LocationValue::parse);
     }
 }

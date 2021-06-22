@@ -28,45 +28,45 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.dmtp.values;
+package chat.dim.dmtp.protocol;
 
-import chat.dim.dmtp.fields.FieldLength;
-import chat.dim.dmtp.fields.FieldName;
+import java.util.ArrayList;
+import java.util.List;
+
+import chat.dim.tlv.Field;
+import chat.dim.tlv.MapValue;
+import chat.dim.tlv.StringValue;
+import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
-public class SourceAddressValue extends MappedAddressValue {
-    private MappedAddressValue value;
+public class CommandValue extends MapValue<Field> {
 
-    /*  SOURCE-ADDRESS
-     *  ~~~~~~~~~~~~~~
-     *
-     *  The SOURCE-ADDRESS attribute is present in Binding Responses.  It
-     *  indicates the source IP address and port that the server is sending
-     *  the response from.  Its syntax is identical to that of MAPPED-
-     *  ADDRESS.
-     */
+    private String identifier = null;
 
-    public SourceAddressValue(MappedAddressValue addressValue) {
-        super(addressValue);
+    public CommandValue(ByteArray data, List<Field> fields) {
+        super(data, fields);
     }
 
-    public SourceAddressValue(ByteArray data, String ip, int port, byte family) {
-        super(data, ip, port, family);
+    public CommandValue(List<Field> fields) {
+        super(fields);
     }
 
-    public SourceAddressValue(String ip, int port, byte family) {
-        super(ip, port, family);
-    }
-
-    public SourceAddressValue(String ip, int port) {
-        super(ip, port);
-    }
-
-    public static SourceAddressValue parse(ByteArray data, FieldName type, FieldLength length) {
-        MappedAddressValue value = MappedAddressValue.parse(data, type, length);
-        if (value == null) {
-            return null;
+    public String getIdentifier() {
+        if (identifier == null) {
+            identifier = getStringValue(Command.ID);
         }
-        return new SourceAddressValue(data, value.ip, value.port, value.family);
+        return identifier;
+    }
+
+    public static CommandValue create(String identifier) {
+        Field id = Field.from(Command.ID, StringValue.from(identifier));
+        List<Field> fields = new ArrayList<>();
+        fields.add(id);
+        return new CommandValue(fields);
+    }
+
+    public static CommandValue parse(ByteArray data, Triad.Tag type, Triad.Length length) {
+        List<Field> fields = Field.parseFields(data);
+        return new CommandValue(data, fields);
     }
 }

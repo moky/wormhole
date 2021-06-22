@@ -35,8 +35,8 @@ import java.net.SocketException;
 import java.util.List;
 
 import chat.dim.dmtp.protocol.Command;
-import chat.dim.dmtp.values.CommandValue;
-import chat.dim.dmtp.values.LocationValue;
+import chat.dim.dmtp.protocol.CommandValue;
+import chat.dim.dmtp.protocol.LocationValue;
 import chat.dim.mtp.Pool;
 
 public abstract class Server extends Node {
@@ -78,7 +78,7 @@ public abstract class Server extends Node {
         }
         // respond 'SIGN' command with 'ID' and 'MAPPED-ADDRESS'
         String id = location.getIdentifier();
-        Command cmd = Command.Sign.create(id, source, null);
+        Command cmd = Command.createSignCommand(id, source, null);
         sendCommand(cmd, source);
         return true;
     }
@@ -96,7 +96,7 @@ public abstract class Server extends Node {
         if (locations.size() == 0) {
             // receiver offline
             // respond an empty "FROM" command to the sender
-            cmd = Command.From.create(receiver);
+            cmd = Command.createFromCommand(receiver);
             sendCommand(cmd, source);
             return false;
         }
@@ -105,7 +105,7 @@ public abstract class Server extends Node {
         if (senderLocation == null) {
             // sender offline
             // ask sender to login again
-            cmd = Command.Who.create();
+            cmd = Command.createWhoCommand();
             sendCommand(cmd, source);
             return false;
         }
@@ -118,10 +118,10 @@ public abstract class Server extends Node {
                 continue;
             }
             // send "FROM" command with sender's location info to the receiver
-            cmd = Command.From.create(senderLocation);
+            cmd = Command.createFromCommand(senderLocation);
             sendCommand(cmd, address);
             // respond "FROM" command with receiver's location info to sender
-            cmd = Command.From.create(loc);
+            cmd = Command.createFromCommand(loc);
             sendCommand(cmd, source);
         }
         return true;

@@ -32,7 +32,7 @@ package chat.dim.dmtp;
 
 import java.net.SocketAddress;
 
-import chat.dim.dmtp.values.LocationValue;
+import chat.dim.dmtp.protocol.LocationValue;
 
 public class Session {
 

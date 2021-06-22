@@ -35,19 +35,23 @@ import chat.dim.type.Data;
 import chat.dim.type.IntegerData;
 import chat.dim.type.VarIntData;
 
-/**
- *  Variable Tag
- *  ~~~~~~~~~~~~
- *
- *  A tag that starts with a variable integer indicating its content length
- *
+/*
  *       0                   1                   2                   3
  *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      |     Length    |               Content (variable)              |
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
+
+/**
+ *  Variable Tag
+ *  ~~~~~~~~~~~~
+ *
+ *  A tag that starts with a variable integer indicating its content length
+ */
 public class VarTag extends Data implements Triad.Tag {
+
+    public static final VarTag ZERO = from(VarIntData.ZERO, Data.ZERO);
 
     public final IntegerData length;
     public final ByteArray content;
@@ -60,10 +64,10 @@ public class VarTag extends Data implements Triad.Tag {
         assert data.getSize() == (length.getSize() + content.getSize()) : "VarTag error: " + data.getSize();
     }
 
-    protected static IntegerData getLength(ByteArray data) {
+    private static IntegerData getLength(ByteArray data) {
         return VarIntData.from(data);
     }
-    protected static ByteArray getContent(ByteArray data, IntegerData length) {
+    private static ByteArray getContent(ByteArray data, IntegerData length) {
         int offset = length.getSize();
         int size = length.getIntValue();
         if ((offset + size) > data.getSize()) {
@@ -104,5 +108,10 @@ public class VarTag extends Data implements Triad.Tag {
         }
         ByteArray data = length.concat(content);
         return new VarTag(data, length, content);
+    }
+
+    // parse tag
+    public static Triad.Tag parse(ByteArray data) {
+        return from(data);
     }
 }

@@ -129,24 +129,24 @@ public class MemPool implements Pool {
     public boolean deleteDeparture(Package response, SocketAddress destination, SocketAddress source) {
         Header head = response.head;
         ByteArray body = response.body;
-        int bodyLen = body.getLength();
+        int bodySize = body.getSize();
         TransactionID sn = head.sn;
         DataType type = head.type;
         if (type.equals(DataType.CommandRespond)) {
             // response for Command
-            assert bodyLen == 0 || (body.getByte(0) == 'O' && body.getByte(1) == 'K') : "CommandRespond error: " + body;
+            assert bodySize == 0 || (body.getByte(0) == 'O' && body.getByte(1) == 'K') : "CommandRespond error: " + body;
             return deleteEntireTask(sn, destination);
         } else if (type.equals(DataType.MessageRespond)) {
             // response for Message or Fragment
-            if (bodyLen >= 8) {
+            if (bodySize >= 8) {
                 // MessageFragment
-                assert bodyLen == 8 || (body.getByte(8) == 'O' && body.getByte(9) == 'K') : "MessageRespond error: " + body;
+                assert bodySize == 8 || (body.getByte(8) == 'O' && body.getByte(9) == 'K') : "MessageRespond error: " + body;
                 // get pages count and index
                 int pages = DataConvert.getInt32Value(body, 0);
                 int offset = DataConvert.getInt32Value(body, 4);
                 assert pages > 1 && pages > offset : "pages error: " + pages + ", " + offset;
                 return deleteFragment(sn, offset, destination);
-            } else if (bodyLen == 0 || (body.getByte(0) == 'O' && body.getByte(1) == 'K')) {
+            } else if (bodySize == 0 || (body.getByte(0) == 'O' && body.getByte(1) == 'K')) {
                 // Message
                 return deleteEntireTask(sn, destination);
             } else {

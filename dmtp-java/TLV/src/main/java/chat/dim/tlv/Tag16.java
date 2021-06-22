@@ -44,7 +44,15 @@ import chat.dim.type.UInt16Data;
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
+/**
+ *  Fixed Tag (16 bits)
+ *  ~~~~~~~~~~~~~~~~~~~
+ *
+ *  Network Byte Order
+ */
 public class Tag16 extends UInt16Data implements Triad.Tag {
+
+    public static final Tag16 ZERO = from(UInt16Data.ZERO);
 
     public Tag16(UInt16Data data) {
         super(data, data.value, data.endian);
@@ -77,5 +85,10 @@ public class Tag16 extends UInt16Data implements Triad.Tag {
 
     public static Tag16 from(int value) {
         return new Tag16(DataConvert.getUInt16Data(value));
+    }
+
+    // parse tag
+    public static Triad.Tag parse(ByteArray data) {
+        return from(data);
     }
 }

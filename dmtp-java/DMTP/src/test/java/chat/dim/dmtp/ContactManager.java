@@ -40,8 +40,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import chat.dim.dmtp.values.LocationValue;
-import chat.dim.dmtp.values.StringValue;
+import chat.dim.dmtp.protocol.LocationValue;
+import chat.dim.tlv.StringValue;
 
 public class ContactManager implements LocationDelegate {
 

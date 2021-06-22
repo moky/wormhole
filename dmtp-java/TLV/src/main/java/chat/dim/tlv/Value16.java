@@ -1,13 +1,13 @@
 /* license: https://mit-license.org
  *
- *  DMTP: Direct Message Transfer Protocol
+ *  TLV: Tag Length Value
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,43 +28,57 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.dmtp.values;
+package chat.dim.tlv;
 
-import chat.dim.dmtp.fields.FieldLength;
-import chat.dim.dmtp.fields.FieldName;
+import chat.dim.network.DataConvert;
 import chat.dim.type.ByteArray;
+import chat.dim.type.UInt16Data;
 
-public class RelayedAddressValue extends MappedAddressValue {
+/**
+ *  Integer Value (16 bits)
+ *  ~~~~~~~~~~~~~~~~~~~~~~~
+ *
+ *  Network Byte Order
+ */
+public class Value16 extends UInt16Data implements Triad.Value {
 
-    /*  RELAYED-ADDRESS
-     *  ~~~~~~~~~~~~~~~
-     *
-     *  The RELAYED-ADDRESS attribute is present in Allocate responses.  It
-     *  specifies the address and port that the server allocated to the
-     *  client.  It is encoded in the same way as MAPPED-ADDRESS.
-     */
+    public static final Value16 ZERO = from(UInt16Data.ZERO);
 
-    public RelayedAddressValue(MappedAddressValue addressValue) {
-        super(addressValue);
+    public Value16(UInt16Data data) {
+        super(data, data.value, data.endian);
     }
 
-    public RelayedAddressValue(ByteArray data, String ip, int port, byte family) {
-        super(data, ip, port, family);
+    public Value16(ByteArray data, int value, Endian endian) {
+        super(data, value, endian);
     }
 
-    public RelayedAddressValue(String ip, int port, byte family) {
-        super(ip, port, family);
+    //
+    //  Factories
+    //
+
+    public static Value16 from(Value16 tag) {
+        return tag;
     }
 
-    public RelayedAddressValue(String ip, int port) {
-        super(ip, port);
+    public static Value16 from(UInt16Data data) {
+        return new Value16(data, data.value, data.endian);
     }
 
-    public static RelayedAddressValue parse(ByteArray data, FieldName type, FieldLength length) {
-        MappedAddressValue value = MappedAddressValue.parse(data, type, length);
-        if (value == null) {
+    public static Value16 from(ByteArray data) {
+        if (data.getSize() < 4) {
             return null;
+        } else if (data.getSize() > 4) {
+            data = data.slice(0, 4);
         }
-        return new RelayedAddressValue(data, value.ip, value.port, value.family);
+        return new Value16(DataConvert.getUInt16Data(data));
+    }
+
+    public static Value16 from(int value) {
+        return new Value16(DataConvert.getUInt16Data(value));
+    }
+
+    // parse value with tag & length
+    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+        return from(data);
     }
 }

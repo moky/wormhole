@@ -39,13 +39,13 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import chat.dim.dmtp.fields.FieldName;
-import chat.dim.dmtp.values.BinaryValue;
-import chat.dim.dmtp.values.LocationValue;
-import chat.dim.dmtp.values.MappedAddressValue;
-import chat.dim.dmtp.values.RelayedAddressValue;
-import chat.dim.dmtp.values.SourceAddressValue;
-import chat.dim.dmtp.values.TimestampValue;
+import chat.dim.dmtp.protocol.Command;
+import chat.dim.dmtp.protocol.LocationValue;
+import chat.dim.dmtp.protocol.MappedAddressValue;
+import chat.dim.dmtp.protocol.RelayedAddressValue;
+import chat.dim.dmtp.protocol.SourceAddressValue;
+import chat.dim.tlv.RawValue;
+import chat.dim.tlv.Value32;
 import chat.dim.type.ByteArray;
 import chat.dim.udp.Connection;
 
@@ -211,13 +211,13 @@ public class Contact {
     //
 
     private static ByteArray getSignData(LocationValue location) {
-        MappedAddressValue mappedAddress = (MappedAddressValue) location.get(FieldName.MAPPED_ADDRESS);
+        MappedAddressValue mappedAddress = (MappedAddressValue) location.get(Command.MAPPED_ADDRESS);
         if (mappedAddress == null) {
             return null;
         }
-        SourceAddressValue sourceAddress = (SourceAddressValue) location.get(FieldName.SOURCE_ADDRESS);
-        RelayedAddressValue relayedAddress = (RelayedAddressValue) location.get(FieldName.RELAYED_ADDRESS);
-        TimestampValue timestamp = (TimestampValue) location.get(FieldName.TIME);
+        SourceAddressValue sourceAddress = (SourceAddressValue) location.get(Command.SOURCE_ADDRESS);
+        RelayedAddressValue relayedAddress = (RelayedAddressValue) location.get(Command.RELAYED_ADDRESS);
+        Value32 timestamp = (Value32) location.get(Command.TIME);
         // data = "source_address" + "mapped_address" + "relayed_address" + "time"
         ByteArray data = mappedAddress;
         if (sourceAddress != null) {
@@ -245,7 +245,7 @@ public class Contact {
         }
         // TODO: sign it with private key
         byte[] sign = ("sign(" + data + ")").getBytes();
-        BinaryValue signature = new BinaryValue(sign);
+        RawValue signature = new RawValue(sign);
         // create
         return LocationValue.create(location.getIdentifier(),
                 location.getSourceAddress(),

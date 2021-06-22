@@ -1,13 +1,13 @@
 /* license: https://mit-license.org
  *
- *  DMTP: Direct Message Transfer Protocol
+ *  TLV: Tag Length Value
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,41 +28,59 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.dmtp.values;
+package chat.dim.tlv;
 
 import java.nio.charset.Charset;
 
-import chat.dim.dmtp.fields.FieldLength;
-import chat.dim.dmtp.fields.FieldName;
-import chat.dim.dmtp.fields.FieldValue;
 import chat.dim.type.ByteArray;
+import chat.dim.type.Data;
 
-public class StringValue extends FieldValue {
+public class StringValue extends Data implements Triad.Value {
+
+    public static final StringValue ZERO = from(Data.ZERO);
 
     public final String string;
-
-    public StringValue(ByteArray data) {
-        super(data);
-        this.string = new String(data.getBytes(), Charset.forName("UTF-8"));
-    }
 
     public StringValue(ByteArray data, String string) {
         super(data);
         this.string = string;
     }
 
-    public StringValue(String string) {
-        super(string.getBytes(Charset.forName("UTF-8")));
+    public StringValue(byte[] buffer, int offset, int size, String string) {
+        super(buffer, offset, size);
         this.string = string;
     }
 
-    @Override
-    public String toString() {
-        return string;
+    public StringValue(byte[] bytes, String string) {
+        super(bytes);
+        this.string = string;
     }
 
-    public static StringValue parse(ByteArray data, FieldName type, FieldLength length) {
+    //
+    //  Factories
+    //
+
+    public static StringValue from(StringValue value) {
+        return value;
+    }
+
+    public static StringValue from(ByteArray data) {
         String string = new String(data.getBytes(), Charset.forName("UTF-8"));
         return new StringValue(data, string);
+    }
+
+    public static StringValue from(String string) {
+        byte[] bytes = string.getBytes(Charset.forName("UTF-8"));
+        return new StringValue(bytes, 0, bytes.length, string);
+    }
+
+    public static StringValue from(byte[] bytes) {
+        String string = new String(bytes, Charset.forName("UTF-8"));
+        return new StringValue(bytes, 0, bytes.length, string);
+    }
+
+    // parse value with tag & length
+    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+        return from(data);
     }
 }

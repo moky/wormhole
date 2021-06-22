@@ -48,11 +48,11 @@ public class TransactionID extends Data {
     //
 
     public static TransactionID parse(ByteArray data) {
-        int length = data.getLength();
-        if (length < 8) {
-            //throw new ArrayIndexOutOfBoundsException("Transaction ID length error: " + length);
+        int size = data.getSize();
+        if (size < 8) {
+            //throw new ArrayIndexOutOfBoundsException("Transaction ID error: " + size);
             return null;
-        } else if (length > 8) {
+        } else if (size > 8) {
             data = data.slice(0, 8);
         }
         return new TransactionID(data);

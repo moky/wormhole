@@ -35,16 +35,16 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.util.List;
 
-import chat.dim.dmtp.fields.Field;
 import chat.dim.dmtp.protocol.Command;
+import chat.dim.dmtp.protocol.LocationValue;
 import chat.dim.dmtp.protocol.Message;
-import chat.dim.dmtp.values.LocationValue;
 import chat.dim.mtp.PeerHandler;
 import chat.dim.mtp.Pool;
 import chat.dim.mtp.protocol.DataType;
 import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.protocol.TransactionID;
 import chat.dim.mtp.task.Departure;
+import chat.dim.tlv.Field;
 import chat.dim.type.ByteArray;
 
 public abstract class Node implements PeerHandler {
@@ -167,7 +167,7 @@ public abstract class Node implements PeerHandler {
             //throw new NullPointerException("failed to get my location");
             return false;
         }
-        Command cmd = Command.Hello.create(mine);
+        Command cmd = Command.createHelloCommand(mine);
         sendCommand(cmd, destination);
         return true;
     }
@@ -284,7 +284,7 @@ public abstract class Node implements PeerHandler {
     @Override
     public boolean onReceivedMessage(ByteArray msg, SocketAddress source, SocketAddress destination) {
         // process after received message data
-        List<Field> fields = Field.parseAll(msg);
+        List<Field> fields = Field.parseFields(msg);
         Message pack = new Message(msg, fields);
         return processMessage(pack, source);
     }

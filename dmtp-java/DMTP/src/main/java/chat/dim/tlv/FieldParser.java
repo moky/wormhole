@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  TLV: Tag Length Value
+ *  DMTP: Direct Message Transfer Protocol
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -30,48 +30,56 @@
  */
 package chat.dim.tlv;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import chat.dim.type.ByteArray;
-import chat.dim.type.VarIntData;
 
-/**
- *  Variable Length
- *  ~~~~~~~~~~~~~~~
- */
-public class VarLength extends VarIntData implements Triad.Length {
+public abstract class FieldParser<F extends Field> extends Parser<F, StringTag, VarLength, Triad.Value>
+        implements Field.TagParser, Field.LengthParser, Field.ValueParser {
 
-    public static final VarLength ZERO = from(VarIntData.ZERO);
-
-    public VarLength(VarIntData data) {
-        super(data, data.value);
+    @Override
+    protected Field.TagParser getTagParser() {
+        return this;
+    }
+    @Override
+    protected Field.LengthParser getLengthParser() {
+        return this;
+    }
+    @Override
+    protected Field.ValueParser getValueParser() {
+        return this;
     }
 
-    public VarLength(ByteArray data, long value) {
-        super(data, value);
+    @Override
+    public StringTag parseTag(ByteArray data) {
+        return StringTag.from(data);
     }
 
-    //
-    //  Factories
-    //
-
-    public static VarLength from(VarLength length) {
-        return length;
+    @Override
+    public VarLength parseLength(ByteArray data, StringTag type) {
+        return VarLength.from(data);
     }
 
-    public static VarLength from(VarIntData data) {
-        return new VarLength(data, data.value);
+    @Override
+    public Triad.Value parseValue(ByteArray data, StringTag type, VarLength length) {
+        Field.ValueParser parser = valueParsers.get(type.string);
+        if (parser == null) {
+            return RawValue.from(data);
+        } else {
+            return parser.parseValue(data, type, length);
+        }
     }
 
-    public static VarLength from(ByteArray data) {
-        VarIntData var = VarIntData.from(data);
-        return var == null ? null : new VarLength(var);
-    }
+    //-------- Runtime --------
 
-    public static VarLength from(long value) {
-        return new VarLength(VarIntData.from(value));
-    }
+    private static final Map<String, Field.ValueParser> valueParsers = new HashMap<>();
 
-    // parse length with tag
-    public static Triad.Length parse(ByteArray data, Triad.Tag tag) {
-        return from(data);
+    public static void register(String type, Field.ValueParser parser) {
+        if (parser == null) {
+            valueParsers.remove(type);
+        } else {
+            valueParsers.put(type, parser);
+        }
     }
 }
