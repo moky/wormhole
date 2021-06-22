@@ -118,11 +118,11 @@ public class MappedAddressValue extends RawValue {
         return null;
     }
 
-    public static MappedAddressValue from(String ip, int port, byte family) {
+    public static MappedAddressValue create(String ip, int port, byte family) {
         ByteArray data = getData(ip, port, family);
         return new MappedAddressValue(data, ip, port, family);
     }
-    public static MappedAddressValue from(String ip, int port) {
+    public static MappedAddressValue create(String ip, int port) {
         ByteArray data = getData(ip, port, FAMILY_IPV4);
         return new MappedAddressValue(data, ip, port, FAMILY_IPV4);
     }

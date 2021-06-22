@@ -37,9 +37,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import chat.dim.stun.attributes.Attribute;
-import chat.dim.stun.attributes.AttributeLength;
 import chat.dim.stun.attributes.AttributeType;
-import chat.dim.stun.attributes.AttributeValue;
 import chat.dim.stun.protocol.Header;
 import chat.dim.stun.protocol.MessageType;
 import chat.dim.stun.protocol.Package;
@@ -51,6 +49,7 @@ import chat.dim.stun.valus.SoftwareValue;
 import chat.dim.stun.valus.SourceAddressValue;
 import chat.dim.stun.valus.XorMappedAddressValue;
 import chat.dim.stun.valus.XorMappedAddressValue2;
+import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 import chat.dim.udp.Cargo;
@@ -73,7 +72,7 @@ public class Client extends Node {
     @Override
     public boolean parseAttribute(Attribute attribute, Map<String, Object> context) {
         AttributeType type = attribute.tag;
-        AttributeValue value = attribute.value;
+        Triad.Value value = attribute.value;
         if (type.equals(AttributeType.MAPPED_ADDRESS)) {
             assert value instanceof MappedAddressValue : "mapped address value error: " + value;
             context.put("MAPPED-ADDRESS", value);
@@ -82,8 +81,7 @@ public class Client extends Node {
                 // XOR and parse again
                 ByteArray factor = (ByteArray) context.get("trans_id");
                 ByteArray data = XorMappedAddressValue.xor(value, factor);
-                AttributeLength length = AttributeLength.from(data.getLength());
-                value = XorMappedAddressValue.parse(new Data(data), type, length);
+                value = XorMappedAddressValue.from(data);
             }
             if (value != null) {
                 context.put("MAPPED-ADDRESS", value);
@@ -93,8 +91,7 @@ public class Client extends Node {
                 // XOR and parse again
                 ByteArray factor = (ByteArray) context.get("trans_id");
                 ByteArray data = XorMappedAddressValue2.xor(value, factor);
-                AttributeLength length = AttributeLength.from(data.getLength());
-                value = XorMappedAddressValue2.parse(new Data(data), type, length);
+                value = XorMappedAddressValue2.from(data);
             }
             if (value != null) {
                 context.put("MAPPED-ADDRESS", value);
@@ -126,7 +123,7 @@ public class Client extends Node {
         Cargo cargo;
         while (true) {
             size = send(req, serverAddress);
-            if (size != req.getLength()) {
+            if (size != req.getSize()) {
                 // failed to send data
                 return null;
             }

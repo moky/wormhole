@@ -30,8 +30,7 @@
  */
 package chat.dim.stun.valus;
 
-import chat.dim.stun.attributes.AttributeLength;
-import chat.dim.stun.attributes.AttributeType;
+import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
 /*  11.2.5 SOURCE-ADDRESS
@@ -46,27 +45,42 @@ import chat.dim.type.ByteArray;
 
 public class SourceAddressValue extends MappedAddressValue {
 
-    public SourceAddressValue(MappedAddressValue addressValue) {
-        super(addressValue);
+    public SourceAddressValue(MappedAddressValue value) {
+        super(value, value.ip, value.port, value.family);
     }
 
     public SourceAddressValue(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 
-    public SourceAddressValue(String ip, int port, byte family) {
-        super(ip, port, family);
+    //
+    //  Factories
+    //
+
+    public static SourceAddressValue from(SourceAddressValue value) {
+        return value;
     }
 
-    public SourceAddressValue(String ip, int port) {
-        super(ip, port);
+    public static SourceAddressValue from(MappedAddressValue value) {
+        return new SourceAddressValue(value);
     }
 
-    public static SourceAddressValue parse(ByteArray data, AttributeType type, AttributeLength length) {
-        MappedAddressValue value = MappedAddressValue.parse(data, type, length);
-        if (value == null) {
-            return null;
-        }
-        return new SourceAddressValue(value, value.ip, value.port, value.family);
+    public static SourceAddressValue from(ByteArray data) {
+        MappedAddressValue value = MappedAddressValue.from(data);
+        return value == null ? null : new SourceAddressValue(value);
+    }
+
+    public static SourceAddressValue create(String ip, int port, byte family) {
+        MappedAddressValue value = MappedAddressValue.create(ip, port, family);
+        return new SourceAddressValue(value, ip, port, family);
+    }
+    public static SourceAddressValue create(String ip, int port) {
+        MappedAddressValue value = MappedAddressValue.create(ip, port);
+        return new SourceAddressValue(value, ip, port, value.family);
+    }
+
+    // parse value with tag & length
+    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+        return from(data);
     }
 }

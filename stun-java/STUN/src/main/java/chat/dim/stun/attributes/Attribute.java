@@ -32,36 +32,20 @@ package chat.dim.stun.attributes;
 
 import java.util.List;
 
+import chat.dim.tlv.Length16;
+import chat.dim.tlv.RawValue;
 import chat.dim.tlv.TagLengthValue;
+import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
-public class Attribute extends TagLengthValue<AttributeType, AttributeLength, AttributeValue> {
+public class Attribute extends TagLengthValue<AttributeType, Length16, Triad.Value> {
 
-    public Attribute(ByteArray data, AttributeType type, AttributeLength length, AttributeValue value) {
+    public Attribute(Triad<AttributeType, Length16, Triad.Value> tlv) {
+        super(tlv);
+    }
+
+    public Attribute(ByteArray data, AttributeType type, Length16 length, Triad.Value value) {
         super(data, type, length, value);
-    }
-
-    protected static AttributeLength getLength(AttributeLength length, AttributeValue value) {
-        if (length != null) {
-            return length;
-        } else if (value != null) {
-            return AttributeLength.from(value.getLength());
-        } else {
-            return AttributeLength.from(0);
-        }
-    }
-
-    //
-    //  Factories
-    //
-
-    public static Attribute create(AttributeType type, AttributeValue value) {
-        return create(type, null, value);
-    }
-    public static Attribute create(AttributeType type, AttributeLength length, AttributeValue value) {
-        length = getLength(length, value);
-        ByteArray data = type.concat(length, value);
-        return new Attribute(data, type, length, value);
     }
 
 
@@ -71,6 +55,43 @@ public class Attribute extends TagLengthValue<AttributeType, AttributeLength, At
     private static final AttributeParser parser = new AttributeParser();
 
     public static List<Attribute> parseAll(ByteArray data) {
-        return parser.parseAll(data);
+        return parser.parseTriads(data);
     }
+
+    public static void register(AttributeType type, ValueParser parser) {
+        AttributeParser.register(type.name, parser);
+    }
+
+    //
+    //  Factories
+    //
+
+    public static Attribute from(Attribute attribute) {
+        return attribute;
+    }
+
+    public static Attribute from(Triad<AttributeType, Length16, Triad.Value> tlv) {
+        return new Attribute(tlv);
+    }
+
+    public static Attribute create(AttributeType type, Triad.Value value) {
+        return create(type, null, value);
+    }
+    public static Attribute create(AttributeType tag, Length16 length, Triad.Value value) {
+        if (value == null) {
+            value = RawValue.ZERO;
+            length = Length16.ZERO;
+        } else if (length == null) {
+            length = Length16.from(value.getSize());
+        }
+        ByteArray data = tag.concat(length, value);
+        return new Attribute(data, tag, length, value);
+    }
+
+    //
+    //  TLV Parsers
+    //
+    interface TypeParser extends Triad.Tag.Parser<AttributeType> { }
+    interface LengthParser extends Triad.Length.Parser<AttributeType, Length16> { }
+    public interface ValueParser extends Triad.Value.Parser<AttributeType, Length16, Triad.Value> { }
 }

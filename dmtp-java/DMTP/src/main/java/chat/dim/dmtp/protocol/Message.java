@@ -233,7 +233,7 @@ public class Message extends MapValue<Field> {
             // value error
             return;
         }
-        fields.add(Field.from(tag, value));
+        fields.add(Field.create(tag, value));
     }
 
     public static Message create(Map<Object, Object> info) {

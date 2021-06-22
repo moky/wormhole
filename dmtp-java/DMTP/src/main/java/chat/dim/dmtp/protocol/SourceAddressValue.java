@@ -69,12 +69,12 @@ public class SourceAddressValue extends MappedAddressValue {
         return value == null ? null : new SourceAddressValue(value);
     }
 
-    public static SourceAddressValue from(String ip, int port, byte family) {
-        MappedAddressValue value = MappedAddressValue.from(ip, port, family);
+    public static SourceAddressValue create(String ip, int port, byte family) {
+        MappedAddressValue value = MappedAddressValue.create(ip, port, family);
         return new SourceAddressValue(value, ip, port, family);
     }
-    public static SourceAddressValue from(String ip, int port) {
-        MappedAddressValue value = MappedAddressValue.from(ip, port);
+    public static SourceAddressValue create(String ip, int port) {
+        MappedAddressValue value = MappedAddressValue.create(ip, port);
         return new SourceAddressValue(value, ip, port, value.family);
     }
 

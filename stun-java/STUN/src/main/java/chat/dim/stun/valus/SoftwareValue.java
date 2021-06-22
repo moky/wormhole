@@ -32,31 +32,40 @@ package chat.dim.stun.valus;
 
 import java.nio.charset.Charset;
 
-import chat.dim.stun.attributes.AttributeLength;
-import chat.dim.stun.attributes.AttributeType;
-import chat.dim.stun.attributes.AttributeValue;
+import chat.dim.tlv.StringValue;
+import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 import chat.dim.type.MutableData;
 
-public class SoftwareValue extends AttributeValue {
-
-    private final String description;
-
-    public SoftwareValue(SoftwareValue softwareValue) {
-        super(softwareValue);
-        description = softwareValue.description;
-    }
+public class SoftwareValue extends StringValue {
 
     public SoftwareValue(ByteArray data, String description) {
-        super(data);
-        this.description = description;
+        super(data, description);
     }
 
-    public SoftwareValue(String description) {
-        this(build(description), description);
+    //
+    //  Factories
+    //
+
+    public static SoftwareValue from(SoftwareValue value) {
+        return value;
     }
 
-    private static ByteArray build(String description) {
+    public static SoftwareValue from(ByteArray data) {
+        String string = new String(data.getBytes(), Charset.forName("UTF-8"));
+        return new SoftwareValue(data, string.trim());
+    }
+
+    public static SoftwareValue from(String string) {
+        return new SoftwareValue(getData(string), string);
+    }
+
+    // parse value with tag & length
+    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+        return from(data);
+    }
+
+    private static ByteArray getData(String description) {
         byte[] bytes = description.getBytes(Charset.forName("UTF-8"));
         int length = bytes.length;
         int tail = length & 3;
@@ -70,15 +79,5 @@ public class SoftwareValue extends AttributeValue {
             data.setByte(length - 1, (byte) 0);
         }
         return data;
-    }
-
-    @Override
-    public String toString() {
-        return description;
-    }
-
-    public static SoftwareValue parse(ByteArray data, AttributeType type, AttributeLength length) {
-        String desc = new String(data.getBytes(), Charset.forName("UTF-8"));
-        return new SoftwareValue(data, desc.trim());
     }
 }

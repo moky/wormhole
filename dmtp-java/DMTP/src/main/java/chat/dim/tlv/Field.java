@@ -74,13 +74,13 @@ public class Field extends TagLengthValue<StringTag, VarLength, Triad.Value> {
         return new Field(tlv);
     }
 
-    public static Field from(StringTag tag) {
-        return from(tag, null, null);
+    public static Field create(StringTag tag) {
+        return create(tag, null, null);
     }
-    public static Field from(StringTag tag, Value value) {
-        return from(tag, null, value);
+    public static Field create(StringTag tag, Value value) {
+        return create(tag, null, value);
     }
-    public static Field from(StringTag tag, VarLength length, Value value) {
+    public static Field create(StringTag tag, VarLength length, Value value) {
         if (value == null) {
             value = RawValue.ZERO;
             length = VarLength.ZERO;

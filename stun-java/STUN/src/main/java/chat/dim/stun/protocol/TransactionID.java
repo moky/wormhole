@@ -86,7 +86,7 @@ public class TransactionID extends Data {
     //
 
     public static TransactionID parse(ByteArray data) {
-        int length = data.getLength();
+        int length = data.getSize();
         if (length < 16) {
             //throw new ArrayIndexOutOfBoundsException("Transaction ID length error: " + length);
             return null;

@@ -30,8 +30,7 @@
  */
 package chat.dim.stun.valus;
 
-import chat.dim.stun.attributes.AttributeLength;
-import chat.dim.stun.attributes.AttributeType;
+import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 
@@ -74,16 +73,38 @@ import chat.dim.type.Data;
 
 public class XorMappedAddressValue2 extends MappedAddressValue {
 
-    public XorMappedAddressValue2(MappedAddressValue addressValue) {
-        super(addressValue);
+    public XorMappedAddressValue2(MappedAddressValue value) {
+        super(value, value.ip, value.port, value.family);
     }
 
     public XorMappedAddressValue2(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 
+    //
+    //  Factories
+    //
+
+    public static XorMappedAddressValue2 from(XorMappedAddressValue2 value) {
+        return value;
+    }
+
+    public static XorMappedAddressValue2 from(MappedAddressValue value) {
+        return new XorMappedAddressValue2(value);
+    }
+
+    public static XorMappedAddressValue2 from(ByteArray data) {
+        MappedAddressValue value = MappedAddressValue.from(data);
+        return value == null ? null : new XorMappedAddressValue2(value, value.ip, value.port, value.family);
+    }
+
+    // parse value with tag & length
+    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+        return from(data);
+    }
+
     public static XorMappedAddressValue2 create(String ip, int port, byte family, ByteArray factor) {
-        MappedAddressValue addressValue = new MappedAddressValue(ip, port, family);
+        MappedAddressValue addressValue = MappedAddressValue.create(ip, port, family);
         ByteArray data = xor(addressValue, factor);
         return new XorMappedAddressValue2(data, ip, port, family);
     }
@@ -93,8 +114,8 @@ public class XorMappedAddressValue2 extends MappedAddressValue {
     }
 
     public static ByteArray xor(ByteArray addressValue, ByteArray trans_id) {
-        int addressLen = addressValue.getLength();
-        int factorLen = trans_id.getLength();
+        int addressLen = addressValue.getSize();
+        int factorLen = trans_id.getSize();
         if (addressLen != 8 && addressLen != 20) {
             throw new ArrayIndexOutOfBoundsException("address length error: " + addressLen);
             //return null;
@@ -123,13 +144,5 @@ public class XorMappedAddressValue2 extends MappedAddressValue {
             f_pos += 1;
         }
         return new Data(array);
-    }
-
-    public static XorMappedAddressValue2 parse(ByteArray data, AttributeType type, AttributeLength length) {
-        MappedAddressValue value = MappedAddressValue.parse(data, type, length);
-        if (value == null) {
-            return null;
-        }
-        return new XorMappedAddressValue2(value, value.ip, value.port, value.family);
     }
 }

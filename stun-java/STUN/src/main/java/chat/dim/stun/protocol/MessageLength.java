@@ -47,10 +47,10 @@ public class MessageLength extends UInt16Data {
     //
 
     public static MessageLength parse(ByteArray data) {
-        if (data.getLength() < 2 || (data.getByte(1) & 0x03) != 0) {
+        if (data.getSize() < 2 || (data.getByte(1) & 0x03) != 0) {
             // format: xxxx xxxx, xxxx xx00
             return null;
-        } else if (data.getLength() > 2) {
+        } else if (data.getSize() > 2) {
             data = data.slice(0, 2);
         }
         return new MessageLength(DataConvert.getUInt16Data(data));

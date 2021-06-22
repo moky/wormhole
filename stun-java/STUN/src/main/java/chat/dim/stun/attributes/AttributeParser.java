@@ -30,7 +30,13 @@
  */
 package chat.dim.stun.attributes;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import chat.dim.tlv.Length16;
 import chat.dim.tlv.Parser;
+import chat.dim.tlv.RawValue;
+import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
 /*
@@ -54,25 +60,57 @@ import chat.dim.type.ByteArray;
  *                    Figure 4: Format of STUN Attributes
  */
 
-public class AttributeParser extends Parser<Attribute, AttributeType, AttributeLength, AttributeValue> {
+public class AttributeParser extends Parser<Attribute, AttributeType, Length16, Triad.Value>
+        implements Attribute.TypeParser, Attribute.LengthParser, Attribute.ValueParser {
 
     @Override
-    public AttributeType parseTagField(ByteArray data) {
-        return AttributeType.parse(data);
+    protected Attribute.TypeParser getTagParser() {
+        return this;
+    }
+    @Override
+    protected Attribute.LengthParser getLengthParser() {
+        return this;
+    }
+    @Override
+    protected Attribute.ValueParser getValueParser() {
+        return this;
     }
 
     @Override
-    public AttributeLength parseLengthField(ByteArray data, AttributeType type) {
-        return AttributeLength.parse(data, type);
+    public AttributeType parseTag(ByteArray data) {
+        return AttributeType.from(data);
     }
 
     @Override
-    public AttributeValue parseValueField(ByteArray data, AttributeType type, AttributeLength length) {
-        return AttributeValue.parse(data, type, length);
+    public Length16 parseLength(ByteArray data, AttributeType type) {
+        return Length16.from(data);
     }
 
     @Override
-    protected Attribute createTriad(ByteArray data, AttributeType type, AttributeLength length, AttributeValue value) {
+    public Triad.Value parseValue(ByteArray data, AttributeType type, Length16 length) {
+        Attribute.ValueParser parser = valueParsers.get(type.name);
+        if (parser == null) {
+            return RawValue.from(data);
+        } else {
+            return parser.parseValue(data, type, length);
+        }
+    }
+
+    @Override
+    protected Attribute createTriad(ByteArray data, AttributeType type, Length16 length, Triad.Value value) {
         return new Attribute(data, type, length, value);
+    }
+
+
+    //-------- Runtime --------
+
+    private static final Map<String, Attribute.ValueParser> valueParsers = new HashMap<>();
+
+    public static void register(String type, Attribute.ValueParser parser) {
+        if (parser == null) {
+            valueParsers.remove(type);
+        } else {
+            valueParsers.put(type, parser);
+        }
     }
 }

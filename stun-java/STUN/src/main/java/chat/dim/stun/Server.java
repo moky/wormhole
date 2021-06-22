@@ -38,7 +38,6 @@ import java.util.Map;
 
 import chat.dim.stun.attributes.Attribute;
 import chat.dim.stun.attributes.AttributeType;
-import chat.dim.stun.attributes.AttributeValue;
 import chat.dim.stun.protocol.Header;
 import chat.dim.stun.protocol.MessageType;
 import chat.dim.stun.protocol.Package;
@@ -49,6 +48,7 @@ import chat.dim.stun.valus.SoftwareValue;
 import chat.dim.stun.valus.SourceAddressValue;
 import chat.dim.stun.valus.XorMappedAddressValue;
 import chat.dim.stun.valus.XorMappedAddressValue2;
+import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 import chat.dim.type.MutableData;
 
@@ -101,7 +101,7 @@ public class Server extends Node {
     @Override
     public boolean parseAttribute(Attribute attribute, Map<String, Object> context) {
         AttributeType type = attribute.tag;
-        AttributeValue value = attribute.value;
+        Triad.Value value = attribute.value;
         if (type.equals(AttributeType.MAPPED_ADDRESS)) {
             assert value instanceof MappedAddressValue : "mapped address value error: " + value;
             context.put("MAPPED-ADDRESS", value);
@@ -124,13 +124,13 @@ public class Server extends Node {
      */
     protected boolean redirect(Header head, SocketAddress clientAddress) {
         InetSocketAddress address = (InetSocketAddress) clientAddress;
-        MappedAddressValue value = new MappedAddressValue(address.getHostString(), address.getPort());
+        MappedAddressValue value = MappedAddressValue.create(address.getHostString(), address.getPort());
         Attribute attribute = Attribute.create(AttributeType.MAPPED_ADDRESS, value);
         // pack
         Package pack = Package.create(head.type, head.sn, attribute);
         assert neighbour != null : "neighbour address not set yet";
         int res = send(pack, neighbour);
-        return res == pack.getLength();
+        return res == pack.getSize();
     }
 
     protected boolean respond(Header head, SocketAddress clientAddress, int localPort) {
@@ -148,9 +148,9 @@ public class Server extends Node {
         String changedIP = address.getHostString();
         int changedPort = address.getPort();
         // create attributes
-        AttributeValue value;
+        Triad.Value value;
         // mapped address
-        value = new MappedAddressValue(remoteIP, remotePort);
+        value = MappedAddressValue.create(remoteIP, remotePort);
         ByteArray data1 = Attribute.create(AttributeType.MAPPED_ADDRESS, value);
         // xor
         value = XorMappedAddressValue.create(remoteIP, remotePort, head.sn);
@@ -159,17 +159,17 @@ public class Server extends Node {
         value = XorMappedAddressValue2.create(remoteIP, remotePort, head.sn);
         ByteArray data5 = Attribute.create(AttributeType.XOR_MAPPED_ADDRESS_8020, value);
         // source address
-        value = new SourceAddressValue(localIP, localPort);
+        value = SourceAddressValue.create(localIP, localPort);
         ByteArray data2 = Attribute.create(AttributeType.SOURCE_ADDRESS, value);
         // changed address
-        value = new ChangedAddressValue(changedIP, changedPort);
+        value = ChangedAddressValue.create(changedIP, changedPort);
         ByteArray data3 = Attribute.create(AttributeType.CHANGED_ADDRESS, value);
         // software
-        value = new SoftwareValue(software);
+        value = SoftwareValue.from(software);
         ByteArray data6 = Attribute.create(AttributeType.SOFTWARE, value);
         // pack
-        MutableData body = new MutableData(data1.getLength() + data2.getLength() + data3.getLength()
-                + data4.getLength() + data5.getLength() + data6.getLength());
+        MutableData body = new MutableData(data1.getSize() + data2.getSize() + data3.getSize()
+                + data4.getSize() + data5.getSize() + data6.getSize());
         body.append(data1);
         body.append(data2);
         body.append(data3);
@@ -178,7 +178,7 @@ public class Server extends Node {
         body.append(data6);
         Package pack = Package.create(MessageType.BindResponse, head.sn, body);
         int res = send(pack, clientAddress, new InetSocketAddress(localIP, localPort));
-        return res == pack.getLength();
+        return res == pack.getSize();
     }
 
     public boolean handle(ByteArray data, SocketAddress clientAddress) {

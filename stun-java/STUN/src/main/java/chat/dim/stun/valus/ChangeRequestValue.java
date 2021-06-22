@@ -34,10 +34,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import chat.dim.network.DataConvert;
-import chat.dim.stun.attributes.AttributeLength;
-import chat.dim.stun.attributes.AttributeType;
-import chat.dim.stun.attributes.AttributeValue;
+import chat.dim.tlv.Triad;
+import chat.dim.tlv.Value32;
 import chat.dim.type.ByteArray;
+import chat.dim.type.UInt32Data;
 
 /*  11.2.4 CHANGE-REQUEST
  *
@@ -65,49 +65,13 @@ import chat.dim.type.ByteArray;
  *    (Defined in RFC-3489, removed from RFC-5389)
  */
 
-public class ChangeRequestValue extends AttributeValue {
+public class ChangeRequestValue extends Value32 {
 
-    public final int value;
     private final String name;
 
-    public ChangeRequestValue(ChangeRequestValue requestValue) {
-        super(requestValue);
-        value = requestValue.value;
-        name = requestValue.name;
-    }
-
-    public ChangeRequestValue(ByteArray data, int value, String name) {
+    public ChangeRequestValue(UInt32Data data, String name) {
         super(data);
-        this.value = value;
         this.name = name;
-        s_values.put(value, this);
-    }
-
-    public ChangeRequestValue(int value, String name) {
-        this(DataConvert.getUInt32Data(value), value, name);
-    }
-
-    public ChangeRequestValue(int value) {
-        this(value, "ChangeRequestValue-"+value);
-    }
-
-    @Override
-    public boolean equals(Object other) {
-        if (this == other) {
-            return true;
-        }
-        if (other instanceof ChangeRequestValue) {
-            return equals(((ChangeRequestValue) other).value);
-        }
-        return false;
-    }
-    public boolean equals(int other) {
-        return value == other;
-    }
-
-    @Override
-    public int hashCode() {
-        return Integer.hashCode(value);
     }
 
     @Override
@@ -115,26 +79,52 @@ public class ChangeRequestValue extends AttributeValue {
         return name;
     }
 
-    public static ChangeRequestValue parse(ByteArray data, AttributeType type, AttributeLength length) {
-        return getInstance(data);
+    //
+    //  Factories
+    //
+
+    public static ChangeRequestValue from(ChangeRequestValue value) {
+        return value;
     }
 
-    public static synchronized ChangeRequestValue getInstance(ByteArray data) {
-        assert data.getLength() == 4 : "data length error";
-        int value = DataConvert.getInt32Value(data);
-        return getInstance(value);
+    public static ChangeRequestValue from(UInt32Data data) {
+        return get(data.getIntValue());
     }
-    public static synchronized ChangeRequestValue getInstance(int value) {
-        ChangeRequestValue type = s_values.get(value);
-        if (type == null) {
-            type = new ChangeRequestValue(value);
+
+    public static ChangeRequestValue from(ByteArray data) {
+        if (data.getSize() < 4) {
+            return null;
         }
-        return type;
+        return get(DataConvert.getInt32Value(data));
+    }
+
+    public static ChangeRequestValue from(int value) {
+        return get(value);
+    }
+
+    public static synchronized ChangeRequestValue get(int value) {
+        ChangeRequestValue crv = s_values.get(value);
+        if (crv == null) {
+            crv = create(value, "ChangeRequestValue-"+value);
+        }
+        return crv;
+    }
+
+    // parse value with tag & length
+    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+        return from(data);
+    }
+
+    private static ChangeRequestValue create(int value, String name) {
+        UInt32Data data = DataConvert.getUInt32Data(value);
+        ChangeRequestValue crv = new ChangeRequestValue(data, name);
+        s_values.put(value, crv);
+        return crv;
     }
 
     private static final Map<Integer, ChangeRequestValue> s_values = new HashMap<>();
 
-    public static ChangeRequestValue ChangeIP = new ChangeRequestValue(0x00000004, "ChangeIP");
-    public static ChangeRequestValue ChangePort = new ChangeRequestValue(0x00000002, "ChangePort");
-    public static ChangeRequestValue ChangeIPAndPort = new ChangeRequestValue(0x00000006, "ChangeIPAndPort");
+    public static ChangeRequestValue ChangeIP        = create(0x00000004, "ChangeIP");
+    public static ChangeRequestValue ChangePort      = create(0x00000002, "ChangePort");
+    public static ChangeRequestValue ChangeIPAndPort = create(0x00000006, "ChangeIPAndPort");
 }

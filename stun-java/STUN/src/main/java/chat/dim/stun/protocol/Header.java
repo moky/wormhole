@@ -93,7 +93,7 @@ public class Header extends Data {
     }
 
     public static Header create(MessageType type, MessageLength length, TransactionID sn) {
-        MutableData data = new MutableData(type.getLength() + length.getLength() + sn.getLength());
+        MutableData data = new MutableData(type.getSize() + length.getSize() + sn.getSize());
         data.append(type);
         data.append(length);
         data.append(sn);
@@ -107,21 +107,21 @@ public class Header extends Data {
         if (type == null) {
             return null;
         }
-        pos = type.getLength();
+        pos = type.getSize();
         // get message length
         MessageLength len = MessageLength.parse(data.slice(pos));
         if (len == null) {
             return null;
         }
-        pos += len.getLength();
+        pos += len.getSize();
         // get transaction ID
         TransactionID sn = TransactionID.parse(data.slice(pos));
         if (sn == null) {
             return null;
         }
-        pos += sn.getLength();
+        pos += sn.getSize();
         assert pos == 20 : "header length error: " + pos;
-        if (data.getLength() > pos) {
+        if (data.getSize() > pos) {
             data = data.slice(0, pos);
         }
         // create

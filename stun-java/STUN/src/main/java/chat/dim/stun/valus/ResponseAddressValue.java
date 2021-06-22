@@ -30,8 +30,7 @@
  */
 package chat.dim.stun.valus;
 
-import chat.dim.stun.attributes.AttributeLength;
-import chat.dim.stun.attributes.AttributeType;
+import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
 /*  11.2.2 RESPONSE-ADDRESS
@@ -45,27 +44,42 @@ import chat.dim.type.ByteArray;
 
 public class ResponseAddressValue extends MappedAddressValue {
 
-    public ResponseAddressValue(MappedAddressValue addressValue) {
-        super(addressValue);
+    public ResponseAddressValue(MappedAddressValue value) {
+        super(value, value.ip, value.port, value.family);
     }
 
     public ResponseAddressValue(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 
-    public ResponseAddressValue(String ip, int port, byte family) {
-        super(ip, port, family);
+    //
+    //  Factories
+    //
+
+    public static ResponseAddressValue from(ResponseAddressValue value) {
+        return value;
     }
 
-    public ResponseAddressValue(String ip, int port) {
-        super(ip, port);
+    public static ResponseAddressValue from(MappedAddressValue value) {
+        return new ResponseAddressValue(value);
     }
 
-    public static ResponseAddressValue parse(ByteArray data, AttributeType type, AttributeLength length) {
-        MappedAddressValue value = MappedAddressValue.parse(data, type, length);
-        if (value == null) {
-            return null;
-        }
-        return new ResponseAddressValue(value, value.ip, value.port, value.family);
+    public static ResponseAddressValue from(ByteArray data) {
+        MappedAddressValue value = MappedAddressValue.from(data);
+        return value == null ? null : new ResponseAddressValue(value);
+    }
+
+    public static ResponseAddressValue create(String ip, int port, byte family) {
+        MappedAddressValue value = MappedAddressValue.create(ip, port, family);
+        return new ResponseAddressValue(value, ip, port, family);
+    }
+    public static ResponseAddressValue create(String ip, int port) {
+        MappedAddressValue value = MappedAddressValue.create(ip, port);
+        return new ResponseAddressValue(value, ip, port, value.family);
+    }
+
+    // parse value with tag & length
+    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+        return from(data);
     }
 }

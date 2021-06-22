@@ -46,7 +46,7 @@ import chat.dim.type.UInt16Data;
 
 public class AttributeType extends Tag16 {
 
-    private final String name;
+    public final String name;
 
     public AttributeType(UInt16Data data, String name) {
         super(data, data.value, data.endian);
@@ -62,13 +62,26 @@ public class AttributeType extends Tag16 {
     //  Factories
     //
 
-    public static AttributeType parse(ByteArray data) {
-        if (data.getLength() < 2) {
+    public static AttributeType from(AttributeType type) {
+        return type;
+    }
+
+    public static AttributeType from(UInt16Data data) {
+        return get(data);
+    }
+
+    public static AttributeType from(ByteArray data) {
+        if (data.getSize() < 2) {
             return null;
-        } else if (data.getLength() > 2) {
+        } else if (data.getSize() > 2) {
             data = data.slice(0, 2);
         }
         return get(DataConvert.getUInt16Data(data));
+    }
+
+    // parse tag
+    public static AttributeType parse(ByteArray data) {
+        return from(data);
     }
 
     private static synchronized AttributeType get(UInt16Data data) {
@@ -122,15 +135,15 @@ public class AttributeType extends Tag16 {
         //
         //  Register attribute parsers
         //
-        AttributeValue.register(MAPPED_ADDRESS,     MappedAddressValue.class);
-        //AttributeValue.register(XOR_MAPPED_ADDRESS,  XorMappedAddressValue.class);
-        //AttributeValue.register(XOR_MAPPED_ADDRESS_8020, XorMappedAddressValue2.class);
+        Attribute.register(MAPPED_ADDRESS,     MappedAddressValue::parse);
+        //Attribute.register(XOR_MAPPED_ADDRESS,  XorMappedAddressValue::parse);
+        //Attribute.register(XOR_MAPPED_ADDRESS_8020, XorMappedAddressValue2::parse);
 
-        AttributeValue.register(RESPONSE_ADDRESS,   ResponseAddressValue.class);
-        AttributeValue.register(CHANGE_REQUEST,     ChangeRequestValue.class);
-        AttributeValue.register(SOURCE_ADDRESS,     SourceAddressValue.class);
-        AttributeValue.register(CHANGED_ADDRESS,    ChangedAddressValue.class);
+        Attribute.register(RESPONSE_ADDRESS,   ResponseAddressValue::parse);
+        Attribute.register(CHANGE_REQUEST,     ChangeRequestValue::parse);
+        Attribute.register(SOURCE_ADDRESS,     SourceAddressValue::parse);
+        Attribute.register(CHANGED_ADDRESS,    ChangedAddressValue::parse);
 
-        AttributeValue.register(SOFTWARE,           SoftwareValue.class);
+        Attribute.register(SOFTWARE,           SoftwareValue::parse);
     }
 }

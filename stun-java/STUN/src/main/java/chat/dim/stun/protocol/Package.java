@@ -54,7 +54,7 @@ public class Package extends Data {
             body = Data.ZERO;
             length = MessageLength.ZERO;
         } else {
-            length = MessageLength.from(body.getLength());
+            length = MessageLength.from(body.getSize());
         }
         Header head;
         if (sn == null) {
@@ -74,8 +74,8 @@ public class Package extends Data {
             return null;
         }
         // check message length
-        int packLen = head.getLength() + head.msgLength.getIntValue();
-        int dataLen = data.getLength();
+        int packLen = head.getSize() + head.msgLength.getIntValue();
+        int dataLen = data.getSize();
         if (dataLen < packLen) {
             //throw new IndexOutOfBoundsException("STUN package length error: " + dataLen + ", " + packLen);
             return null;
@@ -83,7 +83,7 @@ public class Package extends Data {
             data = data.slice(0, packLen);
         }
         // get attributes body
-        ByteArray body = data.slice(head.getLength());
+        ByteArray body = data.slice(head.getSize());
         return new Package(data, head, body);
     }
 }

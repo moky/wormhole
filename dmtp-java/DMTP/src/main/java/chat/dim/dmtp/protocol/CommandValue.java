@@ -58,15 +58,28 @@ public class CommandValue extends MapValue<Field> {
         return identifier;
     }
 
+    //
+    //  Factories
+    //
+
+    public static CommandValue from(CommandValue value) {
+        return value;
+    }
+
+    public static CommandValue from(ByteArray data) {
+        List<Field> fields = Field.parseFields(data);
+        return new CommandValue(data, fields);
+    }
+
     public static CommandValue create(String identifier) {
-        Field id = Field.from(Command.ID, StringValue.from(identifier));
+        Field id = Field.create(Command.ID, StringValue.from(identifier));
         List<Field> fields = new ArrayList<>();
         fields.add(id);
         return new CommandValue(fields);
     }
 
-    public static CommandValue parse(ByteArray data, Triad.Tag type, Triad.Length length) {
-        List<Field> fields = Field.parseFields(data);
-        return new CommandValue(data, fields);
+    // parse value with tag & length
+    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+        return from(data);
     }
 }

@@ -41,7 +41,6 @@ import chat.dim.tlv.StringTag;
 import chat.dim.tlv.StringValue;
 import chat.dim.tlv.Triad;
 import chat.dim.tlv.Value32;
-import chat.dim.tlv.VarLength;
 import chat.dim.type.ByteArray;
 
 public class LocationValue extends CommandValue {
@@ -121,15 +120,23 @@ public class LocationValue extends CommandValue {
         return nat;
     }
 
-    public static LocationValue parse(ByteArray data, StringTag type, VarLength length) {
+    //
+    //  Factories
+    //
+
+    public static LocationValue from(LocationValue value) {
+        return value;
+    }
+
+    public static LocationValue from(ByteArray data) {
         List<Field> fields = Field.parseFields(data);
         return new LocationValue(data, fields);
     }
 
-
-    //
-    //  Factories
-    //
+    // parse value with tag & length
+    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+        return from(data);
+    }
 
     public static LocationValue create(StringValue identifier,
                                        SourceAddressValue sourceAddress,
@@ -140,30 +147,30 @@ public class LocationValue extends CommandValue {
                                        StringValue nat) {
         List<Field> fields = new ArrayList<>();
         // ID
-        fields.add(Field.from(Command.ID, identifier));
+        fields.add(Field.create(Command.ID, identifier));
         // SOURCE-ADDRESS
         if (sourceAddress != null) {
-            fields.add(Field.from(Command.SOURCE_ADDRESS, sourceAddress));
+            fields.add(Field.create(Command.SOURCE_ADDRESS, sourceAddress));
         }
         // MAPPED-ADDRESS
         if (mappedAddress != null) {
-            fields.add(Field.from(Command.MAPPED_ADDRESS, mappedAddress));
+            fields.add(Field.create(Command.MAPPED_ADDRESS, mappedAddress));
         }
         // RELAYED-ADDRESS
         if (relayedAddress != null) {
-            fields.add(Field.from(Command.RELAYED_ADDRESS, relayedAddress));
+            fields.add(Field.create(Command.RELAYED_ADDRESS, relayedAddress));
         }
         // TIME
         if (timestamp != null) {
-            fields.add(Field.from(Command.TIME, timestamp));
+            fields.add(Field.create(Command.TIME, timestamp));
         }
         // SIGNATURE
         if (signature != null) {
-            fields.add(Field.from(Command.SIGNATURE, signature));
+            fields.add(Field.create(Command.SIGNATURE, signature));
         }
         // NAT
         if (nat != null) {
-            fields.add(Field.from(Command.NAT, nat));
+            fields.add(Field.create(Command.NAT, nat));
         }
         return new LocationValue(fields);
     }
@@ -187,17 +194,17 @@ public class LocationValue extends CommandValue {
         // SOURCE-ADDRESS
         if (sourceAddress instanceof InetSocketAddress) {
             address = (InetSocketAddress) sourceAddress;
-            sourceAddressValue = SourceAddressValue.from(address.getHostString(), address.getPort());
+            sourceAddressValue = SourceAddressValue.create(address.getHostString(), address.getPort());
         }
         // MAPPED-ADDRESS
         if (mappedAddress instanceof InetSocketAddress) {
             address = (InetSocketAddress) mappedAddress;
-            mappedAddressValue = MappedAddressValue.from(address.getHostString(), address.getPort());
+            mappedAddressValue = MappedAddressValue.create(address.getHostString(), address.getPort());
         }
         // RELAYED-ADDRESS
         if (relayedAddress instanceof InetSocketAddress) {
             address = (InetSocketAddress) relayedAddress;
-            relayedAddressValue = RelayedAddressValue.from(address.getHostString(), address.getPort());
+            relayedAddressValue = RelayedAddressValue.create(address.getHostString(), address.getPort());
         }
         // TIME
         if (timestamp > 0) {

@@ -68,12 +68,12 @@ public class RelayedAddressValue extends MappedAddressValue {
         return value == null ? null : new RelayedAddressValue(value);
     }
 
-    public static RelayedAddressValue from(String ip, int port, byte family) {
-        MappedAddressValue value = MappedAddressValue.from(ip, port, family);
+    public static RelayedAddressValue create(String ip, int port, byte family) {
+        MappedAddressValue value = MappedAddressValue.create(ip, port, family);
         return new RelayedAddressValue(value, ip, port, family);
     }
-    public static RelayedAddressValue from(String ip, int port) {
-        MappedAddressValue value = MappedAddressValue.from(ip, port);
+    public static RelayedAddressValue create(String ip, int port) {
+        MappedAddressValue value = MappedAddressValue.create(ip, port);
         return new RelayedAddressValue(value, ip, port, value.family);
     }
 

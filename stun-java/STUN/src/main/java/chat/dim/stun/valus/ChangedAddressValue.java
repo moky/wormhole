@@ -30,8 +30,7 @@
  */
 package chat.dim.stun.valus;
 
-import chat.dim.stun.attributes.AttributeLength;
-import chat.dim.stun.attributes.AttributeType;
+import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
 /*  11.2.3  CHANGED-ADDRESS
@@ -48,27 +47,42 @@ import chat.dim.type.ByteArray;
 
 public class ChangedAddressValue extends MappedAddressValue {
 
-    public ChangedAddressValue(MappedAddressValue addressValue) {
-        super(addressValue);
+    public ChangedAddressValue(MappedAddressValue value) {
+        super(value, value.ip, value.port, value.family);
     }
 
     public ChangedAddressValue(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
 
-    public ChangedAddressValue(String ip, int port, byte family) {
-        super(ip, port, family);
+    //
+    //  Factories
+    //
+
+    public static ChangedAddressValue from(ChangedAddressValue value) {
+        return value;
     }
 
-    public ChangedAddressValue(String ip, int port) {
-        super(ip, port);
+    public static ChangedAddressValue from(MappedAddressValue value) {
+        return new ChangedAddressValue(value);
     }
 
-    public static ChangedAddressValue parse(ByteArray data, AttributeType type, AttributeLength length) {
-        MappedAddressValue value = MappedAddressValue.parse(data, type, length);
-        if (value == null) {
-            return null;
-        }
-        return new ChangedAddressValue(value, value.ip, value.port, value.family);
+    public static ChangedAddressValue from(ByteArray data) {
+        MappedAddressValue value = MappedAddressValue.from(data);
+        return value == null ? null : new ChangedAddressValue(value);
+    }
+
+    public static ChangedAddressValue create(String ip, int port, byte family) {
+        MappedAddressValue value = MappedAddressValue.create(ip, port, family);
+        return new ChangedAddressValue(value, ip, port, family);
+    }
+    public static ChangedAddressValue create(String ip, int port) {
+        MappedAddressValue value = MappedAddressValue.create(ip, port);
+        return new ChangedAddressValue(value, ip, port, value.family);
+    }
+
+    // parse value with tag & length
+    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+        return from(data);
     }
 }

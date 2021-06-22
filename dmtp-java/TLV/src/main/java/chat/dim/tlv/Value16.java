@@ -65,10 +65,10 @@ public class Value16 extends UInt16Data implements Triad.Value {
     }
 
     public static Value16 from(ByteArray data) {
-        if (data.getSize() < 4) {
+        if (data.getSize() < 2) {
             return null;
-        } else if (data.getSize() > 4) {
-            data = data.slice(0, 4);
+        } else if (data.getSize() > 2) {
+            data = data.slice(0, 2);
         }
         return new Value16(DataConvert.getUInt16Data(data));
     }
