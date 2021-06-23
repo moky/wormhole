@@ -73,10 +73,6 @@ import chat.dim.type.Data;
 
 public class XorMappedAddressValue2 extends MappedAddressValue {
 
-    public XorMappedAddressValue2(MappedAddressValue value) {
-        super(value, value.ip, value.port, value.family);
-    }
-
     public XorMappedAddressValue2(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
@@ -89,13 +85,25 @@ public class XorMappedAddressValue2 extends MappedAddressValue {
         return value;
     }
 
-    public static XorMappedAddressValue2 from(MappedAddressValue value) {
-        return new XorMappedAddressValue2(value);
+    public static XorMappedAddressValue2 create(MappedAddressValue value, ByteArray factor) {
+        ByteArray data = xor(value, factor);
+        return new XorMappedAddressValue2(data, value.ip, value.port, value.family);
     }
 
-    public static XorMappedAddressValue2 from(ByteArray data) {
-        MappedAddressValue value = MappedAddressValue.from(data);
-        return value == null ? null : new XorMappedAddressValue2(value, value.ip, value.port, value.family);
+    public static XorMappedAddressValue2 create(ByteArray data, ByteArray factor) {
+        MappedAddressValue value = MappedAddressValue.from(xor(data, factor));
+        if (value == null) {
+            return null;
+        }
+        return new XorMappedAddressValue2(data, value.ip, value.port, value.family);
+    }
+
+    public static XorMappedAddressValue2 create(String ip, int port, byte family, ByteArray factor) {
+        return create(MappedAddressValue.create(ip, port, family), factor);
+    }
+
+    public static XorMappedAddressValue2 create(String ip, int port, ByteArray factor) {
+        return create(MappedAddressValue.create(ip, port, FAMILY_IPV4), factor);
     }
 
     // parse value with tag & length
@@ -103,17 +111,7 @@ public class XorMappedAddressValue2 extends MappedAddressValue {
         return from(data);
     }
 
-    public static XorMappedAddressValue2 create(String ip, int port, byte family, ByteArray factor) {
-        MappedAddressValue addressValue = MappedAddressValue.create(ip, port, family);
-        ByteArray data = xor(addressValue, factor);
-        return new XorMappedAddressValue2(data, ip, port, family);
-    }
-
-    public static XorMappedAddressValue2 create(String ip, int port, ByteArray factor) {
-        return create(ip, port, FAMILY_IPV4, factor);
-    }
-
-    public static ByteArray xor(ByteArray addressValue, ByteArray trans_id) {
+    private static ByteArray xor(ByteArray addressValue, ByteArray trans_id) {
         int addressLen = addressValue.getSize();
         int factorLen = trans_id.getSize();
         if (addressLen != 8 && addressLen != 20) {

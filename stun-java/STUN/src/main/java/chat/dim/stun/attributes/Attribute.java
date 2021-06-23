@@ -58,10 +58,6 @@ public class Attribute extends TagLengthValue<AttributeType, Length16, Triad.Val
         return parser.parseTriads(data);
     }
 
-    public static void register(AttributeType type, ValueParser parser) {
-        AttributeParser.register(type.name, parser);
-    }
-
     //
     //  Factories
     //
@@ -87,11 +83,4 @@ public class Attribute extends TagLengthValue<AttributeType, Length16, Triad.Val
         ByteArray data = tag.concat(length, value);
         return new Attribute(data, tag, length, value);
     }
-
-    //
-    //  TLV Parsers
-    //
-    interface TypeParser extends Triad.Tag.Parser<AttributeType> { }
-    interface LengthParser extends Triad.Length.Parser<AttributeType, Length16> { }
-    public interface ValueParser extends Triad.Value.Parser<AttributeType, Length16, Triad.Value> { }
 }

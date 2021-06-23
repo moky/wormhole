@@ -80,8 +80,7 @@ public class Client extends Node {
             if (!(value instanceof XorMappedAddressValue)) {
                 // XOR and parse again
                 ByteArray factor = (ByteArray) context.get("trans_id");
-                ByteArray data = XorMappedAddressValue.xor(value, factor);
-                value = XorMappedAddressValue.from(data);
+                value = XorMappedAddressValue.create(value, factor);
             }
             if (value != null) {
                 context.put("MAPPED-ADDRESS", value);
@@ -90,8 +89,7 @@ public class Client extends Node {
             if (!(value instanceof XorMappedAddressValue2)) {
                 // XOR and parse again
                 ByteArray factor = (ByteArray) context.get("trans_id");
-                ByteArray data = XorMappedAddressValue2.xor(value, factor);
-                value = XorMappedAddressValue2.from(data);
+                value = XorMappedAddressValue2.create(value, factor);
             }
             if (value != null) {
                 context.put("MAPPED-ADDRESS", value);

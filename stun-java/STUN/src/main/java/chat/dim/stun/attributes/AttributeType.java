@@ -131,19 +131,23 @@ public class AttributeType extends Tag16 {
     public static final AttributeType ALTERNATE_SERVER   = create(0x8023, "ALTERNATE-SERVER");
     public static final AttributeType FINGERPRINT        = create(0x8028, "FINGERPRINT");
 
+    public static void register(AttributeType type, ValueParser parser) {
+        AttributeParser.register(type.name, parser);
+    }
+
     static {
         //
         //  Register attribute parsers
         //
-        Attribute.register(MAPPED_ADDRESS,     MappedAddressValue::parse);
-        //Attribute.register(XOR_MAPPED_ADDRESS,  XorMappedAddressValue::parse);
-        //Attribute.register(XOR_MAPPED_ADDRESS_8020, XorMappedAddressValue2::parse);
+        register(MAPPED_ADDRESS,     MappedAddressValue::parse);
+        //register(XOR_MAPPED_ADDRESS,  XorMappedAddressValue::parse);
+        //register(XOR_MAPPED_ADDRESS_8020, XorMappedAddressValue2::parse);
 
-        Attribute.register(RESPONSE_ADDRESS,   ResponseAddressValue::parse);
-        Attribute.register(CHANGE_REQUEST,     ChangeRequestValue::parse);
-        Attribute.register(SOURCE_ADDRESS,     SourceAddressValue::parse);
-        Attribute.register(CHANGED_ADDRESS,    ChangedAddressValue::parse);
+        register(RESPONSE_ADDRESS,   ResponseAddressValue::parse);
+        register(CHANGE_REQUEST,     ChangeRequestValue::parse);
+        register(SOURCE_ADDRESS,     SourceAddressValue::parse);
+        register(CHANGED_ADDRESS,    ChangedAddressValue::parse);
 
-        Attribute.register(SOFTWARE,           SoftwareValue::parse);
+        register(SOFTWARE,           SoftwareValue::parse);
     }
 }

@@ -30,8 +30,8 @@
  */
 package chat.dim.turn.values;
 
-import chat.dim.stun.valus.MappedAddressValue;
 import chat.dim.stun.valus.XorMappedAddressValue;
+import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
 public class XorRelayedAddressValue extends XorMappedAddressValue {
@@ -44,11 +44,37 @@ public class XorRelayedAddressValue extends XorMappedAddressValue {
      *         [RFC5389].
      */
 
-    public XorRelayedAddressValue(MappedAddressValue addressValue) {
-        super(addressValue);
-    }
-
     public XorRelayedAddressValue(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);
+    }
+
+    //
+    //  Factories
+    //
+
+    public static XorRelayedAddressValue from(XorRelayedAddressValue value) {
+        return value;
+    }
+
+    public static XorRelayedAddressValue from(XorMappedAddressValue value) {
+        return new XorRelayedAddressValue(value, value.ip, value.port, value.family);
+    }
+
+    public static XorRelayedAddressValue create(ByteArray data, ByteArray factor) {
+        XorMappedAddressValue value = XorMappedAddressValue.create(data, factor);
+        return value == null ? null : from(value);
+    }
+
+    public static XorRelayedAddressValue create(String ip, int port, byte family, ByteArray factor) {
+        return from(XorMappedAddressValue.create(ip, port, family, factor));
+    }
+
+    public static XorRelayedAddressValue create(String ip, int port, ByteArray factor) {
+        return from(XorMappedAddressValue.create(ip, port, FAMILY_IPV4, factor));
+    }
+
+    // parse value with tag & length
+    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+        return from(data);
     }
 }

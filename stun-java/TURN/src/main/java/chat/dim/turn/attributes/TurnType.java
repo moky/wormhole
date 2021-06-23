@@ -31,7 +31,6 @@
 package chat.dim.turn.attributes;
 
 import chat.dim.stun.attributes.AttributeType;
-import chat.dim.stun.attributes.AttributeValue;
 import chat.dim.turn.values.XorPeerAddressValue;
 import chat.dim.turn.values.XorRelayedAddressValue;
 import chat.dim.type.UInt16Data;
@@ -96,7 +95,7 @@ public class TurnType extends AttributeType {
         //
         //  Register attribute parsers
         //
-        AttributeValue.register(XOR_PEER_ADDRESS,    XorPeerAddressValue.class);
-        AttributeValue.register(XOR_RELAYED_ADDRESS, XorRelayedAddressValue.class);
+        register(XOR_PEER_ADDRESS,    XorPeerAddressValue::parse);
+        register(XOR_RELAYED_ADDRESS, XorRelayedAddressValue::parse);
     }
 }

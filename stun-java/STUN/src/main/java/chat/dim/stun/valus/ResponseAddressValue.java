@@ -44,10 +44,6 @@ import chat.dim.type.ByteArray;
 
 public class ResponseAddressValue extends MappedAddressValue {
 
-    public ResponseAddressValue(MappedAddressValue value) {
-        super(value, value.ip, value.port, value.family);
-    }
-
     public ResponseAddressValue(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
@@ -61,21 +57,19 @@ public class ResponseAddressValue extends MappedAddressValue {
     }
 
     public static ResponseAddressValue from(MappedAddressValue value) {
-        return new ResponseAddressValue(value);
+        return new ResponseAddressValue(value, value.ip, value.port, value.family);
     }
 
     public static ResponseAddressValue from(ByteArray data) {
         MappedAddressValue value = MappedAddressValue.from(data);
-        return value == null ? null : new ResponseAddressValue(value);
+        return value == null ? null : from(value);
     }
 
     public static ResponseAddressValue create(String ip, int port, byte family) {
-        MappedAddressValue value = MappedAddressValue.create(ip, port, family);
-        return new ResponseAddressValue(value, ip, port, family);
+        return from(MappedAddressValue.create(ip, port, family));
     }
     public static ResponseAddressValue create(String ip, int port) {
-        MappedAddressValue value = MappedAddressValue.create(ip, port);
-        return new ResponseAddressValue(value, ip, port, value.family);
+        return from(MappedAddressValue.create(ip, port));
     }
 
     // parse value with tag & length

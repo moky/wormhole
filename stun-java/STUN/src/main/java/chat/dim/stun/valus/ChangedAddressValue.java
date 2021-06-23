@@ -47,10 +47,6 @@ import chat.dim.type.ByteArray;
 
 public class ChangedAddressValue extends MappedAddressValue {
 
-    public ChangedAddressValue(MappedAddressValue value) {
-        super(value, value.ip, value.port, value.family);
-    }
-
     public ChangedAddressValue(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);
     }
@@ -64,21 +60,19 @@ public class ChangedAddressValue extends MappedAddressValue {
     }
 
     public static ChangedAddressValue from(MappedAddressValue value) {
-        return new ChangedAddressValue(value);
+        return new ChangedAddressValue(value, value.ip, value.port, value.family);
     }
 
     public static ChangedAddressValue from(ByteArray data) {
         MappedAddressValue value = MappedAddressValue.from(data);
-        return value == null ? null : new ChangedAddressValue(value);
+        return value == null ? null : from(value);
     }
 
     public static ChangedAddressValue create(String ip, int port, byte family) {
-        MappedAddressValue value = MappedAddressValue.create(ip, port, family);
-        return new ChangedAddressValue(value, ip, port, family);
+        return from(MappedAddressValue.create(ip, port, family));
     }
     public static ChangedAddressValue create(String ip, int port) {
-        MappedAddressValue value = MappedAddressValue.create(ip, port);
-        return new ChangedAddressValue(value, ip, port, value.family);
+        return from(MappedAddressValue.create(ip, port));
     }
 
     // parse value with tag & length

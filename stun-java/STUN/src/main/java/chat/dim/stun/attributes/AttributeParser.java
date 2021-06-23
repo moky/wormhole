@@ -61,18 +61,18 @@ import chat.dim.type.ByteArray;
  */
 
 public class AttributeParser extends Parser<Attribute, AttributeType, Length16, Triad.Value>
-        implements Attribute.TypeParser, Attribute.LengthParser, Attribute.ValueParser {
+        implements TypeParser, LengthParser, ValueParser {
 
     @Override
-    protected Attribute.TypeParser getTagParser() {
+    protected TypeParser getTagParser() {
         return this;
     }
     @Override
-    protected Attribute.LengthParser getLengthParser() {
+    protected LengthParser getLengthParser() {
         return this;
     }
     @Override
-    protected Attribute.ValueParser getValueParser() {
+    protected ValueParser getValueParser() {
         return this;
     }
 
@@ -88,7 +88,7 @@ public class AttributeParser extends Parser<Attribute, AttributeType, Length16, 
 
     @Override
     public Triad.Value parseValue(ByteArray data, AttributeType type, Length16 length) {
-        Attribute.ValueParser parser = valueParsers.get(type.name);
+        ValueParser parser = valueParsers.get(type.name);
         if (parser == null) {
             return RawValue.from(data);
         } else {
@@ -104,9 +104,9 @@ public class AttributeParser extends Parser<Attribute, AttributeType, Length16, 
 
     //-------- Runtime --------
 
-    private static final Map<String, Attribute.ValueParser> valueParsers = new HashMap<>();
+    private static final Map<String, ValueParser> valueParsers = new HashMap<>();
 
-    public static void register(String type, Attribute.ValueParser parser) {
+    public static void register(String type, ValueParser parser) {
         if (parser == null) {
             valueParsers.remove(type);
         } else {
