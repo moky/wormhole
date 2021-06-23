@@ -33,10 +33,12 @@ package chat.dim.mem;
 import java.util.ArrayList;
 import java.util.List;
 
+import chat.dim.type.ByteArray;
+
 public class MemoryCache implements CachePool {
 
     // received packages
-    private final List<byte[]> packages = new ArrayList<>();
+    private final List<ByteArray> packages = new ArrayList<>();
     private int occupied = 0;
 
     @Override
@@ -45,42 +47,24 @@ public class MemoryCache implements CachePool {
     }
 
     @Override
-    public void push(byte[] pack) {
-        assert pack != null && pack.length > 0: "data should not be empty";
-        packages.add(pack);
-        occupied += pack.length;
+    public void push(ByteArray data) {
+        assert data != null && data.getSize() > 0: "data should not be empty";
+        packages.add(data);
+        occupied += data.getSize();
     }
 
     @Override
-    public byte[] shift(int maxLength) {
+    public ByteArray shift(int maxLength) {
         assert maxLength > 0 : "max length must greater than 0";
         assert packages.size() > 0 : "pool empty, call 'length()' to check data first";
-        byte[] data = packages.remove(0);
-        if (data.length > maxLength) {
+        ByteArray data = packages.remove(0);
+        if (data.getSize() > maxLength) {
             // push the remaining data back to the queue head
-            packages.add(0, BytesArray.slice(data, maxLength));
+            packages.add(0, data.slice(maxLength));
             // cut the remaining data
-            data = BytesArray.slice(data, 0, maxLength);
+            data = data.slice(0, maxLength);
         }
-        occupied -= data.length;
+        occupied -= data.getSize();
         return data;
-    }
-
-    @Override
-    public byte[] all() {
-        int count = packages.size();
-        if (count == 0) {
-            // empty pool
-            return null;
-        } else if (count == 1) {
-            // only one package
-            return packages.get(0);
-        } else {
-            // concat all packages
-            byte[] data = BytesArray.concat(packages);
-            packages.clear();
-            packages.add(data);
-            return data;
-        }
     }
 }

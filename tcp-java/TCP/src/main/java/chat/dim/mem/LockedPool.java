@@ -34,41 +34,30 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import chat.dim.type.ByteArray;
+
 public class LockedPool extends MemoryCache {
 
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     @Override
-    public void push(byte[] pack) {
+    public void push(ByteArray data) {
         Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            super.push(pack);
+            super.push(data);
         } finally {
             writeLock.unlock();
         }
     }
 
     @Override
-    public byte[] shift(int maxLength) {
-        byte[] data;
+    public ByteArray shift(int maxLength) {
+        ByteArray data;
         Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
             data = super.shift(maxLength);
-        } finally {
-            writeLock.unlock();
-        }
-        return data;
-    }
-
-    @Override
-    public byte[] all() {
-        byte[] data;
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            data = super.all();
         } finally {
             writeLock.unlock();
         }

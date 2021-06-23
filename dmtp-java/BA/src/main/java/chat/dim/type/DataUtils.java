@@ -74,6 +74,14 @@ final class DataUtils {
         return pos;
     }
 
+    /**
+     *  Get bytes within range [start, end)
+     *
+     * @param data  - data view
+     * @param start - start position (include)
+     * @param end   - end position (exclude)
+     * @return sub bytes
+     */
     static ByteArray slice(ByteArray data, int start, int end) {
         if (start == 0 && end == data.getSize()) {
             // whole data
@@ -86,26 +94,45 @@ final class DataUtils {
             return Data.ZERO;
         }
     }
+    static byte[] slice(byte[] bytes, int start, int end) {
+        if (start == 0 && end == bytes.length) {
+            // whole buffer
+            return bytes;
+        } else if (start < end) {
+            // sub buffer
+            byte[] sub = new byte[end - start];
+            System.arraycopy(bytes, start, sub, 0, end - start);
+            return sub;
+        } else {
+            // error
+            return ZERO;
+        }
+    }
+    static final byte[] ZERO = new byte[0];
 
     static ByteArray concat(ByteArray left, ByteArray right) {
         if (right.getSize() == 0) {
             // right is empty, return left directly
             return left;
         } else if (left.getSize() == 0) {
-            // left is empty, create new data from right
-            byte[] joined = new byte[right.getSize()];
-            System.arraycopy(right.getBuffer(), right.getOffset(), joined, 0, right.getSize());
-            return new Data(joined);
+            // left is empty, return right directly
+            return right;
         } else if (left.getBuffer() == right.getBuffer() && (left.getOffset() + left.getSize()) == right.getOffset()) {
             // sticky data, create new data on the same buffer
             return new Data(left.getBuffer(), left.getOffset(), left.getSize() + right.getSize());
         } else {
             // create new data and copy left + right
-            byte[] joined = new byte[left.getSize() + right.getSize()];
-            System.arraycopy(left.getBuffer(), left.getOffset(), joined, 0, left.getSize());
-            System.arraycopy(right.getBuffer(), right.getOffset(), joined, left.getSize(), right.getSize());
-            return new Data(joined);
+            return new Data(concat(left.getBuffer(), left.getOffset(), left.getSize(),
+                    right.getBuffer(), right.getOffset(), right.getSize()));
         }
+    }
+    private static byte[] concat(byte[] leftBuffer, int leftOffset, int leftSize,
+                         byte[] rightBuffer, int rightOffset, int rightSize) {
+        // create new data and copy left + right
+        byte[] joined = new byte[leftSize + rightSize];
+        System.arraycopy(leftBuffer, leftOffset, joined, 0, leftSize);
+        System.arraycopy(rightBuffer, rightOffset, joined, leftSize, rightSize);
+        return joined;
     }
 
     /**
@@ -180,34 +207,6 @@ final class DataUtils {
             }
         }
         return found;
-    }
-
-    /**
-     *  Get bytes within range [start, end)
-     *
-     * @param data  - this data object
-     * @param start - start position (include)
-     * @param end   - end position (exclude)
-     * @return sub bytes
-     */
-    static byte[] getBytes(ByteArray data, int start, int end) {
-        byte[] buffer = data.getBuffer();
-        start += data.getOffset();
-        end += data.getOffset();
-        // check range
-        if (start == 0 && end == buffer.length) {
-            // whole buffer
-            return buffer;
-        } else if (start < end) {
-            // copy sub-array
-            int copyLen = end - start;
-            byte[] bytes = new byte[copyLen];
-            System.arraycopy(buffer, start, bytes, 0, copyLen);
-            return bytes;
-        } else {
-            // empty buffer
-            return Data.ZERO.getBytes();
-        }
     }
 
     //

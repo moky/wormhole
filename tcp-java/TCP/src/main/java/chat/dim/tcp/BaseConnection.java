@@ -39,9 +39,10 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.util.Date;
 
-import chat.dim.mem.BytesArray;
 import chat.dim.mem.CachePool;
 import chat.dim.mem.LockedPool;
+import chat.dim.type.ByteArray;
+import chat.dim.type.Data;
 
 public class BaseConnection implements Connection {
 
@@ -166,7 +167,7 @@ public class BaseConnection implements Connection {
         }
         if (read < available) {
             // read partially
-            buffer = BytesArray.slice(buffer, 0, read);
+            buffer = (new Data(buffer, 0, read)).getBytes();
         }
         lastReceivedTime = (new Date()).getTime();
         return buffer;
@@ -197,8 +198,7 @@ public class BaseConnection implements Connection {
         }
     }
 
-    @Override
-    public int send(byte[] data) {
+    protected int send(byte[] data) {
         try {
             return write(data);
         } catch (IOException e) {
@@ -211,17 +211,17 @@ public class BaseConnection implements Connection {
     }
 
     @Override
+    public int send(ByteArray data) {
+        return send(data.getBytes());
+    }
+
+    @Override
     public int available() {
         return cachePool.length();
     }
 
     @Override
-    public byte[] received() {
-        return cachePool.all();
-    }
-
-    @Override
-    public byte[] receive(int maxLength) {
+    public ByteArray receive(int maxLength) {
         return cachePool.shift(maxLength);
     }
 
@@ -323,10 +323,11 @@ public class BaseConnection implements Connection {
                 return false;
         }
         // 1. try to read bytes
-        byte[] data = receive();
-        if (data == null || data.length == 0) {
+        byte[] buffer = receive();
+        if (buffer == null || buffer.length == 0) {
             return false;
         }
+        ByteArray data = new Data(buffer);
         // 2. cache it
         cachePool.push(data);
         Delegate delegate = getDelegate();

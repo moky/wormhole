@@ -133,7 +133,7 @@ public class ActiveConnection extends BaseConnection {
     }
 
     @Override
-    public int send(byte[] data) {
+    protected int send(byte[] data) {
         int res = super.send(data);
         if (res < 0 && reconnect()) {
             // try again

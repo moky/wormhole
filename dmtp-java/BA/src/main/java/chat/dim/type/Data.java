@@ -46,7 +46,7 @@ public class Data implements ByteArray, Cloneable {
     int offset;     // data view offset
     int size;       // data view size
 
-    public final static Data ZERO = new Data(new byte[0], 0, 0);
+    public final static Data ZERO = new Data(DataUtils.ZERO);
 
     /**
      *  Create data view with range [start, end)
@@ -234,17 +234,21 @@ public class Data implements ByteArray, Cloneable {
 
     @Override
     public byte[] getBytes() {
-        return DataUtils.getBytes(this, 0, size);
+        return DataUtils.slice(buffer, offset, offset + size);
     }
 
     @Override
     public byte[] getBytes(int start) {
-        return DataUtils.getBytes(this, DataUtils.adjust(start, size), size);
+        return DataUtils.slice(buffer,
+                offset + DataUtils.adjust(start, size),
+                offset + size);
     }
 
     @Override
     public byte[] getBytes(int start, int end) {
-        return DataUtils.getBytes(this, DataUtils.adjust(start, size), DataUtils.adjust(end, size));
+        return DataUtils.slice(buffer,
+                offset + DataUtils.adjust(start, size),
+                offset + DataUtils.adjust(end, size));
     }
 
     //
