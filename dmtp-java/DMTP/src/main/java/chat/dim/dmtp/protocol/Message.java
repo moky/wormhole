@@ -206,7 +206,7 @@ public class Message extends MapValue<Field> {
         return new Message(data, fields);
     }
 
-    private static void fetchMsgField(List<Field> fields, Map<Object, Object> info,
+    private static void fetchMsgField(List<Field> fields, Map<String, Object> info,
                                       String s, String name, StringTag tag, Class<?> valueClass) {
         Object object = info.get(name);
         if (object == null) {
@@ -236,7 +236,7 @@ public class Message extends MapValue<Field> {
         fields.add(Field.create(tag, value));
     }
 
-    public static Message create(Map<Object, Object> info) {
+    public static Message create(Map<String, Object> info) {
         List<Field> fields = new ArrayList<>();
         // envelope
         fetchMsgField(fields, info, "S", "sender",    SENDER,    StringValue.class);
@@ -262,7 +262,7 @@ public class Message extends MapValue<Field> {
                                   Object content, Object signature, Object key,
                                   Object meta, Object visa,
                                   Object filename) {
-        Map<Object, Object> info = new HashMap<>();
+        Map<String, Object> info = new HashMap<>();
         info.put("sender", sender);
         info.put("receiver", receiver);
         info.put("timestamp", timestamp);

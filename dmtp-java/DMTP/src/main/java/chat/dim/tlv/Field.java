@@ -91,10 +91,18 @@ public class Field extends TagLengthValue<StringTag, VarLength, Triad.Value> {
         return new Field(data, tag, length, value);
     }
 
-    //
-    //  TLV Parsers
-    //
-    interface TagParser extends Triad.Tag.Parser<StringTag> { }
-    interface LengthParser extends Triad.Length.Parser<StringTag, VarLength> { }
-    public interface ValueParser extends Triad.Value.Parser<StringTag, VarLength, Triad.Value> { }
+    /**
+     *  TLV Parsers
+     *  ~~~~~~~~~~~
+     */
+
+    interface TagParser extends Triad.Tag.Parser<StringTag> {
+        // just for alias
+    }
+    interface LengthParser extends Triad.Length.Parser<StringTag, VarLength> {
+        // just for alias
+    }
+    public interface ValueParser extends Triad.Value.Parser<StringTag, VarLength, Triad.Value> {
+        // just for alias
+    }
 }

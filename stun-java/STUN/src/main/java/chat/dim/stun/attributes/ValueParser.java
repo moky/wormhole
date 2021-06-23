@@ -39,12 +39,12 @@ import chat.dim.tlv.Triad;
  */
 
 interface TypeParser extends Triad.Tag.Parser<AttributeType> {
-
+    // just for alias
 }
 interface LengthParser extends Triad.Length.Parser<AttributeType, Length16> {
-
+    // just for alias
 }
 
 public interface ValueParser extends Triad.Value.Parser<AttributeType, Length16, Triad.Value> {
-
+    // just for alias
 }

@@ -34,15 +34,14 @@ import chat.dim.stun.valus.XorMappedAddressValue;
 import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
+/**  14.3.  XOR-PEER-ADDRESS
+ *
+ *        The XOR-PEER-ADDRESS specifies the address and port of the peer as
+ *        seen from the TURN server.  (For example, the peer's server-reflexive
+ *        transport address if the peer is behind a NAT.)  It is encoded in the
+ *        same way as XOR-MAPPED-ADDRESS [RFC5389].
+ */
 public class XorPeerAddressValue extends XorMappedAddressValue {
-
-    /*  14.3.  XOR-PEER-ADDRESS
-     *
-     *         The XOR-PEER-ADDRESS specifies the address and port of the peer as
-     *         seen from the TURN server.  (For example, the peer's server-reflexive
-     *         transport address if the peer is behind a NAT.)  It is encoded in the
-     *         same way as XOR-MAPPED-ADDRESS [RFC5389].
-     */
 
     public XorPeerAddressValue(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);

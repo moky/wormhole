@@ -33,7 +33,7 @@ package chat.dim.stun.valus;
 import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
-/*  11.2.5 SOURCE-ADDRESS
+/**  11.2.5 SOURCE-ADDRESS
  *
  *        The SOURCE-ADDRESS attribute is present in Binding Responses.  It
  *        indicates the source IP address and port that the server is sending
@@ -42,7 +42,6 @@ import chat.dim.type.ByteArray;
  *
  *    (Defined in RFC-3489, removed from RFC-5389)
  */
-
 public class SourceAddressValue extends MappedAddressValue {
 
     public SourceAddressValue(ByteArray data, String ip, int port, byte family) {

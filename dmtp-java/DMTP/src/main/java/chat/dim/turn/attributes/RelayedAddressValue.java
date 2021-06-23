@@ -28,24 +28,19 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.dmtp.protocol;
+package chat.dim.turn.attributes;
 
+import chat.dim.stun.valus.MappedAddressValue;
 import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
+/**  RELAYED-ADDRESS
+ *
+ *        The RELAYED-ADDRESS attribute is present in Allocate responses.  It
+ *        specifies the address and port that the server allocated to the
+ *        client.  It is encoded in the same way as MAPPED-ADDRESS.
+ */
 public class RelayedAddressValue extends MappedAddressValue {
-
-    /*  RELAYED-ADDRESS
-     *  ~~~~~~~~~~~~~~~
-     *
-     *  The RELAYED-ADDRESS attribute is present in Allocate responses.  It
-     *  specifies the address and port that the server allocated to the
-     *  client.  It is encoded in the same way as MAPPED-ADDRESS.
-     */
-
-    public RelayedAddressValue(MappedAddressValue value) {
-        super(value, value.ip, value.port, value.family);
-    }
 
     public RelayedAddressValue(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);
@@ -60,21 +55,19 @@ public class RelayedAddressValue extends MappedAddressValue {
     }
 
     public static RelayedAddressValue from(MappedAddressValue value) {
-        return new RelayedAddressValue(value);
+        return new RelayedAddressValue(value, value.ip, value.port, value.family);
     }
 
     public static RelayedAddressValue from(ByteArray data) {
         MappedAddressValue value = MappedAddressValue.from(data);
-        return value == null ? null : new RelayedAddressValue(value);
+        return value == null ? null : from(value);
     }
 
     public static RelayedAddressValue create(String ip, int port, byte family) {
-        MappedAddressValue value = MappedAddressValue.create(ip, port, family);
-        return new RelayedAddressValue(value, ip, port, family);
+        return from(MappedAddressValue.create(ip, port, family));
     }
     public static RelayedAddressValue create(String ip, int port) {
-        MappedAddressValue value = MappedAddressValue.create(ip, port);
-        return new RelayedAddressValue(value, ip, port, value.family);
+        return from(MappedAddressValue.create(ip, port));
     }
 
     // parse value with tag & length

@@ -67,17 +67,16 @@ import chat.dim.type.MutableData;
  *   compatibility with RFC 3489 [RFC3489] clients.
  */
 
+/**  15.1.  MAPPED-ADDRESS
+ *
+ *    The MAPPED-ADDRESS attribute indicates a reflexive transport address
+ *    of the client.  It consists of an 8-bit address family and a 16-bit
+ *    port, followed by a fixed-length value representing the IP address.
+ *    If the address family is IPv4, the address MUST be 32 bits.  If the
+ *    address family is IPv6, the address MUST be 128 bits.  All fields
+ *    must be in network byte order.
+ */
 public class MappedAddressValue extends RawValue {
-
-    /*  15.1.  MAPPED-ADDRESS
-     *
-     *    The MAPPED-ADDRESS attribute indicates a reflexive transport address
-     *    of the client.  It consists of an 8-bit address family and a 16-bit
-     *    port, followed by a fixed-length value representing the IP address.
-     *    If the address family is IPv4, the address MUST be 32 bits.  If the
-     *    address family is IPv6, the address MUST be 128 bits.  All fields
-     *    must be in network byte order.
-     */
 
     public static final byte FAMILY_IPV4 = 0x01;
     public static final byte FAMILY_IPV6 = 0x02;

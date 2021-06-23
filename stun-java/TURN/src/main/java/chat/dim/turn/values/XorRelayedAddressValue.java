@@ -34,15 +34,14 @@ import chat.dim.stun.valus.XorMappedAddressValue;
 import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
+/**  14.5.  XOR-RELAYED-ADDRESS
+ *
+ *        The XOR-RELAYED-ADDRESS is present in Allocate responses.  It
+ *        specifies the address and port that the server allocated to the
+ *        client.  It is encoded in the same way as XOR-MAPPED-ADDRESS
+ *        [RFC5389].
+ */
 public class XorRelayedAddressValue extends XorMappedAddressValue {
-
-    /*  14.5.  XOR-RELAYED-ADDRESS
-     *
-     *         The XOR-RELAYED-ADDRESS is present in Allocate responses.  It
-     *         specifies the address and port that the server allocated to the
-     *         client.  It is encoded in the same way as XOR-MAPPED-ADDRESS
-     *         [RFC5389].
-     */
 
     public XorRelayedAddressValue(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);

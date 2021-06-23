@@ -33,7 +33,7 @@ package chat.dim.stun.valus;
 import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
-/*  11.2.2 RESPONSE-ADDRESS
+/**  11.2.2 RESPONSE-ADDRESS
  *
  *        The RESPONSE-ADDRESS attribute indicates where the response to a
  *        Binding Request should be sent.  Its syntax is identical to MAPPED-
@@ -41,7 +41,6 @@ import chat.dim.type.ByteArray;
  *
  *    (Defined in RFC-3489, removed from RFC-5389)
  */
-
 public class ResponseAddressValue extends MappedAddressValue {
 
     public ResponseAddressValue(ByteArray data, String ip, int port, byte family) {

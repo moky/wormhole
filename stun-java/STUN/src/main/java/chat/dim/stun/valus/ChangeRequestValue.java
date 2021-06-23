@@ -39,12 +39,10 @@ import chat.dim.tlv.Value32;
 import chat.dim.type.ByteArray;
 import chat.dim.type.UInt32Data;
 
-/*  11.2.4 CHANGE-REQUEST
+/*  Rosenberg, et al.           Standards Track                    [Page 27]
  *
- *       The CHANGE-REQUEST attribute is used by the client to request that
- *       the server use a different address and/or port when sending the
- *       response.  The attribute is 32 bits long, although only two bits (A
- *       and B) are used:
+ *  RFC 3489                          STUN                        March 2003
+ *
  *
  *        0                   1                   2                   3
  *        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -65,6 +63,13 @@ import chat.dim.type.UInt32Data;
  *    (Defined in RFC-3489, removed from RFC-5389)
  */
 
+/**  11.2.4 CHANGE-REQUEST
+ *
+ *       The CHANGE-REQUEST attribute is used by the client to request that
+ *       the server use a different address and/or port when sending the
+ *       response.  The attribute is 32 bits long, although only two bits (A
+ *       and B) are used:
+ */
 public class ChangeRequestValue extends Value32 {
 
     private final String name;

@@ -37,6 +37,17 @@ import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 import chat.dim.type.MutableData;
 
+/**  15.10.  SOFTWARE
+ *
+ *    The SOFTWARE attribute contains a textual description of the software
+ *    being used by the agent sending the message.  It is used by clients
+ *    and servers.  Its value SHOULD include manufacturer and version
+ *    number.  The attribute has no impact on operation of the protocol,
+ *    and serves only as a tool for diagnostic and debugging purposes.  The
+ *    value of SOFTWARE is variable length.  It MUST be a UTF-8 [RFC3629]
+ *    encoded sequence of less than 128 characters (which can be as long as
+ *    763 bytes).
+ */
 public class SoftwareValue extends StringValue {
 
     public SoftwareValue(ByteArray data, String description) {

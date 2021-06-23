@@ -54,41 +54,40 @@ import chat.dim.type.Data;
  *   identically to the Family in MAPPED-ADDRESS.
  */
 
+/**  15.2.  XOR-MAPPED-ADDRESS
+ *
+ *    The XOR-MAPPED-ADDRESS attribute is identical to the MAPPED-ADDRESS
+ *    attribute, except that the reflexive transport address is obfuscated
+ *    through the XOR function.
+ *
+ *    X-Port is computed by taking the mapped port in host byte order,
+ *    XOR'ing it with the most significant 16 bits of the magic cookie, and
+ *    then the converting the result to network byte order.  If the IP
+ *    address family is IPv4, X-Address is computed by taking the mapped IP
+ *    address in host byte order, XOR'ing it with the magic cookie, and
+ *    converting the result to network byte order.  If the IP address
+ *    family is IPv6, X-Address is computed by taking the mapped IP address
+ *    in host byte order, XOR'ing it with the concatenation of the magic
+ *    cookie and the 96-bit transaction ID, and converting the result to
+ *    network byte order.
+ *
+ *    The rules for encoding and processing the first 8 bits of the
+ *    attribute's value, the rules for handling multiple occurrences of the
+ *    attribute, and the rules for processing address families are the same
+ *    as for MAPPED-ADDRESS.
+ *
+ *    Note: XOR-MAPPED-ADDRESS and MAPPED-ADDRESS differ only in their
+ *    encoding of the transport address.  The former encodes the transport
+ *    address by exclusive-or'ing it with the magic cookie.  The latter
+ *    encodes it directly in binary.  RFC 3489 originally specified only
+ *    MAPPED-ADDRESS.  However, deployment experience found that some NATs
+ *    rewrite the 32-bit binary payloads containing the NAT's public IP
+ *    address, such as STUN's MAPPED-ADDRESS attribute, in the well-meaning
+ *    but misguided attempt at providing a generic ALG function.  Such
+ *    behavior interferes with the operation of STUN and also causes
+ *    failure of STUN's message-integrity checking.
+ */
 public class XorMappedAddressValue extends MappedAddressValue {
-
-    /*  15.2.  XOR-MAPPED-ADDRESS
-     *
-     *    The XOR-MAPPED-ADDRESS attribute is identical to the MAPPED-ADDRESS
-     *    attribute, except that the reflexive transport address is obfuscated
-     *    through the XOR function.
-     *
-     *    X-Port is computed by taking the mapped port in host byte order,
-     *    XOR'ing it with the most significant 16 bits of the magic cookie, and
-     *    then the converting the result to network byte order.  If the IP
-     *    address family is IPv4, X-Address is computed by taking the mapped IP
-     *    address in host byte order, XOR'ing it with the magic cookie, and
-     *    converting the result to network byte order.  If the IP address
-     *    family is IPv6, X-Address is computed by taking the mapped IP address
-     *    in host byte order, XOR'ing it with the concatenation of the magic
-     *    cookie and the 96-bit transaction ID, and converting the result to
-     *    network byte order.
-     *
-     *    The rules for encoding and processing the first 8 bits of the
-     *    attribute's value, the rules for handling multiple occurrences of the
-     *    attribute, and the rules for processing address families are the same
-     *    as for MAPPED-ADDRESS.
-     *
-     *    Note: XOR-MAPPED-ADDRESS and MAPPED-ADDRESS differ only in their
-     *    encoding of the transport address.  The former encodes the transport
-     *    address by exclusive-or'ing it with the magic cookie.  The latter
-     *    encodes it directly in binary.  RFC 3489 originally specified only
-     *    MAPPED-ADDRESS.  However, deployment experience found that some NATs
-     *    rewrite the 32-bit binary payloads containing the NAT's public IP
-     *    address, such as STUN's MAPPED-ADDRESS attribute, in the well-meaning
-     *    but misguided attempt at providing a generic ALG function.  Such
-     *    behavior interferes with the operation of STUN and also causes
-     *    failure of STUN's message-integrity checking.
-     */
 
     public XorMappedAddressValue(ByteArray data, String ip, int port, byte family) {
         super(data, ip, port, family);

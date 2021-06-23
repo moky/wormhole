@@ -33,7 +33,7 @@ package chat.dim.stun.valus;
 import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
-/*  11.2.3  CHANGED-ADDRESS
+/**  11.2.3  CHANGED-ADDRESS
  *
  *        The CHANGED-ADDRESS attribute indicates the IP address and port where
  *        responses would have been sent from if the "change IP" and "change
@@ -44,7 +44,6 @@ import chat.dim.type.ByteArray;
  *
  *    (Defined in RFC-3489, removed from RFC-5389)
  */
-
 public class ChangedAddressValue extends MappedAddressValue {
 
     public ChangedAddressValue(ByteArray data, String ip, int port, byte family) {

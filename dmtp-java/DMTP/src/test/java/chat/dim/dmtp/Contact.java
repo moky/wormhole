@@ -41,11 +41,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.protocol.LocationValue;
-import chat.dim.dmtp.protocol.MappedAddressValue;
-import chat.dim.dmtp.protocol.RelayedAddressValue;
-import chat.dim.dmtp.protocol.SourceAddressValue;
+import chat.dim.stun.valus.MappedAddressValue;
+import chat.dim.stun.valus.SourceAddressValue;
 import chat.dim.tlv.RawValue;
 import chat.dim.tlv.Value32;
+import chat.dim.turn.attributes.RelayedAddressValue;
 import chat.dim.type.ByteArray;
 import chat.dim.udp.Connection;
 
