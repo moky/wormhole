@@ -37,7 +37,7 @@ import chat.dim.fsm.BaseTransition;
 import chat.dim.fsm.Context;
 import chat.dim.fsm.Delegate;
 
-public interface StateDelegate extends Delegate<StateMachine, StateTransition, ConnectionState> {
+interface StateDelegate extends Delegate<StateMachine, StateTransition, ConnectionState> {
 
 }
 
@@ -51,10 +51,12 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
 class StateMachine extends BaseMachine<StateMachine, StateTransition, ConnectionState, Delegate<StateMachine, StateTransition, ConnectionState>>
         implements Context {
 
-    private WeakReference<BaseConnection> connectionRef = null;
+    private final WeakReference<BaseConnection> connectionRef;
 
-    public StateMachine() {
+    public StateMachine(BaseConnection connection) {
         super(ConnectionState.DEFAULT);
+
+        connectionRef = new WeakReference<>(connection);
 
         // init states
         setState(ConnectionState.getDefaultState());
@@ -75,9 +77,6 @@ class StateMachine extends BaseMachine<StateMachine, StateTransition, Connection
     }
 
     BaseConnection getConnection() {
-        return connectionRef == null ? null : connectionRef.get();
-    }
-    void setConnection(BaseConnection connection) {
-        connectionRef = new WeakReference<>(connection);
+        return connectionRef.get();
     }
 }

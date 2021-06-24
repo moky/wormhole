@@ -64,7 +64,7 @@ public class BaseConnection implements Connection, StateDelegate {
         lastSentTime = 0;
         lastReceivedTime = 0;
         // Finite State Machine
-        fsm = new StateMachine();
+        fsm = new StateMachine(this);
         fsm.setDelegate(this);
     }
 
@@ -255,6 +255,16 @@ public class BaseConnection implements Connection, StateDelegate {
     //  Running
     //
 
+    public void start() {
+        fsm.start();
+    }
+
+    @Override
+    public void stop() {
+        close();  // shutdown socket
+        fsm.stop();
+    }
+
     @Override
     public void run() {
         setup();
@@ -263,11 +273,6 @@ public class BaseConnection implements Connection, StateDelegate {
         } finally {
             finish();
         }
-    }
-
-    @Override
-    public void stop() {
-        close();  // shutdown socket
     }
 
     /**
