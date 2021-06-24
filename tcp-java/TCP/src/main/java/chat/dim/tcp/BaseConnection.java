@@ -44,26 +44,28 @@ import chat.dim.mem.LockedPool;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 
-public class BaseConnection implements Connection {
+public class BaseConnection implements Connection, StateDelegate {
 
+    private final StateMachine fsm;
     private final CachePool cachePool;
 
     private WeakReference<Delegate> delegateRef;
 
     protected Socket socket;
-    private Status status;
 
-    private long lastSentTime;
-    private long lastReceivedTime;
+    long lastSentTime;
+    long lastReceivedTime;
 
     public BaseConnection(Socket connectedSocket) {
         super();
         cachePool = createCachePool();
         delegateRef = null;
         socket = connectedSocket;
-        status = Status.DEFAULT;
         lastSentTime = 0;
         lastReceivedTime = 0;
+        // Finite State Machine
+        fsm = new StateMachine();
+        fsm.setDelegate(this);
     }
 
     // override for customized cache pool
@@ -93,7 +95,7 @@ public class BaseConnection implements Connection {
     /**
      *  Get connected socket
      */
-    protected Socket getSocket() {
+    public Socket getSocket() {
         if (isRunning()) {
             return socket;
         } else {
@@ -125,7 +127,7 @@ public class BaseConnection implements Connection {
         }
     }
 
-    private static boolean isAvailable(Socket sock) {
+    static boolean isAvailable(Socket sock) {
         if (sock == null || sock.isClosed()) {
             return false;
         } else {
@@ -193,7 +195,7 @@ public class BaseConnection implements Connection {
             // [TCP] failed to receive data
             e.printStackTrace();
             close();
-            setStatus(Status.ERROR);
+            changeState(ConnectionState.ERROR);
             return null;
         }
     }
@@ -205,7 +207,7 @@ public class BaseConnection implements Connection {
             // [TCP] failed to send data
             e.printStackTrace();
             close();
-            setStatus(Status.ERROR);
+            changeState(ConnectionState.ERROR);
             return -1;
         }
     }
@@ -230,28 +232,22 @@ public class BaseConnection implements Connection {
     //
 
     @Override
-    public Status getStatus() {
-        Date now = new Date();
-        fsmTick(now.getTime());
-        return status;
+    public ConnectionState getState() {
+        fsm.tick();
+        return fsm.getCurrentState();
     }
 
-    protected void setStatus(Status newStatus) {
-        Status oldStatus = status;
-        if (oldStatus.equals(newStatus)) {
-            return;
-        }
-        status = newStatus;
-        if (newStatus.equals(Status.CONNECTED) && !oldStatus.equals(Status.MAINTAINING)) {
-            // change status to 'connected', reset times to just expired
-            long now = (new Date()).getTime();
-            lastSentTime = now - EXPIRES - 1;
-            lastReceivedTime = now - EXPIRES - 1;
-        }
-        // callback
-        Delegate delegate = getDelegate();
-        if (delegate != null) {
-            delegate.onConnectionStatusChanged(this, oldStatus, newStatus);
+    protected void changeState(String name) {
+        ConnectionState oldState = fsm.getCurrentState();
+        ConnectionState newState = fsm.getState(name);
+        if (oldState == null) {
+            if (newState != null) {
+                fsm.changeState(newState);
+            }
+        } else if (newState == null) {
+            fsm.changeState(null);
+        } else if (!newState.equals(oldState)) {
+            fsm.changeState(newState);
         }
     }
 
@@ -278,7 +274,7 @@ public class BaseConnection implements Connection {
      *  Prepare before handling
      */
     public void setup() {
-        setStatus(Status.CONNECTING);
+        changeState(ConnectionState.CONNECTING);
     }
 
     /**
@@ -286,7 +282,7 @@ public class BaseConnection implements Connection {
      */
     public void finish() {
         close();  // shutdown socket
-        setStatus(Status.DEFAULT);
+        changeState(ConnectionState.DEFAULT);
     }
 
     /**
@@ -313,14 +309,14 @@ public class BaseConnection implements Connection {
             return false;
         }
         // check connection status
-        switch (getStatus()) {
-            case CONNECTED:
-            case MAINTAINING:
-            case EXPIRED:
-                // socket connected
-                break;
-            default:
-                return false;
+        ConnectionState state = fsm.getCurrentState();
+        if (state == null) {
+            return false;
+        } else if (!state.name.equals(ConnectionState.CONNECTED) &&
+                !state.name.equals(ConnectionState.MAINTAINING) &&
+                !state.name.equals(ConnectionState.EXPIRED)) {
+            // not connected yet
+            return false;
         }
         // 1. try to read bytes
         byte[] buffer = receive();
@@ -330,11 +326,6 @@ public class BaseConnection implements Connection {
         ByteArray data = new Data(buffer);
         // 2. cache it
         cachePool.push(data);
-        Delegate delegate = getDelegate();
-        if (delegate != null) {
-            // 3. callback
-            delegate.onConnectionReceivedData(this, data);
-        }
         return true;
     }
 
@@ -347,101 +338,39 @@ public class BaseConnection implements Connection {
     }
 
     //
-    //  Finite State Machine
+    //  Events
     //
 
-    private void fsmTick(long now) {
-        switch (status) {
-            case CONNECTED: {
-                tickConnected(now);
-                break;
+    @Override
+    public void enterState(ConnectionState state, StateMachine ctx) {
+        ConnectionState old = ctx.getCurrentState();
+        if (state != null && state.equals(ConnectionState.CONNECTED)) {
+            if (old == null || !old.equals(ConnectionState.MAINTAINING)) {
+                // change status to 'connected', reset times to just expired
+                long now = (new Date()).getTime();
+                lastSentTime = now - EXPIRES - 1;
+                lastReceivedTime = now - EXPIRES - 1;
             }
-            case MAINTAINING:
-                tickMaintaining(now);
-                break;
-            case EXPIRED:
-                tickExpired(now);
-                break;
-            case CONNECTING:
-                tickConnecting();
-                break;
-            case ERROR:
-                tickError();
-                break;
-            case DEFAULT:
-                tickDefault();
-                break;
-            default:
-                throw new IllegalStateException("Connection state error: " + status);
+        }
+        // callback
+        Delegate delegate = getDelegate();
+        if (delegate != null) {
+            delegate.onConnectionStateChanged(this, old, state);
         }
     }
 
-    // Connection not started yet
-    private void tickDefault() {
-        if (isRunning()) {
-            // connection started, change status to 'connecting'
-            setStatus(Status.CONNECTING);
-        }
+    @Override
+    public void exitState(ConnectionState state, StateMachine ctx) {
+
     }
 
-    // Connection started, not connected yet
-    private void tickConnecting() {
-        if (!isRunning()) {
-            // connection stopped, change status to 'not_connect'
-            setStatus(Status.DEFAULT);
-        } else if (isAvailable(getSocket())) {
-            // connection connected, change status to 'connected'
-            setStatus(Status.CONNECTED);
-        }
+    @Override
+    public void pauseState(ConnectionState state, StateMachine ctx) {
+
     }
 
-    // Normal status of connection
-    private void tickConnected(long now) {
-        if (!isAvailable(getSocket())) {
-            // connection lost, change status to 'error'
-            setStatus(Status.ERROR);
-        } else if (now > lastReceivedTime + EXPIRES) {
-            // long time no response, change status to 'maintain_expired'
-            setStatus(Status.EXPIRED);
-        }
-    }
+    @Override
+    public void resumeState(ConnectionState state, StateMachine ctx) {
 
-    // Long time no response, need maintaining
-    private void tickExpired(long now) {
-        if (!isAvailable(getSocket())) {
-            // connection lost, change status to 'error'
-            setStatus(Status.ERROR);
-        } else if (now < lastSentTime + EXPIRES) {
-            // sent recently, change status to 'maintaining'
-            setStatus(Status.MAINTAINING);
-        }
-    }
-
-    // Heartbeat sent, waiting response
-    private void tickMaintaining(long now) {
-        if (!isAvailable(getSocket())) {
-            // connection lost, change status to 'error'
-            setStatus(Status.ERROR);
-        } else if (now > lastReceivedTime + (EXPIRES << 4)) {
-            // long long time no response, change status to 'error
-            setStatus(Status.ERROR);
-        } else if (now < lastReceivedTime + EXPIRES) {
-            // received recently, change status to 'connected'
-            setStatus(Status.CONNECTED);
-        } else if (now > lastSentTime + EXPIRES) {
-            // long time no sending, change status to 'maintain_expired'
-            setStatus(Status.EXPIRED);
-        }
-    }
-
-    // Connection lost
-    private void tickError() {
-        if (!isRunning()) {
-            // connection stopped, change status to 'not_connect'
-            setStatus(Status.DEFAULT);
-        } else if (isAvailable(getSocket())) {
-            // connection reconnected, change status to 'connected'
-            setStatus(Status.CONNECTED);
-        }
     }
 }

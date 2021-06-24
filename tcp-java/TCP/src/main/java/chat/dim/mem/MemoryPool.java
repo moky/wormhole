@@ -35,7 +35,7 @@ import java.util.List;
 
 import chat.dim.type.ByteArray;
 
-public class MemoryCache implements CachePool {
+public class MemoryPool implements CachePool {
 
     // received packages
     private final List<ByteArray> packages = new ArrayList<>();

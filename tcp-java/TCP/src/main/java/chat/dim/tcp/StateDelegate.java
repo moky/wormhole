@@ -28,39 +28,56 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.mem;
+package chat.dim.tcp;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.lang.ref.WeakReference;
 
-import chat.dim.type.ByteArray;
+import chat.dim.fsm.BaseMachine;
+import chat.dim.fsm.BaseTransition;
+import chat.dim.fsm.Context;
+import chat.dim.fsm.Delegate;
 
-public class LockedPool extends MemoryPool {
+public interface StateDelegate extends Delegate<StateMachine, StateTransition, ConnectionState> {
 
-    private final ReadWriteLock lock = new ReentrantReadWriteLock();
+}
 
-    @Override
-    public void push(ByteArray data) {
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            super.push(data);
-        } finally {
-            writeLock.unlock();
-        }
+abstract class StateTransition extends BaseTransition<StateMachine> {
+
+    protected StateTransition(String target) {
+        super(target);
+    }
+}
+
+class StateMachine extends BaseMachine<StateMachine, StateTransition, ConnectionState, Delegate<StateMachine, StateTransition, ConnectionState>>
+        implements Context {
+
+    private WeakReference<BaseConnection> connectionRef = null;
+
+    public StateMachine() {
+        super(ConnectionState.DEFAULT);
+
+        // init states
+        setState(ConnectionState.getDefaultState());
+        setState(ConnectionState.getConnectingState());
+        setState(ConnectionState.getConnectedState());
+        setState(ConnectionState.getExpiredState());
+        setState(ConnectionState.getMaintainingState());
+        setState(ConnectionState.getErrorState());
     }
 
     @Override
-    public ByteArray shift(int maxLength) {
-        ByteArray data;
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            data = super.shift(maxLength);
-        } finally {
-            writeLock.unlock();
-        }
-        return data;
+    public StateMachine getContext() {
+        return this;
+    }
+
+    private void setState(ConnectionState state) {
+        addState(state.name, state);
+    }
+
+    BaseConnection getConnection() {
+        return connectionRef == null ? null : connectionRef.get();
+    }
+    void setConnection(BaseConnection connection) {
+        connectionRef = new WeakReference<>(connection);
     }
 }

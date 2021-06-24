@@ -90,75 +90,7 @@ public interface Connection extends Runnable {
      *
      * @return connection status
      */
-    Status getStatus();
-
-    /*
-     *  @enum ConnectionStatus
-     *
-     *  @abstract Defined for indicating connection status
-     *
-     *  @discussion connection status.
-     *
-     *      DEFAULT     - 'initialized', or sent timeout
-     *      CONNECTING  - sent 'PING', waiting for response
-     *      CONNECTED   - got response recently
-     *      EXPIRED     - long time, needs maintaining (still connected)
-     *      MAINTAINING - sent 'PING', waiting for response
-     *      ERROR       - long long time no response, connection lost
-     *
-     *  Bits:
-     *      0000 0001 - indicates sent something just now
-     *      0000 0010 - indicates sent something not too long ago
-     *
-     *      0001 0000 - indicates received something just now
-     *      0010 0000 - indicates received something not too long ago
-     *
-     *      (All above are just some advices to help choosing numbers :P)
-     */
-    enum Status {
-
-        DEFAULT     (0x00),  // 0000 0000
-        CONNECTING  (0x01),  // 0000 0001, sent just now
-        CONNECTED   (0x11),  // 0001 0001, received just now
-        MAINTAINING (0x21),  // 0010 0001, received not long ago, sent just now
-        EXPIRED     (0x22),  // 0010 0010, received not long ago, needs sending
-        ERROR       (0x88);  // 1000 1000, long time no response
-
-        public final int value;
-
-        Status(int value) {
-            this.value = value;
-        }
-    }
-
-    /*
-     *    Finite States:
-     *
-     *             //===============\\          (Sent)          //==============\\
-     *             ||               || -----------------------> ||              ||
-     *             ||    Default    ||                          ||  Connecting  ||
-     *             || (Not Connect) || <----------------------- ||              ||
-     *             \\===============//         (Timeout)        \\==============//
-     *                                                               |       |
-     *             //===============\\                               |       |
-     *             ||               || <-----------------------------+       |
-     *             ||     Error     ||          (Error)                 (Received)
-     *             ||               || <-----------------------------+       |
-     *             \\===============//                               |       |
-     *                 A       A                                     |       |
-     *                 |       |            //===========\\          |       |
-     *                 (Error) +----------- ||           ||          |       |
-     *                 |                    ||  Expired  || <--------+       |
-     *                 |       +----------> ||           ||          |       |
-     *                 |       |            \\===========//          |       |
-     *                 |       (Timeout)           |         (Timeout)       |
-     *                 |       |                   |                 |       V
-     *             //===============\\     (Sent)  |            //==============\\
-     *             ||               || <-----------+            ||              ||
-     *             ||  Maintaining  ||                          ||  Connected   ||
-     *             ||               || -----------------------> ||              ||
-     *             \\===============//       (Received)         \\==============//
-     */
+    ConnectionState getState();
 
     interface Delegate {
 
@@ -169,15 +101,6 @@ public interface Connection extends Runnable {
          * @param oldStatus - status before
          * @param newStatus - status after
          */
-        void onConnectionStatusChanged(Connection connection, Status oldStatus, Status newStatus);
-
-        /**
-         *  Call when received data from a connection
-         *  (if data processed, must call 'connection.receive(data.length)' to remove it from cache pool)
-         *
-         * @param connection - current connection
-         * @param data - received data
-         */
-        void onConnectionReceivedData(Connection connection, ByteArray data);
+        void onConnectionStateChanged(Connection connection, ConnectionState oldStatus, ConnectionState newStatus);
     }
 }

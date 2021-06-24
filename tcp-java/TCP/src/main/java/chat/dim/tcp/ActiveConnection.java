@@ -66,14 +66,14 @@ public class ActiveConnection extends BaseConnection {
     }
 
     private boolean connect() {
-        setStatus(Status.CONNECTING);
+        changeState(ConnectionState.CONNECTING);
         try {
             socket = new Socket(host, port);
-            setStatus(Status.CONNECTED);
+            changeState(ConnectionState.CONNECTED);
             return true;
         } catch (IOException e) {
             e.printStackTrace();
-            setStatus(Status.ERROR);
+            changeState(ConnectionState.ERROR);
             return false;
         }
     }
@@ -96,7 +96,7 @@ public class ActiveConnection extends BaseConnection {
     }
 
     @Override
-    protected Socket getSocket() {
+    public Socket getSocket() {
         if (isRunning()) {
             if (socket == null) {
                 reconnect();
