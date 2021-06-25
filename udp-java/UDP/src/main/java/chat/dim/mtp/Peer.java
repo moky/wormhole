@@ -35,9 +35,6 @@ import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
-import chat.dim.mtp.protocol.DataType;
-import chat.dim.mtp.protocol.Header;
-import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.task.Arrival;
 import chat.dim.mtp.task.Assemble;
 import chat.dim.mtp.task.Departure;
@@ -130,7 +127,7 @@ public class Peer extends Thread {
                     // third, if no departure task, remove expired fragments
                     assembling = pool.discardFragments();
                     for (Assemble item : assembling) {
-                        handler.recycleFragments(item.fragments, item.source, item.destination);
+                        handler.recycleFragments(item.getFragments(), item.source, item.destination);
                     }
                     if (done == 0) {
                         // all jobs done, have a rest. ^_^
@@ -153,7 +150,7 @@ public class Peer extends Thread {
      */
     private int cleanArrivals() {
         int done = 0;
-        int total = pool.getCountOfArrivals();
+        int total = pool.numberOfArrivals();
         Arrival arrival;
         while (done < total) {
             arrival = pool.shiftFirstArrival();
@@ -175,31 +172,29 @@ public class Peer extends Thread {
             return;
         }
         boolean ok;
-        Header head = pack.head;
-        DataType type = head.type;
-        if (type.equals(DataType.CommandRespond)) {
+        if (pack.isCommandResponse()) {
             // command response
             if (pool.deleteDeparture(pack, task.source, task.destination)) {
                 // if departure task is deleted, means it's finished
-                getHandler().onSendCommandSuccess(head.sn, task.source, task.destination);
+                getHandler().onSendCommandSuccess(pack.head.sn, task.source, task.destination);
             }
             return;
-        } else if (type.equals(DataType.MessageRespond)) {
+        } else if (pack.isMessageResponse()) {
             // message response
             if (pool.deleteDeparture(pack, task.source, task.destination)) {
                 // if departure task is deleted, means it's finished
-                getHandler().onSendMessageSuccess(head.sn, task.source, task.destination);
+                getHandler().onSendMessageSuccess(pack.head.sn, task.source, task.destination);
             }
             return;
-        } else if (type.equals(DataType.Command)) {
+        } else if (pack.isCommand()) {
             // handle command
             ok = getHandler().onReceivedCommand(pack.body, task.source, task.destination);
-        } else if (type.equals(DataType.Message)) {
+        } else if (pack.isMessage()) {
             // handle message
             ok = getHandler().onReceivedMessage(pack.body, task.source, task.destination);
         } else {
             // handle message fragment
-            assert type.equals(DataType.MessageFragment) : "data type error: " + type;
+            assert pack.isMessageFragment() : "data type error: " + pack.head.type;
             ok = getHandler().checkFragment(pack, task.source, task.destination);
             if (ok) {
                 // assemble fragments
@@ -218,37 +213,36 @@ public class Peer extends Thread {
 
     private void respond(Package pack, SocketAddress remote, SocketAddress local) {
         MutableData body;
-        Header head = pack.head;
-        DataType type = head.type;
-        if (type.equals(DataType.Command)) {
-            type = DataType.CommandRespond;
+        DataType type;
+        if (pack.isCommand()) {
+            type = DataType.CommandResponse;
             body = new MutableData(2);
             body.setChar(0, 'O');
             body.setChar(1, 'K');
-        } else if (type.equals(DataType.Message)) {
-            type = DataType.MessageRespond;
+        } else if (pack.isMessage()) {
+            type = DataType.MessageResponse;
             body = new MutableData(2);
             body.setChar(0, 'O');
             body.setChar(1, 'K');
-        } else if (type.equals(DataType.MessageFragment)) {
-            type = DataType.MessageRespond;
-            UInt32Data pages = DataConvert.getUInt32Data(head.pages);
-            UInt32Data offset = DataConvert.getUInt32Data(head.offset);
+        } else if (pack.isMessageFragment()) {
+            type = DataType.MessageResponse;
+            UInt32Data pages = DataConvert.getUInt32Data(pack.head.pages);
+            UInt32Data offset = DataConvert.getUInt32Data(pack.head.offset);
             body = new MutableData(10);
             body.append(pages);
             body.append(offset);
             body.append('O');
             body.append('K');
         } else {
-            throw new IllegalArgumentException("data type error: " + type);
+            throw new IllegalArgumentException("data type error: " + pack.head.type);
         }
         Package response;
-        if (head.bodyLength < 0) {
+        if (pack.head.bodyLength < 0) {
             // UDP (unlimited)
-            response = Package.create(type, head.sn, 1, 0, -1, body);
+            response = Package.create(type, pack.head.sn, 1, 0, -1, body);
         } else {
             // TCP
-            response = Package.create(type, head.sn, 1, 0, body.getSize(), body);
+            response = Package.create(type, pack.head.sn, 1, 0, body.getSize(), body);
         }
         // send response directly, don't add this task to waiting list
         int res = getDelegate().sendData(response, remote, local);
@@ -273,9 +267,9 @@ public class Peer extends Thread {
         } else {
             // mission failed
             DataType type = task.type;
-            if (type.equals(DataType.Command)) {
+            if (type.isCommand()) {
                 getHandler().onSendCommandTimeout(task.sn, task.destination, task.source);
-            } else if (type.equals(DataType.Message)) {
+            } else if (type.isMessage()) {
                 getHandler().onSendMessageTimeout(task.sn, task.destination, task.source);
             } else {
                 throw new IllegalArgumentException("data type error: " + type);
@@ -302,12 +296,12 @@ public class Peer extends Thread {
 
     public Departure sendMessage(Package pack, SocketAddress destination, SocketAddress source) {
         List<Package> packages;
-        if (pack.body.getSize() <= Package.OPTIMAL_BODY_LENGTH || pack.head.type.equals(DataType.MessageFragment)) {
+        if (pack.body.getSize() <= Packer.OPTIMAL_BODY_LENGTH || pack.head.type.equals(DataType.MessageFragment)) {
             packages = new ArrayList<>();
             packages.add(pack);
         } else {
             // split packages for large message
-            packages = pack.split();
+            packages = Packer.split(pack);
         }
         Departure task = new Departure(packages, destination, source);
         send(task);

@@ -28,60 +28,47 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.mtp.protocol;
+package chat.dim.mtp.task;
 
-import java.util.Random;
+import java.net.SocketAddress;
+import java.util.Date;
+import java.util.List;
 
-import chat.dim.network.DataConvert;
-import chat.dim.type.ByteArray;
-import chat.dim.type.Data;
-import chat.dim.type.UInt32Data;
+import chat.dim.mtp.DataType;
+import chat.dim.mtp.TransactionID;
+import chat.dim.mtp.Package;
 
-public class TransactionID extends Data {
+/**
+ *  Package(s) to sent out (waiting response)
+ */
+public class Departure {
 
-    public TransactionID(ByteArray data) {
-        super(data);
+    public final List<Package> packages;
+
+    public final DataType type;
+    public final TransactionID sn;
+
+    public final SocketAddress destination;
+    public final SocketAddress source;
+
+    public int maxRetries = 5;
+    private long lastTime = 0;  // last send/receive timestamp (in milliseconds)
+
+    public Departure(List<Package> packages, SocketAddress destination, SocketAddress source) {
+        super();
+        assert packages.size() > 0 : "departure packages should not be empty";
+        Package first = packages.get(0);
+        this.packages = packages;
+        this.type = first.head.type;
+        this.sn = first.head.sn;
+        this.destination = destination;
+        this.source = source;
     }
 
-    //
-    //  Factory
-    //
-
-    public static TransactionID parse(ByteArray data) {
-        int size = data.getSize();
-        if (size < 8) {
-            //throw new ArrayIndexOutOfBoundsException("Transaction ID error: " + size);
-            return null;
-        } else if (size > 8) {
-            data = data.slice(0, 8);
-        }
-        return new TransactionID(data);
+    public long getLastTime() {
+        return lastTime;
     }
-
-    public static synchronized TransactionID generate() {
-        if (s_low < 0xFFFFFFFFL) {
-            s_low += 1;
-        } else {
-            s_low = 0;
-            if (s_high < 0xFFFFFFFFL) {
-                s_high += 1;
-            } else {
-                s_high = 0;
-            }
-        }
-        UInt32Data hi = DataConvert.getUInt32Data(s_high);
-        UInt32Data lo = DataConvert.getUInt32Data(s_low);
-        return new TransactionID(hi.concat(lo));
-    }
-
-    public static final TransactionID ZERO = new TransactionID(new Data(new byte[8]));
-
-    private static long s_high;
-    private static long s_low;
-
-    static {
-        Random random = new Random();
-        s_high = random.nextInt() + 0x80000000L;
-        s_low = random.nextInt() + 0x80000000L;
+    public void updateLastTime() {
+        lastTime = (new Date()).getTime();
     }
 }

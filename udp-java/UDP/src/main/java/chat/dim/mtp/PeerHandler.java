@@ -33,8 +33,6 @@ package chat.dim.mtp;
 import java.net.SocketAddress;
 import java.util.List;
 
-import chat.dim.mtp.protocol.Package;
-import chat.dim.mtp.protocol.TransactionID;
 import chat.dim.type.ByteArray;
 
 public interface PeerHandler {

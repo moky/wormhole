@@ -2,9 +2,12 @@
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import chat.dim.type.Data;
 import chat.dim.udp.Cargo;
+import chat.dim.udp.Hub;
 
 public class Server extends chat.dim.stun.Server {
 
@@ -19,8 +22,44 @@ public class Server extends chat.dim.stun.Server {
     static final int SERVER_PORT = 3478;
     static final int CHANGE_PORT = 3479;
 
+    public final Hub hub;
+
     public Server(String host, int port, int changePort) throws SocketException {
         super(host, port, changePort);
+        this.hub = createHub(sourceAddress);
+    }
+
+    private static Hub createHub(SocketAddress localAddress) throws SocketException {
+        Hub hub = new Hub();
+        hub.open(localAddress);
+        //hub.start();
+        return hub;
+    }
+
+    protected void info(String msg) {
+        Date currentTime = new Date();
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String dateString = formatter.format(currentTime);
+        System.out.printf("[%s] %s\n", dateString, msg);
+    }
+
+    /**
+     *  Received data from any socket
+     *
+     * @param timeout - in seconds
+     * @return data and remote address
+     */
+    public Cargo receive(float timeout) {
+        return hub.receive(timeout);
+    }
+
+    public Cargo receive() {
+        return receive(2.0f);
+    }
+
+    @Override
+    public int send(byte[] data, SocketAddress destination, SocketAddress source) {
+        return hub.send(data, destination, source);
     }
 
     public void start() {

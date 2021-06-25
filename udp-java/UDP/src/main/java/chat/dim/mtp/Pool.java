@@ -33,7 +33,6 @@ package chat.dim.mtp;
 import java.net.SocketAddress;
 import java.util.List;
 
-import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.task.Arrival;
 import chat.dim.mtp.task.Assemble;
 import chat.dim.mtp.task.Departure;
@@ -49,13 +48,6 @@ public interface Pool {
     //
     //  Departures
     //
-
-    /**
-     *  Gat one departure task from the pool for sending.
-     *
-     * @return any expiring departure task (removed from pool)
-     */
-    Departure shiftExpiredDeparture();
 
     /**
      *  Append a departure task into the pool after sent.
@@ -79,23 +71,16 @@ public interface Pool {
      */
     boolean deleteDeparture(Package response, SocketAddress destination, SocketAddress source);
 
+    /**
+     *  Gat one departure task from the pool for sending.
+     *
+     * @return any expiring departure task (removed from pool)
+     */
+    Departure shiftExpiredDeparture();
+
     //
     //  Arrivals
     //
-
-    /**
-     *  Check how many arrivals waiting in the pool
-     *
-     * @return arrivals count
-     */
-    int getCountOfArrivals();
-
-    /**
-     *  Get one arrival task from the pool for processing
-     *
-     * @return the first arrival task (removed from pool)
-     */
-    Arrival shiftFirstArrival();
 
     /**
      *  Append an arrival task into the pool after received something
@@ -104,6 +89,20 @@ public interface Pool {
      * @return false on failed
      */
     boolean appendArrival(Arrival task);
+
+    /**
+     *  Check how many arrivals waiting in the pool
+     *
+     * @return arrivals count
+     */
+    int numberOfArrivals();
+
+    /**
+     *  Get one arrival task from the pool for processing
+     *
+     * @return the first arrival task (removed from pool)
+     */
+    Arrival shiftFirstArrival();
 
     //
     //  Fragments Assembling

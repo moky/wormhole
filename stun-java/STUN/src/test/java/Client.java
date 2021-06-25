@@ -1,7 +1,12 @@
 
+import chat.dim.udp.Cargo;
+import chat.dim.udp.Hub;
+
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Map;
 
 public class Client extends chat.dim.stun.Client {
@@ -13,8 +18,36 @@ public class Client extends chat.dim.stun.Client {
     static final String CLIENT_IP = "192.168.31.91"; // Test
     static final int CLIENT_PORT = 9527;
 
+    public final Hub hub;
+
     public Client(String host, int port) throws SocketException {
         super(host, port);
+        this.hub = createHub(sourceAddress);
+    }
+
+    private static Hub createHub(SocketAddress localAddress) throws SocketException {
+        Hub hub = new Hub();
+        hub.open(localAddress);
+        //hub.start();
+        return hub;
+    }
+
+    @Override
+    public int send(byte[] data, SocketAddress destination, SocketAddress source) {
+        return hub.send(data, destination, source);
+    }
+
+    @Override
+    public byte[] receive() {
+        Cargo cargo = hub.receive(2.0f);
+        return cargo == null ? null : cargo.data;
+    }
+
+    protected void info(String msg) {
+        Date currentTime = new Date();
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String dateString = formatter.format(currentTime);
+        System.out.printf("[%s] %s\n", dateString, msg);
     }
 
     public void detect(SocketAddress serverAddress) {

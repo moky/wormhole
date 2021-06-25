@@ -34,8 +34,8 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.util.Set;
 
+import chat.dim.mtp.Package;
 import chat.dim.mtp.Pool;
-import chat.dim.mtp.protocol.Package;
 import chat.dim.mtp.task.Arrival;
 import chat.dim.mtp.task.Departure;
 import chat.dim.type.Data;

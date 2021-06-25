@@ -41,10 +41,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import chat.dim.mtp.protocol.DataType;
-import chat.dim.mtp.protocol.Header;
-import chat.dim.mtp.protocol.Package;
-import chat.dim.mtp.protocol.TransactionID;
 import chat.dim.mtp.task.Arrival;
 import chat.dim.mtp.task.Assemble;
 import chat.dim.mtp.task.Departure;
@@ -127,35 +123,31 @@ public class MemPool implements Pool {
 
     @Override
     public boolean deleteDeparture(Package response, SocketAddress destination, SocketAddress source) {
-        Header head = response.head;
         ByteArray body = response.body;
-        int bodySize = body.getSize();
-        TransactionID sn = head.sn;
-        DataType type = head.type;
-        if (type.equals(DataType.CommandRespond)) {
+        if (response.isCommandResponse()) {
             // response for Command
-            assert bodySize == 0 || (body.getByte(0) == 'O' && body.getByte(1) == 'K') : "CommandRespond error: " + body;
-            return deleteEntireTask(sn, destination);
-        } else if (type.equals(DataType.MessageRespond)) {
+            assert body.getSize() == 0 || (body.getByte(0) == 'O' && body.getByte(1) == 'K') : "CommandRespond error: " + body;
+            return deleteEntireTask(response.head.sn, destination);
+        } else if (response.isMessageResponse()) {
             // response for Message or Fragment
-            if (bodySize >= 8) {
+            if (body.getSize() >= 8) {
                 // MessageFragment
-                assert bodySize == 8 || (body.getByte(8) == 'O' && body.getByte(9) == 'K') : "MessageRespond error: " + body;
+                assert body.getSize() == 8 || (body.getByte(8) == 'O' && body.getByte(9) == 'K') : "MessageRespond error: " + body;
                 // get pages count and index
                 int pages = DataConvert.getInt32Value(body, 0);
                 int offset = DataConvert.getInt32Value(body, 4);
                 assert pages > 1 && pages > offset : "pages error: " + pages + ", " + offset;
-                return deleteFragment(sn, offset, destination);
-            } else if (bodySize == 0 || (body.getByte(0) == 'O' && body.getByte(1) == 'K')) {
+                return deleteFragment(response.head.sn, offset, destination);
+            } else if (body.getSize() == 0 || (body.getByte(0) == 'O' && body.getByte(1) == 'K')) {
                 // Message
-                return deleteEntireTask(sn, destination);
+                return deleteEntireTask(response.head.sn, destination);
             } else {
                 // respond for split message
                 // TODO: if (body.equals("AGAIN")), resend all fragments of this message
                 return false;
             }
         } else {
-            throw new IllegalArgumentException("response type error: " + type);
+            throw new IllegalArgumentException("response type error: " + response.head.type);
         }
     }
 
@@ -210,8 +202,8 @@ public class MemPool implements Pool {
                 pos = packages.size() - 1;
                 for (; pos >= 0; --pos) {
                     pack = packages.get(pos);
-                    assert sn.equals(pack.head.sn) : "trans ID error: " + pack;
-                    assert DataType.MessageFragment.equals(pack.head.type) : "data type error: " + pack;
+                    assert pack.head.sn.equals(sn) : "trans ID error: " + pack;
+                    assert pack.isMessageFragment() : "data type error: " + pack;
                     if (pack.head.offset == offset) {
                         // got it!
                         packages.remove(pos);
@@ -238,7 +230,7 @@ public class MemPool implements Pool {
     //
 
     @Override
-    public int getCountOfArrivals() {
+    public int numberOfArrivals() {
         int count;
         Lock readLock = arrivalLock.readLock();
         readLock.lock();
@@ -298,11 +290,9 @@ public class MemPool implements Pool {
                 assembles.put(sn, task);
             } else {
                 // insert fragment and check whether completed
-                if (task.insert(fragment, source, destination)) {
-                    if (task.isCompleted()) {
-                        msg = Package.join(task.fragments);
-                        assembles.remove(sn);
-                    }
+                msg = task.insert(fragment, source, destination);
+                if (msg != null) {
+                    assembles.remove(sn);
                 }
             }
         } finally {

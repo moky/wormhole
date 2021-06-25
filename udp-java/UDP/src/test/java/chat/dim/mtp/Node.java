@@ -1,3 +1,4 @@
+package chat.dim.mtp;
 
 import java.net.SocketAddress;
 import java.net.SocketException;
@@ -5,11 +6,6 @@ import java.util.List;
 
 import chat.dim.dmtp.Hub;
 import chat.dim.dmtp.Peer;
-import chat.dim.mtp.PeerHandler;
-import chat.dim.mtp.Pool;
-import chat.dim.mtp.protocol.DataType;
-import chat.dim.mtp.protocol.Package;
-import chat.dim.mtp.protocol.TransactionID;
 import chat.dim.mtp.task.Departure;
 import chat.dim.type.ByteArray;
 

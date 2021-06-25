@@ -3,12 +3,16 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.charset.Charset;
 
-import chat.dim.udp.*;
+import chat.dim.udp.Connection;
+import chat.dim.udp.ConnectionStatus;
+import chat.dim.udp.Hub;
+import chat.dim.udp.HubFilter;
+import chat.dim.udp.HubListener;
 
 public class Server implements HubListener {
 
 //    static String HOST = "127.0.0.1";
-    static String HOST = "192.168.31.64";
+    static String HOST = "192.168.31.91";
     static int PORT = 9394;
 
     //

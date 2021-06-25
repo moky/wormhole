@@ -32,17 +32,12 @@ package chat.dim.stun;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.SocketException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
 import chat.dim.stun.attributes.Attribute;
 import chat.dim.stun.protocol.Package;
 import chat.dim.type.ByteArray;
-import chat.dim.udp.Cargo;
-import chat.dim.udp.Hub;
 
 /**
  *  Session Traversal Utilities for NAT
@@ -65,30 +60,9 @@ public abstract class Node {
      */
     public final SocketAddress sourceAddress;
 
-    public final Hub hub;
-
-    public Node(SocketAddress address, Hub hub) {
+    public Node(SocketAddress address) {
         super();
-        this.sourceAddress = address;
-        this.hub = hub;
-    }
-
-    public Node(SocketAddress address) throws SocketException {
-        this(address, createHub(address));
-    }
-
-    private static Hub createHub(SocketAddress localAddress) throws SocketException {
-        Hub hub = new Hub();
-        hub.open(localAddress);
-        //hub.start();
-        return hub;
-    }
-
-    protected void info(String msg) {
-        Date currentTime = new Date();
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        String dateString = formatter.format(currentTime);
-        System.out.printf("[%s] %s\n", dateString, msg);
+        sourceAddress = address;
     }
 
     /**
@@ -99,31 +73,15 @@ public abstract class Node {
      * @param source      - local IP and port
      * @return count of sent bytes
      */
-    public int send(ByteArray data, SocketAddress destination, SocketAddress source) {
-        return hub.send(data.getBytes(), destination, source);
-    }
+    public abstract int send(byte[] data, SocketAddress destination, SocketAddress source);
 
-    public int send(ByteArray data, SocketAddress destination, int source) {
+    public int send(byte[] data, SocketAddress destination, int source) {
         SocketAddress address = new InetSocketAddress(source);
         return send(data, destination, address);
     }
 
-    public int send(ByteArray data, SocketAddress destination) {
+    public int send(byte[] data, SocketAddress destination) {
         return send(data, destination, sourceAddress);
-    }
-
-    /**
-     *  Received data from any socket
-     *
-     * @param timeout - in seconds
-     * @return data and remote address
-     */
-    public Cargo receive(float timeout) {
-        return hub.receive(timeout);
-    }
-
-    public Cargo receive() {
-        return receive(2.0f);
     }
 
     /**
@@ -146,7 +104,7 @@ public abstract class Node {
         // 1. parse STUN package
         Package pack = Package.parse(data);
         if (pack == null) {
-            info("failed to parse package data: " + data);
+            //info("failed to parse package data: " + data);
             return false;
         }
         // 2. parse attributes

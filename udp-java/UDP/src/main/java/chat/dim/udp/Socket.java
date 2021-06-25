@@ -32,22 +32,31 @@ package chat.dim.udp;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
-import java.net.*;
-import java.util.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class Socket extends Thread {
+final class Socket implements Runnable {
 
     /*  Max count for caching packages
      *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
      *
      *  Each UDP data package is limited to no more than 576 bytes, so set the
-     *  MAX_CACHE_SPACES to about 2,000,000 means it would take up to 1GB memory
+     *  MAX_CACHE_SPACES to about 2,000 means it would take up to 1MB memory
      *  for caching in one socket.
      */
-    public static int MAX_CACHE_SPACES = 1024 * 1024 * 2;
+    public static int MAX_CACHE_SPACES = 1024 * 2;
 
     /*  Maximum Transmission Unit
      *  ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -489,7 +498,7 @@ public class Socket extends Thread {
     @SuppressWarnings("SameParameterValue")
     private void _sleep(double seconds) {
         try {
-            sleep((long) (seconds * 1000));
+            Thread.sleep((long) (seconds * 1000));
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

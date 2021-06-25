@@ -31,45 +31,42 @@
 package chat.dim.mtp.task;
 
 import java.net.SocketAddress;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import chat.dim.mtp.protocol.DataType;
-import chat.dim.mtp.protocol.Package;
-import chat.dim.mtp.protocol.TransactionID;
+import chat.dim.mtp.Package;
+import chat.dim.mtp.Packer;
 
 /**
  *  Message fragments received (waiting assemble)
  */
 public class Assemble {
 
-    public final List<Package> fragments = new ArrayList<>();
+    public final Packer packer;
 
     public final SocketAddress source;
     public final SocketAddress destination;
 
-    public final TransactionID sn;
-    public final int pages;
-
     private long lastTime;  // last receive timestamp (in milliseconds)
 
-    public Assemble(Package fragment, SocketAddress source, SocketAddress destination) {
+    public Assemble(Package fragment, SocketAddress from, SocketAddress to) {
         super();
 
-        this.fragments.add(fragment);
+        packer = new Packer(fragment.head.sn, fragment.head.pages);
+        packer.insert(fragment);
 
-        this.source = source;
-        this.destination = destination;
-
-        this.sn = fragment.head.sn;
-        this.pages = fragment.head.pages;
+        source = from;
+        destination = to;
 
         updateLastTime();
     }
 
     public boolean isCompleted() {
-        return fragments.size() == pages;
+        return packer.isCompleted();
+    }
+
+    public List<Package> getFragments() {
+        return packer.getFragments();
     }
 
     public long getLastTime() {
@@ -79,32 +76,9 @@ public class Assemble {
         lastTime = (new Date()).getTime();
     }
 
-    public boolean insert(Package fragment, SocketAddress source, SocketAddress destination) {
+    public Package insert(Package fragment, SocketAddress source, SocketAddress destination) {
         assert this.source.equals(source) : "source error: " + source + ", " + this.source;
         assert this.destination.equals(destination) : "destination error: " + destination + ", " + this.destination;
-        int count = fragments.size();
-        assert count > 0 : "fragments error";
-        int offset = fragment.head.offset;
-        assert DataType.MessageFragment.equals(fragment.head.type) : "data type error: " + fragment.head.type;
-        assert sn.equals(fragment.head.sn) : "transaction ID not match:" + fragment.head.sn;
-        assert pages == fragment.head.pages : "pages error: " + fragment.head.pages;
-        assert offset < pages : "offset error: " + offset;
-        Package item;
-        int index = count - 1;
-        for (; index >= 0; --index) {
-            item = fragments.get(index);
-            if (offset < item.head.offset) {
-                continue;
-            } else if (offset == item.head.offset) {
-                //throw new IllegalArgumentException("duplicated: " + item.head);
-                return false;
-            }
-            // got the position
-            break;
-        }
-        // insert after it
-        fragments.add(index + 1, fragment);
-        updateLastTime();
-        return true;
+        return packer.insert(fragment);
     }
 }

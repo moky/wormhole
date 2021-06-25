@@ -32,7 +32,6 @@ package chat.dim.stun;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -59,7 +58,7 @@ import chat.dim.type.MutableData;
  *  Server nodes
  */
 
-public class Server extends Node {
+public abstract class Server extends Node {
 
     public String software = "stun.dim.chat 0.1";
 
@@ -92,10 +91,9 @@ public class Server extends Node {
      */
     public int changePort;
 
-    public Server(String host, int port, int changePort) throws SocketException {
+    public Server(String host, int port, int changePort) {
         super(new InetSocketAddress(host, port));
         this.changePort = changePort;
-        this.hub.open(new InetSocketAddress(host, changePort));
     }
 
     @Override
@@ -109,10 +107,10 @@ public class Server extends Node {
             assert value instanceof ChangeRequestValue : "change request value error: " + value;
             context.put("CHANGE-REQUEST", value);
         } else {
-            info("unknown attribute type: " + type);
+            //info("unknown attribute type: " + type);
             return false;
         }
-        info(type + ":\t" + value);
+        //info(type + ":\t" + value);
         return true;
     }
 
@@ -129,7 +127,7 @@ public class Server extends Node {
         // pack
         Package pack = Package.create(head.type, head.sn, attribute);
         assert neighbour != null : "neighbour address not set yet";
-        int res = send(pack, neighbour);
+        int res = send(pack.getBytes(), neighbour);
         return res == pack.getSize();
     }
 
@@ -177,7 +175,7 @@ public class Server extends Node {
         body.append(data5);
         body.append(data6);
         Package pack = Package.create(MessageType.BindResponse, head.sn, body);
-        int res = send(pack, clientAddress, new InetSocketAddress(localIP, localPort));
+        int res = send(pack.getBytes(), clientAddress, new InetSocketAddress(localIP, localPort));
         return res == pack.getSize();
     }
 
@@ -190,7 +188,7 @@ public class Server extends Node {
             // received package error
             return false;
         }
-        info("received message type: " + head.type);
+        //info("received message type: " + head.type);
         ChangeRequestValue changeRequest = (ChangeRequestValue) context.get("CHANGE-REQUEST");
         if (changeRequest != null) {
             if (changeRequest.equals(ChangeRequestValue.ChangeIPAndPort)) {

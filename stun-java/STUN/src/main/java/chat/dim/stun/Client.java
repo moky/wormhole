@@ -32,7 +32,6 @@ package chat.dim.stun;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -52,7 +51,6 @@ import chat.dim.stun.valus.XorMappedAddressValue2;
 import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
-import chat.dim.udp.Cargo;
 
 /**
  *  Session Traversal Utilities for NAT
@@ -61,13 +59,20 @@ import chat.dim.udp.Cargo;
  *  Client nodes
  */
 
-public class Client extends Node {
+public abstract class Client extends Node {
 
     public int retries = 3;
 
-    public Client(String host, int port) throws SocketException {
+    public Client(String host, int port) {
         super(new InetSocketAddress(host, port));
     }
+
+    /**
+     *  Received data from any socket
+     *
+     * @return data and remote address
+     */
+    public abstract byte[] receive();
 
     @Override
     public boolean parseAttribute(Attribute attribute, Map<String, Object> context) {
@@ -104,10 +109,10 @@ public class Client extends Node {
             assert value instanceof SoftwareValue : "software value error: " + value;
             context.put("SOFTWARE", value);
         } else {
-            info("unknown attribute type: " + type);
+            //info("unknown attribute type: " + type);
             return false;
         }
-        info(type + ":\t" + value);
+        //info(type + ":\t" + value);
         return true;
     }
 
@@ -118,9 +123,9 @@ public class Client extends Node {
         // 2. send and get response
         int count = 0;
         int size;
-        Cargo cargo;
+        byte[] cargo;
         while (true) {
-            size = send(req, serverAddress);
+            size = send(req.getBytes(), serverAddress);
             if (size != req.getSize()) {
                 // failed to send data
                 return null;
@@ -129,20 +134,20 @@ public class Client extends Node {
             if (cargo == null) {
                 if (count < retries) {
                     count += 1;
-                    info("(" + count + "/" + retries + ") receive nothing");
+                    //info("(" + count + "/" + retries + ") receive nothing");
                 } else {
                     // failed to receive data
                     return null;
                 }
             } else {
-                info("received " + cargo.data.length + " bytes from " + cargo.source);
+                //info("received " + cargo.data.length + " bytes from " + cargo.source);
                 break;
             }
         }
         // 3. parse response
         Map<String, Object> context = new HashMap<>();
         context.put("trans_id", sn);
-        if (!parseData(new Data(cargo.data), context)) {
+        if (!parseData(new Data(cargo), context)) {
             return null;
         }
         Header head = (Header) context.get("head");
@@ -171,18 +176,18 @@ public class Client extends Node {
      */
 
     private Map<String, Object> test_1(SocketAddress serverAddress) {
-        info("[Test 1] sending empty request ... " + serverAddress);
+        //info("[Test 1] sending empty request ... " + serverAddress);
         return bindRequest(Data.ZERO, serverAddress);
     }
 
     private Map<String, Object> test_2(SocketAddress serverAddress) {
-        info("[Test 2] sending ChangeIPAndPort request ... " + serverAddress);
+        //info("[Test 2] sending ChangeIPAndPort request ... " + serverAddress);
         Attribute item = Attribute.create(AttributeType.CHANGE_REQUEST, ChangeRequestValue.ChangeIPAndPort);
         return bindRequest(item, serverAddress);
     }
 
     private Map<String, Object> test_3(SocketAddress serverAddress) {
-        info("[Test 1] sending ChangePort request ... " + serverAddress);
+        //info("[Test 1] sending ChangePort request ... " + serverAddress);
         Attribute item = Attribute.create(AttributeType.CHANGE_REQUEST, ChangeRequestValue.ChangePort);
         return bindRequest(item, serverAddress);
     }

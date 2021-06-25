@@ -36,7 +36,12 @@ import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -56,7 +61,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  *          |     |  socket  |             |  socket  |     |
  *          +-----+----------+-------------+----------+-----+
  *                   |    A                   |  |  A
- *                   |    |   (connections)   |  |  |
+ *                   |    |    (channels)     |  |  |
  *                   |    |                   |  |  |
  *          ~~~~~~~~~|~~~~|~~~~~~~~~~~~~~~~~~~|~~|~~|~~~~~~~~
  *          ~~~~~~~~~|~~~~|~~~~~~~~~~~~~~~~~~~|~~|~~|~~~~~~~~
@@ -207,7 +212,7 @@ public class Hub extends Thread implements ConnectionHandler {
     protected Socket createSocket(SocketAddress address) throws SocketException {
         Socket socket = new Socket(address);
         socket.setHandler(this);
-        socket.start();
+        new Thread(socket).start();
         return socket;
     }
 

@@ -47,7 +47,7 @@ public interface CachePool {
 
     /**
      *  Get received data from pool with max length (remove)
-     *  (must call 'get()/length()' to check data length first)
+     *  (must call 'length()' to check data length first)
      *
      * @param maxLength - max data length to remove
      * @return remove data from the pool and return it
