@@ -44,11 +44,6 @@ import chat.dim.stun.protocol.TransactionID;
 import chat.dim.stun.valus.ChangeRequestValue;
 import chat.dim.stun.valus.ChangedAddressValue;
 import chat.dim.stun.valus.MappedAddressValue;
-import chat.dim.stun.valus.SoftwareValue;
-import chat.dim.stun.valus.SourceAddressValue;
-import chat.dim.stun.valus.XorMappedAddressValue;
-import chat.dim.stun.valus.XorMappedAddressValue2;
-import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 
@@ -70,51 +65,9 @@ public abstract class Client extends Node {
     /**
      *  Received data from any socket
      *
-     * @return data and remote address
+     * @return data
      */
     public abstract byte[] receive();
-
-    @Override
-    public boolean parseAttribute(Attribute attribute, Map<String, Object> context) {
-        AttributeType type = attribute.tag;
-        Triad.Value value = attribute.value;
-        if (type.equals(AttributeType.MAPPED_ADDRESS)) {
-            assert value instanceof MappedAddressValue : "mapped address value error: " + value;
-            context.put("MAPPED-ADDRESS", value);
-        } else if (type.equals(AttributeType.XOR_MAPPED_ADDRESS)) {
-            if (!(value instanceof XorMappedAddressValue)) {
-                // XOR and parse again
-                ByteArray factor = (ByteArray) context.get("trans_id");
-                value = XorMappedAddressValue.create(value, factor);
-            }
-            if (value != null) {
-                context.put("MAPPED-ADDRESS", value);
-            }
-        } else if (type.equals(AttributeType.XOR_MAPPED_ADDRESS_8020)) {
-            if (!(value instanceof XorMappedAddressValue2)) {
-                // XOR and parse again
-                ByteArray factor = (ByteArray) context.get("trans_id");
-                value = XorMappedAddressValue2.create(value, factor);
-            }
-            if (value != null) {
-                context.put("MAPPED-ADDRESS", value);
-            }
-        } else if (type.equals(AttributeType.CHANGED_ADDRESS)) {
-            assert value instanceof ChangedAddressValue : "change address value error: " + value;
-            context.put("CHANGED-ADDRESS", value);
-        } else if (type.equals(AttributeType.SOURCE_ADDRESS)) {
-            assert value instanceof SourceAddressValue : "source address value error: " + value;
-            context.put("SOURCE-ADDRESS", value);
-        } else if (type.equals(AttributeType.SOFTWARE)) {
-            assert value instanceof SoftwareValue : "software value error: " + value;
-            context.put("SOFTWARE", value);
-        } else {
-            //info("unknown attribute type: " + type);
-            return false;
-        }
-        //info(type + ":\t" + value);
-        return true;
-    }
 
     private Map<String, Object> bindRequest(ByteArray body, SocketAddress serverAddress) {
         // 1. create STUN message package
@@ -125,7 +78,7 @@ public abstract class Client extends Node {
         int size;
         byte[] cargo;
         while (true) {
-            size = send(req.getBytes(), serverAddress);
+            size = send(req.getBytes(), serverAddress, sourceAddress);
             if (size != req.getSize()) {
                 // failed to send data
                 return null;
@@ -134,13 +87,12 @@ public abstract class Client extends Node {
             if (cargo == null) {
                 if (count < retries) {
                     count += 1;
-                    //info("(" + count + "/" + retries + ") receive nothing");
+                    info("(" + count + "/" + retries + ") receive nothing");
                 } else {
                     // failed to receive data
                     return null;
                 }
             } else {
-                //info("received " + cargo.data.length + " bytes from " + cargo.source);
                 break;
             }
         }
@@ -176,18 +128,18 @@ public abstract class Client extends Node {
      */
 
     private Map<String, Object> test_1(SocketAddress serverAddress) {
-        //info("[Test 1] sending empty request ... " + serverAddress);
+        info("[Test 1] sending empty request ... " + serverAddress);
         return bindRequest(Data.ZERO, serverAddress);
     }
 
     private Map<String, Object> test_2(SocketAddress serverAddress) {
-        //info("[Test 2] sending ChangeIPAndPort request ... " + serverAddress);
+        info("[Test 2] sending ChangeIPAndPort request ... " + serverAddress);
         Attribute item = Attribute.create(AttributeType.CHANGE_REQUEST, ChangeRequestValue.ChangeIPAndPort);
         return bindRequest(item, serverAddress);
     }
 
     private Map<String, Object> test_3(SocketAddress serverAddress) {
-        //info("[Test 1] sending ChangePort request ... " + serverAddress);
+        info("[Test 1] sending ChangePort request ... " + serverAddress);
         Attribute item = Attribute.create(AttributeType.CHANGE_REQUEST, ChangeRequestValue.ChangePort);
         return bindRequest(item, serverAddress);
     }
@@ -210,10 +162,9 @@ public abstract class Client extends Node {
          *  knows that it is not NATed.  It executes test II.
          */
         MappedAddressValue ma1 = (MappedAddressValue) res1.get("MAPPED-ADDRESS");
-        InetSocketAddress address = (InetSocketAddress) sourceAddress;
         // 2. Test II
         Map<String, Object> res2 = test_2(serverAddress);
-        if (ma1 != null && ma1.port == address.getPort() && ma1.ip.equals(address.getHostString())) {
+        if (ma1 != null && ma1.port == sourceAddress.getPort() && ma1.ip.equals(sourceAddress.getHostString())) {
             /*  If a response is received, the client knows that it has open access
              *  to the Internet (or, at least, its behind a firewall that behaves
              *  like a full-cone NAT, but without the translation).  If no response
@@ -245,7 +196,7 @@ public abstract class Client extends Node {
             return res1;
         }
         // 3. Test I'
-        address = new InetSocketAddress(ca1.ip, ca1.port);
+        InetSocketAddress address = new InetSocketAddress(ca1.ip, ca1.port);
         Map<String, Object> res11 = test_1(address);
         if (res11 == null) {
             //throw new NullPointerException("network error");

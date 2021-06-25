@@ -159,7 +159,6 @@ public class Hub extends Thread implements ConnectionHandler {
         Lock readLock = socketLock.readLock();
         readLock.lock();
         try {
-            InetSocketAddress address;
             for (Socket item : sockets) {
                 if (port == item.port) {
                     matchedSockets.add(item);
@@ -178,7 +177,6 @@ public class Hub extends Thread implements ConnectionHandler {
         Lock readLock = socketLock.readLock();
         readLock.lock();
         try {
-            InetSocketAddress address;
             for (Socket item : sockets) {
                 if (port == item.port) {
                     socket = item;
@@ -209,7 +207,7 @@ public class Hub extends Thread implements ConnectionHandler {
         return socket;
     }
 
-    protected Socket createSocket(SocketAddress address) throws SocketException {
+    protected Socket createSocket(InetSocketAddress address) throws SocketException {
         Socket socket = new Socket(address);
         socket.setHandler(this);
         new Thread(socket).start();
@@ -223,7 +221,7 @@ public class Hub extends Thread implements ConnectionHandler {
      * @return socket
      * @throws SocketException on failed
      */
-    public Socket open(SocketAddress address) throws SocketException {
+    public Socket open(InetSocketAddress address) throws SocketException {
         Socket socket;
         Lock writeLock = socketLock.writeLock();
         writeLock.lock();
@@ -679,7 +677,7 @@ public class Hub extends Thread implements ConnectionHandler {
         }
     }
 
-    private List<byte[]> dispatch(byte[] data, SocketAddress source, SocketAddress destination) {
+    private List<byte[]> dispatch(byte[] data, InetSocketAddress source, InetSocketAddress destination) {
         List<byte[]> responses = new ArrayList<>();
         Lock readLock = listenerLock.readLock();
         readLock.lock();

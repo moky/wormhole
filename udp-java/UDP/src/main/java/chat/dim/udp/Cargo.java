@@ -31,15 +31,15 @@
 package chat.dim.udp;
 
 import java.net.DatagramPacket;
-import java.net.SocketAddress;
+import java.net.InetSocketAddress;
 
 public class Cargo {
 
     public final byte[] data;
-    public final SocketAddress source;
-    public final SocketAddress destination;
+    public final InetSocketAddress source;
+    public final InetSocketAddress destination;
 
-    public Cargo(byte[] data, SocketAddress source, SocketAddress destination) {
+    public Cargo(byte[] data, InetSocketAddress source, InetSocketAddress destination) {
         super();
         this.data = data;
         this.source = source;
@@ -47,7 +47,7 @@ public class Cargo {
     }
 
     public Cargo(DatagramPacket packet, Socket socket) {
-        this(getData(packet), packet.getSocketAddress(), socket.localAddress);
+        this(getData(packet), (InetSocketAddress) packet.getSocketAddress(), socket.localAddress);
     }
 
     private static byte[] getData(DatagramPacket packet) {

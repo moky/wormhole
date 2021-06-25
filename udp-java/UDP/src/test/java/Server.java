@@ -1,5 +1,5 @@
 
-import java.net.SocketAddress;
+import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.nio.charset.Charset;
 
@@ -25,7 +25,7 @@ public class Server implements HubListener {
     }
 
     @Override
-    public byte[] onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
+    public byte[] onDataReceived(byte[] data, InetSocketAddress source, InetSocketAddress destination) {
         String text = new String(data, Charset.forName("UTF-8"));
         info("received (" + data.length + " bytes) from " + source + " to " + destination + ": " + text);
         return null;
@@ -47,8 +47,8 @@ public class Server implements HubListener {
         Client.info(data);
     }
 
-    private static Server server = new Server();
-    private static Hub hub = new Hub();
+    private static final Server server = new Server();
+    private static final Hub hub = new Hub();
 
     public static void main(String args[]) throws SocketException {
 

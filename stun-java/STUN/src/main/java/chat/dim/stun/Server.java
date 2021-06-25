@@ -31,7 +31,6 @@
 package chat.dim.stun;
 
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -71,7 +70,7 @@ public abstract class Server extends Node {
      *        Response, independent of the value of the flags.  Its syntax is
      *        identical to MAPPED-ADDRESS.
      */
-    public SocketAddress changedAddress;
+    public InetSocketAddress changedAddress;
 
     /*  "Change IP and Port"
      *
@@ -82,7 +81,7 @@ public abstract class Server extends Node {
      *        This address will be the same as CHANGED-ADDRESS by default, but
      *        offer another different IP address here will be better.
      */
-    public SocketAddress neighbour;
+    public InetSocketAddress neighbour;
 
     /*  "Change Port"
      *
@@ -96,55 +95,34 @@ public abstract class Server extends Node {
         this.changePort = changePort;
     }
 
-    @Override
-    public boolean parseAttribute(Attribute attribute, Map<String, Object> context) {
-        AttributeType type = attribute.tag;
-        Triad.Value value = attribute.value;
-        if (type.equals(AttributeType.MAPPED_ADDRESS)) {
-            assert value instanceof MappedAddressValue : "mapped address value error: " + value;
-            context.put("MAPPED-ADDRESS", value);
-        } else if (type.equals(AttributeType.CHANGE_REQUEST)) {
-            assert value instanceof ChangeRequestValue : "change request value error: " + value;
-            context.put("CHANGE-REQUEST", value);
-        } else {
-            //info("unknown attribute type: " + type);
-            return false;
-        }
-        //info(type + ":\t" + value);
-        return true;
-    }
-
     /**
      *  Redirect the request to the neighbor server
      *
      * @param head          -
      * @param clientAddress - client's mapped address
      */
-    protected boolean redirect(Header head, SocketAddress clientAddress) {
-        InetSocketAddress address = (InetSocketAddress) clientAddress;
-        MappedAddressValue value = MappedAddressValue.create(address.getHostString(), address.getPort());
+    private boolean redirect(Header head, InetSocketAddress clientAddress) {
+        MappedAddressValue value = MappedAddressValue.create(clientAddress.getHostString(), clientAddress.getPort());
         Attribute attribute = Attribute.create(AttributeType.MAPPED_ADDRESS, value);
         // pack
         Package pack = Package.create(head.type, head.sn, attribute);
         assert neighbour != null : "neighbour address not set yet";
-        int res = send(pack.getBytes(), neighbour);
+        int res = send(pack.getBytes(), neighbour, sourceAddress);
         return res == pack.getSize();
     }
 
-    protected boolean respond(Header head, SocketAddress clientAddress, int localPort) {
+    private boolean respond(Header head, InetSocketAddress clientAddress, int localPort) {
         // remote (client) address
-        InetSocketAddress address = (InetSocketAddress) clientAddress;
-        String remoteIP = address.getHostString();
-        int remotePort = address.getPort();
+        String remoteIP = clientAddress.getHostString();
+        int remotePort = clientAddress.getPort();
         // local (server) address
         assert sourceAddress != null : "source address not set yet";
-        String localIP = ((InetSocketAddress) sourceAddress).getHostName();
+        String localIP = sourceAddress.getHostName();
         assert localPort > 0 : "local port error";
         // changed (another) address
         assert changedAddress != null : "changed address not set yet";
-        address = (InetSocketAddress) changedAddress;
-        String changedIP = address.getHostString();
-        int changedPort = address.getPort();
+        String changedIP = changedAddress.getHostString();
+        int changedPort = changedAddress.getPort();
         // create attributes
         Triad.Value value;
         // mapped address
@@ -179,7 +157,7 @@ public abstract class Server extends Node {
         return res == pack.getSize();
     }
 
-    public boolean handle(ByteArray data, SocketAddress clientAddress) {
+    public boolean handle(ByteArray data, InetSocketAddress clientAddress) {
         // parse request data
         Map<String, Object> context = new HashMap<>();
         boolean ok = parseData(data, context);
@@ -188,7 +166,7 @@ public abstract class Server extends Node {
             // received package error
             return false;
         }
-        //info("received message type: " + head.type);
+        info("received message type: " + head.type);
         ChangeRequestValue changeRequest = (ChangeRequestValue) context.get("CHANGE-REQUEST");
         if (changeRequest != null) {
             if (changeRequest.equals(ChangeRequestValue.ChangeIPAndPort)) {
@@ -202,7 +180,7 @@ public abstract class Server extends Node {
         MappedAddressValue mappedAddress = (MappedAddressValue) context.get("MAPPED-ADDRESS");
         if (mappedAddress == null) {
             // respond origin request
-            int localPort = ((InetSocketAddress) sourceAddress).getPort();
+            int localPort = sourceAddress.getPort();
             return respond(head, clientAddress, localPort);
         } else {
             // respond redirected request

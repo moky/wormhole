@@ -30,7 +30,7 @@
  */
 package chat.dim.udp;
 
-import java.net.SocketAddress;
+import java.net.InetSocketAddress;
 
 public interface HubListener {
 
@@ -44,7 +44,7 @@ public interface HubListener {
      * @param destination - local IP and port
      * @return response for the source address
      */
-    byte[] onDataReceived(byte[] data, SocketAddress source, SocketAddress destination);
+    byte[] onDataReceived(byte[] data, InetSocketAddress source, InetSocketAddress destination);
 
     /**
      *  Callback for connection status changed

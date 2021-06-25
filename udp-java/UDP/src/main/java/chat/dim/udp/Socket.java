@@ -65,7 +65,7 @@ final class Socket implements Runnable {
      */
     public static int MTU = 1472; // 1500 - 20 - 8
 
-    public final SocketAddress localAddress;
+    public final InetSocketAddress localAddress;
     public final String host;
     public final int port;
 
@@ -82,13 +82,12 @@ final class Socket implements Runnable {
     private final List<SocketAddress> declarations = new ArrayList<>();
     private final ReadWriteLock declarationLock = new ReentrantReadWriteLock();
 
-    public Socket(SocketAddress address) throws SocketException {
+    public Socket(InetSocketAddress address) throws SocketException {
         super();
         localAddress = address;
 
-        InetSocketAddress inetSocketAddress = (InetSocketAddress) address;
-        host = inetSocketAddress.getHostString();
-        port = inetSocketAddress.getPort();
+        host = address.getHostString();
+        port = address.getPort();
 
         socket = createSocket();
     }

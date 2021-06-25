@@ -30,6 +30,7 @@
  */
 package chat.dim.dmtp;
 
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 
@@ -43,19 +44,19 @@ public abstract class Client extends Node {
         super(peer);
     }
 
-    public Client(SocketAddress address, Hub hub, Pool pool) throws SocketException {
+    public Client(InetSocketAddress address, Hub hub, Pool pool) throws SocketException {
         super(address, hub, pool);
     }
 
-    public Client(SocketAddress address, Hub hub) throws SocketException {
+    public Client(InetSocketAddress address, Hub hub) throws SocketException {
         super(address, hub);
     }
 
-    public Client(SocketAddress address, Pool pool) throws SocketException {
+    public Client(InetSocketAddress address, Pool pool) throws SocketException {
         super(address, pool);
     }
 
-    public Client(SocketAddress address) throws SocketException {
+    public Client(InetSocketAddress address) throws SocketException {
         super(address);
     }
 

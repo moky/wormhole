@@ -1,13 +1,13 @@
 
-import chat.dim.udp.Cargo;
-import chat.dim.udp.Hub;
-
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
+
+import chat.dim.udp.Cargo;
+import chat.dim.udp.Hub;
 
 public class Client extends chat.dim.stun.Client {
 
@@ -22,14 +22,9 @@ public class Client extends chat.dim.stun.Client {
 
     public Client(String host, int port) throws SocketException {
         super(host, port);
-        this.hub = createHub(sourceAddress);
-    }
-
-    private static Hub createHub(SocketAddress localAddress) throws SocketException {
-        Hub hub = new Hub();
-        hub.open(localAddress);
+        hub = new Hub();
+        hub.open(sourceAddress);
         //hub.start();
-        return hub;
     }
 
     @Override
@@ -40,7 +35,12 @@ public class Client extends chat.dim.stun.Client {
     @Override
     public byte[] receive() {
         Cargo cargo = hub.receive(2.0f);
-        return cargo == null ? null : cargo.data;
+        if (cargo == null) {
+            return null;
+        } else {
+            info("received " + cargo.data.length + " bytes from " + cargo.source);
+            return cargo.data;
+        }
     }
 
     protected void info(String msg) {

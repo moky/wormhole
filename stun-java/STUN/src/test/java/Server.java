@@ -15,8 +15,8 @@ public class Server extends chat.dim.stun.Server {
     static final String SERVER_GZ1 = "134.175.87.98"; // GZ-1
     static final String SERVER_HK2 = "129.226.128.17"; // HK-2
 
-    static final SocketAddress CHANGED_ADDRESS = new InetSocketAddress(SERVER_HK2, 3478);
-    static final SocketAddress NEIGHBOUR_SERVER = new InetSocketAddress(SERVER_HK2, 3478);
+    static final InetSocketAddress CHANGED_ADDRESS = new InetSocketAddress(SERVER_HK2, 3478);
+    static final InetSocketAddress NEIGHBOUR_SERVER = new InetSocketAddress(SERVER_HK2, 3478);
 
     static final String SERVER_IP = SERVER_Test;
     static final int SERVER_PORT = 3478;
@@ -26,14 +26,10 @@ public class Server extends chat.dim.stun.Server {
 
     public Server(String host, int port, int changePort) throws SocketException {
         super(host, port, changePort);
-        this.hub = createHub(sourceAddress);
-    }
-
-    private static Hub createHub(SocketAddress localAddress) throws SocketException {
-        Hub hub = new Hub();
-        hub.open(localAddress);
+        hub = new Hub();
+        hub.open(sourceAddress);
+        hub.open(new InetSocketAddress(host, changePort));
         //hub.start();
-        return hub;
     }
 
     protected void info(String msg) {

@@ -30,6 +30,7 @@
  */
 package chat.dim.dmtp;
 
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.util.Set;
@@ -65,15 +66,15 @@ public class Peer extends chat.dim.mtp.Peer implements HubListener {
         hub.addListener(this);
     }
 
-    public Peer(SocketAddress address, Pool pool) throws SocketException {
+    public Peer(InetSocketAddress address, Pool pool) throws SocketException {
         this(address, createHub(address), pool);
     }
 
-    public Peer(SocketAddress address) throws SocketException {
+    public Peer(InetSocketAddress address) throws SocketException {
         this(address, createHub(address));
     }
 
-    private static Hub createHub(SocketAddress localAddress) throws SocketException {
+    private static Hub createHub(InetSocketAddress localAddress) throws SocketException {
         Hub hub = new Hub();
         hub.open(localAddress);
         //hub.start();
@@ -135,7 +136,7 @@ public class Peer extends chat.dim.mtp.Peer implements HubListener {
     }
 
     @Override
-    public byte[] onDataReceived(byte[] bytes, SocketAddress source, SocketAddress destination) {
+    public byte[] onDataReceived(byte[] bytes, InetSocketAddress source, InetSocketAddress destination) {
         Arrival task = new Arrival(new Data(bytes), source, destination);
         pool.appendArrival(task);
         return null;

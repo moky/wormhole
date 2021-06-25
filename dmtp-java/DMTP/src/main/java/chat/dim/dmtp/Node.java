@@ -31,6 +31,7 @@
 package chat.dim.dmtp;
 
 import java.lang.ref.WeakReference;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.util.List;
@@ -59,31 +60,31 @@ public abstract class Node implements PeerHandler {
         peer.setHandler(this);
     }
 
-    public Node(SocketAddress address, Hub hub, Pool pool) throws SocketException {
+    public Node(InetSocketAddress address, Hub hub, Pool pool) throws SocketException {
         super();
         this.peer = createPeer(address, hub, pool);
         this.peer.setHandler(this);
     }
 
-    public Node(SocketAddress address, Hub hub) throws SocketException {
+    public Node(InetSocketAddress address, Hub hub) throws SocketException {
         super();
         this.peer = createPeer(address, hub, null);
         this.peer.setHandler(this);
     }
 
-    public Node(SocketAddress address, Pool pool) throws SocketException {
+    public Node(InetSocketAddress address, Pool pool) throws SocketException {
         super();
         this.peer = createPeer(address, null, pool);
         this.peer.setHandler(this);
     }
 
-    public Node(SocketAddress address) throws SocketException {
+    public Node(InetSocketAddress address) throws SocketException {
         super();
         this.peer = createPeer(address, null, null);
         this.peer.setHandler(this);
     }
 
-    protected Peer createPeer(SocketAddress address, Hub hub, Pool pool) throws SocketException {
+    protected Peer createPeer(InetSocketAddress address, Hub hub, Pool pool) throws SocketException {
         if (hub == null) {
             if (pool == null) {
                 return new Peer(address);
