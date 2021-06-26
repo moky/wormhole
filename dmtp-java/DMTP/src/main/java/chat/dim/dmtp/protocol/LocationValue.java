@@ -43,7 +43,7 @@ import chat.dim.tlv.StringTag;
 import chat.dim.tlv.StringValue;
 import chat.dim.tlv.Triad;
 import chat.dim.tlv.Value32;
-import chat.dim.turn.attributes.RelayedAddressValue;
+import chat.dim.turn.values.RelayedAddressValue;
 import chat.dim.type.ByteArray;
 
 public class LocationValue extends CommandValue {

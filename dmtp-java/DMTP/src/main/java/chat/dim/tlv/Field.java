@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  DMTP: Direct Message Transfer Protocol
+ *  TLV: Tag Length Value
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *

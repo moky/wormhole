@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  DMTP: Direct Message Transfer Protocol
+ *  TURN: Traversal Using Relays around NAT
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.turn.attributes;
+package chat.dim.turn.values;
 
 import chat.dim.stun.valus.MappedAddressValue;
 import chat.dim.tlv.Triad;
