@@ -28,66 +28,55 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tcp;
+package chat.dim.net;
 
 import java.io.IOException;
-import java.net.Socket;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class ActiveConnection extends BaseConnection {
+public abstract class ActiveConnection extends BaseConnection {
 
     // remote address
-    public final String host;
-    public final int port;
+    public final InetSocketAddress remoteAddress;
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private int connecting;
-
     private boolean running;
 
-    public ActiveConnection(String remoteHost, int remotePort, Socket connectedSocket) {
-        super(connectedSocket);
-        assert remoteHost != null && remotePort > 0 : "remote address error (" + remoteHost + ":" + remotePort + ")";
-        host = remoteHost;
-        port = remotePort;
+    public ActiveConnection(InetSocketAddress remote, Channel byteChannel) {
+        super(byteChannel);
+        assert remote != null : "remote address error";
+        remoteAddress = remote;
         connecting = 0;
         running = false;
     }
 
-    /**
-     public ActiveConnection(Socket connectedSocket) {
-     this(connectedSocket.getInetAddress().getHostAddress(), connectedSocket.getPort(), connectedSocket);
-     }
-     */
-
-    public ActiveConnection(String serverHost, int serverPort) {
-        this(serverHost, serverPort, null);
+    public ActiveConnection(InetSocketAddress remote) {
+        this(remote, null);
     }
 
-    private boolean connect() {
-        changeState(ConnectionState.CONNECTING);
-        try {
-            socket = new Socket(host, port);
-            changeState(ConnectionState.CONNECTED);
-            return true;
-        } catch (IOException e) {
-            e.printStackTrace();
-            changeState(ConnectionState.ERROR);
-            return false;
-        }
-    }
+    protected abstract Channel connect(InetSocketAddress remote) throws IOException;
+
     private boolean reconnect() {
-        boolean redo;
+        boolean redo = false;
         Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
             connecting += 1;
-            if (connecting == 1 && socket == null) {
-                redo = connect();
-            } else {
-                redo = false;
+            if (connecting == 1 && channel == null) {
+                changeState(ConnectionState.CONNECTING);
+                channel = connect(remoteAddress);
+                if (channel == null) {
+                    changeState(ConnectionState.ERROR);
+                } else {
+                    changeState(ConnectionState.CONNECTED);
+                    redo = true;
+                }
             }
+        } catch (IOException e) {
+            e.printStackTrace();
         } finally {
             connecting -= 1;
             writeLock.unlock();
@@ -96,34 +85,37 @@ public class ActiveConnection extends BaseConnection {
     }
 
     @Override
-    public Socket getSocket() {
-        if (isRunning()) {
-            if (socket == null) {
-                reconnect();
-            }
-            return socket;
-        } else {
-            return null;
+    public Channel getChannel() {
+        if (channel == null) {
+            reconnect();
         }
+        return channel;
     }
 
     @Override
-    public String getHost() {
-        return host;
+    public SocketAddress getRemoteAddress() {
+        return remoteAddress;
     }
 
     @Override
-    public int getPort() {
-        return port;
-    }
-
-    @Override
-    public boolean isRunning() {
+    public boolean isAlive() {
         return running;
     }
 
     @Override
-    protected byte[] receive() {
+    public void start() {
+        running = true;
+        super.start();
+    }
+
+    @Override
+    public void stop() {
+        running = false;
+        super.stop();
+    }
+
+    @Override
+    public byte[] receive() {
         byte[] data = super.receive();
         if (data == null && reconnect()) {
             // try again
@@ -140,17 +132,5 @@ public class ActiveConnection extends BaseConnection {
             res = super.send(data);
         }
         return res;
-    }
-
-    @Override
-    public void run() {
-        running = true;
-        super.run();
-    }
-
-    @Override
-    public void stop() {
-        super.stop();
-        running = false;
     }
 }

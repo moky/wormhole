@@ -28,60 +28,42 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tcp;
+package chat.dim.net;
 
-public interface Connection extends Runnable {
+import java.net.SocketAddress;
 
-    /*  Max length of memory cache
-     *  ~~~~~~~~~~~~~~~~~~~~~~~~~~
-     */
-    int MAX_CACHE_LENGTH = 65536;  // 64 KB
+public interface Connection {
 
-    long EXPIRES = 16 * 1000;  // 16 seconds
+    //
+    //  Flags
+    //
+    boolean isAlive();  // (connected || bound) && !closed
+    boolean isOpen();
+    boolean isBound();
+    boolean isConnected();
+    boolean isClosed();
+
+    SocketAddress getRemoteAddress();
 
     /**
-     *  Send data package
+     *  Send data
      *
-     * @param data - package
+     * @param data - outgo package
      * @return count of bytes sent, -1 on error
      */
     int send(byte[] data);
 
     /**
-     *  Get received data count
+     *  Receive data
      *
-     * @return count of received data
+     * @return income package
      */
-    int available();
-
-    /**
-     *  Get received data from cache, and remove it
-     *  (call available() to check first)
-     *
-     * @param maxLength - how many bytes to receive
-     * @return received data
-     */
-    byte[] receive(int maxLength);
-
-    /**
-     *  Get remote address
-     *
-     * @return IP
-     */
-    String getHost();
-    int getPort();
+    byte[] receive();
 
     /**
      *  Close the connection
      */
-    void stop();
-
-    /**
-     *  Check whether connection is still running
-     *
-     * @return true on running
-     */
-    boolean isRunning();
+    void close();
 
     /**
      *  Get status

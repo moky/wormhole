@@ -28,48 +28,47 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tcp;
+package chat.dim.net;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.ref.WeakReference;
-import java.net.InetAddress;
-import java.net.Socket;
+import java.net.SocketAddress;
 import java.net.SocketException;
+import java.nio.ByteBuffer;
 import java.util.Date;
 
-import chat.dim.mem.CachePool;
-import chat.dim.mem.LockedPool;
-import chat.dim.mem.MemoryPool;
+import chat.dim.threading.Ticker;
 
-public class BaseConnection implements Connection, StateDelegate {
+public class BaseConnection implements Connection, StateDelegate, Ticker {
+
+    /*  Maximum Transmission Unit
+     *  ~~~~~~~~~~~~~~~~~~~~~~~~~
+     *
+     *  Buffer size for receiving package
+     */
+    public static int MTU = 1472; // 1500 - 20 - 8
+
+    public static long EXPIRES = 16 * 1000;  // 16 seconds
 
     private final StateMachine fsm;
-    private final CachePool cachePool;
 
     private WeakReference<Delegate> delegateRef;
 
-    protected Socket socket;
+    protected Channel channel;
 
-    long lastSentTime;
-    long lastReceivedTime;
+    private long lastSentTime;
+    private long lastReceivedTime;
 
-    public BaseConnection(Socket connectedSocket) {
+    public BaseConnection(Channel byteChannel) {
         super();
-        cachePool = createCachePool();
         delegateRef = null;
-        socket = connectedSocket;
+        channel = byteChannel;
         lastSentTime = 0;
         lastReceivedTime = 0;
         // Finite State Machine
         fsm = new StateMachine(this);
         fsm.setDelegate(this);
-    }
-
-    // override for customized cache pool
-    protected CachePool createCachePool() {
-        return new LockedPool();
+        fsm.start();
     }
 
     public Delegate getDelegate() {
@@ -92,41 +91,35 @@ public class BaseConnection implements Connection, StateDelegate {
     //
 
     /**
-     *  Get connected socket
+     *  Get connected channel
      */
-    public Socket getSocket() {
-        if (isRunning()) {
-            return socket;
-        } else {
-            return null;
-        }
+    public Channel getChannel() {
+        Channel sock = channel;
+        return isAlive(sock) ? sock : null;
     }
 
     @Override
-    public String getHost() {
-        Socket sock = socket;
-        if (sock == null) {
+    public SocketAddress getRemoteAddress() {
+        Channel sock = channel;
+        try {
+            return sock == null ? null : sock.getRemoteAddress();
+        } catch (IOException e) {
+            e.printStackTrace();
             return null;
-        }
-        InetAddress address = sock.getInetAddress();
-        if (address == null) {
-            return null;
-        } else {
-            return address.getHostAddress();
         }
     }
 
-    @Override
-    public int getPort() {
-        Socket sock = socket;
-        if (sock == null) {
-            return 0;
-        } else {
-            return sock.getPort();
-        }
+    boolean isSentRecently(long now) {
+        return now < lastSentTime + EXPIRES;
+    }
+    boolean isReceivedRecently(long now) {
+        return now < lastReceivedTime + EXPIRES;
+    }
+    boolean isNotReceivedLongTimeAgo(long now) {
+        return now > lastReceivedTime + (EXPIRES << 4);
     }
 
-    static boolean isAvailable(Socket sock) {
+    private static boolean isAlive(Channel sock) {
         if (sock == null || sock.isClosed()) {
             return false;
         } else {
@@ -135,59 +128,82 @@ public class BaseConnection implements Connection, StateDelegate {
     }
 
     @Override
-    public boolean isRunning() {
-        return isAvailable(socket);
+    public boolean isAlive() {
+        return isAlive(channel);
+    }
+
+    @Override
+    public boolean isOpen() {
+        Channel sock = channel;
+        return sock != null && sock.isOpen();
+    }
+
+    @Override
+    public boolean isBound() {
+        Channel sock = channel;
+        return sock != null && sock.isBound();
+    }
+
+    @Override
+    public boolean isConnected() {
+        Channel sock = channel;
+        return sock != null && sock.isConnected();
+    }
+
+    @Override
+    public boolean isClosed() {
+        Channel sock = channel;
+        return sock != null && sock.isClosed();
     }
 
     private int write(byte[] data) throws IOException {
-        Socket sock = getSocket();
+        Channel sock = getChannel();
         if (sock == null) {
             throw new SocketException("socket lost, cannot write data: " + data.length + " byte(s)");
         }
-        OutputStream outputStream = sock.getOutputStream();
-        outputStream.write(data);
-        outputStream.flush();
+        ByteBuffer buffer = ByteBuffer.allocate(data.length);
+        buffer.put(data);
+        buffer.flip();
+        int sent = sock.write(buffer);
         lastSentTime = (new Date()).getTime();
-        return data.length;
+        return sent;
     }
 
     private byte[] read() throws IOException {
-        Socket sock = getSocket();
+        Channel sock = getChannel();
         if (sock == null) {
             throw new SocketException("socket lost, cannot read data");
         }
-        InputStream inputStream = sock.getInputStream();
-        int available = inputStream.available();
-        if (available <= 0) {
+        ByteBuffer buffer = ByteBuffer.allocate(MTU);
+        int res = sock.read(buffer);
+        if (res <= 0) {
             return null;
         }
-        byte[] buffer = new byte[available];
-        int read = inputStream.read(buffer);
-        if (read <= 0) {
-            throw new SocketException("failed to read buffer: " + read + ", available=" + available);
-        }
-        if (read < available) {
-            // read partially
-            buffer = MemoryPool.slice(buffer, 0, read);
-        }
+        assert res == buffer.position() : "buffer error: " + res + ", " + buffer.position();
+        byte[] data = new byte[res];
+        buffer.flip();
+        buffer.get(data);
         lastReceivedTime = (new Date()).getTime();
-        return buffer;
+        return data;
     }
 
-    private void close() {
-        Socket sock = socket;
+    @Override
+    public void close() {
+        Channel sock = channel;
         try {
-            if (isAvailable(sock)) {
+            if (isAlive(sock)) {
                 sock.close();
             }
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            socket = null;
+            channel = null;
+            changeState(ConnectionState.DEFAULT);
         }
     }
 
-    protected byte[] receive() {
+    @Override
+    public byte[] receive() {
         try {
             return read();
         } catch (IOException e) {
@@ -210,16 +226,6 @@ public class BaseConnection implements Connection, StateDelegate {
             changeState(ConnectionState.ERROR);
             return -1;
         }
-    }
-
-    @Override
-    public int available() {
-        return cachePool.length();
-    }
-
-    @Override
-    public byte[] receive(int maxLength) {
-        return cachePool.shift(maxLength);
     }
 
     //
@@ -246,94 +252,22 @@ public class BaseConnection implements Connection, StateDelegate {
         }
     }
 
-    //
-    //  Running
-    //
-
     public void start() {
         fsm.start();
     }
 
-    @Override
     public void stop() {
-        close();  // shutdown socket
+        close();
         fsm.stop();
-    }
-
-    @Override
-    public void run() {
-        setup();
-        try {
-            handle();
-        } finally {
-            finish();
-        }
-    }
-
-    /**
-     *  Prepare before handling
-     */
-    public void setup() {
-        changeState(ConnectionState.CONNECTING);
-    }
-
-    /**
-     *  Cleanup after handling
-     */
-    public void finish() {
-        close();  // shutdown socket
-        changeState(ConnectionState.DEFAULT);
-    }
-
-    /**
-     *  Handling for receiving data packages
-     *  (it will call 'process()' circularly)
-     */
-    public void handle() {
-        while (isRunning()) {
-            if (!process()) {
-                idle();
-            }
-        }
     }
 
     /**
      *  Try to receive one data package,
      *  which will be cached into a memory pool
      */
-    public boolean process() {
-        // 0. check empty spaces
-        int count = cachePool.length();
-        if (count >= MAX_CACHE_LENGTH) {
-            // not enough spaces
-            return false;
-        }
-        // check connection status
-        ConnectionState state = fsm.getCurrentState();
-        if (state == null) {
-            return false;
-        } else if (!state.name.equals(ConnectionState.CONNECTED) &&
-                !state.name.equals(ConnectionState.MAINTAINING) &&
-                !state.name.equals(ConnectionState.EXPIRED)) {
-            // not connected yet
-            return false;
-        }
-        // 1. try to read bytes
-        byte[] data = receive();
-        if (data == null || data.length == 0) {
-            return false;
-        }
-        // 2. cache it
-        cachePool.push(data);
-        return true;
-    }
-
-    protected void idle() {
-        try {
-            Thread.sleep(128);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+    @Override
+    public void tick() {
+        fsm.tick();
     }
 
     //

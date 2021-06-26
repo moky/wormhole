@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tcp;
+package chat.dim.net;
 
 /*
  *    Finite States:
@@ -142,7 +142,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
                 // connection started? change status to 'connecting'
-                return conn.isRunning();
+                return conn != null && conn.isOpen();
             }
         });
 
@@ -157,9 +157,9 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
         state.addTransition(new StateTransition(CONNECTED) {
             @Override
             public boolean evaluate(StateMachine ctx) {
-                BaseConnection conn = ctx.getConnection();
+                Connection conn = ctx.getConnection();
                 // connection connected, change status to 'connected'
-                return BaseConnection.isAvailable(conn.getSocket());
+                return conn != null && conn.isAlive();
             }
         });
 
@@ -169,7 +169,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
                 // connection stopped, change status to 'not_connect'
-                return !conn.isRunning();
+                return conn == null || conn.isClosed();
             }
         });
 
@@ -185,9 +185,10 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 BaseConnection conn = ctx.getConnection();
-                Date now = new Date();
+                // connection still alive, but
                 // long time no response, change status to 'maintain_expired'
-                return now.getTime() > conn.lastReceivedTime + BaseConnection.EXPIRES;
+                return conn != null && conn.isAlive()
+                        && !conn.isReceivedRecently((new Date()).getTime());
             }
         });
 
@@ -195,9 +196,9 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
         state.addTransition(new StateTransition(ERROR) {
             @Override
             public boolean evaluate(StateMachine ctx) {
-                BaseConnection conn = ctx.getConnection();
+                Connection conn = ctx.getConnection();
                 // connection lost, change status to 'error'
-                return !BaseConnection.isAvailable(conn.getSocket());
+                return conn == null || conn.isClosed();
             }
         });
 
@@ -208,14 +209,15 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
     static ConnectionState getExpiredState() {
         ConnectionState state = new ConnectionState(EXPIRED);
 
-        // Expired -> Error
+        // Expired -> Maintaining
         state.addTransition(new StateTransition(MAINTAINING) {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 BaseConnection conn = ctx.getConnection();
-                Date now = new Date();
+                // connection still alive, and
                 // sent recently, change status to 'maintaining'
-                return now.getTime() < conn.lastSentTime + BaseConnection.EXPIRES;
+                return conn != null && conn.isAlive()
+                        && conn.isSentRecently((new Date()).getTime());
             }
         });
 
@@ -223,9 +225,9 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
         state.addTransition(new StateTransition(ERROR) {
             @Override
             public boolean evaluate(StateMachine ctx) {
-                BaseConnection conn = ctx.getConnection();
+                Connection conn = ctx.getConnection();
                 // connection lost, change status to 'error'
-                return !BaseConnection.isAvailable(conn.getSocket());
+                return conn == null || conn.isClosed();
             }
         });
 
@@ -241,9 +243,10 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 BaseConnection conn = ctx.getConnection();
-                Date now = new Date();
+                // connection still alive, and
                 // received recently, change status to 'connected'
-                return now.getTime() < conn.lastReceivedTime + BaseConnection.EXPIRES;
+                return conn != null && conn.isAlive()
+                        && conn.isReceivedRecently((new Date()).getTime());
             }
         });
 
@@ -252,9 +255,10 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 BaseConnection conn = ctx.getConnection();
-                Date now = new Date();
+                // connection still alive, but
                 // long time no sending, change status to 'maintain_expired'
-                return now.getTime() > conn.lastSentTime + BaseConnection.EXPIRES;
+                return conn != null && conn.isAlive()
+                        && !conn.isSentRecently((new Date()).getTime());
             }
         });
 
@@ -263,13 +267,10 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 BaseConnection conn = ctx.getConnection();
-                Date now = new Date();
-                // connection lost, change status to 'error'
-                if (!BaseConnection.isAvailable(conn.getSocket())) {
-                    return true;
-                }
+                // connection lost, or
                 // long long time no response, change status to 'error
-                return now.getTime() > conn.lastReceivedTime + (BaseConnection.EXPIRES << 4);
+                return conn == null || conn.isClosed()
+                        || conn.isNotReceivedLongTimeAgo((new Date()).getTime());
             }
         });
 
@@ -285,18 +286,8 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
-                // connection stopped, change status to 'not_connect'
-                return !conn.isRunning();
-            }
-        });
-
-        // Error -> Connected
-        state.addTransition(new StateTransition(CONNECTED) {
-            @Override
-            public boolean evaluate(StateMachine ctx) {
-                BaseConnection conn = ctx.getConnection();
-                // connection reconnected, change status to 'connected'
-                return BaseConnection.isAvailable(conn.getSocket());
+                // connection reset, change status to 'not_connect'
+                return conn != null && !conn.isClosed();
             }
         });
 
