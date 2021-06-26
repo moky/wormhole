@@ -30,8 +30,6 @@
  */
 package chat.dim.tcp;
 
-import chat.dim.type.ByteArray;
-
 public interface Connection extends Runnable {
 
     /*  Max length of memory cache
@@ -47,7 +45,7 @@ public interface Connection extends Runnable {
      * @param data - package
      * @return count of bytes sent, -1 on error
      */
-    int send(ByteArray data);
+    int send(byte[] data);
 
     /**
      *  Get received data count
@@ -63,7 +61,7 @@ public interface Connection extends Runnable {
      * @param maxLength - how many bytes to receive
      * @return received data
      */
-    ByteArray receive(int maxLength);
+    byte[] receive(int maxLength);
 
     /**
      *  Get remote address

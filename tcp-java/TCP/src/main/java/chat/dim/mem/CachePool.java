@@ -30,8 +30,6 @@
  */
 package chat.dim.mem;
 
-import chat.dim.type.ByteArray;
-
 /**
  *  Memory cache for received data
  *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,16 +41,16 @@ public interface CachePool {
      *
      * @param data - received data
      */
-    void push(ByteArray data);
+    void push(byte[] data);
 
     /**
      *  Get received data from pool with max length (remove)
      *  (must call 'length()' to check data length first)
      *
-     * @param maxLength - max data length to remove
+     * @param maxLength - max data length to remove; 0 for arbitrary length
      * @return remove data from the pool and return it
      */
-    ByteArray shift(int maxLength);
+    byte[] shift(int maxLength);
 
     /**
      *  Get length of cached bytes

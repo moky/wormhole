@@ -33,12 +33,10 @@ package chat.dim.mem;
 import java.util.ArrayList;
 import java.util.List;
 
-import chat.dim.type.ByteArray;
-
 public class MemoryPool implements CachePool {
 
     // received packages
-    private final List<ByteArray> packages = new ArrayList<>();
+    private final List<byte[]> packages = new ArrayList<>();
     private int occupied = 0;
 
     @Override
@@ -47,24 +45,36 @@ public class MemoryPool implements CachePool {
     }
 
     @Override
-    public void push(ByteArray data) {
-        assert data != null && data.getSize() > 0: "data should not be empty";
+    public void push(byte[] data) {
+        assert data != null && data.length > 0: "data should not be empty";
         packages.add(data);
-        occupied += data.getSize();
+        occupied += data.length;
     }
 
     @Override
-    public ByteArray shift(int maxLength) {
-        assert maxLength > 0 : "max length must greater than 0";
+    public byte[] shift(int maxLength) {
         assert packages.size() > 0 : "pool empty, call 'length()' to check data first";
-        ByteArray data = packages.remove(0);
-        if (data.getSize() > maxLength) {
+        byte[] data = packages.remove(0);
+        if (0 < maxLength && maxLength < data.length) {
             // push the remaining data back to the queue head
-            packages.add(0, data.slice(maxLength));
+            packages.add(0, slice(data, maxLength));
             // cut the remaining data
-            data = data.slice(0, maxLength);
+            data = slice(data, 0, maxLength);
         }
-        occupied -= data.getSize();
+        occupied -= data.length;
+        return data;
+    }
+
+    //
+    //  ByteArray
+    //
+    public static byte[] slice(byte[] source, int start) {
+        return slice(source, start, source.length);
+    }
+    public static byte[] slice(byte[] source, int start, int end) {
+        int length = end - start;
+        byte[] data = new byte[length];
+        System.arraycopy(source, start, data, 0, length);
         return data;
     }
 }
