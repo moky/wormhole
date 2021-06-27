@@ -37,11 +37,9 @@ public interface Connection {
     //
     //  Flags
     //
-    boolean isAlive();  // (connected || bound) && !closed
-    boolean isOpen();
+    boolean isOpen();  // not closed
     boolean isBound();
     boolean isConnected();
-    boolean isClosed();
 
     SocketAddress getRemoteAddress();
 

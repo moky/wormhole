@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  TCP: Transmission Control Protocol
+ *  UDP: User Datagram Protocol
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tcp;
+package chat.dim.udp;
 
 import chat.dim.net.Channel;
 
@@ -36,16 +36,16 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
+import java.nio.channels.DatagramChannel;
 import java.nio.channels.NetworkChannel;
 import java.nio.channels.SelectableChannel;
-import java.nio.channels.SocketChannel;
 
-public class StreamChannel implements Channel {
+public class DiscreteChannel implements Channel {
 
-    private SocketChannel impl;
+    private DatagramChannel impl;
     private boolean blocking;
 
-    public StreamChannel() {
+    public DiscreteChannel() {
         super();
         impl = null;
         blocking = false;
@@ -53,7 +53,7 @@ public class StreamChannel implements Channel {
 
     private void setImpl() throws IOException {
         if (impl == null) {
-            impl = SocketChannel.open();
+            impl = DatagramChannel.open();
             impl.configureBlocking(blocking);
         }
     }
@@ -108,7 +108,7 @@ public class StreamChannel implements Channel {
     @Override
     public NetworkChannel connect(SocketAddress remote) throws IOException {
         setImpl();
-        return impl.connect(remote) ? impl : null;
+        return impl.connect(remote);
     }
 
     @Override

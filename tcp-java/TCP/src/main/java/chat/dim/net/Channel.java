@@ -32,13 +32,23 @@ package chat.dim.net;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.nio.channels.*;
+import java.nio.channels.AlreadyBoundException;
+import java.nio.channels.AlreadyConnectedException;
+import java.nio.channels.AsynchronousCloseException;
+import java.nio.channels.ByteChannel;
+import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.ClosedChannelException;
+import java.nio.channels.ConnectionPendingException;
+import java.nio.channels.IllegalBlockingModeException;
+import java.nio.channels.NetworkChannel;
+import java.nio.channels.SelectableChannel;
+import java.nio.channels.UnresolvedAddressException;
+import java.nio.channels.UnsupportedAddressTypeException;
 
 public interface Channel extends ByteChannel {
 
     //boolean isOpen();
     boolean isBound();
-    boolean isClosed();
 
     //void close() throws IOException;
 
@@ -74,7 +84,7 @@ public interface Channel extends ByteChannel {
      * operations are complete.
      *
      * <p> If this method is invoked while another invocation of this method or
-     * of the {@link # register(Selector, int) register} method is in progress
+     * of the {link #register(Selector, int) register} method is in progress
      * then it will first block until the other operation is complete. </p>
      *
      * @param  block  If <tt>true</tt> then this channel will be placed in
@@ -162,7 +172,7 @@ public interface Channel extends ByteChannel {
 
 
     /*================================================*\
-    |*          Socket Channel                        *|
+    |*          Socket/Datagram Channel               *|
     \*================================================*/
 
     /**
@@ -181,7 +191,7 @@ public interface Channel extends ByteChannel {
      * is established immediately, as can happen with a local connection, then
      * this method returns <tt>true</tt>.  Otherwise this method returns
      * <tt>false</tt> and the connection operation must later be completed by
-     * invoking the {@link # finishConnect finishConnect} method.
+     * invoking the {link #finishConnect finishConnect} method.
      *
      * <p> If this channel is in blocking mode then an invocation of this
      * method will block until the connection is established or an I/O error
@@ -240,7 +250,7 @@ public interface Channel extends ByteChannel {
      * @throws  IOException
      *          If some other I/O error occurs
      */
-    boolean connect(SocketAddress remote) throws IOException;
+    NetworkChannel connect(SocketAddress remote) throws IOException;
 
     /**
      * Returns the remote address to which this channel's socket is connected.
@@ -263,7 +273,7 @@ public interface Channel extends ByteChannel {
 
 
     /*================================================*\
-    |*          Datagram Socket Channel               *|
+    |*          Datagram Channel                      *|
     \*================================================*/
 
     /**

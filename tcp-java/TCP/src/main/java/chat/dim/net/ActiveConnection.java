@@ -65,7 +65,7 @@ public abstract class ActiveConnection extends BaseConnection {
         writeLock.lock();
         try {
             connecting += 1;
-            if (connecting == 1 && channel == null) {
+            if (connecting == 1 && running) {
                 changeState(ConnectionState.CONNECTING);
                 channel = connect(remoteAddress);
                 if (channel == null) {
@@ -85,11 +85,11 @@ public abstract class ActiveConnection extends BaseConnection {
     }
 
     @Override
-    public Channel getChannel() {
+    protected Channel getConnectedChannel() {
         if (channel == null) {
             reconnect();
         }
-        return channel;
+        return super.getConnectedChannel();
     }
 
     @Override
@@ -98,7 +98,7 @@ public abstract class ActiveConnection extends BaseConnection {
     }
 
     @Override
-    public boolean isAlive() {
+    public boolean isOpen() {
         return running;
     }
 
@@ -117,7 +117,7 @@ public abstract class ActiveConnection extends BaseConnection {
     @Override
     public byte[] receive() {
         byte[] data = super.receive();
-        if (data == null && reconnect()) {
+        if (data == null && channel == null && reconnect()) {
             // try again
             data = super.receive();
         }
@@ -127,7 +127,7 @@ public abstract class ActiveConnection extends BaseConnection {
     @Override
     public int send(byte[] data) {
         int res = super.send(data);
-        if (res < 0 && reconnect()) {
+        if (res < 0 && channel == null && reconnect()) {
             // try again
             res = super.send(data);
         }

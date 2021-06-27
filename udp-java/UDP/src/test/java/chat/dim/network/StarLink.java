@@ -1,13 +1,13 @@
 /* license: https://mit-license.org
  *
- *  UDP: User Datagram Protocol
+ *  Star Gate: Network Connection Module
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,30 +28,35 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.udp;
+package chat.dim.network;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 
-public interface HubListener {
+import chat.dim.net.ActiveConnection;
+import chat.dim.net.Channel;
+import chat.dim.udp.DiscreteChannel;
 
-    HubFilter getFilter();
+public class StarLink extends ActiveConnection {
 
-    /**
-     *  Callback for received data
-     *
-     * @param data        - UDP data received
-     * @param source      - remote IP and port
-     * @param destination - local IP and port
-     * @return response for the source address
-     */
-    byte[] onDataReceived(byte[] data, InetSocketAddress source, InetSocketAddress destination);
+    public StarLink(InetSocketAddress remote, Channel byteChannel) {
+        super(remote, byteChannel);
+    }
 
-    /**
-     *  Callback for connection status changed
-     *
-     * @param connection -
-     * @param oldStatus  -
-     * @param newStatus  -
-     */
-    void onStatusChanged(Connection connection, ConnectionStatus oldStatus, ConnectionStatus newStatus);
+    public StarLink(InetSocketAddress remote) {
+        this(remote, null);
+    }
+
+    public StarLink(String host, int port) {
+        this(new InetSocketAddress(host, port));
+    }
+
+    @Override
+    protected Channel connect(InetSocketAddress remote) throws IOException {
+        DiscreteChannel channel = new DiscreteChannel();
+        channel.configureBlocking(true);
+        channel.connect(remote);
+        channel.configureBlocking(false);
+        return channel;
+    }
 }

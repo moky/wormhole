@@ -1,39 +1,71 @@
 
-import java.net.InetSocketAddress;
-import java.net.SocketException;
-import java.nio.charset.Charset;
+import java.io.IOException;
+import java.net.SocketAddress;
+import java.nio.charset.StandardCharsets;
 
-import chat.dim.udp.Connection;
-import chat.dim.udp.ConnectionStatus;
-import chat.dim.udp.Hub;
-import chat.dim.udp.HubFilter;
-import chat.dim.udp.HubListener;
+import chat.dim.net.Connection;
+import chat.dim.net.ConnectionState;
+import chat.dim.network.StarGate;
 
-public class Server implements HubListener {
+public class Server extends Thread implements Connection.Delegate {
 
 //    static String HOST = "127.0.0.1";
     static String HOST = "192.168.31.91";
     static int PORT = 9394;
 
-    //
-    //  HubListener
-    //
+    private final StarGate connection;
 
-    @Override
-    public HubFilter getFilter() {
-        return null;
+    public Server(StarGate conn) {
+        super();
+        connection = conn;
     }
 
     @Override
-    public byte[] onDataReceived(byte[] data, InetSocketAddress source, InetSocketAddress destination) {
-        String text = new String(data, Charset.forName("UTF-8"));
+    public void onConnectionStateChanged(Connection connection, ConnectionState oldStatus, ConnectionState newStatus) {
+        info("connection state changed: " + oldStatus + " -> " + newStatus);
+    }
+
+    public void onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
+        String text = new String(data, StandardCharsets.UTF_8);
         info("received (" + data.length + " bytes) from " + source + " to " + destination + ": " + text);
-        return null;
+        text = data.length + " byte(s) received";
+        data = text.getBytes(StandardCharsets.UTF_8);
+        send(data, source);
+    }
+
+    public int send(byte[] data, SocketAddress remote) {
+        return connection.send(data, remote);
+    }
+
+    public StarGate.Cargo receive() {
+        return connection.recv();
     }
 
     @Override
-    public void onStatusChanged(Connection connection, ConnectionStatus oldStatus, ConnectionStatus newStatus) {
-        // do nothing
+    public synchronized void start() {
+        connection.start();
+        super.start();
+    }
+
+    @Override
+    public void run() {
+        StarGate.Cargo cargo;
+        while (true) {
+            cargo = receive();
+            if (cargo != null) {
+                onDataReceived(cargo.payload, cargo.source, null);
+            } else {
+                idle();
+            }
+        }
+    }
+
+    private void idle() {
+        try {
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     //
@@ -47,15 +79,13 @@ public class Server implements HubListener {
         Client.info(data);
     }
 
-    private static final Server server = new Server();
-    private static final Hub hub = new Hub();
-
-    public static void main(String args[]) throws SocketException {
+    public static void main(String[] args) throws IOException {
 
         info("Starting server (" + HOST + ":" + PORT + ") ...");
 
-        hub.open(HOST, PORT);
-        hub.start();
-        hub.addListener(server);
+        StarGate conn = StarGate.create(HOST, PORT);
+        Server server = new Server(conn);
+        conn.setDelegate(server);
+        server.start();
     }
 }

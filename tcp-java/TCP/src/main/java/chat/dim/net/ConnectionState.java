@@ -109,6 +109,11 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
     }
 
     @Override
+    public String toString() {
+        return name;
+    }
+
+    @Override
     public void onEnter(StateMachine ctx) {
 
     }
@@ -159,7 +164,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
                 // connection connected, change status to 'connected'
-                return conn != null && conn.isAlive();
+                return conn != null && conn.isOpen() && conn.isConnected();
             }
         });
 
@@ -169,7 +174,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
                 // connection stopped, change status to 'not_connect'
-                return conn == null || conn.isClosed();
+                return conn == null || !conn.isOpen();
             }
         });
 
@@ -187,7 +192,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
                 BaseConnection conn = ctx.getConnection();
                 // connection still alive, but
                 // long time no response, change status to 'maintain_expired'
-                return conn != null && conn.isAlive()
+                return conn != null && conn.isOpen() && conn.isConnected()
                         && !conn.isReceivedRecently((new Date()).getTime());
             }
         });
@@ -198,7 +203,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
                 // connection lost, change status to 'error'
-                return conn == null || conn.isClosed();
+                return conn == null || !conn.isOpen();
             }
         });
 
@@ -216,7 +221,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
                 BaseConnection conn = ctx.getConnection();
                 // connection still alive, and
                 // sent recently, change status to 'maintaining'
-                return conn != null && conn.isAlive()
+                return conn != null && conn.isOpen() && conn.isConnected()
                         && conn.isSentRecently((new Date()).getTime());
             }
         });
@@ -227,7 +232,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
                 // connection lost, change status to 'error'
-                return conn == null || conn.isClosed();
+                return conn == null || !conn.isOpen();
             }
         });
 
@@ -245,7 +250,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
                 BaseConnection conn = ctx.getConnection();
                 // connection still alive, and
                 // received recently, change status to 'connected'
-                return conn != null && conn.isAlive()
+                return conn != null && conn.isOpen() && conn.isConnected()
                         && conn.isReceivedRecently((new Date()).getTime());
             }
         });
@@ -257,7 +262,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
                 BaseConnection conn = ctx.getConnection();
                 // connection still alive, but
                 // long time no sending, change status to 'maintain_expired'
-                return conn != null && conn.isAlive()
+                return conn != null && conn.isOpen() && conn.isConnected()
                         && !conn.isSentRecently((new Date()).getTime());
             }
         });
@@ -269,7 +274,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
                 BaseConnection conn = ctx.getConnection();
                 // connection lost, or
                 // long long time no response, change status to 'error
-                return conn == null || conn.isClosed()
+                return conn == null || !conn.isOpen()
                         || conn.isNotReceivedLongTimeAgo((new Date()).getTime());
             }
         });
@@ -287,7 +292,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
                 // connection reset, change status to 'not_connect'
-                return conn != null && !conn.isClosed();
+                return conn != null && conn.isOpen();
             }
         });
 

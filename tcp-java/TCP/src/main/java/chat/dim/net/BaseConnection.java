@@ -56,8 +56,8 @@ public class BaseConnection implements Connection, StateDelegate, Ticker {
 
     protected Channel channel;
 
-    private long lastSentTime;
-    private long lastReceivedTime;
+    protected long lastSentTime;
+    protected long lastReceivedTime;
 
     public BaseConnection(Channel byteChannel) {
         super();
@@ -68,7 +68,6 @@ public class BaseConnection implements Connection, StateDelegate, Ticker {
         // Finite State Machine
         fsm = new StateMachine(this);
         fsm.setDelegate(this);
-        fsm.start();
     }
 
     public Delegate getDelegate() {
@@ -86,16 +85,13 @@ public class BaseConnection implements Connection, StateDelegate, Ticker {
         }
     }
 
-    //
-    //  Socket
-    //
-
-    /**
-     *  Get connected channel
-     */
-    public Channel getChannel() {
+    protected Channel getConnectedChannel() {
         Channel sock = channel;
-        return isAlive(sock) ? sock : null;
+        if (sock != null && sock.isOpen() && sock.isConnected()) {
+            return sock;
+        } else {
+            return null;
+        }
     }
 
     @Override
@@ -119,19 +115,6 @@ public class BaseConnection implements Connection, StateDelegate, Ticker {
         return now > lastReceivedTime + (EXPIRES << 4);
     }
 
-    private static boolean isAlive(Channel sock) {
-        if (sock == null || sock.isClosed()) {
-            return false;
-        } else {
-            return sock.isConnected() || sock.isBound();
-        }
-    }
-
-    @Override
-    public boolean isAlive() {
-        return isAlive(channel);
-    }
-
     @Override
     public boolean isOpen() {
         Channel sock = channel;
@@ -150,14 +133,8 @@ public class BaseConnection implements Connection, StateDelegate, Ticker {
         return sock != null && sock.isConnected();
     }
 
-    @Override
-    public boolean isClosed() {
-        Channel sock = channel;
-        return sock != null && sock.isClosed();
-    }
-
     private int write(byte[] data) throws IOException {
-        Channel sock = getChannel();
+        Channel sock = getConnectedChannel();
         if (sock == null) {
             throw new SocketException("socket lost, cannot write data: " + data.length + " byte(s)");
         }
@@ -170,7 +147,7 @@ public class BaseConnection implements Connection, StateDelegate, Ticker {
     }
 
     private byte[] read() throws IOException {
-        Channel sock = getChannel();
+        Channel sock = getConnectedChannel();
         if (sock == null) {
             throw new SocketException("socket lost, cannot read data");
         }
@@ -191,7 +168,7 @@ public class BaseConnection implements Connection, StateDelegate, Ticker {
     public void close() {
         Channel sock = channel;
         try {
-            if (isAlive(sock)) {
+            if (sock != null && sock.isOpen()) {
                 sock.close();
             }
         } catch (IOException e) {

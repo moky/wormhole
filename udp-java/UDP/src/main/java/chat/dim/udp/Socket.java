@@ -2,12 +2,12 @@
  *
  *  UDP: User Datagram Protocol
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,33 +30,16 @@
  */
 package chat.dim.udp;
 
+import java.io.Closeable;
 import java.io.IOException;
-import java.lang.ref.WeakReference;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.nio.ByteBuffer;
+import java.nio.channels.DatagramChannel;
 
-final class Socket implements Runnable {
-
-    /*  Max count for caching packages
-     *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     *
-     *  Each UDP data package is limited to no more than 576 bytes, so set the
-     *  MAX_CACHE_SPACES to about 2,000 means it would take up to 1MB memory
-     *  for caching in one socket.
-     */
-    public static int MAX_CACHE_SPACES = 1024 * 2;
+public class Socket implements Closeable {
 
     /*  Maximum Transmission Unit
      *  ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,278 +48,261 @@ final class Socket implements Runnable {
      */
     public static int MTU = 1472; // 1500 - 20 - 8
 
-    public final InetSocketAddress localAddress;
-    public final String host;
-    public final int port;
+    /**
+     *  Various states for this socket.
+     */
+    private boolean created = false;
+    private boolean bound = false;
+    private boolean connected = false;
+    private boolean closed = false;
+    private final Object closeLock = new Object();
 
-    private final DatagramSocket socket;
+    /**
+     *  The implementation of this Socket
+     */
+    private DatagramChannel impl;
 
-    // connection handler
-    private WeakReference<ConnectionHandler> handlerRef = null;
+    void setImpl() throws IOException {
+        impl = DatagramChannel.open();
+        created = true;
+    }
 
-    // connections
-    private final Set<Connection> connections = new LinkedHashSet<>();
-    private final ReadWriteLock connectionLock = new ReentrantReadWriteLock();
-
-    // declaration forms
-    private final List<SocketAddress> declarations = new ArrayList<>();
-    private final ReadWriteLock declarationLock = new ReentrantReadWriteLock();
-
-    public Socket(InetSocketAddress address) throws SocketException {
+    /**
+     *  Create an unconnected socket
+     *
+     * @throws IOException -
+     */
+    public Socket() throws IOException {
         super();
-        localAddress = address;
-
-        host = address.getHostString();
-        port = address.getPort();
-
-        socket = createSocket();
+        setImpl();
     }
 
-    protected DatagramSocket createSocket() throws SocketException {
-        DatagramSocket socket = new DatagramSocket(localAddress);
-        socket.setReuseAddress(true);
-        socket.setSoTimeout(2);
-        // socket.bind(localAddress);
-        return socket;
+    /**
+     *  Create an unconnected Socket with a user-specified DatagramChannel
+     *
+     * @param impl - an instance of a DatagramChannel the subclass wishes to use on the Socket
+     */
+    public Socket(DatagramChannel impl) {
+        super();
+        this.impl = impl;
     }
 
-    public void setTimeout(int timeout) {
+    private Socket(SocketAddress remote, SocketAddress local) throws IOException {
+        // backward compatibility
+        assert remote != null : "remote address empty";
+        setImpl();
         try {
-            socket.setSoTimeout(timeout);
-        } catch (SocketException e) {
-            e.printStackTrace();
+            if (local != null) {
+                impl.bind(local);
+            }
+            impl.connect(remote);
+        } catch (IOException e) {
+            try {
+                impl.close();
+            } catch (IOException ce) {
+                e.addSuppressed(ce);
+            }
+            throw e;
         }
     }
 
-    public synchronized ConnectionHandler getHandler() {
-        if (handlerRef == null) {
+    /**
+     *  Creates a socket and connects it to the specified port number on the named host.
+     *  If the specified host is null it is the equivalent of specifying the address as InetAddress.getByName(null).
+     *  In other words, it is equivalent to specifying an address of the loopback interface.
+     *
+     * @param host - the host name, or null for the loopback address.
+     * @param port - the port number
+     * @throws IOException - if an I/O error occurs when creating the socket.
+     */
+    public Socket(String host, int port) throws IOException {
+        this(host != null ? new InetSocketAddress(host, port) :
+                new InetSocketAddress(InetAddress.getByName(null), port), null);
+    }
+
+    /**
+     *  Creates a socket and connects it to the specified port number at the specified IP address.
+     *
+     * @param address - the IP address
+     * @param port    - the port number
+     * @throws IOException - if an I/O error occurs when creating the socket.
+     */
+    public Socket(InetAddress address, int port) throws IOException {
+        this(address != null ? new InetSocketAddress(address, port) : null, null);
+    }
+
+    /**
+     *  Creates a socket and connects it to the specified remote host on the specified remote port.
+     *  The Socket will also bind() to the local address and port supplied.
+     *  If the specified host is null it is the equivalent of specifying the address as InetAddress.getByName(null).
+     *  In other words, it is equivalent to specifying an address of the loopback interface.
+     *  A local port number of zero will let the system pick up a free port in the bind operation.
+     *
+     * @param host         - the name of the remote host, or null for the loopback address.
+     * @param port         - the remote port
+     * @param localAddress - the local address the socket is bound to, or null for the anyLocal address.
+     * @param localPort    - the local port the socket is bound to, or zero for a system selected free port.
+     * @throws IOException - if an I/O error occurs when creating the socket.
+     */
+    public Socket(String host, int port, InetAddress localAddress, int localPort) throws IOException {
+        this(host != null ? new InetSocketAddress(host, port) :
+                new InetSocketAddress(InetAddress.getByName(null), port),
+                new InetSocketAddress(localAddress, localPort));
+    }
+
+    /**
+     *  Creates a socket and connects it to the specified remote address on the specified remote port.
+     *  The Socket will also bind() to the local address and port supplied.
+     *  If the specified local address is null it is the equivalent of specifying the address as the AnyLocal address
+     *  (see InetAddress.isAnyLocalAddress()).
+     *  A local port number of zero will let the system pick up a free port in the bind operation.
+     *
+     * @param address      - the remote address
+     * @param port         - the remote port
+     * @param localAddress - the local address the socket is bound to, or null for the anyLocal address.
+     * @param localPort    - the local port the socket is bound to or zero for a system selected free port.
+     * @throws IOException - if an I/O error occurs when creating the socket.
+     */
+    public Socket(InetAddress address, int port, InetAddress localAddress, int localPort) throws IOException {
+        this(address != null ? new InetSocketAddress(address, port) : null,
+                new InetSocketAddress(localAddress, localPort));
+    }
+
+    /**
+     *  Connects this socket to the server with a specified timeout value.
+     *  The connection will then block until established or an error occurs.
+     *
+     * @param remote - the SocketAddress
+     * @throws IOException - if an error occurs during the connection
+     */
+    public void connect(InetSocketAddress remote) throws IOException {
+        if (remote == null) {
+            throw new IllegalArgumentException("connect: The address can't be null");
+        } else if (isClosed()) {
+            throw new SocketException("Socket is closed");
+        } else if (isConnected()) {
+            throw new SocketException("Already connected");
+        }
+        impl.connect(remote);
+        connected = true;
+        /*
+         * If the socket was not bound before the connect, it is now because
+         * the kernel will have picked an ephemeral port & a local address
+         */
+        bound = true;
+    }
+
+    /**
+     *  Binds the socket to a local address.
+     *  If the address is null, then the system will pick up an ephemeral port
+     *  and a valid local address to bind the socket.
+     *
+     * @param local - the SocketAddress to bind to
+     * @throws IOException if the bind operation fails, or if the socket is already bound.
+     */
+    public void bind(InetSocketAddress local) throws IOException {
+        if (isClosed()) {
+            throw new SocketException("Socket is closed");
+        } else if (isBound()) {
+            throw new SocketException("Already bound");
+        } else if (local == null) {
+            local = new InetSocketAddress(0);
+        } else if (local.isUnresolved()) {
+            throw new SocketException("Unresolved address: " + local);
+        }
+        impl.bind(local);
+        bound = true;
+    }
+
+    /**
+     *  Returns the address to which the socket is connected.
+     *  If the socket was connected prior to being closed,
+     *  then this method will continue to return the connected address after the socket is closed.
+     *
+     * @return the remote IP address to which this socket is connected, or null if the socket is not connected.
+     */
+    public InetAddress getInetAddress() {
+        SocketAddress address = getRemoteSocketAddress();
+        return address == null ? null : ((InetSocketAddress) address).getAddress();
+    }
+
+    /**
+     *  Returns the remote port number to which this socket is connected.
+     *  If the socket was connected prior to being closed,
+     *  then this method will continue to return the connected port number after the socket is closed.
+     *
+     * @return the remote port number to which this socket is connected,
+     *         or 0 if the socket is not connected yet.
+     */
+    public int getPort() {
+        SocketAddress address = getRemoteSocketAddress();
+        return address == null ? 0 : ((InetSocketAddress) address).getPort();
+    }
+
+    /**
+     *  Gets the local address to which the socket is bound.
+     *
+     * @return the local address to which the socket is bound,
+     *         the loopback address if denied by the security manager,
+     *         or the wildcard address if the socket is closed or not bound yet.
+     */
+    public InetAddress getLocalAddress() {
+        SocketAddress address = getLocalSocketAddress();
+        return address == null ? null : ((InetSocketAddress) address).getAddress();
+    }
+
+    /**
+     *  Returns the local port number to which this socket is bound.
+     *  If the socket was bound prior to being closed,
+     *  then this method will continue to return the local port number after the socket is closed.
+     *
+     * @return the local port number to which this socket is bound
+     *         or -1 if the socket is not bound yet.
+     */
+    public int getLocalPort() {
+        SocketAddress address = getLocalSocketAddress();
+        return address == null ? -1 : ((InetSocketAddress) address).getPort();
+    }
+
+    /**
+     *  Returns the address of the endpoint this socket is connected to, or null if it is unconnected.
+     *  If the socket was connected prior to being closed,
+     *  then this method will continue to return the connected address after the socket is closed.
+     *
+     * @return a SocketAddress representing the remote endpoint of this socket,
+     *         or null if it is not connected yet.
+     */
+    public SocketAddress getRemoteSocketAddress() {
+        if (!isConnected()) {
             return null;
         }
-        return handlerRef.get();
-    }
-
-    public synchronized void setHandler(ConnectionHandler delegate) {
-        if (delegate == null) {
-            handlerRef = null;
-        } else {
-            handlerRef = new WeakReference<>(delegate);
-        }
-    }
-
-    //
-    //  Connections
-    //
-
-    public Connection getConnection(SocketAddress remoteAddress) {
-        Connection connection = null;
-        Lock readLock = connectionLock.readLock();
-        readLock.lock();
         try {
-            Iterator<Connection> iterator = connections.iterator();
-            Connection item;
-            while (iterator.hasNext()) {
-                item = iterator.next();
-                if (remoteAddress.equals(item.remoteAddress)) {
-                    // got it
-                    connection = item;
-                    break;
-                }
-            }
-        } finally {
-            readLock.unlock();
-        }
-        return connection;
-    }
-
-    protected Connection createConnection(SocketAddress remoteAddress, SocketAddress localAddress) {
-        return new Connection(remoteAddress, localAddress);
-    }
-
-    /**
-     *  Add remote address to keep connected with heartbeat
-     *
-     * @param remoteAddress - remote IP and port
-     * @return connection
-     */
-    public Connection connect(SocketAddress remoteAddress) {
-        Connection connection = null;
-        Lock writeLock = connectionLock.writeLock();
-        writeLock.lock();
-        try {
-            Iterator<Connection> iterator = connections.iterator();
-            Connection item;
-            while (iterator.hasNext()) {
-                item = iterator.next();
-                if (remoteAddress.equals(item.remoteAddress)) {
-                    // already connected
-                    connection = item;
-                    break;
-                }
-            }
-            if (connection == null) {
-                connection = createConnection(remoteAddress, localAddress);
-                connections.add(connection);
-            }
-        } finally {
-            writeLock.unlock();
-        }
-        return connection;
-    }
-
-    /**
-     *  Remove remote address from heartbeat tasks
-     *
-     * @param remoteAddress - remote IP and port
-     * @return false on connection not found
-     */
-    @SuppressWarnings("UnusedReturnValue")
-    public Set<Connection> disconnect(SocketAddress remoteAddress) {
-        Set<Connection> removedConnections = new LinkedHashSet<>();
-        Lock writeLock = connectionLock.writeLock();
-        writeLock.lock();
-        try {
-            Iterator<Connection> iterator = connections.iterator();
-            Connection conn;
-            while (iterator.hasNext()) {
-                conn = iterator.next();
-                if (remoteAddress.equals(conn.remoteAddress)) {
-                    // got one
-                    removedConnections.add(conn);
-                    iterator.remove();
-                    // break;
-                }
-            }
-        } finally {
-            writeLock.unlock();
-        }
-        // clear declaration forms
-        clearDeclarations(removedConnections);
-        return removedConnections;
-    }
-
-    private void clearDeclarations(Set<Connection> removedConnections) {
-        Lock writeLock = declarationLock.writeLock();
-        writeLock.lock();
-        try {
-            for (Connection conn : removedConnections) {
-                removeDeclarations(conn.remoteAddress);
-            }
-        } finally {
-            writeLock.unlock();
-        }
-    }
-
-    private void removeDeclarations(SocketAddress remoteAddress) {
-        for (int index = declarations.size() - 1; index >= 0; --index) {
-            if (remoteAddress.equals(declarations.get(index))) {
-                declarations.remove(index);
-            }
+            return impl.getRemoteAddress();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
     /**
-     *  Get any expired connection
+     *  Returns the address of the endpoint this socket is bound to.
+     *  If a socket bound to an endpoint represented by an InetSocketAddress is closed,
+     *  then this method will continue to return an InetSocketAddress after the socket is closed.
+     *  In that case the returned InetSocketAddress's address is the wildcard address
+     *  and its port is the local port that it was bound to.
      *
-     * @return connection needs maintain
+     * @return a SocketAddress representing the local endpoint of this socket,
+     *         or null if the socket is not bound yet.
      */
-    private Connection getExpiredConnection() {
-        Connection connection = null;
-        long now = (new Date()).getTime();
-
-        Lock readLock = connectionLock.readLock();
-        readLock.lock();
+    public SocketAddress getLocalSocketAddress() {
+        if (!isBound()) {
+            return null;
+        }
         try {
-            Iterator<Connection> iterator = connections.iterator();
-            Connection item;
-            while (iterator.hasNext()) {
-                item = iterator.next();
-                if (item.isExpired(now)) {
-                    // got it
-                    connection = item;
-                    break;
-                }
-            }
-        } finally {
-            readLock.unlock();
-        }
-        return connection;
-    }
-
-    /**
-     *  Get any error connection
-     *
-     * @return connection maybe lost
-     */
-    private Connection getErrorConnection() {
-        Connection connection = null;
-        long now = (new Date()).getTime();
-
-        Lock readLock = connectionLock.readLock();
-        readLock.lock();
-        try {
-            Iterator<Connection> iterator = connections.iterator();
-            Connection item;
-            while (iterator.hasNext()) {
-                item = iterator.next();
-                if (item.isError(now)) {
-                    // got it
-                    connection = item;
-                    break;
-                }
-            }
-        } finally {
-            readLock.unlock();
-        }
-        return connection;
-    }
-
-    //
-    //  Connection Status
-    //
-
-    private void updateSentTime(SocketAddress remoteAddress) {
-        Connection conn = getConnection(remoteAddress);
-        if (conn == null) {
-            return;
-        }
-        long now = (new Date()).getTime();
-        // 1. get old status
-        ConnectionStatus oldStatus = conn.getStatus(now);
-        // 2. refresh time
-        conn.updateSentTime(now);
-        // 3. get new status
-        ConnectionStatus newStatus = conn.getStatus(now);
-        if (oldStatus.equals(newStatus)) {
-            // status not changed
-            return;
-        }
-        // callback
-        ConnectionHandler delegate = getHandler();
-        if (delegate != null) {
-            delegate.onConnectionStatusChanged(conn, oldStatus, newStatus);
-        }
-    }
-
-    private void updateReceivedTime(SocketAddress remoteAddress) {
-        Connection conn = getConnection(remoteAddress);
-        if (conn == null) {
-            return;
-        }
-        long now = (new Date()).getTime();
-        // 1. get old status
-        ConnectionStatus oldStatus = conn.getStatus(now);
-        // 2. refresh time
-        conn.updateReceivedTime(now);
-        // 3. get new status
-        ConnectionStatus newStatus = conn.getStatus(now);
-        if (oldStatus.equals(newStatus)) {
-            // status not changed
-            return;
-        }
-        // callback
-        ConnectionHandler delegate = getHandler();
-        if (delegate != null) {
-            delegate.onConnectionStatusChanged(conn, oldStatus, newStatus);
+            return impl.getLocalAddress();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
@@ -344,239 +310,92 @@ final class Socket implements Runnable {
     //  Input/Output
     //
 
-    /**
-     *  Send data to remote address
-     *
-     * @param data - data bytes
-     * @param remoteAddress - remote IP and port
-     * @return how many bytes have been sent
-     */
-    @SuppressWarnings("UnusedReturnValue")
-    public int send(byte[] data, SocketAddress remoteAddress) {
-        int len = data.length;
-        DatagramPacket packet = new DatagramPacket(data, 0, len, remoteAddress);
-        try {
-            socket.send(packet);
-            updateSentTime(remoteAddress);
-            return len;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return -1;
+    public int send(byte[] data) throws IOException {
+        if (!isConnected()) {
+            throw new SocketException("Socket not connect yet");
         }
+        ByteBuffer buffer = ByteBuffer.allocate(data.length);
+        buffer.put(data);
+        buffer.flip();
+        return impl.write(buffer);
     }
 
-    private DatagramPacket receive(int bufferSize) {
-        try {
-            byte[] buffer = new byte[bufferSize];
-            DatagramPacket packet = new DatagramPacket(buffer, bufferSize);
-            // receive packet from socket
-            socket.receive(packet);
-            if (packet.getLength() > 0) {
-                // refresh connection time
-                updateReceivedTime(packet.getSocketAddress());
-                return packet;
-            }
-            // received nothing (timeout?)
-        } catch (IOException e) {
-            // e.printStackTrace();
+    public byte[] receive() throws IOException {
+        ByteBuffer buffer = ByteBuffer.allocate(MTU);
+        int res = impl.read(buffer);
+        if (res <= 0) {
+            return null;
         }
-        return null;
+        assert res == buffer.position() : "buffer error: " + res + ", " + buffer.position();
+        byte[] data = new byte[res];
+        buffer.flip();
+        buffer.get(data);
+        return data;
     }
 
     /**
-     *  Get received data package from buffer, non-blocked
+     *  Closes this socket.
+     *  Any thread currently blocked in an I/O operation upon this socket will throw a SocketException.
+     *  Once a socket has been closed, it is not available for further networking use
+     *  (i.e. can't be reconnected or rebound). A new socket needs to be created.
      *
-     * @return received package with data and source address
+     * @throws IOException - if an I/O error occurs when closing this socket.
      */
-    public DatagramPacket receive() {
-        DatagramPacket cargo = null;
-        Lock writeLock = declarationLock.writeLock();
-        writeLock.lock();
-        try {
-            SocketAddress remoteAddress;
-            Connection conn;
-            while (declarations.size() > 0) {
-                // get first one
-                remoteAddress = declarations.remove(0);
-                conn = getConnection(remoteAddress);
-                if (conn == null) {
-                    // connection lost, remove all declaration forms with its socket address
-                    removeDeclarations(remoteAddress);
-                    continue;
-                }
-                cargo = conn.receive();
-                if (cargo != null) {
-                    // got one packet
-                    break;
-                }
+    public void close() throws IOException {
+        synchronized (closeLock) {
+            if (isClosed()) {
+                return;
             }
-        } finally {
-            writeLock.unlock();
-        }
-        return cargo;
-    }
-
-    private void cache(DatagramPacket cargo) {
-        // 1. get connection by address in packet
-        SocketAddress remoteAddress = cargo.getSocketAddress();
-        Connection conn = getConnection(remoteAddress);
-        if (conn == null) {
-            /*  NOTICE:
-             *      If received a package, not heartbeat (PING, PONG),
-             *      create a connection for caching it.
-             */
-            conn = connect(remoteAddress);
-        }
-
-        Lock writeLock = declarationLock.writeLock();
-        writeLock.lock();
-        try {
-            // 2. append packet to connection's cache
-            DatagramPacket ejected = conn.cache(cargo);
-            /*  NOTICE:
-             *      If something ejected, means this connection's cache is full,
-             *      don't append new form for it, just keep the old ones in queue,
-             *      this will let the old forms have a higher priority
-             *      to be processed as soon as possible.
-             */
-            if (ejected == null) {
-                // append the new form to the end
-                declarations.add(remoteAddress);
+            if (created) {
+                impl.close();
             }
-
-            // 3. check socket memory cache
-            if (isCacheFull(declarations.size(), remoteAddress)) {
-                /*  NOTICE:
-                 *      this socket is full, eject one cargo from any connection.
-                 *      notice that the connection which cache is full will have
-                 *      a higher priority to be ejected.
-                 */
-                receive();
-            }
-        } finally {
-            writeLock.unlock();
-        }
-
-        // 4. callback
-        ConnectionHandler delegate = getHandler();
-        if (delegate != null) {
-            delegate.onConnectionReceivedData(conn);
-        }
-    }
-
-    protected boolean isCacheFull(int count, SocketAddress remoteAddress) {
-        return count > MAX_CACHE_SPACES;
-    }
-
-    /*
-    @Override
-    public void start() {
-        if (isAlive()) {
-            return;
-        }
-        super.start();
-    }
-     */
-
-    /*
-    public void stop() {
-        // super.stop();
-        close();
-    }
-     */
-
-    public void close() {
-        // TODO: disconnect all connections (clear declaration forms)
-        socket.close();
-    }
-
-    private boolean isRunning() {
-        return !socket.isClosed();
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private void _sleep(double seconds) {
-        try {
-            Thread.sleep((long) (seconds * 1000));
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            closed = true;
         }
     }
 
     @Override
-    public void run() {
-        DatagramPacket packet;
-        byte[] data;
-        while (isRunning()) {
-            try {
-                packet = receive(MTU);
-                if (packet == null) {
-                    // received nothing, have a rest
-                    _sleep(0.1);
-                    continue;
-                }
-                if (packet.getLength() == 4) {
-                    // check heartbeat
-                    data = packet.getData();
-                    if (data[0] == 'P' && data[2] == 'N' && data[3] == 'G') {
-                        if (data[1] == 'I') {
-                            // got 'PING': respond heartbeat
-                            send(PONG, packet.getSocketAddress());
-                            continue;
-                        } else if (data[1] == 'O') {
-                            // got 'PONG': ignore it
-                            continue;
-                        }
-                    }
-                }
-                // cache the data package received
-                cache(packet);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+    public String toString() {
+        if (isConnected()) {
+            return "Socket[address=" + getInetAddress() +
+                    ", port=" + getPort() +
+                    ", local port=" + getLocalPort() + "]";
+        } else {
+            return "Socket[unconnected]";
         }
     }
 
-    private final byte[] PING = {'P', 'I', 'N', 'G'};
-    private final byte[] PONG = {'P', 'O', 'N', 'G'};
-
     /**
-     *  Send heartbeat to all expired connections
+     *  Returns the connection state of the socket.
+     *  Note: Closing a socket doesn't clear its connection state,
+     *  which means this method will return true for a closed socket (see isClosed())
+     *  if it was successfully connected prior to being closed.
+     *
+     * @return true if the socket was successfully connected to a server
      */
-    public int ping() {
-        int count = 0;
-        Connection connection;
-        while (true) {
-            connection = getExpiredConnection();
-            if (connection == null) {
-                // no more expired connection
-                break;
-            }
-            send(PING, connection.remoteAddress);
-            count += 1;
-        }
-        return count;
+    public boolean isConnected() {
+        return connected;
     }
 
     /**
-     *  Remove error connections
+     *  Returns the binding state of the socket.
+     *  Note: Closing a socket doesn't clear its binding state,
+     *  which means this method will return true for a closed socket (see isClosed())
+     *  if it was successfully bound prior to being closed.
+     *
+     * @return true if the socket was successfully bound to an address
      */
-    public Set<Connection> purge() {
-        Set<Connection> allConnections = new LinkedHashSet<>();
-        Set<Connection> removedConnections;
-        Connection connection;
-        while (true) {
-            connection = getErrorConnection();
-            if (connection == null) {
-                // no more error connection
-                break;
-            }
-            // remove error connection (long time to receive nothing)
-            removedConnections = disconnect(connection.remoteAddress);
-            if (removedConnections.size() > 0) {
-                allConnections.addAll(removedConnections);
-            }
+    public boolean isBound() {
+        return bound;
+    }
+
+    /**
+     *  Returns the closed state of the socket.
+     *
+     * @return true if the socket has been closed
+     */
+    public boolean isClosed() {
+        synchronized (closeLock) {
+            return closed;
         }
-        return allConnections;
     }
 }
