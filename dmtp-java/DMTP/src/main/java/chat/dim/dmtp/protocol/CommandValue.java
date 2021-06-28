@@ -78,7 +78,8 @@ public class CommandValue extends MapValue<Field> {
     }
 
     // parse value with tag & length
-    public static chat.dim.tlv.Entry.Value parse(ByteArray data, chat.dim.tlv.Entry.Tag tag, chat.dim.tlv.Entry.Length length) {
+    public static chat.dim.tlv.Entry.Value parse(ByteArray data,
+                                                 chat.dim.tlv.Entry.Tag tag, chat.dim.tlv.Entry.Length length) {
         return from(data);
     }
 }

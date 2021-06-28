@@ -48,7 +48,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
     }
 }
 
-class StateMachine extends BaseMachine<StateMachine, StateTransition, ConnectionState, Delegate<StateMachine, StateTransition, ConnectionState>>
+class StateMachine extends BaseMachine<StateMachine, StateTransition, ConnectionState>
         implements Context {
 
     private final WeakReference<BaseConnection> connectionRef;
