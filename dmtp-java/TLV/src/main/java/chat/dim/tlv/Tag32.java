@@ -32,31 +32,21 @@ package chat.dim.tlv;
 
 import chat.dim.network.DataConvert;
 import chat.dim.type.ByteArray;
-import chat.dim.type.UInt16Data;
-
-/*
- *       0                   1                   2                   3
- *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |             Type              |            Length             |
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |                         Value (variable)                ....
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- */
+import chat.dim.type.UInt32Data;
 
 /**
- *  Fixed Tag (16 bits)
+ *  Fixed Tag (32 bits)
  *  ~~~~~~~~~~~~~~~~~~~
  */
-public class Tag16 extends UInt16Data implements Entry.Tag {
+public class Tag32 extends UInt32Data implements Entry.Tag {
 
-    public static final Tag16 ZERO = from(UInt16Data.ZERO);
+    public static final Tag32 ZERO = from(UInt32Data.ZERO);
 
-    public Tag16(UInt16Data data) {
+    public Tag32(UInt32Data data) {
         super(data, data.value, data.endian);
     }
 
-    public Tag16(ByteArray data, int value, Endian endian) {
+    public Tag32(ByteArray data, long value, Endian endian) {
         super(data, value, endian);
     }
 
@@ -64,25 +54,25 @@ public class Tag16 extends UInt16Data implements Entry.Tag {
     //  Factories
     //
 
-    public static Tag16 from(Tag16 tag) {
+    public static Tag32 from(Tag32 tag) {
         return tag;
     }
 
-    public static Tag16 from(UInt16Data data) {
-        return new Tag16(data, data.value, data.endian);
+    public static Tag32 from(UInt32Data data) {
+        return new Tag32(data, data.value, data.endian);
     }
 
-    public static Tag16 from(ByteArray data) {
-        if (data.getSize() < 2) {
+    public static Tag32 from(ByteArray data) {
+        if (data.getSize() < 4) {
             return null;
-        } else if (data.getSize() > 2) {
-            data = data.slice(0, 2);
+        } else if (data.getSize() > 4) {
+            data = data.slice(0, 4);
         }
-        return new Tag16(DataConvert.getUInt16Data(data));
+        return new Tag32(DataConvert.getUInt32Data(data));
     }
 
-    public static Tag16 from(int value) {
-        return new Tag16(DataConvert.getUInt16Data(value));
+    public static Tag32 from(int value) {
+        return new Tag32(DataConvert.getUInt32Data(value));
     }
 
     // parse tag

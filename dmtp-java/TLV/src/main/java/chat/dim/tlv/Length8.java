@@ -30,63 +30,59 @@
  */
 package chat.dim.tlv;
 
-import chat.dim.network.DataConvert;
 import chat.dim.type.ByteArray;
-import chat.dim.type.UInt16Data;
-
-/*
- *       0                   1                   2                   3
- *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |             Type              |            Length             |
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |                         Value (variable)                ....
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- */
+import chat.dim.type.UInt8Data;
 
 /**
- *  Fixed Tag (16 bits)
- *  ~~~~~~~~~~~~~~~~~~~
+ *  Fixed Length (8 bits)
+ *  ~~~~~~~~~~~~~~~~~~~~~
  */
-public class Tag16 extends UInt16Data implements Entry.Tag {
+public class Length8 extends UInt8Data implements Entry.Length {
 
-    public static final Tag16 ZERO = from(UInt16Data.ZERO);
+    public static final Length8 ZERO = from(UInt8Data.ZERO);
 
-    public Tag16(UInt16Data data) {
-        super(data, data.value, data.endian);
+    public Length8(ByteArray data) {
+        super(data);
     }
 
-    public Tag16(ByteArray data, int value, Endian endian) {
-        super(data, value, endian);
+    public Length8(byte value) {
+        super(value);
+    }
+
+    public Length8(int value) {
+        super(value);
     }
 
     //
     //  Factories
     //
 
-    public static Tag16 from(Tag16 tag) {
-        return tag;
+    public static Length8 from(Length8 length) {
+        return length;
     }
 
-    public static Tag16 from(UInt16Data data) {
-        return new Tag16(data, data.value, data.endian);
+    public static Length8 from(UInt8Data data) {
+        return new Length8(data);
     }
 
-    public static Tag16 from(ByteArray data) {
-        if (data.getSize() < 2) {
+    public static Length8 from(ByteArray data) {
+        if (data.getSize() < 1) {
             return null;
-        } else if (data.getSize() > 2) {
-            data = data.slice(0, 2);
+        } else if (data.getSize() > 1) {
+            data = data.slice(0, 1);
         }
-        return new Tag16(DataConvert.getUInt16Data(data));
+        return new Length8(data);
     }
 
-    public static Tag16 from(int value) {
-        return new Tag16(DataConvert.getUInt16Data(value));
+    public static Length8 from(byte value) {
+        return new Length8(value);
+    }
+    public static Length8 from(int value) {
+        return new Length8(value);
     }
 
-    // parse tag
-    public static Entry.Tag parse(ByteArray data) {
+    // parse length with tag
+    public static Entry.Length parse(ByteArray data, Entry.Tag tag) {
         return from(data);
     }
 }

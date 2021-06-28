@@ -35,10 +35,8 @@ import chat.dim.type.ByteArray;
 import chat.dim.type.UInt16Data;
 
 /**
- *  Integer Value (16 bits)
- *  ~~~~~~~~~~~~~~~~~~~~~~~
- *
- *  Network Byte Order
+ *  Fixed Integer Value (16 bits)
+ *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 public class Value16 extends UInt16Data implements Entry.Value {
 
@@ -56,8 +54,8 @@ public class Value16 extends UInt16Data implements Entry.Value {
     //  Factories
     //
 
-    public static Value16 from(Value16 tag) {
-        return tag;
+    public static Value16 from(Value16 value) {
+        return value;
     }
 
     public static Value16 from(UInt16Data data) {

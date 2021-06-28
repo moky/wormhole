@@ -35,10 +35,8 @@ import chat.dim.type.ByteArray;
 import chat.dim.type.UInt32Data;
 
 /**
- *  Integer Value (32 bits)
- *  ~~~~~~~~~~~~~~~~~~~~~~~
- *
- *  Network Byte Order
+ *  Fixed Integer Value (32 bits)
+ *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 public class Value32 extends UInt32Data implements Entry.Value {
 
@@ -56,8 +54,8 @@ public class Value32 extends UInt32Data implements Entry.Value {
     //  Factories
     //
 
-    public static Value32 from(Value32 tag) {
-        return tag;
+    public static Value32 from(Value32 value) {
+        return value;
     }
 
     public static Value32 from(UInt32Data data) {

@@ -34,8 +34,8 @@ import chat.dim.type.ByteArray;
 import chat.dim.type.UInt8Data;
 
 /**
- *  Char Value (8 bits)
- *  ~~~~~~~~~~~~~~~~~~~
+ *  Fixed Char Value (8 bits)
+ *  ~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 public class Value8 extends UInt8Data implements Entry.Value {
 
@@ -57,8 +57,8 @@ public class Value8 extends UInt8Data implements Entry.Value {
     //  Factories
     //
 
-    public static Value8 from(Value8 data) {
-        return data;
+    public static Value8 from(Value8 value) {
+        return value;
     }
 
     public static Value8 from(UInt8Data data) {

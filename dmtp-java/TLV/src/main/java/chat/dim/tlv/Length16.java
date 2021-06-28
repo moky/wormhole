@@ -2,12 +2,12 @@
  *
  *  TLV: Tag Length Value
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,7 @@ import chat.dim.type.UInt16Data;
  *       0                   1                   2                   3
  *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |         Type                  |            Length             |
+ *      |             Type              |            Length             |
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      |                         Value (variable)                ....
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -47,8 +47,6 @@ import chat.dim.type.UInt16Data;
 /**
  *  Fixed Length (16 bits)
  *  ~~~~~~~~~~~~~~~~~~~~~~
- *
- *  Network Byte Order
  */
 public class Length16 extends UInt16Data implements Entry.Length {
 
