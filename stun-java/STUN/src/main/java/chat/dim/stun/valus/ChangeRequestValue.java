@@ -34,7 +34,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import chat.dim.network.DataConvert;
-import chat.dim.tlv.Triad;
+import chat.dim.tlv.Entry;
 import chat.dim.tlv.Value32;
 import chat.dim.type.ByteArray;
 import chat.dim.type.UInt32Data;
@@ -116,7 +116,7 @@ public class ChangeRequestValue extends Value32 {
     }
 
     // parse value with tag & length
-    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+    public static Entry.Value parse(ByteArray data, Entry.Tag tag, Entry.Length length) {
         return from(data);
     }
 

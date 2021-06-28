@@ -36,7 +36,6 @@ import java.util.List;
 import chat.dim.tlv.Field;
 import chat.dim.tlv.MapValue;
 import chat.dim.tlv.StringValue;
-import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
 public class CommandValue extends MapValue<Field> {
@@ -79,7 +78,7 @@ public class CommandValue extends MapValue<Field> {
     }
 
     // parse value with tag & length
-    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+    public static chat.dim.tlv.Entry.Value parse(ByteArray data, chat.dim.tlv.Entry.Tag tag, chat.dim.tlv.Entry.Length length) {
         return from(data);
     }
 }

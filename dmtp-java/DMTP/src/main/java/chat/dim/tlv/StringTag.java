@@ -81,7 +81,7 @@ public class StringTag extends VarTag {
     }
 
     // parse tag
-    public static Triad.Tag parse(ByteArray data) {
+    public static Entry.Tag parse(ByteArray data) {
         return from(data);
     }
 

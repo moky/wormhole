@@ -45,19 +45,19 @@ import chat.dim.type.ByteArray;
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
-public abstract class Parser<A extends Triad<T,L,V>, T extends Triad.Tag, L extends Triad.Length, V extends Triad.Value>
-        implements Triad.Parser<A> {
+public abstract class Parser<E extends Entry<T,L,V>, T extends Entry.Tag, L extends Entry.Length, V extends Entry.Value>
+        implements Entry.Parser<E> {
 
     // get TLV parsers
-    protected abstract Triad.Tag.Parser<T> getTagParser();
-    protected abstract Triad.Length.Parser<T, L> getLengthParser();
-    protected abstract Triad.Value.Parser<T, L, V> getValueParser();
+    protected abstract Entry.Tag.Parser<T> getTagParser();
+    protected abstract Entry.Length.Parser<T, L> getLengthParser();
+    protected abstract Entry.Value.Parser<T, L, V> getValueParser();
 
     // create TLV triad
-    protected abstract A createTriad(ByteArray data, T type, L length, V value);
+    protected abstract E createEntry(ByteArray data, T type, L length, V value);
 
     @Override
-    public A parseTriad(ByteArray data) {
+    public E parseEntry(ByteArray data) {
         // 1. get tag field
         T type = getTagParser().parseTag(data);
         if (type == null) {
@@ -79,22 +79,22 @@ public abstract class Parser<A extends Triad<T,L,V>, T extends Triad.Tag, L exte
         if (value != null) {
             offset += value.getSize();
         }
-        return createTriad(data.slice(0, offset), type, length, value);
+        return createEntry(data.slice(0, offset), type, length, value);
     }
 
     @Override
-    public List<A> parseTriads(ByteArray data) {
-        List<A> array = new ArrayList<>();
-        A item;
+    public List<E> parseEntries(ByteArray data) {
+        List<E> array = new ArrayList<>();
+        E item;
         while (data.getSize() > 0) {
-            item = parseTriad(data);
+            item = parseEntry(data);
             if (item == null) {
                 // data error
                 break;
             }
             array.add(item);
             // next item
-            assert item.getSize() > 0 : "Triads error";
+            assert item.getSize() > 0 : "TLV triads error";
             data = data.slice(item.getSize());
         }
         return array;

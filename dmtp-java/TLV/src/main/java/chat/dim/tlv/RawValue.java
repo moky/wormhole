@@ -43,7 +43,7 @@ import chat.dim.type.Data;
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
-public class RawValue extends Data implements Triad.Value {
+public class RawValue extends Data implements Entry.Value {
 
     public static final RawValue ZERO = from(Data.ZERO);
 
@@ -80,7 +80,7 @@ public class RawValue extends Data implements Triad.Value {
     }
 
     // parse value with tag & length
-    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+    public static Entry.Value parse(ByteArray data, Entry.Tag tag, Entry.Length length) {
         return from(data);
     }
 }

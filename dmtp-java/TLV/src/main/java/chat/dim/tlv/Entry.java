@@ -30,8 +30,10 @@
  */
 package chat.dim.tlv;
 
+import java.util.List;
+
 import chat.dim.type.ByteArray;
-import chat.dim.type.Data;
+import chat.dim.type.IntegerData;
 
 /*
  *       0                   1                   2                   3
@@ -43,44 +45,54 @@ import chat.dim.type.Data;
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
-public class TagLengthValue<T extends Triad.Tag, L extends Triad.Length, V extends Triad.Value>
-        extends Data implements Triad<T, L, V> {
+public interface Entry<T extends Entry.Tag, L extends Entry.Length, V extends Entry.Value> extends ByteArray {
 
-    public final T tag;
-    public final L length;
-    public final V value;
+    T getTag();
+    L getLength();
+    V getValue();
 
-    public TagLengthValue(Triad<T, L, V> tlv) {
-        super(tlv);
-        tag = tlv.getTag();
-        length = tlv.getLength();
-        value = tlv.getValue();
+    interface Tag extends ByteArray {
+        /**
+         *  Tag Parser
+         *  ~~~~~~~~~~
+         */
+        interface Parser<T> {
+            T parseTag(ByteArray data);
+        }
+    }
+    interface Length extends ByteArray, IntegerData {
+        /**
+         *  Length Parser
+         *  ~~~~~~~~~~~~~
+         */
+        interface Parser<T, L> {
+            L parseLength(ByteArray data, T tag);
+        }
+    }
+    interface Value extends ByteArray {
+        /**
+         *  Value Parser
+         *  ~~~~~~~~~~~~
+         */
+        interface Parser<T, L, V> {
+            V parseValue(ByteArray data, T tag, L length);
+        }
     }
 
-    public TagLengthValue(ByteArray data, T type, L length, V value) {
-        super(data);
-        this.tag = type;
-        this.length = length;
-        this.value = value;
-    }
+    /**
+     *  Tag-Length-Value Parser
+     *  ~~~~~~~~~~~~~~~~~~~~~~~
+     */
+    interface Parser<E> {
 
-    @Override
-    public T getTag() {
-        return tag;
-    }
+        E parseEntry(ByteArray data);
 
-    @Override
-    public L getLength() {
-        return length;
-    }
-
-    @Override
-    public V getValue() {
-        return value;
-    }
-
-    @Override
-    public String toString() {
-        return "/* " + getClass().getSimpleName() + " */ " + tag + ": \"" + value + "\"";
+        /**
+         *  Parse all TLV triads
+         *
+         * @param data - data received
+         * @return TLV entry list
+         */
+        List<E> parseEntries(ByteArray data);
     }
 }

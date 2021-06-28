@@ -30,7 +30,7 @@
  */
 package chat.dim.stun.valus;
 
-import chat.dim.tlv.Triad;
+import chat.dim.tlv.Entry;
 import chat.dim.type.ByteArray;
 
 /**  11.2.3  CHANGED-ADDRESS
@@ -75,7 +75,7 @@ public class ChangedAddressValue extends MappedAddressValue {
     }
 
     // parse value with tag & length
-    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+    public static Entry.Value parse(ByteArray data, Entry.Tag tag, Entry.Length length) {
         return from(data);
     }
 }

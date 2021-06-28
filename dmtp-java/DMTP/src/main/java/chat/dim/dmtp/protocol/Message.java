@@ -42,7 +42,6 @@ import chat.dim.tlv.MapValue;
 import chat.dim.tlv.RawValue;
 import chat.dim.tlv.StringTag;
 import chat.dim.tlv.StringValue;
-import chat.dim.tlv.Triad;
 import chat.dim.tlv.Value32;
 import chat.dim.tlv.Value8;
 import chat.dim.type.ByteArray;
@@ -216,14 +215,14 @@ public class Message extends MapValue<Field> {
                 return;
             }
         }
-        Triad.Value value;
-        if (object instanceof Triad.Value) {
-            value = (Triad.Value) object;
+        chat.dim.tlv.Entry.Value value;
+        if (object instanceof chat.dim.tlv.Entry.Value) {
+            value = (chat.dim.tlv.Entry.Value) object;
         } else {
             // try 'new Clazz(dict)'
             try {
                 Constructor<?> constructor = valueClass.getConstructor(object.getClass());
-                value = (Triad.Value) constructor.newInstance(object);
+                value = (chat.dim.tlv.Entry.Value) constructor.newInstance(object);
             } catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
                 e.printStackTrace();
                 value = null;

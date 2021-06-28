@@ -32,19 +32,19 @@ package chat.dim.stun.attributes;
 
 import java.util.List;
 
+import chat.dim.tlv.Entry;
 import chat.dim.tlv.Length16;
 import chat.dim.tlv.RawValue;
-import chat.dim.tlv.TagLengthValue;
 import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 
-public class Attribute extends TagLengthValue<AttributeType, Length16, Triad.Value> {
+public class Attribute extends Triad<AttributeType, Length16, Entry.Value> {
 
-    public Attribute(Triad<AttributeType, Length16, Triad.Value> tlv) {
+    public Attribute(Entry<AttributeType, Length16, Entry.Value> tlv) {
         super(tlv);
     }
 
-    public Attribute(ByteArray data, AttributeType type, Length16 length, Triad.Value value) {
+    public Attribute(ByteArray data, AttributeType type, Length16 length, Entry.Value value) {
         super(data, type, length, value);
     }
 
@@ -54,8 +54,8 @@ public class Attribute extends TagLengthValue<AttributeType, Length16, Triad.Val
     //
     private static final AttributeParser parser = new AttributeParser();
 
-    public static List<Attribute> parseAll(ByteArray data) {
-        return parser.parseTriads(data);
+    public static List<Attribute> parseList(ByteArray data) {
+        return parser.parseEntries(data);
     }
 
     //
@@ -66,14 +66,14 @@ public class Attribute extends TagLengthValue<AttributeType, Length16, Triad.Val
         return attribute;
     }
 
-    public static Attribute from(Triad<AttributeType, Length16, Triad.Value> tlv) {
+    public static Attribute from(Entry<AttributeType, Length16, Entry.Value> tlv) {
         return new Attribute(tlv);
     }
 
-    public static Attribute create(AttributeType type, Triad.Value value) {
+    public static Attribute create(AttributeType type, Entry.Value value) {
         return create(type, null, value);
     }
-    public static Attribute create(AttributeType tag, Length16 length, Triad.Value value) {
+    public static Attribute create(AttributeType tag, Length16 length, Entry.Value value) {
         if (value == null) {
             value = RawValue.ZERO;
             length = Length16.ZERO;

@@ -40,7 +40,7 @@ import chat.dim.type.UInt32Data;
  *
  *  Network Byte Order
  */
-public class Value32 extends UInt32Data implements Triad.Value {
+public class Value32 extends UInt32Data implements Entry.Value {
 
     public static final Value32 ZERO = from(UInt32Data.ZERO);
 
@@ -78,7 +78,7 @@ public class Value32 extends UInt32Data implements Triad.Value {
     }
 
     // parse value with tag & length
-    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+    public static Entry.Value parse(ByteArray data, Entry.Tag tag, Entry.Length length) {
         return from(data);
     }
 }

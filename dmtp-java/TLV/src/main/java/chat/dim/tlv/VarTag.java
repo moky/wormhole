@@ -49,7 +49,7 @@ import chat.dim.type.VarIntData;
  *
  *  A tag that starts with a variable integer indicating its content length
  */
-public class VarTag extends Data implements Triad.Tag {
+public class VarTag extends Data implements Entry.Tag {
 
     public static final VarTag ZERO = from(VarIntData.ZERO, Data.ZERO);
 
@@ -111,7 +111,7 @@ public class VarTag extends Data implements Triad.Tag {
     }
 
     // parse tag
-    public static Triad.Tag parse(ByteArray data) {
+    public static Entry.Tag parse(ByteArray data) {
         return from(data);
     }
 }

@@ -38,9 +38,9 @@ import java.util.Set;
 
 import chat.dim.type.ByteArray;
 
-public class MapValue<F extends Field> extends RawValue implements Map<Triad.Tag, Triad.Value> {
+public class MapValue<F extends Field> extends RawValue implements Map<Entry.Tag, Entry.Value> {
 
-    private final Map<Triad.Tag, Triad.Value> dictionary = new HashMap<>();
+    private final Map<chat.dim.tlv.Entry.Tag, chat.dim.tlv.Entry.Value> dictionary = new HashMap<>();
 
     public MapValue(ByteArray data, List<F> fields) {
         super(data);
@@ -69,7 +69,7 @@ public class MapValue<F extends Field> extends RawValue implements Map<Triad.Tag
     }
 
     public String getStringValue(StringTag tag) {
-        Triad.Value value = dictionary.get(tag);
+        chat.dim.tlv.Entry.Value value = dictionary.get(tag);
         if (value instanceof StringValue) {
             return ((StringValue) value).string;
         } else {
@@ -78,7 +78,7 @@ public class MapValue<F extends Field> extends RawValue implements Map<Triad.Tag
     }
 
     public long getLongValue(StringTag tag) {
-        Triad.Value value = dictionary.get(tag);
+        chat.dim.tlv.Entry.Value value = dictionary.get(tag);
         if (value instanceof Value32) {
             return ((Value32) value).value;
         } else {
@@ -87,7 +87,7 @@ public class MapValue<F extends Field> extends RawValue implements Map<Triad.Tag
     }
 
     public int getShortValue(StringTag tag) {
-        Triad.Value value = dictionary.get(tag);
+        chat.dim.tlv.Entry.Value value = dictionary.get(tag);
         if (value instanceof Value16) {
             return ((Value16) value).value;
         } else {
@@ -96,7 +96,7 @@ public class MapValue<F extends Field> extends RawValue implements Map<Triad.Tag
     }
 
     public int getByteValue(StringTag tag) {
-        Triad.Value value = dictionary.get(tag);
+        chat.dim.tlv.Entry.Value value = dictionary.get(tag);
         if (value instanceof Value8) {
             return ((Value8) value).value;
         } else {
@@ -138,22 +138,22 @@ public class MapValue<F extends Field> extends RawValue implements Map<Triad.Tag
     }
 
     @Override
-    public Triad.Value get(Object key) {
+    public chat.dim.tlv.Entry.Value get(Object key) {
         return dictionary.get(key);
     }
 
     @Override
-    public Triad.Value put(Triad.Tag key, Triad.Value value) {
+    public chat.dim.tlv.Entry.Value put(chat.dim.tlv.Entry.Tag key, chat.dim.tlv.Entry.Value value) {
         throw new UnsupportedOperationException("immutable!");
     }
 
     @Override
-    public Triad.Value remove(Object key) {
+    public chat.dim.tlv.Entry.Value remove(Object key) {
         throw new UnsupportedOperationException("immutable!");
     }
 
     @Override
-    public void putAll(Map<? extends Triad.Tag, ? extends Triad.Value> m) {
+    public void putAll(Map<? extends chat.dim.tlv.Entry.Tag, ? extends chat.dim.tlv.Entry.Value> m) {
         throw new UnsupportedOperationException("immutable!");
     }
 
@@ -163,17 +163,17 @@ public class MapValue<F extends Field> extends RawValue implements Map<Triad.Tag
     }
 
     @Override
-    public Set<Triad.Tag> keySet() {
+    public Set<chat.dim.tlv.Entry.Tag> keySet() {
         return dictionary.keySet();
     }
 
     @Override
-    public Collection<Triad.Value> values() {
+    public Collection<chat.dim.tlv.Entry.Value> values() {
         return dictionary.values();
     }
 
     @Override
-    public Set<Entry<Triad.Tag, Triad.Value>> entrySet() {
+    public Set<Entry<chat.dim.tlv.Entry.Tag, chat.dim.tlv.Entry.Value>> entrySet() {
         return dictionary.entrySet();
     }
 }

@@ -30,7 +30,7 @@
  */
 package chat.dim.stun.valus;
 
-import chat.dim.tlv.Triad;
+import chat.dim.tlv.Entry;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 
@@ -107,7 +107,7 @@ public class XorMappedAddressValue2 extends MappedAddressValue {
     }
 
     // parse value with tag & length
-    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+    public static Entry.Value parse(ByteArray data, Entry.Tag tag, Entry.Length length) {
         return from(data);
     }
 

@@ -37,7 +37,7 @@ import chat.dim.type.VarIntData;
  *  Variable Length
  *  ~~~~~~~~~~~~~~~
  */
-public class VarLength extends VarIntData implements Triad.Length {
+public class VarLength extends VarIntData implements Entry.Length {
 
     public static final VarLength ZERO = from(VarIntData.ZERO);
 
@@ -71,7 +71,7 @@ public class VarLength extends VarIntData implements Triad.Length {
     }
 
     // parse length with tag
-    public static Triad.Length parse(ByteArray data, Triad.Tag tag) {
+    public static Entry.Length parse(ByteArray data, Entry.Tag tag) {
         return from(data);
     }
 }

@@ -50,7 +50,7 @@ import chat.dim.type.UInt16Data;
  *
  *  Network Byte Order
  */
-public class Tag16 extends UInt16Data implements Triad.Tag {
+public class Tag16 extends UInt16Data implements Entry.Tag {
 
     public static final Tag16 ZERO = from(UInt16Data.ZERO);
 
@@ -88,7 +88,7 @@ public class Tag16 extends UInt16Data implements Triad.Tag {
     }
 
     // parse tag
-    public static Triad.Tag parse(ByteArray data) {
+    public static Entry.Tag parse(ByteArray data) {
         return from(data);
     }
 }

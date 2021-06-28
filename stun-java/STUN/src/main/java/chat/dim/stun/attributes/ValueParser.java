@@ -30,21 +30,21 @@
  */
 package chat.dim.stun.attributes;
 
+import chat.dim.tlv.Entry;
 import chat.dim.tlv.Length16;
-import chat.dim.tlv.Triad;
 
 /**
  *  TLV Parsers
  *  ~~~~~~~~~~~
  */
 
-interface TypeParser extends Triad.Tag.Parser<AttributeType> {
+interface TypeParser extends Entry.Tag.Parser<AttributeType> {
     // just for alias
 }
-interface LengthParser extends Triad.Length.Parser<AttributeType, Length16> {
+interface LengthParser extends Entry.Length.Parser<AttributeType, Length16> {
     // just for alias
 }
 
-public interface ValueParser extends Triad.Value.Parser<AttributeType, Length16, Triad.Value> {
+public interface ValueParser extends Entry.Value.Parser<AttributeType, Length16, Entry.Value> {
     // just for alias
 }

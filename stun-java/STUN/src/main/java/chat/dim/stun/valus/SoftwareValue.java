@@ -32,8 +32,8 @@ package chat.dim.stun.valus;
 
 import java.nio.charset.Charset;
 
+import chat.dim.tlv.Entry;
 import chat.dim.tlv.StringValue;
-import chat.dim.tlv.Triad;
 import chat.dim.type.ByteArray;
 import chat.dim.type.MutableData;
 
@@ -72,7 +72,7 @@ public class SoftwareValue extends StringValue {
     }
 
     // parse value with tag & length
-    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+    public static Entry.Value parse(ByteArray data, Entry.Tag tag, Entry.Length length) {
         return from(data);
     }
 

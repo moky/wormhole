@@ -41,7 +41,6 @@ import chat.dim.tlv.Field;
 import chat.dim.tlv.RawValue;
 import chat.dim.tlv.StringTag;
 import chat.dim.tlv.StringValue;
-import chat.dim.tlv.Triad;
 import chat.dim.tlv.Value32;
 import chat.dim.turn.values.RelayedAddressValue;
 import chat.dim.type.ByteArray;
@@ -99,7 +98,7 @@ public class LocationValue extends CommandValue {
      */
     public long getTimestamp() {
         if (timestamp == 0) {
-            Triad.Value value = get(Command.TIME);
+            chat.dim.tlv.Entry.Value value = get(Command.TIME);
             if (value instanceof Value32) {
                 timestamp = ((Value32) value).value;
             }
@@ -115,7 +114,7 @@ public class LocationValue extends CommandValue {
 
     public String getNat() {
         if (nat == null) {
-            Triad.Value value = get(Command.NAT);
+            chat.dim.tlv.Entry.Value value = get(Command.NAT);
             if (value instanceof StringValue) {
                 nat = ((StringValue) value).string;
             }
@@ -137,7 +136,7 @@ public class LocationValue extends CommandValue {
     }
 
     // parse value with tag & length
-    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+    public static chat.dim.tlv.Entry.Value parse(ByteArray data, chat.dim.tlv.Entry.Tag tag, chat.dim.tlv.Entry.Length length) {
         return from(data);
     }
 

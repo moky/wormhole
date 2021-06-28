@@ -37,7 +37,7 @@ import chat.dim.type.UInt8Data;
  *  Char Value (8 bits)
  *  ~~~~~~~~~~~~~~~~~~~
  */
-public class Value8 extends UInt8Data implements Triad.Value {
+public class Value8 extends UInt8Data implements Entry.Value {
 
     public static final Value8 ZERO = from(UInt8Data.ZERO);
 
@@ -82,7 +82,7 @@ public class Value8 extends UInt8Data implements Triad.Value {
     }
 
     // parse value with tag & length
-    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+    public static Entry.Value parse(ByteArray data, Entry.Tag tag, Entry.Length length) {
         return from(data);
     }
 }

@@ -34,9 +34,9 @@ import java.util.List;
 
 import chat.dim.type.ByteArray;
 
-public class Field extends TagLengthValue<StringTag, VarLength, Triad.Value> {
+public class Field extends Triad<StringTag, VarLength, Entry.Value> {
 
-    public Field(Triad<StringTag, VarLength, Value> tlv) {
+    public Field(Entry<StringTag, VarLength, Value> tlv) {
         super(tlv);
     }
 
@@ -49,13 +49,13 @@ public class Field extends TagLengthValue<StringTag, VarLength, Triad.Value> {
     //
     private static final FieldParser<Field> parser = new FieldParser<Field>() {
         @Override
-        protected Field createTriad(ByteArray data, StringTag type, VarLength length, Value value) {
+        protected Field createEntry(ByteArray data, StringTag type, VarLength length, Value value) {
             return new Field(data, type, length, value);
         }
     };
 
     public static List<Field> parseFields(ByteArray data) {
-        return parser.parseTriads(data);
+        return parser.parseEntries(data);
     }
 
     public static void register(StringTag type, ValueParser parser) {
@@ -70,7 +70,7 @@ public class Field extends TagLengthValue<StringTag, VarLength, Triad.Value> {
         return field;
     }
 
-    public static Field from(Triad<StringTag, VarLength, Value> tlv) {
+    public static Field from(Entry<StringTag, VarLength, Value> tlv) {
         return new Field(tlv);
     }
 
@@ -96,13 +96,13 @@ public class Field extends TagLengthValue<StringTag, VarLength, Triad.Value> {
      *  ~~~~~~~~~~~
      */
 
-    interface TagParser extends Triad.Tag.Parser<StringTag> {
+    interface TagParser extends Entry.Tag.Parser<StringTag> {
         // just for alias
     }
-    interface LengthParser extends Triad.Length.Parser<StringTag, VarLength> {
+    interface LengthParser extends Entry.Length.Parser<StringTag, VarLength> {
         // just for alias
     }
-    public interface ValueParser extends Triad.Value.Parser<StringTag, VarLength, Triad.Value> {
+    public interface ValueParser extends Entry.Value.Parser<StringTag, VarLength, Entry.Value> {
         // just for alias
     }
 }

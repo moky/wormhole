@@ -35,7 +35,7 @@ import java.util.Map;
 
 import chat.dim.type.ByteArray;
 
-public abstract class FieldParser<F extends Field> extends Parser<F, StringTag, VarLength, Triad.Value>
+public abstract class FieldParser<F extends Field> extends Parser<F, StringTag, VarLength, Entry.Value>
         implements Field.TagParser, Field.LengthParser, Field.ValueParser {
 
     @Override
@@ -62,7 +62,7 @@ public abstract class FieldParser<F extends Field> extends Parser<F, StringTag, 
     }
 
     @Override
-    public Triad.Value parseValue(ByteArray data, StringTag type, VarLength length) {
+    public Entry.Value parseValue(ByteArray data, StringTag type, VarLength length) {
         Field.ValueParser parser = valueParsers.get(type.string);
         if (parser == null) {
             return RawValue.from(data);

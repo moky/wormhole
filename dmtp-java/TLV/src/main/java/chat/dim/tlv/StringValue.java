@@ -35,7 +35,7 @@ import java.nio.charset.Charset;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 
-public class StringValue extends Data implements Triad.Value {
+public class StringValue extends Data implements Entry.Value {
 
     public static final StringValue ZERO = from(Data.ZERO);
 
@@ -80,7 +80,7 @@ public class StringValue extends Data implements Triad.Value {
     }
 
     // parse value with tag & length
-    public static Triad.Value parse(ByteArray data, Triad.Tag tag, Triad.Length length) {
+    public static Entry.Value parse(ByteArray data, Entry.Tag tag, Entry.Length length) {
         return from(data);
     }
 }
