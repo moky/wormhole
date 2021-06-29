@@ -176,7 +176,11 @@ public class Packer {
         // create packages with fragments
         List<Package> packages = new ArrayList<>();
         ByteArray data;
-        if (head.bodyLength < 0) {
+        if (pages == 1) {
+            // package too small, no need to split
+            assert fragments.size() == 1 : "fragments error: " + fragments.size() + ", " + pages;
+            packages.add(pack);
+        } else if (head.bodyLength < 0) {
             // UDP (unlimited)
             assert head.bodyLength == -1 : "body length error: " + head.bodyLength;
             for (int index = 0; index < pages; ++index) {

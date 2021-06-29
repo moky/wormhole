@@ -42,7 +42,7 @@ import java.nio.channels.SelectableChannel;
 
 public class DiscreteChannel implements Channel {
 
-    private DatagramChannel impl;
+    protected DatagramChannel impl;
     private boolean blocking;
 
     public DiscreteChannel() {

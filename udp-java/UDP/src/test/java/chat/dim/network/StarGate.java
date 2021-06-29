@@ -37,22 +37,22 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.Date;
 
-import chat.dim.net.BaseConnection;
 import chat.dim.net.Channel;
 import chat.dim.udp.DiscreteChannel;
+import chat.dim.udp.PackageConnection;
 
-public class StarGate extends BaseConnection {
+public class StarGate extends PackageConnection {
 
     public static class Cargo {
         public final SocketAddress source;
         public final byte[] payload;
-        Cargo(SocketAddress remote, byte[] data) {
+        public Cargo(SocketAddress remote, byte[] data) {
             source = remote;
             payload = data;
         }
     }
 
-    private final DatagramChannel serverChannel;
+    public final DatagramChannel serverChannel;
 
     public StarGate(Channel byteChannel, DatagramChannel bindChannel) {
         super(byteChannel);

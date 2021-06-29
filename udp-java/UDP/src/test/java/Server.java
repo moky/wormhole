@@ -34,11 +34,37 @@ public class Server extends Thread implements Connection.Delegate {
     }
 
     public int send(byte[] data, SocketAddress remote) {
-        return connection.send(data, remote);
+        if (!connection.isOpen()) {
+            return -1;
+        }
+        if (connection.isConnected()) {
+            return connection.send(data);
+        } else {
+            return connection.send(data, remote);
+        }
     }
 
     public StarGate.Cargo receive() {
-        return connection.recv();
+        if (!connection.isOpen()) {
+            return null;
+        }
+        if (connection.isConnected()) {
+            byte[] data = connection.receive();
+            if (data == null) {
+                return null;
+            }
+            return new StarGate.Cargo(null, data);
+        }
+        StarGate.Cargo cargo = connection.recv();
+        if (cargo == null) {
+            return null;
+        }
+        try {
+            connection.serverChannel.connect(cargo.source);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return cargo;
     }
 
     @Override

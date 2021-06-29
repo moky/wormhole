@@ -68,7 +68,7 @@ class StateMachine extends BaseMachine<StateMachine, StateTransition, Connection
     }
 
     @Override
-    public StateMachine getContext() {
+    protected StateMachine getContext() {
         return this;
     }
 

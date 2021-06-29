@@ -42,7 +42,7 @@ import java.nio.channels.SocketChannel;
 
 public class StreamChannel implements Channel {
 
-    private SocketChannel impl;
+    protected SocketChannel impl;
     private boolean blocking;
 
     public StreamChannel() {

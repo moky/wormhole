@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Gate: Network Connection Module
+ *  UDP: User Datagram Protocol
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,35 +28,45 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.network;
+package chat.dim.mtp;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
+import java.util.Date;
 
-import chat.dim.net.Channel;
-import chat.dim.udp.ActiveConnection;
-import chat.dim.udp.DiscreteChannel;
+/**
+ *  Data package received (wait for assembling)
+ */
+public class Arrival extends Packer {
 
-public class StarLink extends ActiveConnection {
+    /**
+     *  Arrival task will be expired after 5 minutes if still not completed.
+     */
+    public static long EXPIRES = 300 * 1000; // milliseconds
 
-    public StarLink(InetSocketAddress remote, Channel byteChannel) {
-        super(remote, byteChannel);
+    private long lastTime;  // last receive timestamp (in milliseconds)
+
+    public Arrival(TransactionID sn, int pages) {
+        super(sn, pages);
     }
 
-    public StarLink(InetSocketAddress remote) {
-        this(remote, null);
-    }
-
-    public StarLink(String host, int port) {
-        this(new InetSocketAddress(host, port));
+    public boolean isExpired(long now) {
+        return (lastTime + EXPIRES) < now;
     }
 
     @Override
-    protected Channel connect(InetSocketAddress remote) throws IOException {
-        DiscreteChannel channel = new DiscreteChannel();
-        channel.configureBlocking(true);
-        channel.connect(remote);
-        channel.configureBlocking(false);
-        return channel;
+    public Package insert(Package fragment) {
+        if (!fragment.isFragment()) {
+            // message (or command?) no need to assemble
+            return fragment;
+        }
+        // message fragment
+        Package pack = super.insert(fragment);
+        if (pack == null) {
+            // update receive time
+            lastTime = (new Date()).getTime();
+            return null;
+        } else {
+            // all fragments received, remove this task
+            return pack;
+        }
     }
 }
