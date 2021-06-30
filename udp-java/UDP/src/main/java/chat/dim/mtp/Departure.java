@@ -30,6 +30,7 @@
  */
 package chat.dim.mtp;
 
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -49,23 +50,27 @@ public class Departure {
     public final DataType type;
     public final TransactionID sn;
 
+    public final SocketAddress remote;
+
     private int maxRetries = 3;  // totally 4 times to be sent at the most
     private long lastTime = 0;  // last send/receive timestamp (in milliseconds)
 
-    public Departure(List<Package> fragments) {
+    public Departure(List<Package> fragments, SocketAddress target) {
         super();
         assert fragments.size() > 0 : "departure packages should not be empty";
         Package first = fragments.get(0);
         packages = fragments;
         type = first.head.type;
         sn = first.head.sn;
+        remote = target;
     }
-    public Departure(Package pack) {
+    public Departure(Package pack, SocketAddress target) {
         super();
         packages = new ArrayList<>();
         packages.add(pack);
         type = pack.head.type;
         sn = pack.head.sn;
+        remote = target;
     }
 
     public boolean isExpired(long now) {

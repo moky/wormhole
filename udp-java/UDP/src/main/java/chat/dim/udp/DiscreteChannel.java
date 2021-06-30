@@ -30,8 +30,6 @@
  */
 package chat.dim.udp;
 
-import chat.dim.net.Channel;
-
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -40,10 +38,27 @@ import java.nio.channels.DatagramChannel;
 import java.nio.channels.NetworkChannel;
 import java.nio.channels.SelectableChannel;
 
+import chat.dim.net.Channel;
+
 public class DiscreteChannel implements Channel {
 
     protected DatagramChannel impl;
     private boolean blocking;
+
+    public DiscreteChannel(DatagramChannel channel, boolean block) throws IOException {
+        super();
+        impl = channel;
+        blocking = block;
+        if (channel.isBlocking() != blocking) {
+            channel.configureBlocking(blocking);
+        }
+    }
+
+    public DiscreteChannel(DatagramChannel channel) {
+        super();
+        impl = channel;
+        blocking = channel.isBlocking();
+    }
 
     public DiscreteChannel() {
         super();
@@ -91,12 +106,12 @@ public class DiscreteChannel implements Channel {
 
     @Override
     public SocketAddress getLocalAddress() throws IOException {
-        return impl != null ? impl.getLocalAddress() : null;
+        return impl == null ? null : impl.getLocalAddress();
     }
 
     @Override
     public SocketAddress getRemoteAddress() throws IOException {
-        return impl != null ? impl.getRemoteAddress() : null;
+        return impl == null ? null : impl.getRemoteAddress();
     }
 
     @Override
@@ -112,6 +127,23 @@ public class DiscreteChannel implements Channel {
     }
 
     @Override
+    public ByteChannel disconnect() throws IOException {
+        return impl.disconnect();
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (impl != null && impl.isOpen()) {
+            impl.close();
+        }
+        impl = null;
+    }
+
+    //
+    //  Input/Output
+    //
+
+    @Override
     public int read(ByteBuffer dst) throws IOException {
         return impl.read(dst);
     }
@@ -122,14 +154,23 @@ public class DiscreteChannel implements Channel {
     }
 
     @Override
-    public void close() throws IOException {
-        impl.close();
-        impl = null;
+    public SocketAddress receive(ByteBuffer dst) throws IOException {
+        if (impl.isConnected()) {
+            return impl.read(dst) > 0 ? impl.getRemoteAddress() : null;
+        } else {
+            return impl.receive(dst);
+        }
     }
 
     @Override
-    public ByteChannel disconnect() throws IOException {
-        close();
-        return this;
+    public int send(ByteBuffer src, SocketAddress target) throws IOException {
+        if (impl.isConnected()) {
+            assert target == null || target.equals(impl.getRemoteAddress()) :
+                    "target address error: " + target + ", " + impl.getRemoteAddress();
+            return impl.write(src);
+        } else {
+            assert target != null : "target address missed for unbound channel";
+            return impl.send(src, target);
+        }
     }
 }

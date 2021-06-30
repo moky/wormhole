@@ -30,25 +30,25 @@
  */
 package chat.dim.udp;
 
-import chat.dim.net.Channel;
-import chat.dim.net.ConnectionState;
-
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import chat.dim.net.Channel;
+import chat.dim.net.ConnectionState;
 
 public abstract class ActiveConnection extends PackageConnection {
 
     // remote address
-    public final InetSocketAddress remoteAddress;
+    public final SocketAddress remoteAddress;
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private int connecting;
     private boolean running;
 
-    public ActiveConnection(InetSocketAddress remote, Channel byteChannel) {
+    public ActiveConnection(SocketAddress remote, Channel byteChannel) {
         super(byteChannel);
         assert remote != null : "remote address error";
         remoteAddress = remote;
@@ -56,11 +56,11 @@ public abstract class ActiveConnection extends PackageConnection {
         running = false;
     }
 
-    public ActiveConnection(InetSocketAddress remote) {
+    public ActiveConnection(SocketAddress remote) {
         this(remote, null);
     }
 
-    protected abstract Channel connect(InetSocketAddress remote) throws IOException;
+    protected abstract Channel connect(SocketAddress remote) throws IOException;
 
     private boolean reconnect() {
         boolean redo = false;
@@ -88,11 +88,11 @@ public abstract class ActiveConnection extends PackageConnection {
     }
 
     @Override
-    protected Channel getConnectedChannel() {
+    protected Channel getChannel() throws IOException {
         if (channel == null) {
             reconnect();
         }
-        return super.getConnectedChannel();
+        return super.getChannel();
     }
 
     @Override
@@ -118,22 +118,22 @@ public abstract class ActiveConnection extends PackageConnection {
     }
 
     @Override
-    public byte[] receive() {
-        byte[] data = super.receive();
-        if (data == null && channel == null && reconnect()) {
+    public SocketAddress receive(ByteBuffer dst) throws IOException {
+        SocketAddress remote = super.receive(dst);
+        if (remote == null && channel == null && reconnect()) {
             // try again
-            data = super.receive();
+            remote = super.receive(dst);
         }
-        return data;
+        return remote;
     }
 
     @Override
-    public int send(byte[] data) {
-        int res = super.send(data);
-        if (res < 0 && channel == null && reconnect()) {
+    public int send(ByteBuffer src, SocketAddress target) throws IOException {
+        int sent = super.send(src, target);
+        if (sent == -1 && channel == null && reconnect()) {
             // try again
-            res = super.send(data);
+            sent = super.send(src, target);
         }
-        return res;
+        return sent;
     }
 }

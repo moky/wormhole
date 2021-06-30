@@ -1,19 +1,28 @@
 
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 
-import chat.dim.net.BaseConnection;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
-import chat.dim.network.StarLink;
+import chat.dim.net.Hub;
+import chat.dim.udp.ActiveHub;
 
-public class Client implements Connection.Delegate {
+public class Client extends Thread implements Connection.Delegate {
 
-    private final BaseConnection connection;
+    static void info(String msg) {
+        System.out.printf("%s\n", msg);
+    }
+    static void info(byte[] data) {
+        info(new String(data, StandardCharsets.UTF_8));
+    }
 
-    public Client(BaseConnection conn) {
-        super();
-        connection = conn;
+    static void idle() {
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -26,41 +35,8 @@ public class Client implements Connection.Delegate {
         info("<<< received (" + data.length + " bytes) from " + source + " to " + destination + ": " + text);
     }
 
-    public synchronized void start() {
-        connection.start();
-    }
-
-    public int send(byte[] data) {
-        return connection.send(data);
-    }
-
-    public byte[] receive() {
-        return connection.receive();
-    }
-
-    public void close() {
-        connection.close();
-    }
-
-    //
-    //  Test
-    //
-
-    static void info(String msg) {
-        System.out.printf("%s\n", msg);
-    }
-    static void info(byte[] data) {
-        info(new String(data, StandardCharsets.UTF_8));
-    }
-
-    public static void main(String[] args) throws InterruptedException {
-
-        info("Connecting server (" + Server.HOST + ":" + Server.PORT + ") ...");
-
-        StarLink conn = new StarLink(Server.HOST, Server.PORT);
-        Client client = new Client(conn);
-        conn.setDelegate(client);
-        client.start();
+    @Override
+    public void run() {
 
         StringBuilder text = new StringBuilder();
         for (int index = 0; index < 1024; ++index) {
@@ -73,14 +49,28 @@ public class Client implements Connection.Delegate {
             data = (index + " sheep:" + text).getBytes();
             info(">>> sending (" + data.length + " bytes): ");
             info(data);
-            client.send(data);
-            data = client.receive();
+            hub.send(data, null, remoteAddress);
+            data = hub.receive(remoteAddress, null);
             if (data != null) {
-                client.onDataReceived(data, null, null);
+                onDataReceived(data, remoteAddress, null);
             }
-            Thread.sleep(2000);
+            idle();
         }
 
-        client.close();
+        hub.closeConnection(remoteAddress, null);
+    }
+
+    private static SocketAddress remoteAddress;
+    private static Hub hub;
+
+    public static void main(String[] args) {
+
+        info("Connecting server (" + Server.HOST + ":" + Server.PORT + ") ...");
+
+        remoteAddress = new InetSocketAddress(Server.HOST, Server.PORT);
+
+        Client client = new Client();
+        hub = new ActiveHub(client);
+        client.start();
     }
 }

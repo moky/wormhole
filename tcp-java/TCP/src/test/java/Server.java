@@ -17,6 +17,21 @@ import chat.dim.tcp.StreamChannel;
 
 public class Server extends Thread implements Connection.Delegate {
 
+    static void info(String msg) {
+        System.out.printf("%s\n", msg);
+    }
+    static void info(byte[] data) {
+        info(new String(data, StandardCharsets.UTF_8));
+    }
+
+    static void idle() {
+        try {
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
     static String HOST = "192.168.31.91";
     static int PORT = 9394;
 
@@ -78,25 +93,6 @@ public class Server extends Thread implements Connection.Delegate {
             info(slaves.size() + " channel(s) alive");
         }
         return count > 0;
-    }
-
-    //
-    //  Test
-    //
-
-    static void info(String msg) {
-        System.out.printf("%s\n", msg);
-    }
-    static void info(byte[] data) {
-        info(new String(data, StandardCharsets.UTF_8));
-    }
-
-    private static void idle() {
-        try {
-            Thread.sleep(200);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
     }
 
     private static SocketAddress localAddress;

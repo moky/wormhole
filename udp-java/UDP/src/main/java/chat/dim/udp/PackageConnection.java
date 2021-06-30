@@ -31,6 +31,8 @@
 package chat.dim.udp;
 
 import java.io.IOException;
+import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -74,43 +76,68 @@ public class PackageConnection extends BaseConnection {
     }
 
     @Override
-    public byte[] receive() {
-        byte[] data = super.receive();
-        if (data != null && data.length > 0) {
-            // process income data
+    public SocketAddress receive(ByteBuffer dst) throws IOException {
+        SocketAddress remote = super.receive(dst);
+        if (remote != null) {
+            // get data from buffer
+            dst.flip();
+            int len = dst.limit() - dst.position();
+            assert len > 0 : "buffer error";
+            byte[] data = new byte[len];
+            dst.get(data);
+            // process data
             try {
-                data = processIncome(data);
+                data = processIncome(data, remote);
             } catch (IOException e) {
                 e.printStackTrace();
                 data = null;
             }
+            // response
+            if (data != null && data.length > 0) {
+                dst.clear();
+                len = dst.limit();
+                if (len > data.length) {
+                    len = data.length;
+                }
+                dst.put(data, 0, len);
+            }
         }
         // process
         processExpiredTasks();
-        return data;
+        return remote;
     }
 
     @Override
-    public int send(byte[] data) {
+    public int send(ByteBuffer src, SocketAddress target) throws IOException {
+        // get data from buffer
+        int len = src.limit() - src.position();
+        assert len > 0 : "buffer empty";
+        byte[] data = new byte[len];
+        src.get(data);
         // create MTP package
         Package pack = Package.create(DataType.Message, new Data(data));
         List<Package> fragments = Packer.split(pack);
         // append as Departure task to waiting queue
-        appendDeparture(new Departure(fragments));
+        appendDeparture(new Departure(fragments, target));
         // process
         processExpiredTasks();
         return 0;
     }
 
-    private void sendPackage(Package pack) {
-        super.send(pack.getBytes());
+    private void sendPackage(Package pack, SocketAddress target) throws IOException {
+        byte[] data = pack.getBytes();
+        assert data.length > 0 : "package size error";
+        ByteBuffer buffer = ByteBuffer.allocate(data.length);
+        buffer.put(data);
+        buffer.flip();
+        super.send(buffer, target);
     }
-    private void respond(DataType type, TransactionID sn, byte[] body) {
+    private void respond(DataType type, TransactionID sn, byte[] body, SocketAddress target) throws IOException {
         Package pack = Package.create(type, sn, new Data(body));
-        super.send(pack.getBytes());
+        sendPackage(pack, target);
     }
 
-    private void processExpiredTasks() {
+    private void processExpiredTasks() throws IOException {
         // check departures
         Departure outgo;
         while (true) {
@@ -145,7 +172,7 @@ public class PackageConnection extends BaseConnection {
     //  Arrival
     //
 
-    private byte[] processIncome(byte[] data) throws IOException {
+    private byte[] processIncome(byte[] data, SocketAddress source) throws IOException {
         // create MTP package
         Package pack = Package.parse(new Data(data));
         if (pack == null) {
@@ -168,10 +195,10 @@ public class PackageConnection extends BaseConnection {
             //      'NOOP'
             if (body.equals(PING)) {
                 // PING -> PONG
-                respond(DataType.CommandResponse, pack.head.sn, PONG);
+                respond(DataType.CommandResponse, pack.head.sn, PONG, source);
             } else if (body.equals(NOOP)) {
                 // NOOP -> OK
-                respond(DataType.CommandResponse, pack.head.sn, OK);
+                respond(DataType.CommandResponse, pack.head.sn, OK, source);
             }
             return null;
         } else if (type.isMessageResponse()) {
@@ -188,7 +215,7 @@ public class PackageConnection extends BaseConnection {
             // process MessageFragment:
             //      'OK'
             //      'AGAIN'
-            respond(DataType.MessageResponse, pack.head.sn, OK);
+            respond(DataType.MessageResponse, pack.head.sn, OK, source);
             // check cached fragments
             pack = insertFragment(pack);
             if (pack == null) {
@@ -204,11 +231,11 @@ public class PackageConnection extends BaseConnection {
             // process Message:
             //      'OK'
             //      'AGAIN'
-            respond(DataType.MessageResponse, pack.head.sn, OK);
+            respond(DataType.MessageResponse, pack.head.sn, OK, source);
         }
         // check body which should be in a Command
         if (body.equals(PING)) {
-            respond(DataType.MessageResponse, pack.head.sn, PONG);
+            respond(DataType.MessageResponse, pack.head.sn, PONG, source);
             return null;
         } else if (body.equals(PONG)) {
             return null;
@@ -293,7 +320,7 @@ public class PackageConnection extends BaseConnection {
         }
     }
 
-    private boolean sendDeparture(Departure task) {
+    private boolean sendDeparture(Departure task) throws IOException {
         // 1. get fragments
         List<Package> fragments = task.getFragments();
         if (fragments == null || fragments.size() == 0) {
@@ -313,7 +340,7 @@ public class PackageConnection extends BaseConnection {
         }
         // 3. send out all fragments
         for (Package pack : fragments) {
-            sendPackage(pack);
+            sendPackage(pack, task.remote);
         }
         return true;
     }

@@ -17,7 +17,7 @@ public class Client extends Thread implements Connection.Delegate {
         info(new String(data, StandardCharsets.UTF_8));
     }
 
-    private static void idle() {
+    static void idle() {
         try {
             Thread.sleep(2000);
         } catch (InterruptedException e) {

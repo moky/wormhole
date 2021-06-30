@@ -1,92 +1,53 @@
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
+import java.util.Set;
 
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
-import chat.dim.network.StarGate;
+import chat.dim.udp.ActiveHub;
+import chat.dim.udp.DiscreteChannel;
+import chat.dim.udp.PackageConnection;
+
+class ServerHub extends ActiveHub {
+
+    public ServerHub(Connection.Delegate delegate) {
+        super(delegate);
+    }
+
+    public void bind(SocketAddress local) throws IOException {
+        getConnection(null, local);
+    }
+
+    @Override
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
+        DiscreteChannel channel = new DiscreteChannel();
+        channel.bind(Server.localAddress);
+        PackageConnection connection = new PackageConnection(channel);
+        // set delegate
+        Connection.Delegate delegate = getDelegate();
+        if (delegate != null) {
+            connection.setDelegate(delegate);
+        }
+        // start FSM
+        connection.start();
+        return connection;
+    }
+}
 
 public class Server extends Thread implements Connection.Delegate {
 
-//    static String HOST = "127.0.0.1";
-    static String HOST = "192.168.31.91";
-    static int PORT = 9394;
-
-    private final StarGate connection;
-
-    public Server(StarGate conn) {
-        super();
-        connection = conn;
+    static void info(String msg) {
+        System.out.printf("%s\n", msg);
+    }
+    static void info(byte[] data) {
+        info(new String(data, StandardCharsets.UTF_8));
     }
 
-    @Override
-    public void onConnectionStateChanged(Connection connection, ConnectionState oldStatus, ConnectionState newStatus) {
-        info("connection state changed: " + oldStatus + " -> " + newStatus);
-    }
-
-    public void onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
-        String text = new String(data, StandardCharsets.UTF_8);
-        info("received (" + data.length + " bytes) from " + source + " to " + destination + ": " + text);
-        text = data.length + " byte(s) received";
-        data = text.getBytes(StandardCharsets.UTF_8);
-        send(data, source);
-    }
-
-    public int send(byte[] data, SocketAddress remote) {
-        if (!connection.isOpen()) {
-            return -1;
-        }
-        if (connection.isConnected()) {
-            return connection.send(data);
-        } else {
-            return connection.send(data, remote);
-        }
-    }
-
-    public StarGate.Cargo receive() {
-        if (!connection.isOpen()) {
-            return null;
-        }
-        if (connection.isConnected()) {
-            byte[] data = connection.receive();
-            if (data == null) {
-                return null;
-            }
-            return new StarGate.Cargo(null, data);
-        }
-        StarGate.Cargo cargo = connection.recv();
-        if (cargo == null) {
-            return null;
-        }
-        try {
-            connection.serverChannel.connect(cargo.source);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return cargo;
-    }
-
-    @Override
-    public synchronized void start() {
-        connection.start();
-        super.start();
-    }
-
-    @Override
-    public void run() {
-        StarGate.Cargo cargo;
-        while (true) {
-            cargo = receive();
-            if (cargo != null) {
-                onDataReceived(cargo.payload, cargo.source, null);
-            } else {
-                idle();
-            }
-        }
-    }
-
-    private void idle() {
+    static void idle() {
         try {
             Thread.sleep(200);
         } catch (InterruptedException e) {
@@ -94,24 +55,64 @@ public class Server extends Thread implements Connection.Delegate {
         }
     }
 
-    //
-    //  Test
-    //
+    static String HOST = "192.168.31.91";
+    static int PORT = 9394;
 
-    private static void info(String msg) {
-        Client.info(msg);
+    @Override
+    public void onConnectionStateChanged(Connection connection, ConnectionState oldStatus, ConnectionState newStatus) {
+        info("!!! connection state changed: " + oldStatus + " -> " + newStatus);
     }
-    private static void info(byte[] data) {
-        Client.info(data);
+
+    public void onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
+        String text = new String(data, StandardCharsets.UTF_8);
+        info("<<< received (" + data.length + " bytes) from " + source + " to " + destination + ": " + text);
+        text = data.length + " byte(s) received";
+        data = text.getBytes(StandardCharsets.UTF_8);
+        info(">>> responding: " + text);
+        hub.send(data, destination, source);
     }
+
+    @Override
+    public void run() {
+        while (true) {
+            try {
+                if (!process()) {
+                    idle();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private boolean process() throws IOException {
+        int count = 0;
+        byte[] data = hub.receive(null, localAddress);
+        if (data != null && data.length > 0) {
+            onDataReceived(data, null, localAddress);
+            ++count;
+        }
+        return count > 0;
+    }
+
+    static SocketAddress localAddress;
+
+    private static final Set<SocketAddress> remoteAddresses = new HashSet<>();
+
+    private static ServerHub hub;
+    private static Server server;
 
     public static void main(String[] args) throws IOException {
 
         info("Starting server (" + HOST + ":" + PORT + ") ...");
 
-        StarGate conn = StarGate.create(HOST, PORT);
-        Server server = new Server(conn);
-        conn.setDelegate(server);
+        localAddress = new InetSocketAddress(HOST, PORT);
+
+        server = new Server();
+
+        hub = new ServerHub(server);
+        hub.bind(localAddress);
+
         server.start();
     }
 }
