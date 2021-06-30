@@ -30,9 +30,13 @@
  */
 package chat.dim.net;
 
+import java.io.IOException;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 
-public interface Connection {
+import chat.dim.threading.Ticker;
+
+public interface Connection extends Ticker {
 
     //
     //  Flags
@@ -41,22 +45,25 @@ public interface Connection {
     boolean isBound();
     boolean isConnected();
 
+    SocketAddress getLocalAddress();
     SocketAddress getRemoteAddress();
 
     /**
      *  Send data
      *
-     * @param data - outgo package
-     * @return count of bytes sent, -1 on error
+     * @param src    - outgo buffer
+     * @param target - remote address; can be null when it's connected
+     * @return count of bytes sent, probably zero when it's non-blocking mode
      */
-    int send(byte[] data);
+    int send(ByteBuffer src, SocketAddress target) throws IOException;
 
     /**
      *  Receive data
      *
-     * @return income package
+     * @param dst    - income buffer
+     * @return remote address; null on received nothing
      */
-    byte[] receive();
+    SocketAddress receive(ByteBuffer dst) throws IOException;
 
     /**
      *  Close the connection
@@ -70,6 +77,10 @@ public interface Connection {
      */
     ConnectionState getState();
 
+    /**
+     *  Connection Delegate
+     *  ~~~~~~~~~~~~~~~~~~~
+     */
     interface Delegate {
 
         /**

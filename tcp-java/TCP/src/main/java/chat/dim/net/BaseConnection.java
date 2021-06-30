@@ -37,16 +37,7 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.Date;
 
-import chat.dim.threading.Ticker;
-
-public class BaseConnection implements Connection, StateDelegate, Ticker {
-
-    /*  Maximum Transmission Unit
-     *  ~~~~~~~~~~~~~~~~~~~~~~~~~
-     *
-     *  Buffer size for receiving package
-     */
-    public static int MTU = 1472; // 1500 - 20 - 8
+public class BaseConnection implements Connection, StateDelegate {
 
     public static long EXPIRES = 16 * 1000;  // 16 seconds
 
@@ -85,11 +76,63 @@ public class BaseConnection implements Connection, StateDelegate, Ticker {
         }
     }
 
-    protected Channel getConnectedChannel() {
-        Channel sock = channel;
-        if (sock != null && sock.isOpen() && sock.isConnected()) {
-            return sock;
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        } else if (other instanceof Connection) {
+            Connection conn = (Connection) other;
+            return addressEqual(getRemoteAddress(), conn.getRemoteAddress()) &&
+                    addressEqual(getLocalAddress(), conn.getLocalAddress());
         } else {
+            return false;
+        }
+    }
+    public boolean equals(Connection other) {
+        if (other == null) {
+            return false;
+        } else if (other == this) {
+            return true;
+        }
+        return addressEqual(getRemoteAddress(), other.getRemoteAddress()) &&
+                addressEqual(getLocalAddress(), other.getLocalAddress());
+    }
+    private static boolean addressEqual(SocketAddress address1, SocketAddress address2) {
+        if (address1 == null) {
+            return address2 == null;
+        } else if (address2 == null) {
+            return false;
+        } else {
+            return address1.equals(address2);
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        SocketAddress local = getLocalAddress();
+        SocketAddress remote = getRemoteAddress();
+        if (remote == null) {
+            assert local != null : "both local & remote address are empty";
+            return local.hashCode();
+        } else {
+            //  same algorithm as Pair::hashCode()
+            //  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            //  remote's hashCode is multiplied by an arbitrary prime number (13)
+            //  in order to make sure there is a difference in the hashCode between
+            //  these two parameters:
+            //      remote: a  local: aa
+            //      local: aa  remote: a
+            return remote.hashCode() * 13 + (local == null ? 0 : local.hashCode());
+        }
+    }
+
+    @Override
+    public SocketAddress getLocalAddress() {
+        Channel sock = channel;
+        try {
+            return sock == null ? null : sock.getLocalAddress();
+        } catch (IOException e) {
+            e.printStackTrace();
             return null;
         }
     }
@@ -133,37 +176,6 @@ public class BaseConnection implements Connection, StateDelegate, Ticker {
         return sock != null && sock.isConnected();
     }
 
-    private int write(byte[] data) throws IOException {
-        Channel sock = getConnectedChannel();
-        if (sock == null) {
-            throw new SocketException("socket lost, cannot write data: " + data.length + " byte(s)");
-        }
-        ByteBuffer buffer = ByteBuffer.allocate(data.length);
-        buffer.put(data);
-        buffer.flip();
-        int sent = sock.write(buffer);
-        lastSentTime = (new Date()).getTime();
-        return sent;
-    }
-
-    private byte[] read() throws IOException {
-        Channel sock = getConnectedChannel();
-        if (sock == null) {
-            throw new SocketException("socket lost, cannot read data");
-        }
-        ByteBuffer buffer = ByteBuffer.allocate(MTU);
-        int res = sock.read(buffer);
-        if (res <= 0) {
-            return null;
-        }
-        assert res == buffer.position() : "buffer error: " + res + ", " + buffer.position();
-        byte[] data = new byte[res];
-        buffer.flip();
-        buffer.get(data);
-        lastReceivedTime = (new Date()).getTime();
-        return data;
-    }
-
     @Override
     public void close() {
         Channel sock = channel;
@@ -179,10 +191,22 @@ public class BaseConnection implements Connection, StateDelegate, Ticker {
         }
     }
 
+    protected Channel getChannel() throws IOException {
+        Channel sock = channel;
+        if (sock == null || !sock.isOpen()) {
+            throw new SocketException("connection lost: " + sock);
+        }
+        return sock;
+    }
+
     @Override
-    public byte[] receive() {
+    public SocketAddress receive(ByteBuffer dst) throws IOException {
         try {
-            return read();
+            SocketAddress remote = getChannel().receive(dst);
+            if (remote != null) {
+                lastReceivedTime = (new Date()).getTime();
+            }
+            return remote;
         } catch (IOException e) {
             // [TCP] failed to receive data
             e.printStackTrace();
@@ -193,9 +217,13 @@ public class BaseConnection implements Connection, StateDelegate, Ticker {
     }
 
     @Override
-    public int send(byte[] data) {
+    public int send(ByteBuffer src, SocketAddress target) throws IOException {
         try {
-            return write(data);
+            int sent = getChannel().send(src, target);
+            if (sent != -1) {
+                lastSentTime = (new Date()).getTime();
+            }
+            return sent;
         } catch (IOException e) {
             // [TCP] failed to send data
             e.printStackTrace();
@@ -206,14 +234,8 @@ public class BaseConnection implements Connection, StateDelegate, Ticker {
     }
 
     //
-    //  Status
+    //  States
     //
-
-    @Override
-    public ConnectionState getState() {
-        fsm.tick();
-        return fsm.getCurrentState();
-    }
 
     protected void changeState(String name) {
         ConnectionState oldState = fsm.getCurrentState();
@@ -229,6 +251,17 @@ public class BaseConnection implements Connection, StateDelegate, Ticker {
         }
     }
 
+    @Override
+    public ConnectionState getState() {
+        fsm.tick();
+        return fsm.getCurrentState();
+    }
+
+    @Override
+    public void tick() {
+        fsm.tick();
+    }
+
     public void start() {
         fsm.start();
     }
@@ -236,15 +269,6 @@ public class BaseConnection implements Connection, StateDelegate, Ticker {
     public void stop() {
         close();
         fsm.stop();
-    }
-
-    /**
-     *  Try to receive one data package,
-     *  which will be cached into a memory pool
-     */
-    @Override
-    public void tick() {
-        fsm.tick();
     }
 
     //

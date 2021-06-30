@@ -32,6 +32,7 @@ package chat.dim.net;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.AlreadyBoundException;
 import java.nio.channels.AlreadyConnectedException;
 import java.nio.channels.AsynchronousCloseException;
@@ -41,9 +42,11 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ConnectionPendingException;
 import java.nio.channels.IllegalBlockingModeException;
 import java.nio.channels.NetworkChannel;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.UnresolvedAddressException;
 import java.nio.channels.UnsupportedAddressTypeException;
+import java.nio.channels.WritableByteChannel;
 
 public interface Channel extends ByteChannel {
 
@@ -296,4 +299,133 @@ public interface Channel extends ByteChannel {
      *          If some other I/O error occurs
      */
     ByteChannel disconnect() throws IOException;
+
+    /**
+     * Receives a datagram via this channel.
+     *
+     * <p> If a datagram is immediately available, or if this channel is in
+     * blocking mode and one eventually becomes available, then the datagram is
+     * copied into the given byte buffer and its source address is returned.
+     * If this channel is in non-blocking mode and a datagram is not
+     * immediately available then this method immediately returns
+     * <tt>null</tt>.
+     *
+     * <p> The datagram is transferred into the given byte buffer starting at
+     * its current position, as if by a regular {@link
+     * ReadableByteChannel#read(java.nio.ByteBuffer) read} operation.  If there
+     * are fewer bytes remaining in the buffer than are required to hold the
+     * datagram then the remainder of the datagram is silently discarded.
+     *
+     * <p> This method performs exactly the same security checks as the {@link
+     * java.net.DatagramSocket#receive receive} method of the {@link
+     * java.net.DatagramSocket} class.  That is, if the socket is not connected
+     * to a specific remote address and a security manager has been installed
+     * then for each datagram received this method verifies that the source's
+     * address and port number are permitted by the security manager's {@link
+     * java.lang.SecurityManager#checkAccept checkAccept} method.  The overhead
+     * of this security check can be avoided by first connecting the socket via
+     * the {@link #connect connect} method.
+     *
+     * <p> This method may be invoked at any time.  If another thread has
+     * already initiated a read operation upon this channel, however, then an
+     * invocation of this method will block until the first operation is
+     * complete. If this channel's socket is not bound then this method will
+     * first cause the socket to be bound to an address that is assigned
+     * automatically, as if invoking the {@link #bind bind} method with a
+     * parameter of {@code null}. </p>
+     *
+     * @param  dst
+     *         The buffer into which the datagram is to be transferred
+     *
+     * @return  The datagram's source address,
+     *          or <tt>null</tt> if this channel is in non-blocking mode
+     *          and no datagram was immediately available
+     *
+     * @throws  ClosedChannelException
+     *          If this channel is closed
+     *
+     * @throws  AsynchronousCloseException
+     *          If another thread closes this channel
+     *          while the read operation is in progress
+     *
+     * @throws  ClosedByInterruptException
+     *          If another thread interrupts the current thread
+     *          while the read operation is in progress, thereby
+     *          closing the channel and setting the current thread's
+     *          interrupt status
+     *
+     * @throws  SecurityException
+     *          If a security manager has been installed
+     *          and it does not permit datagrams to be accepted
+     *          from the datagram's sender
+     *
+     * @throws  IOException
+     *          If some other I/O error occurs
+     */
+    SocketAddress receive(ByteBuffer dst) throws IOException;
+
+    /**
+     * Sends a datagram via this channel.
+     *
+     * <p> If this channel is in non-blocking mode and there is sufficient room
+     * in the underlying output buffer, or if this channel is in blocking mode
+     * and sufficient room becomes available, then the remaining bytes in the
+     * given buffer are transmitted as a single datagram to the given target
+     * address.
+     *
+     * <p> The datagram is transferred from the byte buffer as if by a regular
+     * {@link WritableByteChannel#write(java.nio.ByteBuffer) write} operation.
+     *
+     * <p> This method performs exactly the same security checks as the {@link
+     * java.net.DatagramSocket#send send} method of the {@link
+     * java.net.DatagramSocket} class.  That is, if the socket is not connected
+     * to a specific remote address and a security manager has been installed
+     * then for each datagram sent this method verifies that the target address
+     * and port number are permitted by the security manager's {@link
+     * java.lang.SecurityManager#checkConnect checkConnect} method.  The
+     * overhead of this security check can be avoided by first connecting the
+     * socket via the {@link #connect connect} method.
+     *
+     * <p> This method may be invoked at any time.  If another thread has
+     * already initiated a write operation upon this channel, however, then an
+     * invocation of this method will block until the first operation is
+     * complete. If this channel's socket is not bound then this method will
+     * first cause the socket to be bound to an address that is assigned
+     * automatically, as if by invoking the {@link #bind bind} method with a
+     * parameter of {@code null}. </p>
+     *
+     * @param  src
+     *         The buffer containing the datagram to be sent
+     *
+     * @param  target
+     *         The address to which the datagram is to be sent
+     *
+     * @return   The number of bytes sent, which will be either the number
+     *           of bytes that were remaining in the source buffer when this
+     *           method was invoked or, if this channel is non-blocking, may be
+     *           zero if there was insufficient room for the datagram in the
+     *           underlying output buffer
+     *
+     * @throws  ClosedChannelException
+     *          If this channel is closed
+     *
+     * @throws  AsynchronousCloseException
+     *          If another thread closes this channel
+     *          while the read operation is in progress
+     *
+     * @throws  ClosedByInterruptException
+     *          If another thread interrupts the current thread
+     *          while the read operation is in progress, thereby
+     *          closing the channel and setting the current thread's
+     *          interrupt status
+     *
+     * @throws  SecurityException
+     *          If a security manager has been installed
+     *          and it does not permit datagrams to be sent
+     *          to the given address
+     *
+     * @throws  IOException
+     *          If some other I/O error occurs
+     */
+    int send(ByteBuffer src, SocketAddress target) throws IOException;
 }
