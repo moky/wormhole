@@ -211,6 +211,13 @@ public abstract class BaseHub implements Hub, Ticker {
             // get connections connected to remote address
             Map<SocketAddress, Connection> table = connectionMap.get(remote);
             if (table == null) {
+                if (local != null) {
+                    // mapping: (local, null) => Connection
+                    table = connectionMap.get(local);
+                    if (table != null) {
+                        return table.get(anyRemoteAddress);
+                    }
+                }
                 return null;
             } else if (local != null) {
                 // mapping: (remote, local) => Connection
@@ -227,9 +234,7 @@ public abstract class BaseHub implements Hub, Ticker {
             return it.hasNext() ? it.next() : null;
         }
     }
-    private boolean createIndexesForConnection(Connection conn) {
-        SocketAddress remote = conn.getRemoteAddress();
-        SocketAddress local = conn.getLocalAddress();
+    private boolean createIndexesForConnection(Connection conn, SocketAddress remote, SocketAddress local) {
         if (remote == null) {
             if (local == null) {
                 //throw new NullPointerException("both local & remote addresses are empty");
@@ -325,7 +330,7 @@ public abstract class BaseHub implements Hub, Ticker {
                 if (conn == null) {
                     // create it
                     conn = createConnection(remote, local);
-                    if (conn != null && createIndexesForConnection(conn)) {
+                    if (conn != null && createIndexesForConnection(conn, remote, local)) {
                         // make sure different connection with same pair(remote, local) not exists
                         connectionSet.remove(conn);
                         // cache it

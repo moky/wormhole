@@ -34,15 +34,16 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 
+import chat.dim.net.ActiveConnection;
 import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 
-public class ActiveHub extends BaseHub {
+public class ActiveStreamHub extends BaseHub {
 
     private WeakReference<Connection.Delegate> delegateRef = null;
 
-    public ActiveHub(Connection.Delegate delegate) {
+    public ActiveStreamHub(Connection.Delegate delegate) {
         super();
         setDelegate(delegate);
     }
@@ -79,10 +80,6 @@ public class ActiveHub extends BaseHub {
         }
         // start FSM
         connection.start();
-        // connect to remote address
-        if (remote != null) {
-            connection.connect(remote);
-        }
         return connection;
     }
 }

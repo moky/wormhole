@@ -30,6 +30,7 @@
  */
 package chat.dim.mtp;
 
+import java.net.SocketAddress;
 import java.util.Date;
 
 /**
@@ -38,18 +39,23 @@ import java.util.Date;
 public class Arrival extends Packer {
 
     /**
-     *  Arrival task will be expired after 5 minutes if still not completed.
+     *  Arrival task will be expired after 10 minutes if still not completed.
      */
-    public static long EXPIRES = 300 * 1000; // milliseconds
+    public static long EXPIRES = 600 * 1000; // milliseconds
 
-    private long lastTime;  // last receive timestamp (in milliseconds)
+    private long expired;  // expired time (timestamp in milliseconds)
 
-    public Arrival(TransactionID sn, int pages) {
+    public final SocketAddress source;
+    public final SocketAddress destination;
+
+    public Arrival(TransactionID sn, int pages, SocketAddress from, SocketAddress to) {
         super(sn, pages);
+        source = from;
+        destination = to;
     }
 
     public boolean isExpired(long now) {
-        return (lastTime + EXPIRES) < now;
+        return expired < now;
     }
 
     @Override
@@ -62,7 +68,7 @@ public class Arrival extends Packer {
         Package pack = super.insert(fragment);
         if (pack == null) {
             // update receive time
-            lastTime = (new Date()).getTime();
+            expired = (new Date()).getTime() + EXPIRES;
             return null;
         } else {
             // all fragments received, remove this task

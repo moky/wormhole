@@ -50,31 +50,25 @@ public class Departure {
     public final DataType type;
     public final TransactionID sn;
 
-    public final SocketAddress remote;
+    public final SocketAddress source;
+    public final SocketAddress destination;
 
     private int maxRetries = 3;  // totally 4 times to be sent at the most
-    private long lastTime = 0;  // last send/receive timestamp (in milliseconds)
+    private long expired = 0;    // expired time (timestamp in milliseconds)
 
-    public Departure(List<Package> fragments, SocketAddress target) {
+    public Departure(List<Package> fragments, SocketAddress from, SocketAddress to) {
         super();
         assert fragments.size() > 0 : "departure packages should not be empty";
         Package first = fragments.get(0);
         packages = fragments;
         type = first.head.type;
         sn = first.head.sn;
-        remote = target;
-    }
-    public Departure(Package pack, SocketAddress target) {
-        super();
-        packages = new ArrayList<>();
-        packages.add(pack);
-        type = pack.head.type;
-        sn = pack.head.sn;
-        remote = target;
+        source = from;
+        destination = to;
     }
 
     public boolean isExpired(long now) {
-        return maxRetries >= 0 && (lastTime + EXPIRES) < now;
+        return maxRetries >= 0 && expired < now;
     }
 
     public synchronized List<Package> getFragments() {
@@ -85,8 +79,8 @@ public class Departure {
             // all fragments sent
             return null;
         } else {
-            // update sending time
-            lastTime = (new Date()).getTime();
+            // update expired time
+            expired = (new Date()).getTime() + EXPIRES;
             --maxRetries;
             // return the rest fragments
             return new ArrayList<>(packages);
@@ -107,8 +101,8 @@ public class Departure {
             // all fragments sent, remove this task
             return true;
         } else if (packages.size() < total) {
-            // update receive time
-            lastTime = (new Date()).getTime();
+            // update expired time
+            expired = (new Date()).getTime() + EXPIRES;
             return false;
         } else {
             // fragment not match

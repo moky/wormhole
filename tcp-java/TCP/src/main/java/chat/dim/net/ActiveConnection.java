@@ -28,17 +28,13 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tcp;
+package chat.dim.net;
 
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import chat.dim.net.BaseConnection;
-import chat.dim.net.Channel;
-import chat.dim.net.ConnectionState;
 
 public abstract class ActiveConnection extends BaseConnection {
 

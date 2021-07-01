@@ -5,8 +5,7 @@ import java.nio.charset.StandardCharsets;
 
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
-import chat.dim.net.Hub;
-import chat.dim.tcp.ActiveHub;
+import chat.dim.tcp.ActiveStreamHub;
 
 public class Client extends Thread implements Connection.Delegate {
 
@@ -17,9 +16,9 @@ public class Client extends Thread implements Connection.Delegate {
         info(new String(data, StandardCharsets.UTF_8));
     }
 
-    static void idle() {
+    static void idle(long millis) {
         try {
-            Thread.sleep(2000);
+            Thread.sleep(millis);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -27,7 +26,11 @@ public class Client extends Thread implements Connection.Delegate {
 
     @Override
     public void onConnectionStateChanged(Connection connection, ConnectionState oldStatus, ConnectionState newStatus) {
-        info("!!! connection state changed: " + oldStatus + " -> " + newStatus);
+        info("!!! connection ("
+                + connection.getLocalAddress() + ", "
+                + connection.getRemoteAddress() + ") state changed: "
+                + oldStatus + " -> "
+                + newStatus);
     }
 
     public void onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
@@ -54,14 +57,14 @@ public class Client extends Thread implements Connection.Delegate {
             if (data != null) {
                 onDataReceived(data, remoteAddress, null);
             }
-            idle();
+            idle(2000);
         }
 
         hub.closeConnection(remoteAddress, null);
     }
 
     private static SocketAddress remoteAddress;
-    private static Hub hub;
+    private static ActiveStreamHub hub;
 
     public static void main(String[] args) {
 
@@ -70,7 +73,7 @@ public class Client extends Thread implements Connection.Delegate {
         remoteAddress = new InetSocketAddress(Server.HOST, Server.PORT);
 
         Client client = new Client();
-        hub = new ActiveHub(client);
+        hub = new ActiveStreamHub(client);
         client.start();
     }
 }

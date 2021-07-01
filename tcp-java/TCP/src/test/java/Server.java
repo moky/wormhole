@@ -17,48 +17,45 @@ import chat.dim.tcp.StreamChannel;
 
 public class Server extends Thread implements Connection.Delegate {
 
-    static void info(String msg) {
-        System.out.printf("%s\n", msg);
-    }
-    static void info(byte[] data) {
-        info(new String(data, StandardCharsets.UTF_8));
-    }
-
-    static void idle() {
-        try {
-            Thread.sleep(200);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
     static String HOST = "192.168.31.91";
     static int PORT = 9394;
 
+    private boolean running = false;
+
     @Override
     public void onConnectionStateChanged(Connection connection, ConnectionState oldStatus, ConnectionState newStatus) {
-        info("!!! connection state changed: " + oldStatus + " -> " + newStatus);
+        Client.info("!!! connection ("
+                + connection.getLocalAddress() + ", "
+                + connection.getRemoteAddress() + ") state changed: "
+                + oldStatus + " -> "
+                + newStatus);
     }
 
     public void onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
         String text = new String(data, StandardCharsets.UTF_8);
-        info("<<< received (" + data.length + " bytes) from " + source + " to " + destination + ": " + text);
+        Client.info("<<< received (" + data.length + " bytes) from " + source + " to " + destination + ": " + text);
         text = data.length + " byte(s) received";
         data = text.getBytes(StandardCharsets.UTF_8);
-        info(">>> responding: " + text);
+        Client.info(">>> responding: " + text);
         hub.send(data, destination, source);
+    }
+
+    @Override
+    public synchronized void start() {
+        running = true;
+        super.start();
     }
 
     @Override
     public void run() {
         SocketChannel channel;
-        while (true) {
+        while (running) {
             try {
                 channel = master.accept();
                 if (channel != null) {
                     slaves.add(channel);
                 } else if (!process()) {
-                    idle();
+                    Client.idle(128);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -71,7 +68,8 @@ public class Server extends Thread implements Connection.Delegate {
         byte[] data;
         SocketAddress remote;
         Set<SocketChannel> dying = new HashSet<>();
-        for (SocketChannel item : slaves) {
+        Set<SocketChannel> channels = new HashSet<>(slaves);
+        for (SocketChannel item : channels) {
             if (!item.isOpen()) {
                 dying.add(item);
                 continue;
@@ -84,13 +82,13 @@ public class Server extends Thread implements Connection.Delegate {
             }
         }
         if (dying.size() > 0) {
-            info(dying.size() + " channel(s) dying");
+            Client.info(dying.size() + " channel(s) dying");
             for (SocketChannel item : dying) {
                 slaves.remove(item);
             }
         }
         if (slaves.size() > 0) {
-            info(slaves.size() + " channel(s) alive");
+            Client.info(slaves.size() + " channel(s) alive");
         }
         return count > 0;
     }
@@ -104,7 +102,7 @@ public class Server extends Thread implements Connection.Delegate {
 
     public static void main(String[] args) throws IOException {
 
-        info("Starting server (" + HOST + ":" + PORT + ") ...");
+        Client.info("Starting server (" + HOST + ":" + PORT + ") ...");
 
         localAddress = new InetSocketAddress(HOST, PORT);
         master = ServerSocketChannel.open();
