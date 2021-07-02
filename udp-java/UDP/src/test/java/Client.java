@@ -54,11 +54,11 @@ public class Client extends Thread implements Connection.Delegate {
             info(">>> sending (" + data.length + " bytes): ");
             info(data);
             hub.send(data, null, remoteAddress);
+            idle(2000);
             data = hub.receive(remoteAddress, null);
             if (data != null) {
                 onDataReceived(data, remoteAddress, null);
             }
-            idle(2000);
         }
 
         hub.closeConnection(remoteAddress, null);

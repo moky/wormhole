@@ -1,7 +1,9 @@
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.UnknownHostException;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
@@ -17,8 +19,16 @@ import chat.dim.tcp.StreamChannel;
 
 public class Server extends Thread implements Connection.Delegate {
 
-    static String HOST = "192.168.31.91";
+    static InetAddress HOST;
     static int PORT = 9394;
+
+    static {
+        try {
+            HOST = InetAddress.getLocalHost();
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+    }
 
     private boolean running = false;
 
@@ -34,11 +44,12 @@ public class Server extends Thread implements Connection.Delegate {
     public void onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
         String text = new String(data, StandardCharsets.UTF_8);
         Client.info("<<< received (" + data.length + " bytes) from " + source + " to " + destination + ": " + text);
-        text = data.length + " byte(s) received";
+        text = (counter++) + "# " + data.length + " byte(s) received";
         data = text.getBytes(StandardCharsets.UTF_8);
         Client.info(">>> responding: " + text);
         hub.send(data, destination, source);
     }
+    static int counter = 0;
 
     @Override
     public synchronized void start() {
@@ -67,18 +78,21 @@ public class Server extends Thread implements Connection.Delegate {
         int count = 0;
         byte[] data;
         SocketAddress remote;
-        Set<SocketChannel> dying = new HashSet<>();
         Set<SocketChannel> channels = new HashSet<>(slaves);
+        // receive data
         for (SocketChannel item : channels) {
-            if (!item.isOpen()) {
-                dying.add(item);
-                continue;
-            }
             remote = item.getRemoteAddress();
             data = hub.receive(remote, localAddress);
             if (data != null && data.length > 0) {
                 onDataReceived(data, remote, localAddress);
                 ++count;
+            }
+        }
+        // check closed channels
+        Set<SocketChannel> dying = new HashSet<>();
+        for (SocketChannel item : channels) {
+            if (!item.isOpen()) {
+                dying.add(item);
             }
         }
         if (dying.size() > 0) {

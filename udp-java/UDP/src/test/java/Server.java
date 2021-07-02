@@ -1,12 +1,12 @@
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
-import java.util.Set;
 
 import chat.dim.net.BaseConnection;
 import chat.dim.net.Channel;
@@ -25,7 +25,7 @@ class ServerConnection extends BaseConnection {
     public SocketAddress receive(ByteBuffer dst) throws IOException {
         SocketAddress remote = super.receive(dst);
         if (remote != null) {
-            Server.remoteAddresses.add(remote);
+            Server.remoteAddress = remote;
         }
         return remote;
     }
@@ -53,8 +53,16 @@ class ServerHub extends ActivePackageHub {
 
 public class Server extends Thread implements Connection.Delegate {
 
-    static String HOST = "192.168.31.91";
+    static InetAddress HOST;
     static int PORT = 9394;
+
+    static {
+        try {
+            HOST = InetAddress.getLocalHost();
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+    }
 
     private boolean running = false;
 
@@ -70,7 +78,7 @@ public class Server extends Thread implements Connection.Delegate {
     public void onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
         String text = new String(data, StandardCharsets.UTF_8);
         Client.info("<<< received (" + data.length + " bytes) from " + source + " to " + destination + ": " + text);
-        text = (++counter) + "# " + data.length + " byte(s) received";
+        text = (counter++) + "# " + data.length + " byte(s) received";
         data = text.getBytes(StandardCharsets.UTF_8);
         Client.info(">>> responding: " + text);
         hub.send(data, destination, source);
@@ -86,42 +94,24 @@ public class Server extends Thread implements Connection.Delegate {
     @Override
     public void run() {
         while (running) {
-            try {
-                if (!process()) {
-                    Client.idle(128);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
+            if (!process()) {
+                Client.idle(128);
             }
         }
     }
 
-    private boolean process() throws IOException {
-        if (remoteAddresses.size() == 0) {
-            return process(null);
-        }
-        int count = 0;
-        Set<SocketAddress> addresses = new HashSet<>(remoteAddresses);
-        for (SocketAddress remote : addresses) {
-            if (process(remote)) {
-                ++count;
-            }
-        }
-        return count > 0;
-    }
-
-    private boolean process(SocketAddress remote) {
-        byte[] data = hub.receive(remote, localAddress);
+    private boolean process() {
+        byte[] data = hub.receive(null, localAddress);
         if (data == null || data.length == 0) {
             return false;
         }
-        onDataReceived(data, remote, localAddress);
+        onDataReceived(data, remoteAddress, localAddress);
         return true;
     }
 
     static SocketAddress localAddress;
+    static SocketAddress remoteAddress;
     static DiscreteChannel masterChannel;
-    static final Set<SocketAddress> remoteAddresses = new HashSet<>();
 
     private static ServerHub hub;
 
@@ -130,6 +120,7 @@ public class Server extends Thread implements Connection.Delegate {
         Client.info("Starting server (" + HOST + ":" + PORT + ") ...");
 
         localAddress = new InetSocketAddress(HOST, PORT);
+        remoteAddress = null;
         masterChannel = new DiscreteChannel(DatagramChannel.open());
         masterChannel.bind(localAddress);
         masterChannel.configureBlocking(false);

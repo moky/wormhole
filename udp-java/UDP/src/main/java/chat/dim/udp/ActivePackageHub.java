@@ -77,6 +77,7 @@ public class ActivePackageHub extends BaseHub {
             @Override
             protected Channel connect(SocketAddress remote) throws IOException {
                 Channel channel = new DiscreteChannel();
+                channel.configureBlocking(true);
                 channel.connect(remote);
                 channel.configureBlocking(false);
                 if (local != null) {

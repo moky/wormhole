@@ -60,11 +60,12 @@ public class ActiveStreamHub extends BaseHub {
     }
 
     @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
         ActiveConnection connection = new ActiveConnection(remote) {
             @Override
             protected Channel connect(SocketAddress remote) throws IOException {
                 Channel channel = new StreamChannel();
+                channel.configureBlocking(true);
                 channel.connect(remote);
                 channel.configureBlocking(false);
                 if (local != null) {

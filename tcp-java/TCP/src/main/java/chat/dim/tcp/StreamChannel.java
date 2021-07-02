@@ -157,7 +157,14 @@ public class StreamChannel implements Channel {
 
     @Override
     public SocketAddress receive(ByteBuffer dst) throws IOException {
-        return impl.read(dst) > 0 ? impl.getRemoteAddress() : null;
+        int res = impl.read(dst);
+        if (res > 0) {
+            return impl.getRemoteAddress();
+        } else if (res < 0) {
+            // channel closed by client
+            close();
+        }
+        return null;
     }
 
     @Override
