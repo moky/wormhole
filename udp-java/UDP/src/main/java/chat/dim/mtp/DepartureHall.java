@@ -104,8 +104,8 @@ public class DepartureHall {
     public Departure getNextExpiredDeparture() {
         Departure expired = null;
         long now = (new Date()).getTime();
-        Lock writeLock = departureLock.writeLock();
-        writeLock.lock();
+        Lock readLock = departureLock.readLock();
+        readLock.lock();
         try {
             for (Departure task : departures) {
                 if (task.isExpired(now)) {
@@ -115,7 +115,7 @@ public class DepartureHall {
                 }
             }
         } finally {
-            writeLock.unlock();
+            readLock.unlock();
         }
         return expired;
     }

@@ -38,26 +38,26 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public abstract class ActiveConnection extends BaseConnection {
 
-    // remote address
+    public final SocketAddress localAddress;
     public final SocketAddress remoteAddress;
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private int connecting;
     private boolean running;
 
-    public ActiveConnection(SocketAddress remote, Channel byteChannel) {
+    public ActiveConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
         super(byteChannel);
-        assert remote != null : "remote address error";
         remoteAddress = remote;
+        localAddress = local;
         connecting = 0;
         running = false;
     }
 
-    public ActiveConnection(SocketAddress remote) {
-        this(remote, null);
+    public ActiveConnection(SocketAddress remote, SocketAddress local) {
+        this(null, remote, local);
     }
 
-    protected abstract Channel connect(SocketAddress remote) throws IOException;
+    protected abstract Channel connect(SocketAddress remote, SocketAddress local) throws IOException;
 
     private boolean reconnect() throws IOException {
         boolean redo = false;
@@ -67,7 +67,7 @@ public abstract class ActiveConnection extends BaseConnection {
             connecting += 1;
             if (connecting == 1 && running) {
                 changeState(ConnectionState.CONNECTING);
-                channel = connect(remoteAddress);
+                channel = connect(remoteAddress, localAddress);
                 if (channel == null) {
                     changeState(ConnectionState.ERROR);
                 } else {
@@ -93,6 +93,19 @@ public abstract class ActiveConnection extends BaseConnection {
     @Override
     public SocketAddress getRemoteAddress() {
         return remoteAddress;
+    }
+
+    @Override
+    public SocketAddress getLocalAddress() {
+        Channel sock = channel;
+        if (sock != null && sock.isBound()) {
+            try {
+                return sock.getLocalAddress();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return localAddress;
     }
 
     @Override

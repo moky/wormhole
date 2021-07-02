@@ -8,17 +8,22 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.charset.StandardCharsets;
 
-import chat.dim.net.BaseConnection;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
+import chat.dim.net.PackageConnection;
 import chat.dim.udp.ActivePackageHub;
 import chat.dim.udp.DiscreteChannel;
 
-class ServerConnection extends BaseConnection {
+class ServerConnection extends PackageConnection {
 
-    public ServerConnection(Channel byteChannel) {
-        super(byteChannel);
+    public ServerConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
+        super(byteChannel, remote, local);
+    }
+
+    @Override
+    protected Channel connect(SocketAddress remote, SocketAddress local) {
+        return Server.masterChannel;
     }
 
     @Override
@@ -39,15 +44,15 @@ class ServerHub extends ActivePackageHub {
 
     @Override
     protected Connection createConnection(SocketAddress remote, SocketAddress local) {
-        ServerConnection connection = new ServerConnection(Server.masterChannel);
+        ServerConnection conn = new ServerConnection(Server.masterChannel, Server.remoteAddress, Server.localAddress);
         // set delegate
         Connection.Delegate delegate = getDelegate();
         if (delegate != null) {
-            connection.setDelegate(delegate);
+            conn.setDelegate(delegate);
         }
         // start FSM
-        connection.start();
-        return connection;
+        conn.start();
+        return conn;
     }
 }
 
@@ -67,12 +72,11 @@ public class Server extends Thread implements Connection.Delegate {
     private boolean running = false;
 
     @Override
-    public void onConnectionStateChanged(Connection connection, ConnectionState oldStatus, ConnectionState newStatus) {
+    public void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next) {
         Client.info("!!! connection ("
                 + connection.getLocalAddress() + ", "
                 + connection.getRemoteAddress() + ") state changed: "
-                + oldStatus + " -> "
-                + newStatus);
+                + current + " -> " + next);
     }
 
     public void onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
@@ -101,7 +105,7 @@ public class Server extends Thread implements Connection.Delegate {
     }
 
     private boolean process() {
-        byte[] data = hub.receive(null, localAddress);
+        byte[] data = hub.receive(remoteAddress, localAddress);
         if (data == null || data.length == 0) {
             return false;
         }

@@ -67,21 +67,23 @@ public class Departure {
         destination = to;
     }
 
-    public boolean isExpired(long now) {
-        return maxRetries >= 0 && expired < now;
+    public synchronized boolean isExpired(long now) {
+        if (maxRetries >= 0 && expired < now) {
+            // decrease counter
+            --maxRetries;
+            // update expired time
+            expired = (new Date()).getTime() + EXPIRES;
+            return true;
+        } else {
+            return false;
+        }
     }
 
     public synchronized List<Package> getFragments() {
-        if (maxRetries < 0) {
-            // retried too many times
-            return null;
-        } else if (packages.size() == 0) {
+        if (packages.size() == 0) {
             // all fragments sent
             return null;
         } else {
-            // update expired time
-            expired = (new Date()).getTime() + EXPIRES;
-            --maxRetries;
             // return the rest fragments
             return new ArrayList<>(packages);
         }

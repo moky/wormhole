@@ -50,12 +50,16 @@ import chat.dim.threading.Ticker;
 
 public abstract class BaseHub implements Hub, Ticker {
 
-    /*  Maximum Transmission Unit
-     *  ~~~~~~~~~~~~~~~~~~~~~~~~~
-     *
+    /*  Maximum Segment Size
+     *  ~~~~~~~~~~~~~~~~~~~~
      *  Buffer size for receiving package
+     *
+     *  MTU        : 1500 bytes (excludes 14 bytes ethernet header & 4 bytes FCS)
+     *  IP header  :   20 bytes
+     *  TCP header :   20 bytes
+     *  UDP header :    8 bytes
      */
-    public static int MTU = 1472; // 1500 - 20 - 8
+    public static int MSS = 1472;  // 1500 - 20 - 8
 
     private final SocketAddress anyLocalAddress = new InetSocketAddress("0.0.0.0", 0);
     private final SocketAddress anyRemoteAddress = new InetSocketAddress("0.0.0.0", 0);
@@ -82,9 +86,11 @@ public abstract class BaseHub implements Hub, Ticker {
         try {
             Connection conn = getConnection(destination, source);
             if (conn == null || !conn.isOpen()) {
+                // connection closed
                 return -1;
             }
             if (destination == null && !conn.isConnected()) {
+                // connection not connected yet
                 return -1;
             }
             ByteBuffer buffer = ByteBuffer.allocate(data.length);
@@ -101,19 +107,23 @@ public abstract class BaseHub implements Hub, Ticker {
     public byte[] receive(SocketAddress source, SocketAddress destination) {
         try {
             Connection conn = getConnection(source, destination);
-            if (conn != null) {
-                ByteBuffer buffer = ByteBuffer.allocate(MTU);
-                if (conn.receive(buffer) != null) {
-                    byte[] data = new byte[buffer.position()];
-                    buffer.flip();
-                    buffer.get(data);
-                    return data;
-                }
+            if (conn == null || !conn.isOpen()) {
+                // connection closed
+                return null;
             }
+            ByteBuffer buffer = ByteBuffer.allocate(MSS);
+            if (conn.receive(buffer) == null) {
+                // received nothing
+                return null;
+            }
+            byte[] data = new byte[buffer.position()];
+            buffer.flip();
+            buffer.get(data);
+            return data;
         } catch (IOException e) {
             e.printStackTrace();
+            return null;
         }
-        return null;
     }
 
     @Override

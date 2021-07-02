@@ -25,12 +25,18 @@ public class Client extends Thread implements Connection.Delegate {
     }
 
     @Override
-    public void onConnectionStateChanged(Connection connection, ConnectionState oldStatus, ConnectionState newStatus) {
+    public void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next) {
         info("!!! connection ("
                 + connection.getLocalAddress() + ", "
                 + connection.getRemoteAddress() + ") state changed: "
-                + oldStatus + " -> "
-                + newStatus);
+                + current + " -> " + next);
+        if (next.equals(ConnectionState.EXPIRED)) {
+            heartbeat(connection);
+        }
+    }
+    private void heartbeat(Connection connection) {
+        byte[] data = {'P', 'I', 'N', 'G'};
+        hub.send(data, connection.getLocalAddress(), connection.getRemoteAddress());
     }
 
     public void onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {

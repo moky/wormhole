@@ -60,9 +60,17 @@ public class StreamChannel implements Channel {
         blocking = channel.isBlocking();
     }
 
-    public StreamChannel() {
+    public StreamChannel(SocketAddress remote, SocketAddress local) throws IOException {
         super();
-        impl = null;
+        impl = SocketChannel.open();
+        impl.configureBlocking(true);
+        if (remote != null) {
+            impl.connect(remote);
+        }
+        if (local != null) {
+            impl.bind(local);
+        }
+        impl.configureBlocking(false);
         blocking = false;
     }
 

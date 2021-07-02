@@ -60,9 +60,17 @@ public class DiscreteChannel implements Channel {
         blocking = channel.isBlocking();
     }
 
-    public DiscreteChannel() {
+    public DiscreteChannel(SocketAddress remote, SocketAddress local) throws IOException {
         super();
-        impl = null;
+        impl = DatagramChannel.open();
+        impl.configureBlocking(true);
+        if (remote != null) {
+            impl.connect(remote);
+        }
+        if (local != null) {
+            impl.bind(local);
+        }
+        impl.configureBlocking(false);
         blocking = false;
     }
 

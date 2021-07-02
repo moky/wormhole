@@ -253,7 +253,6 @@ public class BaseConnection implements Connection, StateDelegate {
 
     @Override
     public ConnectionState getState() {
-        fsm.tick();
         return fsm.getCurrentState();
     }
 
@@ -277,9 +276,9 @@ public class BaseConnection implements Connection, StateDelegate {
 
     @Override
     public void enterState(ConnectionState state, StateMachine ctx) {
-        ConnectionState old = ctx.getCurrentState();
+        ConnectionState current = ctx.getCurrentState();
         if (state != null && state.equals(ConnectionState.CONNECTED)) {
-            if (old == null || !old.equals(ConnectionState.MAINTAINING)) {
+            if (current == null || !current.equals(ConnectionState.MAINTAINING)) {
                 // change status to 'connected', reset times to just expired
                 long now = (new Date()).getTime();
                 lastSentTime = now - EXPIRES - 1;
@@ -289,7 +288,7 @@ public class BaseConnection implements Connection, StateDelegate {
         // callback
         Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onConnectionStateChanged(this, old, state);
+            delegate.onConnectionStateChanging(this, current, state);
         }
     }
 

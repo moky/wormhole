@@ -33,12 +33,11 @@ public class Server extends Thread implements Connection.Delegate {
     private boolean running = false;
 
     @Override
-    public void onConnectionStateChanged(Connection connection, ConnectionState oldStatus, ConnectionState newStatus) {
+    public void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next) {
         Client.info("!!! connection ("
                 + connection.getLocalAddress() + ", "
                 + connection.getRemoteAddress() + ") state changed: "
-                + oldStatus + " -> "
-                + newStatus);
+                + current + " -> " + next);
     }
 
     public void onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {

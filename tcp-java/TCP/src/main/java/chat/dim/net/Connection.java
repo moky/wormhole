@@ -87,9 +87,9 @@ public interface Connection extends Ticker {
          *  Call when connection status changed
          *
          * @param connection - current connection
-         * @param oldStatus - status before
-         * @param newStatus - status after
+         * @param current    - old state
+         * @param next       - new state
          */
-        void onConnectionStateChanged(Connection connection, ConnectionState oldStatus, ConnectionState newStatus);
+        void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next);
     }
 }

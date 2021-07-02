@@ -41,43 +41,28 @@ import chat.dim.net.Connection;
 
 public class ActiveStreamHub extends BaseHub {
 
-    private WeakReference<Connection.Delegate> delegateRef = null;
+    private final WeakReference<Connection.Delegate> delegateRef;
 
     public ActiveStreamHub(Connection.Delegate delegate) {
         super();
-        setDelegate(delegate);
+        delegateRef = new WeakReference<>(delegate);
     }
 
-    public void setDelegate(Connection.Delegate delegate) {
-        if (delegate == null) {
-            delegateRef = null;
-        } else {
-            delegateRef = new WeakReference<>(delegate);
-        }
-    }
     public Connection.Delegate getDelegate() {
-        return delegateRef == null ? null : delegateRef.get();
+        return delegateRef.get();
     }
 
     @Override
     protected Connection createConnection(SocketAddress remote, SocketAddress local) {
-        ActiveConnection connection = new ActiveConnection(remote) {
+        ActiveConnection connection = new ActiveConnection(remote, local) {
             @Override
-            protected Channel connect(SocketAddress remote) throws IOException {
-                Channel channel = new StreamChannel();
-                channel.configureBlocking(true);
-                channel.connect(remote);
-                channel.configureBlocking(false);
-                if (local != null) {
-                    channel.bind(local);
-                }
-                return channel;
+            protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
+                return new StreamChannel(remote, local);
             }
         };
         // set delegate
-        Connection.Delegate delegate = getDelegate();
-        if (delegate != null) {
-            connection.setDelegate(delegate);
+        if (connection.getDelegate() == null) {
+            connection.setDelegate(getDelegate());
         }
         // start FSM
         connection.start();

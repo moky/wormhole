@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets;
 
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
-import chat.dim.net.Hub;
+import chat.dim.net.PackageConnection;
 import chat.dim.udp.ActivePackageHub;
 
 public class Client extends Thread implements Connection.Delegate {
@@ -26,12 +26,15 @@ public class Client extends Thread implements Connection.Delegate {
     }
 
     @Override
-    public void onConnectionStateChanged(Connection connection, ConnectionState oldStatus, ConnectionState newStatus) {
+    public void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next) {
         info("!!! connection ("
                 + connection.getLocalAddress() + ", "
                 + connection.getRemoteAddress() + ") state changed: "
-                + oldStatus + " -> "
-                + newStatus);
+                + current + " -> " + next);
+        if (next.equals(ConnectionState.EXPIRED)) {
+            assert connection instanceof PackageConnection : "connection error: " + connection;
+            ((PackageConnection) connection).heartbeat(connection.getRemoteAddress());
+        }
     }
 
     public void onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
@@ -65,7 +68,7 @@ public class Client extends Thread implements Connection.Delegate {
     }
 
     private static SocketAddress remoteAddress;
-    private static Hub hub;
+    private static ActivePackageHub hub;
 
     public static void main(String[] args) {
 
