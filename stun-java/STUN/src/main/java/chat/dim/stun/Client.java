@@ -78,8 +78,8 @@ public abstract class Client extends Node {
         int size;
         byte[] cargo;
         while (true) {
-            size = send(req.getBytes(), serverAddress, sourceAddress);
-            if (size != req.getSize()) {
+            size = send(req.getBytes(), sourceAddress, serverAddress);
+            if (size == -1) {
                 // failed to send data
                 return null;
             }

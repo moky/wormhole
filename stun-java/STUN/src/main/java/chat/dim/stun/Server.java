@@ -107,8 +107,8 @@ public abstract class Server extends Node {
         // pack
         Package pack = Package.create(head.type, head.sn, attribute);
         assert neighbour != null : "neighbour address not set yet";
-        int res = send(pack.getBytes(), neighbour, sourceAddress);
-        return res == pack.getSize();
+        int res = send(pack.getBytes(), sourceAddress, neighbour);
+        return res != -1;
     }
 
     private boolean respond(Header head, InetSocketAddress clientAddress, int localPort) {
@@ -153,8 +153,8 @@ public abstract class Server extends Node {
         body.append(data5);
         body.append(data6);
         Package pack = Package.create(MessageType.BindResponse, head.sn, body);
-        int res = send(pack.getBytes(), clientAddress, new InetSocketAddress(localIP, localPort));
-        return res == pack.getSize();
+        int res = send(pack.getBytes(), new InetSocketAddress(localIP, localPort), clientAddress);
+        return res != -1;
     }
 
     public boolean handle(ByteArray data, InetSocketAddress clientAddress) {

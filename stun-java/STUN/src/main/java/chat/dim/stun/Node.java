@@ -82,11 +82,11 @@ public abstract class Node {
      *  Send data to remote address
      *
      * @param data        - data package to be sent
-     * @param destination - remote IP and port
-     * @param source      - local IP and port
+     * @param source      - local address
+     * @param destination - remote address
      * @return count of sent bytes
      */
-    public abstract int send(byte[] data, SocketAddress destination, SocketAddress source);
+    public abstract int send(byte[] data, SocketAddress source, SocketAddress destination);
 
     /**
      *  Parse attribute

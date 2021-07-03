@@ -64,11 +64,11 @@ public class StreamChannel implements Channel {
         super();
         impl = SocketChannel.open();
         impl.configureBlocking(true);
-        if (remote != null) {
-            impl.connect(remote);
-        }
         if (local != null) {
             impl.bind(local);
+        }
+        if (remote != null) {
+            impl.connect(remote);
         }
         impl.configureBlocking(false);
         blocking = false;
