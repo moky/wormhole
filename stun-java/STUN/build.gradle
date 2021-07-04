@@ -4,8 +4,6 @@ buildscript {
     }
 
     dependencies {
-        //classpath "com.novoda:bintray-release:0.3.4"
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6'
     }
 }
 
@@ -19,6 +17,12 @@ plugins {
 group 'chat.dim'
 //version '1.0-SNAPSHOT'
 version '0.1.2'
+
+def mod = 'STUN'
+def desc = 'Session Traversal Utilities for NAT'
+
+def gitUrl = 'https://github.com/moky/wormhole.git'
+def siteUrl = 'https://github.com/moky/wormhole'
 
 sourceCompatibility = 1.8
 
@@ -41,14 +45,9 @@ allprojects {
     }
 }
 
-apply plugin: 'com.jfrog.bintray'
-
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
-
-def gitUrl = 'https://github.com/moky/wormhole.git'
-def siteUrl = 'https://github.com/moky/wormhole'
 
 install {
     repositories.mavenInstaller {
@@ -56,8 +55,8 @@ install {
         pom {
             project {
                 packaging 'jar'
-                name 'STUN'
-                description 'Session Traversal Utilities for NAT'
+                name mod
+                description desc
                 url siteUrl
                 licenses {
                     license {
@@ -120,45 +119,47 @@ tasks.withType(Javadoc) {
     options.addStringOption('Xdoclint:none', '-quiet')
 }
 
-bintray {
-    Properties properties = new Properties()
-    File file = project.rootProject.file('local.properties')
-    if (file != null && file.exists()) {
-        properties.load(file.newDataInputStream())
-        user = properties.getProperty('bintray.user')
-        key = properties.getProperty('bintray.apikey')
-    } else {
-        user = System.getenv('bintray.user')
-        key = System.getenv('bintray.apikey')
-        String pwd = System.getenv('bintray.gpg.password')
-        if (user == null) {
-            user = bintray_user
-        }
-        if (key == null) {
-            key = bintray_apikey
-        }
-        if (pwd == null) {
-            pwd = bintray_gpg_password
-        }
-        properties.setProperty('bintray.user', user)
-        properties.setProperty('bintray.apikey', key)
-        properties.setProperty('bintray.gpg.password', pwd)
-    }
+uploadArchives {
 
-    configurations = ['archives']
-    pkg {
-        userOrg = 'dimchat'
-        repo = 'network'
-        name = 'stun'
-        desc = 'Session Traversal Utilities for NAT'
-        websiteUrl = siteUrl
-        vcsUrl = gitUrl
-        licenses = ['MIT']
-        publish = true
-        version {
-            gpg {
-                sign = true
-                passphrase = properties.getProperty('bintray.gpg.password')
+    repositories {
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+
+            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+
+            pom.project {
+                packaging 'jar'
+                name mod
+                description desc
+                url siteUrl
+                licenses {
+                    license {
+                        name 'MIT'
+                        url 'https://mit-license.org'
+                    }
+                }
+                developers {
+                    developer {
+                        id 'moky'
+                        name 'Albert Moky'
+                        email 'albert.moky@gmail.com'
+                        roles {
+                            role 'architect'
+                        }
+                        organization 'DIM Group'
+                    }
+                }
+                scm {
+                    connection gitUrl
+                    developerConnection gitUrl
+                    url siteUrl
+                }
             }
         }
     }
