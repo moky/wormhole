@@ -30,120 +30,86 @@
  */
 package chat.dim.dmtp;
 
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.SocketException;
-import java.util.Set;
 
-import chat.dim.mtp.Package;
-import chat.dim.mtp.Pool;
-import chat.dim.mtp.task.Arrival;
-import chat.dim.mtp.task.Departure;
-import chat.dim.type.Data;
-import chat.dim.udp.Connection;
-import chat.dim.udp.ConnectionStatus;
-import chat.dim.udp.HubFilter;
-import chat.dim.udp.HubListener;
+import chat.dim.dmtp.protocol.Command;
+import chat.dim.dmtp.protocol.Message;
+import chat.dim.net.Connection;
 
-public class Peer extends chat.dim.mtp.Peer implements HubListener {
+/*    Topology:
+ *
+ *        +-----------------------------------------------+
+ *        |                      APP                      |
+ *        |                 (Peer Handler)                |
+ *        +-----------------------------------------------+
+ *                            |       A
+ *                            |       |
+ *                            V       |
+ *        +---+--------+----------------------------------+
+ *        |   |  Pool  |                                  |        pool:
+ *        |   +--------+         Peer        +--------+   |          -> departures
+ *        |                (Hub Listener)    | Filter |   |          -> arrivals
+ *        +----------------------------------+--------+---+          -> assembling
+ *                            |       A
+ *                            |       |
+ *                            V       |
+ *        +-----------------------------------------------+
+ *        |                      HUB                      |
+ *        +-----------------------------------------------+
+ */
 
-    public final SocketAddress localAddress;
-    public final Hub hub;
+public interface Peer extends Runnable {
 
-    public Peer(SocketAddress address, Hub hub, Pool pool) {
-        super(pool);
-        this.localAddress = address;
-        this.hub = hub;
-        this.setDelegate(hub);
-        hub.addListener(this);
-    }
+    SocketAddress getLocalAddress();
 
-    public Peer(SocketAddress address, Hub hub) {
-        super();
-        this.localAddress = address;
-        this.hub = hub;
-        this.setDelegate(hub);
-        hub.addListener(this);
-    }
+    Connection getConnection(SocketAddress remote);
 
-    public Peer(InetSocketAddress address, Pool pool) throws SocketException {
-        this(address, createHub(address), pool);
-    }
+    void connect(SocketAddress remote);
+    void disconnect(SocketAddress remote);
 
-    public Peer(InetSocketAddress address) throws SocketException {
-        this(address, createHub(address));
-    }
-
-    private static Hub createHub(InetSocketAddress localAddress) throws SocketException {
-        Hub hub = new Hub();
-        hub.open(localAddress);
-        //hub.start();
-        return hub;
-    }
-
-    @Override
-    public void start() {
-        // start peer
-        super.start();
-        // start hub
-        hub.start();
-    }
-
-    @Override
-    public void close() {
-        // stop hub
-        hub.close();
-        // stop peer
-        super.close();
-    }
-
-    //
-    //  Connections
-    //
-
-    public Connection connect(SocketAddress remoteAddress) {
-        return hub.connect(remoteAddress, localAddress);
-    }
-
-    public Set<Connection> disconnect(SocketAddress remoteAddress) {
-        return hub.disconnect(remoteAddress, localAddress);
-    }
-
-    public Connection getConnection(SocketAddress remoteAddress) {
-        return hub.getConnection(remoteAddress, localAddress);
-    }
+    void terminate();
 
     //
     //  Send
     //
 
-    public Departure sendCommand(Package pack, SocketAddress destination) {
-        return sendCommand(pack, destination, localAddress);
-    }
+    /**
+     *  Send message to destination address
+     *
+     * @param msg         - message data
+     * @param destination - remote address
+     * @return false on error
+     */
+    boolean sendMessage(Message msg, SocketAddress destination);
 
-    public Departure sendMessage(Package pack, SocketAddress destination) {
-        return sendMessage(pack, destination, localAddress);
-    }
+    /**
+     *  Send command to destination address
+     *
+     * @param cmd         - command data
+     * @param destination - remote address
+     * @return false on error
+     */
+    boolean sendCommand(Command cmd, SocketAddress destination);
 
     //
-    //  HubListener
+    //  Process
     //
 
-    @Override
-    public HubFilter getFilter() {
-        // TODO: create filter for connection
-        return null;
-    }
+    /**
+     *  Process received message from remote source address
+     *
+     * @param msg    - message info
+     * @param source - remote address
+     * @return false on error
+     */
+    boolean processMessage(Message msg, SocketAddress source);
 
-    @Override
-    public byte[] onDataReceived(byte[] bytes, InetSocketAddress source, InetSocketAddress destination) {
-        Arrival task = new Arrival(new Data(bytes), source, destination);
-        pool.appendArrival(task);
-        return null;
-    }
-
-    @Override
-    public void onStatusChanged(Connection connection, ConnectionStatus oldStatus, ConnectionStatus newStatus) {
-        // TODO: update for connection status
-    }
+    /**
+     *  Process received command from remote source address
+     *
+     * @param cmd    - command info
+     * @param source - remote address
+     * @return false on error
+     */
+    boolean processCommand(Command cmd, SocketAddress source);
 }

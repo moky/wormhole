@@ -1,8 +1,7 @@
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.SocketException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -13,33 +12,75 @@ import chat.dim.dmtp.Session;
 import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.protocol.LocationValue;
 import chat.dim.dmtp.protocol.Message;
-import chat.dim.mtp.task.Departure;
+import chat.dim.mtp.Package;
+import chat.dim.net.Connection;
+import chat.dim.net.ConnectionState;
+import chat.dim.net.PackageConnection;
 import chat.dim.type.Data;
-import chat.dim.udp.Connection;
+import chat.dim.udp.ActivePackageHub;
 
 public class Client extends chat.dim.dmtp.Client {
 
     private SocketAddress serverAddress = null;
-    public String nat = "Unknown";
 
     private final ContactManager database;
+    private final ActivePackageHub hub;
 
-    public Client(String host, int port) throws SocketException {
+    public Client(String host, int port) {
         super(new InetSocketAddress(host, port));
         // database for location of contacts
         database = createContactManager();
         database.identifier = "moky-" + port;
         setDelegate(database);
+        hub = new ActivePackageHub(this);
+    }
+
+    @Override
+    public void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next) {
+        info("!!! connection ("
+                + connection.getLocalAddress() + ", "
+                + connection.getRemoteAddress() + ") state changed: "
+                + current + " -> " + next);
+        if (next.equals(ConnectionState.EXPIRED)) {
+            assert connection instanceof PackageConnection : "connection error: " + connection;
+            ((PackageConnection) connection).heartbeat(connection.getRemoteAddress());
+        }
+    }
+    static void info(String msg) {
+        System.out.printf("%s\n", msg);
+    }
+
+    static void idle(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     protected ContactManager createContactManager() {
-        ContactManager db = new ContactManager(peer);
+        ContactManager db = new ContactManager(this);
         db.identifier = "anyone@anywhere";
         return db;
     }
 
     public String getIdentifier() {
         return database.identifier;
+    }
+
+    @Override
+    public Connection getConnection(SocketAddress remote) {
+        return hub.getConnection(remote, localAddress);
+    }
+
+    @Override
+    public void connect(SocketAddress remote) {
+        hub.connect(remote, localAddress);
+    }
+
+    @Override
+    public void disconnect(SocketAddress remote) {
+        hub.disconnect(remote, localAddress);
     }
 
     @Override
@@ -55,13 +96,24 @@ public class Client extends chat.dim.dmtp.Client {
     }
 
     @Override
-    public Departure sendCommand(Command cmd, SocketAddress destination) {
+    public boolean sendCommand(Command cmd, SocketAddress destination) {
         System.out.printf("sending cmd to %s: %s\n", destination, cmd);
         return super.sendCommand(cmd, destination);
     }
 
     @Override
-    public Departure sendMessage(Message msg, SocketAddress destination) {
+    protected boolean sendPackage(Package pack, SocketAddress destination) {
+        return hub.sendPackage(pack, localAddress, destination);
+    }
+
+    @Override
+    protected Cargo receivePackage() {
+        Package pack = hub.receivePackage(serverAddress, localAddress);
+        return pack == null ? null : new Cargo(serverAddress, pack);
+    }
+
+    @Override
+    public boolean sendMessage(Message msg, SocketAddress destination) {
         System.out.printf("sending msg to %s: %s\n", destination, msg);
         return super.sendMessage(msg, destination);
     }
@@ -83,9 +135,9 @@ public class Client extends chat.dim.dmtp.Client {
     }
 
     public void login(String identifier, SocketAddress remoteAddress) {
-        this.database.identifier = identifier;
-        this.serverAddress = remoteAddress;
-        this.peer.connect(remoteAddress);
+        database.identifier = identifier;
+        serverAddress = remoteAddress;
+        hub.connect(remoteAddress, null);
         sayHello(remoteAddress);
     }
 
@@ -97,24 +149,34 @@ public class Client extends chat.dim.dmtp.Client {
         SocketAddress sourceAddress;
         SocketAddress mappedAddress;
         Connection conn;
-        long now = (new Date()).getTime();
+        ConnectionState state;
         for (LocationValue item : locations) {
             // source address
             sourceAddress = item.getSourceAddress();
             if (sourceAddress != null) {
-                conn = peer.getConnection(sourceAddress);
-                if (conn != null && conn.isConnected(now)) {
-                    sessions.add(new Session(item, sourceAddress));
-                    continue;
+                conn = getConnection(sourceAddress);
+                if (conn != null) {
+                    state = conn.getState();
+                    if (state != null && (state.equals(ConnectionState.CONNECTED) ||
+                            state.equals(ConnectionState.MAINTAINING) ||
+                            state.equals(ConnectionState.EXPIRED))) {
+                        sessions.add(new Session(item, sourceAddress));
+                        continue;
+                    }
                 }
             }
             // mapped address
             mappedAddress = item.getMappedAddress();
             if (mappedAddress != null) {
-                conn = peer.getConnection(mappedAddress);
-                if (conn != null && conn.isConnected(now)) {
-                    sessions.add(new Session(item, mappedAddress));
-                    //continue;
+                conn = getConnection(mappedAddress);
+                if (conn != null) {
+                    state = conn.getState();
+                    if (state != null && (state.equals(ConnectionState.CONNECTED) ||
+                            state.equals(ConnectionState.MAINTAINING) ||
+                            state.equals(ConnectionState.EXPIRED))) {
+                        sessions.add(new Session(item, mappedAddress));
+                        //continue;
+                    }
                 }
             }
         }
@@ -125,29 +187,28 @@ public class Client extends chat.dim.dmtp.Client {
     //  test
     //
 
-    boolean sendText(String receiver, String text) {
+    void sendText(String receiver, String text) {
         List<Session> sessions = getSessions(receiver);
         if (sessions.size() == 0) {
             System.out.printf("user (%s) not login ...\n", receiver);
             // ask the server to help building a connection
             call(receiver);
-            return false;
+            return;
         }
         long timestamp = (new Date()).getTime() / 1000;
-        byte[] bytes = text.getBytes(Charset.forName("UTF-8"));
+        byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
         Data content = new Data(bytes);
         Message msg = Message.create(getIdentifier(), receiver, timestamp, content, null, null);
         for (Session item : sessions) {
             System.out.printf("sending msg to %s:\n\t%s\n", item, msg);
             sendMessage(msg, item.address);
         }
-        return true;
     }
 
     static final String CLIENT_IP = "192.168.31.91";
     static final int CLIENT_PORT = Data.random(1).getByte(0) + 9900;
 
-    public static void main(String args[]) throws SocketException, InterruptedException {
+    public static void main(String[] args) {
 
         SocketAddress serverAddress = new InetSocketAddress(Server.SERVER_IP, Server.SERVER_PORT);
         System.out.printf("connecting to UDP server: %s ...\n", serverAddress);
@@ -164,7 +225,7 @@ public class Client extends chat.dim.dmtp.Client {
         String text = "你好 " + friend + "!";
         int index = 0;
         while (index < 16777216) {
-            Thread.sleep(5000);
+            idle(5000);
             System.out.printf("---- [%d]\n", index);
             client.sendText(friend, text + " (" + index + ")");
             ++index;

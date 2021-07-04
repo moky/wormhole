@@ -30,36 +30,17 @@
  */
 package chat.dim.dmtp;
 
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.util.List;
 
 import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.protocol.CommandValue;
 import chat.dim.dmtp.protocol.LocationValue;
-import chat.dim.mtp.Pool;
 
 public abstract class Server extends Node {
 
-    public Server(Peer peer) {
-        super(peer);
-    }
-
-    public Server(InetSocketAddress address, Hub hub, Pool pool) throws SocketException {
-        super(address, hub, pool);
-    }
-
-    public Server(InetSocketAddress address, Hub hub) throws SocketException {
-        super(address, hub);
-    }
-
-    public Server(InetSocketAddress address, Pool pool) throws SocketException {
-        super(address, pool);
-    }
-
-    public Server(InetSocketAddress address) throws SocketException {
-        super(address);
+    protected Server(SocketAddress local) {
+        super(local);
     }
 
     //
@@ -73,7 +54,7 @@ public abstract class Server extends Node {
         if (source.equals(mappedAddress)) {
             if (super.processHello(location, source)) {
                 // location info accepted, create a connection to the source
-                peer.connect(source);
+                connect(source);
                 return true;
             }
         }

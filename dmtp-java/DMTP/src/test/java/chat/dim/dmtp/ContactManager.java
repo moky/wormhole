@@ -62,7 +62,7 @@ public class ContactManager implements LocationDelegate {
     public ContactManager(Peer peer) {
         super();
         this.peer = peer;
-        this.sourceAddress = peer.localAddress;
+        this.sourceAddress = peer.getLocalAddress();
     }
 
     /**

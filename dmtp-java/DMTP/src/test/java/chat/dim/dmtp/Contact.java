@@ -41,13 +41,14 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.protocol.LocationValue;
+import chat.dim.net.Connection;
+import chat.dim.net.ConnectionState;
 import chat.dim.stun.valus.MappedAddressValue;
 import chat.dim.stun.valus.SourceAddressValue;
 import chat.dim.tlv.RawValue;
 import chat.dim.tlv.Value32;
 import chat.dim.turn.values.RelayedAddressValue;
 import chat.dim.type.ByteArray;
-import chat.dim.udp.Connection;
 
 public class Contact {
 
@@ -295,32 +296,24 @@ public class Contact {
      * @return true to remove location
      */
     public static boolean isExpired(LocationValue location, Peer peer) {
-        boolean error1 = false, error2 = false;
-        long now = (new Date()).getTime();
-        Connection conn;
-        // check source-address
+        // if source-address's connection exists and not error,
+        //    location not expired;
         SocketAddress sourceAddress = location.getSourceAddress();
-        if (sourceAddress == null) {
-            error1 = true;
-        } else {
-            conn = peer.getConnection(sourceAddress);
-            if (conn != null && conn.isError(now)) {
-                error1 = true;
-            }
-        }
-        // 2. if mapped-address's connection exists and not error,
+        // if mapped-address's connection exists and not error,
         //    location not expired too.
         SocketAddress mappedAddress = location.getMappedAddress();
-        if (mappedAddress == null) {
-            error2 = true;
-        } else {
-            conn = peer.getConnection(mappedAddress);
-            if (conn != null && conn.isError(now)) {
-                error2 = true;
-            }
+        return isExpired(sourceAddress, peer) && isExpired(mappedAddress, peer);
+    }
+    private static boolean isExpired(SocketAddress address, Peer peer) {
+        if (address == null) {
+            return true;
         }
-        // only two connections exist and error
-        return error1 && error2;
+        Connection conn = peer.getConnection(address);
+        if (conn == null) {
+            return true;
+        }
+        ConnectionState state = conn.getState();
+        return state != null && state.equals(ConnectionState.ERROR);
     }
 
     public static boolean isExpired(LocationValue location) {
