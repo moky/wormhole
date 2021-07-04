@@ -33,18 +33,19 @@ package chat.dim.stun.attributes;
 import java.util.List;
 
 import chat.dim.tlv.Entry;
-import chat.dim.tlv.Length16;
-import chat.dim.tlv.RawValue;
 import chat.dim.tlv.Triad;
+import chat.dim.tlv.Value;
+import chat.dim.tlv.lengths.Length16;
+import chat.dim.tlv.values.RawValue;
 import chat.dim.type.ByteArray;
 
-public class Attribute extends Triad<AttributeType, Length16, Entry.Value> {
+public class Attribute extends Triad<AttributeType, Length16, Value> {
 
-    public Attribute(Entry<AttributeType, Length16, Entry.Value> tlv) {
+    public Attribute(Entry<AttributeType, Length16, Value> tlv) {
         super(tlv);
     }
 
-    public Attribute(ByteArray data, AttributeType type, Length16 length, Entry.Value value) {
+    public Attribute(ByteArray data, AttributeType type, Length16 length, Value value) {
         super(data, type, length, value);
     }
 
@@ -66,14 +67,14 @@ public class Attribute extends Triad<AttributeType, Length16, Entry.Value> {
         return attribute;
     }
 
-    public static Attribute from(Entry<AttributeType, Length16, Entry.Value> tlv) {
+    public static Attribute from(Entry<AttributeType, Length16, Value> tlv) {
         return new Attribute(tlv);
     }
 
-    public static Attribute create(AttributeType type, Entry.Value value) {
+    public static Attribute create(AttributeType type, Value value) {
         return create(type, null, value);
     }
-    public static Attribute create(AttributeType tag, Length16 length, Entry.Value value) {
+    public static Attribute create(AttributeType tag, Length16 length, Value value) {
         if (value == null) {
             value = RawValue.ZERO;
             length = Length16.ZERO;

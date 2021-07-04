@@ -50,10 +50,10 @@ import chat.dim.type.IntegerData;
 public interface Length extends ByteArray, IntegerData {
 
     /**
-     * Length Parser
-     * ~~~~~~~~~~~~~
+     *  Length Parser
+     *  ~~~~~~~~~~~~~
      */
-    interface Parser<T, L> {
+    interface Parser<T extends Tag, L extends Length> {
         L parseLength(ByteArray data, T tag);
     }
 }

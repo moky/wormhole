@@ -45,8 +45,8 @@ import chat.dim.type.ByteArray;
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
-public abstract class Parser<E extends Entry<T,L,V>, T extends Tag, L extends Length, V extends Value>
-        implements Entry.Parser<E> {
+public abstract class Parser<E extends Entry<T, L, V>, T extends Tag, L extends Length, V extends Value>
+        implements Entry.Parser<E, T, L, V> {
 
     // get TLV parsers
     protected abstract Tag.Parser<T> getTagParser();

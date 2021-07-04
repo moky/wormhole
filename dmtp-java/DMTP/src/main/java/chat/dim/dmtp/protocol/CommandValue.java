@@ -34,8 +34,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import chat.dim.tlv.Field;
-import chat.dim.tlv.MapValue;
-import chat.dim.tlv.StringValue;
+import chat.dim.tlv.Length;
+import chat.dim.tlv.Tag;
+import chat.dim.tlv.Value;
+import chat.dim.tlv.values.MapValue;
+import chat.dim.tlv.values.StringValue;
 import chat.dim.type.ByteArray;
 
 public class CommandValue extends MapValue<Field> {
@@ -78,8 +81,7 @@ public class CommandValue extends MapValue<Field> {
     }
 
     // parse value with tag & length
-    public static chat.dim.tlv.Entry.Value parse(ByteArray data,
-                                                 chat.dim.tlv.Entry.Tag tag, chat.dim.tlv.Entry.Length length) {
+    public static Value parse(ByteArray data, Tag tag, Length length) {
         return from(data);
     }
 }

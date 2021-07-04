@@ -47,11 +47,12 @@ import chat.dim.type.ByteArray;
  *  ~~~~~
  */
 public interface Value extends ByteArray {
+
     /**
-     * Value Parser
-     * ~~~~~~~~~~~~
+     *  Value Parser
+     *  ~~~~~~~~~~~~
      */
-    interface Parser<T, L, V> {
+    interface Parser<T extends Tag, L extends Length, V extends Value> {
         V parseValue(ByteArray data, T tag, L length);
     }
 }

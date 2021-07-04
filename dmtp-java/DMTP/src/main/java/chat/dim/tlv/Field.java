@@ -32,9 +32,12 @@ package chat.dim.tlv;
 
 import java.util.List;
 
+import chat.dim.tlv.lengths.VarLength;
+import chat.dim.tlv.tags.StringTag;
+import chat.dim.tlv.values.RawValue;
 import chat.dim.type.ByteArray;
 
-public class Field extends Triad<StringTag, VarLength, Entry.Value> {
+public class Field extends Triad<StringTag, VarLength, Value> {
 
     public Field(Entry<StringTag, VarLength, Value> tlv) {
         super(tlv);
@@ -96,13 +99,13 @@ public class Field extends Triad<StringTag, VarLength, Entry.Value> {
      *  ~~~~~~~~~~~
      */
 
-    interface TagParser extends Entry.Tag.Parser<StringTag> {
+    interface TagParser extends Tag.Parser<StringTag> {
         // just for alias
     }
-    interface LengthParser extends Entry.Length.Parser<StringTag, VarLength> {
+    interface LengthParser extends Length.Parser<StringTag, VarLength> {
         // just for alias
     }
-    public interface ValueParser extends Entry.Value.Parser<StringTag, VarLength, Entry.Value> {
+    public interface ValueParser extends Value.Parser<StringTag, VarLength, Value> {
         // just for alias
     }
 }

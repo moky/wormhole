@@ -40,7 +40,7 @@ import chat.dim.stun.valus.MappedAddressValue;
 import chat.dim.stun.valus.ResponseAddressValue;
 import chat.dim.stun.valus.SoftwareValue;
 import chat.dim.stun.valus.SourceAddressValue;
-import chat.dim.tlv.Tag16;
+import chat.dim.tlv.tags.Tag16;
 import chat.dim.type.ByteArray;
 import chat.dim.type.UInt16Data;
 

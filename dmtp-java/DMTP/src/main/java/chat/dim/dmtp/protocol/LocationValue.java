@@ -38,10 +38,13 @@ import java.util.List;
 import chat.dim.stun.valus.MappedAddressValue;
 import chat.dim.stun.valus.SourceAddressValue;
 import chat.dim.tlv.Field;
-import chat.dim.tlv.RawValue;
-import chat.dim.tlv.StringTag;
-import chat.dim.tlv.StringValue;
-import chat.dim.tlv.Value32;
+import chat.dim.tlv.Length;
+import chat.dim.tlv.Tag;
+import chat.dim.tlv.Value;
+import chat.dim.tlv.tags.StringTag;
+import chat.dim.tlv.values.RawValue;
+import chat.dim.tlv.values.StringValue;
+import chat.dim.tlv.values.Value32;
 import chat.dim.turn.values.RelayedAddressValue;
 import chat.dim.type.ByteArray;
 
@@ -98,7 +101,7 @@ public class LocationValue extends CommandValue {
      */
     public long getTimestamp() {
         if (timestamp == 0) {
-            chat.dim.tlv.Entry.Value value = get(Command.TIME);
+            Value value = get(Command.TIME);
             if (value instanceof Value32) {
                 timestamp = ((Value32) value).value;
             }
@@ -114,7 +117,7 @@ public class LocationValue extends CommandValue {
 
     public String getNat() {
         if (nat == null) {
-            chat.dim.tlv.Entry.Value value = get(Command.NAT);
+            Value value = get(Command.NAT);
             if (value instanceof StringValue) {
                 nat = ((StringValue) value).string;
             }
@@ -136,8 +139,7 @@ public class LocationValue extends CommandValue {
     }
 
     // parse value with tag & length
-    public static chat.dim.tlv.Entry.Value parse(ByteArray data,
-                                                 chat.dim.tlv.Entry.Tag tag, chat.dim.tlv.Entry.Length length) {
+    public static Value parse(ByteArray data, Tag tag, Length length) {
         return from(data);
     }
 

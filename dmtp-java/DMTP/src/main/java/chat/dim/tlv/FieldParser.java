@@ -33,9 +33,12 @@ package chat.dim.tlv;
 import java.util.HashMap;
 import java.util.Map;
 
+import chat.dim.tlv.lengths.VarLength;
+import chat.dim.tlv.tags.StringTag;
+import chat.dim.tlv.values.RawValue;
 import chat.dim.type.ByteArray;
 
-public abstract class FieldParser<F extends Field> extends Parser<F, StringTag, VarLength, Entry.Value>
+public abstract class FieldParser<F extends Field> extends Parser<F, StringTag, VarLength, Value>
         implements Field.TagParser, Field.LengthParser, Field.ValueParser {
 
     @Override
@@ -62,7 +65,7 @@ public abstract class FieldParser<F extends Field> extends Parser<F, StringTag, 
     }
 
     @Override
-    public Entry.Value parseValue(ByteArray data, StringTag type, VarLength length) {
+    public Value parseValue(ByteArray data, StringTag type, VarLength length) {
         Field.ValueParser parser = valueParsers.get(type.string);
         if (parser == null) {
             return RawValue.from(data);

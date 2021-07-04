@@ -46,7 +46,7 @@ import chat.dim.stun.valus.SoftwareValue;
 import chat.dim.stun.valus.SourceAddressValue;
 import chat.dim.stun.valus.XorMappedAddressValue;
 import chat.dim.stun.valus.XorMappedAddressValue2;
-import chat.dim.tlv.Entry;
+import chat.dim.tlv.Value;
 import chat.dim.type.ByteArray;
 import chat.dim.type.MutableData;
 
@@ -124,7 +124,7 @@ public abstract class Server extends Node {
         String changedIP = changedAddress.getHostString();
         int changedPort = changedAddress.getPort();
         // create attributes
-        Entry.Value value;
+        Value value;
         // mapped address
         value = MappedAddressValue.create(remoteIP, remotePort);
         ByteArray data1 = Attribute.create(AttributeType.MAPPED_ADDRESS, value);

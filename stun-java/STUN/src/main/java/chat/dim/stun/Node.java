@@ -45,7 +45,7 @@ import chat.dim.stun.valus.SoftwareValue;
 import chat.dim.stun.valus.SourceAddressValue;
 import chat.dim.stun.valus.XorMappedAddressValue;
 import chat.dim.stun.valus.XorMappedAddressValue2;
-import chat.dim.tlv.Entry;
+import chat.dim.tlv.Value;
 import chat.dim.type.ByteArray;
 
 /**
@@ -97,7 +97,7 @@ public abstract class Node {
      */
     protected Attribute parseAttribute(Attribute attribute, Map<String, Object> context) {
         AttributeType type = attribute.tag;
-        Entry.Value value = attribute.value;
+        Value value = attribute.value;
         if (type.equals(AttributeType.CHANGE_REQUEST)) {
             assert value instanceof ChangeRequestValue : "change request value error: " + value;
             context.put("CHANGE-REQUEST", value);

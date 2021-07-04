@@ -28,10 +28,11 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tlv;
+package chat.dim.tlv.tags;
 
 import java.nio.charset.Charset;
 
+import chat.dim.tlv.Tag;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 import chat.dim.type.IntegerData;
@@ -81,7 +82,7 @@ public class StringTag extends VarTag {
     }
 
     // parse tag
-    public static Entry.Tag parse(ByteArray data) {
+    public static Tag parse(ByteArray data) {
         return from(data);
     }
 

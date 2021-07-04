@@ -38,11 +38,12 @@ import chat.dim.stun.valus.SourceAddressValue;
 import chat.dim.tlv.Entry;
 import chat.dim.tlv.Field;
 import chat.dim.tlv.FieldParser;
-import chat.dim.tlv.RawValue;
-import chat.dim.tlv.StringTag;
-import chat.dim.tlv.StringValue;
-import chat.dim.tlv.Value32;
-import chat.dim.tlv.VarLength;
+import chat.dim.tlv.Value;
+import chat.dim.tlv.lengths.VarLength;
+import chat.dim.tlv.tags.StringTag;
+import chat.dim.tlv.values.RawValue;
+import chat.dim.tlv.values.StringValue;
+import chat.dim.tlv.values.Value32;
 import chat.dim.turn.values.RelayedAddressValue;
 import chat.dim.type.ByteArray;
 
@@ -110,11 +111,11 @@ import chat.dim.type.ByteArray;
 
 public class Command extends Field {
 
-    public Command(Entry<StringTag, VarLength, Entry.Value> tlv) {
+    public Command(Entry<StringTag, VarLength, Value> tlv) {
         super(tlv);
     }
 
-    public Command(ByteArray data, StringTag type, VarLength length, Entry.Value value) {
+    public Command(ByteArray data, StringTag type, VarLength length, Value value) {
         super(data, type, length, value);
     }
 
@@ -122,7 +123,7 @@ public class Command extends Field {
     //  Factories
     //
 
-    public static Command createCommand(StringTag tag, VarLength length, Entry.Value value) {
+    public static Command createCommand(StringTag tag, VarLength length, Value value) {
         if (value == null) {
             value = RawValue.ZERO;
             length = VarLength.ZERO;
@@ -131,7 +132,7 @@ public class Command extends Field {
         }
         return new Command(tag.concat(length, value), tag, length, value);
     }
-    public static Command createCommand(StringTag tag, Entry.Value value) {
+    public static Command createCommand(StringTag tag, Value value) {
         return createCommand(tag, null, value);
     }
     public static Command createCommand(StringTag tag) {

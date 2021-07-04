@@ -31,7 +31,9 @@
 package chat.dim.turn.values;
 
 import chat.dim.stun.valus.MappedAddressValue;
-import chat.dim.tlv.Entry;
+import chat.dim.tlv.Length;
+import chat.dim.tlv.Tag;
+import chat.dim.tlv.Value;
 import chat.dim.type.ByteArray;
 
 /**  RELAYED-ADDRESS
@@ -71,7 +73,7 @@ public class RelayedAddressValue extends MappedAddressValue {
     }
 
     // parse value with tag & length
-    public static Entry.Value parse(ByteArray data, Entry.Tag tag, Entry.Length length) {
+    public static Value parse(ByteArray data, Tag tag, Length length) {
         return from(data);
     }
 }

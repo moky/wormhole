@@ -33,10 +33,10 @@ package chat.dim.stun.attributes;
 import java.util.HashMap;
 import java.util.Map;
 
-import chat.dim.tlv.Entry;
-import chat.dim.tlv.Length16;
 import chat.dim.tlv.Parser;
-import chat.dim.tlv.RawValue;
+import chat.dim.tlv.Value;
+import chat.dim.tlv.lengths.Length16;
+import chat.dim.tlv.values.RawValue;
 import chat.dim.type.ByteArray;
 
 /*
@@ -60,7 +60,7 @@ import chat.dim.type.ByteArray;
  *                    Figure 4: Format of STUN Attributes
  */
 
-public class AttributeParser extends Parser<Attribute, AttributeType, Length16, Entry.Value>
+public class AttributeParser extends Parser<Attribute, AttributeType, Length16, Value>
         implements TypeParser, LengthParser, ValueParser {
 
     @Override
@@ -87,7 +87,7 @@ public class AttributeParser extends Parser<Attribute, AttributeType, Length16, 
     }
 
     @Override
-    public Entry.Value parseValue(ByteArray data, AttributeType type, Length16 length) {
+    public Value parseValue(ByteArray data, AttributeType type, Length16 length) {
         ValueParser parser = valueParsers.get(type.name);
         if (parser == null) {
             return RawValue.from(data);
@@ -97,7 +97,7 @@ public class AttributeParser extends Parser<Attribute, AttributeType, Length16, 
     }
 
     @Override
-    protected Attribute createEntry(ByteArray data, AttributeType type, Length16 length, Entry.Value value) {
+    protected Attribute createEntry(ByteArray data, AttributeType type, Length16 length, Value value) {
         return new Attribute(data, type, length, value);
     }
 

@@ -45,8 +45,8 @@ import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.stun.valus.MappedAddressValue;
 import chat.dim.stun.valus.SourceAddressValue;
-import chat.dim.tlv.RawValue;
-import chat.dim.tlv.Value32;
+import chat.dim.tlv.values.RawValue;
+import chat.dim.tlv.values.Value32;
 import chat.dim.turn.values.RelayedAddressValue;
 import chat.dim.type.ByteArray;
 

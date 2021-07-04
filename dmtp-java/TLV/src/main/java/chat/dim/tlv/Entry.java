@@ -53,7 +53,7 @@ public interface Entry<T extends Tag, L extends Length, V extends Value> extends
      *  Tag-Length-Value Parser
      *  ~~~~~~~~~~~~~~~~~~~~~~~
      */
-    interface Parser<E> {
+    interface Parser<E extends Entry<T, L, V>, T extends Tag, L extends Length, V extends Value> {
 
         E parseEntry(ByteArray data);
 

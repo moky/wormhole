@@ -38,12 +38,13 @@ import java.util.List;
 import java.util.Map;
 
 import chat.dim.tlv.Field;
-import chat.dim.tlv.MapValue;
-import chat.dim.tlv.RawValue;
-import chat.dim.tlv.StringTag;
-import chat.dim.tlv.StringValue;
-import chat.dim.tlv.Value32;
-import chat.dim.tlv.Value8;
+import chat.dim.tlv.Value;
+import chat.dim.tlv.tags.StringTag;
+import chat.dim.tlv.values.MapValue;
+import chat.dim.tlv.values.RawValue;
+import chat.dim.tlv.values.StringValue;
+import chat.dim.tlv.values.Value32;
+import chat.dim.tlv.values.Value8;
 import chat.dim.type.ByteArray;
 
 /*     Message
@@ -215,14 +216,14 @@ public class Message extends MapValue<Field> {
                 return;
             }
         }
-        chat.dim.tlv.Entry.Value value;
-        if (object instanceof chat.dim.tlv.Entry.Value) {
-            value = (chat.dim.tlv.Entry.Value) object;
+        Value value;
+        if (object instanceof Value) {
+            value = (Value) object;
         } else {
             // try 'new Clazz(dict)'
             try {
                 Constructor<?> constructor = valueClass.getConstructor(object.getClass());
-                value = (chat.dim.tlv.Entry.Value) constructor.newInstance(object);
+                value = (Value) constructor.newInstance(object);
             } catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
                 e.printStackTrace();
                 value = null;
