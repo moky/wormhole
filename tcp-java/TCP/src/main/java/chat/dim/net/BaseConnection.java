@@ -160,20 +160,35 @@ public class BaseConnection implements Connection, StateDelegate {
 
     @Override
     public boolean isOpen() {
-        Channel sock = channel;
-        return sock != null && sock.isOpen();
+        try {
+            Channel sock = getChannel();
+            return sock != null && sock.isOpen();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Override
     public boolean isBound() {
-        Channel sock = channel;
-        return sock != null && sock.isBound();
+        try {
+            Channel sock = getChannel();
+            return sock != null && sock.isBound();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Override
     public boolean isConnected() {
-        Channel sock = channel;
-        return sock != null && sock.isConnected();
+        try {
+            Channel sock = getChannel();
+            return sock != null && sock.isConnected();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Override
