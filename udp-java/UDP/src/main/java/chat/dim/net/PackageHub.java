@@ -1,13 +1,13 @@
 /* license: https://mit-license.org
  *
- *  TCP: Transmission Control Protocol
+ *  UDP: User Datagram Protocol
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,46 +28,42 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tcp;
+package chat.dim.net;
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 
-import chat.dim.net.ActiveConnection;
-import chat.dim.net.BaseHub;
-import chat.dim.net.Channel;
-import chat.dim.net.Connection;
+import chat.dim.mtp.Package;
 
-public class ActiveStreamHub extends BaseHub {
+public abstract class PackageHub extends BaseHub {
 
-    private final WeakReference<Connection.Delegate> delegateRef;
-
-    public ActiveStreamHub(Connection.Delegate delegate) {
-        super();
-        delegateRef = new WeakReference<>(delegate);
-    }
-
-    public Connection.Delegate getDelegate() {
-        return delegateRef.get();
-    }
-
-    @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
-        ActiveConnection connection = new ActiveConnection(remote, local) {
-            @Override
-            protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
-                Channel channel = new StreamChannel(remote, local);
-                channel.configureBlocking(false);
-                return channel;
-            }
-        };
-        // set delegate
-        if (connection.getDelegate() == null) {
-            connection.setDelegate(getDelegate());
+    public PackageConnection getPackageConnection(SocketAddress remote, SocketAddress local) {
+        Connection conn = connect(remote, local);
+        if (conn instanceof PackageConnection) {
+            return (PackageConnection) conn;
+        } else {
+            return null;
         }
-        // start FSM
-        connection.start();
-        return connection;
+    }
+
+    public Package receivePackage(SocketAddress source, SocketAddress destination) {
+        PackageConnection conn = getPackageConnection(source, destination);
+        try {
+            return conn == null ? null : conn.receivePackage(source, destination);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public boolean sendPackage(Package pack, SocketAddress source, SocketAddress destination) {
+        PackageConnection conn = getPackageConnection(destination, source);
+        try {
+            conn.sendPackage(pack, source, destination);
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 }

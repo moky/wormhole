@@ -46,9 +46,17 @@ public class Server extends Thread implements Connection.Delegate {
         text = (counter++) + "# " + data.length + " byte(s) received";
         data = text.getBytes(StandardCharsets.UTF_8);
         Client.info(">>> responding: " + text);
-        hub.send(data, destination, source);
+        send(data, destination, source);
     }
     static int counter = 0;
+
+    private byte[] receive(SocketAddress source, SocketAddress destination) {
+        return hub.receive(source, destination);
+    }
+
+    private boolean send(byte[] data, SocketAddress source, SocketAddress destination) {
+        return hub.send(data, source, destination);
+    }
 
     @Override
     public synchronized void start() {
@@ -81,7 +89,7 @@ public class Server extends Thread implements Connection.Delegate {
         // receive data
         for (SocketChannel item : channels) {
             remote = item.getRemoteAddress();
-            data = hub.receive(remote, localAddress);
+            data = receive(remote, localAddress);
             if (data != null && data.length > 0) {
                 onDataReceived(data, remote, localAddress);
                 ++count;
@@ -124,22 +132,30 @@ public class Server extends Thread implements Connection.Delegate {
 
         hub = new BaseHub() {
             @Override
-            protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
+            protected Connection createConnection(SocketAddress remote, SocketAddress local) {
                 SocketChannel sock = null;
                 for (SocketChannel item : slaves) {
-                    if (item.getRemoteAddress().equals(remote)) {
-                        sock = item;
-                        break;
+                    try {
+                        if (item.getRemoteAddress().equals(remote)) {
+                            sock = item;
+                            break;
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
                 }
                 if (sock == null) {
                     return null;
                 }
-                StreamChannel channel = new StreamChannel(sock);
-                BaseConnection connection = new BaseConnection(channel);
-                connection.setDelegate(server);
-                connection.start();
-                return connection;
+                try {
+                    BaseConnection conn = new BaseConnection(new StreamChannel(sock));
+                    conn.setDelegate(server);
+                    conn.start();
+                    return conn;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return null;
+                }
             }
         };
 

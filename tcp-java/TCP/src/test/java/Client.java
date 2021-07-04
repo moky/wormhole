@@ -36,12 +36,20 @@ public class Client extends Thread implements Connection.Delegate {
     }
     private void heartbeat(Connection connection) {
         byte[] data = {'P', 'I', 'N', 'G'};
-        hub.send(data, connection.getLocalAddress(), connection.getRemoteAddress());
+        send(data, connection.getLocalAddress(), connection.getRemoteAddress());
     }
 
     public void onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
         String text = new String(data, StandardCharsets.UTF_8);
         info("<<< received (" + data.length + " bytes) from " + source + " to " + destination + ": " + text);
+    }
+
+    private byte[] receive(SocketAddress source, SocketAddress destination) {
+        return hub.receive(source, destination);
+    }
+
+    private boolean send(byte[] data, SocketAddress source, SocketAddress destination) {
+        return hub.send(data, source, destination);
     }
 
     @Override
@@ -58,15 +66,15 @@ public class Client extends Thread implements Connection.Delegate {
             data = (index + " sheep:" + text).getBytes();
             info(">>> sending (" + data.length + " bytes): ");
             info(data);
-            hub.send(data, null, remoteAddress);
+            send(data, null, remoteAddress);
             idle(2000);
-            data = hub.receive(remoteAddress, null);
+            data = receive(remoteAddress, null);
             if (data != null) {
                 onDataReceived(data, remoteAddress, null);
             }
         }
 
-        hub.closeConnection(remoteAddress, null);
+        hub.disconnect(remoteAddress, null);
     }
 
     private static SocketAddress remoteAddress;

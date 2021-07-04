@@ -44,40 +44,51 @@ public class DiscreteChannel implements Channel {
 
     protected DatagramChannel impl;
     private boolean blocking;
+    private final boolean reuseAddress;
 
-    public DiscreteChannel(DatagramChannel channel, boolean block) throws IOException {
-        super();
-        impl = channel;
-        blocking = block;
-        if (channel.isBlocking() != blocking) {
-            channel.configureBlocking(blocking);
-        }
-    }
-
-    public DiscreteChannel(DatagramChannel channel) {
+    public DiscreteChannel(DatagramChannel channel) throws IOException {
         super();
         impl = channel;
         blocking = channel.isBlocking();
+        reuseAddress = channel.socket().getReuseAddress();
     }
 
-    public DiscreteChannel(SocketAddress remote, SocketAddress local) throws IOException {
+    /**
+     *  Create discrete channel
+     *
+     * @param remoteAddress - remote address
+     * @param localAddress  - local address
+     * @param nonBlocking   - whether blocking mode
+     * @param reuse         - whether reuse address
+     * @throws IOException on failed
+     */
+    public DiscreteChannel(SocketAddress remoteAddress, SocketAddress localAddress,
+                           boolean nonBlocking, boolean reuse) throws IOException {
         super();
+        blocking = !nonBlocking;
+        reuseAddress = reuse;
+        // create inner channel
         impl = DatagramChannel.open();
-        impl.configureBlocking(true);
-        if (local != null) {
-            impl.bind(local);
+        impl.configureBlocking(blocking);
+        impl.socket().setReuseAddress(reuseAddress);
+        // bind to local address
+        if (localAddress != null) {
+            impl.bind(localAddress);
         }
-        if (remote != null) {
-            impl.connect(remote);
+        // connect to remote address
+        if (remoteAddress != null) {
+            impl.connect(remoteAddress);
         }
-        impl.configureBlocking(false);
-        blocking = false;
+    }
+    public DiscreteChannel(SocketAddress remoteAddress, SocketAddress localAddress) throws IOException {
+        this(remoteAddress, localAddress, false, false);
     }
 
     private void setImpl() throws IOException {
         if (impl == null) {
             impl = DatagramChannel.open();
             impl.configureBlocking(blocking);
+            impl.socket().setReuseAddress(reuseAddress);
         }
     }
 

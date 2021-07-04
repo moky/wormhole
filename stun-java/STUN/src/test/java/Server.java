@@ -7,6 +7,8 @@ import java.nio.channels.DatagramChannel;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import chat.dim.mtp.DataType;
+import chat.dim.mtp.Package;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
@@ -122,6 +124,17 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
         }
     }
 
+    @Override
+    public int send(byte[] data, SocketAddress source, SocketAddress destination) {
+        Package pack = Package.create(DataType.Message, new Data(data));
+        return hub.sendPackage(pack, source, destination) ? 0 : -1;
+    }
+
+    private byte[] receive(SocketAddress source, SocketAddress destination) {
+        Package pack = hub.receivePackage(source, destination);
+        return pack == null ? null : pack.body.getBytes();
+    }
+
     /**
      *  Received data from any socket
      *
@@ -131,11 +144,11 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
         byte[] data = null;
         long timeout = (new Date()).getTime() + 2000;
         while (running) {
-            data = hub.receive(null, primaryAddress);
+            data = receive(null, primaryAddress);
             if (data != null) {
                 break;
             }
-            data = hub.receive(null, secondaryAddress);
+            data = receive(null, secondaryAddress);
             if (data != null) {
                 break;
             }
@@ -145,11 +158,6 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
             Client.idle(128);
         }
         return data;
-    }
-
-    @Override
-    public int send(byte[] data, SocketAddress source, SocketAddress destination) {
-        return hub.send(data, source, destination);
     }
 
     @Override

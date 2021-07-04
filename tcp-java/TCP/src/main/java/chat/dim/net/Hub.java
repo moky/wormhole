@@ -65,9 +65,9 @@ public interface Hub {
      * @param source      - from address (local);
      *                      if it's null, send via any connection connected to destination
      * @param destination - to address (remote)
-     * @return The number of bytes written, possibly zero; -1 on error
+     * @return false on error
      */
-    int send(byte[] data, SocketAddress source, SocketAddress destination);
+    boolean send(byte[] data, SocketAddress source, SocketAddress destination);
 
     /**
      *  Receive data via the connection bound to source and connected to destination
@@ -81,11 +81,28 @@ public interface Hub {
     byte[] receive(SocketAddress source, SocketAddress destination);
 
     /**
+     *   Get connection if already exists
+     *
+     * @param remote - remote address
+     * @param local  - local address
+     * @return null on connection not found
+     */
+    Connection getConnection(SocketAddress remote, SocketAddress local);
+
+    /**
+     *  Get/create connection
+     *
+     * @param remote - remote address
+     * @param local  - local address
+     * @return null on error
+     */
+    Connection connect(SocketAddress remote, SocketAddress local);
+
+    /**
      *  Close connection
      *
      * @param remote - remote address
      * @param local  - local address
-     * @return false on error
      */
-    boolean closeConnection(SocketAddress remote, SocketAddress local);
+    void disconnect(SocketAddress remote, SocketAddress local);
 }

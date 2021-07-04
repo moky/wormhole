@@ -8,10 +8,13 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.charset.StandardCharsets;
 
+import chat.dim.mtp.DataType;
+import chat.dim.mtp.Package;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.PackageConnection;
+import chat.dim.type.Data;
 import chat.dim.udp.ActivePackageHub;
 import chat.dim.udp.DiscreteChannel;
 
@@ -85,9 +88,19 @@ public class Server extends Thread implements Connection.Delegate {
         text = (counter++) + "# " + data.length + " byte(s) received";
         data = text.getBytes(StandardCharsets.UTF_8);
         Client.info(">>> responding: " + text);
-        hub.send(data, destination, source);
+        send(data, destination, source);
     }
     static int counter = 0;
+
+    private byte[] receive(SocketAddress source, SocketAddress destination) {
+        Package pack = hub.receivePackage(source, destination);
+        return pack == null ? null : pack.body.getBytes();
+    }
+
+    private boolean send(byte[] data, SocketAddress source, SocketAddress destination) {
+        Package pack = Package.create(DataType.Message, new Data(data));
+        return hub.sendPackage(pack, source, destination);
+    }
 
     @Override
     public synchronized void start() {
@@ -105,7 +118,7 @@ public class Server extends Thread implements Connection.Delegate {
     }
 
     private boolean process() {
-        byte[] data = hub.receive(remoteAddress, localAddress);
+        byte[] data = receive(remoteAddress, localAddress);
         if (data == null || data.length == 0) {
             return false;
         }

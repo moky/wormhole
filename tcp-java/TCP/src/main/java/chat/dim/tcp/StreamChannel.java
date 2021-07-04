@@ -44,40 +44,51 @@ public class StreamChannel implements Channel {
 
     protected SocketChannel impl;
     private boolean blocking;
+    private final boolean reuseAddress;
 
-    public StreamChannel(SocketChannel channel, boolean block) throws IOException {
-        super();
-        impl = channel;
-        blocking = block;
-        if (channel.isBlocking() != blocking) {
-            channel.configureBlocking(blocking);
-        }
-    }
-
-    public StreamChannel(SocketChannel channel) {
+    public StreamChannel(SocketChannel channel) throws IOException {
         super();
         impl = channel;
         blocking = channel.isBlocking();
+        reuseAddress = channel.socket().getReuseAddress();
     }
 
-    public StreamChannel(SocketAddress remote, SocketAddress local) throws IOException {
+    /**
+     *  Create stream channel
+     *
+     * @param remoteAddress - remote address
+     * @param localAddress  - local address
+     * @param nonBlocking   - whether blocking mode
+     * @param reuse         - whether reuse address
+     * @throws IOException on failed
+     */
+    public StreamChannel(SocketAddress remoteAddress, SocketAddress localAddress,
+                         boolean nonBlocking, boolean reuse) throws IOException {
         super();
+        blocking = !nonBlocking;
+        reuseAddress = reuse;
+        // create inner channel
         impl = SocketChannel.open();
-        impl.configureBlocking(true);
-        if (local != null) {
-            impl.bind(local);
+        impl.configureBlocking(blocking);
+        impl.socket().setReuseAddress(reuseAddress);
+        // bind to local address
+        if (localAddress != null) {
+            impl.bind(localAddress);
         }
-        if (remote != null) {
-            impl.connect(remote);
+        // connect to remote address
+        if (remoteAddress != null) {
+            impl.connect(remoteAddress);
         }
-        impl.configureBlocking(false);
-        blocking = false;
+    }
+    public StreamChannel(SocketAddress remote, SocketAddress local) throws IOException {
+        this(remote, local, false, false);
     }
 
     private void setImpl() throws IOException {
         if (impl == null) {
             impl = SocketChannel.open();
             impl.configureBlocking(blocking);
+            impl.socket().setReuseAddress(reuseAddress);
         }
     }
 

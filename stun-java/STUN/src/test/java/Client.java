@@ -5,9 +5,12 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
 
+import chat.dim.mtp.DataType;
+import chat.dim.mtp.Package;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.PackageConnection;
+import chat.dim.type.Data;
 import chat.dim.udp.ActivePackageHub;
 
 public class Client extends chat.dim.stun.Client implements Connection.Delegate {
@@ -42,7 +45,13 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
 
     @Override
     public int send(byte[] data, SocketAddress source, SocketAddress destination) {
-        return hub.send(data, source, destination);
+        Package pack = Package.create(DataType.Message, new Data(data));
+        return hub.sendPackage(pack, source, destination) ? 0 : -1;
+    }
+
+    private byte[] receive(SocketAddress source, SocketAddress destination) {
+        Package pack = hub.receivePackage(source, destination);
+        return pack == null ? null : pack.body.getBytes();
     }
 
     @Override
@@ -50,7 +59,7 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
         byte[] data;
         long timeout = (new Date()).getTime() + 2000;
         while (true) {
-            data = hub.receive(SERVER_ADDRESS, CLIENT_ADDRESS);
+            data = receive(SERVER_ADDRESS, CLIENT_ADDRESS);
             if (data != null) {
                 break;
             }

@@ -77,36 +77,32 @@ public abstract class BaseHub implements Hub, Ticker {
     private final Map<Pair<SocketAddress, SocketAddress>, Long> dyingTimes = new HashMap<>();
     public static long DYING_EXPIRES = 120 * 1000;
 
-    public BaseHub() {
-        super();
-    }
-
     @Override
-    public int send(byte[] data, SocketAddress source, SocketAddress destination) {
+    public boolean send(byte[] data, SocketAddress source, SocketAddress destination) {
         try {
-            Connection conn = getConnection(destination, source);
+            Connection conn = connect(destination, source);
             if (conn == null || !conn.isOpen()) {
                 // connection closed
-                return -1;
+                return false;
             }
             if (destination == null && !conn.isConnected()) {
                 // connection not connected yet
-                return -1;
+                return false;
             }
             ByteBuffer buffer = ByteBuffer.allocate(data.length);
             buffer.put(data);
             buffer.flip();
-            return conn.send(buffer, destination);
+            return conn.send(buffer, destination) != -1;
         } catch (IOException e) {
             e.printStackTrace();
-            return -1;
+            return false;
         }
     }
 
     @Override
     public byte[] receive(SocketAddress source, SocketAddress destination) {
         try {
-            Connection conn = getConnection(source, destination);
+            Connection conn = connect(source, destination);
             if (conn == null || !conn.isOpen()) {
                 // connection closed
                 return null;
@@ -127,21 +123,63 @@ public abstract class BaseHub implements Hub, Ticker {
     }
 
     @Override
-    public boolean closeConnection(SocketAddress remote, SocketAddress local) {
+    public Connection getConnection(SocketAddress remote, SocketAddress local) {
+        Connection conn;
+        Lock readLock = connectionLock.readLock();
+        readLock.lock();
+        try {
+            conn = seekConnection(remote, local);
+        } finally {
+            readLock.unlock();
+        }
+        return conn;
+    }
+
+    @Override
+    public Connection connect(SocketAddress remote, SocketAddress local) {
+        assert local != null || remote != null : "both local & remote addresses are empty";
+        // 1. try to get connection from cache pool
+        Connection conn = getConnection(remote, local);
+        if (conn != null) {
+            return conn;
+        }
+        // 2. connection not found, try to create connection
+        Lock writeLock = connectionLock.writeLock();
+        writeLock.lock();
+        try {
+            // double check to make sure the connection doesn't exist
+            conn = seekConnection(remote, local);
+            if (conn == null) {
+                // create it
+                conn = createConnection(remote, local);
+                if (conn != null && createIndexesForConnection(conn, remote, local)) {
+                    // make sure different connection with same pair(remote, local) not exists
+                    connectionSet.remove(conn);
+                    // cache it
+                    connectionSet.add(conn);
+                }
+            }
+        } finally {
+            writeLock.unlock();
+        }
+        return conn;
+    }
+    protected abstract Connection createConnection(SocketAddress remote, SocketAddress local);
+
+    @Override
+    public void disconnect(SocketAddress remote, SocketAddress local) {
         assert local != null || remote != null : "both local & remote addresses are empty";
         Connection conn;
         Lock readLock = connectionLock.readLock();
         readLock.lock();
         try {
-            conn = fetchConnection(remote, local);
+            conn = seekConnection(remote, local);
         } finally {
             readLock.unlock();
         }
-        if (conn == null) {
-            return false;
-        } else {
+        if (conn != null) {
             conn.close();
-            return removeConnection(conn);
+            removeConnection(conn);
         }
     }
 
@@ -200,7 +238,7 @@ public abstract class BaseHub implements Hub, Ticker {
         }
     }
 
-    private Connection fetchConnection(SocketAddress remote, SocketAddress local) {
+    private Connection seekConnection(SocketAddress remote, SocketAddress local) {
         if (remote == null) {
             assert local != null : "both local & remote addresses are empty";
             // get connection bound to local address
@@ -275,83 +313,42 @@ public abstract class BaseHub implements Hub, Ticker {
         }
         return true;
     }
-    private boolean removeIndexesForConnection(Connection conn) {
+    private void removeIndexesForConnection(Connection conn) {
         SocketAddress remote = conn.getRemoteAddress();
         SocketAddress local = conn.getLocalAddress();
         if (remote == null) {
             if (local == null) {
                 //throw new NullPointerException("both local & remote addresses are empty");
-                return false;
+                return;
             }
             // get table for local address
             Map<SocketAddress, Connection> table = connectionMap.get(local);
-            if (table == null) {
-                return false;
-            } else {
+            if (table != null) {
                 // mapping: (local, null) => Connection
-                return table.remove(anyRemoteAddress) != null;
+                table.remove(anyRemoteAddress);
             }
         } else {
             // get table for remote address
             Map<SocketAddress, Connection> table = connectionMap.get(remote);
-            if (table == null) {
-                return false;
-            } else if (local == null) {
-                // mapping: (remote, null) => Connection
-                return table.remove(anyLocalAddress) != null;
-            } else {
-                // mapping: (remote, local) => Connection
-                return table.remove(local) != null;
+            if (table != null) {
+                if (local == null) {
+                    // mapping: (remote, null) => Connection
+                    table.remove(anyLocalAddress);
+                } else {
+                    // mapping: (remote, local) => Connection
+                    table.remove(local);
+                }
             }
         }
     }
-
-    private boolean removeConnection(Connection conn) {
-        boolean ok1, ok2;
+    private void removeConnection(Connection conn) {
         Lock writeLock = connectionLock.writeLock();
         writeLock.lock();
         try {
-            ok1 = connectionSet.remove(conn);
-            ok2 = removeIndexesForConnection(conn);
+            connectionSet.remove(conn);
+            removeIndexesForConnection(conn);
         } finally {
             writeLock.unlock();
         }
-        return ok1 || ok2;
     }
-
-    protected Connection getConnection(SocketAddress remote, SocketAddress local) throws IOException {
-        assert local != null || remote != null : "both local & remote addresses are empty";
-        Connection conn;
-        // 1. try to get connection from cache pool
-        Lock readLock = connectionLock.readLock();
-        readLock.lock();
-        try {
-            conn = fetchConnection(remote, local);
-        } finally {
-            readLock.unlock();
-        }
-        if (conn == null) {
-            // 2. connection not found, try to create connection
-            Lock writeLock = connectionLock.writeLock();
-            writeLock.lock();
-            try {
-                // double check to make sure the connection doesn't exist
-                conn = fetchConnection(remote, local);
-                if (conn == null) {
-                    // create it
-                    conn = createConnection(remote, local);
-                    if (conn != null && createIndexesForConnection(conn, remote, local)) {
-                        // make sure different connection with same pair(remote, local) not exists
-                        connectionSet.remove(conn);
-                        // cache it
-                        connectionSet.add(conn);
-                    }
-                }
-            } finally {
-                writeLock.unlock();
-            }
-        }
-        return conn;
-    }
-    protected abstract Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException;
 }

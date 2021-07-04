@@ -3,9 +3,12 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 
+import chat.dim.mtp.DataType;
+import chat.dim.mtp.Package;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.PackageConnection;
+import chat.dim.type.Data;
 import chat.dim.udp.ActivePackageHub;
 
 public class Client extends Thread implements Connection.Delegate {
@@ -42,6 +45,16 @@ public class Client extends Thread implements Connection.Delegate {
         info("<<< received (" + data.length + " bytes) from " + source + " to " + destination + ": " + text);
     }
 
+    private byte[] receive(SocketAddress source, SocketAddress destination) {
+        Package pack = hub.receivePackage(source, destination);
+        return pack == null ? null : pack.body.getBytes();
+    }
+
+    private boolean send(byte[] data, SocketAddress source, SocketAddress destination) {
+        Package pack = Package.create(DataType.Message, new Data(data));
+        return hub.sendPackage(pack, source, destination);
+    }
+
     @Override
     public void run() {
 
@@ -56,15 +69,15 @@ public class Client extends Thread implements Connection.Delegate {
             data = (index + " sheep:" + text).getBytes();
             info(">>> sending (" + data.length + " bytes): ");
             info(data);
-            hub.send(data, null, remoteAddress);
+            send(data, null, remoteAddress);
             idle(2000);
-            data = hub.receive(remoteAddress, null);
+            data = receive(remoteAddress, null);
             if (data != null) {
                 onDataReceived(data, remoteAddress, null);
             }
         }
 
-        hub.closeConnection(remoteAddress, null);
+        hub.disconnect(remoteAddress, null);
     }
 
     private static SocketAddress remoteAddress;

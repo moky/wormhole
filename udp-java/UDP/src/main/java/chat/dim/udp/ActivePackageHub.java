@@ -34,12 +34,12 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 
-import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.PackageConnection;
+import chat.dim.net.PackageHub;
 
-public class ActivePackageHub extends BaseHub {
+public class ActivePackageHub extends PackageHub {
 
     private final WeakReference<Connection.Delegate> delegateRef;
 
@@ -57,7 +57,9 @@ public class ActivePackageHub extends BaseHub {
         PackageConnection connection = new PackageConnection(remote, local) {
             @Override
             protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
-                return new DiscreteChannel(remote, local);
+                Channel channel = new DiscreteChannel(remote, local);
+                channel.configureBlocking(false);
+                return channel;
             }
         };
         // set delegate
@@ -67,31 +69,5 @@ public class ActivePackageHub extends BaseHub {
         // start FSM
         connection.start();
         return connection;
-    }
-
-    @Override
-    public byte[] receive(SocketAddress source, SocketAddress destination) {
-        try {
-            Connection conn = getConnection(source, destination);
-            if (conn instanceof PackageConnection) {
-                return ((PackageConnection) conn).receive(source, destination);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    @Override
-    public int send(byte[] data, SocketAddress source, SocketAddress destination) {
-        try {
-            Connection conn = getConnection(destination, source);
-            if (conn instanceof PackageConnection) {
-                return ((PackageConnection) conn).send(data, source, destination);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return -1;
     }
 }

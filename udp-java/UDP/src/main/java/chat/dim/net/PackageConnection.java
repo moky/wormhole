@@ -79,17 +79,19 @@ public abstract class PackageConnection extends ActiveConnection {
         }
     }
 
-    public int send(byte[] data, SocketAddress source, SocketAddress destination) {
-        // create MTP package
-        Package pack = Package.create(DataType.Message, new Data(data));
+    /**
+     *  Append the package into a waiting queue for sending out
+     *
+     * @param pack        - data package
+     * @param source      - local address
+     * @param destination - remote address
+     * @throws IOException on error
+     */
+    public void sendPackage(Package pack, SocketAddress source, SocketAddress destination) throws IOException {
         // append as Departure task to waiting queue
         departureHall.appendDeparture(pack, source, destination);
-        try {
-            processExpiredTasks();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return 0;
+        // send out tasks from waiting queue
+        processExpiredTasks();
     }
 
     private void processExpiredTasks() throws IOException {
@@ -118,13 +120,12 @@ public abstract class PackageConnection extends ActiveConnection {
         }
         // send out all fragments
         for (Package pack : fragments) {
-            sendPackage(pack, task.destination);
+            sendData(pack.getBytes(), task.destination);
         }
         return true;
     }
 
-    private void sendPackage(Package pack, SocketAddress remote) {
-        byte[] data = pack.getBytes();
+    private void sendData(byte[] data, SocketAddress remote) {
         ByteBuffer buffer = ByteBuffer.allocate(data.length);
         buffer.put(data);
         buffer.flip();
@@ -134,25 +135,47 @@ public abstract class PackageConnection extends ActiveConnection {
             e.printStackTrace();
         }
     }
+    private void respondCommand(TransactionID sn, byte[] body, SocketAddress remote) {
+        Package res = Package.create(DataType.CommandResponse, sn, new Data(body));
+        sendData(res.getBytes(), remote);
+    }
+    private void respondMessage(TransactionID sn, int pages, int offset, SocketAddress remote) {
+        Package res = Package.create(DataType.MessageResponse, sn, pages, offset, new Data(OK));
+        sendData(res.getBytes(), remote);
+    }
 
-    public byte[] receive(SocketAddress source, SocketAddress destination) throws IOException {
+    /**
+     *  Receive data package from remote address
+     *
+     * @param source      - remote address
+     * @param destination - local address
+     * @return complete package
+     * @throws IOException on error
+     */
+    public Package receivePackage(SocketAddress source, SocketAddress destination) throws IOException {
+        Package pack;
         ByteBuffer buffer = ByteBuffer.allocate(MSS);
+        SocketAddress remote;
         byte[] data;
-        do {
+        while (true) {
             buffer.clear();
-            SocketAddress remote = receive(buffer);
+            remote = receive(buffer);
             if (remote == null) {
+                // received nothing
                 return null;
             }
             assert source == null || source.equals(remote) : "source address error: " + source + ", " + remote;
             data = new byte[buffer.position()];
             buffer.flip();
             buffer.get(data);
-            data = processIncome(data, remote, destination);
-        } while (data == null);
-        return data;
+            pack = processIncome(data, remote, destination);
+            if (pack != null) {
+                // received a complete package
+                return pack;
+            }
+        }
     }
-    private byte[] processIncome(byte[] data, SocketAddress remote, SocketAddress destination) {
+    private Package processIncome(byte[] data, SocketAddress remote, SocketAddress destination) {
         // process income package
         Package pack = Package.parse(new Data(data));
         if (pack == null) {
@@ -166,76 +189,82 @@ public abstract class PackageConnection extends ActiveConnection {
         // check data type in package header
         Header head = pack.head;
         DataType type = head.type;
-        if (type.isCommand()) {
+        if (type.isCommandResponse()) {
+            // process CommandResponse:
+            //      'PONG'
+            //      'OK'
+            assert head.offset == 0 : "command offset error: " + head.offset;
+            departureHall.deleteFragment(head.sn, head.offset);
+            if (body.equals(PONG)) {
+                // ignore
+                return null;
+            } else if (body.equals(OK)) {
+                // ignore
+                return null;
+            }
+            // Unknown Command Response?
+            // let the caller to process it
+        } else if (type.isCommand()) {
             // process Command:
             //      'PING'
             //      'NOOP'
             if (body.equals(PING)) {
                 // PING -> PONG
                 respondCommand(head.sn, PONG, remote);
+                return null;
             } else if (body.equals(NOOP)) {
                 // NOOP -> OK
                 respondCommand(head.sn, OK, remote);
+                return null;
             }
-            return null;
-        } else if (type.isCommandResponse()) {
-            // process CommandResponse:
-            //      'PONG'
-            //      'OK'
-            return null;
+            // Unknown Command?
+            // let the caller to process it
         } else if (type.isMessageResponse()) {
             // process MessageResponse:
             //      'OK'
             //      'AGAIN'
-            //      'PONG'
             if (body.equals(AGAIN)) {
                 // TODO: reset maxRetries?
                 return null;
             }
             departureHall.deleteFragment(head.sn, head.offset);
+            if (body.equals(OK)) {
+                return null;
+            } else if (body.equals(PONG)) {
+                // this body should be in a Command
+                return null;
+            }
+            // Unknown Message Response?
+            // let the caller to process it
         } else if (type.isMessageFragment()) {
             // process MessageFragment:
             //      'OK'
             //      'AGAIN'
-            Package res = Package.create(DataType.MessageResponse, head.sn, head.pages, head.offset, new Data(OK));
-            sendPackage(res, remote);
+            respondMessage(head.sn, head.pages, head.offset, remote);
             // check cached fragments
             pack = arrivalHall.insertFragment(pack, remote, destination);
-            if (pack == null) {
-                // not completed yet
-                return null;
-            }
-            body = pack.body;
-            if (body == null || body.getSize() == 0) {
-                // should not happen
-                return null;
-            }
-        } else if (type.isMessage()) {
+        } else {
             // process Message:
-            //      'OK'
-            //      'AGAIN'
-            Package res = Package.create(DataType.MessageResponse, head.sn, new Data(OK));
-            sendPackage(res, remote);
-        } else {
-            // should not happen
-            throw new IllegalArgumentException("data type error: " + type);
+            //      '...'
+            assert type.isMessage() : "data type error: " + type;
+            if (body.equals(PING) || body.equals(PONG) || body.equals(NOOP) || body.equals(OK)) {
+                // these bodies should be in a Command
+                // ignore them
+                return null;
+            }
+            respondMessage(head.sn, 1, 0, remote);
         }
-        // check body which should be in a Command
-        if (body.equals(PING) || body.equals(PONG) || body.equals(NOOP) || body.equals(OK)) {
-            // ignore
-            return null;
-        } else {
-            return body.getBytes();
-        }
-    }
-    private void respondCommand(TransactionID sn, byte[] body, SocketAddress remote) {
-        Package pack = Package.create(DataType.CommandResponse, sn, new Data(body));
-        sendPackage(pack, remote);
+        return pack;
     }
 
-    public void heartbeat(SocketAddress remote) {
+    /**
+     *  Send a heartbeat package to remote address
+     *
+     * @param destination - remote address
+     */
+    public void heartbeat(SocketAddress destination) {
         Package pack = Package.create(DataType.Command, new Data(PING));
-        sendPackage(pack, remote);
+        sendData(pack.getBytes(), destination);
     }
 
     private static final byte[] PING = {'P', 'I', 'N', 'G'};
