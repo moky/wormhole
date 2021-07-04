@@ -28,8 +28,9 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tlv;
+package chat.dim.tlv.tags;
 
+import chat.dim.tlv.Tag;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 import chat.dim.type.IntegerData;
@@ -49,7 +50,7 @@ import chat.dim.type.VarIntData;
  *
  *  A tag that starts with a variable integer indicating its content length
  */
-public class VarTag extends Data implements Entry.Tag {
+public class VarTag extends Data implements Tag {
 
     public static final VarTag ZERO = from(VarIntData.ZERO, Data.ZERO);
 
@@ -111,7 +112,7 @@ public class VarTag extends Data implements Entry.Tag {
     }
 
     // parse tag
-    public static Entry.Tag parse(ByteArray data) {
+    public static Tag parse(ByteArray data) {
         return from(data);
     }
 }

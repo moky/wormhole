@@ -28,61 +28,57 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tlv;
+package chat.dim.tlv.lengths;
 
+import chat.dim.network.DataConvert;
+import chat.dim.tlv.Length;
+import chat.dim.tlv.Tag;
 import chat.dim.type.ByteArray;
-import chat.dim.type.UInt8Data;
+import chat.dim.type.UInt32Data;
 
 /**
- *  Fixed Char Value (8 bits)
- *  ~~~~~~~~~~~~~~~~~~~~~~~~~
+ *  Fixed Length (32 bits)
+ *  ~~~~~~~~~~~~~~~~~~~~~~
  */
-public class Value8 extends UInt8Data implements Entry.Value {
+public class Length32 extends UInt32Data implements Length {
 
-    public static final Value8 ZERO = from(UInt8Data.ZERO);
+    public static final Length32 ZERO = from(UInt32Data.ZERO);
 
-    public Value8(ByteArray data) {
-        super(data);
+    public Length32(UInt32Data data) {
+        super(data, data.value, data.endian);
     }
 
-    public Value8(byte value) {
-        super(value);
-    }
-
-    public Value8(int value) {
-        super(value);
+    public Length32(ByteArray data, long value, Endian endian) {
+        super(data, value, endian);
     }
 
     //
     //  Factories
     //
 
-    public static Value8 from(Value8 value) {
-        return value;
+    public static Length32 from(Length32 length) {
+        return length;
     }
 
-    public static Value8 from(UInt8Data data) {
-        return new Value8(data);
+    public static Length32 from(UInt32Data data) {
+        return new Length32(data, data.value, data.endian);
     }
 
-    public static Value8 from(ByteArray data) {
-        if (data.getSize() < 1) {
+    public static Length32 from(ByteArray data) {
+        if (data.getSize() < 4) {
             return null;
-        } else if (data.getSize() > 1) {
-            data = data.slice(0, 1);
+        } else if (data.getSize() > 4) {
+            data = data.slice(0, 4);
         }
-        return new Value8(data);
+        return new Length32(DataConvert.getUInt32Data(data));
     }
 
-    public static Value8 from(byte value) {
-        return new Value8(value);
-    }
-    public static Value8 from(int value) {
-        return new Value8(value);
+    public static Length32 from(int value) {
+        return new Length32(DataConvert.getUInt32Data(value));
     }
 
-    // parse value with tag & length
-    public static Entry.Value parse(ByteArray data, Entry.Tag tag, Entry.Length length) {
+    // parse length with tag
+    public static Length parse(ByteArray data, Tag tag) {
         return from(data);
     }
 }

@@ -28,55 +28,52 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tlv;
+package chat.dim.tlv.lengths;
 
-import chat.dim.network.DataConvert;
+import chat.dim.tlv.Length;
+import chat.dim.tlv.Tag;
 import chat.dim.type.ByteArray;
-import chat.dim.type.UInt32Data;
+import chat.dim.type.VarIntData;
 
 /**
- *  Fixed Length (32 bits)
- *  ~~~~~~~~~~~~~~~~~~~~~~
+ *  Variable Length
+ *  ~~~~~~~~~~~~~~~
  */
-public class Length32 extends UInt32Data implements Entry.Length {
+public class VarLength extends VarIntData implements Length {
 
-    public static final Length32 ZERO = from(UInt32Data.ZERO);
+    public static final VarLength ZERO = from(VarIntData.ZERO);
 
-    public Length32(UInt32Data data) {
-        super(data, data.value, data.endian);
+    public VarLength(VarIntData data) {
+        super(data, data.value);
     }
 
-    public Length32(ByteArray data, long value, Endian endian) {
-        super(data, value, endian);
+    public VarLength(ByteArray data, long value) {
+        super(data, value);
     }
 
     //
     //  Factories
     //
 
-    public static Length32 from(Length32 length) {
+    public static VarLength from(VarLength length) {
         return length;
     }
 
-    public static Length32 from(UInt32Data data) {
-        return new Length32(data, data.value, data.endian);
+    public static VarLength from(VarIntData data) {
+        return new VarLength(data, data.value);
     }
 
-    public static Length32 from(ByteArray data) {
-        if (data.getSize() < 4) {
-            return null;
-        } else if (data.getSize() > 4) {
-            data = data.slice(0, 4);
-        }
-        return new Length32(DataConvert.getUInt32Data(data));
+    public static VarLength from(ByteArray data) {
+        VarIntData var = VarIntData.from(data);
+        return var == null ? null : new VarLength(var);
     }
 
-    public static Length32 from(int value) {
-        return new Length32(DataConvert.getUInt32Data(value));
+    public static VarLength from(long value) {
+        return new VarLength(VarIntData.from(value));
     }
 
     // parse length with tag
-    public static Entry.Length parse(ByteArray data, Entry.Tag tag) {
+    public static Length parse(ByteArray data, Tag tag) {
         return from(data);
     }
 }

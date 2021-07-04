@@ -28,55 +28,64 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tlv;
+package chat.dim.tlv.values;
 
-import chat.dim.network.DataConvert;
+import chat.dim.tlv.Length;
+import chat.dim.tlv.Tag;
+import chat.dim.tlv.Value;
 import chat.dim.type.ByteArray;
-import chat.dim.type.UInt32Data;
+import chat.dim.type.UInt8Data;
 
 /**
- *  Fixed Integer Value (32 bits)
- *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ *  Fixed Char Value (8 bits)
+ *  ~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-public class Value32 extends UInt32Data implements Entry.Value {
+public class Value8 extends UInt8Data implements Value {
 
-    public static final Value32 ZERO = from(UInt32Data.ZERO);
+    public static final Value8 ZERO = from(UInt8Data.ZERO);
 
-    public Value32(UInt32Data data) {
-        super(data, data.value, data.endian);
+    public Value8(ByteArray data) {
+        super(data);
     }
 
-    public Value32(ByteArray data, long value, Endian endian) {
-        super(data, value, endian);
+    public Value8(byte value) {
+        super(value);
+    }
+
+    public Value8(int value) {
+        super(value);
     }
 
     //
     //  Factories
     //
 
-    public static Value32 from(Value32 value) {
+    public static Value8 from(Value8 value) {
         return value;
     }
 
-    public static Value32 from(UInt32Data data) {
-        return new Value32(data, data.value, data.endian);
+    public static Value8 from(UInt8Data data) {
+        return new Value8(data);
     }
 
-    public static Value32 from(ByteArray data) {
-        if (data.getSize() < 4) {
+    public static Value8 from(ByteArray data) {
+        if (data.getSize() < 1) {
             return null;
-        } else if (data.getSize() > 4) {
-            data = data.slice(0, 4);
+        } else if (data.getSize() > 1) {
+            data = data.slice(0, 1);
         }
-        return new Value32(DataConvert.getUInt32Data(data));
+        return new Value8(data);
     }
 
-    public static Value32 from(long value) {
-        return new Value32(DataConvert.getUInt32Data(value));
+    public static Value8 from(byte value) {
+        return new Value8(value);
+    }
+    public static Value8 from(int value) {
+        return new Value8(value);
     }
 
     // parse value with tag & length
-    public static Entry.Value parse(ByteArray data, Entry.Tag tag, Entry.Length length) {
+    public static Value parse(ByteArray data, Tag tag, Length length) {
         return from(data);
     }
 }

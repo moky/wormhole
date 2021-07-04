@@ -28,50 +28,62 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tlv;
+package chat.dim.tlv.values;
 
+import java.nio.charset.Charset;
+
+import chat.dim.tlv.Length;
+import chat.dim.tlv.Tag;
+import chat.dim.tlv.Value;
 import chat.dim.type.ByteArray;
-import chat.dim.type.VarIntData;
+import chat.dim.type.Data;
 
-/**
- *  Variable Length
- *  ~~~~~~~~~~~~~~~
- */
-public class VarLength extends VarIntData implements Entry.Length {
+public class StringValue extends Data implements Value {
 
-    public static final VarLength ZERO = from(VarIntData.ZERO);
+    public static final StringValue ZERO = from(Data.ZERO);
 
-    public VarLength(VarIntData data) {
-        super(data, data.value);
+    public final String string;
+
+    public StringValue(ByteArray data, String string) {
+        super(data);
+        this.string = string;
     }
 
-    public VarLength(ByteArray data, long value) {
-        super(data, value);
+    public StringValue(byte[] buffer, int offset, int size, String string) {
+        super(buffer, offset, size);
+        this.string = string;
+    }
+
+    public StringValue(byte[] bytes, String string) {
+        super(bytes);
+        this.string = string;
     }
 
     //
     //  Factories
     //
 
-    public static VarLength from(VarLength length) {
-        return length;
+    public static StringValue from(StringValue value) {
+        return value;
     }
 
-    public static VarLength from(VarIntData data) {
-        return new VarLength(data, data.value);
+    public static StringValue from(ByteArray data) {
+        String string = new String(data.getBytes(), Charset.forName("UTF-8"));
+        return new StringValue(data, string);
     }
 
-    public static VarLength from(ByteArray data) {
-        VarIntData var = VarIntData.from(data);
-        return var == null ? null : new VarLength(var);
+    public static StringValue from(String string) {
+        byte[] bytes = string.getBytes(Charset.forName("UTF-8"));
+        return new StringValue(bytes, 0, bytes.length, string);
     }
 
-    public static VarLength from(long value) {
-        return new VarLength(VarIntData.from(value));
+    public static StringValue from(byte[] bytes) {
+        String string = new String(bytes, Charset.forName("UTF-8"));
+        return new StringValue(bytes, 0, bytes.length, string);
     }
 
-    // parse length with tag
-    public static Entry.Length parse(ByteArray data, Entry.Tag tag) {
+    // parse value with tag & length
+    public static Value parse(ByteArray data, Tag tag, Length length) {
         return from(data);
     }
 }

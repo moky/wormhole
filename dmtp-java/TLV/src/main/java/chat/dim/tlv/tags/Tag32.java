@@ -28,61 +28,56 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tlv;
+package chat.dim.tlv.tags;
 
+import chat.dim.network.DataConvert;
+import chat.dim.tlv.Tag;
 import chat.dim.type.ByteArray;
-import chat.dim.type.UInt8Data;
+import chat.dim.type.UInt32Data;
 
 /**
- *  Fixed Char Tag (8 bits)
- *  ~~~~~~~~~~~~~~~~~~~~~~~
+ *  Fixed Tag (32 bits)
+ *  ~~~~~~~~~~~~~~~~~~~
  */
-public class Tag8 extends UInt8Data implements Entry.Tag {
+public class Tag32 extends UInt32Data implements Tag {
 
-    public static final Tag8 ZERO = from(UInt8Data.ZERO);
+    public static final Tag32 ZERO = from(UInt32Data.ZERO);
 
-    public Tag8(ByteArray data) {
-        super(data);
+    public Tag32(UInt32Data data) {
+        super(data, data.value, data.endian);
     }
 
-    public Tag8(byte value) {
-        super(value);
-    }
-
-    public Tag8(int value) {
-        super(value);
+    public Tag32(ByteArray data, long value, Endian endian) {
+        super(data, value, endian);
     }
 
     //
     //  Factories
     //
 
-    public static Tag8 from(Tag8 tag) {
+    public static Tag32 from(Tag32 tag) {
         return tag;
     }
 
-    public static Tag8 from(UInt8Data data) {
-        return new Tag8(data);
+    public static Tag32 from(UInt32Data data) {
+        return new Tag32(data, data.value, data.endian);
     }
 
-    public static Tag8 from(ByteArray data) {
-        if (data.getSize() < 1) {
+    public static Tag32 from(ByteArray data) {
+        if (data.getSize() < 4) {
             return null;
-        } else if (data.getSize() > 1) {
-            data = data.slice(0, 1);
+        } else if (data.getSize() > 4) {
+            data = data.slice(0, 4);
         }
-        return new Tag8(data);
+        return new Tag32(DataConvert.getUInt32Data(data));
     }
 
-    public static Tag8 from(byte value) {
-        return new Tag8(value);
-    }
-    public static Tag8 from(int value) {
-        return new Tag8(value);
+    public static Tag32 from(int value) {
+        return new Tag32(DataConvert.getUInt32Data(value));
     }
 
     // parse tag
-    public static Entry.Tag parse(ByteArray data) {
+    public static Tag parse(ByteArray data) {
         return from(data);
     }
 }

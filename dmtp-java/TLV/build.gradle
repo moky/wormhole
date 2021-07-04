@@ -4,8 +4,6 @@ buildscript {
     }
 
     dependencies {
-        //classpath "com.novoda:bintray-release:0.3.4"
-        //classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6'
     }
 }
 
@@ -19,6 +17,12 @@ plugins {
 group 'chat.dim'
 //version '1.0-SNAPSHOT'
 version '0.1.2'
+
+def mod = 'TLV'
+def desc = 'Tag Length Value'
+
+def gitUrl = 'https://github.com/moky/wormhole.git'
+def siteUrl = 'https://github.com/moky/wormhole'
 
 sourceCompatibility = 1.8
 
@@ -40,14 +44,9 @@ allprojects {
     }
 }
 
-//apply plugin: 'com.jfrog.bintray'
-
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
-
-def gitUrl = 'https://github.com/moky/wormhole.git'
-def siteUrl = 'https://github.com/moky/wormhole'
 
 install {
     repositories.mavenInstaller {
@@ -55,8 +54,8 @@ install {
         pom {
             project {
                 packaging 'jar'
-                name 'TLV'
-                description 'Tag Length Value'
+                name mod
+                description desc
                 url siteUrl
                 licenses {
                     license {
@@ -135,8 +134,8 @@ uploadArchives {
 
             pom.project {
                 packaging 'jar'
-                name 'TLV'
-                description 'Tag Length Value'
+                name mod
+                description desc
                 url siteUrl
                 licenses {
                     license {

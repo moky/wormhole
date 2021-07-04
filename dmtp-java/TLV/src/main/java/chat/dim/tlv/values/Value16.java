@@ -28,59 +28,58 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tlv;
+package chat.dim.tlv.values;
 
-import java.nio.charset.Charset;
-
+import chat.dim.network.DataConvert;
+import chat.dim.tlv.Length;
+import chat.dim.tlv.Tag;
+import chat.dim.tlv.Value;
 import chat.dim.type.ByteArray;
-import chat.dim.type.Data;
+import chat.dim.type.UInt16Data;
 
-public class StringValue extends Data implements Entry.Value {
+/**
+ *  Fixed Integer Value (16 bits)
+ *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+public class Value16 extends UInt16Data implements Value {
 
-    public static final StringValue ZERO = from(Data.ZERO);
+    public static final Value16 ZERO = from(UInt16Data.ZERO);
 
-    public final String string;
-
-    public StringValue(ByteArray data, String string) {
-        super(data);
-        this.string = string;
+    public Value16(UInt16Data data) {
+        super(data, data.value, data.endian);
     }
 
-    public StringValue(byte[] buffer, int offset, int size, String string) {
-        super(buffer, offset, size);
-        this.string = string;
-    }
-
-    public StringValue(byte[] bytes, String string) {
-        super(bytes);
-        this.string = string;
+    public Value16(ByteArray data, int value, Endian endian) {
+        super(data, value, endian);
     }
 
     //
     //  Factories
     //
 
-    public static StringValue from(StringValue value) {
+    public static Value16 from(Value16 value) {
         return value;
     }
 
-    public static StringValue from(ByteArray data) {
-        String string = new String(data.getBytes(), Charset.forName("UTF-8"));
-        return new StringValue(data, string);
+    public static Value16 from(UInt16Data data) {
+        return new Value16(data, data.value, data.endian);
     }
 
-    public static StringValue from(String string) {
-        byte[] bytes = string.getBytes(Charset.forName("UTF-8"));
-        return new StringValue(bytes, 0, bytes.length, string);
+    public static Value16 from(ByteArray data) {
+        if (data.getSize() < 2) {
+            return null;
+        } else if (data.getSize() > 2) {
+            data = data.slice(0, 2);
+        }
+        return new Value16(DataConvert.getUInt16Data(data));
     }
 
-    public static StringValue from(byte[] bytes) {
-        String string = new String(bytes, Charset.forName("UTF-8"));
-        return new StringValue(bytes, 0, bytes.length, string);
+    public static Value16 from(int value) {
+        return new Value16(DataConvert.getUInt16Data(value));
     }
 
     // parse value with tag & length
-    public static Entry.Value parse(ByteArray data, Entry.Tag tag, Entry.Length length) {
+    public static Value parse(ByteArray data, Tag tag, Length length) {
         return from(data);
     }
 }

@@ -2,12 +2,12 @@
  *
  *  TLV: Tag Length Value
  *
- *                                Written in 2021 by Moky <albert.moky@gmail.com>
+ *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2021 Albert Moky
+ * Copyright (c) 2020 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,53 +30,28 @@
  */
 package chat.dim.tlv;
 
-import chat.dim.network.DataConvert;
 import chat.dim.type.ByteArray;
-import chat.dim.type.UInt32Data;
+
+/*
+ *       0                   1                   2                   3
+ *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |             Type              |            Length             |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |                         Value (variable)                ....
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
 
 /**
- *  Fixed Tag (32 bits)
- *  ~~~~~~~~~~~~~~~~~~~
+ *  Value
+ *  ~~~~~
  */
-public class Tag32 extends UInt32Data implements Entry.Tag {
-
-    public static final Tag32 ZERO = from(UInt32Data.ZERO);
-
-    public Tag32(UInt32Data data) {
-        super(data, data.value, data.endian);
-    }
-
-    public Tag32(ByteArray data, long value, Endian endian) {
-        super(data, value, endian);
-    }
-
-    //
-    //  Factories
-    //
-
-    public static Tag32 from(Tag32 tag) {
-        return tag;
-    }
-
-    public static Tag32 from(UInt32Data data) {
-        return new Tag32(data, data.value, data.endian);
-    }
-
-    public static Tag32 from(ByteArray data) {
-        if (data.getSize() < 4) {
-            return null;
-        } else if (data.getSize() > 4) {
-            data = data.slice(0, 4);
-        }
-        return new Tag32(DataConvert.getUInt32Data(data));
-    }
-
-    public static Tag32 from(int value) {
-        return new Tag32(DataConvert.getUInt32Data(value));
-    }
-
-    // parse tag
-    public static Entry.Tag parse(ByteArray data) {
-        return from(data);
+public interface Value extends ByteArray {
+    /**
+     * Value Parser
+     * ~~~~~~~~~~~~
+     */
+    interface Parser<T, L, V> {
+        V parseValue(ByteArray data, T tag, L length);
     }
 }

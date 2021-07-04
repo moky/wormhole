@@ -28,59 +28,66 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tlv;
+package chat.dim.tlv.tags;
 
+import chat.dim.network.DataConvert;
+import chat.dim.tlv.Tag;
 import chat.dim.type.ByteArray;
-import chat.dim.type.Data;
+import chat.dim.type.UInt16Data;
 
 /*
  *       0                   1                   2                   3
  *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |         Type                  |            Length             |
+ *      |             Type              |            Length             |
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      |                         Value (variable)                ....
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
-public class RawValue extends Data implements Entry.Value {
+/**
+ *  Fixed Tag (16 bits)
+ *  ~~~~~~~~~~~~~~~~~~~
+ */
+public class Tag16 extends UInt16Data implements Tag {
 
-    public static final RawValue ZERO = from(Data.ZERO);
+    public static final Tag16 ZERO = from(UInt16Data.ZERO);
 
-    public RawValue(ByteArray data) {
-        super(data);
+    public Tag16(UInt16Data data) {
+        super(data, data.value, data.endian);
     }
 
-    public RawValue(byte[] bytes, int offset, int size) {
-        super(bytes, offset, size);
-    }
-
-    public RawValue(byte[] bytes) {
-        super(bytes, 0, bytes.length);
+    public Tag16(ByteArray data, int value, Endian endian) {
+        super(data, value, endian);
     }
 
     //
     //  Factories
     //
 
-    public static RawValue from(RawValue value) {
-        return value;
+    public static Tag16 from(Tag16 tag) {
+        return tag;
     }
 
-    public static RawValue from(ByteArray data) {
-        return new RawValue(data);
+    public static Tag16 from(UInt16Data data) {
+        return new Tag16(data, data.value, data.endian);
     }
 
-    public static RawValue from(byte[] bytes) {
-        return new RawValue(bytes);
+    public static Tag16 from(ByteArray data) {
+        if (data.getSize() < 2) {
+            return null;
+        } else if (data.getSize() > 2) {
+            data = data.slice(0, 2);
+        }
+        return new Tag16(DataConvert.getUInt16Data(data));
     }
 
-    public static RawValue from(byte[] bytes, int offset, int size) {
-        return new RawValue(bytes, offset, size);
+    public static Tag16 from(int value) {
+        return new Tag16(DataConvert.getUInt16Data(value));
     }
 
-    // parse value with tag & length
-    public static Entry.Value parse(ByteArray data, Entry.Tag tag, Entry.Length length) {
+    // parse tag
+    public static Tag parse(ByteArray data) {
         return from(data);
     }
 }

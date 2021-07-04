@@ -2,12 +2,12 @@
  *
  *  TLV: Tag Length Value
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,10 +28,13 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tlv;
+package chat.dim.tlv.lengths;
 
+import chat.dim.network.DataConvert;
+import chat.dim.tlv.Length;
+import chat.dim.tlv.Tag;
 import chat.dim.type.ByteArray;
-import chat.dim.type.Data;
+import chat.dim.type.UInt16Data;
 
 /*
  *       0                   1                   2                   3
@@ -43,44 +46,49 @@ import chat.dim.type.Data;
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
-public class Triad<T extends Tag, L extends Length, V extends Value>
-        extends Data implements Entry<T, L, V> {
+/**
+ *  Fixed Length (16 bits)
+ *  ~~~~~~~~~~~~~~~~~~~~~~
+ */
+public class Length16 extends UInt16Data implements Length {
 
-    public final T tag;
-    public final L length;
-    public final V value;
+    public static final Length16 ZERO = from(UInt16Data.ZERO);
 
-    public Triad(Entry<T, L, V> tlv) {
-        super(tlv);
-        tag = tlv.getTag();
-        length = tlv.getLength();
-        value = tlv.getValue();
+    public Length16(UInt16Data data) {
+        super(data, data.value, data.endian);
     }
 
-    public Triad(ByteArray data, T type, L length, V value) {
-        super(data);
-        this.tag = type;
-        this.length = length;
-        this.value = value;
+    public Length16(ByteArray data, int value, Endian endian) {
+        super(data, value, endian);
     }
 
-    @Override
-    public T getTag() {
-        return tag;
-    }
+    //
+    //  Factories
+    //
 
-    @Override
-    public L getLength() {
+    public static Length16 from(Length16 length) {
         return length;
     }
 
-    @Override
-    public V getValue() {
-        return value;
+    public static Length16 from(UInt16Data data) {
+        return new Length16(data, data.value, data.endian);
     }
 
-    @Override
-    public String toString() {
-        return "/* " + getClass().getSimpleName() + " */ " + tag + ": \"" + value + "\"";
+    public static Length16 from(ByteArray data) {
+        if (data.getSize() < 2) {
+            return null;
+        } else if (data.getSize() > 2) {
+            data = data.slice(0, 2);
+        }
+        return new Length16(DataConvert.getUInt16Data(data));
+    }
+
+    public static Length16 from(int value) {
+        return new Length16(DataConvert.getUInt16Data(value));
+    }
+
+    // parse length with tag
+    public static Length parse(ByteArray data, Tag tag) {
+        return from(data);
     }
 }

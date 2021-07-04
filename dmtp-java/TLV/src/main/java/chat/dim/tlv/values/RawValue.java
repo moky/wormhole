@@ -2,12 +2,12 @@
  *
  *  TLV: Tag Length Value
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,8 +28,11 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tlv;
+package chat.dim.tlv.values;
 
+import chat.dim.tlv.Length;
+import chat.dim.tlv.Tag;
+import chat.dim.tlv.Value;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 
@@ -37,50 +40,50 @@ import chat.dim.type.Data;
  *       0                   1                   2                   3
  *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |             Type              |            Length             |
+ *      |         Type                  |            Length             |
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      |                         Value (variable)                ....
  *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
-public class Triad<T extends Tag, L extends Length, V extends Value>
-        extends Data implements Entry<T, L, V> {
+public class RawValue extends Data implements Value {
 
-    public final T tag;
-    public final L length;
-    public final V value;
+    public static final RawValue ZERO = from(Data.ZERO);
 
-    public Triad(Entry<T, L, V> tlv) {
-        super(tlv);
-        tag = tlv.getTag();
-        length = tlv.getLength();
-        value = tlv.getValue();
-    }
-
-    public Triad(ByteArray data, T type, L length, V value) {
+    public RawValue(ByteArray data) {
         super(data);
-        this.tag = type;
-        this.length = length;
-        this.value = value;
     }
 
-    @Override
-    public T getTag() {
-        return tag;
+    public RawValue(byte[] bytes, int offset, int size) {
+        super(bytes, offset, size);
     }
 
-    @Override
-    public L getLength() {
-        return length;
+    public RawValue(byte[] bytes) {
+        super(bytes, 0, bytes.length);
     }
 
-    @Override
-    public V getValue() {
+    //
+    //  Factories
+    //
+
+    public static RawValue from(RawValue value) {
         return value;
     }
 
-    @Override
-    public String toString() {
-        return "/* " + getClass().getSimpleName() + " */ " + tag + ": \"" + value + "\"";
+    public static RawValue from(ByteArray data) {
+        return new RawValue(data);
+    }
+
+    public static RawValue from(byte[] bytes) {
+        return new RawValue(bytes);
+    }
+
+    public static RawValue from(byte[] bytes, int offset, int size) {
+        return new RawValue(bytes, offset, size);
+    }
+
+    // parse value with tag & length
+    public static Value parse(ByteArray data, Tag tag, Length length) {
+        return from(data);
     }
 }

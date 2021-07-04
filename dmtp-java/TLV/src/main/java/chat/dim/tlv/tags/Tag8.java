@@ -2,12 +2,12 @@
  *
  *  TLV: Tag Length Value
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,41 +28,62 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tlv;
+package chat.dim.tlv.tags;
 
-import java.util.List;
-
+import chat.dim.tlv.Tag;
 import chat.dim.type.ByteArray;
+import chat.dim.type.UInt8Data;
 
-/*
- *       0                   1                   2                   3
- *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |             Type              |            Length             |
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      |                         Value (variable)                ....
- *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/**
+ *  Fixed Char Tag (8 bits)
+ *  ~~~~~~~~~~~~~~~~~~~~~~~
  */
-public interface Entry<T extends Tag, L extends Length, V extends Value> extends ByteArray {
+public class Tag8 extends UInt8Data implements Tag {
 
-    T getTag();
-    L getLength();
-    V getValue();
+    public static final Tag8 ZERO = from(UInt8Data.ZERO);
 
-    /**
-     *  Tag-Length-Value Parser
-     *  ~~~~~~~~~~~~~~~~~~~~~~~
-     */
-    interface Parser<E> {
+    public Tag8(ByteArray data) {
+        super(data);
+    }
 
-        E parseEntry(ByteArray data);
+    public Tag8(byte value) {
+        super(value);
+    }
 
-        /**
-         *  Parse all TLV triads
-         *
-         * @param data - data received
-         * @return TLV entry list
-         */
-        List<E> parseEntries(ByteArray data);
+    public Tag8(int value) {
+        super(value);
+    }
+
+    //
+    //  Factories
+    //
+
+    public static Tag8 from(Tag8 tag) {
+        return tag;
+    }
+
+    public static Tag8 from(UInt8Data data) {
+        return new Tag8(data);
+    }
+
+    public static Tag8 from(ByteArray data) {
+        if (data.getSize() < 1) {
+            return null;
+        } else if (data.getSize() > 1) {
+            data = data.slice(0, 1);
+        }
+        return new Tag8(data);
+    }
+
+    public static Tag8 from(byte value) {
+        return new Tag8(value);
+    }
+    public static Tag8 from(int value) {
+        return new Tag8(value);
+    }
+
+    // parse tag
+    public static Tag parse(ByteArray data) {
+        return from(data);
     }
 }

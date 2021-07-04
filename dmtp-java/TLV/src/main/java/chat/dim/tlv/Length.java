@@ -2,12 +2,12 @@
  *
  *  TLV: Tag Length Value
  *
- *                                Written in 2021 by Moky <albert.moky@gmail.com>
+ *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2021 Albert Moky
+ * Copyright (c) 2020 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,53 +30,30 @@
  */
 package chat.dim.tlv;
 
-import chat.dim.network.DataConvert;
 import chat.dim.type.ByteArray;
-import chat.dim.type.UInt16Data;
+import chat.dim.type.IntegerData;
+
+/*
+ *       0                   1                   2                   3
+ *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |             Type              |            Length             |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |                         Value (variable)                ....
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
 
 /**
- *  Fixed Integer Value (16 bits)
- *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ *  Length
+ *  ~~~~~~
  */
-public class Value16 extends UInt16Data implements Entry.Value {
+public interface Length extends ByteArray, IntegerData {
 
-    public static final Value16 ZERO = from(UInt16Data.ZERO);
-
-    public Value16(UInt16Data data) {
-        super(data, data.value, data.endian);
-    }
-
-    public Value16(ByteArray data, int value, Endian endian) {
-        super(data, value, endian);
-    }
-
-    //
-    //  Factories
-    //
-
-    public static Value16 from(Value16 value) {
-        return value;
-    }
-
-    public static Value16 from(UInt16Data data) {
-        return new Value16(data, data.value, data.endian);
-    }
-
-    public static Value16 from(ByteArray data) {
-        if (data.getSize() < 2) {
-            return null;
-        } else if (data.getSize() > 2) {
-            data = data.slice(0, 2);
-        }
-        return new Value16(DataConvert.getUInt16Data(data));
-    }
-
-    public static Value16 from(int value) {
-        return new Value16(DataConvert.getUInt16Data(value));
-    }
-
-    // parse value with tag & length
-    public static Entry.Value parse(ByteArray data, Entry.Tag tag, Entry.Length length) {
-        return from(data);
+    /**
+     * Length Parser
+     * ~~~~~~~~~~~~~
+     */
+    interface Parser<T, L> {
+        L parseLength(ByteArray data, T tag);
     }
 }
