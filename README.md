@@ -1,6 +1,7 @@
 # WormHole
 Network Modules
 
+
 ## Modules
 
 |   Module   | Version |
@@ -15,7 +16,15 @@ Network Modules
 | DMTP       | 0.1.2   |
 | StarTrek   | 0.1.2   |
 
+
 ## Dependencies
+
+<style>
+pre code {
+    font-family: "Lucida Console", "Consolas", Monaco, monospace;
+    line-height: 0px;
+}
+</style>
 
 ```
 
@@ -23,15 +32,15 @@ Network Modules
     |  TURN  | .....> |  STUN  | .....> |  TLV  | .....> |  BA  |
     +--------+        +--------+        +-------+        +------+
                           ^                                 ^
-                          .                                 .
-                 ..........                        ..........
-                 .                                 .
-    +--------+   .    +-------+        +-------+   .
-    |  DMTP  | .....> |  UDP  | .....> |  MTP  | ...
-    +--------+        +-------+   .    +-------+
-                                  .
-                                  .    +-------+        +-------+
-                                  ...> |  TCP  | .....> |  FSM  |
+                          :                                 :
+                 .........:                        .........:
+                 :                                 :
+    +--------+   :    +-------+        +-------+   :
+    |  DMTP  | ..:..> |  UDP  | .....> |  MTP  | ..:
+    +--------+        +-------+   :    +-------+
+                                  :
+                                  :    +-------+        +-------+
+                                  :..> |  TCP  | .....> |  FSM  |
                                        +-------+        +-------+
     +------------+
     |  StarTrek  |
@@ -39,7 +48,6 @@ Network Modules
 
 
 ```
-
 
 
 Moky @ Jul 5. 2021

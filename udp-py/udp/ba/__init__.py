@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   TLV: Tag Length Value
+#   BA: Byte Array
 #
 #                                Written in 2020 by Moky <albert.moky@gmail.com>
 #
@@ -27,29 +27,3 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ==============================================================================
-
-from .data import Data
-from .mutable import MutableData
-from .integer import IntegerData, UInt8Data, UInt16Data, UInt32Data, VarIntData
-from .item import Tag, Length, Value, TagLengthValue
-
-name = "TLV"
-
-__author__ = 'Albert Moky'
-
-__all__ = [
-
-    #
-    #   Data
-    #
-    'Data', 'MutableData',
-    'IntegerData',
-    'UInt8Data', 'UInt16Data', 'UInt32Data',
-    'VarIntData',
-
-    #
-    #   TLV
-    #
-    'Tag', 'Length', 'Value',
-    'TagLengthValue',
-]
