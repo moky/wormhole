@@ -2,12 +2,12 @@
 #
 #   TCP: Transmission Control Protocol
 #
-#                                Written in 2020 by Moky <albert.moky@gmail.com>
+#                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2020 Albert Moky
+# Copyright (c) 2021 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -31,81 +31,81 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from .status import ConnectionStatus
+from ..fsm import Ticker
 
 
-class Connection(ABC):
-
-    """
-        Max length of memory cache
-        ~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
-    MAX_CACHE_LENGTH = 65536  # 64 KB
-
-    EXPIRES = 16  # seconds
-
-    @abstractmethod
-    def send(self, data: bytes) -> int:
-        """
-        Send data package
-
-        :param data: package
-        :return: count of bytes sent, -1 on error
-        """
-        raise NotImplemented
-
-    @property
-    def available(self) -> int:
-        """
-        Get received data count
-
-        :return: count of received data
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def received(self) -> Optional[bytes]:
-        """
-        Get received data from cache, but not remove
-
-        :return: received data
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def receive(self, max_length: int) -> Optional[bytes]:
-        """
-        Get received data from cache, and remove it
-        (call 'received()' to check data first)
-
-        :param max_length: how many bytes to receive
-        :return: received data
-        """
-        raise NotImplemented
-
-    @property
-    def address(self) -> Optional[tuple]:
-        """ Get remote address (host:port) """
-        raise NotImplemented
-
-    @property
-    def status(self) -> ConnectionStatus:
-        """ Get status """
-        raise NotImplemented
+class Connection(Ticker, ABC):
 
     #
-    #   Runnable
+    #   Flags
     #
-
+    @abstractmethod
     @property
-    def running(self) -> bool:
-        """ Check whether connection is still running """
+    def opened(self) -> bool:
+        """ not closed """
         raise NotImplemented
 
-    def run(self):
-        """ Run loop to be started in a thread """
-        pass
+    @abstractmethod
+    @property
+    def bound(self) -> bool:
+        raise NotImplemented
 
-    def stop(self):
-        """ Close the connection """
-        pass
+    @abstractmethod
+    @property
+    def connected(self) -> bool:
+        raise NotImplemented
+
+    @abstractmethod
+    @property
+    def local_address(self) -> Optional[tuple]:  # (str, int)
+        raise NotImplemented
+
+    @abstractmethod
+    @property
+    def remote_address(self) -> Optional[tuple]:  # (str, int)
+        raise NotImplemented
+
+    @abstractmethod
+    def send(self, data: bytes, target: Optional[tuple] = None) -> int:
+        """
+        Send data
+
+        :param data:   outgo buffer
+        :param target: remote address; can be None when it's connected
+        :return: count of bytes sent, probably zero when it's non-blocking mode
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def receive(self, max_len: int) -> (bytes, tuple):
+        """
+        Receive data
+
+        :param max_len: capacity of the buffer for receiving data
+        :return: received data, and remote address
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def close(self):
+        raise NotImplemented
+
+    @abstractmethod
+    @property
+    def state(self):  # -> ConnectionState:
+        raise NotImplemented
+
+
+class Delegate(ABC):
+    """ Connection Delegate """
+
+    @abstractmethod
+    def connection_state_changing(self, connection: Connection, current_state, next_state):
+        """
+        Call when connection status is going to change
+
+        :param connection:    current connection
+        :param current_state: current state
+        :param next_state     new state
+        """
+        raise NotImplemented

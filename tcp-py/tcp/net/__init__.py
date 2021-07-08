@@ -2,12 +2,12 @@
 #
 #   TCP: Transmission Control Protocol
 #
-#                                Written in 2020 by Moky <albert.moky@gmail.com>
+#                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2020 Albert Moky
+# Copyright (c) 2021 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,47 +28,24 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import ABC, abstractmethod
-from typing import Optional
+from .channel import Channel
+from .connection import Connection, Delegate
+from .hub import Hub
 
+from .state import ConnectionState, StateMachine
 
-class Pool(ABC):
+from .base_hub import BaseHub
+from .base import BaseConnection
+from .active import ActiveConnection
 
-    """
-        Memory cache for received data
-        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    """
+__all__ = [
+    'Channel',
+    'Connection', 'Delegate',
+    'Hub',
 
-    @abstractmethod
-    def push(self, data: bytes):
-        """
-        Add received data to cache
+    'ConnectionState', 'StateMachine',
 
-        :param data: received data
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def pop(self, max_length: int) -> Optional[bytes]:
-        """
-        Get received data from pool with max length (remove)
-        (must call 'get()/length()' to check data length first)
-
-        :param max_length: max data length to remove
-        :return: remove data from the pool and return it
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def all(self) -> Optional[bytes]:
-        """
-        Get all received  data (not remove)
-
-        :return: received data, None on cache pool empty
-        """
-        raise NotImplemented
-
-    @property
-    def length(self) -> int:
-        """ Get length of cached bytes """
-        raise NotImplemented
+    'BaseHub',
+    'BaseConnection',
+    'ActiveConnection',
+]
