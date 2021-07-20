@@ -2,12 +2,12 @@
 #
 #   TCP: Transmission Control Protocol
 #
-#                                Written in 2020 by Moky <albert.moky@gmail.com>
+#                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2020 Albert Moky
+# Copyright (c) 2021 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,53 +28,37 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .fsm import Context, Ticker
-from .fsm import State, Delegate as StateDelegate
-from .fsm import Transition, Machine, Status
-from .fsm import BaseState, BaseTransition, BaseMachine
-from .fsm import AutoMachine
+import weakref
 
 from .net import Channel
-from .net import Connection, Delegate as ConnectionDelegate
-from .net import Hub
-from .net import ConnectionState, StateMachine as ConnectionStateMachine
-from .net import BaseHub
-from .net import BaseConnection
+from .net import Connection, Delegate
 from .net import ActiveConnection
+from .net import BaseHub
 
 from .channel import StreamChannel
-from .hub import ActiveStreamHub
 
-name = "TCP"
 
-__author__ = 'Albert Moky'
+class ActiveStreamHub(BaseHub):
 
-__all__ = [
+    def __init__(self, delegate: Delegate):
+        super().__init__()
+        self.__delegate = weakref.ref(delegate)
 
-    #
-    #   Finite State Machine
-    #
-    'Context', 'Ticker',
-    'State', 'StateDelegate',
-    'Transition', 'Machine', 'Status',
-    'BaseState', 'BaseTransition', 'BaseMachine',
-    'AutoMachine',
+    @property
+    def delegate(self) -> Delegate:
+        return self.__delegate()
 
-    #
-    #   Net
-    #
-    'Channel',
-    'Connection', 'ConnectionDelegate',
-    'Hub',
+    def create_connection(self, remote: tuple, local: tuple) -> Connection:
+        conn = ActiveStreamConnection(remote=remote, local=local)
+        if conn.delegate is None:
+            conn.delegate = self.delegate
+        conn.start()  # start FSM
+        return conn
 
-    'ConnectionState', 'ConnectionStateMachine',
 
-    'BaseHub',
-    'BaseConnection',
-    'ActiveConnection',
+class ActiveStreamConnection(ActiveConnection):
 
-    #
-    #   Stream
-    #
-    'StreamChannel', 'ActiveStreamHub',
-]
+    def connect(self, remote: tuple, local: tuple) -> Channel:
+        channel = StreamChannel(remote=remote, local=local)
+        channel.configure_blocking(blocking=False)
+        return channel
