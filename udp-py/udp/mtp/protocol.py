@@ -36,9 +36,9 @@
 """
 
 import threading
+from typing import Union
 
-from .tlv.utils import random_bytes, bytes_to_int
-from .tlv import Data, UInt32Data
+from ..ba import ByteArray, Data, Convert, UInt8Data
 
 """
     Data Type:
@@ -58,24 +58,19 @@ from .tlv import Data, UInt32Data
 """
 
 
-class DataType:
+class DataType(UInt8Data):
 
-    def __init__(self, value: int, name: str):
-        super().__init__()
-        self.__value = value
+    def __init__(self, data: Union[bytes, bytearray, ByteArray], value: int, name: str):
+        super().__init__(data=data, value=value)
         self.__name = name
-        self.__data_types[value] = self
 
     def __eq__(self, other) -> bool:
         if self is other:
             return True
-        if isinstance(other, DataType):
-            return self.__value == other.__value
+        if isinstance(other, UInt8Data):
+            return self.__value == other.value
         if isinstance(other, int):
             return self.__value == other
-
-    def __hash__(self) -> int:
-        return hash(self.__value)
 
     def __str__(self) -> str:
         return self.__name
@@ -84,28 +79,76 @@ class DataType:
         return self.__name
 
     @property
-    def value(self) -> int:
-        return self.__value
+    def name(self) -> str:
+        return self.__name
+
+    @property
+    def is_response(self) -> bool:
+        return (self.value & 0x01) != 0
+
+    @property
+    def is_fragment(self) -> bool:
+        return (self.value & 0x08) != 0
+
+    @property
+    def is_command(self) -> bool:
+        return (self.value & 0x0F) == 0x00
+
+    @property
+    def is_command_response(self) -> bool:
+        return (self.value & 0x0F) == 0x01
+
+    @property
+    def is_message(self) -> bool:
+        return (self.value & 0x0F) == 0x02
+
+    @property
+    def is_message_response(self) -> bool:
+        return (self.value & 0x0F) == 0x03
+
+    @property
+    def is_message_fragment(self) -> bool:
+        return (self.value & 0x0F) == 0x0A
+
+    #
+    #   Factories
+    #
+
+    @classmethod
+    def from_data(cls, data: ByteArray):
+        if not isinstance(data, UInt8Data):
+            data = UInt8Data.from_data(data=data)
+        if isinstance(data, UInt8Data):
+            return cls.__get(data=data)
+
+    @classmethod
+    def from_int(cls, value: int):
+        data = UInt8Data.from_int(value=value)
+        return cls.__get(data=data)
+
+    @classmethod
+    def __get(cls, data: UInt8Data):
+        value = data.value & 0x0F
+        fixed = cls.__data_types.get(value)
+        if fixed is not None:
+            # assert isinstance(fixed, DataType)
+            return cls(data=data, value=data.value, name=fixed.name)
+
+    @classmethod
+    def __create(cls, value: int, name: str):
+        data = UInt8Data.from_int(value=value)
+        fixed = cls(data=data, value=value, name=name)
+        cls.__data_types[value] = fixed
+        return fixed
 
     __data_types = {}  # int -> DataType
 
-    @classmethod
-    def new(cls, value: int):
-        t = cls.__data_types.get(value)
-        if t is None:
-            # name = 'DataType-%d' % value
-            # t = cls(value=value, name=name)
-            # raise LookupError('data type error: %d' % value)
-            return None
-        return t
-
-
-# data types
-Command = DataType(0, name='Command')
-CommandRespond = DataType(1, name='Command Respond')
-Message = DataType(2, name='Message')
-MessageRespond = DataType(3, name='Message Respond')
-MessageFragment = DataType(10, name='Message Fragment')
+    # fixed types
+    Command = __create(value=0x00, name='Command')
+    CommandRespond = __create(value=0x01, name='Command Respond')
+    Message = __create(value=0x02, name='Message')
+    MessageRespond = __create(value=0x03, name='Message Respond')
+    MessageFragment = __create(value=0x0A, name='Message Fragment')
 
 
 class TransactionID(Data):
@@ -120,18 +163,23 @@ class TransactionID(Data):
         clazz = self.__class__.__name__
         return '<%s: %s />' % (clazz, self.get_bytes())
 
+    #
+    #   Factories
+    #
+
     @classmethod
-    def parse(cls, data: Data):  # -> TransactionID
-        if data.length < 8:
-            # raise ValueError('transaction ID length error: %d' % data.length)
+    def from_data(cls, data: ByteArray):  # -> TransactionID
+        if isinstance(data, TransactionID):
+            return data
+        elif data.size < 8:
             return None
-        elif data.length > 8:
-            data = data.slice(end=8)
+        elif data.size > 8:
+            data = data.slice(start=0, end=8)
         return cls(data=data)
 
     __number_lock = threading.Lock()
-    __number_high = bytes_to_int(random_bytes(4))
-    __number_low = bytes_to_int(random_bytes(4))
+    __number_high = Convert.int32_from_data(data=Data.random(size=4))
+    __number_low = Convert.int32_from_data(data=Data.random(size=4))
 
     @classmethod
     def generate(cls):  # -> TransactionID:
@@ -144,9 +192,9 @@ class TransactionID(Data):
                     cls.__number_high += 1
                 else:
                     cls.__number_high = 0
-            hi = UInt32Data(value=cls.__number_high)
-            lo = UInt32Data(value=cls.__number_low)
-        return TransactionID(data=hi.concat(lo))
+            hi = Convert.uint32data_from_value(value=cls.__number_high)
+            lo = Convert.uint32data_from_value(value=cls.__number_low)
+        return cls(data=hi.concat(lo))
 
 
 TransactionID.ZERO = TransactionID(data=Data(b'\0\0\0\0\0\0\0\0'))

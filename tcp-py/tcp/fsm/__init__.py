@@ -38,6 +38,9 @@ from .machine import Transition, State, Machine, Delegate, Status
 from .base import BaseTransition, BaseState, BaseMachine
 from .auto import AutoMachine
 
+name = "FSM"
+
+__author__ = 'Albert Moky'
 
 __all__ = [
     'Context', 'Ticker',

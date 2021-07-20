@@ -113,7 +113,7 @@ class MutableByteArray(ByteArray):
     def set_char(self, index: int, value: str):
         raise NotImplemented
 
-    def update(self, index: int, source, start: int = 0, end: int = None):
+    def update(self, index: int, source: Union[bytes, bytearray, ByteArray], start: int = 0, end: int = None):
         """
         Update values from source data/buffer with range [start, end)
 
@@ -124,7 +124,7 @@ class MutableByteArray(ByteArray):
         """
         raise NotImplemented
 
-    def append(self, source, start: int = 0, end: int = None):
+    def append(self, source: Union[bytes, bytearray, ByteArray], start: int = 0, end: int = None):
         """
         Append values from source data/buffer/value with range [start, end)
 
@@ -134,7 +134,7 @@ class MutableByteArray(ByteArray):
         """
         raise NotImplemented
 
-    def insert(self, index: int, source, start: int, end: int = None):
+    def insert(self, index: int, source: Union[bytes, bytearray, ByteArray], start: int, end: int = None):
         """
         Append values from source data/buffer/value with range [start, end)
 

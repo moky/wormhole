@@ -102,13 +102,13 @@ class UInt8Data(IntData):
             elif size > 1:
                 data = data[0:1]
             value = data[0]
-        return UInt8Data(data=data, value=value)
+        return cls(data=data, value=value)
 
     @classmethod
     def from_int(cls, value: int):
         data = bytearray(1)
         data[0] = value & 0xFF
-        return UInt8Data(data=data, value=value)
+        return cls(data=data, value=value)
 
 
 class UInt16Data(IntData):
@@ -136,13 +136,13 @@ class UInt16Data(IntData):
             elif size > 2:
                 data = data[0:2]
             value = int_from_buffer(buffer=data, offset=0, size=2, endian=endian)
-        return UInt16Data(data=data, value=value, endian=Endian.UNDEFINED)
+        return cls(data=data, value=value, endian=Endian.UNDEFINED)
 
     @classmethod
     def from_int(cls, value: int, endian: Endian):
         buffer = bytearray(2)
         int_to_buffer(value=value, buffer=buffer, offset=0, size=2, endian=endian)
-        return UInt16Data(data=buffer, value=value, endian=Endian.UNDEFINED)
+        return cls(data=buffer, value=value, endian=Endian.UNDEFINED)
 
 
 class UInt32Data(IntData):
@@ -170,13 +170,13 @@ class UInt32Data(IntData):
             elif size > 4:
                 data = data[0:4]
             value = int_from_buffer(buffer=data, offset=0, size=4, endian=endian)
-        return UInt32Data(data=data, value=value, endian=Endian.UNDEFINED)
+        return cls(data=data, value=value, endian=Endian.UNDEFINED)
 
     @classmethod
     def from_int(cls, value: int, endian: Endian):
         buffer = bytearray(4)
         int_to_buffer(value=value, buffer=buffer, offset=0, size=4, endian=endian)
-        return UInt32Data(data=buffer, value=value, endian=Endian.UNDEFINED)
+        return cls(data=buffer, value=value, endian=Endian.UNDEFINED)
 
 
 class VarIntData(IntData):
