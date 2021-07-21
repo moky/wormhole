@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   MTP: Message Transfer Protocol
+#   UDP: User Datagram Protocol
 #
 #                                Written in 2020 by Moky <albert.moky@gmail.com>
 #
@@ -28,25 +28,8 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .protocol import DataType, TransactionID
-from .header import Header
-from .package import Package
-from .packer import Packer
-
-from .arrival import Arrival, ArrivalHall
-from .departure import Departure, DepartureHall
-
-name = "MTP"
-
-__author__ = 'Albert Moky'
+from .package import PackageConnection, PackageHub
 
 __all__ = [
-
-    'DataType', 'TransactionID',
-    'Header',
-    'Package',
-    'Packer',
-
-    'Arrival', 'ArrivalHall',
-    'Departure', 'DepartureHall',
+    'PackageConnection', 'PackageHub',
 ]

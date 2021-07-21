@@ -39,7 +39,7 @@ from .package import Package
 class Packer:
 
     def __init__(self, sn: TransactionID, pages: int):
-        # super().__int__()
+        super().__init__()
         self.__sn = sn
         self.__pages = pages
         # assert sn is not None and pages > 1, 'pages error: %d' % pages

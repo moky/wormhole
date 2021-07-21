@@ -145,9 +145,9 @@ class DataType(UInt8Data):
 
     # fixed types
     Command = __create(value=0x00, name='Command')
-    CommandRespond = __create(value=0x01, name='Command Respond')
+    CommandResponse = __create(value=0x01, name='Command Response')
     Message = __create(value=0x02, name='Message')
-    MessageRespond = __create(value=0x03, name='Message Respond')
+    MessageResponse = __create(value=0x03, name='Message Response')
     MessageFragment = __create(value=0x0A, name='Message Fragment')
 
 
