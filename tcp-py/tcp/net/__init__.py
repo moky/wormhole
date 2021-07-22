@@ -29,22 +29,32 @@
 # ==============================================================================
 
 from .channel import Channel
-from .connection import Connection, Delegate
+from .connection import Connection, Delegate as ConnectionDelegate
 from .hub import Hub
 
-from .state import ConnectionState, StateMachine
+from .state import ConnectionState, StateMachine as ConnectionStateMachine
 
 from .base_hub import BaseHub
 from .base import BaseConnection
 from .active import ActiveConnection
 
 __all__ = [
+
+    #
+    #   Interfaces
+    #
     'Channel',
-    'Connection', 'Delegate',
+    'Connection', 'ConnectionDelegate',
     'Hub',
 
-    'ConnectionState', 'StateMachine',
+    #
+    #   FSM for Connection
+    #
+    'ConnectionState', 'ConnectionStateMachine',
 
+    #
+    #   Common Classes
+    #
     'BaseHub',
     'BaseConnection',
     'ActiveConnection',

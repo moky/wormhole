@@ -28,16 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .fsm import Context, Ticker
-from .fsm import State, Delegate as StateDelegate
-from .fsm import Transition, Machine, Status
-from .fsm import BaseState, BaseTransition, BaseMachine
-from .fsm import AutoMachine
-
 from .net import Channel
-from .net import Connection, Delegate as ConnectionDelegate
+from .net import Connection, ConnectionDelegate
 from .net import Hub
-from .net import ConnectionState, StateMachine as ConnectionStateMachine
+from .net import ConnectionState, ConnectionStateMachine
 from .net import BaseHub
 from .net import BaseConnection
 from .net import ActiveConnection
@@ -50,15 +44,6 @@ name = "TCP"
 __author__ = 'Albert Moky'
 
 __all__ = [
-
-    #
-    #   Finite State Machine
-    #
-    'Context', 'Ticker',
-    'State', 'StateDelegate',
-    'Transition', 'Machine', 'Status',
-    'BaseState', 'BaseTransition', 'BaseMachine',
-    'AutoMachine',
 
     #
     #   Net

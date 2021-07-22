@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 #
-#   TCP: Transmission Control Protocol
+#   UDP: User Datagram Protocol
 #
-#                                Written in 2021 by Moky <albert.moky@gmail.com>
+#                                Written in 2020 by Moky <albert.moky@gmail.com>
 #
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2021 Albert Moky
+# Copyright (c) 2020 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,21 +27,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ==============================================================================
-
 import socket
 from typing import Optional
 
-from .net import Channel
+from tcp import Channel
 
 
-class StreamChannel(Channel):
+class DiscreteChannel(Channel):
 
     def __init__(self, sock: Optional[socket.socket] = None,
                  remote: Optional[tuple] = None, local: Optional[tuple] = None,
                  blocking: bool = True, reuse: bool = True):
         super().__init__()
         if sock is None:
-            # StreamChannel(remote=remote, local=local, blocking=blocking, reuse=reuse),
+            # DiscreteChannel(remote=remote, local=local, blocking=blocking, reuse=reuse),
             self.__blocking = blocking
             self.__reuse = reuse
             self._sock = None
@@ -54,7 +53,7 @@ class StreamChannel(Channel):
             if remote is not None:
                 sock.connect(remote)
         else:
-            # StreamChannel(sock=sock)
+            # DiscreteChannel(sock=sock)
             self.__blocking = sock.getblocking()
             self.__reuse = getattr(sock, 'SO_REUSEPORT', 0)
             self._sock = sock
@@ -62,7 +61,7 @@ class StreamChannel(Channel):
     def _setup(self) -> socket.socket:
         sock = self._sock
         if sock is None:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, self.__reuse)
             sock.setblocking(self.__blocking)
             self._sock = sock
@@ -168,13 +167,18 @@ class StreamChannel(Channel):
         return sent
 
     def receive(self, max_len: int) -> (bytes, tuple):
-        data = self.read(max_len=max_len)
+        sock = self._sock
+        if sock is None:
+            raise socket.error('socket lost, cannot receive data')
+        data, remote = sock.recvfrom(max_len)
         if data is None or len(data) == 0:
-            return None, None
-        else:
-            return data, self.remote_address
+            if sock.gettimeout() is None:
+                raise socket.error('remote peer reset socket')
+        return data, remote
 
     def send(self, data: bytes, target: tuple) -> int:
-        # TCP channel will be always connected
-        # so the target address must be the remote address
-        return self.write(data=data)
+        sock = self._sock
+        if sock is None:
+            raise socket.error('socket lost, cannot send data: %d byte(s)' % len(data))
+        # sock.sendall(data)
+        return sock.sendto(data, target)

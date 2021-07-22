@@ -31,7 +31,7 @@
 import weakref
 
 from .net import Channel
-from .net import Connection, Delegate
+from .net import Connection, Delegate as ConnectionDelegate
 from .net import ActiveConnection
 from .net import BaseHub
 
@@ -40,12 +40,12 @@ from .channel import StreamChannel
 
 class ActiveStreamHub(BaseHub):
 
-    def __init__(self, delegate: Delegate):
+    def __init__(self, delegate: ConnectionDelegate):
         super().__init__()
         self.__delegate = weakref.ref(delegate)
 
     @property
-    def delegate(self) -> Delegate:
+    def delegate(self) -> ConnectionDelegate:
         return self.__delegate()
 
     def create_connection(self, remote: tuple, local: tuple) -> Connection:
@@ -57,6 +57,7 @@ class ActiveStreamHub(BaseHub):
 
 
 class ActiveStreamConnection(ActiveConnection):
+    """ Active Stream Connection """
 
     def connect(self, remote: tuple, local: tuple) -> Channel:
         channel = StreamChannel(remote=remote, local=local)

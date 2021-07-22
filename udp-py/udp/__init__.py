@@ -28,15 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .packet import DatagramPacket
-from .status import ConnectionStatus
-from .connection import Connection
-from .handler import ConnectionHandler
-from .filter import HubFilter
-from .listener import HubListener
-from .socket import Socket
-from .cargo import Cargo
-from .hub import Hub
+from .net import PackageConnection, PackageHub
+
+from .channel import DiscreteChannel
+from .hub import ActivePackageHub
 
 name = "UDP"
 
@@ -44,19 +39,7 @@ __author__ = 'Albert Moky'
 
 __all__ = [
 
-    #
-    #   Connection
-    #
-    'Connection', 'ConnectionStatus', 'ConnectionHandler',
+    'PackageConnection', 'PackageHub',
 
-    #
-    #   Socket
-    #
-    'Socket', 'DatagramPacket',
-
-    #
-    #   Hub
-    #
-    'Cargo',
-    'Hub', 'HubFilter', 'HubListener',
+    'DiscreteChannel', 'ActivePackageHub',
 ]
