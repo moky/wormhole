@@ -47,8 +47,8 @@ public class BaseConnection implements Connection, StateDelegate {
 
     protected Channel channel;
 
-    protected long lastSentTime;
-    protected long lastReceivedTime;
+    private long lastSentTime;
+    private long lastReceivedTime;
 
     public BaseConnection(Channel byteChannel) {
         super();
@@ -112,7 +112,7 @@ public class BaseConnection implements Connection, StateDelegate {
         SocketAddress local = getLocalAddress();
         SocketAddress remote = getRemoteAddress();
         if (remote == null) {
-            assert local != null : "both local & remote address are empty";
+            assert local != null : "both local & remote addresses are empty";
             return local.hashCode();
         } else {
             //  same algorithm as Pair::hashCode()
@@ -294,10 +294,10 @@ public class BaseConnection implements Connection, StateDelegate {
         ConnectionState current = ctx.getCurrentState();
         if (state != null && state.equals(ConnectionState.CONNECTED)) {
             if (current == null || !current.equals(ConnectionState.MAINTAINING)) {
-                // change status to 'connected', reset times to just expired
-                long now = (new Date()).getTime();
-                lastSentTime = now - EXPIRES - 1;
-                lastReceivedTime = now - EXPIRES - 1;
+                // change state to 'connected', reset times to just expired
+                long timestamp = (new Date()).getTime() - EXPIRES - 1;
+                lastSentTime = timestamp;
+                lastReceivedTime = timestamp;
             }
         }
         // callback

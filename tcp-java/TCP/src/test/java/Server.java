@@ -10,12 +10,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
 
-import chat.dim.net.BaseConnection;
-import chat.dim.net.BaseHub;
+import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
 import chat.dim.tcp.StreamChannel;
+import chat.dim.tcp.StreamHub;
 
 public class Server extends Thread implements Connection.Delegate {
 
@@ -51,11 +51,21 @@ public class Server extends Thread implements Connection.Delegate {
     static int counter = 0;
 
     private byte[] receive(SocketAddress source, SocketAddress destination) {
-        return hub.receive(source, destination);
+        try {
+            return hub.receive(source, destination);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private boolean send(byte[] data, SocketAddress source, SocketAddress destination) {
-        return hub.send(data, source, destination);
+        try {
+            return hub.send(data, source, destination);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Override
@@ -130,9 +140,12 @@ public class Server extends Thread implements Connection.Delegate {
         master.socket().bind(localAddress);
         master.configureBlocking(false);
 
-        hub = new BaseHub() {
+        server = new Server();
+
+        hub = new StreamHub(server) {
+
             @Override
-            protected Connection createConnection(SocketAddress remote, SocketAddress local) {
+            protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
                 SocketChannel sock = null;
                 for (SocketChannel item : slaves) {
                     try {
@@ -146,20 +159,12 @@ public class Server extends Thread implements Connection.Delegate {
                 }
                 if (sock == null) {
                     return null;
-                }
-                try {
-                    BaseConnection conn = new BaseConnection(new StreamChannel(sock));
-                    conn.setDelegate(server);
-                    conn.start();
-                    return conn;
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    return null;
+                } else {
+                    return new StreamChannel(sock);
                 }
             }
         };
 
-        server = new Server();
         server.start();
     }
 }

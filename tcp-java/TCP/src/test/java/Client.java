@@ -1,10 +1,12 @@
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
+import chat.dim.net.Hub;
 import chat.dim.tcp.ActiveStreamHub;
 
 public class Client extends Thread implements Connection.Delegate {
@@ -31,10 +33,14 @@ public class Client extends Thread implements Connection.Delegate {
                 + connection.getRemoteAddress() + ") state changed: "
                 + current + " -> " + next);
         if (next.equals(ConnectionState.EXPIRED)) {
-            heartbeat(connection);
+            try {
+                heartbeat(connection);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
-    private void heartbeat(Connection connection) {
+    private void heartbeat(Connection connection) throws IOException {
         byte[] data = {'P', 'I', 'N', 'G'};
         send(data, connection.getLocalAddress(), connection.getRemoteAddress());
     }
@@ -45,11 +51,27 @@ public class Client extends Thread implements Connection.Delegate {
     }
 
     private byte[] receive(SocketAddress source, SocketAddress destination) {
-        return hub.receive(source, destination);
+        try {
+            return hub.receive(source, destination);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
-
     private boolean send(byte[] data, SocketAddress source, SocketAddress destination) {
-        return hub.send(data, source, destination);
+        try {
+            return hub.send(data, source, destination);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    private void disconnect(SocketAddress remote, SocketAddress local) {
+        try {
+            hub.disconnect(remote, local);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -74,11 +96,11 @@ public class Client extends Thread implements Connection.Delegate {
             }
         }
 
-        hub.disconnect(remoteAddress, null);
+        disconnect(remoteAddress, null);
     }
 
     private static SocketAddress remoteAddress;
-    private static ActiveStreamHub hub;
+    private static Hub hub;
 
     public static void main(String[] args) {
 

@@ -28,68 +28,45 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.tcp;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
 
-import chat.dim.threading.Ticker;
+import chat.dim.net.BaseConnection;
+import chat.dim.net.BaseHub;
+import chat.dim.net.Channel;
+import chat.dim.net.Connection;
 
-public interface Connection extends Ticker {
+public abstract class StreamHub extends BaseHub {
 
-    //
-    //  Flags
-    //
-    boolean isOpen();  // not closed
-    boolean isBound();
-    boolean isConnected();
+    private final WeakReference<Connection.Delegate> delegateRef;
 
-    SocketAddress getLocalAddress();
-    SocketAddress getRemoteAddress();
-
-    /**
-     *  Send data
-     *
-     * @param src    - outgo buffer
-     * @param target - remote address; can be null when it's connected
-     * @return count of bytes sent, probably zero when it's non-blocking mode
-     */
-    int send(ByteBuffer src, SocketAddress target) throws IOException;
-
-    /**
-     *  Receive data
-     *
-     * @param dst    - income buffer
-     * @return remote address; null on received nothing
-     */
-    SocketAddress receive(ByteBuffer dst) throws IOException;
-
-    /**
-     *  Close the connection
-     */
-    void close() throws IOException;
-
-    /**
-     *  Get state
-     *
-     * @return connection state
-     */
-    ConnectionState getState();
-
-    /**
-     *  Connection Delegate
-     *  ~~~~~~~~~~~~~~~~~~~
-     */
-    interface Delegate {
-
-        /**
-         *  Call when connection state is going to change
-         *
-         * @param connection - current connection
-         * @param current    - old state
-         * @param next       - new state
-         */
-        void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next);
+    public StreamHub(Connection.Delegate delegate) {
+        super();
+        delegateRef = new WeakReference<>(delegate);
     }
+
+    public Connection.Delegate getDelegate() {
+        return delegateRef.get();
+    }
+
+    @Override
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
+        Channel channel = createChannel(remote, local);
+        if (channel == null) {
+            return null;
+        }
+        BaseConnection connection = new BaseConnection(channel);
+        // set delegate
+        if (connection.getDelegate() == null) {
+            connection.setDelegate(getDelegate());
+        }
+        // start FSM
+        connection.start();
+        return connection;
+    }
+
+    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
 }

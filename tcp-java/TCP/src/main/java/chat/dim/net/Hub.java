@@ -54,6 +54,7 @@ package chat.dim.net;
  *                   V    |                   V  V  |
  */
 
+import java.io.IOException;
 import java.net.SocketAddress;
 
 public interface Hub {
@@ -67,18 +68,18 @@ public interface Hub {
      * @param destination - to address (remote)
      * @return false on error
      */
-    boolean send(byte[] data, SocketAddress source, SocketAddress destination);
+    boolean send(byte[] data, SocketAddress source, SocketAddress destination) throws IOException;
 
     /**
      *  Receive data via the connection bound to source and connected to destination
      *
      * @param source      - from address (remote);
-     *                      if it's null, received from any connection connected to destination
+     *                      if it's null, receive from any connection connected to destination
      * @param destination - to address (local);
-     *                      if it's null, received from any connection bound to source
+     *                      if it's null, receive from any connection bound to source
      * @return data received
      */
-    byte[] receive(SocketAddress source, SocketAddress destination);
+    byte[] receive(SocketAddress source, SocketAddress destination) throws IOException;
 
     /**
      *   Get connection if already exists
@@ -96,7 +97,7 @@ public interface Hub {
      * @param local  - local address
      * @return null on error
      */
-    Connection connect(SocketAddress remote, SocketAddress local);
+    Connection connect(SocketAddress remote, SocketAddress local) throws IOException;
 
     /**
      *  Close connection
@@ -104,5 +105,5 @@ public interface Hub {
      * @param remote - remote address
      * @param local  - local address
      */
-    void disconnect(SocketAddress remote, SocketAddress local);
+    void disconnect(SocketAddress remote, SocketAddress local) throws IOException;
 }

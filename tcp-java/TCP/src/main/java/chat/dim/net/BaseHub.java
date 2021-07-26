@@ -78,48 +78,34 @@ public abstract class BaseHub implements Hub, Ticker {
     public static long DYING_EXPIRES = 120 * 1000;
 
     @Override
-    public boolean send(byte[] data, SocketAddress source, SocketAddress destination) {
-        try {
-            Connection conn = connect(destination, source);
-            if (conn == null || !conn.isOpen()) {
-                // connection closed
-                return false;
-            }
-            if (destination == null && !conn.isConnected()) {
-                // connection not connected yet
-                return false;
-            }
-            ByteBuffer buffer = ByteBuffer.allocate(data.length);
-            buffer.put(data);
-            buffer.flip();
-            return conn.send(buffer, destination) != -1;
-        } catch (IOException e) {
-            e.printStackTrace();
+    public boolean send(byte[] data, SocketAddress source, SocketAddress destination) throws IOException {
+        Connection conn = connect(destination, source);
+        if (conn == null || !conn.isOpen()) {
+            // connection closed
             return false;
         }
+        ByteBuffer buffer = ByteBuffer.allocate(data.length);
+        buffer.put(data);
+        buffer.flip();
+        return conn.send(buffer, destination) != -1;
     }
 
     @Override
-    public byte[] receive(SocketAddress source, SocketAddress destination) {
-        try {
-            Connection conn = connect(source, destination);
-            if (conn == null || !conn.isOpen()) {
-                // connection closed
-                return null;
-            }
-            ByteBuffer buffer = ByteBuffer.allocate(MSS);
-            if (conn.receive(buffer) == null) {
-                // received nothing
-                return null;
-            }
-            byte[] data = new byte[buffer.position()];
-            buffer.flip();
-            buffer.get(data);
-            return data;
-        } catch (IOException e) {
-            e.printStackTrace();
+    public byte[] receive(SocketAddress source, SocketAddress destination) throws IOException {
+        Connection conn = connect(source, destination);
+        if (conn == null || !conn.isOpen()) {
+            // connection closed
             return null;
         }
+        ByteBuffer buffer = ByteBuffer.allocate(MSS);
+        if (conn.receive(buffer) == null) {
+            // received nothing
+            return null;
+        }
+        byte[] data = new byte[buffer.position()];
+        buffer.flip();
+        buffer.get(data);
+        return data;
     }
 
     @Override
@@ -136,7 +122,7 @@ public abstract class BaseHub implements Hub, Ticker {
     }
 
     @Override
-    public Connection connect(SocketAddress remote, SocketAddress local) {
+    public Connection connect(SocketAddress remote, SocketAddress local) throws IOException {
         assert local != null || remote != null : "both local & remote addresses are empty";
         // 1. try to get connection from cache pool
         Connection conn = getConnection(remote, local);
@@ -164,10 +150,10 @@ public abstract class BaseHub implements Hub, Ticker {
         }
         return conn;
     }
-    protected abstract Connection createConnection(SocketAddress remote, SocketAddress local);
+    protected abstract Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException;
 
     @Override
-    public void disconnect(SocketAddress remote, SocketAddress local) {
+    public void disconnect(SocketAddress remote, SocketAddress local) throws IOException {
         assert local != null || remote != null : "both local & remote addresses are empty";
         Connection conn;
         Lock readLock = connectionLock.readLock();
@@ -259,13 +245,6 @@ public abstract class BaseHub implements Hub, Ticker {
             // get connections connected to remote address
             Map<SocketAddress, Connection> table = connectionMap.get(remote);
             if (table == null) {
-                if (local != null) {
-                    // mapping: (local, null) => Connection
-                    table = connectionMap.get(local);
-                    if (table != null) {
-                        return table.get(anyRemoteAddress);
-                    }
-                }
                 return null;
             } else if (local != null) {
                 // mapping: (remote, local) => Connection
