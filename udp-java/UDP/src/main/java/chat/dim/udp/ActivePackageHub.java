@@ -31,35 +31,24 @@
 package chat.dim.udp;
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 
+import chat.dim.net.ActivePackageConnection;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
-import chat.dim.net.PackageConnection;
-import chat.dim.net.PackageHub;
 
-public class ActivePackageHub extends PackageHub {
-
-    private final WeakReference<Connection.Delegate> delegateRef;
+public abstract class ActivePackageHub extends PackageHub {
 
     public ActivePackageHub(Connection.Delegate delegate) {
-        super();
-        delegateRef = new WeakReference<>(delegate);
-    }
-
-    public Connection.Delegate getDelegate() {
-        return delegateRef.get();
+        super(delegate);
     }
 
     @Override
     protected Connection createConnection(SocketAddress remote, SocketAddress local) {
-        PackageConnection connection = new PackageConnection(remote, local) {
+        ActivePackageConnection connection = new ActivePackageConnection(remote, local) {
             @Override
             protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
-                Channel channel = new DiscreteChannel(remote, local);
-                channel.configureBlocking(false);
-                return channel;
+                return createChannel(remote, local);
             }
         };
         // set delegate
@@ -70,4 +59,6 @@ public class ActivePackageHub extends PackageHub {
         connection.start();
         return connection;
     }
+
+    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
 }

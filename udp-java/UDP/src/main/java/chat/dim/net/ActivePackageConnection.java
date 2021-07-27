@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  TCP: Transmission Control Protocol
+ *  UDP: User Datagram Protocol
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -36,19 +36,19 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public abstract class ActiveConnection extends BaseConnection {
+public abstract class ActivePackageConnection extends PackageConnection {
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private int connecting;
     private boolean running;
 
-    public ActiveConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
+    public ActivePackageConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
         super(byteChannel, remote, local);
         connecting = 0;
         running = false;
     }
 
-    public ActiveConnection(SocketAddress remote, SocketAddress local) {
+    public ActivePackageConnection(SocketAddress remote, SocketAddress local) {
         this(null, remote, local);
     }
 

@@ -1,15 +1,18 @@
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 
 import chat.dim.mtp.DataType;
 import chat.dim.mtp.Package;
+import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.PackageConnection;
 import chat.dim.type.Data;
 import chat.dim.udp.ActivePackageHub;
+import chat.dim.udp.DiscreteChannel;
 
 public class Client extends Thread implements Connection.Delegate {
 
@@ -46,13 +49,29 @@ public class Client extends Thread implements Connection.Delegate {
     }
 
     private byte[] receive(SocketAddress source, SocketAddress destination) {
-        Package pack = hub.receivePackage(source, destination);
+        Package pack = null;
+        try {
+            pack = hub.receivePackage(source, destination);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return pack == null ? null : pack.body.getBytes();
     }
-
     private boolean send(byte[] data, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.Message, new Data(data));
-        return hub.sendPackage(pack, source, destination);
+        try {
+            return hub.sendPackage(pack, source, destination);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    private void disconnect(SocketAddress remote, SocketAddress local) {
+        try {
+            hub.disconnect(remote, local);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -77,7 +96,7 @@ public class Client extends Thread implements Connection.Delegate {
             }
         }
 
-        hub.disconnect(remoteAddress, null);
+        disconnect(remoteAddress, null);
     }
 
     private static SocketAddress remoteAddress;
@@ -90,7 +109,14 @@ public class Client extends Thread implements Connection.Delegate {
         remoteAddress = new InetSocketAddress(Server.HOST, Server.PORT);
 
         Client client = new Client();
-        hub = new ActivePackageHub(client);
+        hub = new ActivePackageHub(client) {
+            @Override
+            protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+                Channel channel = new DiscreteChannel(remote, local);
+                channel.configureBlocking(false);
+                return channel;
+            }
+        };
         client.start();
     }
 }

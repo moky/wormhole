@@ -1,13 +1,13 @@
 /* license: https://mit-license.org
  *
- *  TCP: Transmission Control Protocol
+ *  UDP: User Datagram Protocol
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,29 +28,34 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tcp;
+package chat.dim.udp;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 
-import chat.dim.net.ActiveConnection;
+import chat.dim.net.BasePackageHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
+import chat.dim.net.PackageConnection;
 
-public abstract class ActiveStreamHub extends StreamHub {
+public abstract class PackageHub extends BasePackageHub {
 
-    public ActiveStreamHub(Connection.Delegate delegate) {
-        super(delegate);
+    private final WeakReference<Connection.Delegate> delegateRef;
+
+    public PackageHub(Connection.Delegate delegate) {
+        super();
+        delegateRef = new WeakReference<>(delegate);
+    }
+
+    public Connection.Delegate getDelegate() {
+        return delegateRef.get();
     }
 
     @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
-        ActiveConnection connection = new ActiveConnection(remote, local) {
-            @Override
-            protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
-                return createChannel(remote, local);
-            }
-        };
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
+        Channel sock = createChannel(remote, local);
+        PackageConnection connection = new PackageConnection(sock);
         // set delegate
         if (connection.getDelegate() == null) {
             connection.setDelegate(getDelegate());
@@ -59,4 +64,6 @@ public abstract class ActiveStreamHub extends StreamHub {
         connection.start();
         return connection;
     }
+
+    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
 }

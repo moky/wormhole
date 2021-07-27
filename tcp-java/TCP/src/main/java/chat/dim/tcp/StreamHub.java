@@ -54,11 +54,8 @@ public abstract class StreamHub extends BaseHub {
 
     @Override
     protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
-        Channel channel = createChannel(remote, local);
-        if (channel == null) {
-            return null;
-        }
-        BaseConnection connection = new BaseConnection(channel);
+        Channel sock = createChannel(remote, local);
+        BaseConnection connection = new BaseConnection(sock);
         // set delegate
         if (connection.getDelegate() == null) {
             connection.setDelegate(getDelegate());

@@ -147,7 +147,9 @@ public class DiscreteChannel implements Channel {
 
     @Override
     public ByteChannel disconnect() throws IOException {
-        return impl.disconnect();
+        ByteChannel sock = impl;
+        close();
+        return sock;
     }
 
     @Override

@@ -15,18 +15,13 @@ import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.PackageConnection;
 import chat.dim.type.Data;
-import chat.dim.udp.ActivePackageHub;
 import chat.dim.udp.DiscreteChannel;
+import chat.dim.udp.PackageHub;
 
 class ServerConnection extends PackageConnection {
 
-    public ServerConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
-        super(byteChannel, remote, local);
-    }
-
-    @Override
-    protected Channel connect(SocketAddress remote, SocketAddress local) {
-        return Server.masterChannel;
+    public ServerConnection(Channel byteChannel) {
+        super(byteChannel);
     }
 
     @Override
@@ -39,7 +34,7 @@ class ServerConnection extends PackageConnection {
     }
 }
 
-class ServerHub extends ActivePackageHub {
+class ServerHub extends PackageHub {
 
     public ServerHub(Connection.Delegate delegate) {
         super(delegate);
@@ -47,15 +42,23 @@ class ServerHub extends ActivePackageHub {
 
     @Override
     protected Connection createConnection(SocketAddress remote, SocketAddress local) {
-        ServerConnection conn = new ServerConnection(Server.masterChannel, Server.remoteAddress, Server.localAddress);
+        Channel sock = createChannel(remote, local);
+        ServerConnection connection = new ServerConnection(sock);
         // set delegate
-        Connection.Delegate delegate = getDelegate();
-        if (delegate != null) {
-            conn.setDelegate(delegate);
+        if (connection.getDelegate() == null) {
+            connection.setDelegate(getDelegate());
         }
         // start FSM
-        conn.start();
-        return conn;
+        connection.start();
+        return connection;
+    }
+
+    @Override
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) {
+        if (remote != null) {
+            Server.remoteAddress = remote;
+        }
+        return Server.masterChannel;
     }
 }
 
@@ -93,13 +96,23 @@ public class Server extends Thread implements Connection.Delegate {
     static int counter = 0;
 
     private byte[] receive(SocketAddress source, SocketAddress destination) {
-        Package pack = hub.receivePackage(source, destination);
+        Package pack = null;
+        try {
+            pack = hub.receivePackage(source, destination);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return pack == null ? null : pack.body.getBytes();
     }
 
     private boolean send(byte[] data, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.Message, new Data(data));
-        return hub.sendPackage(pack, source, destination);
+        try {
+            return hub.sendPackage(pack, source, destination);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Override

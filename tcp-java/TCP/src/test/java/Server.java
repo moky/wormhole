@@ -17,6 +17,33 @@ import chat.dim.net.Hub;
 import chat.dim.tcp.StreamChannel;
 import chat.dim.tcp.StreamHub;
 
+class ServerHub extends StreamHub {
+
+    public ServerHub(Connection.Delegate delegate) {
+        super(delegate);
+    }
+
+    @Override
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+        SocketChannel sock = null;
+        for (SocketChannel item : Server.slaves) {
+            try {
+                if (item.getRemoteAddress().equals(remote)) {
+                    sock = item;
+                    break;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        if (sock == null) {
+            return null;
+        } else {
+            return new StreamChannel(sock);
+        }
+    }
+}
+
 public class Server extends Thread implements Connection.Delegate {
 
     static InetAddress HOST;
@@ -124,12 +151,11 @@ public class Server extends Thread implements Connection.Delegate {
         return count > 0;
     }
 
-    private static SocketAddress localAddress;
-    private static ServerSocketChannel master;
-    private static final Set<SocketChannel> slaves = new HashSet<>();
+    static SocketAddress localAddress;
+    static ServerSocketChannel master;
+    static final Set<SocketChannel> slaves = new HashSet<>();
 
     private static Hub hub;
-    private static Server server;
 
     public static void main(String[] args) throws IOException {
 
@@ -140,30 +166,9 @@ public class Server extends Thread implements Connection.Delegate {
         master.socket().bind(localAddress);
         master.configureBlocking(false);
 
-        server = new Server();
+        Server server = new Server();
 
-        hub = new StreamHub(server) {
-
-            @Override
-            protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-                SocketChannel sock = null;
-                for (SocketChannel item : slaves) {
-                    try {
-                        if (item.getRemoteAddress().equals(remote)) {
-                            sock = item;
-                            break;
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-                if (sock == null) {
-                    return null;
-                } else {
-                    return new StreamChannel(sock);
-                }
-            }
-        };
+        hub = new ServerHub(server);
 
         server.start();
     }

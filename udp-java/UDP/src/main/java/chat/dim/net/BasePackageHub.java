@@ -35,9 +35,9 @@ import java.net.SocketAddress;
 
 import chat.dim.mtp.Package;
 
-public abstract class PackageHub extends BaseHub {
+public abstract class BasePackageHub extends BaseHub {
 
-    public PackageConnection getPackageConnection(SocketAddress remote, SocketAddress local) {
+    public PackageConnection getPackageConnection(SocketAddress remote, SocketAddress local) throws IOException {
         Connection conn = connect(remote, local);
         if (conn instanceof PackageConnection) {
             return (PackageConnection) conn;
@@ -46,7 +46,7 @@ public abstract class PackageHub extends BaseHub {
         }
     }
 
-    public Package receivePackage(SocketAddress source, SocketAddress destination) {
+    public Package receivePackage(SocketAddress source, SocketAddress destination) throws IOException {
         PackageConnection conn = getPackageConnection(source, destination);
         try {
             return conn == null ? null : conn.receivePackage(source, destination);
@@ -56,7 +56,7 @@ public abstract class PackageHub extends BaseHub {
         }
     }
 
-    public boolean sendPackage(Package pack, SocketAddress source, SocketAddress destination) {
+    public boolean sendPackage(Package pack, SocketAddress source, SocketAddress destination) throws IOException {
         PackageConnection conn = getPackageConnection(destination, source);
         try {
             conn.sendPackage(pack, source, destination);

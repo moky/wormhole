@@ -47,18 +47,29 @@ public class BaseConnection implements Connection, StateDelegate {
 
     protected Channel channel;
 
+    protected final SocketAddress localAddress;
+    protected final SocketAddress remoteAddress;
+
     private long lastSentTime;
     private long lastReceivedTime;
 
-    public BaseConnection(Channel byteChannel) {
+    public BaseConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
         super();
         delegateRef = null;
         channel = byteChannel;
+        remoteAddress = remote;
+        localAddress = local;
         lastSentTime = 0;
         lastReceivedTime = 0;
         // Finite State Machine
         fsm = new StateMachine(this);
         fsm.setDelegate(this);
+    }
+    public BaseConnection(Channel byteChannel) {
+        this(byteChannel, null, null);
+    }
+    public BaseConnection(SocketAddress remote, SocketAddress local) {
+        this(null, remote, local);
     }
 
     public Delegate getDelegate() {
@@ -87,15 +98,6 @@ public class BaseConnection implements Connection, StateDelegate {
         } else {
             return false;
         }
-    }
-    public boolean equals(Connection other) {
-        if (other == null) {
-            return false;
-        } else if (other == this) {
-            return true;
-        }
-        return addressEqual(getRemoteAddress(), other.getRemoteAddress()) &&
-                addressEqual(getLocalAddress(), other.getLocalAddress());
     }
     private static boolean addressEqual(SocketAddress address1, SocketAddress address2) {
         if (address1 == null) {
@@ -129,23 +131,27 @@ public class BaseConnection implements Connection, StateDelegate {
     @Override
     public SocketAddress getLocalAddress() {
         Channel sock = channel;
-        try {
-            return sock == null ? null : sock.getLocalAddress();
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
+        if (sock != null && sock.isBound()) {
+            try {
+                return sock.getLocalAddress();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
+        return localAddress;
     }
 
     @Override
     public SocketAddress getRemoteAddress() {
         Channel sock = channel;
-        try {
-            return sock == null ? null : sock.getRemoteAddress();
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
+        if (sock != null && sock.isConnected()) {
+            try {
+                return sock.getRemoteAddress();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
+        return remoteAddress;
     }
 
     boolean isSentRecently(long now) {
@@ -160,41 +166,26 @@ public class BaseConnection implements Connection, StateDelegate {
 
     @Override
     public boolean isOpen() {
-        try {
-            Channel sock = getChannel();
-            return sock != null && sock.isOpen();
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
+        Channel sock = channel;
+        return sock != null && sock.isOpen();
     }
 
     @Override
     public boolean isBound() {
-        try {
-            Channel sock = getChannel();
-            return sock != null && sock.isBound();
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
+        Channel sock = channel;
+        return sock != null && sock.isBound();
     }
 
     @Override
     public boolean isConnected() {
-        try {
-            Channel sock = getChannel();
-            return sock != null && sock.isConnected();
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
+        Channel sock = channel;
+        return sock != null && sock.isConnected();
     }
 
     @Override
     public void close() {
-        Channel sock = channel;
         try {
+            Channel sock = channel;
             if (sock != null && sock.isOpen()) {
                 sock.close();
             }
@@ -207,17 +198,17 @@ public class BaseConnection implements Connection, StateDelegate {
     }
 
     protected Channel getChannel() throws IOException {
-        Channel sock = channel;
-        if (sock == null || !sock.isOpen()) {
-            throw new SocketException("connection lost: " + sock);
-        }
-        return sock;
+        return channel;
     }
 
     @Override
     public SocketAddress receive(ByteBuffer dst) throws IOException {
+        Channel sock = getChannel();
+        if (sock == null || !sock.isOpen()) {
+            throw new SocketException("connection lost: " + sock);
+        }
         try {
-            SocketAddress remote = getChannel().receive(dst);
+            SocketAddress remote = sock.receive(dst);
             if (remote != null) {
                 lastReceivedTime = (new Date()).getTime();
             }
@@ -227,14 +218,18 @@ public class BaseConnection implements Connection, StateDelegate {
             e.printStackTrace();
             close();
             changeState(ConnectionState.ERROR);
-            return null;
+            throw e;
         }
     }
 
     @Override
     public int send(ByteBuffer src, SocketAddress target) throws IOException {
+        Channel sock = getChannel();
+        if (sock == null || !sock.isOpen()) {
+            throw new SocketException("connection lost: " + sock);
+        }
         try {
-            int sent = getChannel().send(src, target);
+            int sent = sock.send(src, target);
             if (sent != -1) {
                 lastSentTime = (new Date()).getTime();
             }
@@ -244,7 +239,7 @@ public class BaseConnection implements Connection, StateDelegate {
             e.printStackTrace();
             close();
             changeState(ConnectionState.ERROR);
-            return -1;
+            throw e;
         }
     }
 

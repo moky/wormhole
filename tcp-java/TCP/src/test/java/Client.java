@@ -4,10 +4,12 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 
+import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
 import chat.dim.tcp.ActiveStreamHub;
+import chat.dim.tcp.StreamChannel;
 
 public class Client extends Thread implements Connection.Delegate {
 
@@ -109,7 +111,15 @@ public class Client extends Thread implements Connection.Delegate {
         remoteAddress = new InetSocketAddress(Server.HOST, Server.PORT);
 
         Client client = new Client();
-        hub = new ActiveStreamHub(client);
+        hub = new ActiveStreamHub(client) {
+
+            @Override
+            protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+                Channel channel = new StreamChannel(remote, local);
+                channel.configureBlocking(false);
+                return channel;
+            }
+        };
         client.start();
     }
 }

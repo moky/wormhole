@@ -45,7 +45,7 @@ import chat.dim.mtp.TransactionID;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 
-public abstract class PackageConnection extends ActiveConnection {
+public class PackageConnection extends BaseConnection {
 
     /*  Maximum Segment Size
      *  ~~~~~~~~~~~~~~~~~~~~
@@ -64,9 +64,11 @@ public abstract class PackageConnection extends ActiveConnection {
     public PackageConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
         super(byteChannel, remote, local);
     }
-
+    public PackageConnection(Channel byteChannel) {
+        this(byteChannel, null, null);
+    }
     public PackageConnection(SocketAddress remote, SocketAddress local) {
-        super(remote, local);
+        this(null, remote, local);
     }
 
     @Override
