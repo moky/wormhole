@@ -19,24 +19,8 @@ import chat.dim.udp.DiscreteChannel;
 
 class ServerConnection extends PackageConnection {
 
-    public ServerConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
-        super(byteChannel, remote, local);
-    }
-
-    @Override
-    protected Channel connect(SocketAddress remote, SocketAddress local) {
-        if (local instanceof InetSocketAddress) {
-            int port = ((InetSocketAddress) local).getPort();
-            if (port == Server.SERVER_PORT) {
-                return Server.primaryChannel;
-            } else if (port == Server.CHANGE_PORT) {
-                return Server.secondaryChannel;
-            } else {
-                throw new IllegalArgumentException("port not defined: " + port);
-            }
-        } else {
-            throw new NullPointerException("local address error: " + local);
-        }
+    public ServerConnection(Channel byteChannel) {
+        super(byteChannel);
     }
 
     @Override
@@ -57,34 +41,37 @@ class ServerHub extends ActivePackageHub {
 
     @Override
     protected Connection createConnection(SocketAddress remote, SocketAddress local) {
-        Channel channel;
+        Channel sock = createChannel(remote, local);
+        ServerConnection connection = new ServerConnection(sock);
+        // set delegate
+        if (connection.getDelegate() == null) {
+            connection.setDelegate(getDelegate());
+        }
+        // start FSM
+        connection.start();
+        return connection;
+    }
+
+    @Override
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) {
         if (local instanceof InetSocketAddress) {
             int port = ((InetSocketAddress) local).getPort();
             if (port == Server.SERVER_PORT) {
-                channel = Server.primaryChannel;
+                return Server.primaryChannel;
             } else if (port == Server.CHANGE_PORT) {
-                channel = Server.secondaryChannel;
+                return Server.secondaryChannel;
             } else {
                 throw new IllegalArgumentException("port not defined: " + port);
             }
         } else {
             throw new NullPointerException("local address error: " + local);
         }
-        ServerConnection conn = new ServerConnection(channel, remote, local);
-        // set delegate
-        Connection.Delegate delegate = getDelegate();
-        if (delegate != null) {
-            conn.setDelegate(delegate);
-        }
-        // start FSM
-        conn.start();
-        return conn;
     }
 }
 
 public class Server extends chat.dim.stun.Server implements Runnable, Connection.Delegate {
 
-    static final String SERVER_Test = "192.168.31.91"; // Test
+    static final String SERVER_Test = "192.168.0.108"; // Test
     static final String SERVER_GZ1 = "134.175.87.98"; // GZ-1
     static final String SERVER_HK2 = "129.226.128.17"; // HK-2
 
@@ -127,12 +114,24 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
     @Override
     public int send(byte[] data, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.Message, new Data(data));
-        return hub.sendPackage(pack, source, destination) ? 0 : -1;
+        try {
+            return hub.sendPackage(pack, source, destination) ? 0 : -1;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return -1;
+        }
     }
 
     private byte[] receive(SocketAddress source, SocketAddress destination) {
-        Package pack = hub.receivePackage(source, destination);
-        return pack == null ? null : pack.body.getBytes();
+        try {
+            Package pack = hub.receivePackage(source, destination);
+            if (pack != null) {
+                return pack.body.getBytes();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     /**

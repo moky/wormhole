@@ -1,4 +1,5 @@
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.text.SimpleDateFormat;
@@ -7,15 +8,31 @@ import java.util.Map;
 
 import chat.dim.mtp.DataType;
 import chat.dim.mtp.Package;
+import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.PackageConnection;
 import chat.dim.type.Data;
 import chat.dim.udp.ActivePackageHub;
+import chat.dim.udp.DiscreteChannel;
+
+class ClientHub extends ActivePackageHub {
+
+    public ClientHub(Connection.Delegate delegate) {
+        super(delegate);
+    }
+
+    @Override
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+        Channel channel = new DiscreteChannel(remote, local);
+        channel.configureBlocking(false);
+        return channel;
+    }
+}
 
 public class Client extends chat.dim.stun.Client implements Connection.Delegate {
 
-    static final String CLIENT_IP = "192.168.31.91"; // Test
+    static final String CLIENT_IP = "192.168.0.108"; // Test
     static final int CLIENT_PORT = 9527;
 
     static SocketAddress SERVER_ADDRESS = new InetSocketAddress(Server.SERVER_IP, Server.SERVER_PORT);
@@ -28,7 +45,7 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
 
     public Client(String host, int port) {
         super(host, port);
-        hub = new ActivePackageHub(this);
+        hub = new ClientHub(this);
     }
 
     @Override
@@ -46,12 +63,24 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
     @Override
     public int send(byte[] data, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.Message, new Data(data));
-        return hub.sendPackage(pack, source, destination) ? 0 : -1;
+        try {
+            return hub.sendPackage(pack, source, destination) ? 0 : -1;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return -1;
+        }
     }
 
     private byte[] receive(SocketAddress source, SocketAddress destination) {
-        Package pack = hub.receivePackage(source, destination);
-        return pack == null ? null : pack.body.getBytes();
+        try {
+            Package pack = hub.receivePackage(source, destination);
+            if (pack != null) {
+                return pack.body.getBytes();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @Override

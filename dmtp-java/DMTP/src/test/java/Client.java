@@ -1,4 +1,5 @@
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -13,11 +14,27 @@ import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.protocol.LocationValue;
 import chat.dim.dmtp.protocol.Message;
 import chat.dim.mtp.Package;
+import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.PackageConnection;
 import chat.dim.type.Data;
 import chat.dim.udp.ActivePackageHub;
+import chat.dim.udp.DiscreteChannel;
+
+class ClientHub extends ActivePackageHub {
+
+    public ClientHub(Connection.Delegate delegate) {
+        super(delegate);
+    }
+
+    @Override
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+        Channel channel = new DiscreteChannel(remote, local);
+        channel.configureBlocking(false);
+        return channel;
+    }
+}
 
 public class Client extends chat.dim.dmtp.Client {
 
@@ -32,7 +49,7 @@ public class Client extends chat.dim.dmtp.Client {
         database = createContactManager();
         database.identifier = "moky-" + port;
         setDelegate(database);
-        hub = new ActivePackageHub(this);
+        hub = new ClientHub(this);
     }
 
     @Override
@@ -75,12 +92,20 @@ public class Client extends chat.dim.dmtp.Client {
 
     @Override
     public void connect(SocketAddress remote) {
-        hub.connect(remote, localAddress);
+        try {
+            hub.connect(remote, localAddress);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void disconnect(SocketAddress remote) {
-        hub.disconnect(remote, localAddress);
+        try {
+            hub.disconnect(remote, localAddress);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -103,13 +128,25 @@ public class Client extends chat.dim.dmtp.Client {
 
     @Override
     protected boolean sendPackage(Package pack, SocketAddress destination) {
-        return hub.sendPackage(pack, localAddress, destination);
+        try {
+            return hub.sendPackage(pack, localAddress, destination);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Override
     protected Cargo receivePackage() {
-        Package pack = hub.receivePackage(serverAddress, localAddress);
-        return pack == null ? null : new Cargo(serverAddress, pack);
+        try {
+            Package pack = hub.receivePackage(serverAddress, localAddress);
+            if (pack != null) {
+                return new Cargo(serverAddress, pack);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @Override
@@ -134,7 +171,7 @@ public class Client extends chat.dim.dmtp.Client {
         return true;
     }
 
-    public void login(String identifier, SocketAddress remoteAddress) {
+    public void login(String identifier, SocketAddress remoteAddress) throws IOException {
         database.identifier = identifier;
         serverAddress = remoteAddress;
         hub.connect(remoteAddress, null);
@@ -205,10 +242,10 @@ public class Client extends chat.dim.dmtp.Client {
         }
     }
 
-    static final String CLIENT_IP = "192.168.31.91";
+    static final String CLIENT_IP = "127.0.0.1";
     static final int CLIENT_PORT = Data.random(1).getByte(0) + 9900;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
 
         SocketAddress serverAddress = new InetSocketAddress(Server.SERVER_IP, Server.SERVER_PORT);
         System.out.printf("connecting to UDP server: %s ...\n", serverAddress);

@@ -18,13 +18,8 @@ import chat.dim.udp.DiscreteChannel;
 
 class ServerConnection extends PackageConnection {
 
-    public ServerConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
-        super(byteChannel, remote, local);
-    }
-
-    @Override
-    protected Channel connect(SocketAddress remote, SocketAddress local) {
-        return Server.masterChannel;
+    public ServerConnection(Channel byteChannel) {
+        super(byteChannel);
     }
 
     @Override
@@ -45,15 +40,23 @@ class ServerHub extends ActivePackageHub {
 
     @Override
     protected Connection createConnection(SocketAddress remote, SocketAddress local) {
-        ServerConnection conn = new ServerConnection(Server.masterChannel, Server.remoteAddress, Server.localAddress);
+        Channel sock = createChannel(remote, local);
+        ServerConnection connection = new ServerConnection(sock);
         // set delegate
-        Connection.Delegate delegate = getDelegate();
-        if (delegate != null) {
-            conn.setDelegate(delegate);
+        if (connection.getDelegate() == null) {
+            connection.setDelegate(getDelegate());
         }
         // start FSM
-        conn.start();
-        return conn;
+        connection.start();
+        return connection;
+    }
+
+    @Override
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) {
+        if (remote != null) {
+            Server.remoteAddress = remote;
+        }
+        return Server.masterChannel;
     }
 }
 
@@ -94,23 +97,43 @@ public class Server extends chat.dim.dmtp.Server implements Runnable {
 
     @Override
     public void connect(SocketAddress remote) {
-        hub.connect(remote, localAddress);
+        try {
+            hub.connect(remote, localAddress);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void disconnect(SocketAddress remote) {
-        hub.disconnect(remote, localAddress);
+        try {
+            hub.disconnect(remote, localAddress);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     protected boolean sendPackage(Package pack, SocketAddress destination) {
-        return hub.sendPackage(pack, localAddress, destination);
+        try {
+            return hub.sendPackage(pack, localAddress, destination);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Override
     protected Cargo receivePackage() {
-        Package pack = hub.receivePackage(remoteAddress, localAddress);
-        return pack == null ? null : new Cargo(remoteAddress, pack);
+        try {
+            Package pack = hub.receivePackage(remoteAddress, localAddress);
+            if (pack != null) {
+                return new Cargo(remoteAddress, pack);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @Override
@@ -125,7 +148,7 @@ public class Server extends chat.dim.dmtp.Server implements Runnable {
         return true;
     }
 
-    static final String SERVER_Test = "192.168.31.91"; // Test
+    static final String SERVER_Test = "127.0.0.1"; // Test
     static final String SERVER_GZ1 = "134.175.87.98"; // GZ-1
     static final String SERVER_HK2 = "129.226.128.17"; // HK-2
 

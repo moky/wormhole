@@ -14,6 +14,20 @@ import chat.dim.type.Data;
 import chat.dim.udp.ActivePackageHub;
 import chat.dim.udp.DiscreteChannel;
 
+class ClientHub extends ActivePackageHub {
+
+    public ClientHub(Connection.Delegate delegate) {
+        super(delegate);
+    }
+
+    @Override
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+        Channel channel = new DiscreteChannel(remote, local);
+        channel.configureBlocking(false);
+        return channel;
+    }
+}
+
 public class Client extends Thread implements Connection.Delegate {
 
     static void info(String msg) {
@@ -109,14 +123,9 @@ public class Client extends Thread implements Connection.Delegate {
         remoteAddress = new InetSocketAddress(Server.HOST, Server.PORT);
 
         Client client = new Client();
-        hub = new ActivePackageHub(client) {
-            @Override
-            protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-                Channel channel = new DiscreteChannel(remote, local);
-                channel.configureBlocking(false);
-                return channel;
-            }
-        };
+
+        hub = new ClientHub(client);
+
         client.start();
     }
 }

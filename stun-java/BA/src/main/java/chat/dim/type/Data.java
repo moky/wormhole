@@ -98,7 +98,9 @@ public class Data implements ByteArray, Cloneable {
 
     @Override
     public boolean equals(Object other) {
-        if (other instanceof ByteArray) {
+        if (other == this) {
+            return true;
+        } else if (other instanceof ByteArray) {
             return equals((ByteArray) other);
         } else if (other instanceof byte[]) {
             return equals((byte[]) other);
@@ -221,12 +223,8 @@ public class Data implements ByteArray, Cloneable {
     @Override
     public byte getByte(int index) {
         // check position
-        if (index < 0) {
-            index += size;    // count from right hand
-            if (index < 0) {  // too small
-                throw new ArrayIndexOutOfBoundsException("error index: " + (index - size) + ", size: " + size);
-            }
-        } else if (index >= size) {
+        index = DataUtils.adjustE(index, size);
+        if (index >= size) {
             throw new ArrayIndexOutOfBoundsException("error index: " + index + ", size: " + size);
         }
         return buffer[offset + index];

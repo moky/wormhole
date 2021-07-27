@@ -54,7 +54,7 @@ public interface IntegerData extends ByteArray {
      * @param buffer - data buffer
      * @param start  - data view offset
      * @param size   - data view size
-     * @param endian - network order
+     * @param endian - byte order
      * @return long value
      */
     static long getValue(byte[] buffer, int start, int size, Endian endian) {

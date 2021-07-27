@@ -100,7 +100,7 @@ public class VarIntData extends Data implements IntegerData {
 
     public static VarIntData from(long value) {
         byte[] buffer = new byte[10];
-        int length = setValue(value, buffer, 0, buffer.length);
+        int length = setValue(value, buffer, 0, 10);
         return new VarIntData(buffer, 0, length, value);
     }
 

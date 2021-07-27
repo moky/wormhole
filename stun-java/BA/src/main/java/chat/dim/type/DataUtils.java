@@ -174,10 +174,12 @@ final class DataUtils {
         assert start < end : "search range error: [" + start + ", " + end + ")";
         if ((end - start) < subSize || subSize <= 0) {
             return -1;
+        } else if (subSize > 1) {
+            end -= subSize - 1;
         }
         byte[] buffer = data.getBuffer();
         start += data.getOffset();
-        end += data.getOffset() - subSize + 1;
+        end += data.getOffset();
         int found = -1;
         if (buffer == subBuffer) {
             // same buffer
