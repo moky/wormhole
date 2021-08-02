@@ -64,14 +64,6 @@ class DataType(UInt8Data):
         super().__init__(data=data, value=value)
         self.__name = name
 
-    def __eq__(self, other) -> bool:
-        if self is other:
-            return True
-        if isinstance(other, UInt8Data):
-            return self.__value == other.value
-        if isinstance(other, int):
-            return self.__value == other
-
     def __str__(self) -> str:
         return self.__name
 
@@ -115,10 +107,10 @@ class DataType(UInt8Data):
     #
 
     @classmethod
-    def from_data(cls, data: ByteArray):
+    def from_data(cls, data: Union[bytes, bytearray, ByteArray]):
         if not isinstance(data, UInt8Data):
             data = UInt8Data.from_data(data=data)
-        if isinstance(data, UInt8Data):
+        if data is not None:
             return cls.__get(data=data)
 
     @classmethod
@@ -144,11 +136,11 @@ class DataType(UInt8Data):
     __data_types = {}  # int -> DataType
 
     # fixed types
-    Command = __create(value=0x00, name='Command')
-    CommandResponse = __create(value=0x01, name='Command Response')
-    Message = __create(value=0x02, name='Message')
-    MessageResponse = __create(value=0x03, name='Message Response')
-    MessageFragment = __create(value=0x0A, name='Message Fragment')
+    COMMAND = __create(value=0x00, name='Command')
+    COMMAND_RESPONSE = __create(value=0x01, name='Command Response')
+    MESSAGE = __create(value=0x02, name='Message')
+    MESSAGE_RESPONSE = __create(value=0x03, name='Message Response')
+    MESSAGE_FRAGMENT = __create(value=0x0A, name='Message Fragment')
 
 
 class TransactionID(Data):
@@ -168,13 +160,20 @@ class TransactionID(Data):
     #
 
     @classmethod
-    def from_data(cls, data: ByteArray):  # -> TransactionID
+    def from_data(cls, data: Union[bytes, bytearray, ByteArray]):  # -> TransactionID
         if isinstance(data, TransactionID):
             return data
-        elif data.size < 8:
-            return None
-        elif data.size > 8:
-            data = data.slice(start=0, end=8)
+        if isinstance(data, ByteArray):
+            if data.size < 8:
+                return None
+            elif data.size > 8:
+                data = data.slice(start=0, end=8)
+        else:
+            data_size = len(data)
+            if data_size < 8:
+                return None
+            elif data_size > 8:
+                data = data[:8]
         return cls(data=data)
 
     __number_lock = threading.Lock()

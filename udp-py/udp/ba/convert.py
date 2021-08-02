@@ -28,7 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional
+from typing import Optional, Union
 
 from .array import ByteArray, IntegerData, Endian
 from .integer import UInt16Data, UInt32Data
@@ -41,15 +41,15 @@ class Convert:
     """
 
     @classmethod
-    def int_from_data(cls, data: ByteArray, start: int, size: int):
+    def int_from_data(cls, data: Union[bytes, bytearray, ByteArray], start: int, size: int) -> int:
         return IntegerData.get_value(source=data, start=start, size=size, endian=Endian.BIG_ENDIAN)
 
     @classmethod
-    def int16_from_data(cls, data: ByteArray, start: int = 0) -> int:
+    def int16_from_data(cls, data: Union[bytes, bytearray, ByteArray], start: int = 0) -> int:
         return cls.int_from_data(data=data, start=start, size=2)
 
     @classmethod
-    def int32_from_data(cls, data: ByteArray, start: int = 0) -> int:
+    def int32_from_data(cls, data: Union[bytes, bytearray, ByteArray], start: int = 0) -> int:
         return cls.int_from_data(data=data, start=start, size=4)
 
     #
@@ -61,9 +61,12 @@ class Convert:
         return UInt16Data.from_int(value=value, endian=Endian.BIG_ENDIAN)
 
     @classmethod
-    def uint16data_from_buffer(cls, data: ByteArray, start: int = 0) -> Optional[UInt16Data]:
+    def uint16data_from_buffer(cls, data: Union[bytes, bytearray, ByteArray], start: int = 0) -> Optional[UInt16Data]:
         if start > 0:
-            data = data.slice(start=start)
+            if isinstance(data, ByteArray):
+                data = data.slice(start=start)
+            else:
+                data = data[start:]
         return UInt16Data.from_data(data=data, endian=Endian.BIG_ENDIAN)
 
     #
@@ -75,7 +78,10 @@ class Convert:
         return UInt32Data.from_int(value=value, endian=Endian.BIG_ENDIAN)
 
     @classmethod
-    def uint32data_from_buffer(cls, data: ByteArray, start: int = 0) -> Optional[UInt32Data]:
+    def uint32data_from_buffer(cls, data: Union[bytes, bytearray, ByteArray], start: int = 0) -> Optional[UInt32Data]:
         if start > 0:
-            data = data.slice(start=start)
+            if isinstance(data, ByteArray):
+                data = data.slice(start=start)
+            else:
+                data = data[start:]
         return UInt32Data.from_data(data=data, endian=Endian.BIG_ENDIAN)

@@ -35,7 +35,7 @@
     Data format in UDP payload
 """
 
-from typing import Optional
+from typing import Optional, Union
 
 from ..ba import ByteArray, Data, Convert, MutableData
 
@@ -99,7 +99,7 @@ class Header(Data):
 
     MAGIC_CODE = b'DIM'
 
-    def __init__(self, data: ByteArray,
+    def __init__(self, data: Union[bytes, bytearray, ByteArray],
                  data_type: DataType, sn: TransactionID, pages: int = 1, offset: int = 0, body_length: int = -1):
         """
         Create package header
@@ -121,18 +121,14 @@ class Header(Data):
     def __str__(self) -> str:
         clazz = self.__class__.__name__
         dt = self.data_type
-        if dt.is_fragment:
-            return '<%s: %d, "%s" pages=%d offset=%d />' % (clazz, self.size, dt, self.pages, self.offset)
-        else:
-            return '<%s: %d, "%s" />' % (clazz, self.size, dt)
+        bl = self.body_length
+        return '<%s: %d, "%s" pages=%d, offset=%d, body_len=%d />' % (clazz, self.size, dt, self.pages, self.offset, bl)
 
     def __repr__(self) -> str:
         clazz = self.__class__.__name__
         dt = self.data_type
-        if dt.is_fragment:
-            return '<%s: %d, "%s" pages=%d offset=%d />' % (clazz, self.size, dt, self.pages, self.offset)
-        else:
-            return '<%s: %d, "%s" />' % (clazz, self.size, dt)
+        bl = self.body_length
+        return '<%s: %d, "%s" pages=%d, offset=%d, body_len=%d />' % (clazz, self.size, dt, self.pages, self.offset, bl)
 
     @property
     def data_type(self) -> DataType:
@@ -269,7 +265,8 @@ class Header(Data):
                    data_type=data_type, sn=sn, pages=pages, offset=offset, body_length=body_len)
 
     @classmethod
-    def new(cls, data_type: DataType, sn: TransactionID = None, pages: int = 1, offset: int = 0, body_length: int = -1):
+    def new(cls, data_type: DataType,
+            sn: Optional[TransactionID] = None, pages: int = 1, offset: int = 0, body_length: int = -1):
         head_len = 4  # in bytes
         # transaction ID
         if sn is None:

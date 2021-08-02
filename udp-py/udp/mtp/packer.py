@@ -133,9 +133,9 @@ class Packer:
         if first.head.body_length < 0:
             # UDP (unlimited)
             assert first.head.body_length == -1, 'body length error: %d' % first.head.body_length
-            return Package.new(data_type=DataType.Message, sn=sn, pages=1, offset=0, body_length=-1, body=body)
+            return Package.new(data_type=DataType.MESSAGE, sn=sn, pages=1, offset=0, body_length=-1, body=body)
         else:
-            return Package.new(data_type=DataType.Message, sn=sn, pages=1, offset=0, body_length=body.size, body=body)
+            return Package.new(data_type=DataType.MESSAGE, sn=sn, pages=1, offset=0, body_length=body.size, body=body)
 
     @classmethod
     def split(cls, package: Package) -> List[Package]:
@@ -175,14 +175,14 @@ class Packer:
             assert head.body_length == -1, 'body length error: %d' % head.body_length
             for index in range(pages):
                 data = fragments[index]
-                pack = Package.new(data_type=DataType.MessageFragment, sn=head.sn, pages=pages, offset=index,
+                pack = Package.new(data_type=DataType.MESSAGE_FRAGMENT, sn=head.sn, pages=pages, offset=index,
                                    body_length=-1, body=data)
                 packages.append(pack)
         else:
             # TCP (should not happen)
             for index in range(pages):
                 data = fragments[index]
-                pack = Package.new(data_type=DataType.MessageFragment, sn=head.sn, pages=pages, offset=index,
+                pack = Package.new(data_type=DataType.MESSAGE_FRAGMENT, sn=head.sn, pages=pages, offset=index,
                                    body_length=data.size, body=data)
                 packages.append(pack)
         return packages

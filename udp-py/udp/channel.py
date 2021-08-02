@@ -34,6 +34,7 @@ from tcp import Channel
 
 
 class DiscreteChannel(Channel):
+    """ Discrete Package Channel """
 
     def __init__(self, sock: Optional[socket.socket] = None,
                  remote: Optional[tuple] = None, local: Optional[tuple] = None,
@@ -45,7 +46,7 @@ class DiscreteChannel(Channel):
             self.__reuse = reuse
             self._sock = None
             # setup inner socket
-            sock = self._setup()
+            sock = self.__setup()
             # bind to local address
             if local is not None:
                 sock.bind(local)
@@ -58,7 +59,7 @@ class DiscreteChannel(Channel):
             self.__reuse = getattr(sock, 'SO_REUSEPORT', 0)
             self._sock = sock
 
-    def _setup(self) -> socket.socket:
+    def __setup(self) -> socket.socket:
         sock = self._sock
         if sock is None:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -71,7 +72,7 @@ class DiscreteChannel(Channel):
         self.__blocking = blocking
         sock = self._sock
         if sock is None:
-            self._setup()
+            self.__setup()
         else:
             sock.setblocking(blocking)
 
@@ -90,14 +91,15 @@ class DiscreteChannel(Channel):
 
     @property
     def connected(self) -> bool:
-        sock = self._sock
-        return sock is not None
+        try:
+            return self.remote_address is not None
+        except socket.error:
+            return False
 
     @property
     def bound(self) -> bool:
-        sock = self._sock
         try:
-            return sock is not None and sock.getsockname() is not None
+            return self.local_address is not None
         except socket.error:
             return False
 
@@ -116,19 +118,21 @@ class DiscreteChannel(Channel):
             return sock.getpeername()
 
     def bind(self, host: str, port: int):
-        sock = self._setup()
+        sock = self.__setup()
         # assert isinstance(sock, socket.socket)
         address = (host, port)
         sock.bind(address)
 
     def connect(self, host: str, port: int):
-        sock = self._setup()
+        sock = self.__setup()
         # assert isinstance(sock, socket.socket)
         address = (host, port)
         sock.connect(address)
 
     def disconnect(self):
+        sock = self._sock
         self.close()
+        return sock
 
     def close(self):
         sock = self._sock

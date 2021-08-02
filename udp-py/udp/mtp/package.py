@@ -28,6 +28,8 @@
 # SOFTWARE.
 # ==============================================================================
 
+from typing import Union
+
 from ..ba import ByteArray, Data
 
 from .protocol import DataType, TransactionID
@@ -36,7 +38,7 @@ from .header import Header
 
 class Package(Data):
 
-    def __init__(self, data: ByteArray, head: Header, body: ByteArray):
+    def __init__(self, data: Union[bytes, bytearray, ByteArray], head: Header, body: ByteArray):
         super().__init__(data=data)
         self.__head = head
         self.__body = body
@@ -79,7 +81,9 @@ class Package(Data):
                 return None
             elif data_len > pack_len:
                 data = data.slice(start=0, end=pack_len)
-        return cls(data=data, head=head, body=data.slice(start=head_len))
+        # get package body
+        body = data.slice(start=head_len)
+        return cls(data=data, head=head, body=body)
 
     @classmethod
     def new(cls, data_type: DataType, sn: TransactionID = None, pages: int = 1, offset: int = 0, body_length: int = -1,

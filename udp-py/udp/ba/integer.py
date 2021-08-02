@@ -136,13 +136,13 @@ class UInt16Data(IntData):
             elif size > 2:
                 data = data[0:2]
             value = int_from_buffer(buffer=data, offset=0, size=2, endian=endian)
-        return cls(data=data, value=value, endian=Endian.UNDEFINED)
+        return cls(data=data, value=value, endian=endian)
 
     @classmethod
     def from_int(cls, value: int, endian: Endian):
         buffer = bytearray(2)
         int_to_buffer(value=value, buffer=buffer, offset=0, size=2, endian=endian)
-        return cls(data=buffer, value=value, endian=Endian.UNDEFINED)
+        return cls(data=buffer, value=value, endian=endian)
 
 
 class UInt32Data(IntData):
@@ -170,13 +170,13 @@ class UInt32Data(IntData):
             elif size > 4:
                 data = data[0:4]
             value = int_from_buffer(buffer=data, offset=0, size=4, endian=endian)
-        return cls(data=data, value=value, endian=Endian.UNDEFINED)
+        return cls(data=data, value=value, endian=endian)
 
     @classmethod
     def from_int(cls, value: int, endian: Endian):
         buffer = bytearray(4)
         int_to_buffer(value=value, buffer=buffer, offset=0, size=4, endian=endian)
-        return cls(data=buffer, value=value, endian=Endian.UNDEFINED)
+        return cls(data=buffer, value=value, endian=endian)
 
 
 class VarIntData(IntData):

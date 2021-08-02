@@ -28,39 +28,36 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .net import Channel
-from .net import Connection, ConnectionDelegate
-from .net import ConnectionState, ConnectionStateMachine
-from .net import Hub, BaseHub
-from .net import BaseConnection, ActiveConnection
+from abc import ABC
+from typing import Optional
 
-from .net import PackageConnection, ActivePackageConnection
-from .net import BasePackageHub
+from tcp import BaseHub
 
-from .channel import DiscreteChannel
-from .hub import PackageHub, ActivePackageHub
+from ..mtp import Package
 
-name = "UDP"
+from .pack_conn import PackageConnection
 
-__author__ = 'Albert Moky'
 
-__all__ = [
+class BasePackageHub(BaseHub, ABC):
 
-    #
-    #   Net
-    #
-    'Channel',
-    'Connection', 'ConnectionDelegate',
-    'ConnectionState', 'ConnectionStateMachine',
-    'Hub', 'BaseHub',
-    'BaseConnection', 'ActiveConnection',
+    def get_package_connection(self, remote: tuple, local: tuple) -> Optional[PackageConnection]:
+        conn = self.connect(remote=remote, local=local)
+        if isinstance(conn, PackageConnection):
+            return conn
 
-    'PackageConnection', 'ActivePackageConnection',
-    'BasePackageHub',
+    def receive_package(self, source: tuple, destination: tuple) -> Optional[Package]:
+        conn = self.get_package_connection(remote=source, local=destination)
+        if conn is not None:
+            try:
+                return conn.receive_package(source=source, destination=destination)
+            except IOError as error:
+                print('PackageHub error: %s' % error)
 
-    #
-    #   Discrete
-    #
-    'DiscreteChannel',
-    'PackageHub', 'ActivePackageHub',
-]
+    def send_package(self, pack: Package, source: tuple, destination: tuple) -> bool:
+        conn = self.get_package_connection(remote=source, local=destination)
+        if conn is not None:
+            try:
+                conn.send_package(pack=pack, source=source, destination=destination)
+                return True
+            except IOError as error:
+                print('PackageHub error: %s' % error)

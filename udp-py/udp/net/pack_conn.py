@@ -31,14 +31,14 @@
 from abc import ABC
 from typing import Optional
 
-from tcp import Channel, ActiveConnection, BaseHub
+from tcp import Channel, BaseConnection
 
 from ..ba import Data
 from ..mtp import DataType, TransactionID, Package
 from ..mtp import ArrivalHall, Departure, DepartureHall
 
 
-class PackageConnection(ActiveConnection, ABC):
+class PackageConnection(BaseConnection, ABC):
 
     """
         Maximum Segment Size
@@ -52,14 +52,18 @@ class PackageConnection(ActiveConnection, ABC):
     """
     MSS = 1472  # 1500 - 20 - 8
 
-    def __init__(self, remote: tuple, local: tuple, channel: Optional[Channel] = None):
+    def __init__(self, channel: Optional[Channel] = None,
+                 remote: Optional[tuple] = None, local: Optional[tuple] = None):
         super().__init__(remote=remote, local=local, channel=channel)
         self.__arrival_hall = ArrivalHall()
         self.__departure_hall = DepartureHall()
 
     def tick(self):
         super().tick()
-        self.__process_expired_tasks()
+        try:
+            self.__process_expired_tasks()
+        except IOError as error:
+            print('PackageConnection error: %s' % error)
 
     def send_package(self, pack: Package, source: tuple, destination: tuple):
         # append as Departure task to waiting queue
@@ -72,6 +76,7 @@ class PackageConnection(ActiveConnection, ABC):
         while True:
             outgo = self.__departure_hall.next()
             if outgo is None:
+                # all job done
                 break
             elif not self.__send_departure(task=outgo):
                 # task error
@@ -91,11 +96,11 @@ class PackageConnection(ActiveConnection, ABC):
         return True
 
     def __respond_command(self, sn: TransactionID, body: Data, remote: tuple):
-        res = Package.new(data_type=DataType.CommandResponse, sn=sn, body=body)
+        res = Package.new(data_type=DataType.COMMAND_RESPONSE, sn=sn, body=body)
         self.send(data=res.get_bytes(), target=remote)
 
     def __respond_message(self, sn: TransactionID, pages: int, offset: int, remote: tuple):
-        res = Package.new(data_type=DataType.MessageResponse, sn=sn, pages=pages, offset=offset, body=OK)
+        res = Package.new(data_type=DataType.MESSAGE_RESPONSE, sn=sn, pages=pages, offset=offset, body=OK)
         self.send(data=res.get_bytes(), target=remote)
 
     def receive_package(self, source: tuple, destination: tuple) -> Optional[Package]:
@@ -130,7 +135,7 @@ class PackageConnection(ActiveConnection, ABC):
         head = pack.head
         data_type = head.data_type
         if data_type.is_command_response:
-            # process CommandResponse:
+            # process Command Response:
             #      'PONG'
             #      'OK'
             assert head.offset == 0, 'command offset error: %d' % head.offset
@@ -156,7 +161,7 @@ class PackageConnection(ActiveConnection, ABC):
             # Unknown Command?
             # let the caller to process it
         elif data_type.is_message_response:
-            # process MessageResponse:
+            # process Message Response:
             #      'OK'
             #      'AGAIN'
             if body == AGAIN:
@@ -169,10 +174,10 @@ class PackageConnection(ActiveConnection, ABC):
             elif body == OK:
                 # ignore
                 return None
-            # Unknown MessageResponse?
+            # Unknown Message Response?
             # let the caller to process it
         elif data_type.is_message_fragment:
-            # process MessageFragment:
+            # process Message Fragment:
             #      'OK'
             #      'AGAIN'
             self.__respond_message(sn=head.sn, pages=head.pages, offset=head.offset, remote=remote)
@@ -192,7 +197,7 @@ class PackageConnection(ActiveConnection, ABC):
 
     def heartbeat(self, destination: tuple):
         """ Send a heartbeat package to remote address """
-        pack = Package.new(data_type=DataType.Command, body=PING)
+        pack = Package.new(data_type=DataType.COMMAND, body=PING)
         self.send(data=pack.get_bytes(), target=destination)
 
 
@@ -202,30 +207,3 @@ PONG = Data(data=b'PONG')
 NOOP = Data(data=b'NOOP')
 OK = Data(data=b'OK')
 AGAIN = Data(data=b'AGAIN')
-
-
-class PackageHub(BaseHub, ABC):
-
-    def get_package_connection(self, remote: tuple, local: tuple) -> Optional[PackageConnection]:
-        conn = self.connect(remote=remote, local=local)
-        if isinstance(conn, PackageConnection):
-            return conn
-
-    def receive_package(self, source: tuple, destination: tuple) -> Optional[Package]:
-        conn = self.get_package_connection(remote=source, local=destination)
-        if conn is None:
-            return None
-        try:
-            return conn.receive_package(source=source, destination=destination)
-        except IOError as error:
-            print('PackageHub error: %s' % error)
-
-    def send_package(self, pack: Package, source: tuple, destination: tuple) -> bool:
-        conn = self.get_package_connection(remote=source, local=destination)
-        if conn is None:
-            return False
-        try:
-            conn.send_package(pack=pack, source=source, destination=destination)
-            return True
-        except IOError as error:
-            print('PackageHub error: %s' % error)
