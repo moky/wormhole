@@ -27,6 +27,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ==============================================================================
+
 import socket
 import time
 import weakref
@@ -43,11 +44,16 @@ class BaseConnection(Connection, StateDelegate):
 
     EXPIRES = 16  # seconds
 
-    def __init__(self, channel: Optional[Channel]):
+    def __init__(self, channel: Optional[Channel] = None,
+                 remote: Optional[tuple] = None, local: Optional[tuple] = None):
         super().__init__()
         self._channel = channel
+        self._remote_address = remote
+        self._local_address = local
+        # active times
         self.__last_sent_time = 0
         self.__last_received_time = 0
+        # Connection Delegate
         self.__delegate: Optional[weakref.ReferenceType] = None
         # Finite State Machine
         self.__fsm = StateMachine(connection=self)
@@ -114,10 +120,7 @@ class BaseConnection(Connection, StateDelegate):
 
     @property
     def channel(self) -> Channel:
-        sock = self._channel
-        if sock is None or not sock.opened:
-            raise ConnectionError('connection lost: %s' % sock)
-        return sock
+        return self._channel
 
     #
     #   Connection
@@ -141,18 +144,25 @@ class BaseConnection(Connection, StateDelegate):
     @property
     def local_address(self) -> Optional[tuple]:  # (str, int)
         sock = self._channel
-        if sock is not None:
+        if sock is not None and sock.bound:
             return sock.local_address
+        else:
+            return self._local_address
 
     @property
     def remote_address(self) -> Optional[tuple]:  # (str, int)
         sock = self._channel
-        if sock is not None:
+        if sock is not None and sock.connected:
             return sock.remote_address
+        else:
+            return self._remote_address
 
     def send(self, data: bytes, target: Optional[tuple] = None) -> int:
+        sock = self.channel
+        if sock is None or not sock.opened:
+            raise socket.error('connection lost: %s' % sock)
         try:
-            sent = self.channel.send(data=data, target=target)
+            sent = sock.send(data=data, target=target)
             if sent != -1:
                 self.__last_sent_time = time.time()
             return sent
@@ -160,11 +170,14 @@ class BaseConnection(Connection, StateDelegate):
             print('[NET] failed to send data: %s' % error)
             self.close()
             self.change_state(name=ConnectionState.ERROR)
-            return -1
+            raise error
 
     def receive(self, max_len: int) -> (bytes, tuple):
+        sock = self.channel
+        if sock is None or not sock.opened:
+            raise socket.error('connection lost: %s' % sock)
         try:
-            data, remote = self.channel.receive(max_len=max_len)
+            data, remote = sock.receive(max_len=max_len)
             if data is not None and len(data) > 0:
                 self.__last_received_time = time.time()
             return data, remote
@@ -172,7 +185,7 @@ class BaseConnection(Connection, StateDelegate):
             print('[NET] failed to receive data: %s' % error)
             self.close()
             self.change_state(name=ConnectionState.ERROR)
-            return None, None
+            raise error
 
     def close(self):
         sock = self._channel
@@ -210,6 +223,7 @@ class BaseConnection(Connection, StateDelegate):
         self.__fsm.start()
 
     def stop(self):
+        self.close()
         self.__fsm.stop()
 
     #

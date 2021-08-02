@@ -34,15 +34,13 @@ from typing import Optional
 
 from .channel import Channel
 from .state import ConnectionState
-from .base import BaseConnection
+from .base_conn import BaseConnection
 
 
 class ActiveConnection(BaseConnection):
 
     def __init__(self, remote: tuple, local: tuple, channel: Optional[Channel] = None):
-        super().__init__(channel=channel)
-        self.__remote = remote
-        self.__local = local
+        super().__init__(channel=channel, remote=remote, local=local)
         self.__lock = threading.RLock()
         self.__connecting = 0
         self.__running = False
@@ -58,7 +56,7 @@ class ActiveConnection(BaseConnection):
                 self.__connecting += 1
                 if self.__connecting == 1 and self.__running:
                     self.change_state(name=ConnectionState.CONNECTING)
-                    self._channel = self.connect(remote=self.__remote, local=self.__local)
+                    self._channel = self.connect(remote=self._remote_address, local=self._local_address)
                     if self._channel is None:
                         self.change_state(name=ConnectionState.ERROR)
                     else:
@@ -70,26 +68,9 @@ class ActiveConnection(BaseConnection):
 
     @property
     def channel(self) -> Channel:
-        sock = self._channel
-        if sock is None:
+        if self._channel is None:
             self.__reconnect()
-            sock = self._channel
-        if sock is None or not sock.opened:
-            raise ConnectionError('connection lost: %s' % sock)
-        return sock
-
-    @property
-    def remote_address(self) -> Optional[tuple]:
-        return self.__remote
-
-    @property
-    def local_address(self) -> Optional[tuple]:
-        sock = self._channel
-        if sock is not None and sock.bound:
-            address = sock.local_address
-            if address is not None:
-                return address
-        return self.__local
+        return self._channel
 
     @property
     def opened(self) -> bool:

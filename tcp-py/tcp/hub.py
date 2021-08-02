@@ -29,16 +29,16 @@
 # ==============================================================================
 
 import weakref
+from abc import ABC, abstractmethod
 
 from .net import Channel
-from .net import Connection, Delegate as ConnectionDelegate
-from .net import ActiveConnection
+from .net import Connection, ConnectionDelegate
+from .net import BaseConnection, ActiveConnection
 from .net import BaseHub
 
-from .channel import StreamChannel
 
-
-class ActiveStreamHub(BaseHub):
+class StreamHub(BaseHub):
+    """ Base Stream Hub """
 
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__()
@@ -49,7 +49,23 @@ class ActiveStreamHub(BaseHub):
         return self.__delegate()
 
     def create_connection(self, remote: tuple, local: tuple) -> Connection:
-        conn = ActiveStreamConnection(remote=remote, local=local)
+        sock = self.create_channel(remote=remote, local=local)
+        conn = BaseConnection(channel=sock)
+        if conn.delegate is None:
+            conn.delegate = self.delegate
+        conn.start()  # start FSM
+        return conn
+
+    @abstractmethod
+    def create_channel(self, remote: tuple, local: tuple) -> Channel:
+        raise NotImplemented
+
+
+class ActiveStreamHub(StreamHub, ABC):
+    """ Active Stream Hub """
+
+    def create_connection(self, remote: tuple, local: tuple) -> Connection:
+        conn = ActiveStreamConnection(remote=remote, local=local, hub=self)
         if conn.delegate is None:
             conn.delegate = self.delegate
         conn.start()  # start FSM
@@ -59,7 +75,11 @@ class ActiveStreamHub(BaseHub):
 class ActiveStreamConnection(ActiveConnection):
     """ Active Stream Connection """
 
+    def __init__(self, remote: tuple, local: tuple, hub: ActiveStreamHub):
+        super().__init__(remote=remote, local=local)
+        self.__hub = weakref.ref(hub)
+
     def connect(self, remote: tuple, local: tuple) -> Channel:
-        channel = StreamChannel(remote=remote, local=local)
-        channel.configure_blocking(blocking=False)
-        return channel
+        hub = self.__hub()
+        # assert isinstance(hub, ActiveStreamHub)
+        return hub.create_channel(remote=remote, local=local)

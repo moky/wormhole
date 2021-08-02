@@ -35,8 +35,8 @@ from .hub import Hub
 from .state import ConnectionState, StateMachine as ConnectionStateMachine
 
 from .base_hub import BaseHub
-from .base import BaseConnection
-from .active import ActiveConnection
+from .base_conn import BaseConnection
+from .active_conn import ActiveConnection
 
 __all__ = [
 

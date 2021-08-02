@@ -30,14 +30,12 @@
 
 from .net import Channel
 from .net import Connection, ConnectionDelegate
-from .net import Hub
 from .net import ConnectionState, ConnectionStateMachine
-from .net import BaseHub
-from .net import BaseConnection
-from .net import ActiveConnection
+from .net import Hub, BaseHub
+from .net import BaseConnection, ActiveConnection
 
 from .channel import StreamChannel
-from .hub import ActiveStreamHub
+from .hub import StreamHub, ActiveStreamHub
 
 name = "TCP"
 
@@ -50,16 +48,13 @@ __all__ = [
     #
     'Channel',
     'Connection', 'ConnectionDelegate',
-    'Hub',
-
     'ConnectionState', 'ConnectionStateMachine',
-
-    'BaseHub',
-    'BaseConnection',
-    'ActiveConnection',
+    'Hub', 'BaseHub',
+    'BaseConnection', 'ActiveConnection',
 
     #
     #   Stream
     #
-    'StreamChannel', 'ActiveStreamHub',
+    'StreamChannel',
+    'StreamHub', 'ActiveStreamHub',
 ]

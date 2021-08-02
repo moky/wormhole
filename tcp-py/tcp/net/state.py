@@ -247,7 +247,7 @@ class ConnectedExpiredTransition(BaseTransition):
 
     def evaluate(self, ctx: StateMachine) -> bool:
         conn = ctx.connection
-        from .base import BaseConnection
+        from .base_conn import BaseConnection
         assert isinstance(conn, BaseConnection), 'connection error: %s' % conn
         # connection still alive, but
         # long time no response, change state to 'maintain_expired'
@@ -268,7 +268,7 @@ class ExpiredMaintainingTransition(BaseTransition):
 
     def evaluate(self, ctx: StateMachine) -> bool:
         conn = ctx.connection
-        from .base import BaseConnection
+        from .base_conn import BaseConnection
         assert isinstance(conn, BaseConnection), 'connection error: %s' % conn
         # connection still alive, and
         # sent recently, change state to 'maintaining'
@@ -289,7 +289,7 @@ class MaintainingConnectedTransition(BaseTransition):
 
     def evaluate(self, ctx: StateMachine) -> bool:
         conn = ctx.connection
-        from .base import BaseConnection
+        from .base_conn import BaseConnection
         assert isinstance(conn, BaseConnection), 'connection error: %s' % conn
         # connection still alive, and
         # received recently, change state to 'connected
@@ -301,7 +301,7 @@ class MaintainingExpiredTransition(BaseTransition):
 
     def evaluate(self, ctx: StateMachine) -> bool:
         conn = ctx.connection
-        from .base import BaseConnection
+        from .base_conn import BaseConnection
         assert isinstance(conn, BaseConnection), 'connection error: %s' % conn
         # connection still alive, but
         # long time no sending, change state to 'maintain_expired'
@@ -313,7 +313,7 @@ class MaintainingErrorTransition(BaseTransition):
 
     def evaluate(self, ctx: StateMachine) -> bool:
         conn = ctx.connection
-        from .base import BaseConnection
+        from .base_conn import BaseConnection
         assert isinstance(conn, BaseConnection), 'connection error: %s' % conn
         # connection lost, or
         # long long time no response, change state to 'error'
