@@ -70,10 +70,10 @@ class BaseHub(Hub, Ticker):
         self.__dying_times: Dict[tuple, int] = {}
 
     @abstractmethod
-    def create_connection(self, remote: tuple, local: tuple) -> Connection:
+    def create_connection(self, remote: tuple, local: Optional[tuple] = None) -> Connection:
         raise NotImplemented
 
-    def __seek(self, remote: tuple, local: tuple) -> Optional[Connection]:
+    def __seek(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
         if remote is None:
             assert local is not None, 'both local & remote addresses are empty'
             # get connection bound to local address
@@ -159,7 +159,7 @@ class BaseHub(Hub, Ticker):
     def __remove(self, connection: Connection):
         with self.__lock:
             self.__remove_indexes(connection=connection)
-            self.__connections.remove(connection)
+            self.__connections.discard(connection)
 
     #
     #   Hub
@@ -177,13 +177,14 @@ class BaseHub(Hub, Ticker):
         if conn is None or not conn.opened:
             # connection closed
             return None
-        return conn.receive(max_len=self.MSS)
+        data, _ = conn.receive(max_len=self.MSS)
+        return data
 
-    def get_connection(self, remote: tuple, local: tuple) -> Optional[Connection]:
+    def get_connection(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
         with self.__lock:
             return self.__seek(remote=remote, local=local)
 
-    def connect(self, remote: tuple, local: tuple) -> Optional[Connection]:
+    def connect(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
         # 1. try to get connection from cache pool
         conn = self.get_connection(remote=remote, local=local)
         if conn is not None:
@@ -197,11 +198,11 @@ class BaseHub(Hub, Ticker):
                 conn = self.create_connection(remote=remote, local=local)
                 if conn is not None and self.__create_indexes(connection=conn, remote=remote, local=local):
                     # make sure different connection with same pair(remote, local) not exists
-                    self.__connections.remove(conn)
+                    self.__connections.discard(conn)
                     # cache it
                     self.__connections.add(conn)
 
-    def disconnect(self, remote: tuple, local: tuple):
+    def disconnect(self, remote: tuple, local: Optional[tuple] = None):
         with self.__lock:
             conn = self.__seek(remote=remote, local=local)
         if conn is not None:

@@ -29,14 +29,13 @@
 # ==============================================================================
 
 import weakref
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import List, Optional, Dict
 
-from .machine import S, C, U, T
-from .machine import Transition, State, Machine, Status, Delegate
+from .machine import Context, Transition, State, Machine, Status, Delegate
 
 
-class BaseTransition(Transition[C], ABC):
+class BaseTransition(Transition, ABC):
     """ Transition with the name of target state """
 
     def __init__(self, target: str):
@@ -48,76 +47,75 @@ class BaseTransition(Transition[C], ABC):
         return self.__target
 
 
-class BaseState(State[C, Transition[C]], ABC):
+class BaseState(State, ABC):
     """ State with transitions """
 
     def __init__(self):
         super().__init__()
-        self.__transitions: List[Transition[C]] = []
+        self.__transitions: List[Transition] = []
 
-    def add_transition(self, transition: Transition[C]):
+    def add_transition(self, transition: Transition):
         assert transition not in self.__transitions, 'transition exists'
         self.__transitions.append(transition)
 
-    def evaluate(self, ctx: C) -> Transition[C]:
+    def evaluate(self, ctx: Context) -> Transition:
         for trans in self.__transitions:
             if trans.evaluate(ctx):
                 # OK, get target state from this transition
                 return trans
 
 
-class BaseMachine(Machine[C, State[C, BaseTransition[C]]]):
+class BaseMachine(Machine):
 
     def __init__(self, default: str):
         super().__init__()
         self.__default = default
-        self.__current: Optional[State[C, BaseTransition[C]]] = None
-        self.__states: Dict[str, State[C, BaseTransition[C]]] = {}
+        self.__current: Optional[State] = None
+        self.__states: Dict[str, State] = {}
         self.__delegate: Optional[weakref.ReferenceType] = None
         self.__status: Status = Status.STOPPED
 
     @property
-    def delegate(self) -> Delegate[C, State[C, BaseTransition[C]]]:
+    def delegate(self) -> Delegate:
         if self.__delegate is not None:
             return self.__delegate()
 
     @delegate.setter
-    def delegate(self, handler: Delegate[C, State[C, BaseTransition[C]]]):
+    def delegate(self, handler: Delegate):
         if handler is None:
             self.__delegate = None
         else:
             self.__delegate = weakref.ref(handler)
 
-    @abstractmethod
     @property
-    def context(self) -> C:
+    def context(self) -> Context:
         raise NotImplemented
 
     #
     #   States
     #
-    def add_state(self, name: str, state: State[C, BaseTransition[C]]):
+    def add_state(self, name: str, state: State):
         self.__states[name] = state
 
-    def get_state(self, name: str) -> State[C, BaseTransition[C]]:
+    def get_state(self, name: str) -> State:
         return self.__states.get(name)
 
     @property
-    def default_state(self) -> State[C, BaseTransition[C]]:
+    def default_state(self) -> State:
         return self.__states.get(self.__default)
 
     @property
-    def current_state(self) -> State[C, BaseTransition[C]]:
+    def current_state(self) -> State:
         return self.__current
 
     @current_state.setter
-    def current_state(self, state: State[C, BaseTransition[C]]):
+    def current_state(self, state: State):
         self.__current = state
 
-    def target_state(self, transition: BaseTransition[C]) -> State[C, BaseTransition[C]]:
+    def target_state(self, transition: BaseTransition) -> State:
         return self.__states.get(transition.target)
 
-    def change_state(self, state: Optional[State[C, BaseTransition[C]]]):
+    def change_state(self, state: Optional[State]):
         machine = self.context
         current = self.current_state
         delegate = self.delegate
@@ -172,7 +170,7 @@ class BaseMachine(Machine[C, State[C, BaseTransition[C]]]):
         current = self.current_state
         if current is not None and self.__status == Status.RUNNING:
             trans = current.evaluate(machine)
-            if trans is not None:
+            if isinstance(trans, BaseTransition):
                 target = self.target_state(transition=trans)
                 assert target is not None, 'target state error: %s' % trans.target
                 self.change_state(state=target)

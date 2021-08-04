@@ -33,7 +33,6 @@ from abc import ABC, abstractmethod
 from threading import Thread
 from typing import Optional
 
-from .machine import S, C, U, T
 from .base import BaseMachine
 
 
@@ -44,7 +43,7 @@ class Runnable(ABC):
         raise NotImplemented
 
 
-class AutoMachine(BaseMachine[C, S], Runnable, ABC):
+class AutoMachine(BaseMachine, Runnable, ABC):
 
     def __init__(self, default: str):
         super().__init__(default=default)

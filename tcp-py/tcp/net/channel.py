@@ -34,13 +34,11 @@ from typing import Optional
 
 class Channel(ABC):
 
-    @abstractmethod
     @property
     def opened(self) -> bool:
         """ is_open() """
         raise NotImplemented
 
-    @abstractmethod
     @property
     def bound(self) -> bool:
         """ is_bound() """
@@ -70,7 +68,6 @@ class Channel(ABC):
     def configure_blocking(self, blocking: bool):
         raise NotImplemented
 
-    @abstractmethod
     @property
     def blocking(self) -> bool:
         """ is_blocking() """
@@ -84,7 +81,6 @@ class Channel(ABC):
     def bind(self, host: str, port: int):
         raise NotImplemented
 
-    @abstractmethod
     @property
     def local_address(self) -> Optional[tuple]:  # (str, int)
         raise NotImplemented
@@ -93,7 +89,6 @@ class Channel(ABC):
     #   Socket/Datagram Channel
     #
 
-    @abstractmethod
     @property
     def connected(self) -> bool:
         """ is_connected() """
@@ -103,7 +98,6 @@ class Channel(ABC):
     def connect(self, host: str, port: int):
         raise NotImplemented
 
-    @abstractmethod
     @property
     def remote_address(self) -> Optional[tuple]:  # (str, int)
         raise NotImplemented

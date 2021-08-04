@@ -81,7 +81,7 @@ class ConnectionState(BaseState):
     """
 
     DEFAULT = 'default'
-    CONNECTING = 'connection'
+    CONNECTING = 'connecting'
     CONNECTED = 'connected'
     MAINTAINING = 'maintaining'
     EXPIRED = 'expired'
@@ -140,12 +140,12 @@ class StateMachine(BaseMachine, Context):
         super().__init__(default=ConnectionState.DEFAULT)
         self.__connection = weakref.ref(connection)
         # init states
-        self.__set_state(state=self.default_state())
-        self.__set_state(state=self.connecting_state())
-        self.__set_state(state=self.connected_state())
-        self.__set_state(state=self.expired_state())
-        self.__set_state(state=self.maintaining_state())
-        self.__set_state(state=self.error_state())
+        self.__set_state(state=self.__default_state())
+        self.__set_state(state=self.__connecting_state())
+        self.__set_state(state=self.__connected_state())
+        self.__set_state(state=self.__expired_state())
+        self.__set_state(state=self.__maintaining_state())
+        self.__set_state(state=self.__error_state())
 
     def __set_state(self, state: ConnectionState):
         self.add_state(name=state.name, state=state)
@@ -163,14 +163,14 @@ class StateMachine(BaseMachine, Context):
     #
 
     @classmethod
-    def default_state(cls) -> ConnectionState:
+    def __default_state(cls) -> ConnectionState:
         """ Connection not started yet """
         state = ConnectionState(name=ConnectionState.DEFAULT)
         state.add_transition(transition=DefaultConnectingTransition(target=ConnectionState.CONNECTING))
         return state
 
     @classmethod
-    def connecting_state(cls) -> ConnectionState:
+    def __connecting_state(cls) -> ConnectionState:
         """ Connection started, not connected yet """
         state = ConnectionState(name=ConnectionState.CONNECTING)
         state.add_transition(transition=ConnectingConnectedTransition(target=ConnectionState.CONNECTED))
@@ -178,7 +178,7 @@ class StateMachine(BaseMachine, Context):
         return state
 
     @classmethod
-    def connected_state(cls) -> ConnectionState:
+    def __connected_state(cls) -> ConnectionState:
         """ Normal state of connection """
         state = ConnectionState(name=ConnectionState.CONNECTED)
         state.add_transition(transition=ConnectedExpiredTransition(target=ConnectionState.EXPIRED))
@@ -186,7 +186,7 @@ class StateMachine(BaseMachine, Context):
         return state
 
     @classmethod
-    def expired_state(cls) -> ConnectionState:
+    def __expired_state(cls) -> ConnectionState:
         """ Long time no response, need maintaining """
         state = ConnectionState(name=ConnectionState.EXPIRED)
         state.add_transition(transition=ExpiredMaintainingTransition(target=ConnectionState.MAINTAINING))
@@ -194,7 +194,7 @@ class StateMachine(BaseMachine, Context):
         return state
 
     @classmethod
-    def maintaining_state(cls) -> ConnectionState:
+    def __maintaining_state(cls) -> ConnectionState:
         """ Heartbeat sent, waiting response """
         state = ConnectionState(name=ConnectionState.MAINTAINING)
         state.add_transition(transition=MaintainingConnectedTransition(target=ConnectionState.CONNECTED))
@@ -203,7 +203,7 @@ class StateMachine(BaseMachine, Context):
         return state
 
     @classmethod
-    def error_state(cls) -> ConnectionState:
+    def __error_state(cls) -> ConnectionState:
         """ Connection lost """
         state = ConnectionState(name=ConnectionState.ERROR)
         state.add_transition(transition=ErrorDefaultTransition(target=ConnectionState.DEFAULT))

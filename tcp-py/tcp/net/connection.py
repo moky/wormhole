@@ -39,28 +39,24 @@ class Connection(Ticker, ABC):
     #
     #   Flags
     #
-    @abstractmethod
+
     @property
     def opened(self) -> bool:
         """ not closed """
         raise NotImplemented
 
-    @abstractmethod
     @property
     def bound(self) -> bool:
         raise NotImplemented
 
-    @abstractmethod
     @property
     def connected(self) -> bool:
         raise NotImplemented
 
-    @abstractmethod
     @property
     def local_address(self) -> Optional[tuple]:  # (str, int)
         raise NotImplemented
 
-    @abstractmethod
     @property
     def remote_address(self) -> Optional[tuple]:  # (str, int)
         raise NotImplemented
@@ -90,7 +86,6 @@ class Connection(Ticker, ABC):
     def close(self):
         raise NotImplemented
 
-    @abstractmethod
     @property
     def state(self):  # -> ConnectionState:
         raise NotImplemented

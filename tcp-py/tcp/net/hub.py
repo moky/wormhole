@@ -89,7 +89,7 @@ class Hub(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def get_connection(self, remote: tuple, local: tuple) -> Optional[Connection]:
+    def get_connection(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
         """
         Get connection if already exists
 
@@ -100,7 +100,7 @@ class Hub(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connect(self, remote: tuple, local: tuple) -> Optional[Connection]:
+    def connect(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
         """
         Get/create connection
 
@@ -111,7 +111,7 @@ class Hub(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def disconnect(self, remote: tuple, local: tuple):
+    def disconnect(self, remote: tuple, local: Optional[tuple] = None):
         """
         Close connection
 
