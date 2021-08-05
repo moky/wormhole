@@ -217,7 +217,7 @@ class IntegerData(ByteArray):
         if isinstance(source, ByteArray):
             start += source.offset
             source = source.buffer
-        assert (start + size) < len(source), 'length error: start=%d, size=%d, len=%d' % (start, size, len(source))
+        assert (start + size) <= len(source), 'length error: start=%d, size=%d, len=%d' % (start, size, len(source))
         result = 0
         if endian == Endian.LITTLE_ENDIAN:
             # [12 34 56 78] => 0x78563412

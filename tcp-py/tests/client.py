@@ -21,7 +21,7 @@ from tests.config import SERVER_HOST, SERVER_PORT
 
 class ClientHub(ActiveStreamHub):
 
-    def create_channel(self, remote: tuple, local: tuple) -> Channel:
+    def create_channel(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
         channel = StreamChannel(remote=remote, local=local)
         channel.configure_blocking(False)
         return channel

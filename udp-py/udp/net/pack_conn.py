@@ -65,7 +65,7 @@ class PackageConnection(BaseConnection, ABC):
         except IOError as error:
             print('PackageConnection error: %s' % error)
 
-    def send_package(self, pack: Package, source: tuple, destination: tuple):
+    def send_package(self, pack: Package, source: Optional[tuple], destination: tuple):
         # append as Departure task to waiting queue
         self.__departure_hall.append(pack=pack, source=source, destination=destination)
         # send out tasks from waiting queue
@@ -103,7 +103,7 @@ class PackageConnection(BaseConnection, ABC):
         res = Package.new(data_type=DataType.MESSAGE_RESPONSE, sn=sn, pages=pages, offset=offset, body=OK)
         self.send(data=res.get_bytes(), target=remote)
 
-    def receive_package(self, source: tuple, destination: tuple) -> Optional[Package]:
+    def receive_package(self, source: tuple, destination: Optional[tuple]) -> Optional[Package]:
         """
         Receive data package from remote address
 
@@ -116,16 +116,18 @@ class PackageConnection(BaseConnection, ABC):
             if data is None:  # or remote is None:
                 # received nothing
                 return None
-            assert remote == source, 'source address error: %s, %s' % (source, remote)
+            # assert source is None or source == remote, 'source address error: %s, %s' % (source, remote)
             pack = self.__process_income(data=data, remote=remote, destination=destination)
             if pack is not None:
                 # received a complete package
                 return pack
 
     def __process_income(self, data: bytes, remote: tuple, destination: tuple) -> Optional[Package]:
+        data = Data(data=data)
         # process income package
-        pack = Package.parse(data=Data(data=data))
+        pack = Package.parse(data=data)
         if pack is None:
+            # FIXME: header error? incomplete package?
             return None
         body = pack.body
         if body is None or body.size == 0:

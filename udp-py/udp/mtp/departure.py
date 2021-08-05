@@ -137,7 +137,10 @@ class DepartureHall:
 
     def append(self, pack: Package, source: tuple, destination: tuple):
         """ Append departure """
-        fragments = Packer.split(package=pack)
+        if pack.head.data_type.is_message:
+            fragments = Packer.split(package=pack)
+        else:
+            fragments = [pack]
         task = Departure(packages=fragments, source=source, destination=destination)
         with self.__lock:
             self.__departures.append(task)

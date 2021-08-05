@@ -2,8 +2,7 @@
 
 import random
 
-# SERVER_HOST = '127.0.0.1'
-SERVER_HOST = '192.168.31.64'
+SERVER_HOST = '127.0.0.1'
 SERVER_PORT = 9394
 
 CLIENT_HOST = '0.0.0.0'

@@ -20,7 +20,7 @@ from tests.config import SERVER_HOST, SERVER_PORT
 
 class ServerHub(StreamHub):
 
-    def create_channel(self, remote: tuple, local: tuple) -> Channel:
+    def create_channel(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
         for sock in Server.slave_sockets:
             try:
                 if sock.getpeername() == remote:

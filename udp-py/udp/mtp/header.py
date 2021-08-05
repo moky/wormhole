@@ -276,9 +276,9 @@ class Header(Data):
         elif sn != TransactionID.ZERO:
             head_len += 8
         # pages & offset
-        if data_type.is_message_fragment:
+        if data_type.is_message_fragment or data_type.is_message_response:
             # message fragment (or its respond)
-            assert pages > 1 and pages > offset, 'pages error: %d, %d' % (pages, offset)
+            assert pages > offset, 'pages error: %d, %d' % (pages, offset)
             d1 = Convert.uint32data_from_value(value=pages)
             d2 = Convert.uint32data_from_value(value=offset)
             options = d1.concat(d2)

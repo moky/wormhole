@@ -42,6 +42,8 @@ class MutableData(Data, MutableByteArray):
         if data is None:
             assert capacity > 0, 'invalid capacity: %d' % capacity
             data = bytearray(capacity)  # create empty buffer with capacity
+            offset = 0
+            size = 0
         else:
             data = self.__get_bytearray(data=data)
         super().__init__(data=data, offset=offset, size=size)

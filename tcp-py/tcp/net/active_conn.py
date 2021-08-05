@@ -46,7 +46,7 @@ class ActiveConnection(BaseConnection):
         self.__running = False
 
     @abstractmethod
-    def connect(self, remote: tuple, local: tuple) -> Channel:
+    def connect(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
         raise NotImplemented
 
     def __reconnect(self):

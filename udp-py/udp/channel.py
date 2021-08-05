@@ -40,6 +40,8 @@ class DiscreteChannel(Channel):
                  remote: Optional[tuple] = None, local: Optional[tuple] = None,
                  blocking: bool = True, reuse: bool = True):
         super().__init__()
+        self.__remote = remote
+        self.__local = local
         if sock is None:
             # DiscreteChannel(remote=remote, local=local, blocking=blocking, reuse=reuse),
             self.__blocking = blocking
@@ -120,14 +122,14 @@ class DiscreteChannel(Channel):
     def bind(self, host: str, port: int):
         sock = self.__setup()
         # assert isinstance(sock, socket.socket)
-        address = (host, port)
-        sock.bind(address)
+        self.__local = (host, port)
+        sock.bind(self.__local)
 
     def connect(self, host: str, port: int):
         sock = self.__setup()
         # assert isinstance(sock, socket.socket)
-        address = (host, port)
-        sock.connect(address)
+        self.__remote = (host, port)
+        sock.connect(self.__remote)
 
     def disconnect(self):
         sock = self._sock
@@ -174,7 +176,25 @@ class DiscreteChannel(Channel):
         sock = self._sock
         if sock is None:
             raise socket.error('socket lost, cannot receive data')
-        data, remote = sock.recvfrom(max_len)
+        try:
+            remote = sock.getpeername()
+        except socket.error as error:
+            if error.errno == 57 and error.strerror == 'Socket is not connected':
+                remote = None
+            else:
+                raise error
+        if remote is not None:
+            # connected?
+            return self.read(max_len=max_len), remote
+        # UDP receiving
+        try:
+            data, remote = sock.recvfrom(max_len)
+        except socket.error as error:
+            if not self.__blocking:
+                if error.errno == 35 and error.strerror == 'Resource temporarily unavailable':
+                    # received nothing
+                    return None, None
+            raise error
         if data is None or len(data) == 0:
             if sock.gettimeout() is None:
                 raise socket.error('remote peer reset socket')
@@ -184,5 +204,16 @@ class DiscreteChannel(Channel):
         sock = self._sock
         if sock is None:
             raise socket.error('socket lost, cannot send data: %d byte(s)' % len(data))
-        # sock.sendall(data)
+        try:
+            remote = sock.getpeername()
+        except socket.error as error:
+            if error.errno == 57 and error.strerror == 'Socket is not connected':
+                remote = None
+            else:
+                raise error
+        if remote is not None:
+            # connected?
+            assert remote == target, 'target address error: %s, %s' % (target, remote)
+            return self.write(data=data)
+        # UDP sending
         return sock.sendto(data, target)

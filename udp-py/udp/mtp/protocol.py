@@ -127,20 +127,31 @@ class DataType(UInt8Data):
             return cls(data=data, value=data.value, name=fixed.name)
 
     @classmethod
-    def __create(cls, value: int, name: str):
-        data = UInt8Data.from_int(value=value)
-        fixed = cls(data=data, value=value, name=name)
-        cls.__data_types[value] = fixed
-        return fixed
+    def cache(cls, value: int, data_type):
+        cls.__data_types[value] = data_type
 
     __data_types = {}  # int -> DataType
 
     # fixed types
-    COMMAND = __create(value=0x00, name='Command')
-    COMMAND_RESPONSE = __create(value=0x01, name='Command Response')
-    MESSAGE = __create(value=0x02, name='Message')
-    MESSAGE_RESPONSE = __create(value=0x03, name='Message Response')
-    MESSAGE_FRAGMENT = __create(value=0x0A, name='Message Fragment')
+    COMMAND = None
+    COMMAND_RESPONSE = None
+    MESSAGE = None
+    MESSAGE_RESPONSE = None
+    MESSAGE_FRAGMENT = None
+
+
+def create_type(value: int, name: str):
+    data = UInt8Data.from_int(value=value)
+    fixed = DataType(data=data, value=value, name=name)
+    DataType.cache(value=value, data_type=fixed)
+    return fixed
+
+
+DataType.COMMAND = create_type(value=0x00, name='Command')
+DataType.COMMAND_RESPONSE = create_type(value=0x01, name='Command Response')
+DataType.MESSAGE = create_type(value=0x02, name='Message')
+DataType.MESSAGE_RESPONSE = create_type(value=0x03, name='Message Response')
+DataType.MESSAGE_FRAGMENT = create_type(value=0x0A, name='Message Fragment')
 
 
 class TransactionID(Data):

@@ -40,12 +40,12 @@ from .pack_conn import PackageConnection
 
 class BasePackageHub(BaseHub, ABC):
 
-    def get_package_connection(self, remote: tuple, local: tuple) -> Optional[PackageConnection]:
+    def get_package_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[PackageConnection]:
         conn = self.connect(remote=remote, local=local)
         if isinstance(conn, PackageConnection):
             return conn
 
-    def receive_package(self, source: tuple, destination: tuple) -> Optional[Package]:
+    def receive_package(self, source: tuple, destination: Optional[tuple]) -> Optional[Package]:
         conn = self.get_package_connection(remote=source, local=destination)
         if conn is not None:
             try:
@@ -53,8 +53,8 @@ class BasePackageHub(BaseHub, ABC):
             except IOError as error:
                 print('PackageHub error: %s' % error)
 
-    def send_package(self, pack: Package, source: tuple, destination: tuple) -> bool:
-        conn = self.get_package_connection(remote=source, local=destination)
+    def send_package(self, pack: Package, source: Optional[tuple], destination: tuple) -> bool:
+        conn = self.get_package_connection(remote=destination, local=source)
         if conn is not None:
             try:
                 conn.send_package(pack=pack, source=source, destination=destination)
