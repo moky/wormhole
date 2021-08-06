@@ -50,17 +50,6 @@ import chat.dim.threading.Ticker;
 
 public abstract class BaseHub implements Hub, Ticker {
 
-    /*  Maximum Segment Size
-     *  ~~~~~~~~~~~~~~~~~~~~
-     *  Buffer size for receiving package
-     *
-     *  MTU        : 1500 bytes (excludes 14 bytes ethernet header & 4 bytes FCS)
-     *  IP header  :   20 bytes
-     *  TCP header :   20 bytes
-     *  UDP header :    8 bytes
-     */
-    public static int MSS = 1472;  // 1500 - 20 - 8
-
     private final SocketAddress anyLocalAddress = new InetSocketAddress("0.0.0.0", 0);
     private final SocketAddress anyRemoteAddress = new InetSocketAddress("0.0.0.0", 0);
 
@@ -88,24 +77,6 @@ public abstract class BaseHub implements Hub, Ticker {
         buffer.put(data);
         buffer.flip();
         return conn.send(buffer, destination) != -1;
-    }
-
-    @Override
-    public byte[] receive(SocketAddress source, SocketAddress destination) throws IOException {
-        Connection conn = connect(source, destination);
-        if (conn == null || !conn.isOpen()) {
-            // connection closed
-            return null;
-        }
-        ByteBuffer buffer = ByteBuffer.allocate(MSS);
-        if (conn.receive(buffer) == null) {
-            // received nothing
-            return null;
-        }
-        byte[] data = new byte[buffer.position()];
-        buffer.flip();
-        buffer.get(data);
-        return data;
     }
 
     @Override
@@ -186,7 +157,7 @@ public abstract class BaseHub implements Hub, Ticker {
         // check closed connection(s)
         Pair<SocketAddress, SocketAddress> aPair;  // (remote, local)
         long now = (new Date()).getTime();
-        long expired;
+        Long expired;
         for (Connection conn : candidates) {
             aPair = buildPair(conn.getRemoteAddress(), conn.getLocalAddress());
             if (aPair == null) {
@@ -198,7 +169,7 @@ public abstract class BaseHub implements Hub, Ticker {
             } else {
                 // connection is closed, check dying time
                 expired = dyingTimes.get(aPair);
-                if (expired == 0) {
+                if (expired == null || expired == 0) {
                     // set death clock
                     dyingTimes.put(aPair, now + DYING_EXPIRES);
                 } else if (expired < now) {

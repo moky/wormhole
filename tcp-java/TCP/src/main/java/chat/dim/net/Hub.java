@@ -37,7 +37,7 @@ package chat.dim.net;
  *                          |      APP      |
  *                          +---------------+
  *                              |       A
- *                              |       |  (filter)
+ *                              |       |
  *                              V       |
  *          +-----------------------------------------------+
  *          |                                               |
@@ -69,17 +69,6 @@ public interface Hub {
      * @return false on error
      */
     boolean send(byte[] data, SocketAddress source, SocketAddress destination) throws IOException;
-
-    /**
-     *  Receive data via the connection bound to source and connected to destination
-     *
-     * @param source      - from address (remote);
-     *                      if it's null, receive from any connection connected to destination
-     * @param destination - to address (local);
-     *                      if it's null, receive from any connection bound to source
-     * @return data received
-     */
-    byte[] receive(SocketAddress source, SocketAddress destination) throws IOException;
 
     /**
      *   Get connection if already exists

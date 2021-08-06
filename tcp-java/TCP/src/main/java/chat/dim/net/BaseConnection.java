@@ -39,6 +39,17 @@ import java.util.Date;
 
 public class BaseConnection implements Connection, StateDelegate {
 
+    /*  Maximum Segment Size
+     *  ~~~~~~~~~~~~~~~~~~~~
+     *  Buffer size for receiving package
+     *
+     *  MTU        : 1500 bytes (excludes 14 bytes ethernet header & 4 bytes FCS)
+     *  IP header  :   20 bytes
+     *  TCP header :   20 bytes
+     *  UDP header :    8 bytes
+     */
+    public static int MSS = 1472;  // 1500 - 20 - 8
+
     public static long EXPIRES = 16 * 1000;  // 16 seconds
 
     private final StateMachine fsm;
@@ -65,8 +76,8 @@ public class BaseConnection implements Connection, StateDelegate {
         fsm = new StateMachine(this);
         fsm.setDelegate(this);
     }
-    public BaseConnection(Channel byteChannel) {
-        this(byteChannel, null, null);
+    public BaseConnection(Channel byteChannel) throws IOException {
+        this(byteChannel, byteChannel.getRemoteAddress(), byteChannel.getLocalAddress());
     }
     public BaseConnection(SocketAddress remote, SocketAddress local) {
         this(null, remote, local);
@@ -201,8 +212,7 @@ public class BaseConnection implements Connection, StateDelegate {
         return channel;
     }
 
-    @Override
-    public SocketAddress receive(ByteBuffer dst) throws IOException {
+    protected SocketAddress receive(ByteBuffer dst) throws IOException {
         Channel sock = getChannel();
         if (sock == null || !sock.isOpen()) {
             throw new SocketException("connection lost: " + sock);
@@ -215,7 +225,6 @@ public class BaseConnection implements Connection, StateDelegate {
             return remote;
         } catch (IOException e) {
             // [TCP] failed to receive data
-            e.printStackTrace();
             close();
             changeState(ConnectionState.ERROR);
             throw e;
@@ -236,7 +245,6 @@ public class BaseConnection implements Connection, StateDelegate {
             return sent;
         } catch (IOException e) {
             // [TCP] failed to send data
-            e.printStackTrace();
             close();
             changeState(ConnectionState.ERROR);
             throw e;
@@ -269,6 +277,33 @@ public class BaseConnection implements Connection, StateDelegate {
     @Override
     public void tick() {
         fsm.tick();
+
+        if (isOpen()) {
+            // try to receive data when connection open
+            try {
+                process();
+            } catch (IOException e) {
+                //e.printStackTrace();
+            }
+        }
+    }
+
+    protected void process() throws IOException {
+        Delegate delegate = getDelegate();
+        if (delegate == null) {
+            return;
+        }
+        // receiving
+        ByteBuffer buffer = ByteBuffer.allocate(MSS);
+        SocketAddress remote = receive(buffer);
+        if (remote == null) {
+            return;
+        }
+        byte[] data = new byte[buffer.position()];
+        buffer.flip();
+        buffer.get(data);
+        // callback
+        delegate.onConnectionReceivedData(this, remote, data);
     }
 
     public void start() {

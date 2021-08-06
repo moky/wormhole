@@ -47,19 +47,12 @@ public class Client extends Thread implements Connection.Delegate {
         send(data, connection.getLocalAddress(), connection.getRemoteAddress());
     }
 
-    public void onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
+    @Override
+    public void onConnectionReceivedData(Connection connection, SocketAddress remote, byte[] data) {
         String text = new String(data, StandardCharsets.UTF_8);
-        info("<<< received (" + data.length + " bytes) from " + source + " to " + destination + ": " + text);
+        info("<<< received (" + data.length + " bytes) from " + remote + ": " + text);
     }
 
-    private byte[] receive(SocketAddress source, SocketAddress destination) {
-        try {
-            return hub.receive(source, destination);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
     private boolean send(byte[] data, SocketAddress source, SocketAddress destination) {
         try {
             return hub.send(data, source, destination);
@@ -92,10 +85,6 @@ public class Client extends Thread implements Connection.Delegate {
             info(data);
             send(data, null, remoteAddress);
             idle(2000);
-            data = receive(remoteAddress, null);
-            if (data != null) {
-                onDataReceived(data, remoteAddress, null);
-            }
         }
 
         disconnect(remoteAddress, null);

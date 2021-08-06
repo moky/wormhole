@@ -184,15 +184,17 @@ final class DataUtils {
         if (buffer == subBuffer) {
             // same buffer
             if (start == subOffset) {
+                // the sub.offset matched the start position,
+                // it's surely the first position the sub data appeared.
                 return start - data.getOffset();
             }
-            if (start < subOffset && subOffset < end) {
-                // if sub.offset is in range (start, end),
+            if (start < subOffset && subOffset <= (end - subSize)) {
+                // if sub.offset is in range (start, end - sub.size],
                 // the position (sub.offset - this.offset) is matched,
-                // but we cannot confirm this is the first position it appeared,
-                // so we still need to do searching in range [start, sub.offset).
+                // but we cannot confirm this is the first position the sub data appeared,
+                // so we still need to do searching in range [start, sub.offset + sub.size).
                 found = subOffset - data.getOffset();
-                end = subOffset;
+                end = subOffset + subSize - 1;
             }
         }
         int index;

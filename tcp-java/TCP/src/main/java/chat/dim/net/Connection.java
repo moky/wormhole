@@ -58,14 +58,6 @@ public interface Connection extends Ticker {
     int send(ByteBuffer src, SocketAddress target) throws IOException;
 
     /**
-     *  Receive data
-     *
-     * @param dst    - income buffer
-     * @return remote address; null on received nothing
-     */
-    SocketAddress receive(ByteBuffer dst) throws IOException;
-
-    /**
      *  Close the connection
      */
     void close() throws IOException;
@@ -91,5 +83,14 @@ public interface Connection extends Ticker {
          * @param next       - new state
          */
         void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next);
+
+        /**
+         *  Call when connection received data
+         *
+         * @param connection - current connection
+         * @param remote     - remote address
+         * @param data       - received data
+         */
+        void onConnectionReceivedData(Connection connection, SocketAddress remote, byte[] data);
     }
 }

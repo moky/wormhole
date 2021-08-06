@@ -13,7 +13,6 @@ import java.util.Set;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
-import chat.dim.net.Hub;
 import chat.dim.tcp.StreamChannel;
 import chat.dim.tcp.StreamHub;
 
@@ -67,24 +66,16 @@ public class Server extends Thread implements Connection.Delegate {
                 + current + " -> " + next);
     }
 
-    public void onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
+    @Override
+    public void onConnectionReceivedData(Connection connection, SocketAddress remote, byte[] data) {
         String text = new String(data, StandardCharsets.UTF_8);
-        Client.info("<<< received (" + data.length + " bytes) from " + source + " to " + destination + ": " + text);
+        Client.info("<<< received (" + data.length + " bytes) from " + remote + ": " + text);
         text = (counter++) + "# " + data.length + " byte(s) received";
         data = text.getBytes(StandardCharsets.UTF_8);
         Client.info(">>> responding: " + text);
-        send(data, destination, source);
+        send(data, localAddress, remote);
     }
     static int counter = 0;
-
-    private byte[] receive(SocketAddress source, SocketAddress destination) {
-        try {
-            return hub.receive(source, destination);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
 
     private boolean send(byte[] data, SocketAddress source, SocketAddress destination) {
         try {
@@ -104,34 +95,30 @@ public class Server extends Thread implements Connection.Delegate {
     @Override
     public void run() {
         SocketChannel channel;
+        SocketAddress remote, local;
+        Connection conn;
         while (running) {
             try {
                 channel = master.accept();
                 if (channel != null) {
                     slaves.add(channel);
-                } else if (!process()) {
-                    Client.idle(128);
+                    remote = channel.getRemoteAddress();
+                    local = channel.getLocalAddress();
+                    conn = hub.connect(remote, local);
+                    assert conn != null : "connection error: " + remote + ", " + local;
+                } else {
+                    hub.tick();
+                    clean();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
+            Client.idle(128);
         }
     }
 
-    private boolean process() throws IOException {
-        int count = 0;
-        byte[] data;
-        SocketAddress remote;
+    private void clean() {
         Set<SocketChannel> channels = new HashSet<>(slaves);
-        // receive data
-        for (SocketChannel item : channels) {
-            remote = item.getRemoteAddress();
-            data = receive(remote, localAddress);
-            if (data != null && data.length > 0) {
-                onDataReceived(data, remote, localAddress);
-                ++count;
-            }
-        }
         // check closed channels
         Set<SocketChannel> dying = new HashSet<>();
         for (SocketChannel item : channels) {
@@ -148,14 +135,13 @@ public class Server extends Thread implements Connection.Delegate {
         if (slaves.size() > 0) {
             Client.info(slaves.size() + " channel(s) alive");
         }
-        return count > 0;
     }
 
     static SocketAddress localAddress;
     static ServerSocketChannel master;
     static final Set<SocketChannel> slaves = new HashSet<>();
 
-    private static Hub hub;
+    private static ServerHub hub;
 
     public static void main(String[] args) throws IOException {
 
