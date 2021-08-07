@@ -3,16 +3,15 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 
-import chat.dim.mtp.DataType;
-import chat.dim.mtp.Package;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.PackageConnection;
-import chat.dim.type.Data;
 import chat.dim.udp.ActivePackageHub;
 import chat.dim.udp.DiscreteChannel;
 
@@ -32,7 +31,7 @@ class ClientHub extends ActivePackageHub {
 
 public class Client extends chat.dim.stun.Client implements Connection.Delegate {
 
-    static final String CLIENT_IP = "192.168.0.108"; // Test
+    static final String CLIENT_IP = "192.168.0.111"; // Test
     static final int CLIENT_PORT = 9527;
 
     static SocketAddress SERVER_ADDRESS = new InetSocketAddress(Server.SERVER_IP, Server.SERVER_PORT);
@@ -55,41 +54,49 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
                 + connection.getRemoteAddress() + ") state changed: "
                 + current + " -> " + next);
         if (next.equals(ConnectionState.EXPIRED)) {
-            assert connection instanceof PackageConnection : "connection error: " + connection;
-            ((PackageConnection) connection).heartbeat(connection.getRemoteAddress());
+            try {
+                heartbeat(connection);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
+    }
+    private void heartbeat(Connection connection) throws IOException {
+        assert connection instanceof PackageConnection : "connection error: " + connection;
+        ((PackageConnection) connection).heartbeat(connection.getRemoteAddress());
     }
 
     @Override
+    public void onConnectionReceivedData(Connection connection, SocketAddress remote, byte[] data) {
+        if (data != null && data.length > 0) {
+            chunks.add(data);
+        }
+    }
+
+    private final List<byte[]> chunks = new ArrayList<>();
+
+    @Override
     public int send(byte[] data, SocketAddress source, SocketAddress destination) {
-        Package pack = Package.create(DataType.Message, new Data(data));
         try {
-            return hub.sendPackage(pack, source, destination) ? 0 : -1;
+            hub.sendMessage(data, source, destination);
+            return 0;
         } catch (IOException e) {
             e.printStackTrace();
             return -1;
         }
     }
 
-    private byte[] receive(SocketAddress source, SocketAddress destination) {
-        try {
-            Package pack = hub.receivePackage(source, destination);
-            if (pack != null) {
-                return pack.body.getBytes();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
     @Override
     public byte[] receive() {
-        byte[] data;
+        byte[] data = null;
         long timeout = (new Date()).getTime() + 2000;
         while (true) {
-            data = receive(SERVER_ADDRESS, CLIENT_ADDRESS);
-            if (data != null) {
+            if (chunks.size() == 0) {
+                // drive hub to receive data
+                hub.tick();
+            }
+            if (chunks.size() > 0) {
+                data = chunks.remove(0);
                 break;
             }
             if (timeout < (new Date()).getTime()) {

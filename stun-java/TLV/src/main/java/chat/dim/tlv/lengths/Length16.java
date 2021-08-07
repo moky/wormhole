@@ -30,10 +30,10 @@
  */
 package chat.dim.tlv.lengths;
 
-import chat.dim.network.DataConvert;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
 import chat.dim.type.ByteArray;
+import chat.dim.type.IntegerData;
 import chat.dim.type.UInt16Data;
 
 /*
@@ -80,11 +80,11 @@ public class Length16 extends UInt16Data implements Length {
         } else if (data.getSize() > 2) {
             data = data.slice(0, 2);
         }
-        return new Length16(DataConvert.getUInt16Data(data));
+        return new Length16(IntegerData.getUInt16Data(data));
     }
 
     public static Length16 from(int value) {
-        return new Length16(DataConvert.getUInt16Data(value));
+        return new Length16(IntegerData.getUInt16Data(value));
     }
 
     // parse length with tag

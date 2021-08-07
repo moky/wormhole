@@ -30,8 +30,8 @@
  */
 package chat.dim.stun.protocol;
 
-import chat.dim.network.DataConvert;
 import chat.dim.type.ByteArray;
+import chat.dim.type.IntegerData;
 import chat.dim.type.UInt16Data;
 
 public class MessageLength extends UInt16Data {
@@ -53,10 +53,10 @@ public class MessageLength extends UInt16Data {
         } else if (data.getSize() > 2) {
             data = data.slice(0, 2);
         }
-        return new MessageLength(DataConvert.getUInt16Data(data));
+        return new MessageLength(IntegerData.getUInt16Data(data));
     }
 
     public static MessageLength from(int value) {
-        return new MessageLength(DataConvert.getUInt16Data(value));
+        return new MessageLength(IntegerData.getUInt16Data(value));
     }
 }

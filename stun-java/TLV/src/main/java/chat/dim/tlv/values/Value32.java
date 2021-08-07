@@ -30,11 +30,11 @@
  */
 package chat.dim.tlv.values;
 
-import chat.dim.network.DataConvert;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
 import chat.dim.tlv.Value;
 import chat.dim.type.ByteArray;
+import chat.dim.type.IntegerData;
 import chat.dim.type.UInt32Data;
 
 /**
@@ -71,11 +71,11 @@ public class Value32 extends UInt32Data implements Value {
         } else if (data.getSize() > 4) {
             data = data.slice(0, 4);
         }
-        return new Value32(DataConvert.getUInt32Data(data));
+        return new Value32(IntegerData.getUInt32Data(data));
     }
 
     public static Value32 from(long value) {
-        return new Value32(DataConvert.getUInt32Data(value));
+        return new Value32(IntegerData.getUInt32Data(value));
     }
 
     // parse value with tag & length

@@ -30,9 +30,9 @@
  */
 package chat.dim.tlv.tags;
 
-import chat.dim.network.DataConvert;
 import chat.dim.tlv.Tag;
 import chat.dim.type.ByteArray;
+import chat.dim.type.IntegerData;
 import chat.dim.type.UInt16Data;
 
 /*
@@ -79,11 +79,11 @@ public class Tag16 extends UInt16Data implements Tag {
         } else if (data.getSize() > 2) {
             data = data.slice(0, 2);
         }
-        return new Tag16(DataConvert.getUInt16Data(data));
+        return new Tag16(IntegerData.getUInt16Data(data));
     }
 
     public static Tag16 from(int value) {
-        return new Tag16(DataConvert.getUInt16Data(value));
+        return new Tag16(IntegerData.getUInt16Data(value));
     }
 
     // parse tag

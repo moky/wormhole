@@ -33,12 +33,12 @@ package chat.dim.stun.valus;
 import java.util.HashMap;
 import java.util.Map;
 
-import chat.dim.network.DataConvert;
 import chat.dim.tlv.Length;
 import chat.dim.tlv.Tag;
 import chat.dim.tlv.Value;
 import chat.dim.tlv.values.Value32;
 import chat.dim.type.ByteArray;
+import chat.dim.type.IntegerData;
 import chat.dim.type.UInt32Data;
 
 /*  Rosenberg, et al.           Standards Track                    [Page 27]
@@ -102,7 +102,7 @@ public class ChangeRequestValue extends Value32 {
         if (data.getSize() < 4) {
             return null;
         }
-        return get(DataConvert.getInt32Value(data));
+        return get(IntegerData.getInt32Value(data));
     }
 
     public static ChangeRequestValue from(int value) {
@@ -123,7 +123,7 @@ public class ChangeRequestValue extends Value32 {
     }
 
     private static ChangeRequestValue create(int value, String name) {
-        UInt32Data data = DataConvert.getUInt32Data(value);
+        UInt32Data data = IntegerData.getUInt32Data(value);
         ChangeRequestValue crv = new ChangeRequestValue(data, name);
         s_values.put(value, crv);
         return crv;

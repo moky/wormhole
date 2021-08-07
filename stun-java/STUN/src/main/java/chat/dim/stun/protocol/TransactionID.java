@@ -32,9 +32,9 @@ package chat.dim.stun.protocol;
 
 import java.util.Random;
 
-import chat.dim.network.DataConvert;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
+import chat.dim.type.IntegerData;
 import chat.dim.type.MutableData;
 import chat.dim.type.UInt32Data;
 
@@ -114,9 +114,9 @@ public class TransactionID extends Data {
         }
 
         ByteArray mc = MagicCookie;
-        ByteArray hi = DataConvert.getUInt32Data(s_high);
-        ByteArray mi = DataConvert.getUInt32Data(s_middle);
-        ByteArray lo = DataConvert.getUInt32Data(s_low);
+        ByteArray hi = IntegerData.getUInt32Data(s_high);
+        ByteArray mi = IntegerData.getUInt32Data(s_middle);
+        ByteArray lo = IntegerData.getUInt32Data(s_low);
 
         MutableData data = new MutableData(16);
         data.append(mc);
@@ -127,7 +127,7 @@ public class TransactionID extends Data {
     }
 
     // Magic Cookie
-    public static UInt32Data MagicCookie = DataConvert.getUInt32Data(0x2112A442);
+    public static UInt32Data MagicCookie = IntegerData.getUInt32Data(0x2112A442);
 
     private static long s_high;
     private static long s_middle;

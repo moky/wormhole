@@ -5,22 +5,22 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
-import chat.dim.mtp.DataType;
-import chat.dim.mtp.Package;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.PackageConnection;
 import chat.dim.type.Data;
-import chat.dim.udp.ActivePackageHub;
 import chat.dim.udp.DiscreteChannel;
+import chat.dim.udp.PackageHub;
 
 class ServerConnection extends PackageConnection {
 
-    public ServerConnection(Channel byteChannel) {
-        super(byteChannel);
+    public ServerConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
+        super(byteChannel, remote, local);
     }
 
     @Override
@@ -33,23 +33,47 @@ class ServerConnection extends PackageConnection {
     }
 }
 
-class ServerHub extends ActivePackageHub {
+class ServerHub extends PackageHub {
+
+    private Connection primaryConnection = null;
+    private Connection secondaryConnection = null;
 
     public ServerHub(Connection.Delegate delegate) {
         super(delegate);
     }
 
-    @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
-        Channel sock = createChannel(remote, local);
-        ServerConnection connection = new ServerConnection(sock);
+    private Connection createServerConnection(SocketAddress remote, SocketAddress local) {
+        // create connection with channel
+        ServerConnection conn = new ServerConnection(createChannel(remote, local), remote, local);
         // set delegate
-        if (connection.getDelegate() == null) {
-            connection.setDelegate(getDelegate());
+        if (conn.getDelegate() == null) {
+            conn.setDelegate(getDelegate());
         }
         // start FSM
-        connection.start();
-        return connection;
+        conn.start();
+        return conn;
+    }
+
+    @Override
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
+        if (local instanceof InetSocketAddress) {
+            int port = ((InetSocketAddress) local).getPort();
+            if (port == Server.SERVER_PORT) {
+                if (primaryConnection == null) {
+                    primaryConnection = createServerConnection(remote, local);
+                }
+                return primaryConnection;
+            } else if (port == Server.CHANGE_PORT) {
+                if (secondaryConnection == null) {
+                    secondaryConnection = createServerConnection(remote, local);
+                }
+                return secondaryConnection;
+            } else {
+                throw new IllegalArgumentException("port not defined: " + port);
+            }
+        } else {
+            throw new NullPointerException("local address error: " + local);
+        }
     }
 
     @Override
@@ -71,7 +95,7 @@ class ServerHub extends ActivePackageHub {
 
 public class Server extends chat.dim.stun.Server implements Runnable, Connection.Delegate {
 
-    static final String SERVER_Test = "192.168.0.108"; // Test
+    static final String SERVER_Test = "192.168.0.111"; // Test
     static final String SERVER_GZ1 = "134.175.87.98"; // GZ-1
     static final String SERVER_HK2 = "129.226.128.17"; // HK-2
 
@@ -84,7 +108,7 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
 
     private boolean running = false;
 
-    public final ActivePackageHub hub;
+    public final PackageHub hub;
 
     public Server(String host, int port, int changePort) {
         super(host, port, changePort);
@@ -105,33 +129,26 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
                 + connection.getLocalAddress() + ", "
                 + connection.getRemoteAddress() + ") state changed: "
                 + current + " -> " + next);
-        if (next.equals(ConnectionState.EXPIRED)) {
-            assert connection instanceof PackageConnection : "connection error: " + connection;
-            ((PackageConnection) connection).heartbeat(connection.getRemoteAddress());
-        }
     }
 
     @Override
+    public void onConnectionReceivedData(Connection connection, SocketAddress remote, byte[] data) {
+        if (data != null && data.length > 0) {
+            chunks.add(data);
+        }
+    }
+
+    private final List<byte[]> chunks = new ArrayList<>();
+
+    @Override
     public int send(byte[] data, SocketAddress source, SocketAddress destination) {
-        Package pack = Package.create(DataType.Message, new Data(data));
         try {
-            return hub.sendPackage(pack, source, destination) ? 0 : -1;
+            hub.sendMessage(data, source, destination);
+            return 0;
         } catch (IOException e) {
             e.printStackTrace();
             return -1;
         }
-    }
-
-    private byte[] receive(SocketAddress source, SocketAddress destination) {
-        try {
-            Package pack = hub.receivePackage(source, destination);
-            if (pack != null) {
-                return pack.body.getBytes();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
     /**
@@ -143,12 +160,12 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
         byte[] data = null;
         long timeout = (new Date()).getTime() + 2000;
         while (running) {
-            data = receive(null, primaryAddress);
-            if (data != null) {
-                break;
+            if (chunks.size() == 0) {
+                // drive hub to receive data
+                hub.tick();
             }
-            data = receive(null, secondaryAddress);
-            if (data != null) {
+            if (chunks.size() > 0) {
+                data = chunks.remove(0);
                 break;
             }
             if (timeout < (new Date()).getTime()) {
@@ -161,6 +178,13 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
 
     @Override
     public void run() {
+        try {
+            hub.connect(null, primaryAddress);
+            hub.connect(null, secondaryAddress);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         info("STUN server started");
         info("source address: " + sourceAddress + ", another port: " + changePort + ", neighbour server: " + neighbour);
         info("changed address: " + changedAddress);

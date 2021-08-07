@@ -33,8 +33,8 @@ package chat.dim.stun.protocol;
 import java.util.HashMap;
 import java.util.Map;
 
-import chat.dim.network.DataConvert;
 import chat.dim.type.ByteArray;
+import chat.dim.type.IntegerData;
 import chat.dim.type.UInt16Data;
 
 /*  [RFC] https://www.ietf.org/rfc/rfc5389.txt
@@ -74,7 +74,7 @@ public class MessageType extends UInt16Data {
         } else if (data.getSize() > 2) {
             data = data.slice(0, 2);
         }
-        return get(DataConvert.getUInt16Data(data));
+        return get(IntegerData.getUInt16Data(data));
     }
 
     private static synchronized MessageType get(UInt16Data data) {
@@ -90,7 +90,7 @@ public class MessageType extends UInt16Data {
         return type;
     }
     public static synchronized MessageType create(int value, String name) {
-        UInt16Data data = DataConvert.getUInt16Data(value);
+        UInt16Data data = IntegerData.getUInt16Data(value);
         return create(data, name);
     }
 
