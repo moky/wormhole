@@ -107,7 +107,7 @@ public class MutableData extends Data implements MutableByteArray {
         end = ByteArray.adjust(end, source.length);
         if (start < end) {
             index = ByteArray.adjustE(index, size);
-            ByteArray.update(this, index, source, start, end);
+            MutableByteArray.update(this, index, source, start, end);
         }
     }
     @Override
@@ -128,7 +128,7 @@ public class MutableData extends Data implements MutableByteArray {
             index = ByteArray.adjustE(index, size);
             byte[] srcBuf = source.getBuffer();
             int srcOffset = source.getOffset();
-            ByteArray.update(this, index, srcBuf, srcOffset + start, srcOffset + end);
+            MutableByteArray.update(this, index, srcBuf, srcOffset + start, srcOffset + end);
         }
     }
     @Override
@@ -149,7 +149,7 @@ public class MutableData extends Data implements MutableByteArray {
         start = ByteArray.adjust(start, source.length);
         end = ByteArray.adjust(end, source.length);
         if (start < end) {
-            ByteArray.update(this, size, source, start, end);
+            MutableByteArray.update(this, size, source, start, end);
         }
     }
     @Override
@@ -175,7 +175,7 @@ public class MutableData extends Data implements MutableByteArray {
         if (start < end) {
             byte[] srcBuf = source.getBuffer();
             int srcOffset = source.getOffset();
-            ByteArray.update(this, size, srcBuf, srcOffset + start, srcOffset + end);
+            MutableByteArray.update(this, size, srcBuf, srcOffset + start, srcOffset + end);
         }
     }
     @Override
@@ -204,7 +204,7 @@ public class MutableData extends Data implements MutableByteArray {
         end = ByteArray.adjustE(end, source.length);
         if (start < end) {
             index = ByteArray.adjustE(index, size);
-            ByteArray.insert(this, index, source, start, end);
+            MutableByteArray.insert(this, index, source, start, end);
         }
     }
     @Override
@@ -225,7 +225,7 @@ public class MutableData extends Data implements MutableByteArray {
             index = ByteArray.adjustE(index, size);
             byte[] srcBuf = source.getBuffer();
             int srcOffset = source.getOffset();
-            ByteArray.insert(this, index, srcBuf, srcOffset + start, srcOffset + end);
+            MutableByteArray.insert(this, index, srcBuf, srcOffset + start, srcOffset + end);
         }
     }
     @Override
@@ -247,7 +247,7 @@ public class MutableData extends Data implements MutableByteArray {
     public void insert(int index, byte value) {
         index = ByteArray.adjustE(index, size);
         if (index < size) {
-            ByteArray.insert(this, index, value);
+            MutableByteArray.insert(this, index, value);
         } else {
             // target position is out of range [offset, offset + size)
             // set it directly
@@ -272,7 +272,7 @@ public class MutableData extends Data implements MutableByteArray {
             // remove the last element
             return pop();
         } else {
-            return ByteArray.remove(this, index);
+            return MutableByteArray.remove(this, index);
         }
     }
 

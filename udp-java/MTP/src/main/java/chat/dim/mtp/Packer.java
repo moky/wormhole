@@ -142,10 +142,10 @@ public class Packer {
         if (first.head.bodyLength < 0) {
             // UDP (unlimited)
             assert first.head.bodyLength == -1 : "body length error: " + first.head.bodyLength;
-            return Package.create(DataType.Message, sn, 1, 0, -1, data);
+            return Package.create(DataType.MESSAGE, sn, 1, 0, -1, data);
         } else {
             // TCP (should not happen)
-            return Package.create(DataType.Message, sn, 1, 0, data.getSize(), data);
+            return Package.create(DataType.MESSAGE, sn, 1, 0, data.getSize(), data);
         }
     }
 
@@ -185,13 +185,13 @@ public class Packer {
             assert head.bodyLength == -1 : "body length error: " + head.bodyLength;
             for (int index = 0; index < pages; ++index) {
                 data = fragments.get(index);
-                packages.add(Package.create(DataType.MessageFragment, head.sn, pages, index, -1, data));
+                packages.add(Package.create(DataType.MESSAGE_FRAGMENT, head.sn, pages, index, -1, data));
             }
         } else {
             // TCP (should not happen)
             for (int index = 0; index < pages; ++index) {
                 data = fragments.get(index);
-                packages.add(Package.create(DataType.MessageFragment, head.sn, pages, index, data.getSize(), data));
+                packages.add(Package.create(DataType.MESSAGE_FRAGMENT, head.sn, pages, index, data.getSize(), data));
             }
         }
         return packages;

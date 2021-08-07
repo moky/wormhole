@@ -30,9 +30,9 @@
  */
 package chat.dim.mtp;
 
-import chat.dim.network.DataConvert;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
+import chat.dim.type.IntegerData;
 import chat.dim.type.MutableData;
 
 /*    Package Header:
@@ -203,7 +203,7 @@ public class Header extends Data {
                  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                  */
                 sn = TransactionID.ZERO;
-                bodyLen = DataConvert.getInt32Value(data, 4);
+                bodyLen = IntegerData.getInt32Value(data, 4);
                 break;
             }
             case 12: {
@@ -234,7 +234,7 @@ public class Header extends Data {
                  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                  */
                 sn = TransactionID.from(data.slice(4, 12));
-                bodyLen = DataConvert.getInt32Value(data, 12);
+                bodyLen = IntegerData.getInt32Value(data, 12);
                 break;
             }
             case 20: {
@@ -253,8 +253,8 @@ public class Header extends Data {
                  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                  */
                 sn = TransactionID.from(data.slice(4, 12));
-                pages = DataConvert.getInt32Value(data, 12);
-                offset = DataConvert.getInt32Value(data, 16);
+                pages = IntegerData.getInt32Value(data, 12);
+                offset = IntegerData.getInt32Value(data, 16);
                 break;
             }
             case 24: {
@@ -275,9 +275,9 @@ public class Header extends Data {
                  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                  */
                 sn = TransactionID.from(data.slice(4, 12));
-                pages = DataConvert.getInt32Value(data, 12);
-                offset = DataConvert.getInt32Value(data, 16);
-                bodyLen = DataConvert.getInt32Value(data, 20);
+                pages = IntegerData.getInt32Value(data, 12);
+                offset = IntegerData.getInt32Value(data, 16);
+                bodyLen = IntegerData.getInt32Value(data, 20);
                 break;
             }
             default: {
@@ -324,10 +324,10 @@ public class Header extends Data {
         if (type.isFragment()) {
             // message fragment (or its respond)
             assert pages > 1 : "fragment pages error: " + pages + ", " + offset;
-            ByteArray d1 = DataConvert.getUInt32Data(pages);
-            ByteArray d2 = DataConvert.getUInt32Data(offset);
-            ByteArray d3 = bodyLen < 0 ? null : DataConvert.getUInt32Data(bodyLen);
-            options = d1.concat(d2, d3);
+            ByteArray d1 = IntegerData.getUInt32Data(pages);
+            ByteArray d2 = IntegerData.getUInt32Data(offset);
+            ByteArray d3 = bodyLen < 0 ? null : IntegerData.getUInt32Data(bodyLen);
+            options = d1.concat(d2).concat(d3);
             headLen += options.getSize();  // 8 or 12 bytes
         } else if (bodyLen < 0) {
             // command/message (or its response, UDP only)
@@ -335,7 +335,7 @@ public class Header extends Data {
         } else {
             // command/message (or its respond)
             assert pages == 1 : "pages error: " + pages + ", " + offset;
-            options = DataConvert.getUInt32Data(bodyLen);
+            options = IntegerData.getUInt32Data(bodyLen);
             headLen += options.getSize();  // 4 bytes
         }
         // generate header data

@@ -141,9 +141,9 @@ public final class DataType extends UInt8Data {
 
     private static final Map<Byte, DataType> s_types = new HashMap<>();
 
-    public static final DataType Command         = create(0x00, "Command");
-    public static final DataType CommandResponse = create(0x01, "Command Response");
-    public static final DataType Message         = create(0x02, "Message");
-    public static final DataType MessageResponse = create(0x03, "Message Response");
-    public static final DataType MessageFragment = create(0x0A, "Message Fragment");
+    public static final DataType COMMAND          = create(0x00, "Command");
+    public static final DataType COMMAND_RESPONSE = create(0x01, "Command Response");
+    public static final DataType MESSAGE          = create(0x02, "Message");
+    public static final DataType MESSAGE_RESPONSE = create(0x03, "Message Response");
+    public static final DataType MESSAGE_FRAGMENT = create(0x0A, "Message Fragment");
 }
