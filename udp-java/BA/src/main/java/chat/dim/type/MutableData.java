@@ -79,7 +79,7 @@ public class MutableData extends Data implements MutableByteArray {
     }
     @Override
     public void setByte(int index, byte value) {
-        index = DataUtils.adjustE(index, size);
+        index = ByteArray.adjustE(index, size);
         if (index >= size) {
             // target position is out of range [offset, offset + size)
             // check empty spaces
@@ -103,11 +103,11 @@ public class MutableData extends Data implements MutableByteArray {
 
     @Override
     public void update(int index, byte[] source, int start, int end) {
-        start = DataUtils.adjust(start, source.length);
-        end = DataUtils.adjust(end, source.length);
+        start = ByteArray.adjust(start, source.length);
+        end = ByteArray.adjust(end, source.length);
         if (start < end) {
-            index = DataUtils.adjustE(index, size);
-            DataUtils.update(this, index, source, start, end);
+            index = ByteArray.adjustE(index, size);
+            ByteArray.update(this, index, source, start, end);
         }
     }
     @Override
@@ -122,13 +122,13 @@ public class MutableData extends Data implements MutableByteArray {
     @Override
     public void update(int index, ByteArray source, int start, int end) {
         int srcLen = source.getSize();
-        start = DataUtils.adjust(start, srcLen);
-        end = DataUtils.adjust(end, srcLen);
+        start = ByteArray.adjust(start, srcLen);
+        end = ByteArray.adjust(end, srcLen);
         if (start < end) {
-            index = DataUtils.adjustE(index, size);
+            index = ByteArray.adjustE(index, size);
             byte[] srcBuf = source.getBuffer();
             int srcOffset = source.getOffset();
-            DataUtils.update(this, index, srcBuf, srcOffset + start, srcOffset + end);
+            ByteArray.update(this, index, srcBuf, srcOffset + start, srcOffset + end);
         }
     }
     @Override
@@ -146,10 +146,10 @@ public class MutableData extends Data implements MutableByteArray {
 
     @Override
     public void append(byte[] source, int start, int end) {
-        start = DataUtils.adjust(start, source.length);
-        end = DataUtils.adjust(end, source.length);
+        start = ByteArray.adjust(start, source.length);
+        end = ByteArray.adjust(end, source.length);
         if (start < end) {
-            DataUtils.update(this, size, source, start, end);
+            ByteArray.update(this, size, source, start, end);
         }
     }
     @Override
@@ -170,12 +170,12 @@ public class MutableData extends Data implements MutableByteArray {
     @Override
     public void append(ByteArray source, int start, int end) {
         int srcLen = source.getSize();
-        start = DataUtils.adjust(start, srcLen);
-        end = DataUtils.adjust(end, srcLen);
+        start = ByteArray.adjust(start, srcLen);
+        end = ByteArray.adjust(end, srcLen);
         if (start < end) {
             byte[] srcBuf = source.getBuffer();
             int srcOffset = source.getOffset();
-            DataUtils.update(this, size, srcBuf, srcOffset + start, srcOffset + end);
+            ByteArray.update(this, size, srcBuf, srcOffset + start, srcOffset + end);
         }
     }
     @Override
@@ -200,11 +200,11 @@ public class MutableData extends Data implements MutableByteArray {
 
     @Override
     public void insert(int index, byte[] source, int start, int end) {
-        start = DataUtils.adjustE(start, source.length);
-        end = DataUtils.adjustE(end, source.length);
+        start = ByteArray.adjustE(start, source.length);
+        end = ByteArray.adjustE(end, source.length);
         if (start < end) {
-            index = DataUtils.adjustE(index, size);
-            DataUtils.insert(this, index, source, start, end);
+            index = ByteArray.adjustE(index, size);
+            ByteArray.insert(this, index, source, start, end);
         }
     }
     @Override
@@ -219,13 +219,13 @@ public class MutableData extends Data implements MutableByteArray {
     @Override
     public void insert(int index, ByteArray source, int start, int end) {
         int srcLen = source.getSize();
-        start = DataUtils.adjustE(start, srcLen);
-        end = DataUtils.adjustE(end, srcLen);
+        start = ByteArray.adjustE(start, srcLen);
+        end = ByteArray.adjustE(end, srcLen);
         if (start < end) {
-            index = DataUtils.adjustE(index, size);
+            index = ByteArray.adjustE(index, size);
             byte[] srcBuf = source.getBuffer();
             int srcOffset = source.getOffset();
-            DataUtils.insert(this, index, srcBuf, srcOffset + start, srcOffset + end);
+            ByteArray.insert(this, index, srcBuf, srcOffset + start, srcOffset + end);
         }
     }
     @Override
@@ -245,9 +245,9 @@ public class MutableData extends Data implements MutableByteArray {
      */
     @Override
     public void insert(int index, byte value) {
-        index = DataUtils.adjustE(index, size);
+        index = ByteArray.adjustE(index, size);
         if (index < size) {
-            DataUtils.insert(this, index, value);
+            ByteArray.insert(this, index, value);
         } else {
             // target position is out of range [offset, offset + size)
             // set it directly
@@ -261,7 +261,7 @@ public class MutableData extends Data implements MutableByteArray {
 
     @Override
     public byte remove(int index) {
-        index = DataUtils.adjustE(index, size);
+        index = ByteArray.adjustE(index, size);
         if (index >= size) {
             // too big
             throw new ArrayIndexOutOfBoundsException("index error: " + index + ", size: " + size);
@@ -272,7 +272,7 @@ public class MutableData extends Data implements MutableByteArray {
             // remove the last element
             return pop();
         } else {
-            return DataUtils.remove(this, index);
+            return ByteArray.remove(this, index);
         }
     }
 

@@ -46,7 +46,7 @@ public class Data implements ByteArray, Cloneable {
     int offset;     // data view offset
     int size;       // data view size
 
-    public final static Data ZERO = new Data(DataUtils.ZERO);
+    public final static Data ZERO = new Data(new byte[0]);
 
     /**
      *  Create data view with range [start, end)
@@ -152,7 +152,7 @@ public class Data implements ByteArray, Cloneable {
 
     @Override
     public String toHexString() {
-        return DataUtils.hexEncode(buffer, offset, size);
+        return ByteArray.hexEncode(buffer, offset, size);
     }
 
     //
@@ -161,59 +161,59 @@ public class Data implements ByteArray, Cloneable {
 
     @Override
     public int find(byte value, int start, int end) {
-        return DataUtils.find(this, value, DataUtils.adjust(start, size), DataUtils.adjust(end, size));
+        return ByteArray.find(this, value, ByteArray.adjust(start, size), ByteArray.adjust(end, size));
     }
     @Override
     public int find(byte value, int start) {
-        return DataUtils.find(this, value, DataUtils.adjust(start, size), size);
+        return ByteArray.find(this, value, ByteArray.adjust(start, size), size);
     }
     @Override
     public int find(byte value) {
-        return DataUtils.find(this, value, 0, size);
+        return ByteArray.find(this, value, 0, size);
     }
 
     @Override
     public int find(int value, int start, int end) {
-        return DataUtils.find(this, (byte) (value & 0xFF),
-                DataUtils.adjust(start, size), DataUtils.adjust(end, size));
+        return ByteArray.find(this, (byte) (value & 0xFF),
+                ByteArray.adjust(start, size), ByteArray.adjust(end, size));
     }
     @Override
     public int find(int value, int start) {
-        return DataUtils.find(this, (byte) (value & 0xFF), DataUtils.adjust(start, size), size);
+        return ByteArray.find(this, (byte) (value & 0xFF), ByteArray.adjust(start, size), size);
     }
     @Override
     public int find(int value) {
-        return DataUtils.find(this, (byte) (value & 0xFF), 0, size);
+        return ByteArray.find(this, (byte) (value & 0xFF), 0, size);
     }
 
     @Override
     public int find(byte[] bytes, int start, int end) {
-        return DataUtils.find(this, bytes, 0, bytes.length,
-                DataUtils.adjust(start, size), DataUtils.adjust(end, size));
+        return ByteArray.find(this, bytes, 0, bytes.length,
+                ByteArray.adjust(start, size), ByteArray.adjust(end, size));
     }
     @Override
     public int find(byte[] bytes, int start) {
-        return DataUtils.find(this, bytes, 0, bytes.length,
-                DataUtils.adjust(start, size), size);
+        return ByteArray.find(this, bytes, 0, bytes.length,
+                ByteArray.adjust(start, size), size);
     }
     @Override
     public int find(byte[] bytes) {
-        return DataUtils.find(this, bytes, 0, bytes.length, 0, size);
+        return ByteArray.find(this, bytes, 0, bytes.length, 0, size);
     }
 
     @Override
     public int find(ByteArray sub, int start, int end) {
-        return DataUtils.find(this, sub.getBuffer(), sub.getOffset(), sub.getSize(),
-                DataUtils.adjust(start, size), DataUtils.adjust(end, size));
+        return ByteArray.find(this, sub.getBuffer(), sub.getOffset(), sub.getSize(),
+                ByteArray.adjust(start, size), ByteArray.adjust(end, size));
     }
     @Override
     public int find(ByteArray sub, int start) {
-        return DataUtils.find(this, sub.getBuffer(), sub.getOffset(), sub.getSize(),
-                DataUtils.adjust(start, size), size);
+        return ByteArray.find(this, sub.getBuffer(), sub.getOffset(), sub.getSize(),
+                ByteArray.adjust(start, size), size);
     }
     @Override
     public int find(ByteArray sub) {
-        return DataUtils.find(this, sub.getBuffer(), sub.getOffset(), sub.getSize(), 0, size);
+        return ByteArray.find(this, sub.getBuffer(), sub.getOffset(), sub.getSize(), 0, size);
     }
 
     //
@@ -223,7 +223,7 @@ public class Data implements ByteArray, Cloneable {
     @Override
     public byte getByte(int index) {
         // check position
-        index = DataUtils.adjustE(index, size);
+        index = ByteArray.adjustE(index, size);
         if (index >= size) {
             throw new ArrayIndexOutOfBoundsException("error index: " + index + ", size: " + size);
         }
@@ -232,21 +232,21 @@ public class Data implements ByteArray, Cloneable {
 
     @Override
     public byte[] getBytes() {
-        return DataUtils.slice(buffer, offset, offset + size);
+        return ByteArray.slice(buffer, offset, offset + size);
     }
 
     @Override
     public byte[] getBytes(int start) {
-        return DataUtils.slice(buffer,
-                offset + DataUtils.adjust(start, size),
+        return ByteArray.slice(buffer,
+                offset + ByteArray.adjust(start, size),
                 offset + size);
     }
 
     @Override
     public byte[] getBytes(int start, int end) {
-        return DataUtils.slice(buffer,
-                offset + DataUtils.adjust(start, size),
-                offset + DataUtils.adjust(end, size));
+        return ByteArray.slice(buffer,
+                offset + ByteArray.adjust(start, size),
+                offset + ByteArray.adjust(end, size));
     }
 
     //
@@ -262,12 +262,12 @@ public class Data implements ByteArray, Cloneable {
      */
     @Override
     public ByteArray slice(int start, int end) {
-        return DataUtils.slice(this, DataUtils.adjust(start, size), DataUtils.adjust(end, size));
+        return ByteArray.slice(this, ByteArray.adjust(start, size), ByteArray.adjust(end, size));
     }
 
     @Override
     public ByteArray slice(int start) {
-        return DataUtils.slice(this, DataUtils.adjust(start, size), size);
+        return ByteArray.slice(this, ByteArray.adjust(start, size), size);
     }
 
     /**
@@ -283,7 +283,7 @@ public class Data implements ByteArray, Cloneable {
             if (item == null) {
                 continue;
             }
-            result = DataUtils.concat(result, item);
+            result = ByteArray.concat(result, item);
         }
         return result;
     }
@@ -295,7 +295,7 @@ public class Data implements ByteArray, Cloneable {
             if (item == null) {
                 continue;
             }
-            result = DataUtils.concat(result, new Data(item));
+            result = ByteArray.concat(result, new Data(item));
         }
         return result;
     }
