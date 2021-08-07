@@ -68,9 +68,8 @@ public class DiscreteChannel implements Channel {
         blocking = !nonBlocking;
         reuseAddress = reuse;
         // create inner channel
-        impl = DatagramChannel.open();
-        impl.configureBlocking(blocking);
-        impl.socket().setReuseAddress(reuseAddress);
+        impl = null;
+        setImpl();
         // bind to local address
         if (localAddress != null) {
             impl.bind(localAddress);

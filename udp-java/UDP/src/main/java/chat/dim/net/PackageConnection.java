@@ -47,28 +47,11 @@ import chat.dim.type.Data;
 
 public class PackageConnection extends BaseConnection {
 
-    /*  Maximum Segment Size
-     *  ~~~~~~~~~~~~~~~~~~~~
-     *  Buffer size for receiving package
-     *
-     *  MTU        : 1500 bytes (excludes 14 bytes ethernet header & 4 bytes FCS)
-     *  IP header  :   20 bytes
-     *  TCP header :   20 bytes
-     *  UDP header :    8 bytes
-     */
-    public static int MSS = 1472;  // 1500 - 20 - 8
-
     private final ArrivalHall arrivalHall = new ArrivalHall();
     private final DepartureHall departureHall = new DepartureHall();
 
     public PackageConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
         super(byteChannel, remote, local);
-    }
-    public PackageConnection(Channel byteChannel) {
-        this(byteChannel, null, null);
-    }
-    public PackageConnection(SocketAddress remote, SocketAddress local) {
-        this(null, remote, local);
     }
 
     @Override
@@ -81,15 +64,41 @@ public class PackageConnection extends BaseConnection {
         }
     }
 
+    @Override
+    protected void process() throws IOException {
+        Delegate delegate = getDelegate();
+        if (delegate == null) {
+            return;
+        }
+        // receiving
+        ByteBuffer buffer = ByteBuffer.allocate(MSS);
+        SocketAddress remote = receive(buffer);
+        if (remote == null) {
+            return;
+        }
+        byte[] data = new byte[buffer.position()];
+        buffer.flip();
+        buffer.get(data);
+        // process for package
+        Package pack = processIncome(data, remote, getLocalAddress());
+        if (pack == null) {
+            return;
+        }
+        data = pack.body.getBytes();
+        // callback
+        delegate.onConnectionReceivedData(this, remote, data);
+    }
+
     /**
      *  Append the package into a waiting queue for sending out
      *
-     * @param pack        - data package
+     * @param payload     - message body
      * @param source      - local address
      * @param destination - remote address
      * @throws IOException on error
      */
-    public void sendPackage(Package pack, SocketAddress source, SocketAddress destination) throws IOException {
+    public void sendMessage(byte[] payload, SocketAddress source, SocketAddress destination) throws IOException {
+        Package pack = Package.create(DataType.MESSAGE, new Data(payload));
         // append as Departure task to waiting queue
         departureHall.appendDeparture(pack, source, destination);
         // send out tasks from waiting queue
@@ -113,7 +122,7 @@ public class PackageConnection extends BaseConnection {
         arrivalHall.clearExpiredArrivals();
     }
 
-    private boolean sendDeparture(Departure task) {
+    private boolean sendDeparture(Departure task) throws IOException {
         // get fragments
         List<Package> fragments = task.getFragments();
         if (fragments == null || fragments.size() == 0) {
@@ -122,62 +131,21 @@ public class PackageConnection extends BaseConnection {
         }
         // send out all fragments
         for (Package pack : fragments) {
-            sendData(pack.getBytes(), task.destination);
+            send(pack.getBytes(), task.destination);
         }
         return true;
     }
 
-    private void sendData(byte[] data, SocketAddress remote) {
-        ByteBuffer buffer = ByteBuffer.allocate(data.length);
-        buffer.put(data);
-        buffer.flip();
-        try {
-            send(buffer, remote);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    private void respondCommand(TransactionID sn, byte[] body, SocketAddress remote) throws IOException {
+        Package res = Package.create(DataType.COMMAND_RESPONSE, sn, new Data(body));
+        send(res.getBytes(), remote);
     }
-    private void respondCommand(TransactionID sn, byte[] body, SocketAddress remote) {
-        Package res = Package.create(DataType.CommandResponse, sn, new Data(body));
-        sendData(res.getBytes(), remote);
-    }
-    private void respondMessage(TransactionID sn, int pages, int offset, SocketAddress remote) {
-        Package res = Package.create(DataType.MessageResponse, sn, pages, offset, new Data(OK));
-        sendData(res.getBytes(), remote);
+    private void respondMessage(TransactionID sn, int pages, int offset, SocketAddress remote) throws IOException {
+        Package res = Package.create(DataType.MESSAGE_RESPONSE, sn, pages, offset, new Data(OK));
+        send(res.getBytes(), remote);
     }
 
-    /**
-     *  Receive data package from remote address
-     *
-     * @param source      - remote address
-     * @param destination - local address
-     * @return complete package
-     * @throws IOException on error
-     */
-    public Package receivePackage(SocketAddress source, SocketAddress destination) throws IOException {
-        Package pack;
-        ByteBuffer buffer = ByteBuffer.allocate(MSS);
-        SocketAddress remote;
-        byte[] data;
-        while (true) {
-            buffer.clear();
-            remote = receive(buffer);
-            if (remote == null) {
-                // received nothing
-                return null;
-            }
-            assert source == null || source.equals(remote) : "source address error: " + source + ", " + remote;
-            data = new byte[buffer.position()];
-            buffer.flip();
-            buffer.get(data);
-            pack = processIncome(data, remote, destination);
-            if (pack != null) {
-                // received a complete package
-                return pack;
-            }
-        }
-    }
-    private Package processIncome(byte[] data, SocketAddress remote, SocketAddress destination) {
+    private Package processIncome(byte[] data, SocketAddress remote, SocketAddress destination) throws IOException {
         // process income package
         Package pack = Package.parse(new Data(data));
         if (pack == null) {
@@ -264,9 +232,9 @@ public class PackageConnection extends BaseConnection {
      *
      * @param destination - remote address
      */
-    public void heartbeat(SocketAddress destination) {
-        Package pack = Package.create(DataType.Command, new Data(PING));
-        sendData(pack.getBytes(), destination);
+    public void heartbeat(SocketAddress destination) throws IOException {
+        Package pack = Package.create(DataType.COMMAND, new Data(PING));
+        send(pack.getBytes(), destination);
     }
 
     private static final byte[] PING = {'P', 'I', 'N', 'G'};

@@ -7,9 +7,22 @@ import java.nio.charset.StandardCharsets;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
-import chat.dim.net.Hub;
 import chat.dim.tcp.ActiveStreamHub;
 import chat.dim.tcp.StreamChannel;
+
+class ClientHub extends ActiveStreamHub {
+
+    public ClientHub(Connection.Delegate delegate) {
+        super(delegate);
+    }
+
+    @Override
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+        Channel channel = new StreamChannel(remote, local);
+        channel.configureBlocking(false);
+        return channel;
+    }
+}
 
 public class Client extends Thread implements Connection.Delegate {
 
@@ -44,7 +57,7 @@ public class Client extends Thread implements Connection.Delegate {
     }
     private void heartbeat(Connection connection) throws IOException {
         byte[] data = {'P', 'I', 'N', 'G'};
-        send(data, connection.getLocalAddress(), connection.getRemoteAddress());
+        hub.send(data, connection.getLocalAddress(), connection.getRemoteAddress());
     }
 
     @Override
@@ -53,17 +66,16 @@ public class Client extends Thread implements Connection.Delegate {
         info("<<< received (" + data.length + " bytes) from " + remote + ": " + text);
     }
 
-    private boolean send(byte[] data, SocketAddress source, SocketAddress destination) {
+    private void send(byte[] data, SocketAddress destination) {
         try {
-            return hub.send(data, source, destination);
+            hub.send(data, null, destination);
         } catch (IOException e) {
             e.printStackTrace();
-            return false;
         }
     }
-    private void disconnect(SocketAddress remote, SocketAddress local) {
+    private void disconnect() {
         try {
-            hub.disconnect(remote, local);
+            hub.disconnect(remoteAddress, null);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -83,15 +95,15 @@ public class Client extends Thread implements Connection.Delegate {
             data = (index + " sheep:" + text).getBytes();
             info(">>> sending (" + data.length + " bytes): ");
             info(data);
-            send(data, null, remoteAddress);
+            send(data, remoteAddress);
             idle(2000);
         }
 
-        disconnect(remoteAddress, null);
+        disconnect();
     }
 
     private static SocketAddress remoteAddress;
-    private static Hub hub;
+    private static ClientHub hub;
 
     public static void main(String[] args) {
 
@@ -100,15 +112,9 @@ public class Client extends Thread implements Connection.Delegate {
         remoteAddress = new InetSocketAddress(Server.HOST, Server.PORT);
 
         Client client = new Client();
-        hub = new ActiveStreamHub(client) {
 
-            @Override
-            protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-                Channel channel = new StreamChannel(remote, local);
-                channel.configureBlocking(false);
-                return channel;
-            }
-        };
+        hub = new ClientHub(client);
+
         client.start();
     }
 }

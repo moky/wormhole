@@ -35,7 +35,6 @@ import javafx.util.Pair;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -73,10 +72,7 @@ public abstract class BaseHub implements Hub, Ticker {
             // connection closed
             return false;
         }
-        ByteBuffer buffer = ByteBuffer.allocate(data.length);
-        buffer.put(data);
-        buffer.flip();
-        return conn.send(buffer, destination) != -1;
+        return conn.send(data, destination) != -1;
     }
 
     @Override
@@ -109,7 +105,7 @@ public abstract class BaseHub implements Hub, Ticker {
             if (conn == null) {
                 // create it
                 conn = createConnection(remote, local);
-                if (conn != null && createIndexesForConnection(conn, remote, local)) {
+                if (createIndexesForConnection(conn, remote, local)) {
                     // make sure different connection with same pair(remote, local) not exists
                     connectionSet.remove(conn);
                     // cache it
@@ -142,23 +138,22 @@ public abstract class BaseHub implements Hub, Ticker {
 
     @Override
     public void tick() {
-        // call 'tick()' to drive all connections
-        Set<Connection> candidates = new HashSet<>();
+        Set<Connection> connections = new HashSet<>();
         Lock readLock = connectionLock.readLock();
         readLock.lock();
         try {
-            for (Connection conn : connectionSet) {
-                conn.tick();
-                candidates.add(conn);
-            }
+            connections.addAll(connectionSet);
         } finally {
             readLock.unlock();
         }
-        // check closed connection(s)
+
         Pair<SocketAddress, SocketAddress> aPair;  // (remote, local)
         long now = (new Date()).getTime();
         Long expired;
-        for (Connection conn : candidates) {
+        for (Connection conn : connections) {
+            // call 'tick()' to drive all connections
+            conn.tick();
+            // check closed connection(s)
             aPair = buildPair(conn.getRemoteAddress(), conn.getLocalAddress());
             if (aPair == null) {
                 // should not happen

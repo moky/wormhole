@@ -76,12 +76,6 @@ public class BaseConnection implements Connection, StateDelegate {
         fsm = new StateMachine(this);
         fsm.setDelegate(this);
     }
-    public BaseConnection(Channel byteChannel) throws IOException {
-        this(byteChannel, byteChannel.getRemoteAddress(), byteChannel.getLocalAddress());
-    }
-    public BaseConnection(SocketAddress remote, SocketAddress local) {
-        this(null, remote, local);
-    }
 
     public Delegate getDelegate() {
         if (delegateRef == null) {
@@ -232,13 +226,16 @@ public class BaseConnection implements Connection, StateDelegate {
     }
 
     @Override
-    public int send(ByteBuffer src, SocketAddress target) throws IOException {
+    public int send(byte[] data, SocketAddress destination) throws IOException {
         Channel sock = getChannel();
         if (sock == null || !sock.isOpen()) {
             throw new SocketException("connection lost: " + sock);
         }
         try {
-            int sent = sock.send(src, target);
+            ByteBuffer buffer = ByteBuffer.allocate(data.length);
+            buffer.put(data);
+            buffer.flip();
+            int sent = sock.send(buffer, destination);
             if (sent != -1) {
                 lastSentTime = (new Date()).getTime();
             }

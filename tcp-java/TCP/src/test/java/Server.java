@@ -77,12 +77,11 @@ public class Server extends Thread implements Connection.Delegate {
     }
     static int counter = 0;
 
-    private boolean send(byte[] data, SocketAddress source, SocketAddress destination) {
+    private void send(byte[] data, SocketAddress source, SocketAddress destination) {
         try {
-            return hub.send(data, source, destination);
+            hub.send(data, source, destination);
         } catch (IOException e) {
             e.printStackTrace();
-            return false;
         }
     }
 

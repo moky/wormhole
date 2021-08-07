@@ -54,15 +54,15 @@ public abstract class StreamHub extends BaseHub {
 
     @Override
     protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
-        Channel sock = createChannel(remote, local);
-        BaseConnection connection = new BaseConnection(sock);
+        // create connection with channel
+        BaseConnection conn = new BaseConnection(createChannel(remote, local), remote, local);
         // set delegate
-        if (connection.getDelegate() == null) {
-            connection.setDelegate(getDelegate());
+        if (conn.getDelegate() == null) {
+            conn.setDelegate(getDelegate());
         }
         // start FSM
-        connection.start();
-        return connection;
+        conn.start();
+        return conn;
     }
 
     protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;

@@ -32,7 +32,6 @@ package chat.dim.net;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
 
 import chat.dim.threading.Ticker;
 
@@ -51,11 +50,11 @@ public interface Connection extends Ticker {
     /**
      *  Send data
      *
-     * @param src    - outgo buffer
-     * @param target - remote address; can be null when it's connected
+     * @param data        - outgo data
+     * @param destination - remote address; can be null when it's connected
      * @return count of bytes sent, probably zero when it's non-blocking mode
      */
-    int send(ByteBuffer src, SocketAddress target) throws IOException;
+    int send(byte[] data, SocketAddress destination) throws IOException;
 
     /**
      *  Close the connection

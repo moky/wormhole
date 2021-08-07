@@ -4,13 +4,10 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 
-import chat.dim.mtp.DataType;
-import chat.dim.mtp.Package;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.PackageConnection;
-import chat.dim.type.Data;
 import chat.dim.udp.ActivePackageHub;
 import chat.dim.udp.DiscreteChannel;
 
@@ -52,37 +49,34 @@ public class Client extends Thread implements Connection.Delegate {
                 + connection.getRemoteAddress() + ") state changed: "
                 + current + " -> " + next);
         if (next.equals(ConnectionState.EXPIRED)) {
-            assert connection instanceof PackageConnection : "connection error: " + connection;
-            ((PackageConnection) connection).heartbeat(connection.getRemoteAddress());
+            try {
+                heartbeat(connection);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
+    private void heartbeat(Connection connection) throws IOException {
+        assert connection instanceof PackageConnection : "connection error: " + connection;
+        ((PackageConnection) connection).heartbeat(connection.getRemoteAddress());
+    }
 
-    public void onDataReceived(byte[] data, SocketAddress source, SocketAddress destination) {
+    @Override
+    public void onConnectionReceivedData(Connection connection, SocketAddress remote, byte[] data) {
         String text = new String(data, StandardCharsets.UTF_8);
-        info("<<< received (" + data.length + " bytes) from " + source + " to " + destination + ": " + text);
+        info("<<< received (" + data.length + " bytes) from " + remote + ": " + text);
     }
 
-    private byte[] receive(SocketAddress source, SocketAddress destination) {
-        Package pack = null;
+    private void send(byte[] data, SocketAddress destination) {
         try {
-            pack = hub.receivePackage(source, destination);
+            hub.sendMessage(data, null, destination);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return pack == null ? null : pack.body.getBytes();
     }
-    private boolean send(byte[] data, SocketAddress source, SocketAddress destination) {
-        Package pack = Package.create(DataType.Message, new Data(data));
+    private void disconnect() {
         try {
-            return hub.sendPackage(pack, source, destination);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-    private void disconnect(SocketAddress remote, SocketAddress local) {
-        try {
-            hub.disconnect(remote, local);
+            hub.disconnect(remoteAddress, null);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -102,19 +96,15 @@ public class Client extends Thread implements Connection.Delegate {
             data = (index + " sheep:" + text).getBytes();
             info(">>> sending (" + data.length + " bytes): ");
             info(data);
-            send(data, null, remoteAddress);
+            send(data, remoteAddress);
             idle(2000);
-            data = receive(remoteAddress, null);
-            if (data != null) {
-                onDataReceived(data, remoteAddress, null);
-            }
         }
 
-        disconnect(remoteAddress, null);
+        disconnect();
     }
 
     private static SocketAddress remoteAddress;
-    private static ActivePackageHub hub;
+    private static ClientHub hub;
 
     public static void main(String[] args) {
 

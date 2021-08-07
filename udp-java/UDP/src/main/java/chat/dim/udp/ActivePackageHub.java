@@ -45,19 +45,20 @@ public abstract class ActivePackageHub extends PackageHub {
 
     @Override
     protected Connection createConnection(SocketAddress remote, SocketAddress local) {
-        ActivePackageConnection connection = new ActivePackageConnection(remote, local) {
+        // create connection with addresses
+        ActivePackageConnection conn = new ActivePackageConnection(remote, local) {
             @Override
             protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
                 return createChannel(remote, local);
             }
         };
         // set delegate
-        if (connection.getDelegate() == null) {
-            connection.setDelegate(getDelegate());
+        if (conn.getDelegate() == null) {
+            conn.setDelegate(getDelegate());
         }
         // start FSM
-        connection.start();
-        return connection;
+        conn.start();
+        return conn;
     }
 
     protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;

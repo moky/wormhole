@@ -187,6 +187,8 @@ public class StreamChannel implements Channel {
 
     @Override
     public int send(ByteBuffer src, SocketAddress target) throws IOException {
+        assert target == null || target.equals(impl.getRemoteAddress()) :
+                "target address error: " + target + ", " + impl.getRemoteAddress();
         return impl.write(src);
     }
 }

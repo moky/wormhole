@@ -103,7 +103,7 @@ public abstract class ActivePackageConnection extends PackageConnection {
     }
 
     @Override
-    public SocketAddress receive(ByteBuffer dst) throws IOException {
+    protected SocketAddress receive(ByteBuffer dst) throws IOException {
         SocketAddress remote = super.receive(dst);
         if (remote == null && channel == null && reconnect()) {
             // try again
@@ -113,11 +113,11 @@ public abstract class ActivePackageConnection extends PackageConnection {
     }
 
     @Override
-    public int send(ByteBuffer src, SocketAddress target) throws IOException {
-        int sent = super.send(src, target);
+    public int send(byte[] data, SocketAddress destination) throws IOException {
+        int sent = super.send(data, destination);
         if (sent == -1 && channel == null && reconnect()) {
             // try again
-            sent = super.send(src, target);
+            sent = super.send(data, destination);
         }
         return sent;
     }
