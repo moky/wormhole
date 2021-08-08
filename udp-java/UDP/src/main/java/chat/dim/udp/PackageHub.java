@@ -67,10 +67,17 @@ public abstract class PackageHub extends BaseHub {
 
     protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
 
-    public void sendMessage(byte[] payload, SocketAddress source, SocketAddress destination) throws IOException {
+    public void sendCommand(byte[] body, SocketAddress source, SocketAddress destination) throws IOException {
         Connection conn = connect(destination, source);
         if (conn instanceof PackageConnection) {
-            ((PackageConnection) conn).sendMessage(payload, source, destination);
+            ((PackageConnection) conn).sendCommand(body, source, destination);
+        }
+    }
+
+    public void sendMessage(byte[] body, SocketAddress source, SocketAddress destination) throws IOException {
+        Connection conn = connect(destination, source);
+        if (conn instanceof PackageConnection) {
+            ((PackageConnection) conn).sendMessage(body, source, destination);
         }
     }
 }

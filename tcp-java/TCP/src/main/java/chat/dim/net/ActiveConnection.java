@@ -121,4 +121,24 @@ public abstract class ActiveConnection extends BaseConnection {
         }
         return sent;
     }
+
+    @Override
+    public void enterState(ConnectionState state, StateMachine ctx) {
+        super.enterState(state, ctx);
+
+        if (state != null && state.equals(ConnectionState.EXPIRED)) {
+            try {
+                heartbeat();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     *  Send a heartbeat package to remote address
+     */
+    public void heartbeat() throws IOException {
+        // send 'PING'
+    }
 }

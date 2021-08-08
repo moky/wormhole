@@ -59,7 +59,7 @@ import chat.dim.type.MutableData;
 
 public abstract class Server extends Node {
 
-    public String software = "stun.dim.chat 0.1";
+    public final String software = "stun.dim.chat 0.1";
 
     /*  11.2.3  CHANGED-ADDRESS
      *
@@ -70,7 +70,7 @@ public abstract class Server extends Node {
      *        Response, independent of the value of the flags.  Its syntax is
      *        identical to MAPPED-ADDRESS.
      */
-    public InetSocketAddress changedAddress;
+    public final InetSocketAddress changedAddress;
 
     /*  "Change IP and Port"
      *
@@ -81,18 +81,21 @@ public abstract class Server extends Node {
      *        This address will be the same as CHANGED-ADDRESS by default, but
      *        offer another different IP address here will be better.
      */
-    public InetSocketAddress neighbour;
+    public final InetSocketAddress neighbour;
 
     /*  "Change Port"
      *
      *        When this server received CHANGE-REQUEST with "change port" flag set,
      *        it should respond the client with another port.
      */
-    public int changePort;
+    public final int changePort;
 
-    public Server(String host, int port, int changePort) {
+    public Server(String host, int port, int changePort,
+                  InetSocketAddress changedAddress, InetSocketAddress neighbour) {
         super(new InetSocketAddress(host, port));
         this.changePort = changePort;
+        this.changedAddress = changedAddress;
+        this.neighbour = neighbour;
     }
 
     /**
@@ -117,7 +120,7 @@ public abstract class Server extends Node {
         int remotePort = clientAddress.getPort();
         // local (server) address
         assert sourceAddress != null : "source address not set yet";
-        String localIP = sourceAddress.getHostName();
+        String localIP = sourceAddress.getAddress().getHostAddress();
         assert localPort > 0 : "local port error";
         // changed (another) address
         assert changedAddress != null : "changed address not set yet";

@@ -88,8 +88,9 @@ public interface Connection extends Ticker {
          *
          * @param connection - current connection
          * @param remote     - remote address
-         * @param data       - received data
+         * @param wrapper    - received data header
+         * @param payload    - received data body
          */
-        void onConnectionReceivedData(Connection connection, SocketAddress remote, byte[] data);
+        void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload);
     }
 }

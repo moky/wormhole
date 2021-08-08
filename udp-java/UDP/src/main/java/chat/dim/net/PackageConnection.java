@@ -84,21 +84,27 @@ public class PackageConnection extends BaseConnection {
         if (pack == null) {
             return;
         }
-        data = pack.body.getBytes();
         // callback
-        delegate.onConnectionReceivedData(this, remote, data);
+        delegate.onConnectionDataReceived(this, remote, pack.head, pack.body.getBytes());
     }
 
     /**
      *  Append the package into a waiting queue for sending out
      *
-     * @param payload     - message body
+     * @param body        - message body
      * @param source      - local address
      * @param destination - remote address
      * @throws IOException on error
      */
-    public void sendMessage(byte[] payload, SocketAddress source, SocketAddress destination) throws IOException {
-        Package pack = Package.create(DataType.MESSAGE, new Data(payload));
+    public void sendCommand(byte[] body, SocketAddress source, SocketAddress destination) throws IOException {
+        Package pack = Package.create(DataType.COMMAND, new Data(body));
+        // append as Departure task to waiting queue
+        departureHall.appendDeparture(pack, source, destination);
+        // send out tasks from waiting queue
+        processExpiredTasks();
+    }
+    public void sendMessage(byte[] body, SocketAddress source, SocketAddress destination) throws IOException {
+        Package pack = Package.create(DataType.MESSAGE, new Data(body));
         // append as Departure task to waiting queue
         departureHall.appendDeparture(pack, source, destination);
         // send out tasks from waiting queue
@@ -159,16 +165,14 @@ public class PackageConnection extends BaseConnection {
         // check data type in package header
         Header head = pack.head;
         DataType type = head.type;
+
         if (type.isCommandResponse()) {
             // process CommandResponse:
             //      'PONG'
             //      'OK'
             assert head.offset == 0 : "command offset error: " + head.offset;
             departureHall.deleteFragment(head.sn, head.offset);
-            if (body.equals(PONG)) {
-                // ignore
-                return null;
-            } else if (body.equals(OK)) {
+            if (body.equals(PONG) || body.equals(OK)) {
                 // ignore
                 return null;
             }
@@ -177,16 +181,13 @@ public class PackageConnection extends BaseConnection {
         } else if (type.isCommand()) {
             // process Command:
             //      'PING'
-            //      'NOOP'
+            //      '...'
             if (body.equals(PING)) {
                 // PING -> PONG
                 respondCommand(head.sn, PONG, remote);
                 return null;
-            } else if (body.equals(NOOP)) {
-                // NOOP -> OK
-                respondCommand(head.sn, OK, remote);
-                return null;
             }
+            respondCommand(head.sn, OK, remote);
             // Unknown Command?
             // let the caller to process it
         } else if (type.isMessageResponse()) {
@@ -199,47 +200,37 @@ public class PackageConnection extends BaseConnection {
             }
             departureHall.deleteFragment(head.sn, head.offset);
             if (body.equals(OK)) {
-                return null;
-            } else if (body.equals(PONG)) {
-                // this body should be in a Command
+                // ignore
                 return null;
             }
             // Unknown Message Response?
             // let the caller to process it
-        } else if (type.isMessageFragment()) {
-            // process MessageFragment:
-            //      'OK'
-            //      'AGAIN'
-            respondMessage(head.sn, head.pages, head.offset, remote);
-            // check cached fragments
-            pack = arrivalHall.insertFragment(pack, remote, destination);
         } else {
-            // process Message:
+            // process Message/Fragment:
             //      '...'
-            assert type.isMessage() : "data type error: " + type;
-            if (body.equals(PING) || body.equals(PONG) || body.equals(NOOP) || body.equals(OK)) {
-                // these bodies should be in a Command
-                // ignore them
-                return null;
+            respondMessage(head.sn, head.pages, head.offset, remote);
+            if (type.isFragment()) {
+                // check cached fragments
+                pack = arrivalHall.insertFragment(pack, remote, destination);
             }
-            respondMessage(head.sn, 1, 0, remote);
+            // let the caller to process the message
+        }
+
+        if (body.equals(NOOP)) {
+            // do nothing
+            return null;
+        }
+        if (body.equals(PING) || body.equals(PONG)) {
+            // FIXME: these bodies should be in a Command
+            // ignore them
+            return null;
         }
         return pack;
     }
 
-    /**
-     *  Send a heartbeat package to remote address
-     *
-     * @param destination - remote address
-     */
-    public void heartbeat(SocketAddress destination) throws IOException {
-        Package pack = Package.create(DataType.COMMAND, new Data(PING));
-        send(pack.getBytes(), destination);
-    }
-
-    private static final byte[] PING = {'P', 'I', 'N', 'G'};
-    private static final byte[] PONG = {'P', 'O', 'N', 'G'};
-    private static final byte[] NOOP = {'N', 'O', 'O', 'P'};
-    private static final byte[] OK = {'O', 'K'};
-    private static final byte[] AGAIN = {'A', 'G', 'A', 'I', 'N'};
+    static final byte[] PING = {'P', 'I', 'N', 'G'};
+    static final byte[] PONG = {'P', 'O', 'N', 'G'};
+    static final byte[] NOOP = {'N', 'O', 'O', 'P'};
+    static final byte[] OK = {'O', 'K'};
+    static final byte[] AGAIN = {'A', 'G', 'A', 'I', 'N'};
 }

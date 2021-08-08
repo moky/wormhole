@@ -36,6 +36,10 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import chat.dim.mtp.DataType;
+import chat.dim.mtp.Package;
+import chat.dim.type.Data;
+
 public abstract class ActivePackageConnection extends PackageConnection {
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
@@ -120,5 +124,26 @@ public abstract class ActivePackageConnection extends PackageConnection {
             sent = super.send(data, destination);
         }
         return sent;
+    }
+
+    @Override
+    public void enterState(ConnectionState state, StateMachine ctx) {
+        super.enterState(state, ctx);
+
+        if (state != null && state.equals(ConnectionState.EXPIRED)) {
+            try {
+                heartbeat();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     *  Send a heartbeat package to remote address
+     */
+    public void heartbeat() throws IOException {
+        Package pack = Package.create(DataType.COMMAND, new Data(PING));
+        send(pack.getBytes(), getRemoteAddress());
     }
 }

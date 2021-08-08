@@ -1,9 +1,8 @@
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.UnknownHostException;
+import java.net.SocketException;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
@@ -13,6 +12,7 @@ import java.util.Set;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
+import chat.dim.net.Hub;
 import chat.dim.tcp.StreamChannel;
 import chat.dim.tcp.StreamHub;
 
@@ -43,20 +43,13 @@ class ServerHub extends StreamHub {
     }
 }
 
-public class Server extends Thread implements Connection.Delegate {
+public class Server implements Runnable, Connection.Delegate {
 
-    static InetAddress HOST;
-    static int PORT = 9394;
+    private boolean running;
 
-    static {
-        try {
-            HOST = InetAddress.getLocalHost();
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-        }
+    public Server() {
+        running = false;
     }
-
-    private boolean running = false;
 
     @Override
     public void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next) {
@@ -67,11 +60,11 @@ public class Server extends Thread implements Connection.Delegate {
     }
 
     @Override
-    public void onConnectionReceivedData(Connection connection, SocketAddress remote, byte[] data) {
-        String text = new String(data, StandardCharsets.UTF_8);
-        Client.info("<<< received (" + data.length + " bytes) from " + remote + ": " + text);
-        text = (counter++) + "# " + data.length + " byte(s) received";
-        data = text.getBytes(StandardCharsets.UTF_8);
+    public void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload) {
+        String text = new String(payload, StandardCharsets.UTF_8);
+        Client.info("<<< received (" + payload.length + " bytes) from " + remote + ": " + text);
+        text = (counter++) + "# " + payload.length + " byte(s) received";
+        byte[] data = text.getBytes(StandardCharsets.UTF_8);
         Client.info(">>> responding: " + text);
         send(data, localAddress, remote);
     }
@@ -79,16 +72,11 @@ public class Server extends Thread implements Connection.Delegate {
 
     private void send(byte[] data, SocketAddress source, SocketAddress destination) {
         try {
-            hub.send(data, source, destination);
+            boolean ok = hub.send(data, source, destination);
+            assert ok;
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    @Override
-    public synchronized void start() {
-        running = true;
-        super.start();
     }
 
     @Override
@@ -96,6 +84,8 @@ public class Server extends Thread implements Connection.Delegate {
         SocketChannel channel;
         SocketAddress remote, local;
         Connection conn;
+
+        running = true;
         while (running) {
             try {
                 channel = master.accept();
@@ -136,6 +126,17 @@ public class Server extends Thread implements Connection.Delegate {
         }
     }
 
+    static String HOST;
+    static final int PORT = 9394;
+
+    static {
+        try {
+            HOST = Hub.getLocalAddressString();
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+    }
+
     static SocketAddress localAddress;
     static ServerSocketChannel master;
     static final Set<SocketChannel> slaves = new HashSet<>();
@@ -155,6 +156,6 @@ public class Server extends Thread implements Connection.Delegate {
 
         hub = new ServerHub(server);
 
-        server.start();
+        new Thread(server).start();
     }
 }

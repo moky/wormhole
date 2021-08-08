@@ -2,6 +2,7 @@
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.text.SimpleDateFormat;
@@ -12,6 +13,7 @@ import java.util.List;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
+import chat.dim.net.Hub;
 import chat.dim.net.PackageConnection;
 import chat.dim.type.Data;
 import chat.dim.udp.DiscreteChannel;
@@ -58,7 +60,7 @@ class ServerHub extends PackageHub {
     protected Connection createConnection(SocketAddress remote, SocketAddress local) {
         if (local instanceof InetSocketAddress) {
             int port = ((InetSocketAddress) local).getPort();
-            if (port == Server.SERVER_PORT) {
+            if (port == Server.PORT) {
                 if (primaryConnection == null) {
                     primaryConnection = createServerConnection(remote, local);
                 }
@@ -80,7 +82,7 @@ class ServerHub extends PackageHub {
     protected Channel createChannel(SocketAddress remote, SocketAddress local) {
         if (local instanceof InetSocketAddress) {
             int port = ((InetSocketAddress) local).getPort();
-            if (port == Server.SERVER_PORT) {
+            if (port == Server.PORT) {
                 return Server.primaryChannel;
             } else if (port == Server.CHANGE_PORT) {
                 return Server.secondaryChannel;
@@ -95,24 +97,12 @@ class ServerHub extends PackageHub {
 
 public class Server extends chat.dim.stun.Server implements Runnable, Connection.Delegate {
 
-    static final String SERVER_Test = "192.168.0.111"; // Test
-    static final String SERVER_GZ1 = "134.175.87.98"; // GZ-1
-    static final String SERVER_HK2 = "129.226.128.17"; // HK-2
+    private boolean running;
 
-    static final InetSocketAddress CHANGED_ADDRESS = new InetSocketAddress(SERVER_HK2, 3478);
-    static final InetSocketAddress NEIGHBOUR_SERVER = new InetSocketAddress(SERVER_HK2, 3478);
-
-    static final String SERVER_IP = SERVER_Test;
-    static final int SERVER_PORT = 3478;
-    static final int CHANGE_PORT = 3479;
-
-    private boolean running = false;
-
-    public final PackageHub hub;
-
-    public Server(String host, int port, int changePort) {
-        super(host, port, changePort);
-        hub = new ServerHub(this);
+    public Server(String host, int port, int changePort,
+                  InetSocketAddress changedAddress, InetSocketAddress neighbour) {
+        super(host, port, changePort, changedAddress, neighbour);
+        running = false;
     }
 
     @Override
@@ -132,9 +122,9 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
     }
 
     @Override
-    public void onConnectionReceivedData(Connection connection, SocketAddress remote, byte[] data) {
-        if (data != null && data.length > 0) {
-            chunks.add(data);
+    public void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload) {
+        if (payload != null && payload.length > 0) {
+            chunks.add(payload);
         }
     }
 
@@ -159,7 +149,7 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
     public byte[] receive() {
         byte[] data = null;
         long timeout = (new Date()).getTime() + 2000;
-        while (running) {
+        while (true) {
             if (chunks.size() == 0) {
                 // drive hub to receive data
                 hub.tick();
@@ -192,18 +182,37 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
         byte[] data;
         running = true;
         while (running) {
-            try {
-                data = receive();
-                if (data == null) {
-                    Client.idle(128);
-                    continue;
-                }
-                handle(new Data(data), (InetSocketAddress) remoteAddress);
-            } catch (Exception e) {
-                e.printStackTrace();
+            Client.idle(128);
+
+            data = receive();
+            if (data == null) {
+                continue;
             }
+            if (handle(new Data(data), (InetSocketAddress) remoteAddress)) {
+                continue;
+            }
+            break;
         }
     }
+
+    static String HOST;
+    static int PORT = 3478;
+
+    static {
+        try {
+            HOST = Hub.getLocalAddressString();
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+    }
+
+    static int CHANGE_PORT = 3479;
+
+    static final String SERVER_GZ1 = "134.175.87.98"; // GZ-1
+    static final String SERVER_HK2 = "129.226.128.17"; // HK-2
+
+    static final InetSocketAddress CHANGED_ADDRESS = new InetSocketAddress(SERVER_HK2, 3478);
+    static final InetSocketAddress NEIGHBOUR_SERVER = new InetSocketAddress(SERVER_HK2, 3478);
 
     static SocketAddress primaryAddress;
     static SocketAddress secondaryAddress;
@@ -212,10 +221,12 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
     static DiscreteChannel primaryChannel;
     static DiscreteChannel secondaryChannel;
 
+    static PackageHub hub;
+
     public static void main(String[] args) throws IOException {
 
-        primaryAddress = new InetSocketAddress(SERVER_IP, SERVER_PORT);
-        secondaryAddress = new InetSocketAddress(SERVER_IP, CHANGE_PORT);
+        primaryAddress = new InetSocketAddress(HOST, PORT);
+        secondaryAddress = new InetSocketAddress(HOST, CHANGE_PORT);
         remoteAddress = null;
 
         primaryChannel = new DiscreteChannel(DatagramChannel.open());
@@ -226,9 +237,10 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
         secondaryChannel.bind(secondaryAddress);
         secondaryChannel.configureBlocking(false);
 
-        Server server = new Server(SERVER_IP, SERVER_PORT, CHANGE_PORT);
-        server.changedAddress = CHANGED_ADDRESS;
-        server.neighbour = NEIGHBOUR_SERVER;
+        Server server = new Server(HOST, PORT, CHANGE_PORT, CHANGED_ADDRESS, NEIGHBOUR_SERVER);
+
+        hub = new ServerHub(server);
+
         new Thread(server).start();
     }
 }

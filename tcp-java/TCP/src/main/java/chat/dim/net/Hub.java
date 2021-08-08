@@ -55,7 +55,16 @@ package chat.dim.net;
  */
 
 import java.io.IOException;
+import java.net.DatagramSocket;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.SocketAddress;
+import java.net.SocketException;
+import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.Set;
 
 public interface Hub {
 
@@ -95,4 +104,52 @@ public interface Hub {
      * @param local  - local address
      */
     void disconnect(SocketAddress remote, SocketAddress local) throws IOException;
+
+    //
+    //  Local Address
+    //
+
+    static Set<NetworkInterface> getNetworkInterfaces() throws SocketException {
+        Set<NetworkInterface> interfaces = new HashSet<>();
+        Enumeration<NetworkInterface> e = NetworkInterface.getNetworkInterfaces();
+        while (e.hasMoreElements()) {
+            interfaces.add(e.nextElement());
+        }
+        return interfaces;
+    }
+    static Set<InetAddress> getInetAddresses(NetworkInterface ni) {
+        Set<InetAddress> addresses = new HashSet<>();
+        Enumeration<InetAddress> e = ni.getInetAddresses();
+        InetAddress ip;
+        while (e.hasMoreElements()) {
+            ip = e.nextElement();
+            if (ip instanceof Inet4Address && !ip.isLoopbackAddress()) {
+                addresses.add(ip);
+            }
+        }
+        return addresses;
+    }
+    static Set<InetAddress> getInetAddresses(Set<NetworkInterface> interfaces) {
+        Set<InetAddress> addresses = new HashSet<>();
+        for (NetworkInterface ni : interfaces) {
+            addresses.addAll(getInetAddresses(ni));
+        }
+        return addresses;
+    }
+
+    static InetAddress getLocalAddress() throws SocketException {
+        Set<InetAddress> addresses = getInetAddresses(getNetworkInterfaces());
+        if (addresses.size() > 0) {
+            return addresses.iterator().next();
+        }
+        try (DatagramSocket socket = new DatagramSocket()) {
+            SocketAddress remote = new InetSocketAddress("8.8.8.8", 8888);
+            socket.connect(remote);
+            return socket.getLocalAddress();
+        }
+    }
+    static String getLocalAddressString() throws SocketException {
+        InetAddress address = getLocalAddress();
+        return address == null ? null : address.getHostAddress();
+    }
 }

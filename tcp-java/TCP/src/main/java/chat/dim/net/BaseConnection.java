@@ -300,7 +300,7 @@ public class BaseConnection implements Connection, StateDelegate {
         buffer.flip();
         buffer.get(data);
         // callback
-        delegate.onConnectionReceivedData(this, remote, data);
+        delegate.onConnectionDataReceived(this, remote, null, data);
     }
 
     public void start() {

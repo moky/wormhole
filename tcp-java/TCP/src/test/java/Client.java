@@ -47,23 +47,12 @@ public class Client extends Thread implements Connection.Delegate {
                 + connection.getLocalAddress() + ", "
                 + connection.getRemoteAddress() + ") state changed: "
                 + current + " -> " + next);
-        if (next.equals(ConnectionState.EXPIRED)) {
-            try {
-                heartbeat(connection);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-    private void heartbeat(Connection connection) throws IOException {
-        byte[] data = {'P', 'I', 'N', 'G'};
-        hub.send(data, connection.getLocalAddress(), connection.getRemoteAddress());
     }
 
     @Override
-    public void onConnectionReceivedData(Connection connection, SocketAddress remote, byte[] data) {
-        String text = new String(data, StandardCharsets.UTF_8);
-        info("<<< received (" + data.length + " bytes) from " + remote + ": " + text);
+    public void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload) {
+        String text = new String(payload, StandardCharsets.UTF_8);
+        info("<<< received (" + payload.length + " bytes) from " + remote + ": " + text);
     }
 
     private void send(byte[] data, SocketAddress destination) {

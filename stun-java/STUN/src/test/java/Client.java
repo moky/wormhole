@@ -11,7 +11,6 @@ import java.util.Map;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
-import chat.dim.net.PackageConnection;
 import chat.dim.udp.ActivePackageHub;
 import chat.dim.udp.DiscreteChannel;
 
@@ -31,20 +30,8 @@ class ClientHub extends ActivePackageHub {
 
 public class Client extends chat.dim.stun.Client implements Connection.Delegate {
 
-    static final String CLIENT_IP = "192.168.0.111"; // Test
-    static final int CLIENT_PORT = 9527;
-
-    static SocketAddress SERVER_ADDRESS = new InetSocketAddress(Server.SERVER_IP, Server.SERVER_PORT);
-//    static SocketAddress SERVER_ADDRESS = new InetSocketAddress(Server.SERVER_GZ1, Server.SERVER_PORT);
-//    static SocketAddress SERVER_ADDRESS = new InetSocketAddress(Server.SERVER_HK2, Server.SERVER_PORT);
-
-    static SocketAddress CLIENT_ADDRESS = new InetSocketAddress(CLIENT_IP, CLIENT_PORT);
-
-    public final ActivePackageHub hub;
-
     public Client(String host, int port) {
         super(host, port);
-        hub = new ClientHub(this);
     }
 
     @Override
@@ -53,23 +40,12 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
                 + connection.getLocalAddress() + ", "
                 + connection.getRemoteAddress() + ") state changed: "
                 + current + " -> " + next);
-        if (next.equals(ConnectionState.EXPIRED)) {
-            try {
-                heartbeat(connection);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-    private void heartbeat(Connection connection) throws IOException {
-        assert connection instanceof PackageConnection : "connection error: " + connection;
-        ((PackageConnection) connection).heartbeat(connection.getRemoteAddress());
     }
 
     @Override
-    public void onConnectionReceivedData(Connection connection, SocketAddress remote, byte[] data) {
-        if (data != null && data.length > 0) {
-            chunks.add(data);
+    public void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload) {
+        if (payload != null && payload.length > 0) {
+            chunks.add(payload);
         }
     }
 
@@ -133,9 +109,19 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
         info("----------------------------------------------------------------");
     }
 
+    static final String CLIENT_IP = "192.168.0.111"; // Test
+    static final int CLIENT_PORT = 9527;
+
+    static SocketAddress SERVER_ADDRESS = new InetSocketAddress(Server.HOST, Server.PORT);
+
+    static ActivePackageHub hub;
+
     public static void main(String[] args) {
 
         Client client = new Client(CLIENT_IP, CLIENT_PORT);
+
+        hub = new ClientHub(client);
+
         client.detect(SERVER_ADDRESS);
 
         System.exit(0);

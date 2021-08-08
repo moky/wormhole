@@ -54,7 +54,13 @@ public class DepartureHall {
     private final ReadWriteLock departureLock = new ReentrantReadWriteLock();
 
     public void appendDeparture(Package pack, SocketAddress source, SocketAddress destination) {
-        List<Package> fragments = Packer.split(pack);
+        List<Package> fragments;
+        if (pack.isMessage()) {
+            fragments = Packer.split(pack);
+        } else {
+            fragments = new ArrayList<>();
+            fragments.add(pack);
+        }
         Departure task = new Departure(fragments, source, destination);
         Lock writeLock = departureLock.writeLock();
         writeLock.lock();

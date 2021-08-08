@@ -7,7 +7,6 @@ import java.nio.charset.StandardCharsets;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
-import chat.dim.net.PackageConnection;
 import chat.dim.udp.ActivePackageHub;
 import chat.dim.udp.DiscreteChannel;
 
@@ -48,27 +47,17 @@ public class Client extends Thread implements Connection.Delegate {
                 + connection.getLocalAddress() + ", "
                 + connection.getRemoteAddress() + ") state changed: "
                 + current + " -> " + next);
-        if (next.equals(ConnectionState.EXPIRED)) {
-            try {
-                heartbeat(connection);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-    private void heartbeat(Connection connection) throws IOException {
-        assert connection instanceof PackageConnection : "connection error: " + connection;
-        ((PackageConnection) connection).heartbeat(connection.getRemoteAddress());
     }
 
     @Override
-    public void onConnectionReceivedData(Connection connection, SocketAddress remote, byte[] data) {
-        String text = new String(data, StandardCharsets.UTF_8);
-        info("<<< received (" + data.length + " bytes) from " + remote + ": " + text);
+    public void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload) {
+        String text = new String(payload, StandardCharsets.UTF_8);
+        info("<<< received (" + payload.length + " bytes) from " + remote + ": " + text);
     }
 
     private void send(byte[] data, SocketAddress destination) {
         try {
+            hub.sendCommand(data, null, destination);
             hub.sendMessage(data, null, destination);
         } catch (IOException e) {
             e.printStackTrace();
