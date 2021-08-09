@@ -78,7 +78,7 @@ class Channel(ABC):
     #
 
     @abstractmethod
-    def bind(self, host: str, port: int):
+    def bind(self, address: Optional[tuple] = None, host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
         raise NotImplemented
 
     @property
@@ -95,7 +95,7 @@ class Channel(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connect(self, host: str, port: int):
+    def connect(self, address: Optional[tuple] = None, host: Optional[str] = '127.0.0.1', port: Optional[int] = 0):
         raise NotImplemented
 
     @property

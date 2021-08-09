@@ -73,16 +73,6 @@ class Connection(Ticker, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def receive(self, max_len: int) -> (bytes, tuple):
-        """
-        Receive data
-
-        :param max_len: capacity of the buffer for receiving data
-        :return: received data, and remote address
-        """
-        raise NotImplemented
-
-    @abstractmethod
     def close(self):
         raise NotImplemented
 
@@ -102,5 +92,17 @@ class Delegate(ABC):
         :param connection:    current connection
         :param current_state: current state
         :param next_state     new state
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload: bytes):
+        """
+        Call when connection received data
+
+        :param connection: current connection
+        :param remote:     remote address
+        :param wrapper:    received data header
+        :param payload:    received data body
         """
         raise NotImplemented

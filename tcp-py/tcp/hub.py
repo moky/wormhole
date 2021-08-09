@@ -50,11 +50,14 @@ class StreamHub(BaseHub):
         return self.__delegate()
 
     def create_connection(self, remote: tuple, local: Optional[tuple] = None) -> Connection:
+        # create connection with channel
         sock = self.create_channel(remote=remote, local=local)
-        conn = BaseConnection(channel=sock)
+        conn = BaseConnection(channel=sock, remote=remote, local=local)
+        # set delegate
         if conn.delegate is None:
             conn.delegate = self.delegate
-        conn.start()  # start FSM
+        # start FSM
+        conn.start()
         return conn
 
     @abstractmethod
@@ -66,10 +69,13 @@ class ActiveStreamHub(StreamHub, ABC):
     """ Active Stream Hub """
 
     def create_connection(self, remote: tuple, local: Optional[tuple] = None) -> Connection:
+        # create connection with addresses
         conn = ActiveStreamConnection(remote=remote, local=local, hub=self)
+        # set delegate
         if conn.delegate is None:
             conn.delegate = self.delegate
-        conn.start()  # start FSM
+        # start FSM
+        conn.start()
         return conn
 
 

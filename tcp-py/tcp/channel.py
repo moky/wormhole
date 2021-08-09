@@ -44,8 +44,8 @@ class StreamChannel(Channel):
             # StreamChannel(remote=remote, local=local, blocking=blocking, reuse=reuse),
             self.__blocking = blocking
             self.__reuse = reuse
-            self._sock = None
             # setup inner socket
+            self._sock = None
             sock = self.__setup()
             # bind to local address
             if local is not None:
@@ -75,6 +75,7 @@ class StreamChannel(Channel):
             self.__setup()
         else:
             sock.setblocking(blocking)
+        return sock
 
     @property
     def blocking(self) -> bool:
@@ -117,16 +118,18 @@ class StreamChannel(Channel):
             # assert isinstance(sock, socket.socket)
             return sock.getpeername()
 
-    def bind(self, host: str, port: int):
+    def bind(self, address: Optional[tuple] = None, host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
+        if address is None:
+            address = (host, port)
         sock = self.__setup()
         # assert isinstance(sock, socket.socket)
-        address = (host, port)
         sock.bind(address)
 
-    def connect(self, host: str, port: int):
+    def connect(self, address: Optional[tuple] = None, host: Optional[str] = '127.0.0.1', port: Optional[int] = 0):
+        if address is None:
+            address = (host, port)
         sock = self.__setup()
         # assert isinstance(sock, socket.socket)
-        address = (host, port)
         sock.connect(address)
 
     def disconnect(self):

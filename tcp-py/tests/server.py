@@ -13,9 +13,7 @@ rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
 from tcp import Channel, ConnectionDelegate, Connection
-from tcp import StreamHub, StreamChannel
-
-from tests.config import SERVER_HOST, SERVER_PORT
+from tcp import Hub, StreamHub, StreamChannel
 
 
 class ServerHub(StreamHub):
@@ -49,26 +47,19 @@ class Server(threading.Thread, ConnectionDelegate):
         self.info('!!! connection (%s, %s) state changed: %s -> %s'
                   % (connection.local_address, connection.remote_address, current_state, next_state))
 
-    def received_data(self, data: bytes, source: tuple, destination: tuple):
-        text = data.decode('utf-8')
-        self.info('<<< received (%d bytes) from %s to %s: %s'
-                  % (len(data), source, destination, text))
-        text = '%d# %d byte(s) received' % (self.counter, len(data))
+    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload: bytes):
+        text = payload.decode('utf-8')
+        self.info('<<< received (%d bytes) from %s: %s' % (len(payload), remote, text))
+        text = '%d# %d byte(s) received' % (self.counter, len(payload))
         self.counter += 1
         self.info('>>> responding: %s' % text)
         data = text.encode('utf-8')
-        self.__send(data=data, source=destination, destination=source)
+        self.__send(data=data, source=self.local_address, destination=remote)
 
     counter = 0
 
-    def __receive(self, source: tuple, destination: tuple) -> bytes:
-        try:
-            return self.hub.receive(source=source, destination=destination)
-        except socket.error as error:
-            print('Server error: %s' % error)
-
-    def __send(self, data: bytes, source: tuple, destination: tuple) -> bool:
-        return self.hub.send(data=data, source=source, destination=destination)
+    def __send(self, data: bytes, source: tuple, destination: tuple):
+        self.hub.send(data=data, source=source, destination=destination)
 
     def start(self):
         self.__running = True
@@ -76,27 +67,17 @@ class Server(threading.Thread, ConnectionDelegate):
 
     def run(self):
         while self.__running:
-            if not self.process():
-                time.sleep(2)
+            self.hub.tick()
+            self.__clean()
+            time.sleep(0.128)
 
-    def process(self) -> bool:
+    def __clean(self):
         sockets = set(self.slave_sockets)
-        count = 0
         dying = set()
         # receive data
         for sock in sockets:
             if getattr(sock, '_closed', False):
                 dying.add(sock)
-                continue
-            try:
-                remote = sock.getpeername()
-            except socket.error as error:
-                print('failed to get remote address: %s' % error)
-                continue
-            data = self.__receive(source=remote, destination=self.local_address)
-            if data is not None and len(data) > 0:
-                self.received_data(data=data, source=remote, destination=self.local_address)
-                count += 1
         # check closed channels
         if len(dying) > 0:
             self.info('%d channel(s) dying' % len(dying))
@@ -104,7 +85,10 @@ class Server(threading.Thread, ConnectionDelegate):
             self.slave_sockets.discard(sock)
         if len(self.slave_sockets) > 0:
             self.info('%d channel(s) alive' % len(self.slave_sockets))
-        return count > 0
+
+
+SERVER_HOST = Hub.inet_address()
+SERVER_PORT = 9394
 
 
 if __name__ == '__main__':
@@ -128,6 +112,7 @@ if __name__ == '__main__':
     g_server.start()
 
     while True:
-        remote_socket, _ = g_sock.accept()
+        remote_socket, remote_address = g_sock.accept()
         if remote_socket is not None:
             Server.slave_sockets.add(remote_socket)
+            Server.hub.connect(remote=remote_address)

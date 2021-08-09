@@ -29,6 +29,7 @@
 # ==============================================================================
 
 import weakref
+from abc import ABC
 
 from ..fsm import Context, BaseTransition, BaseState, BaseMachine
 
@@ -65,7 +66,36 @@ from .connection import Connection
 """
 
 
-class ConnectionState(BaseState):
+class StateMachine(BaseMachine, Context):
+
+    def __init__(self, connection: Connection):
+        super().__init__(default=ConnectionState.DEFAULT)
+        self.__connection = weakref.ref(connection)
+        # init states
+        self.__set_state(state=get_default_state())
+        self.__set_state(state=get_connecting_state())
+        self.__set_state(state=get_connected_state())
+        self.__set_state(state=get_expired_state())
+        self.__set_state(state=get_maintaining_state())
+        self.__set_state(state=get_error_state())
+
+    def __set_state(self, state):
+        self.add_state(name=state.name, state=state)
+
+    @property
+    def context(self) -> Context:
+        return self
+
+    @property
+    def connection(self) -> Connection:
+        return self.__connection()
+
+
+class StateTransition(BaseTransition[StateMachine], ABC):
+    pass
+
+
+class ConnectionState(BaseState[StateMachine, StateTransition]):
     """
         Connection State
         ~~~~~~~~~~~~~~~~
@@ -121,101 +151,30 @@ class ConnectionState(BaseState):
         else:
             return True
 
-    def on_enter(self, ctx):
+    def on_enter(self, ctx: StateMachine):
         pass
 
-    def on_exit(self, ctx):
+    def on_exit(self, ctx: StateMachine):
         pass
 
-    def on_pause(self, ctx):
+    def on_pause(self, ctx: StateMachine):
         pass
 
-    def on_resume(self, ctx):
+    def on_resume(self, ctx: StateMachine):
         pass
-
-
-class StateMachine(BaseMachine, Context):
-
-    def __init__(self, connection: Connection):
-        super().__init__(default=ConnectionState.DEFAULT)
-        self.__connection = weakref.ref(connection)
-        # init states
-        self.__set_state(state=self.__default_state())
-        self.__set_state(state=self.__connecting_state())
-        self.__set_state(state=self.__connected_state())
-        self.__set_state(state=self.__expired_state())
-        self.__set_state(state=self.__maintaining_state())
-        self.__set_state(state=self.__error_state())
-
-    def __set_state(self, state: ConnectionState):
-        self.add_state(name=state.name, state=state)
-
-    @property
-    def context(self) -> Context:
-        return self
-
-    @property
-    def connection(self) -> Connection:
-        return self.__connection()
-
-    #
-    #   States
-    #
-
-    @classmethod
-    def __default_state(cls) -> ConnectionState:
-        """ Connection not started yet """
-        state = ConnectionState(name=ConnectionState.DEFAULT)
-        state.add_transition(transition=DefaultConnectingTransition(target=ConnectionState.CONNECTING))
-        return state
-
-    @classmethod
-    def __connecting_state(cls) -> ConnectionState:
-        """ Connection started, not connected yet """
-        state = ConnectionState(name=ConnectionState.CONNECTING)
-        state.add_transition(transition=ConnectingConnectedTransition(target=ConnectionState.CONNECTED))
-        state.add_transition(transition=ConnectingDefaultTransition(target=ConnectionState.DEFAULT))
-        return state
-
-    @classmethod
-    def __connected_state(cls) -> ConnectionState:
-        """ Normal state of connection """
-        state = ConnectionState(name=ConnectionState.CONNECTED)
-        state.add_transition(transition=ConnectedExpiredTransition(target=ConnectionState.EXPIRED))
-        state.add_transition(transition=ConnectedErrorTransition(target=ConnectionState.ERROR))
-        return state
-
-    @classmethod
-    def __expired_state(cls) -> ConnectionState:
-        """ Long time no response, need maintaining """
-        state = ConnectionState(name=ConnectionState.EXPIRED)
-        state.add_transition(transition=ExpiredMaintainingTransition(target=ConnectionState.MAINTAINING))
-        state.add_transition(transition=ExpiredErrorTransition(target=ConnectionState.ERROR))
-        return state
-
-    @classmethod
-    def __maintaining_state(cls) -> ConnectionState:
-        """ Heartbeat sent, waiting response """
-        state = ConnectionState(name=ConnectionState.MAINTAINING)
-        state.add_transition(transition=MaintainingConnectedTransition(target=ConnectionState.CONNECTED))
-        state.add_transition(transition=MaintainingExpiredTransition(target=ConnectionState.EXPIRED))
-        state.add_transition(transition=MaintainingErrorTransition(target=ConnectionState.ERROR))
-        return state
-
-    @classmethod
-    def __error_state(cls) -> ConnectionState:
-        """ Connection lost """
-        state = ConnectionState(name=ConnectionState.ERROR)
-        state.add_transition(transition=ErrorDefaultTransition(target=ConnectionState.DEFAULT))
-        return state
 
 
 #
-#   Transitions
+#   Default State
 #
+def get_default_state() -> ConnectionState:
+    """ Connection not started yet """
+    state = ConnectionState(name=ConnectionState.DEFAULT)
+    state.add_transition(transition=DefaultConnectingTransition(target=ConnectionState.CONNECTING))
+    return state
 
 
-class DefaultConnectingTransition(BaseTransition):
+class DefaultConnectingTransition(StateTransition):
     """ Default -> Connecting """
 
     def evaluate(self, ctx: StateMachine) -> bool:
@@ -224,7 +183,18 @@ class DefaultConnectingTransition(BaseTransition):
         return conn is not None and conn.opened
 
 
-class ConnectingConnectedTransition(BaseTransition):
+#
+#   Connecting State
+#
+def get_connecting_state() -> ConnectionState:
+    """ Connection started, not connected yet """
+    state = ConnectionState(name=ConnectionState.CONNECTING)
+    state.add_transition(transition=ConnectingConnectedTransition(target=ConnectionState.CONNECTED))
+    state.add_transition(transition=ConnectingDefaultTransition(target=ConnectionState.DEFAULT))
+    return state
+
+
+class ConnectingConnectedTransition(StateTransition):
     """ Connecting -> Connected """
 
     def evaluate(self, ctx: StateMachine) -> bool:
@@ -233,7 +203,7 @@ class ConnectingConnectedTransition(BaseTransition):
         return conn is not None and conn.opened and conn.connected
 
 
-class ConnectingDefaultTransition(BaseTransition):
+class ConnectingDefaultTransition(StateTransition):
     """ Connecting -> Default """
 
     def evaluate(self, ctx: StateMachine) -> bool:
@@ -242,7 +212,18 @@ class ConnectingDefaultTransition(BaseTransition):
         return conn is None or not conn.opened
 
 
-class ConnectedExpiredTransition(BaseTransition):
+#
+#   Connected State
+#
+def get_connected_state() -> ConnectionState:
+    """ Normal state of connection """
+    state = ConnectionState(name=ConnectionState.CONNECTED)
+    state.add_transition(transition=ConnectedExpiredTransition(target=ConnectionState.EXPIRED))
+    state.add_transition(transition=ConnectedErrorTransition(target=ConnectionState.ERROR))
+    return state
+
+
+class ConnectedExpiredTransition(StateTransition):
     """ Connected -> Expired """
 
     def evaluate(self, ctx: StateMachine) -> bool:
@@ -254,7 +235,7 @@ class ConnectedExpiredTransition(BaseTransition):
         return conn is not None and conn.opened and conn.connected and not conn.received_recently
 
 
-class ConnectedErrorTransition(BaseTransition):
+class ConnectedErrorTransition(StateTransition):
     """ Connected -> Error """
 
     def evaluate(self, ctx: StateMachine) -> bool:
@@ -263,7 +244,18 @@ class ConnectedErrorTransition(BaseTransition):
         return conn is None or not conn.opened
 
 
-class ExpiredMaintainingTransition(BaseTransition):
+#
+#   Expired State
+#
+def get_expired_state() -> ConnectionState:
+    """ Long time no response, need maintaining """
+    state = ConnectionState(name=ConnectionState.EXPIRED)
+    state.add_transition(transition=ExpiredMaintainingTransition(target=ConnectionState.MAINTAINING))
+    state.add_transition(transition=ExpiredErrorTransition(target=ConnectionState.ERROR))
+    return state
+
+
+class ExpiredMaintainingTransition(StateTransition):
     """ Expired -> Maintaining """
 
     def evaluate(self, ctx: StateMachine) -> bool:
@@ -275,7 +267,7 @@ class ExpiredMaintainingTransition(BaseTransition):
         return conn is not None and conn.opened and conn.connected and conn.sent_recently
 
 
-class ExpiredErrorTransition(BaseTransition):
+class ExpiredErrorTransition(StateTransition):
     """ Expired -> Error """
 
     def evaluate(self, ctx: StateMachine) -> bool:
@@ -284,7 +276,19 @@ class ExpiredErrorTransition(BaseTransition):
         return conn is None or not conn.opened
 
 
-class MaintainingConnectedTransition(BaseTransition):
+#
+#   Maintaining State
+#
+def get_maintaining_state() -> ConnectionState:
+    """ Heartbeat sent, waiting response """
+    state = ConnectionState(name=ConnectionState.MAINTAINING)
+    state.add_transition(transition=MaintainingConnectedTransition(target=ConnectionState.CONNECTED))
+    state.add_transition(transition=MaintainingExpiredTransition(target=ConnectionState.EXPIRED))
+    state.add_transition(transition=MaintainingErrorTransition(target=ConnectionState.ERROR))
+    return state
+
+
+class MaintainingConnectedTransition(StateTransition):
     """ Maintaining -> Connected """
 
     def evaluate(self, ctx: StateMachine) -> bool:
@@ -296,7 +300,7 @@ class MaintainingConnectedTransition(BaseTransition):
         return conn is not None and conn.opened and conn.connected and conn.received_recently
 
 
-class MaintainingExpiredTransition(BaseTransition):
+class MaintainingExpiredTransition(StateTransition):
     """ Maintaining -> Expired """
 
     def evaluate(self, ctx: StateMachine) -> bool:
@@ -308,7 +312,7 @@ class MaintainingExpiredTransition(BaseTransition):
         return conn is not None and conn.opened and conn.connected and not conn.sent_recently
 
 
-class MaintainingErrorTransition(BaseTransition):
+class MaintainingErrorTransition(StateTransition):
     """ Maintaining -> Error """
 
     def evaluate(self, ctx: StateMachine) -> bool:
@@ -320,7 +324,17 @@ class MaintainingErrorTransition(BaseTransition):
         return conn is None or not conn.opened or conn.long_time_not_received
 
 
-class ErrorDefaultTransition(BaseTransition):
+#
+#   Error State
+#
+def get_error_state() -> ConnectionState:
+    """ Connection lost """
+    state = ConnectionState(name=ConnectionState.ERROR)
+    state.add_transition(transition=ErrorDefaultTransition(target=ConnectionState.DEFAULT))
+    return state
+
+
+class ErrorDefaultTransition(StateTransition):
     """ Error -> Default """
 
     def evaluate(self, ctx: StateMachine) -> bool:

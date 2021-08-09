@@ -42,18 +42,6 @@ from .hub import Hub
 
 class BaseHub(Hub, Ticker):
 
-    """
-        Maximum Segment Size
-        ~~~~~~~~~~~~~~~~~~~~
-        Buffer size for receiving package
-
-        MTU        : 1500 bytes (excludes 14 bytes ethernet header & 4 bytes FCS)
-        IP header  :   20 bytes
-        TCP header :   20 bytes
-        UDP header :    8 bytes
-    """
-    MSS = 1472  # 1500 - 20 - 8
-
     DYING_EXPIRES = 120  # kill connection after 2 minutes
 
     def __init__(self):
@@ -69,9 +57,77 @@ class BaseHub(Hub, Ticker):
         # mapping: (remote, local) => time to kill
         self.__dying_times: Dict[tuple, int] = {}
 
+    def send(self, data: bytes, source: Optional[tuple], destination: tuple) -> bool:
+        conn = self.connect(remote=destination, local=source)
+        if conn is None or not conn.opened:
+            # connection closed
+            return False
+        return conn.send(data=data, target=destination) != -1
+
+    def get_connection(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
+        with self.__lock:
+            return self.__seek(remote=remote, local=local)
+
+    def connect(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
+        # 1. try to get connection from cache pool
+        conn = self.get_connection(remote=remote, local=local)
+        if conn is not None:
+            return conn
+        # 2. connection not found, try to create connection
+        with self.__lock:
+            # double check to make sure the connection doesn't exist
+            conn = self.__seek(remote=remote, local=local)
+            if conn is None:
+                # create it
+                conn = self.create_connection(remote=remote, local=local)
+                if self.__create_indexes(connection=conn, remote=remote, local=local):
+                    # make sure different connection with same pair(remote, local) not exists
+                    self.__connections.discard(conn)
+                    # cache it
+                    self.__connections.add(conn)
+        return conn
+
     @abstractmethod
     def create_connection(self, remote: tuple, local: Optional[tuple] = None) -> Connection:
         raise NotImplemented
+
+    def disconnect(self, remote: tuple, local: Optional[tuple] = None):
+        with self.__lock:
+            conn = self.__seek(remote=remote, local=local)
+        if conn is not None:
+            self.__remove(connection=conn)
+            conn.close()
+
+    def tick(self):
+        # call 'tick()' to drive all connections
+        connections = set()
+        with self.__lock:
+            for conn in self.__connections:
+                connections.add(conn)
+        # check closed connection(s)
+        now = int(time.time())
+        for conn in connections:
+            # call 'tick()' to drive all connections
+            conn.tick()
+            # check closed connection(s)
+            pair = build_pair(remote=conn.remote_address, local=conn.local_address)
+            if pair is None:
+                # should not happen
+                self.__remove(connection=conn)
+            elif conn.opened:
+                # connection still alive, revive it
+                self.__dying_times.pop(pair, None)
+            else:
+                # connection is closed, check dying time
+                expired = self.__dying_times.get(pair)
+                if expired is None or expired == 0:
+                    # set death clock
+                    self.__dying_times[pair] = now + self.DYING_EXPIRES
+                elif expired < now:
+                    # times up, kill it
+                    self.__remove(connection=conn)
+                    # clear the death clock for it
+                    self.__dying_times.pop(pair, None)
 
     def __seek(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
         if remote is None:
@@ -161,89 +217,17 @@ class BaseHub(Hub, Ticker):
             self.__remove_indexes(connection=connection)
             self.__connections.discard(connection)
 
-    #
-    #   Hub
-    #
 
-    def send(self, data: bytes, source: Optional[tuple], destination: tuple) -> bool:
-        conn = self.connect(remote=destination, local=source)
-        if conn is None or not conn.opened:
-            # connection closed
-            return False
-        return conn.send(data=data, target=destination) != -1
-
-    def receive(self, source: Optional[tuple], destination: Optional[tuple]) -> Optional[bytes]:
-        conn = self.connect(remote=source, local=destination)
-        if conn is None or not conn.opened:
-            # connection closed
+def build_pair(remote, local) -> Optional[tuple]:
+    if remote is None:
+        if local is None:
+            # raise ValueError('both local & remote addresses are empty')
             return None
-        data, _ = conn.receive(max_len=self.MSS)
-        return data
-
-    def get_connection(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
-        with self.__lock:
-            return self.__seek(remote=remote, local=local)
-
-    def connect(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
-        # 1. try to get connection from cache pool
-        conn = self.get_connection(remote=remote, local=local)
-        if conn is not None:
-            return conn
-        # 2. connection not found, try to create connection
-        with self.__lock:
-            # double check to make sure the connection doesn't exist
-            conn = self.__seek(remote=remote, local=local)
-            if conn is None:
-                # create it
-                conn = self.create_connection(remote=remote, local=local)
-                if conn is not None and self.__create_indexes(connection=conn, remote=remote, local=local):
-                    # make sure different connection with same pair(remote, local) not exists
-                    self.__connections.discard(conn)
-                    # cache it
-                    self.__connections.add(conn)
-
-    def disconnect(self, remote: tuple, local: Optional[tuple] = None):
-        with self.__lock:
-            conn = self.__seek(remote=remote, local=local)
-        if conn is not None:
-            self.__remove(connection=conn)
-            conn.close()
-
-    #
-    #   Ticker
-    #
-
-    def tick(self):
-        # call 'tick()' to drive all connections
-        candidates = set()
-        with self.__lock:
-            for conn in self.__connections:
-                conn.tick()
-                candidates.add(conn)
-        # check closed connection(s)
-        now = int(time.time())
-        for conn in candidates:
-            remote = conn.remote_address
-            local = conn.local_address
-            if remote is None and local is None:
-                # should not happen
-                self.__remove(connection=conn)
-                continue
-            pair = (remote, local)
-            if conn.opened:
-                # connection still alive, revive it
-                self.__dying_times.pop(pair, None)
-            else:
-                # connection is closed, check dying time
-                expired = self.__dying_times.get(pair)
-                if expired is None or expired == 0:
-                    # set death clock
-                    self.__dying_times[pair] = now + self.DYING_EXPIRES
-                elif expired < now:
-                    # times up, kill it
-                    self.__remove(connection=conn)
-                    # clear the death clock for it
-                    self.__dying_times.pop(pair, None)
+        return ANY_REMOTE_ADDRESS, local
+    elif local is None:
+        return remote, ANY_LOCAL_ADDRESS
+    else:
+        return remote, local
 
 
 ANY_LOCAL_ADDRESS = ('0.0.0.0', 0)

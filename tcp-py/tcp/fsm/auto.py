@@ -31,8 +31,9 @@
 import time
 from abc import ABC, abstractmethod
 from threading import Thread
-from typing import Optional
+from typing import Optional, Generic
 
+from .machine import S, C, U, T
 from .base import BaseMachine
 
 
@@ -43,7 +44,7 @@ class Runnable(ABC):
         raise NotImplemented
 
 
-class AutoMachine(BaseMachine, Runnable, ABC):
+class AutoMachine(BaseMachine, Runnable, ABC, Generic[C, T, S]):
 
     def __init__(self, default: str):
         super().__init__(default=default)

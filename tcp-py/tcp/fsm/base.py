@@ -30,12 +30,13 @@
 
 import weakref
 from abc import ABC
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Generic
 
-from .machine import Context, Transition, State, Machine, Status, Delegate
+from .machine import S, C, U, T
+from .machine import Transition, State, Machine, Status, Delegate
 
 
-class BaseTransition(Transition, ABC):
+class BaseTransition(Transition, ABC, Generic[C]):
     """ Transition with the name of target state """
 
     def __init__(self, target: str):
@@ -47,75 +48,75 @@ class BaseTransition(Transition, ABC):
         return self.__target
 
 
-class BaseState(State, ABC):
+class BaseState(State, ABC, Generic[C, T]):
     """ State with transitions """
 
     def __init__(self):
         super().__init__()
-        self.__transitions: List[Transition] = []
+        self.__transitions: List[T] = []
 
-    def add_transition(self, transition: Transition):
+    def add_transition(self, transition: T):
         assert transition not in self.__transitions, 'transition exists'
         self.__transitions.append(transition)
 
-    def evaluate(self, ctx: Context) -> Transition:
+    def evaluate(self, ctx: C) -> T:
         for trans in self.__transitions:
             if trans.evaluate(ctx):
                 # OK, get target state from this transition
                 return trans
 
 
-class BaseMachine(Machine):
+class BaseMachine(Machine, Generic[C, T, S]):
 
     def __init__(self, default: str):
         super().__init__()
         self.__default = default
-        self.__current: Optional[State] = None
-        self.__states: Dict[str, State] = {}
+        self.__current: Optional[S] = None
+        self.__states: Dict[str, S] = {}   # name(str) => State
         self.__delegate: Optional[weakref.ReferenceType] = None
         self.__status: Status = Status.STOPPED
 
     @property
-    def delegate(self) -> Delegate:
+    def delegate(self) -> Delegate[C, T, S]:
         if self.__delegate is not None:
             return self.__delegate()
 
     @delegate.setter
-    def delegate(self, handler: Delegate):
+    def delegate(self, handler: Delegate[C, T, S]):
         if handler is None:
             self.__delegate = None
         else:
             self.__delegate = weakref.ref(handler)
 
     @property
-    def context(self) -> Context:
+    def context(self) -> C:
         raise NotImplemented
 
     #
     #   States
     #
-    def add_state(self, name: str, state: State):
+    def add_state(self, name: str, state: S):
         self.__states[name] = state
 
-    def get_state(self, name: str) -> State:
+    def get_state(self, name: str) -> S:
         return self.__states.get(name)
 
     @property
-    def default_state(self) -> State:
+    def default_state(self) -> S:
         return self.__states.get(self.__default)
 
     @property
-    def current_state(self) -> State:
+    def current_state(self) -> S:
         return self.__current
 
     @current_state.setter
-    def current_state(self, state: State):
+    def current_state(self, state: S):
         self.__current = state
 
-    def target_state(self, transition: BaseTransition) -> State:
+    def target_state(self, transition: BaseTransition[C]) -> S:
         return self.__states.get(transition.target)
 
-    def change_state(self, state: Optional[State]):
+    def change_state(self, state: Optional[S]):
         machine = self.context
         current = self.current_state
         delegate = self.delegate

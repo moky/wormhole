@@ -30,7 +30,12 @@
 
 from abc import ABC, abstractmethod
 from enum import IntEnum
-from typing import Optional
+from typing import Optional, TypeVar, Generic
+
+S = TypeVar('S')  # State
+C = TypeVar('C')  # Context
+U = TypeVar('U')
+T = TypeVar('T')  # Transition
 
 
 class Context(ABC):
@@ -38,11 +43,11 @@ class Context(ABC):
     pass
 
 
-class Transition:
+class Transition(ABC, Generic[C]):
     """ State Transition """
 
     @abstractmethod
-    def evaluate(self, ctx: Context) -> bool:
+    def evaluate(self, ctx: C) -> bool:
         """
         Evaluate the current state
 
@@ -52,11 +57,11 @@ class Transition:
         raise NotImplemented
 
 
-class State:
+class State(ABC, Generic[C, T]):
     """ Finite State """
 
     @abstractmethod
-    def on_enter(self, ctx: Context):
+    def on_enter(self, ctx: C):
         """
         Called after entered
 
@@ -65,7 +70,7 @@ class State:
         raise NotImplemented
 
     @abstractmethod
-    def on_exit(self, ctx: Context):
+    def on_exit(self, ctx: C):
         """
         Called after exited
 
@@ -74,7 +79,7 @@ class State:
         raise NotImplemented
 
     @abstractmethod
-    def on_pause(self, ctx: Context):
+    def on_pause(self, ctx: C):
         """
         Called after paused
 
@@ -83,7 +88,7 @@ class State:
         raise NotImplemented
 
     @abstractmethod
-    def on_resume(self, ctx: Context):
+    def on_resume(self, ctx: C):
         """
         Called after resumed
 
@@ -92,7 +97,7 @@ class State:
         raise NotImplemented
 
     @abstractmethod
-    def evaluate(self, ctx: Context) -> Transition:
+    def evaluate(self, ctx: C) -> T:
         """
         Called by machine.tick() to evaluate each transitions
 
@@ -102,11 +107,11 @@ class State:
         raise NotImplemented
 
 
-class Delegate:
+class Delegate(ABC, Generic[C, T, S]):
     """ State Machine Delegate """
 
     @abstractmethod
-    def enter_state(self, state: State, ctx: Context):
+    def enter_state(self, state: S, ctx: C):
         """
         Called before enter this state
 
@@ -116,7 +121,7 @@ class Delegate:
         raise NotImplemented
 
     @abstractmethod
-    def exit_state(self, state: State, ctx: Context):
+    def exit_state(self, state: S, ctx: C):
         """
         Called before exit this state
 
@@ -126,7 +131,7 @@ class Delegate:
         raise NotImplemented
 
     @abstractmethod
-    def pause_state(self, state: State, ctx: Context):
+    def pause_state(self, state: S, ctx: C):
         """
         Called before pause this state
 
@@ -136,7 +141,7 @@ class Delegate:
         raise NotImplemented
 
     @abstractmethod
-    def resume_state(self, state: State, ctx: Context):
+    def resume_state(self, state: S, ctx: C):
         """
         Called before resume this state
 
@@ -154,23 +159,23 @@ class Ticker(ABC):
         raise NotImplemented
 
 
-class Machine(Ticker, ABC):
+class Machine(Ticker, ABC, Generic[C, T, S]):
     """ State Machine """
 
     @property
-    def default_state(self) -> State:
+    def default_state(self) -> S:
         raise NotImplemented
 
     @property
-    def current_state(self) -> State:
+    def current_state(self) -> S:
         raise NotImplemented
 
     @current_state.setter
-    def current_state(self, state: State):
+    def current_state(self, state: S):
         raise NotImplemented
 
     @abstractmethod
-    def target_state(self, transition: Transition) -> State:
+    def target_state(self, transition: T) -> S:
         """
         Get target state of this transition
 
@@ -180,7 +185,7 @@ class Machine(Ticker, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def change_state(self, state: Optional[State]):
+    def change_state(self, state: Optional[S]):
         """
         Exit current state, and enter new state
 
