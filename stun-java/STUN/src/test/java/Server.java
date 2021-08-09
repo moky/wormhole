@@ -6,9 +6,7 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
@@ -114,59 +112,6 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
     }
 
     @Override
-    public void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next) {
-        info("!!! connection ("
-                + connection.getLocalAddress() + ", "
-                + connection.getRemoteAddress() + ") state changed: "
-                + current + " -> " + next);
-    }
-
-    @Override
-    public void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload) {
-        if (payload != null && payload.length > 0) {
-            chunks.add(payload);
-        }
-    }
-
-    private final List<byte[]> chunks = new ArrayList<>();
-
-    @Override
-    public int send(byte[] data, SocketAddress source, SocketAddress destination) {
-        try {
-            hub.sendMessage(data, source, destination);
-            return 0;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return -1;
-        }
-    }
-
-    /**
-     *  Received data from any socket
-     *
-     * @return data and remote address
-     */
-    public byte[] receive() {
-        byte[] data = null;
-        long timeout = (new Date()).getTime() + 2000;
-        while (true) {
-            if (chunks.size() == 0) {
-                // drive hub to receive data
-                hub.tick();
-            }
-            if (chunks.size() > 0) {
-                data = chunks.remove(0);
-                break;
-            }
-            if (timeout < (new Date()).getTime()) {
-                break;
-            }
-            Client.idle(128);
-        }
-        return data;
-    }
-
-    @Override
     public void run() {
         try {
             hub.connect(null, primaryAddress);
@@ -179,19 +124,36 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
         info("source address: " + sourceAddress + ", another port: " + changePort + ", neighbour server: " + neighbour);
         info("changed address: " + changedAddress);
 
-        byte[] data;
         running = true;
         while (running) {
+            hub.tick();
             Client.idle(128);
+        }
+    }
 
-            data = receive();
-            if (data == null) {
-                continue;
-            }
-            if (handle(new Data(data), (InetSocketAddress) remoteAddress)) {
-                continue;
-            }
-            break;
+    @Override
+    public void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next) {
+        info("!!! connection ("
+                + connection.getLocalAddress() + ", "
+                + connection.getRemoteAddress() + ") state changed: "
+                + current + " -> " + next);
+    }
+
+    @Override
+    public void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload) {
+        if (payload != null && payload.length > 0) {
+            handle(new Data(payload), (InetSocketAddress) remote);
+        }
+    }
+
+    @Override
+    public int send(byte[] data, SocketAddress source, SocketAddress destination) {
+        try {
+            hub.sendMessage(data, source, destination);
+            return 0;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return -1;
         }
     }
 

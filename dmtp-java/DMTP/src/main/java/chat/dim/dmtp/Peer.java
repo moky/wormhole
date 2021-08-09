@@ -58,58 +58,58 @@ import chat.dim.net.Connection;
  *        +-----------------------------------------------+
  */
 
-public interface Peer extends Runnable {
-
-    SocketAddress getLocalAddress();
-
-    Connection getConnection(SocketAddress remote);
-
-    void connect(SocketAddress remote);
-    void disconnect(SocketAddress remote);
-
-    void terminate();
-
-    //
-    //  Send
-    //
-
-    /**
-     *  Send message to destination address
-     *
-     * @param msg         - message data
-     * @param destination - remote address
-     * @return false on error
-     */
-    boolean sendMessage(Message msg, SocketAddress destination);
-
-    /**
-     *  Send command to destination address
-     *
-     * @param cmd         - command data
-     * @param destination - remote address
-     * @return false on error
-     */
-    boolean sendCommand(Command cmd, SocketAddress destination);
-
-    //
-    //  Process
-    //
-
-    /**
-     *  Process received message from remote source address
-     *
-     * @param msg    - message info
-     * @param source - remote address
-     * @return false on error
-     */
-    boolean processMessage(Message msg, SocketAddress source);
-
-    /**
-     *  Process received command from remote source address
-     *
-     * @param cmd    - command info
-     * @param source - remote address
-     * @return false on error
-     */
-    boolean processCommand(Command cmd, SocketAddress source);
-}
+//public interface Peer extends Runnable {
+//
+//    SocketAddress getLocalAddress();
+//
+//    Connection getConnection(SocketAddress remote);
+//
+//    void connect(SocketAddress remote);
+//    void disconnect(SocketAddress remote);
+//
+//    void terminate();
+//
+//    //
+//    //  Send
+//    //
+//
+//    /**
+//     *  Send message to destination address
+//     *
+//     * @param msg         - message data
+//     * @param destination - remote address
+//     * @return false on error
+//     */
+//    boolean sendMessage(Message msg, SocketAddress destination);
+//
+//    /**
+//     *  Send command to destination address
+//     *
+//     * @param cmd         - command data
+//     * @param destination - remote address
+//     * @return false on error
+//     */
+//    boolean sendCommand(Command cmd, SocketAddress destination);
+//
+//    //
+//    //  Process
+//    //
+//
+//    /**
+//     *  Process received message from remote source address
+//     *
+//     * @param msg    - message info
+//     * @param source - remote address
+//     * @return false on error
+//     */
+//    boolean processMessage(Message msg, SocketAddress source);
+//
+//    /**
+//     *  Process received command from remote source address
+//     *
+//     * @param cmd    - command info
+//     * @param source - remote address
+//     * @return false on error
+//     */
+//    boolean processCommand(Command cmd, SocketAddress source);
+//}

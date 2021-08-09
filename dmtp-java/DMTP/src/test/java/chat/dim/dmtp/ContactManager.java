@@ -41,6 +41,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import chat.dim.dmtp.protocol.LocationValue;
+import chat.dim.net.Hub;
 import chat.dim.tlv.values.StringValue;
 
 public class ContactManager implements LocationDelegate {
@@ -50,7 +51,7 @@ public class ContactManager implements LocationDelegate {
     public String nat = "Unknown";
     private final SocketAddress sourceAddress;
 
-    private final Peer peer;
+    private final Hub peer;
 
     // contacts
     private final Map<String, Contact> contacts = new HashMap<>();
@@ -59,10 +60,10 @@ public class ContactManager implements LocationDelegate {
     // locations
     private final Map<SocketAddress, WeakReference<LocationValue>> locations = new HashMap<>();
 
-    public ContactManager(Peer peer) {
+    public ContactManager(Hub peer, SocketAddress localAddress) {
         super();
         this.peer = peer;
-        this.sourceAddress = peer.getLocalAddress();
+        this.sourceAddress = localAddress;
     }
 
     /**

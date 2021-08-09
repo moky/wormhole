@@ -2,6 +2,7 @@
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -11,6 +12,7 @@ import java.util.Map;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
+import chat.dim.net.Hub;
 import chat.dim.udp.ActivePackageHub;
 import chat.dim.udp.DiscreteChannel;
 
@@ -80,7 +82,7 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
             }
             Client.idle(256);
         }
-        info("received " + (data == null ? 0 : data.length) + " bytes from " + SERVER_ADDRESS);
+        info("received " + (data == null ? 0 : data.length) + " bytes from " + remoteAddress);
         return data;
     }
 
@@ -109,20 +111,31 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
         info("----------------------------------------------------------------");
     }
 
-    static final String CLIENT_IP = "192.168.0.111"; // Test
-    static final int CLIENT_PORT = 9527;
+    static String HOST;
+    static final int PORT = 9527;
 
-    static SocketAddress SERVER_ADDRESS = new InetSocketAddress(Server.HOST, Server.PORT);
+    static {
+        try {
+            HOST = Hub.getLocalAddressString();
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+    }
+
+    static SocketAddress remoteAddress;
 
     static ActivePackageHub hub;
 
     public static void main(String[] args) {
 
-        Client client = new Client(CLIENT_IP, CLIENT_PORT);
+        remoteAddress = new InetSocketAddress(Server.HOST, Server.PORT);
+        System.out.printf("connecting to STUN server: %s ...\n", remoteAddress);
+
+        Client client = new Client(HOST, PORT);
 
         hub = new ClientHub(client);
 
-        client.detect(SERVER_ADDRESS);
+        client.detect(remoteAddress);
 
         System.exit(0);
     }

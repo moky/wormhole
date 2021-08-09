@@ -30,6 +30,7 @@
  */
 package chat.dim.dmtp;
 
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.util.List;
@@ -37,24 +38,13 @@ import java.util.List;
 import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.protocol.LocationValue;
 import chat.dim.dmtp.protocol.Message;
-import chat.dim.mtp.DataType;
-import chat.dim.mtp.Package;
-import chat.dim.net.Connection;
+import chat.dim.mtp.Header;
 import chat.dim.tlv.Field;
 import chat.dim.type.ByteArray;
 
-public abstract class Node extends Thread implements Peer, Connection.Delegate {
+public abstract class Node {
 
     private WeakReference<LocationDelegate> delegateRef = null;
-
-    public final SocketAddress localAddress;
-
-    private boolean running = false;
-
-    protected Node(SocketAddress local) {
-        super();
-        localAddress = local;
-    }
 
     public synchronized LocationDelegate getDelegate() {
         return delegateRef == null ? null : delegateRef.get();
@@ -67,93 +57,15 @@ public abstract class Node extends Thread implements Peer, Connection.Delegate {
         }
     }
 
-    public static class Cargo {
-        SocketAddress source;
-        Package pack;
-        public Cargo(SocketAddress remote, Package p) {
-            source = remote;
-            pack = p;
-        }
-    }
+    protected abstract void connect(SocketAddress remote);
 
-    protected abstract boolean sendPackage(Package pack, SocketAddress destination);
-    protected abstract Cargo receivePackage();
+    //
+    //  Send
+    //
 
-    @Override
-    public void start() {
-        running = true;
-        super.start();
-    }
+    public abstract boolean sendMessage(Message msg, SocketAddress destination);
 
-    @Override
-    public void terminate() {
-        running = false;
-    }
-
-    @Override
-    public void run() {
-        while (running) {
-            if (!process()) {
-                idle();
-            }
-        }
-    }
-
-    protected void idle() {
-        try {
-            Thread.sleep(128);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private boolean process() {
-        Cargo cargo = receivePackage();
-        if (cargo == null) {
-            return false;
-        } else if (cargo.pack.isCommand()) {
-            // process command
-            return onReceivedCommand(cargo.pack.body, cargo.source);
-        } else if (cargo.pack.isMessage()) {
-            // process message
-            return onReceivedMessage(cargo.pack.body, cargo.source);
-        } else {
-            return false;
-        }
-    }
-
-    private boolean onReceivedCommand(ByteArray cmd, SocketAddress source) {
-        // process after received command data
-        List<Command> commands = Command.parseCommands(cmd);
-        for (Command pack : commands) {
-            processCommand(pack, source);
-        }
-        return true;
-    }
-
-    private boolean onReceivedMessage(ByteArray msg, SocketAddress source) {
-        // process after received message data
-        List<Field> fields = Field.parseFields(msg);
-        Message pack = new Message(msg, fields);
-        return processMessage(pack, source);
-    }
-
-    @Override
-    public SocketAddress getLocalAddress() {
-        return localAddress;
-    }
-
-    @Override
-    public boolean sendMessage(Message msg, SocketAddress destination) {
-        Package pack = Package.create(DataType.Message, msg);
-        return sendPackage(pack, destination);
-    }
-
-    @Override
-    public boolean sendCommand(Command cmd, SocketAddress destination) {
-        Package pack = Package.create(DataType.Command, cmd);
-        return sendPackage(pack, destination);
-    }
+    public abstract boolean sendCommand(Command cmd, SocketAddress destination);
 
     /**
      *  Send current user ID/location to destination
@@ -174,11 +86,45 @@ public abstract class Node extends Thread implements Peer, Connection.Delegate {
     }
 
     //
+    //  Receive
+    //
+
+    protected boolean onReceivedPackage(SocketAddress remote, Header head, ByteArray body) {
+        if (head.isMessage()) {
+            return onReceivedMessage(body, remote);
+        } else if (head.isCommand()) {
+            return onReceivedCommand(body, remote);
+        } else {
+            throw new IllegalArgumentException("data type error: " + head.type);
+        }
+    }
+
+    private boolean onReceivedMessage(ByteArray msg, SocketAddress source) {
+        // process after received message data
+        List<Field> fields = Field.parseFields(msg);
+        Message pack = new Message(msg, fields);
+        return processMessage(pack, source);
+    }
+
+    private boolean onReceivedCommand(ByteArray cmd, SocketAddress source) {
+        boolean ok = false;
+        // process after received command data
+        List<Command> commands = Command.parseCommands(cmd);
+        for (Command pack : commands) {
+            if (processCommand(pack, source)) {
+                ok = true;
+            }
+        }
+        return ok;
+    }
+
+    //
     //  Process
     //
 
-    @Override
-    public boolean processCommand(Command cmd, SocketAddress source) {
+    protected abstract boolean processMessage(Message msg, SocketAddress source);
+
+    protected boolean processCommand(Command cmd, SocketAddress source) {
         if (cmd.tag.equals(Command.WHO))
         {
             return processWho(source);

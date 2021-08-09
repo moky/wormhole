@@ -39,10 +39,6 @@ import chat.dim.dmtp.protocol.LocationValue;
 
 public abstract class Server extends Node {
 
-    protected Server(SocketAddress local) {
-        super(local);
-    }
-
     //
     //  Process
     //

@@ -43,6 +43,7 @@ import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.protocol.LocationValue;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
+import chat.dim.net.Hub;
 import chat.dim.stun.valus.MappedAddressValue;
 import chat.dim.stun.valus.SourceAddressValue;
 import chat.dim.tlv.values.RawValue;
@@ -272,7 +273,7 @@ public class Contact {
         return true;
     }
 
-    public void purge(Peer peer) {
+    public void purge(Hub peer) {
         Lock writeLock = locationLock.writeLock();
         writeLock.lock();
         try {
@@ -295,7 +296,7 @@ public class Contact {
      * @param peer     - node peer
      * @return true to remove location
      */
-    public static boolean isExpired(LocationValue location, Peer peer) {
+    public static boolean isExpired(LocationValue location, Hub peer) {
         // if source-address's connection exists and not error,
         //    location not expired;
         SocketAddress sourceAddress = location.getSourceAddress();
@@ -304,11 +305,11 @@ public class Contact {
         SocketAddress mappedAddress = location.getMappedAddress();
         return isExpired(sourceAddress, peer) && isExpired(mappedAddress, peer);
     }
-    private static boolean isExpired(SocketAddress address, Peer peer) {
+    private static boolean isExpired(SocketAddress address, Hub peer) {
         if (address == null) {
             return true;
         }
-        Connection conn = peer.getConnection(address);
+        Connection conn = peer.getConnection(address, null);
         if (conn == null) {
             return true;
         }

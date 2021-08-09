@@ -2,6 +2,7 @@
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
@@ -13,11 +14,11 @@ import chat.dim.dmtp.Session;
 import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.protocol.LocationValue;
 import chat.dim.dmtp.protocol.Message;
-import chat.dim.mtp.Package;
+import chat.dim.mtp.Header;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
-import chat.dim.net.PackageConnection;
+import chat.dim.net.Hub;
 import chat.dim.type.Data;
 import chat.dim.udp.ActivePackageHub;
 import chat.dim.udp.DiscreteChannel;
@@ -36,33 +37,15 @@ class ClientHub extends ActivePackageHub {
     }
 }
 
-public class Client extends chat.dim.dmtp.Client {
+public class Client extends chat.dim.dmtp.Client implements Runnable, Connection.Delegate {
 
-    private SocketAddress serverAddress = null;
+    private boolean running;
 
-    private final ContactManager database;
-    private final ActivePackageHub hub;
-
-    public Client(String host, int port) {
-        super(new InetSocketAddress(host, port));
-        // database for location of contacts
-        database = createContactManager();
-        database.identifier = "moky-" + port;
-        setDelegate(database);
-        hub = new ClientHub(this);
+    public Client() {
+        super();
+        running = false;
     }
 
-    @Override
-    public void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next) {
-        info("!!! connection ("
-                + connection.getLocalAddress() + ", "
-                + connection.getRemoteAddress() + ") state changed: "
-                + current + " -> " + next);
-        if (next.equals(ConnectionState.EXPIRED)) {
-            assert connection instanceof PackageConnection : "connection error: " + connection;
-            ((PackageConnection) connection).heartbeat(connection.getRemoteAddress());
-        }
-    }
     static void info(String msg) {
         System.out.printf("%s\n", msg);
     }
@@ -75,19 +58,8 @@ public class Client extends chat.dim.dmtp.Client {
         }
     }
 
-    protected ContactManager createContactManager() {
-        ContactManager db = new ContactManager(this);
-        db.identifier = "anyone@anywhere";
-        return db;
-    }
-
-    public String getIdentifier() {
+    private String getIdentifier() {
         return database.identifier;
-    }
-
-    @Override
-    public Connection getConnection(SocketAddress remote) {
-        return hub.getConnection(remote, localAddress);
     }
 
     @Override
@@ -100,11 +72,54 @@ public class Client extends chat.dim.dmtp.Client {
     }
 
     @Override
-    public void disconnect(SocketAddress remote) {
+    public void run() {
         try {
-            hub.disconnect(remote, localAddress);
+            hub.connect(remoteAddress, localAddress);
         } catch (IOException e) {
             e.printStackTrace();
+        }
+
+        running = true;
+        while (running) {
+            hub.tick();
+            Client.idle(128);
+        }
+    }
+
+    @Override
+    public void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next) {
+        info("!!! connection ("
+                + connection.getLocalAddress() + ", "
+                + connection.getRemoteAddress() + ") state changed: "
+                + current + " -> " + next);
+    }
+
+    @Override
+    public void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload) {
+        if (wrapper instanceof Header && payload != null && payload.length > 0) {
+            onReceivedPackage(remote, (Header) wrapper, new Data(payload));
+        }
+    }
+
+    @Override
+    public boolean sendMessage(Message msg, SocketAddress destination) {
+        try {
+            hub.sendMessage(msg.getBytes(), localAddress, destination);
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    @Override
+    public boolean sendCommand(Command cmd, SocketAddress destination) {
+        try {
+            hub.sendCommand(cmd.getBytes(), localAddress, destination);
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
         }
     }
 
@@ -121,41 +136,6 @@ public class Client extends chat.dim.dmtp.Client {
     }
 
     @Override
-    public boolean sendCommand(Command cmd, SocketAddress destination) {
-        System.out.printf("sending cmd to %s: %s\n", destination, cmd);
-        return super.sendCommand(cmd, destination);
-    }
-
-    @Override
-    protected boolean sendPackage(Package pack, SocketAddress destination) {
-        try {
-            return hub.sendPackage(pack, localAddress, destination);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    @Override
-    protected Cargo receivePackage() {
-        try {
-            Package pack = hub.receivePackage(serverAddress, localAddress);
-            if (pack != null) {
-                return new Cargo(serverAddress, pack);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    @Override
-    public boolean sendMessage(Message msg, SocketAddress destination) {
-        System.out.printf("sending msg to %s: %s\n", destination, msg);
-        return super.sendMessage(msg, destination);
-    }
-
-    @Override
     public boolean sayHello(SocketAddress destination) {
         if (super.sayHello(destination)) {
             return true;
@@ -167,18 +147,18 @@ public class Client extends chat.dim.dmtp.Client {
 
     public boolean call(String identifier) {
         Command cmd = Command.createCallCommand(identifier);
-        sendCommand(cmd, serverAddress);
+        sendCommand(cmd, remoteAddress);
         return true;
     }
 
     public void login(String identifier, SocketAddress remoteAddress) throws IOException {
         database.identifier = identifier;
-        serverAddress = remoteAddress;
+        Client.remoteAddress = remoteAddress;
         hub.connect(remoteAddress, null);
         sayHello(remoteAddress);
     }
 
-    public List<Session> getSessions(String receiver) {
+    public List<Session> getSessions(String receiver) throws IOException {
         List<Session> sessions = new ArrayList<>();
         LocationDelegate delegate = getDelegate();
         assert delegate != null : "location delegate not set";
@@ -191,7 +171,7 @@ public class Client extends chat.dim.dmtp.Client {
             // source address
             sourceAddress = item.getSourceAddress();
             if (sourceAddress != null) {
-                conn = getConnection(sourceAddress);
+                conn = hub.connect(sourceAddress, localAddress);
                 if (conn != null) {
                     state = conn.getState();
                     if (state != null && (state.equals(ConnectionState.CONNECTED) ||
@@ -205,7 +185,7 @@ public class Client extends chat.dim.dmtp.Client {
             // mapped address
             mappedAddress = item.getMappedAddress();
             if (mappedAddress != null) {
-                conn = getConnection(mappedAddress);
+                conn = hub.connect(mappedAddress, localAddress);
                 if (conn != null) {
                     state = conn.getState();
                     if (state != null && (state.equals(ConnectionState.CONNECTED) ||
@@ -224,7 +204,7 @@ public class Client extends chat.dim.dmtp.Client {
     //  test
     //
 
-    void sendText(String receiver, String text) {
+    void sendText(String receiver, String text) throws IOException {
         List<Session> sessions = getSessions(receiver);
         if (sessions.size() == 0) {
             System.out.printf("user (%s) not login ...\n", receiver);
@@ -242,21 +222,45 @@ public class Client extends chat.dim.dmtp.Client {
         }
     }
 
-    static final String CLIENT_IP = "127.0.0.1";
-    static final int CLIENT_PORT = Data.random(1).getByte(0) + 9900;
+    static String HOST;
+    static final int PORT = Data.random(1).getByte(0) + 9900;
+
+    static {
+        try {
+            HOST = Hub.getLocalAddressString();
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+    }
+
+    static ContactManager database;
+
+    static SocketAddress localAddress;
+    static SocketAddress remoteAddress;
+
+    static ClientHub hub;
 
     public static void main(String[] args) throws IOException {
 
-        SocketAddress serverAddress = new InetSocketAddress(Server.SERVER_IP, Server.SERVER_PORT);
-        System.out.printf("connecting to UDP server: %s ...\n", serverAddress);
+        localAddress = new InetSocketAddress(HOST, PORT);
+        remoteAddress = new InetSocketAddress(Server.HOST, Server.PORT);
+        System.out.printf("connecting to UDP server: %s ...\n", remoteAddress);
 
-        String user = "moky-" + CLIENT_PORT;
+        String user = "moky-" + PORT;
         String friend = "moky";
 
-        Client client = new Client(CLIENT_IP, CLIENT_PORT);
-        client.start();
+        Client client = new Client();
 
-        client.login(user, serverAddress);
+        hub = new ClientHub(client);
+
+        // database for location of contacts
+        database = new ContactManager(hub, localAddress);
+        database.identifier = "moky-" + PORT;
+        client.setDelegate(database);
+
+        new Thread(client).start();
+
+        client.login(user, remoteAddress);
 
         // test send
         String text = "你好 " + friend + "!";
