@@ -61,12 +61,8 @@ class Convert:
         return UInt16Data.from_int(value=value, endian=Endian.BIG_ENDIAN)
 
     @classmethod
-    def uint16data_from_buffer(cls, data: Union[bytes, bytearray, ByteArray], start: int = 0) -> Optional[UInt16Data]:
-        if start > 0:
-            if isinstance(data, ByteArray):
-                data = data.slice(start=start)
-            else:
-                data = data[start:]
+    def uint16data_from_data(cls, data: Union[bytes, bytearray, ByteArray], start: int = 0) -> Optional[UInt16Data]:
+        data = cut(data=data, start=start)
         return UInt16Data.from_data(data=data, endian=Endian.BIG_ENDIAN)
 
     #
@@ -78,10 +74,15 @@ class Convert:
         return UInt32Data.from_int(value=value, endian=Endian.BIG_ENDIAN)
 
     @classmethod
-    def uint32data_from_buffer(cls, data: Union[bytes, bytearray, ByteArray], start: int = 0) -> Optional[UInt32Data]:
-        if start > 0:
-            if isinstance(data, ByteArray):
-                data = data.slice(start=start)
-            else:
-                data = data[start:]
+    def uint32data_from_data(cls, data: Union[bytes, bytearray, ByteArray], start: int = 0) -> Optional[UInt32Data]:
+        data = cut(data=data, start=start)
         return UInt32Data.from_data(data=data, endian=Endian.BIG_ENDIAN)
+
+
+def cut(data: Union[bytes, bytearray, ByteArray], start: int = 0) -> Union[bytes, bytearray, ByteArray]:
+    if start == 0:
+        return data
+    elif isinstance(data, ByteArray):
+        return data.slice(start=start)
+    else:
+        return data[start:]

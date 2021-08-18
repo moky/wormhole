@@ -30,8 +30,8 @@
 
 from typing import Union, Optional
 
-from .utils import int_from_buffer, int_to_buffer
 from .utils import varint_from_buffer, varint_to_buffer
+from .array import get_integer_helper
 from .array import ByteArray, IntegerData, Endian
 from .data import Data
 
@@ -39,7 +39,10 @@ from .data import Data
 class IntData(Data, IntegerData):
 
     def __init__(self, data: Union[bytes, bytearray, ByteArray], value: int, endian: Endian = Endian.UNDEFINED):
-        super().__init__(data=data)
+        if isinstance(data, ByteArray):
+            super().__init__(buffer=data.buffer, offset=data.offset, size=data.size)
+        else:
+            super().__init__(buffer=data)
         self.__value = value
         self.__endian = endian
 
@@ -83,9 +86,12 @@ class UInt8Data(IntData):
     """
     ZERO = None  # UInt8Data.from_int(value=0)
 
+    def __init__(self, data: Union[bytes, bytearray, ByteArray], value: int):
+        super().__init__(data=data, value=value, endian=Endian.UNDEFINED)
+
     @classmethod
     def from_data(cls, data: Union[bytes, bytearray, ByteArray]) -> Optional[IntegerData]:
-        if isinstance(data, UInt8Data):
+        if isinstance(data, cls):
             return data
         elif isinstance(data, ByteArray):
             size = data.size
@@ -119,7 +125,7 @@ class UInt16Data(IntData):
 
     @classmethod
     def from_data(cls, data: Union[bytes, bytearray, ByteArray], endian: Endian) -> Optional[IntegerData]:
-        if isinstance(data, UInt16Data):
+        if isinstance(data, cls):
             return data
         elif isinstance(data, ByteArray):
             size = data.size
@@ -127,7 +133,7 @@ class UInt16Data(IntData):
                 return None
             elif size > 2:
                 data = data.slice(start=0, end=2)
-            value = int_from_buffer(buffer=data.buffer, offset=data.offset, size=2, endian=endian)
+            value = get_integer_helper().get_value(buffer=data.buffer, offset=data.offset, size=2, endian=endian)
         else:
             assert isinstance(data, bytes) or isinstance(data, bytearray), 'uint16 data error: %s' % data
             size = len(data)
@@ -135,13 +141,13 @@ class UInt16Data(IntData):
                 return None
             elif size > 2:
                 data = data[0:2]
-            value = int_from_buffer(buffer=data, offset=0, size=2, endian=endian)
+            value = get_integer_helper().get_value(buffer=data, offset=0, size=2, endian=endian)
         return cls(data=data, value=value, endian=endian)
 
     @classmethod
     def from_int(cls, value: int, endian: Endian):
         buffer = bytearray(2)
-        int_to_buffer(value=value, buffer=buffer, offset=0, size=2, endian=endian)
+        get_integer_helper().set_value(value=value, buffer=buffer, offset=0, size=2, endian=endian)
         return cls(data=buffer, value=value, endian=endian)
 
 
@@ -153,7 +159,7 @@ class UInt32Data(IntData):
 
     @classmethod
     def from_data(cls, data: Union[bytes, bytearray, ByteArray], endian: Endian) -> Optional[IntegerData]:
-        if isinstance(data, UInt32Data):
+        if isinstance(data, cls):
             return data
         elif isinstance(data, ByteArray):
             size = data.size
@@ -161,7 +167,7 @@ class UInt32Data(IntData):
                 return None
             elif size > 4:
                 data = data.slice(start=0, end=4)
-            value = int_from_buffer(buffer=data.buffer, offset=data.offset, size=4, endian=endian)
+            value = get_integer_helper().get_value(buffer=data.buffer, offset=data.offset, size=4, endian=endian)
         else:
             assert isinstance(data, bytes) or isinstance(data, bytearray), 'uint32 data error: %s' % data
             size = len(data)
@@ -169,13 +175,13 @@ class UInt32Data(IntData):
                 return None
             elif size > 4:
                 data = data[0:4]
-            value = int_from_buffer(buffer=data, offset=0, size=4, endian=endian)
+            value = get_integer_helper().get_value(buffer=data, offset=0, size=4, endian=endian)
         return cls(data=data, value=value, endian=endian)
 
     @classmethod
     def from_int(cls, value: int, endian: Endian):
         buffer = bytearray(4)
-        int_to_buffer(value=value, buffer=buffer, offset=0, size=4, endian=endian)
+        get_integer_helper().set_value(value=value, buffer=buffer, offset=0, size=4, endian=endian)
         return cls(data=buffer, value=value, endian=endian)
 
 
@@ -185,9 +191,12 @@ class VarIntData(IntData):
     """
     ZERO = None  # VarIntData.from_int(value=0)
 
+    def __init__(self, data: Union[bytes, bytearray, ByteArray], value: int):
+        super().__init__(data=data, value=value, endian=Endian.UNDEFINED)
+
     @classmethod
     def from_data(cls, data: Union[bytes, bytearray, ByteArray]) -> Optional[IntegerData]:
-        if isinstance(data, VarIntData):
+        if isinstance(data, cls):
             return data
         elif isinstance(data, ByteArray):
             value, size = varint_from_buffer(buffer=data.buffer, offset=data.offset, size=data.size)
@@ -195,22 +204,22 @@ class VarIntData(IntData):
                 return None
             elif size < data.size:
                 data = data.slice(start=0, end=size)
-            return VarIntData(data=data, value=value)
+            return cls(data=data, value=value)
         else:
             assert isinstance(data, bytes) or isinstance(data, bytearray), 'varint data error: %s' % data
             value, size = varint_from_buffer(buffer=data, offset=0, size=len(data))
             if size == 0:
                 return None
-            data = Data(data=data, offset=0, size=size)
-            return VarIntData(data=data, value=value)
+            data = Data(buffer=data, offset=0, size=size)
+            return cls(data=data, value=value)
 
     @classmethod
     def from_int(cls, value: int):
         # maximum 8 bytes: 7 * 9 < 8 * 8 < 7 * 10
         buffer = bytearray(10)
         size = varint_to_buffer(value=value, buffer=buffer, offset=0, size=10)
-        data = Data(data=buffer, offset=0, size=size)
-        return VarIntData(data=data, value=value)
+        data = Data(buffer=buffer, offset=0, size=size)
+        return cls(data=data, value=value)
 
 
 #

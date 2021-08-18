@@ -28,20 +28,11 @@
 # SOFTWARE.
 # ==============================================================================
 
-import base64
 import binascii
 import random
 from typing import Union
 
 from .array import Endian
-
-
-def base64_encode(data: bytes) -> str:
-    return base64.b64encode(data).decode('utf-8')
-
-
-def base64_decode(string: str) -> bytes:
-    return base64.b64decode(string)
 
 
 def hex_encode(data: bytes) -> str:
@@ -57,7 +48,7 @@ def random_bytes(size: int) -> bytes:
     return hex_decode(''.join(a))
 
 
-def array_copy(src: Union[bytearray, bytes], src_pos: int, dest: bytearray, dest_pos: int, length: int):
+def array_copy(src: Union[bytes, bytearray], src_pos: int, dest: bytearray, dest_pos: int, length: int):
     """
     Copies an array from the specified source array, beginning at the
     specified position, to the specified position of the destination array.
@@ -80,11 +71,248 @@ def array_copy(src: Union[bytearray, bytes], src_pos: int, dest: bytearray, dest
         if src_pos == dest_pos:
             # same position, do nothing
             return False
-        # copy via a temporary buffer
-        src = src[src_pos:(src_pos+length)]
-        src_pos = 0
+        #
+        #   now we have:
+        #       start1 = src_pos,  end1 = src_pos + length,
+        #       start2 = dest_pos, end2 = dest_pos + length,
+        #       and length > 0
+        #
+        #   check for intersections:
+        #       1. start1 < end1 <= start2 < end2
+        #          src:  ********........
+        #          dest: ........########
+        #       2. start1 < start2 < end1 < end2   (intersected, needs temporary buffer)
+        #          src:  ..********......
+        #          dest: ......########..
+        #       3. start1 == start2 < end1 == end2 (intersected, but skipped)
+        #          src:  ....********....
+        #          dest: ....########....
+        #       4. start2 < start1 < end2 < end1   (intersected, but doesn't need temporary buffer)
+        #          src:  ......********..
+        #          dest: ..########......
+        #       5. start2 < end2 <= start1 < end1
+        #          src:  ........********
+        #          dest: ########........
+        #
+        src_end = src_pos + length
+        if src_pos < dest_pos < src_end:
+            # copy to a temporary buffer
+            src = src[src_pos:src_end]
+            src_pos = 0
     for i in range(length):
         dest[dest_pos+i] = src[src_pos+i]
+    return True
+
+
+def array_equal(left_buffer: Union[bytes, bytearray], left_offset: int, left_size: int,
+                right_buffer: Union[bytes, bytearray], right_offset: int, right_size: int) -> bool:
+    """ Check whether buffers equal with range [offset, offset + size) """
+    if left_size != right_size:
+        return False
+    if left_buffer is right_buffer:
+        # same buffer
+        if left_offset == right_offset and left_size == right_size:
+            # same range
+            return True
+    pos1 = left_offset + left_size - 1
+    pos2 = right_offset + right_size - 1
+    while pos2 >= right_offset:
+        if left_buffer[pos1] != right_buffer[pos2]:
+            # not matched
+            return False
+        pos1 -= 1
+        pos2 -= 1
+    # all items matched
+    return True
+
+
+def array_hash(buffer: Union[bytes, bytearray], offset: int, size: int) -> int:
+    """ Calculate hash code for buffer with range [offset, offset + size) """
+    result = 1
+    start = offset
+    end = offset + size
+    while start < end:
+        result = (result << 5) - result + buffer[start]
+        start += 1
+    return result
+
+
+def array_concat(left_buffer: Union[bytes, bytearray],
+                 left_offset: int, left_size: int,
+                 right_buffer: Union[bytes, bytearray],
+                 right_offset: int, right_size: int) -> (Union[bytes, bytearray], int, int):
+    """ Concat two data with range [start, end) and return (buffer, offset, size) """
+    if left_size == 0:
+        return right_buffer, right_offset, right_size
+    elif right_size == 0:
+        return left_buffer, left_offset, left_size
+    left_end = left_offset + left_size
+    right_end = right_offset + right_size
+    if left_buffer is right_buffer:
+        # same buffer
+        if left_end == right_offset:
+            # sticky data
+            return left_buffer, left_offset, left_size + right_size
+    # slice buffers
+    if 0 < left_offset or left_end < len(left_buffer):
+        left_buffer = left_buffer[left_offset:left_end]
+    if 0 < right_offset or right_end < len(right_buffer):
+        right_buffer = right_buffer[right_offset:right_end]
+    # check types
+    if isinstance(left_buffer, bytearray):
+        if not isinstance(right_buffer, bytearray):
+            # bytearray + bytes
+            right_buffer = bytearray(right_buffer)
+    elif isinstance(right_buffer, bytearray):
+        # bytes + bytearray
+        left_buffer = bytearray(left_buffer)
+    return left_buffer + right_buffer, 0, left_size + right_size
+
+
+def array_find(sub_buffer: Union[bytes, bytearray], sub_offset: int, sub_size: int,
+               buffer: Union[bytes, bytearray], offset: int, size: int) -> int:
+    """ Searching sub data in buffer with range [offset, offset + size) """
+    if sub_size <= 0 or sub_size > size:
+        # the sub data is empty or too large
+        return -1
+    # pre check
+    start = offset
+    end = offset + size
+    found = -1
+    if buffer is sub_buffer:
+        # same buffer
+        if offset == sub_offset:
+            # the sub.offset matched the start position,
+            # it's surely the first position the sub data appeared.
+            return 0
+        if offset < sub_offset <= (end - sub_size):
+            # if sub.offset is in range (start, end - sub.size],
+            # the position (sub.offset - self.offset) is matched,
+            # but we cannot confirm this is the first position the sub data appeared,
+            # so we still need to do searching in range [start, sub.offset + sub.size - 1).
+            found = sub_offset - offset
+            end = sub_offset + sub_size - 1
+    # TODO: Boyer-Moore Searching
+    sub_start = sub_offset
+    sub_end = sub_offset + sub_size
+    if 0 < sub_start or sub_end < len(sub_buffer):
+        sub = sub_buffer[sub_start:sub_end]
+    else:
+        sub = sub_buffer
+    # do searching
+    pos = buffer.find(sub, start, end)
+    if pos == -1:
+        return found
+    else:
+        return pos - offset
+
+
+def array_set(index: int, value: int, buffer: bytearray, offset: int, size: int) -> int:
+    """ Set value at index, return new size """
+    pos = offset + index
+    tail = offset + size
+    buf_len = len(buffer)
+    if buf_len <= pos:
+        # the target position is outside of the current buffer
+        buffer.extend(bytearray(pos - buf_len + 1))
+    # set value
+    buffer[pos] = value & 0xFF
+    # clean the gaps if exist?
+    if tail < pos:
+        for i in range(tail, pos):
+            buffer[i] = 0
+    # return the maximum size
+    if index < size:
+        return size
+    else:
+        return index + 1
+
+
+def array_update(index: int, src: Union[bytes, bytearray], src_offset: int, src_size: int,
+                 buffer: bytearray, offset: int, size: int) -> int:
+    """ Update src from index, return new size """
+    src_end = src_offset + src_size
+    if src_offset > 0 or src_end < len(src):
+        src = src[src_offset:src_end]
+    start = offset + index
+    end = start + src_size
+    tail = offset + size
+    buf_len = len(buffer)
+    #
+    #   now we have:
+    #       start = offset + index
+    #       end = offset + index + src_size
+    #       tail = offset + size
+    #       src_size > 0
+    #
+    #   check for intersections:
+    #       1. buf_len <= start < end
+    #          src:                  ****
+    #          dest: ########........
+    #       2. start < buf_len < end
+    #          src:                ****
+    #          dest: ########........
+    #       3. start < end <= buf_len
+    #          src:              ****
+    #          dest: ########........
+    #
+    if buf_len <= start:
+        # the target range is outside of the current buffer
+        if buf_len < start:
+            # append the gaps
+            buffer.extend(bytearray(start - buf_len))
+        # append source data to tail
+        buffer.extend(src)
+    elif buf_len < end:
+        # the target range is partially outside of the current buffer
+        mid = buf_len - start
+        for i in range(mid):
+            # copy the left part
+            buffer[start+i] = src[i]
+        # append the right part to tail
+        buffer.extend(src[mid:])
+    else:
+        # the target range is totally inside the current buffer
+        for i in range(src_size):
+            buffer[start+i] = src[i]
+    # clean the gaps if exist?
+    if tail < start:
+        for i in range(tail, start):
+            buffer[i] = 0
+    # return the new size
+    if tail < end:
+        return end - offset
+    else:
+        return tail - offset
+
+
+def array_insert(index: int, src: Union[bytes, bytearray], src_offset: int, src_size: int,
+                 buffer: bytearray, offset: int, size: int) -> int:
+    """ Insert src at index, return new size """
+    if index < size:
+        start = offset + index
+        for i in range(src_size):
+            buffer.insert(start+i, src[src_offset+i])
+        return size + src_size
+    else:
+        return array_update(index=index,
+                            src=src, src_offset=src_offset, src_size=src_size,
+                            buffer=buffer, offset=offset, size=size)
+
+
+def array_remove(index: int, buffer: bytearray, offset: int, size: int) -> (int, int, int):
+    """ Remove element at index, return its value and new offset & size """
+    pos = offset + index
+    if index == 0:
+        # remove the first element
+        return buffer[pos], offset + 1, size - 1
+    elif index == (size - 1):
+        # remove the last element
+        return buffer[pos], offset, size - 1
+    elif 0 < index < (size - 1):
+        return buffer.pop(pos), offset, size - 1
+    else:
+        raise IndexError('error index: %d, size: %d' % (index, size))
 
 
 #
@@ -156,7 +384,7 @@ def int_to_buffer(value: int, buffer: bytearray, offset: int, size: int, endian:
 """
 
 
-def varint_from_buffer(buffer: bytes, offset: int, size: int) -> (int, int):
+def varint_from_buffer(buffer: Union[bytes, bytearray], offset: int, size: int) -> (int, int):
     """
     Get integer value from variable data buffer with range [offset, offset + size)
 
@@ -204,33 +432,3 @@ def varint_to_buffer(value: int, buffer: bytearray, offset: int, size: int) -> i
         raise OverflowError('out of range: [%d, %d), value=%d' % (offset, end, value))
     buffer[pos] = (value & 0x7F)
     return pos - offset + 1
-
-
-#
-#  Positioning
-#
-
-def adjust(index: int, size: int):
-    """
-    Adjust the position within [0, size)
-
-    :param index: range position
-    :param size:  range length
-    :return: correct position
-    """
-    if index < 0:
-        index += size  # count from right hand
-        if index < 0:
-            return 0   # too small
-    elif index > size:
-        return size    # too big
-    return index
-
-
-def adjust_e(index: int, size: int):
-    if index < 0:
-        index += size  # count from right hand
-        if index < 0:
-            # too small
-            raise IndexError('error index: %d, size: %d' % (index - size, size))
-    return index

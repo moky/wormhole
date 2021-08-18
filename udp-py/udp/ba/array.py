@@ -62,6 +62,15 @@ class ByteArray(ABC):
         """
         raise NotImplemented
 
+    @property
+    def hex_string(self) -> str:
+        """
+        Get Hex encoded string
+
+        :return: hex string
+        """
+        raise NotImplemented
+
     def get_byte(self, index: int) -> int:
         """
         Get item value with position
@@ -91,9 +100,9 @@ class ByteArray(ABC):
         """
         Search sub data/buffer within range [start, end)
 
-        :param sub: element value; or sub bytes; or sub array
-        :param start: begin position relative to offset (include)
-        :param end:   end position relative to offset (exclude)
+        :param sub:   element value; or sub bytes; or sub array
+        :param start: begin position relative to self.offset (include)
+        :param end:   end position relative to self.offset (exclude)
         :return: first position where sub occurred; -1 on not found
         """
         raise NotImplemented
@@ -259,3 +268,46 @@ class IntegerData(ByteArray):
                 data[pos] = value & 0xFF
                 value >>= 8
                 pos -= 1
+
+
+#
+#   Global Helpers
+#
+global_instances = {
+    'data_helper': None,
+    'mutable_helper': None,
+    'integer_helper': None,
+}
+
+
+def get_data_helper():
+    helper = global_instances['data_helper']
+    from .helper import ByteArrayHelper
+    assert isinstance(helper, ByteArrayHelper)
+    return helper
+
+
+def set_data_helper(helper):
+    global_instances['data_helper'] = helper
+
+
+def get_mutable_helper():
+    helper = global_instances['mutable_helper']
+    from .helper import MutableByteArrayHelper
+    assert isinstance(helper, MutableByteArrayHelper)
+    return helper
+
+
+def set_mutable_helper(helper):
+    global_instances['mutable_helper'] = helper
+
+
+def get_integer_helper():
+    helper = global_instances['integer_helper']
+    from .helper import IntegerHelper
+    assert isinstance(helper, IntegerHelper)
+    return helper
+
+
+def set_integer_helper(helper):
+    global_instances['integer_helper'] = helper

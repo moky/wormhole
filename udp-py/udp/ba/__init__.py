@@ -35,6 +35,7 @@
 
 from .array import ByteArray, MutableByteArray
 from .array import Endian, IntegerData
+from .helper import *
 
 from .data import Data
 from .mutable import MutableData
@@ -49,6 +50,7 @@ __author__ = 'Albert Moky'
 __all__ = [
     'ByteArray', 'MutableByteArray',
     'Endian', 'IntegerData',
+
     'Data', 'MutableData',
     'IntData', 'UInt8Data', 'UInt16Data', 'UInt32Data', 'VarIntData',
     'Convert',
