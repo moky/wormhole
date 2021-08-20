@@ -89,10 +89,10 @@ class Package(Data):
         return cls(data=data, head=head, body=body)
 
     @classmethod
-    def new(cls, data_type: DataType, sn: TransactionID = None, pages: int = 1, offset: int = 0, body_length: int = -1,
+    def new(cls, data_type: DataType, sn: TransactionID = None, pages: int = 1, index: int = 0, body_length: int = -1,
             body: ByteArray = None):
         # create package with header
-        head = Header.new(data_type=data_type, sn=sn, pages=pages, offset=offset, body_length=body_length)
+        head = Header.new(data_type=data_type, sn=sn, pages=pages, index=index, body_length=body_length)
         if body is None:
             data = head
             body = Data.ZERO

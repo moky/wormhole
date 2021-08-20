@@ -76,16 +76,16 @@ public class Packer {
         assert head.sn.equals(sn) : "SN not match: " + sn + ", " + head.sn;
         assert head.type.isFragment() : "Packer only for fragments: " + head.type;
         assert head.pages == pages : "pages error: " + pages + ", " + head.pages;
-        assert head.offset < pages : "offset error: " + head.offset + ", " + pages;
+        assert head.index < pages : "index error: " + head.index + ", " + pages;
         int count = assembling.size();
         int index = count - 1;
         Package item;
         for (; index >= 0; --index) {
             item = assembling.get(index);
-            if (item.head.offset < head.offset) {
+            if (item.head.index < head.index) {
                 // got the position
                 break;
-            } else if (item.head.offset == head.offset) {
+            } else if (item.head.index == head.index) {
                 //throw new IllegalArgumentException("duplicated: " + item.head);
                 return null;
             }
@@ -100,15 +100,15 @@ public class Packer {
      *    MTU      : 576 bytes
      *    IP Head  : 20 bytes
      *    UDP Head : 8 bytes
-     *    Header   : 12 bytes (excludes 'pages', 'offset' and 'bodyLen')
-     *    Reserved : 24 bytes (includes 'pages', 'offset' and 'bodyLen')
+     *    Header   : 12 bytes (excludes 'pages', 'index' and 'bodyLen')
+     *    Reserved : 24 bytes (includes 'pages', 'index' and 'bodyLen')
      */
     public static int OPTIMAL_BODY_LENGTH = 512;
 
     /**
      *  Join sorted packages' body data together
      *
-     * @param packages - packages sorted by offset
+     * @param packages - packages sorted by index
      * @return original message package
      */
     public static Package join(final List<Package> packages) {
@@ -129,7 +129,7 @@ public class Packer {
             assert item.head.type.isFragment() : "data type should be fragment: " + item;
             assert sn.equals(item.head.sn) : "transaction ID not match: " + item;
             assert pages == item.head.pages : "pages error: " + item;
-            assert index == item.head.offset : "fragment missed: " + index;
+            assert index == item.head.index : "fragment missed: " + index;
             fragments.add(item.body);
             length += item.body.getSize();
         }
@@ -198,13 +198,13 @@ public class Packer {
     }
 
     /**
-     *  Sort the fragments with head.offset
+     *  Sort the fragments with head.index
      *
      * @param packages - fragments
      * @return sorted fragments
      */
     public static List<Package> sort(List<Package> packages) {
-        packages.sort(Comparator.comparingInt(Package::getFragmentOffset));
+        packages.sort(Comparator.comparingInt(Package::getFragmentIndex));
         return packages;
     }
 }

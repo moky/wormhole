@@ -100,14 +100,14 @@ class Departure:
                     packages.append(pack)
                 return packages
 
-    def delete_fragment(self, offset: int) -> bool:
+    def delete_fragment(self, index: int) -> bool:
         with self.__lock:
             total = len(self.__packages)
             count = total
-            for index in range(total):
-                if self.__packages[index].head.offset == offset:
+            for i in range(total):
+                if self.__packages[i].head.index == index:
                     # got it!
-                    self.__packages.pop(index)
+                    self.__packages.pop(i)
                     count -= 1
                     break
             if count == 0:
@@ -164,12 +164,12 @@ class DepartureHall:
                     # got it
                     return task
 
-    def delete_fragment(self, sn: TransactionID, offset: int):
+    def delete_fragment(self, sn: TransactionID, index: int):
         """
         Delete fragment
 
         :param sn:     transaction ID
-        :param offset: fragment index
+        :param index:  fragment index
         """
         with self.__lock:
             snb = sn.get_bytes()
@@ -180,7 +180,7 @@ class DepartureHall:
                 task = self.__map.get(sn)
                 if task is not None:
                     # assert isinstance(task, Departure)
-                    if task.delete_fragment(offset=offset):
+                    if task.delete_fragment(index=index):
                         # all fragments sent, remove this task
                         self.__departures.remove(task)
                         self.__map.pop(sn, None)

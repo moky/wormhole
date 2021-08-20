@@ -146,8 +146,8 @@ public class PackageConnection extends BaseConnection {
         Package res = Package.create(DataType.COMMAND_RESPONSE, sn, new Data(body));
         send(res.getBytes(), remote);
     }
-    private void respondMessage(TransactionID sn, int pages, int offset, SocketAddress remote) throws IOException {
-        Package res = Package.create(DataType.MESSAGE_RESPONSE, sn, pages, offset, new Data(OK));
+    private void respondMessage(TransactionID sn, int pages, int index, SocketAddress remote) throws IOException {
+        Package res = Package.create(DataType.MESSAGE_RESPONSE, sn, pages, index, new Data(OK));
         send(res.getBytes(), remote);
     }
 
@@ -170,8 +170,8 @@ public class PackageConnection extends BaseConnection {
             // process CommandResponse:
             //      'PONG'
             //      'OK'
-            assert head.offset == 0 : "command offset error: " + head.offset;
-            departureHall.deleteFragment(head.sn, head.offset);
+            assert head.index == 0 : "command index error: " + head.index;
+            departureHall.deleteFragment(head.sn, head.index);
             if (body.equals(PONG) || body.equals(OK)) {
                 // ignore
                 return null;
@@ -198,7 +198,7 @@ public class PackageConnection extends BaseConnection {
                 // TODO: reset maxRetries?
                 return null;
             }
-            departureHall.deleteFragment(head.sn, head.offset);
+            departureHall.deleteFragment(head.sn, head.index);
             if (body.equals(OK)) {
                 // ignore
                 return null;
@@ -208,7 +208,7 @@ public class PackageConnection extends BaseConnection {
         } else {
             // process Message/Fragment:
             //      '...'
-            respondMessage(head.sn, head.pages, head.offset, remote);
+            respondMessage(head.sn, head.pages, head.index, remote);
             if (type.isFragment()) {
                 // check cached fragments
                 pack = arrivalHall.insertFragment(pack, remote, destination);

@@ -72,7 +72,7 @@ public class DepartureHall {
         }
     }
 
-    public void deleteFragment(TransactionID sn, int offset) {
+    public void deleteFragment(TransactionID sn, int index) {
         Lock writeLock = departureLock.writeLock();
         writeLock.lock();
         try {
@@ -82,7 +82,7 @@ public class DepartureHall {
             if (time == null || time == 0) {
                 // check departure
                 Departure task = departureMap.get(sn);
-                if (task != null && task.deleteFragment(offset)) {
+                if (task != null && task.deleteFragment(index)) {
                     // all fragments sent, remove this task
                     departures.remove(task);
                     departureMap.remove(sn);

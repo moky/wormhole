@@ -71,7 +71,7 @@ import chat.dim.type.MutableData;
  *            If data type is a fragment message (or its respond),
  *            there is a field 'count' following the transaction ID,
  *            which indicates the message was split to how many fragments;
- *            and there is another field 'offset' following the 'count'.
+ *            and there is another field 'index' following the 'count'.
  *
  *        ** Body Length **:
  *            Defined only for TCP stream.
@@ -82,7 +82,7 @@ public class Header extends Data {
     public final DataType type;
     public final TransactionID sn;
     public final int pages;
-    public final int offset;
+    public final int index;
     public final int bodyLength;
 
     /*  Max Length for message package body
@@ -103,15 +103,15 @@ public class Header extends Data {
      * @param type    - package body data type
      * @param sn      - transaction ID
      * @param pages   - fragment count [OPTIONAL], default is 1
-     * @param offset  - fragment index [OPTIONAL], default is 0
+     * @param index   - fragment index [OPTIONAL], default is 0
      * @param bodyLen - length of body [OPTIONAL], default is -1 (unlimited)
      */
-    public Header(ByteArray data, DataType type, TransactionID sn, int pages, int offset, int bodyLen) {
+    public Header(ByteArray data, DataType type, TransactionID sn, int pages, int index, int bodyLen) {
         super(data);
         this.type = type;
         this.sn = sn;
         this.pages = pages;
-        this.offset = offset;
+        this.index = index;
         this.bodyLength = bodyLen;
     }
 
@@ -180,7 +180,7 @@ public class Header extends Data {
         }
         TransactionID sn;
         int pages = 1;
-        int offset = 0;
+        int index = 0;
         int bodyLen = -1;
         switch (headLen) {
             case 4: {
@@ -254,7 +254,7 @@ public class Header extends Data {
                  */
                 sn = TransactionID.from(data.slice(4, 12));
                 pages = IntegerData.getInt32Value(data, 12);
-                offset = IntegerData.getInt32Value(data, 16);
+                index = IntegerData.getInt32Value(data, 16);
                 break;
             }
             case 24: {
@@ -276,7 +276,7 @@ public class Header extends Data {
                  */
                 sn = TransactionID.from(data.slice(4, 12));
                 pages = IntegerData.getInt32Value(data, 12);
-                offset = IntegerData.getInt32Value(data, 16);
+                index = IntegerData.getInt32Value(data, 16);
                 bodyLen = IntegerData.getInt32Value(data, 20);
                 break;
             }
@@ -293,25 +293,25 @@ public class Header extends Data {
             //throw new IllegalArgumentException("pages error: " + pages);
             return null;
         }
-        if (offset < 0 || offset >= pages) {
-            //throw new IllegalArgumentException("offset error: " + offset);
+        if (index < 0 || index >= pages) {
+            //throw new IllegalArgumentException("index error: " + index);
             return null;
         }
         if (bodyLen < -1 || bodyLen > MAX_BODY_LENGTH) {
             //throw new IllegalArgumentException("body length error: " + bodyLen);
             return null;
         }
-        return new Header(data.slice(0, headLen), type, sn, pages, offset, bodyLen);
+        return new Header(data.slice(0, headLen), type, sn, pages, index, bodyLen);
     }
 
     //
     //  Factories
     //
 
-    public static Header create(DataType type, TransactionID sn, int pages, int offset, int bodyLen) {
+    public static Header create(DataType type, TransactionID sn, int pages, int index, int bodyLen) {
         assert type != null : "data type should not be null";
         assert sn != null : "transaction ID should not be null, use TransactionID.ZERO instead";
-        assert 0 <= offset && offset < pages : "pages error: " + pages + ", " + offset;
+        assert 0 <= index && index < pages : "pages error: " + pages + ", " + index;
         assert -1 <= bodyLen && bodyLen <= MAX_BODY_LENGTH : "body length error: " + bodyLen;
         int headLen = 4;  // in bytes
         if (TransactionID.ZERO.equals(sn)) {
@@ -323,9 +323,9 @@ public class Header extends Data {
         ByteArray options;
         if (type.isFragment()) {
             // message fragment (or its respond)
-            assert pages > 1 : "fragment pages error: " + pages + ", " + offset;
+            assert pages > 1 : "fragment pages error: " + pages + ", " + index;
             ByteArray d1 = IntegerData.getUInt32Data(pages);
-            ByteArray d2 = IntegerData.getUInt32Data(offset);
+            ByteArray d2 = IntegerData.getUInt32Data(index);
             ByteArray d3 = bodyLen < 0 ? null : IntegerData.getUInt32Data(bodyLen);
             options = d1.concat(d2).concat(d3);
             headLen += options.getSize();  // 8 or 12 bytes
@@ -334,7 +334,7 @@ public class Header extends Data {
             options = null;
         } else {
             // command/message (or its respond)
-            assert pages == 1 : "pages error: " + pages + ", " + offset;
+            assert pages == 1 : "pages error: " + pages + ", " + index;
             options = IntegerData.getUInt32Data(bodyLen);
             headLen += options.getSize();  // 4 bytes
         }
@@ -348,19 +348,19 @@ public class Header extends Data {
         if (options != null) {
             data.append(options);
         }
-        return new Header(data, type, sn, pages, offset, bodyLen);
+        return new Header(data, type, sn, pages, index, bodyLen);
     }
 
     //
     //  UDP
     //
 
-    public static Header create(DataType type, TransactionID sn, int pages, int offset) {
-        return create(type, sn, pages, offset, -1);
+    public static Header create(DataType type, TransactionID sn, int pages, int index) {
+        return create(type, sn, pages, index, -1);
     }
 
-    public static Header create(DataType type, int pages, int offset) {
-        return create(type, TransactionID.generate(), pages, offset, -1);
+    public static Header create(DataType type, int pages, int index) {
+        return create(type, TransactionID.generate(), pages, index, -1);
     }
 
     public static Header create(DataType type, TransactionID sn) {

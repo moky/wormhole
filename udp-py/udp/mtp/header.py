@@ -78,7 +78,7 @@ from .protocol import DataType, TransactionID
             If data type is a fragment message (or its respond),
             there is a field 'count' following the transaction ID,
             which indicates the message was split to how many fragments;
-            and there is another field 'offset' following the 'count'.
+            and there is another field 'index' following the 'count'.
 
         ** Body Length **:
             Defined only for TCP stream.
@@ -100,7 +100,7 @@ class Header(Data):
     MAGIC_CODE = b'DIM'
 
     def __init__(self, data: Union[bytes, bytearray, ByteArray],
-                 data_type: DataType, sn: TransactionID, pages: int = 1, offset: int = 0, body_length: int = -1):
+                 data_type: DataType, sn: TransactionID, pages: int = 1, index: int = 0, body_length: int = -1):
         """
         Create package header
 
@@ -108,7 +108,7 @@ class Header(Data):
         :param data_type: package body data type
         :param sn:        transaction ID
         :param pages:     fragment count [OPTIONAL], default is 1
-        :param offset:    fragment index [OPTIONAL], default is 0
+        :param index:     fragment index [OPTIONAL], default is 0
         :param body_length: length of body, default is -1 (unlimited)
         """
         if isinstance(data, ByteArray):
@@ -118,20 +118,20 @@ class Header(Data):
         self.__type = data_type
         self.__sn = sn
         self.__pages = pages
-        self.__offset = offset
+        self.__index = index
         self.__body_size = body_length
 
     def __str__(self) -> str:
         clazz = self.__class__.__name__
         dt = self.data_type
         bl = self.body_length
-        return '<%s: %d, "%s" pages=%d, offset=%d, body_len=%d />' % (clazz, self.size, dt, self.pages, self.offset, bl)
+        return '<%s: %d, "%s" pages=%d, index=%d, body_len=%d />' % (clazz, self.size, dt, self.pages, self.index, bl)
 
     def __repr__(self) -> str:
         clazz = self.__class__.__name__
         dt = self.data_type
         bl = self.body_length
-        return '<%s: %d, "%s" pages=%d, offset=%d, body_len=%d />' % (clazz, self.size, dt, self.pages, self.offset, bl)
+        return '<%s: %d, "%s" pages=%d, index=%d, body_len=%d />' % (clazz, self.size, dt, self.pages, self.index, bl)
 
     @property
     def data_type(self) -> DataType:
@@ -147,9 +147,9 @@ class Header(Data):
         return self.__pages
 
     @property
-    def offset(self) -> int:
+    def index(self) -> int:
         """ fragment index"""
-        return self.__offset
+        return self.__index
 
     @property
     def body_length(self) -> int:
@@ -166,7 +166,7 @@ class Header(Data):
             # waiting for more data
             return None
         pages = 1
-        offset = 0
+        index = 0
         body_len = -1
         if head_len == 4:
             """ simple header (for UDP only)
@@ -227,7 +227,7 @@ class Header(Data):
             """
             sn = TransactionID.from_data(data=data.slice(start=4, end=12))
             pages = Convert.int32_from_data(data=data, start=12)
-            offset = Convert.int32_from_data(data=data, start=16)
+            index = Convert.int32_from_data(data=data, start=16)
         elif head_len == 24:
             """ fragment header with body length
                 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -246,7 +246,7 @@ class Header(Data):
             """
             sn = TransactionID.from_data(data=data.slice(start=4, end=12))
             pages = Convert.int32_from_data(data=data, start=12)
-            offset = Convert.int32_from_data(data=data, start=16)
+            index = Convert.int32_from_data(data=data, start=16)
             body_len = Convert.int32_from_data(data=data, start=20)
         else:
             # raise ValueError('header length error: %d' % head_len)
@@ -257,19 +257,19 @@ class Header(Data):
         if pages < 1 or pages > cls.MAX_PAGES:
             # raise ValueError('pages error: %d' % pages)
             return None
-        if offset < 0 or offset >= pages:
-            # raise ValueError('offset error: %d' % offset)
+        if index < 0 or index >= pages:
+            # raise ValueError('index error: %d' % index)
             return None
         if body_len < -1 or body_len > cls.MAX_BODY_LENGTH:
             # raise ValueError('body length error: %d' % body_len)
             return None
         # create header
         return cls(data=data.slice(start=0, end=head_len),
-                   data_type=data_type, sn=sn, pages=pages, offset=offset, body_length=body_len)
+                   data_type=data_type, sn=sn, pages=pages, index=index, body_length=body_len)
 
     @classmethod
     def new(cls, data_type: DataType,
-            sn: Optional[TransactionID] = None, pages: int = 1, offset: int = 0, body_length: int = -1):
+            sn: Optional[TransactionID] = None, pages: int = 1, index: int = 0, body_length: int = -1):
         head_len = 4  # in bytes
         # transaction ID
         if sn is None:
@@ -278,17 +278,17 @@ class Header(Data):
             head_len += 8
         elif sn != TransactionID.ZERO:
             head_len += 8
-        # pages & offset
+        # pages & index
         if data_type.is_message_fragment or data_type.is_message_response:
             # message fragment (or its respond)
-            assert pages > offset, 'pages error: %d, %d' % (pages, offset)
+            assert pages > index, 'pages error: %d, %d' % (pages, index)
             d1 = Convert.uint32data_from_value(value=pages)
-            d2 = Convert.uint32data_from_value(value=offset)
+            d2 = Convert.uint32data_from_value(value=index)
             options = d1.concat(d2)
             head_len += 8
         else:
             # command/message (or its respond)
-            assert pages == 1 and offset == 0, 'pages error: %d, %d' % (pages, offset)
+            assert pages == 1 and index == 0, 'pages error: %d, %d' % (pages, index)
             options = None
         # body length
         if body_length >= 0:
@@ -307,7 +307,7 @@ class Header(Data):
             data.append(source=sn)
         if options is not None:
             data.append(source=options)
-        return cls(data=data, data_type=data_type, sn=sn, pages=pages, offset=offset, body_length=body_length)
+        return cls(data=data, data_type=data_type, sn=sn, pages=pages, index=index, body_length=body_length)
 
 
 def get_data_type(data: ByteArray) -> Optional[DataType]:

@@ -89,13 +89,12 @@ public class Departure {
         }
     }
 
-    public synchronized boolean deleteFragment(int offset) {
-        int index;
+    public synchronized boolean deleteFragment(int index) {
         int total = packages.size();
-        for (index = 0; index < total; ++index) {
-            if (packages.get(index).head.offset == offset) {
+        for (int i = 0; i < total; ++i) {
+            if (packages.get(i).head.index == index) {
                 // got it!
-                packages.remove(index);
+                packages.remove(i);
                 break;
             }
         }

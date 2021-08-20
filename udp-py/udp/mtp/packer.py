@@ -72,15 +72,15 @@ class Packer:
         assert head.sn == self.__sn, 'SN not match: %s, %s' % (head.sn, self.__sn)
         assert head.data_type.is_fragment, 'Package only for fragments: %s' % head.data_type
         assert head.pages == self.__pages, 'pages error: %d, %d' % (head.pages, self.__pages)
-        assert head.offset < self.__pages, 'offset error: %d, %d' % (head.offset, self.__pages)
+        assert head.index < self.__pages, 'index error: %d, %d' % (head.index, self.__pages)
         count = len(self.__assembling)
         index = count - 1
         while index >= 0:
             item = self.__assembling[index]
-            if item.head.offset < head.offset:
+            if item.head.index < head.index:
                 # got the position
                 break
-            elif item.head.offset == head.offset:
+            elif item.head.index == head.index:
                 # raise IndexError('duplicated: %s' % item.head)
                 return None
             else:
@@ -95,8 +95,8 @@ class Packer:
         MTU      : 576 bytes
         IP Head  : 20 bytes
         UDP Head : 8 bytes
-        Header   : 12 bytes (excludes 'pages', 'offset' and 'bodyLen')
-        Reserved : 24 bytes (includes 'pages', 'offset' and 'bodyLen')
+        Header   : 12 bytes (excludes 'pages', 'index' and 'bodyLen')
+        Reserved : 24 bytes (includes 'pages', 'index' and 'bodyLen')
     """
     OPTIMAL_BODY_LENGTH = 512
 
@@ -105,7 +105,7 @@ class Packer:
         """
         Join sorted packages' body data together
 
-        :param fragments: fragments sorted by offset
+        :param fragments: fragments sorted by index
         :return: original message package
         """
         count = len(fragments)
@@ -123,7 +123,7 @@ class Packer:
             assert item.head.data_type.is_fragment, 'data type should be fragment: %s' % item
             assert item.head.sn == sn, 'transaction ID not match: %s' % item
             assert item.head.pages == pages, 'pages error: %s' % item
-            assert item.head.offset == index, 'fragment missed: %d' % index
+            assert item.head.index == index, 'fragment missed: %d' % index
             array.append(item.body)
             length += item.body.size
         # join fragments
@@ -133,9 +133,9 @@ class Packer:
         if first.head.body_length < 0:
             # UDP (unlimited)
             assert first.head.body_length == -1, 'body length error: %d' % first.head.body_length
-            return Package.new(data_type=DataType.MESSAGE, sn=sn, pages=1, offset=0, body_length=-1, body=body)
+            return Package.new(data_type=DataType.MESSAGE, sn=sn, pages=1, index=0, body_length=-1, body=body)
         else:
-            return Package.new(data_type=DataType.MESSAGE, sn=sn, pages=1, offset=0, body_length=body.size, body=body)
+            return Package.new(data_type=DataType.MESSAGE, sn=sn, pages=1, index=0, body_length=body.size, body=body)
 
     @classmethod
     def split(cls, package: Package) -> List[Package]:
@@ -177,14 +177,14 @@ class Packer:
             assert head.body_length == -1, 'body length error: %d' % head.body_length
             for index in range(pages):
                 data = fragments[index]
-                pack = Package.new(data_type=msg_fra, sn=sn, pages=pages, offset=index,
+                pack = Package.new(data_type=msg_fra, sn=sn, pages=pages, index=index,
                                    body_length=-1, body=data)
                 packages.append(pack)
         else:
             # TCP (should not happen)
             for index in range(pages):
                 data = fragments[index]
-                pack = Package.new(data_type=msg_fra, sn=sn, pages=pages, offset=index,
+                pack = Package.new(data_type=msg_fra, sn=sn, pages=pages, index=index,
                                    body_length=data.size, body=data)
                 packages.append(pack)
         return packages
@@ -192,10 +192,10 @@ class Packer:
     @classmethod
     def sort(cls, fragments: List[Package]) -> List[Package]:
         """
-        Sort the fragments with head.offset
+        Sort the fragments with head.index
 
         :param fragments: fragments
         :return sorted fragments
         """
-        fragments.sort(key=lambda pack: pack.head.offset)
+        fragments.sort(key=lambda pack: pack.head.index)
         return fragments

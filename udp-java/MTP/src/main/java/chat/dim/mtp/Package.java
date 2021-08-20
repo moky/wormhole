@@ -66,8 +66,8 @@ public class Package extends Data {
         return head.type.isMessageFragment();
     }
 
-    int getFragmentOffset() {
-        return head.offset;
+    int getFragmentIndex() {
+        return head.index;
     }
 
     public static Package parse(ByteArray data) {
@@ -101,10 +101,10 @@ public class Package extends Data {
     //  Factories
     //
 
-    public static Package create(DataType type, TransactionID sn, int pages, int offset, int bodySize, ByteArray body) {
+    public static Package create(DataType type, TransactionID sn, int pages, int index, int bodySize, ByteArray body) {
         assert body != null : "package body should not be null";
         // create package with header
-        Header head = Header.create(type, sn, pages, offset, bodySize);
+        Header head = Header.create(type, sn, pages, index, bodySize);
         ByteArray data;
         if (body.getSize() > 0) {
             data = head.concat(body);
@@ -118,12 +118,12 @@ public class Package extends Data {
     //  UDP
     //
 
-    public static Package create(DataType type, TransactionID sn, int pages, int offset, ByteArray body) {
-        return create(type, sn, pages, offset, -1, body);
+    public static Package create(DataType type, TransactionID sn, int pages, int index, ByteArray body) {
+        return create(type, sn, pages, index, -1, body);
     }
 
-    public static Package create(DataType type, int pages, int offset, ByteArray body) {
-        return create(type, TransactionID.generate(), pages, offset, -1, body);
+    public static Package create(DataType type, int pages, int index, ByteArray body) {
+        return create(type, TransactionID.generate(), pages, index, -1, body);
     }
 
     public static Package create(DataType type, TransactionID sn, ByteArray body) {

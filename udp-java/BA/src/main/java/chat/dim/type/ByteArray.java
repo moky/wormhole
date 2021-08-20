@@ -266,8 +266,6 @@ public interface ByteArray {
             assert start < end : "search range error: [" + start + ", " + end + ")";
             if ((end - start) < subSize || subSize <= 0) {
                 return -1;
-            } else if (subSize > 1) {
-                end -= subSize - 1;
             }
             byte[] buffer = data.getBuffer();
             start += data.getOffset();
@@ -289,7 +287,9 @@ public interface ByteArray {
                     end = subOffset + subSize - 1;
                 }
             }
+            // TODO: Boyer-Moore Searching
             int index;
+            end -= subSize - 1;
             for (; start < end; ++start) {
                 for (index = 0; index < subSize; ++index) {
                     if (buffer[start + index] != subBuffer[subOffset + index]) {

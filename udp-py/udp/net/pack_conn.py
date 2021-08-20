@@ -110,8 +110,8 @@ class PackageConnection(BaseConnection):
         res = Package.new(data_type=DataType.COMMAND_RESPONSE, sn=sn, body=body)
         self.send(data=res.get_bytes(), target=remote)
 
-    def __respond_message(self, sn: TransactionID, pages: int, offset: int, remote: tuple):
-        res = Package.new(data_type=DataType.MESSAGE_RESPONSE, sn=sn, pages=pages, offset=offset, body=OK)
+    def __respond_message(self, sn: TransactionID, pages: int, index: int, remote: tuple):
+        res = Package.new(data_type=DataType.MESSAGE_RESPONSE, sn=sn, pages=pages, index=index, body=OK)
         self.send(data=res.get_bytes(), target=remote)
 
     def __process_income(self, data: bytes, remote: tuple, destination: tuple) -> Optional[Package]:
@@ -131,8 +131,8 @@ class PackageConnection(BaseConnection):
             # process Command Response:
             #      'PONG'
             #      'OK'
-            assert head.offset == 0, 'command offset error: %d' % head.offset
-            self.__departure_hall.delete_fragment(sn=head.sn, offset=head.sn)
+            assert head.index == 0, 'command index error: %d' % head.index
+            self.__departure_hall.delete_fragment(sn=head.sn, index=head.index)
             if body == PONG or body == OK:
                 # ignore
                 return None
@@ -156,7 +156,7 @@ class PackageConnection(BaseConnection):
             if body == AGAIN:
                 # TODO: reset max_retries?
                 return None
-            self.__departure_hall.delete_fragment(sn=head.sn, offset=head.offset)
+            self.__departure_hall.delete_fragment(sn=head.sn, index=head.index)
             if body == OK:
                 # ignore
                 return None
@@ -165,7 +165,7 @@ class PackageConnection(BaseConnection):
         else:
             # process Message/Fragment:
             #      '...'
-            self.__respond_message(sn=head.sn, pages=head.pages, offset=head.offset, remote=remote)
+            self.__respond_message(sn=head.sn, pages=head.pages, index=head.index, remote=remote)
             if data_type.is_fragment:
                 # check cached fragments
                 pack = self.__arrival_hall.insert(fragment=pack, source=remote, destination=destination)
