@@ -1,5 +1,7 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+import random
 import socket
 import threading
 import time
@@ -12,12 +14,9 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from udp.ba import Data
-from udp.mtp import DataType, Package
-from udp import Channel, Connection, ConnectionDelegate, ConnectionState
+from udp import Hub
+from udp import Channel, Connection, ConnectionDelegate
 from udp import ActivePackageHub, DiscreteChannel
-
-from tests.config import SERVER_HOST, SERVER_PORT, CLIENT_HOST, CLIENT_PORT
 
 
 class ClientHub(ActivePackageHub):
@@ -41,44 +40,20 @@ class Client(threading.Thread, ConnectionDelegate):
     def connection_state_changing(self, connection: Connection, current_state, next_state):
         self.info('!!! connection (%s, %s) state changed: %s -> %s'
                   % (connection.local_address, connection.remote_address, current_state, next_state))
-        if next_state == ConnectionState.EXPIRED:
-            self.__heartbeat(connection=connection)
 
-    def __heartbeat(self, connection: Connection):
-        pass
+    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload: bytes):
+        text = payload.decode('utf-8')
+        self.info('<<< received (%d bytes) from %s: %s' % (len(payload), remote, text))
 
-    def received_data(self, data: bytes, source: tuple, destination: Optional[tuple]):
-        text = data.decode('utf-8')
-        self.info('<<< received (%d bytes) from %s to %s: %s'
-                  % (len(data), source, destination, text))
-
-    def __receive(self, source: tuple, destination: Optional[tuple]) -> bytes:
+    def __send(self, data: bytes, destination: tuple):
         try:
-            return self.hub.receive(source=source, destination=destination)
+            self.hub.send_command(body=data, source=None, destination=destination)
+            self.hub.send_message(body=data, source=None, destination=destination)
         except socket.error as error:
-            print('Server error: %s' % error)
-
-    def __send(self, data: bytes, source: Optional[tuple], destination: tuple) -> bool:
-        return self.hub.send(data=data, source=source, destination=destination)
+            self.info('failed to send data: %s' % error)
 
     def __disconnect(self, remote: tuple, local: Optional[tuple]):
         self.hub.disconnect(remote=remote, local=local)
-
-    def send_cmd(self, cmd: str):
-        data = cmd.encode('utf-8')
-        data = Data(data=data)
-        address = self.remote_address
-        print('sending cmd (%d bytes): "%s" to %s' % (data.size, cmd, address))
-        pack = Package.new(data_type=DataType.COMMAND, body=data)
-        return self.hub.send_package(pack=pack, source=None, destination=address)
-
-    def send_msg(self, msg: str):
-        data = msg.encode('utf-8')
-        data = Data(data=data)
-        address = self.remote_address
-        print('sending msg (%d bytes): "%s" to %s' % (data.size, msg, address))
-        pack = Package.new(data_type=DataType.MESSAGE, body=data)
-        return self.hub.send_package(pack=pack, source=None, destination=address)
 
     def run(self):
         text = ''
@@ -86,9 +61,18 @@ class Client(threading.Thread, ConnectionDelegate):
             text += ' Hello!'
         # test send
         for i in range(0, 32, 2):
-            g_client.send_cmd(cmd='%d sheep:%s' % (i, text))
-            g_client.send_msg(msg='%d sheep:%s' % (i+1, text))
+            data = '%d sheep:%s' % (i, text)
+            data = data.encode('utf-8')
+            self.info('>>> sending (%d) bytes): %s' % (len(data), data))
+            self.__send(data=data, destination=self.remote_address)
             time.sleep(2)
+
+
+SERVER_HOST = Hub.inet_address()
+SERVER_PORT = 9394
+
+CLIENT_HOST = Hub.inet_address()
+CLIENT_PORT = random.choice(range(9900, 9999))
 
 
 if __name__ == '__main__':

@@ -28,7 +28,6 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import ABC
 from typing import Optional
 
 from tcp import Channel, BaseConnection
@@ -38,22 +37,9 @@ from ..mtp import DataType, TransactionID, Package
 from ..mtp import ArrivalHall, Departure, DepartureHall
 
 
-class PackageConnection(BaseConnection, ABC):
+class PackageConnection(BaseConnection):
 
-    """
-        Maximum Segment Size
-        ~~~~~~~~~~~~~~~~~~~~
-        Buffer size for receiving package
-
-        MTU        : 1500 bytes (excludes 14 bytes ethernet header & 4 bytes FCS)
-        IP header  :   20 bytes
-        TCP header :   20 bytes
-        UDP header :    8 bytes
-    """
-    MSS = 1472  # 1500 - 20 - 8
-
-    def __init__(self, channel: Optional[Channel] = None,
-                 remote: Optional[tuple] = None, local: Optional[tuple] = None):
+    def __init__(self, remote: Optional[tuple], local: Optional[tuple], channel: Optional[Channel]):
         super().__init__(remote=remote, local=local, channel=channel)
         self.__arrival_hall = ArrivalHall()
         self.__departure_hall = DepartureHall()
@@ -65,7 +51,32 @@ class PackageConnection(BaseConnection, ABC):
         except IOError as error:
             print('PackageConnection error: %s' % error)
 
-    def send_package(self, pack: Package, source: Optional[tuple], destination: tuple):
+    # Override
+    def _process(self):
+        delegate = self.delegate
+        if delegate is None:
+            return
+        # receiving
+        data, remote = self._receive(max_len=self.MSS)
+        if data is None:
+            return
+        pack = self.__process_income(data=data, remote=remote, destination=self.local_address)
+        if pack is None:
+            return
+        # callback
+        wrapper = pack.head
+        payload = pack.body.get_bytes()
+        delegate.connection_data_received(connection=self, remote=remote, wrapper=wrapper, payload=payload)
+
+    def send_command(self, body: bytes, source: tuple, destination: tuple):
+        pack = Package.new(data_type=DataType.COMMAND, body=Data(buffer=body))
+        # append as Departure task to waiting queue
+        self.__departure_hall.append(pack=pack, source=source, destination=destination)
+        # send out tasks from waiting queue
+        self.__process_expired_tasks()
+
+    def send_message(self, body: bytes, source: tuple, destination: tuple):
+        pack = Package.new(data_type=DataType.MESSAGE, body=Data(buffer=body))
         # append as Departure task to waiting queue
         self.__departure_hall.append(pack=pack, source=source, destination=destination)
         # send out tasks from waiting queue
@@ -103,29 +114,9 @@ class PackageConnection(BaseConnection, ABC):
         res = Package.new(data_type=DataType.MESSAGE_RESPONSE, sn=sn, pages=pages, offset=offset, body=OK)
         self.send(data=res.get_bytes(), target=remote)
 
-    def receive_package(self, source: tuple, destination: Optional[tuple]) -> Optional[Package]:
-        """
-        Receive data package from remote address
-
-        :param source:      remote address
-        :param destination: local address
-        :return: complete package
-        """
-        while True:
-            data, remote = self.receive(max_len=self.MSS)
-            if data is None:  # or remote is None:
-                # received nothing
-                return None
-            # assert source is None or source == remote, 'source address error: %s, %s' % (source, remote)
-            pack = self.__process_income(data=data, remote=remote, destination=destination)
-            if pack is not None:
-                # received a complete package
-                return pack
-
     def __process_income(self, data: bytes, remote: tuple, destination: tuple) -> Optional[Package]:
-        data = Data(data=data)
         # process income package
-        pack = Package.parse(data=data)
+        pack = Package.parse(data=Data(buffer=data))
         if pack is None:
             # FIXME: header error? incomplete package?
             return None
@@ -142,10 +133,7 @@ class PackageConnection(BaseConnection, ABC):
             #      'OK'
             assert head.offset == 0, 'command offset error: %d' % head.offset
             self.__departure_hall.delete_fragment(sn=head.sn, offset=head.sn)
-            if body == PONG:
-                # ignore
-                return None
-            elif body == OK:
+            if body == PONG or body == OK:
                 # ignore
                 return None
             # Unknown Command Response?
@@ -153,13 +141,12 @@ class PackageConnection(BaseConnection, ABC):
         elif data_type.is_command:
             # process Command:
             #      'PING'
-            #      'NOOP'
+            #      '...'
             if body == PING:
                 # PING -> PONG
                 self.__respond_command(sn=head.sn, body=PONG, remote=remote)
-            elif body == NOOP:
-                # NOOP -> OK
-                self.__respond_command(sn=head.sn, body=OK, remote=remote)
+                return None
+            self.__respond_command(sn=head.sn, body=OK, remote=remote)
             # Unknown Command?
             # let the caller to process it
         elif data_type.is_message_response:
@@ -170,42 +157,33 @@ class PackageConnection(BaseConnection, ABC):
                 # TODO: reset max_retries?
                 return None
             self.__departure_hall.delete_fragment(sn=head.sn, offset=head.offset)
-            if body == PONG:
-                # this body should be in a Command
-                return None
-            elif body == OK:
+            if body == OK:
                 # ignore
                 return None
             # Unknown Message Response?
             # let the caller to process it
-        elif data_type.is_message_fragment:
-            # process Message Fragment:
-            #      'OK'
-            #      'AGAIN'
-            self.__respond_message(sn=head.sn, pages=head.pages, offset=head.offset, remote=remote)
-            # check cached fragments
-            pack = self.__arrival_hall.insert(fragment=pack, source=remote, destination=destination)
         else:
-            # process Message:
+            # process Message/Fragment:
             #      '...'
-            assert data_type.is_message, 'data type error: %s' % data_type
-            if body == PING or body == PONG or body == NOOP or body == OK:
-                # these bodies should be in an Command
-                # ignore them
-                return None
-            self.__respond_message(sn=head.sn, pages=1, offset=0, remote=remote)
-        # OK
-        return pack
-
-    def heartbeat(self, destination: tuple):
-        """ Send a heartbeat package to remote address """
-        pack = Package.new(data_type=DataType.COMMAND, body=PING)
-        self.send(data=pack.get_bytes(), target=destination)
+            self.__respond_message(sn=head.sn, pages=head.pages, offset=head.offset, remote=remote)
+            if data_type.is_fragment:
+                # check cached fragments
+                pack = self.__arrival_hall.insert(fragment=pack, source=remote, destination=destination)
+            # let the caller to process the message
+        if body == NOOP:
+            # do noting
+            return None
+        elif body == PING or body == PONG:
+            # FIXME: these bodies should be in a Command
+            # ignore them
+            return None
+        else:
+            return pack
 
 
 # Command body
-PING = Data(data=b'PING')
-PONG = Data(data=b'PONG')
-NOOP = Data(data=b'NOOP')
-OK = Data(data=b'OK')
-AGAIN = Data(data=b'AGAIN')
+PING = Data(buffer=b'PING')
+PONG = Data(buffer=b'PONG')
+NOOP = Data(buffer=b'NOOP')
+OK = Data(buffer=b'OK')
+AGAIN = Data(buffer=b'AGAIN')

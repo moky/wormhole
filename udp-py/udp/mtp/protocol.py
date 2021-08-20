@@ -158,6 +158,12 @@ class TransactionID(Data):
 
     ZERO = None  # TransactionID(data=Data(b'\0\0\0\0\0\0\0\0'))
 
+    def __init__(self, data: Union[bytes, bytearray, ByteArray]):
+        if isinstance(data, ByteArray):
+            super().__init__(buffer=data.buffer, offset=data.offset, size=data.size)
+        else:
+            super().__init__(buffer=data)
+
     def __str__(self) -> str:
         clazz = self.__class__.__name__
         return '<%s: %s />' % (clazz, self.get_bytes())
@@ -172,7 +178,7 @@ class TransactionID(Data):
 
     @classmethod
     def from_data(cls, data: Union[bytes, bytearray, ByteArray]):  # -> TransactionID
-        if isinstance(data, TransactionID):
+        if isinstance(data, cls):
             return data
         if isinstance(data, ByteArray):
             if data.size < 8:

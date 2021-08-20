@@ -39,7 +39,10 @@ from .header import Header
 class Package(Data):
 
     def __init__(self, data: Union[bytes, bytearray, ByteArray], head: Header, body: ByteArray):
-        super().__init__(data=data)
+        if isinstance(data, ByteArray):
+            super().__init__(buffer=data.buffer, offset=data.offset, size=data.size)
+        else:
+            super().__init__(buffer=data)
         self.__head = head
         self.__body = body
 

@@ -12,44 +12,33 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from udp.ba import Data
-from udp.mtp import DataType, Package
+from udp import Hub
 from udp import Channel, Connection, ConnectionDelegate
-from udp import DiscreteChannel, PackageConnection, PackageHub
-
-from tests.config import SERVER_HOST, SERVER_PORT
-
-
-class ServerConnection(PackageConnection):
-
-    def receive(self, max_len: int) -> (bytes, tuple):
-        data, remote = super().receive(max_len=max_len)
-        if remote is not None:
-            Server.remote_address = remote
-        return data, remote
+from udp import DiscreteChannel, PackageHub
 
 
 class ServerHub(PackageHub):
 
+    def __init__(self, delegate: ConnectionDelegate):
+        super().__init__(delegate=delegate)
+        self.__connection = None
+
     def create_connection(self, remote: tuple, local: Optional[tuple] = None) -> Connection:
-        sock = self.create_channel(remote=remote, local=local)
-        conn = ServerConnection(channel=sock)
-        if conn.delegate is None:
-            conn.delegate = self.delegate
-        conn.start()  # start FSM
-        return conn
+        if self.__connection is None:
+            self.__connection = super().create_connection(remote=remote, local=local)
+        return self.__connection
 
     def create_channel(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
-        if remote is not None:
-            Server.remote_address = remote
-        return Server.master_channel
+        sock = Server.master
+        if sock is not None:
+            return DiscreteChannel(sock=sock)
 
 
 class Server(threading.Thread, ConnectionDelegate):
 
     local_address = None
     remote_address = None
-    master_channel = None
+    master = None
 
     hub: ServerHub = None
 
@@ -65,45 +54,43 @@ class Server(threading.Thread, ConnectionDelegate):
         self.info('!!! connection (%s, %s) state changed: %s -> %s'
                   % (connection.local_address, connection.remote_address, current_state, next_state))
 
-    def received_data(self, data: bytes, source: tuple, destination: tuple):
-        text = data.decode('utf-8')
-        self.info('<<< received (%d bytes) from %s to %s: %s'
-                  % (len(data), source, destination, text))
-        text = '%d# %d byte(s) received' % (self.counter, len(data))
+    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload: bytes):
+        text = payload.decode('utf-8')
+        self.info('<<< received (%d bytes) from %s: %s' % (len(payload), remote, text))
+        text = '%d# %d byte(s) received' % (self.counter, len(payload))
         self.counter += 1
         self.info('>>> responding: %s' % text)
         data = text.encode('utf-8')
-        self.__send(data=data, source=destination, destination=source)
+        self.__send(data=data, source=self.local_address, destination=remote)
 
     counter = 0
 
-    def __receive(self, source: tuple, destination: tuple) -> bytes:
+    def __send(self, data: bytes, source: tuple, destination: tuple):
         try:
-            pack = self.hub.receive_package(source=source, destination=destination)
-            if pack is not None:
-                return pack.body.get_bytes()
+            self.hub.send_message(body=data, source=source, destination=destination)
         except socket.error as error:
-            print('Server error: %s' % error)
-
-    def __send(self, data: bytes, source: tuple, destination: tuple) -> bool:
-        pack = Package.new(data_type=DataType.MESSAGE, body=Data(data=data))
-        return self.hub.send_package(pack=pack, source=source, destination=destination)
+            print('failed to send message: %s' % error)
 
     def start(self):
         self.__running = True
         super().start()
 
     def run(self):
+        try:
+            self.hub.connect(remote=None, local=self.local_address)
+        except socket.error as error:
+            print('failed to connect: %s' % error)
         while self.__running:
-            if not self.process():
-                time.sleep(2)
+            self.hub.tick()
+            self.clean()
+            time.sleep(0.1)
 
-    def process(self) -> bool:
-        data = self.__receive(source=self.remote_address, destination=self.local_address)
-        if data is None or len(data) == 0:
-            return False
-        self.received_data(data=data, source=self.remote_address, destination=self.local_address)
-        return True
+    def clean(self):
+        pass
+
+
+SERVER_HOST = Hub.inet_address()
+SERVER_PORT = 9394
 
 
 if __name__ == '__main__':
@@ -113,13 +100,10 @@ if __name__ == '__main__':
 
     Server.local_address = (SERVER_HOST, SERVER_PORT)
     # server socket
-    g_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    g_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-    g_sock.setblocking(True)
-    # server channel
-    Server.master_channel = DiscreteChannel(sock=g_sock)
-    Server.master_channel.bind(host=SERVER_HOST, port=SERVER_PORT)
-    Server.master_channel.configure_blocking(blocking=False)
+    Server.master = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    Server.master.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    Server.master.bind(Server.local_address)
+    Server.master.setblocking(False)
 
     g_server = Server()
     Server.hub = ServerHub(delegate=g_server)

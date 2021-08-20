@@ -35,7 +35,6 @@ from .net import Hub, BaseHub
 from .net import BaseConnection, ActiveConnection
 
 from .net import PackageConnection, ActivePackageConnection
-from .net import BasePackageHub
 
 from .channel import DiscreteChannel
 from .hub import PackageHub, ActivePackageHub
@@ -56,7 +55,6 @@ __all__ = [
     'BaseConnection', 'ActiveConnection',
 
     'PackageConnection', 'ActivePackageConnection',
-    'BasePackageHub',
 
     #
     #   Discrete

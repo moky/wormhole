@@ -36,7 +36,6 @@ from tcp import BaseConnection, ActiveConnection
 
 from .pack_conn import PackageConnection
 from .active_conn import ActivePackageConnection
-from .pack_hub import BasePackageHub
 
 __all__ = [
 
@@ -53,5 +52,4 @@ __all__ = [
     #   Classes for Data Package
     #
     'PackageConnection', 'ActivePackageConnection',
-    'BasePackageHub',
 ]

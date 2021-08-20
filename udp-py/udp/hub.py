@@ -33,12 +33,12 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from tcp import Channel, Connection, ConnectionDelegate
+from tcp import BaseHub
 
 from .net import PackageConnection, ActivePackageConnection
-from .net import BasePackageHub
 
 
-class PackageHub(BasePackageHub):
+class PackageHub(BaseHub):
     """ Base Package Hub """
 
     def __init__(self, delegate: ConnectionDelegate):
@@ -50,26 +50,42 @@ class PackageHub(BasePackageHub):
         return self.__delegate()
 
     def create_connection(self, remote: tuple, local: Optional[tuple] = None) -> Connection:
+        # create connection with channel
         sock = self.create_channel(remote=remote, local=local)
-        conn = PackageConnection(channel=sock)
+        conn = PackageConnection(remote=remote, local=local, channel=sock)
+        # set delegate
         if conn.delegate is None:
             conn.delegate = self.delegate
-        conn.start()  # start FSM
+        # start FSM
+        conn.start()
         return conn
 
     @abstractmethod
     def create_channel(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
         raise NotImplemented
 
+    def send_command(self, body: bytes, source: Optional[tuple], destination: tuple):
+        conn = self.connect(remote=destination, local=source)
+        if isinstance(conn, PackageConnection):
+            conn.send_command(body=body, source=source, destination=destination)
+
+    def send_message(self, body: bytes, source: Optional[tuple], destination: tuple):
+        conn = self.connect(remote=destination, local=source)
+        if isinstance(conn, PackageConnection):
+            conn.send_message(body=body, source=source, destination=destination)
+
 
 class ActivePackageHub(PackageHub, ABC):
     """ Active Package Hub """
 
     def create_connection(self, remote: tuple, local: Optional[tuple] = None) -> Connection:
+        # create connection with addresses
         conn = ActiveDiscreteConnection(remote=remote, local=local, hub=self)
+        # set delegate
         if conn.delegate is None:
             conn.delegate = self.delegate
-        conn.start()  # start FSM
+        # start FSM
+        conn.start()
         return conn
 
 
@@ -82,5 +98,5 @@ class ActiveDiscreteConnection(ActivePackageConnection):
 
     def connect(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
         hub = self.__hub()
-        # assert isinstance(hub, ActiveStreamHub)
+        # assert isinstance(hub, ActivePackageHub)
         return hub.create_channel(remote=remote, local=local)

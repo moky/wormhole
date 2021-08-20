@@ -111,7 +111,10 @@ class Header(Data):
         :param offset:    fragment index [OPTIONAL], default is 0
         :param body_length: length of body, default is -1 (unlimited)
         """
-        super().__init__(data=data)
+        if isinstance(data, ByteArray):
+            super().__init__(buffer=data.buffer, offset=data.offset, size=data.size)
+        else:
+            super().__init__(buffer=data)
         self.__type = data_type
         self.__sn = sn
         self.__pages = pages
@@ -301,9 +304,9 @@ class Header(Data):
         data.append(source=cls.MAGIC_CODE)  # 'DIM'
         data.push(element=hl_ty)
         if sn != TransactionID.ZERO:
-            data.append(sn)
+            data.append(source=sn)
         if options is not None:
-            data.append(options)
+            data.append(source=options)
         return cls(data=data, data_type=data_type, sn=sn, pages=pages, offset=offset, body_length=body_length)
 
 

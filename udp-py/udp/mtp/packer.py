@@ -165,6 +165,8 @@ class Packer:
         else:
             fragments.append(body)  # the whole body (too small)
         # create packages with fragments
+        sn = head.sn
+        msg_fra = DataType.MESSAGE_FRAGMENT
         packages: List[Package] = []
         if pages == 1:
             # package too small, no need to split
@@ -175,20 +177,20 @@ class Packer:
             assert head.body_length == -1, 'body length error: %d' % head.body_length
             for index in range(pages):
                 data = fragments[index]
-                pack = Package.new(data_type=DataType.MESSAGE_FRAGMENT, sn=head.sn, pages=pages, offset=index,
+                pack = Package.new(data_type=msg_fra, sn=sn, pages=pages, offset=index,
                                    body_length=-1, body=data)
                 packages.append(pack)
         else:
             # TCP (should not happen)
             for index in range(pages):
                 data = fragments[index]
-                pack = Package.new(data_type=DataType.MESSAGE_FRAGMENT, sn=head.sn, pages=pages, offset=index,
+                pack = Package.new(data_type=msg_fra, sn=sn, pages=pages, offset=index,
                                    body_length=data.size, body=data)
                 packages.append(pack)
         return packages
 
     @classmethod
-    def sort(cls, fragments: list) -> list:
+    def sort(cls, fragments: List[Package]) -> List[Package]:
         """
         Sort the fragments with head.offset
 

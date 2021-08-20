@@ -40,14 +40,12 @@ class DiscreteChannel(Channel):
                  remote: Optional[tuple] = None, local: Optional[tuple] = None,
                  blocking: bool = True, reuse: bool = True):
         super().__init__()
-        self.__remote = remote
-        self.__local = local
         if sock is None:
             # DiscreteChannel(remote=remote, local=local, blocking=blocking, reuse=reuse),
             self.__blocking = blocking
             self.__reuse = reuse
-            self._sock = None
             # setup inner socket
+            self._sock = None
             sock = self.__setup()
             # bind to local address
             if local is not None:
@@ -119,17 +117,19 @@ class DiscreteChannel(Channel):
             # assert isinstance(sock, socket.socket)
             return sock.getpeername()
 
-    def bind(self, host: str, port: int):
+    def bind(self, address: Optional[tuple] = None, host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
+        if address is None:
+            address = (host, port)
         sock = self.__setup()
         # assert isinstance(sock, socket.socket)
-        self.__local = (host, port)
-        sock.bind(self.__local)
+        sock.bind(address)
 
-    def connect(self, host: str, port: int):
+    def connect(self, address: Optional[tuple] = None, host: Optional[str] = '127.0.0.1', port: Optional[int] = 0):
+        if address is None:
+            address = (host, port)
         sock = self.__setup()
         # assert isinstance(sock, socket.socket)
-        self.__remote = (host, port)
-        sock.connect(self.__remote)
+        sock.connect(address)
 
     def disconnect(self):
         sock = self._sock
