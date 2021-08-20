@@ -28,21 +28,19 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .protocol import *
+from .header import MessageType, TransactionID, Header
+from .package import Package
 
-from .node import *
-from .server import *
-from .client import *
+from .attributes import AttributeType, AttributeLength, AttributeValue
+from .attributes import Attribute, AttributeParser
 
-name = "STUN"
+from .values import MappedAddressValue
+from .values import XorMappedAddressValue, XorMappedAddressValue2
+from .values import SourceAddressValue, ResponseAddressValue, ChangedAddressValue
+from .values import ChangeRequestValue, SoftwareValue
 
-__author__ = 'Albert Moky'
 
 __all__ = [
-
-    #
-    #  Protocol
-    #
     'MessageType', 'TransactionID', 'Header', 'Package',
 
     'AttributeType', 'AttributeLength', 'AttributeValue',
@@ -52,10 +50,4 @@ __all__ = [
     'XorMappedAddressValue', 'XorMappedAddressValue2',
     'SourceAddressValue', 'ResponseAddressValue', 'ChangedAddressValue',
     'ChangeRequestValue', 'SoftwareValue',
-
-    #
-    #  Service
-    #
-    'NatType',
-    'Client', 'Server',
 ]

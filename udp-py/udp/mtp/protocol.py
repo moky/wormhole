@@ -140,7 +140,7 @@ class DataType(UInt8Data):
     MESSAGE_FRAGMENT = None
 
 
-def create_type(value: int, name: str):
+def create_type(value: int, name: str) -> DataType:
     data = UInt8Data.from_int(value=value)
     fixed = DataType(data=data, value=value, name=name)
     DataType.cache(value=value, data_type=fixed)

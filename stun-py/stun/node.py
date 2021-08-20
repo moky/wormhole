@@ -35,68 +35,21 @@
     Common interfaces for STUN Server or Client nodes
 """
 
-import socket
 import time
 from abc import ABC, abstractmethod
-from typing import Union, Optional
+from typing import Union
 
-from dmtp.mtp.tlv import Data
-from udp import Hub, Cargo
+from udp.ba import Data
 
-from .protocol import Package
-from .attributes import Attribute
+from .protocol import Package, Attribute
 
 
 """
-[RFC] https://www.ietf.org/rfc/rfc3489.txt
+    [RFC] https://www.ietf.org/rfc/rfc3489.txt
 
-Rosenberg, et al.           Standards Track                    [Page 21]
+    Rosenberg, et al.           Standards Track                    [Page 21]
 
-RFC 3489                          STUN                        March 2003
-
-
-                        +--------+
-                        |  Test  |
-                        |   I    |
-                        +--------+
-                             |
-                             |
-                             V
-                            /\              /\
-                         N /  \ Y          /  \ Y             +--------+
-          UDP     <-------/Resp\--------->/ IP \------------->|  Test  |
-          Blocked         \ ?  /          \Same/              |   II   |
-                           \  /            \? /               +--------+
-                            \/              \/                    |
-                                             | N                  |
-                                             |                    V
-                                             V                    /\
-                                         +--------+  Sym.      N /  \
-                                         |  Test  |  UDP    <---/Resp\
-                                         |   II   |  Firewall   \ ?  /
-                                         +--------+              \  /
-                                             |                    \/
-                                             V                     |Y
-                  /\                         /\                    |
-   Symmetric  N  /  \       +--------+   N  /  \                   V
-      NAT  <--- / IP \<-----|  Test  |<--- /Resp\               Open
-                \Same/      |   I    |     \ ?  /               Internet
-                 \? /       +--------+      \  /
-                  \/                         \/
-                  |                           |Y
-                  |                           |
-                  |                           V
-                  |                           Full
-                  |                           Cone
-                  V              /\
-              +--------+        /  \ Y
-              |  Test  |------>/Resp\---->Restricted
-              |   III  |       \ ?  /
-              +--------+        \  /
-                                 \/
-                                  |N
-                                  |       Port
-                                  +------>Restricted
+    RFC 3489                          STUN                        March 2003
 
                  Figure 2: Flow for type discovery process
 """
@@ -114,12 +67,9 @@ class NatType:
 
 class Node(ABC):
 
-    def __init__(self, port: int, host: str='0.0.0.0', hub: Hub=None):
+    def __init__(self, host: str, port: int):
         super().__init__()
         self.__local_address = (host, port)
-        if hub is None:
-            hub = self._create_hub(host=host, port=port)
-        self.__hub = hub
 
     @property
     def source_address(self) -> tuple:
@@ -137,59 +87,23 @@ class Node(ABC):
         """
         return self.__local_address
 
-    @property
-    def hub(self) -> Hub:
-        return self.__hub
-
-    # noinspection PyMethodMayBeStatic
-    def _create_hub(self, host: str, port: int) -> Hub:
-        hub = Hub()
-        hub.open(host=host, port=port)
-        # hub.start()
-        return hub
-
-    def start(self):
-        # start hub
-        self.hub.start()
-
-    def stop(self):
-        # stop hub
-        self.hub.stop()
-
     # noinspection PyMethodMayBeStatic
     def info(self, msg: str):
         time_array = time.localtime(int(time.time()))
         time_string = time.strftime('%y-%m-%d %H:%M:%S', time_array)
         print('[%s] %s' % (time_string, msg))
 
-    def send(self, data: Data, destination: tuple, source: Union[tuple, int]=None) -> int:
+    @abstractmethod
+    def send(self, data: Data, destination: tuple, source: Union[tuple, int] = None) -> bool:
         """
         Send data to remote address
 
         :param data:
         :param destination: remote address
         :param source:      local address
-        :return: count of sent bytes
+        :return: False on failed
         """
-        try:
-            if source is None:
-                source = self.source_address
-            elif isinstance(source, int):
-                source = (self.source_address[0], source)
-            return self.hub.send(data=data.get_bytes(), destination=destination, source=source)
-        except socket.error:
-            return -1
-
-    def receive(self, timeout: float=2) -> Optional[Cargo]:
-        """
-        Received data from local port
-
-        :return: data and remote address
-        """
-        try:
-            return self.hub.receive(timeout=timeout)
-        except socket.error:
-            return None
+        raise NotImplemented
 
     @abstractmethod
     def parse_attribute(self, attribute: Attribute, context: dict) -> bool:
@@ -213,23 +127,13 @@ class Node(ABC):
         # 1. parse STUN package
         pack = Package.parse(data=data)
         if pack is None:
-            self.info('failed to parse package data: %d' % data.length)
+            self.info('failed to parse package data: %d' % data.size)
+            pack = Package.parse(data=data)
             return False
         # 2. parse attributes
-        attributes = Attribute.parse_all(data=pack.body)
+        attributes = Attribute.parse_attributes(data=pack.body)
         for item in attributes:
             # 3. process attribute
             self.parse_attribute(attribute=item, context=context)
         context['head'] = pack.head
         return True
-
-
-def get_local_ip(remote_host: str = '8.8.8.8', remote_port: int = 80) -> Optional[str]:
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.connect((remote_host, remote_port))
-        ip = sock.getsockname()[0]
-    finally:
-        # noinspection PyUnboundLocalVariable
-        sock.close()
-    return ip

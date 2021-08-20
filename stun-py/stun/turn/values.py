@@ -35,8 +35,16 @@
     [RFC] https://www.ietf.org/rfc/rfc5766.txt
 """
 
-from ..attributes import AttributeType, AttributeValue
-from ..attributes import XorMappedAddressValue
+from typing import Optional
+
+from udp.ba import ByteArray
+
+from ..tlv import ValueParser
+
+from ..protocol.attributes import create_type
+from ..protocol import AttributeParser
+from ..protocol import AttributeType, AttributeLength, AttributeValue
+from ..protocol import XorMappedAddressValue
 
 
 class XorPeerAddressValue(XorMappedAddressValue):
@@ -64,21 +72,38 @@ class XorRelayedAddressValue(XorMappedAddressValue):
 
 
 # New STUN Attributes
-ChannelNumber = AttributeType(value=0x000C, name='CHANNEL-NUMBER')
-Lifetime = AttributeType(value=0x000D, name='LIFETIME')
-# BandWidth = AttributeType(value=0x0010, name='BANDWIDTH')  # Reserved
-XorPeerAddress = AttributeType(value=0x0012, name='XOR-PEER-ADDRESS')
-Data = AttributeType(value=0x0013, name='DATA')
-XorRelayedAddress = AttributeType(value=0x0016, name='XOR-RELAYED-ADDRESS')
-EvenPort = AttributeType(value=0x0018, name='EVEN-PORT')
-RequestedTransport = AttributeType(value=0x0019, name='REQUESTED-TRANSPORT')
-DontFragment = AttributeType(value=0x001A, name='DONT-FRAGMENT')
-# TimerVal = AttributeType(value=0x0021, name='TIMER-VAL')   # Reserved
-ReservationToken = AttributeType(value=0x0022, name='RESERVATION-TOKEN')
+AttributeType.CHANNEL_NUMBER = create_type(value=0x000C, name='CHANNEL-NUMBER')
+AttributeType.LIFETIME = create_type(value=0x000D, name='LIFETIME')
+# AttributeType.BANDWIDTH = create_type(value=0x0010, name='BANDWIDTH')  # Reserved
+AttributeType.XOR_PEER_ADDRESS = create_type(value=0x0012, name='XOR-PEER-ADDRESS')
+AttributeType.DATA = create_type(value=0x0013, name='DATA')
+AttributeType.XOR_RELAYED_ADDRESS = create_type(value=0x0016, name='XOR-RELAYED-ADDRESS')
+AttributeType.EVEN_PORT = create_type(value=0x0018, name='EVEN-PORT')
+AttributeType.REQUESTED_TRANSPORT = create_type(value=0x0019, name='REQUESTED-TRANSPORT')
+AttributeType.DONT_FRAGMENT = create_type(value=0x001A, name='DONT-FRAGMENT')
+# AttributeType.TIMER_VAL = create_type(value=0x0021, name='TIMER-VAL')   # Reserved
+AttributeType.RESERVATION_TOKEN = create_type(value=0x0022, name='RESERVATION-TOKEN')
+
 
 #
-#  Register attribute parsers
+#  Attribute Value Parsers
 #
 
-AttributeValue.register(tag=XorPeerAddress, value_class=XorPeerAddressValue)
-AttributeValue.register(tag=XorRelayedAddress, value_class=XorRelayedAddressValue)
+class XorPeerAddressValueParser(ValueParser[AttributeType, AttributeLength, AttributeValue]):
+
+    def parse_value(self, data: ByteArray, tag: AttributeType, length: AttributeLength) -> Optional[AttributeValue]:
+        return XorPeerAddressValue.parse(data=data, tag=tag, length=length)
+
+
+class XorRelayedAddressValueParser(ValueParser[AttributeType, AttributeLength, AttributeValue]):
+
+    def parse_value(self, data: ByteArray, tag: AttributeType, length: AttributeLength) -> Optional[AttributeValue]:
+        return XorRelayedAddressValue.parse(data=data, tag=tag, length=length)
+
+
+#
+#  Register Attribute Value Parsers
+#
+
+AttributeParser.register(tag=AttributeType.XOR_PEER_ADDRESS, parser=XorPeerAddressValueParser())
+AttributeParser.register(tag=AttributeType.XOR_RELAYED_ADDRESS, parser=XorRelayedAddressValueParser())

@@ -35,22 +35,16 @@
     Client node
 """
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Optional
 
-from dmtp.mtp.tlv import Data
+from udp.ba import Data
 
-from .protocol import Package
-from .protocol import BindRequest, BindResponse
-from .attributes import Attribute, AttributeType, AttributeLength, AttributeValue
-from .attributes import ChangePort, ChangeIPAndPort
-from .attributes import ChangeRequest
-from .attributes import MappedAddress, MappedAddressValue
-from .attributes import XorMappedAddress, XorMappedAddressValue
-from .attributes import XorMappedAddress2, XorMappedAddressValue2
-from .attributes import SourceAddress, SourceAddressValue
-from .attributes import ChangedAddress, ChangedAddressValue
-from .attributes import Software, SoftwareValue
+from .protocol import Package, MessageType
+from .protocol import Attribute, AttributeType, AttributeLength, AttributeValue
+from .protocol import MappedAddressValue, XorMappedAddressValue, XorMappedAddressValue2
+from .protocol import ChangedAddressValue, SourceAddressValue
+from .protocol import ChangeRequestValue, SoftwareValue
 from .node import Node, NatType
 
 
@@ -60,38 +54,42 @@ class Client(Node, ABC):
         super().__init__(host=host, port=port)
         self.retries = 3
 
+    @abstractmethod
+    def receive(self) -> (Optional[bytes], Optional[tuple]):
+        raise NotImplementedError
+
     def parse_attribute(self, attribute: Attribute, context: dict) -> bool:
         tag = attribute.tag
         value = attribute.value
         assert isinstance(tag, AttributeType), 'attribute type error: %s' % tag
         assert isinstance(value, AttributeValue), 'attribute value error: %s' % value
         # check attributes
-        if tag == MappedAddress:
+        if tag == AttributeType.MAPPED_ADDRESS:
             assert isinstance(value, MappedAddressValue), 'mapped address value error: %s' % value
             context['MAPPED-ADDRESS'] = value
-        elif tag == XorMappedAddress:
+        elif tag == AttributeType.XOR_MAPPED_ADDRESS:
             if not isinstance(value, XorMappedAddressValue):
                 # XOR and parse again
                 data = XorMappedAddressValue.xor(data=value, factor=context['trans_id'])
-                length = AttributeLength(value=data.length)
+                length = AttributeLength.new(value=data.size)
                 value = XorMappedAddressValue.parse(data=data, tag=tag, length=length)
             if value is not None:
                 context['MAPPED-ADDRESS'] = value
-        elif tag == XorMappedAddress2:
+        elif tag == AttributeType.XOR_MAPPED_ADDRESS2:
             if not isinstance(value, XorMappedAddressValue2):
                 # XOR and parse again
                 data = XorMappedAddressValue2.xor(data=value, factor=context['trans_id'])
-                length = AttributeLength(value=data.length)
+                length = AttributeLength.new(value=data.size)
                 value = XorMappedAddressValue2.parse(data=data, tag=tag, length=length)
             if value is not None:
                 context['MAPPED-ADDRESS'] = value
-        elif tag == ChangedAddress:
+        elif tag == AttributeType.CHANGED_ADDRESS:
             assert isinstance(value, ChangedAddressValue), 'changed address value error: %s' % value
             context['CHANGED-ADDRESS'] = value
-        elif tag == SourceAddress:
+        elif tag == AttributeType.SOURCE_ADDRESS:
             assert isinstance(value, SourceAddressValue), 'source address value error: %s' % value
             context['SOURCE-ADDRESS'] = value
-        elif tag == Software:
+        elif tag == AttributeType.SOFTWARE:
             assert isinstance(value, SoftwareValue), 'software value error: %s' % value
             context['SOFTWARE'] = value
         else:
@@ -102,17 +100,16 @@ class Client(Node, ABC):
 
     def __bind_request(self, remote_host: str, remote_port: int, body: Data) -> Optional[dict]:
         # 1. create STUN message package
-        req = Package.new(msg_type=BindRequest, body=body)
+        req = Package.new(msg_type=MessageType.BIND_REQUEST, body=body)
         trans_id = req.head.trans_id
         # 2. send and get response
         count = 0
         while True:
-            size = self.send(data=req, destination=(remote_host, remote_port))
-            if size != req.length:
+            if not self.send(data=req, destination=(remote_host, remote_port)):
                 # failed to send data
                 return None
-            cargo = self.receive()
-            if cargo is None:
+            data, source = self.receive()
+            if data is None:
                 if count < self.retries:
                     count += 1
                     self.info('(%d/%d) receive nothing' % (count, self.retries))
@@ -120,17 +117,17 @@ class Client(Node, ABC):
                     # failed to receive data
                     return None
             else:
-                self.info('received %d bytes from %s' % (len(cargo.data), cargo.source))
+                self.info('received %d bytes from %s' % (len(data), source))
                 break
         # 3. parse response
         context = {
             'trans_id': trans_id,
         }
-        data = Data(data=cargo.data)
+        data = Data(buffer=data)
         if not self.parse_data(data=data, context=context):
             return None
         head = context.get('head')
-        if head is None or head.type != BindResponse or head.trans_id != trans_id:
+        if head is None or head.msg_type != MessageType.BIND_RESPONSE or head.trans_id != trans_id:
             # received package error
             return None
         return context
@@ -160,12 +157,12 @@ class Client(Node, ABC):
 
     def __test_2(self, stun_host: str, stun_port: int) -> Optional[dict]:
         self.info('[Test 2] sending "ChangeIPAndPort" ... (%s:%d)' % (stun_host, stun_port))
-        body = Attribute(tag=ChangeRequest, value=ChangeIPAndPort)
+        body = Attribute.new(tag=AttributeType.CHANGE_REQUEST, value=ChangeRequestValue.CHANGE_IP_AND_PORT)
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
     def __test_3(self, stun_host: str, stun_port: int) -> Optional[dict]:
         self.info('[Test 3] sending "ChangePort" ... (%s:%d)' % (stun_host, stun_port))
-        body = Attribute(tag=ChangeRequest, value=ChangePort)
+        body = Attribute.new(tag=AttributeType.CHANGE_REQUEST, value=ChangeRequestValue.CHANGE_PORT)
         return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
     def get_nat_type(self, stun_host: str, stun_port: int = 3478) -> dict:

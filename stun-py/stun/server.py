@@ -37,25 +37,19 @@
 
 from abc import ABC
 
-from dmtp.mtp.tlv import Data, MutableData
+from udp.ba import Data, MutableData
 
-from .protocol import Package, Header
-from .protocol import BindRequest, BindResponse
-from .attributes import Attribute
-from .attributes import ChangePort, ChangeIPAndPort
-from .attributes import ChangeRequest, ChangeRequestValue
-from .attributes import MappedAddress, MappedAddressValue
-from .attributes import XorMappedAddress, XorMappedAddressValue
-from .attributes import XorMappedAddress2, XorMappedAddressValue2
-from .attributes import SourceAddress, SourceAddressValue
-from .attributes import ChangedAddress, ChangedAddressValue
-from .attributes import Software, SoftwareValue
+from .protocol import Package, Header, MessageType
+from .protocol import Attribute, AttributeType
+from .protocol import MappedAddressValue, XorMappedAddressValue, XorMappedAddressValue2
+from .protocol import SourceAddressValue, ChangedAddressValue
+from .protocol import ChangeRequestValue, SoftwareValue
 from .node import Node
 
 
 class Server(Node, ABC):
 
-    def __init__(self, host: str='0.0.0.0', port: int=3478, change_port: int=3479):
+    def __init__(self, host: str = '0.0.0.0', port: int = 3478, change_port: int = 3479):
         super().__init__(host=host, port=port)
         self.software = 'stun.dim.chat 0.1'
         """
@@ -87,17 +81,15 @@ class Server(Node, ABC):
             it should respond the client with another port.
         """
         self.change_port: int = change_port
-        assert change_port > 0, 'change port error'
-        self.hub.open(host=host, port=change_port)
 
     def parse_attribute(self, attribute: Attribute, context: dict) -> bool:
         tag = attribute.tag
         value = attribute.value
         # check attributes
-        if tag == MappedAddress:
+        if tag == AttributeType.MAPPED_ADDRESS:
             assert isinstance(value, MappedAddressValue), 'mapped address value error: %s' % value
             context['MAPPED-ADDRESS'] = value
-        elif tag == ChangeRequest:
+        elif tag == AttributeType.CHANGE_REQUEST:
             assert isinstance(value, ChangeRequestValue), 'change request value error: %s' % value
             context['CHANGE-REQUEST'] = value
         else:
@@ -116,13 +108,12 @@ class Server(Node, ABC):
         """
         assert self.neighbour is not None, 'neighbour address not set'
         # create attributes
-        value = MappedAddressValue(ip=remote_ip, port=remote_port)
-        data1 = Attribute(tag=MappedAddress, value=value)
+        value = MappedAddressValue.new(ip=remote_ip, port=remote_port)
+        data1 = Attribute.new(tag=AttributeType.MAPPED_ADDRESS, value=value)
         # pack
         body = data1
-        pack = Package.new(msg_type=head.type, trans_id=head.trans_id, body=body)
-        res = self.send(data=pack, destination=self.neighbour)
-        return res == pack.length
+        pack = Package.new(msg_type=head.msg_type, trans_id=head.trans_id, body=body)
+        return self.send(data=pack, destination=self.neighbour)
 
     def _respond(self, head: Header, remote_ip: str, remote_port: int, local_port: int) -> bool:
         # local (server) address
@@ -134,25 +125,27 @@ class Server(Node, ABC):
         changed_ip = self.changed_address[0]
         changed_port = self.changed_address[1]
         # create attributes
-        value = MappedAddressValue(ip=remote_ip, port=remote_port)
-        data1 = Attribute(tag=MappedAddress, value=value)
+        value = MappedAddressValue.new(ip=remote_ip, port=remote_port)
+        data1 = Attribute.new(tag=AttributeType.MAPPED_ADDRESS, value=value)
         # Xor
-        value = XorMappedAddressValue(ip=remote_ip, port=remote_port, factor=head.trans_id)
-        data4 = Attribute(tag=XorMappedAddress, value=value)
+        data = XorMappedAddressValue.xor(data=value, factor=head.trans_id)
+        value = XorMappedAddressValue(data=data, ip=remote_ip, port=remote_port, family=value.family)
+        data4 = Attribute.new(tag=AttributeType.XOR_MAPPED_ADDRESS, value=value)
         # Xor2
-        value = XorMappedAddressValue2(ip=remote_ip, port=remote_port, factor=head.trans_id)
-        data5 = Attribute(tag=XorMappedAddress2, value=value)
+        data = XorMappedAddressValue2.xor(data=value, factor=head.trans_id)
+        value = XorMappedAddressValue2(data=data, ip=remote_ip, port=remote_port, family=value.family)
+        data5 = Attribute.new(tag=AttributeType.XOR_MAPPED_ADDRESS2, value=value)
         # source address
-        value = SourceAddressValue(ip=local_ip, port=local_port)
-        data2 = Attribute(tag=SourceAddress, value=value)
+        value = SourceAddressValue.new(ip=local_ip, port=local_port)
+        data2 = Attribute.new(tag=AttributeType.SOURCE_ADDRESS, value=value)
         # changed address
-        value = ChangedAddressValue(ip=changed_ip, port=changed_port)
-        data3 = Attribute(tag=ChangedAddress, value=value)
+        value = ChangedAddressValue.new(ip=changed_ip, port=changed_port)
+        data3 = Attribute.new(tag=AttributeType.CHANGED_ADDRESS, value=value)
         # software
-        value = SoftwareValue(description=self.software)
-        data6 = Attribute(tag=Software, value=value)
+        value = SoftwareValue.new(description=self.software)
+        data6 = Attribute.new(tag=AttributeType.SOFTWARE, value=value)
         # pack
-        length = data1.length + data2.length + data3.length + data4.length + data5.length + data6.length
+        length = data1.size + data2.size + data3.size + data4.size + data5.size + data6.size
         body = MutableData(capacity=length)
         body.append(data1)
         body.append(data2)
@@ -160,24 +153,23 @@ class Server(Node, ABC):
         body.append(data4)
         body.append(data5)
         body.append(data6)
-        pack = Package.new(msg_type=BindResponse, trans_id=head.trans_id, body=body)
-        res = self.send(data=pack, destination=(remote_ip, remote_port), source=(local_ip, local_port))
-        return res == pack.length
+        pack = Package.new(msg_type=MessageType.BIND_RESPONSE, trans_id=head.trans_id, body=body)
+        return self.send(data=pack, destination=(remote_ip, remote_port), source=(local_ip, local_port))
 
     def handle(self, data: Data, remote_ip: str, remote_port: int) -> bool:
         # parse request
         context = {}
         ok = self.parse_data(data=data, context=context)
         head = context.get('head')
-        if not ok or head is None or head.type != BindRequest:
+        if not ok or head is None or head.msg_type != MessageType.BIND_REQUEST:
             # received package error
             return False
-        self.info('received message type: %s' % head.type)
+        self.info('received message type: %s' % head.msg_type)
         change_request = context.get('CHANGE-REQUEST')
-        if change_request == ChangeIPAndPort:
+        if change_request == ChangeRequestValue.CHANGE_IP_AND_PORT:
             # redirect for "change IP" and "change port" flags
             return self._redirect(head=head, remote_ip=remote_ip, remote_port=remote_port)
-        elif change_request == ChangePort:
+        elif change_request == ChangeRequestValue.CHANGE_PORT:
             # respond with another port for "change port" flag
             return self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port, local_port=self.change_port)
         mapped_address = context.get('MAPPED-ADDRESS')

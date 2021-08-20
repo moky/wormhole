@@ -42,19 +42,16 @@ from .entry import E, Entry, EntryParser
 class Parser(EntryParser, Generic[E, T, L, V]):
     """ TLV Parser """
 
-    @abstractmethod
     @property
     def tag_parser(self) -> TagParser[T]:
         """ get Tag Parser """
         raise NotImplemented
 
-    @abstractmethod
     @property
     def length_parser(self) -> LengthParser[T, L]:
         """ get Length Parser """
         raise NotImplemented
 
-    @abstractmethod
     @property
     def value_parser(self) -> ValueParser[T, L, V]:
         """ get Value Parser """
@@ -103,7 +100,10 @@ class Triad(Data, Entry, Generic[T, L, V]):
     """ TLV Entry """
 
     def __init__(self, data: Union[bytes, bytearray, ByteArray], tag: T, length: L, value: V):
-        super().__init__(data=data)
+        if isinstance(data, ByteArray):
+            super().__init__(buffer=data.buffer, offset=data.offset, size=data.size)
+        else:
+            super().__init__(buffer=data)
         self.__tag = tag
         self.__length = length
         self.__value = value

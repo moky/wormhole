@@ -66,24 +66,13 @@ RFC 5766                          TURN                        April 2010
              192.0.2.1:7000      192.0.2.15:50000     192.0.2.210:49191
 """
 
-from .values import *
+from .values import XorPeerAddressValue, XorRelayedAddressValue
 
 name = "TURN"
 
 __author__ = 'Albert Moky'
 
 __all__ = [
-
-    #
-    #  Attributes
-    #
-
-    'ChannelNumber', 'Lifetime',
-    # 'BandWidth',
-    'XorPeerAddress', 'Data', 'XorRelayedAddress',
-    'EvenPort', 'RequestedTransport', 'DontFragment',
-    # 'TimerVal',
-    'ReservationToken',
 
     'XorPeerAddressValue', 'XorRelayedAddressValue',
 ]

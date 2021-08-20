@@ -52,17 +52,14 @@ from .value import V
 class Entry(ByteArray, Generic[T, L, V]):
     """ TLV Entry """
 
-    @abstractmethod
     @property
     def tag(self) -> T:
         raise NotImplemented
 
-    @abstractmethod
     @property
     def length(self) -> L:
         raise NotImplemented
 
-    @abstractmethod
     @property
     def value(self) -> V:
         raise NotImplemented

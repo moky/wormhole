@@ -32,7 +32,7 @@ from abc import abstractmethod
 from typing import TypeVar, Generic, Union, Optional
 
 from udp.ba import ByteArray, Data
-from udp.ba import Endian, UInt8Data, UInt16Data, UInt32Data
+from udp.ba import UInt8Data, UInt16Data, UInt32Data, Convert
 
 
 from .tag import Tag, T
@@ -83,10 +83,12 @@ class Value8(UInt8Data, Value):
     def parse(cls, data: Union[bytes, bytearray, ByteArray],
               tag: Optional[Tag] = None, length: Optional[Length] = None):  # -> Value8
         """ parse Value """
-        if isinstance(data, Value8):
+        if isinstance(data, cls):
             return data
-        data = UInt8Data.from_data(data=data)
-        return cls(data=data, value=data.value)
+        elif not isinstance(data, UInt8Data):
+            data = UInt8Data.from_data(data=data)
+        if data is not None:
+            return cls(data=data, value=data.value)
 
     @classmethod
     def new(cls, value: int):  # -> Value8
@@ -104,15 +106,17 @@ class Value16(UInt16Data, Tag):
     def parse(cls, data: Union[bytes, bytearray, ByteArray],
               tag: Optional[Tag] = None, length: Optional[Length] = None):  # -> Value16
         """ parse Value """
-        if isinstance(data, Value16):
+        if isinstance(data, cls):
             return data
-        data = UInt16Data.from_data(data=data, endian=Endian.BIG_ENDIAN)
-        return cls(data=data, value=data.value)
+        elif not isinstance(data, UInt16Data):
+            data = Convert.uint16data_from_data(data=data)
+        if data is not None:
+            return cls(data=data, value=data.value, endian=data.endian)
 
     @classmethod
     def new(cls, value: int):  # -> Value16
-        data = UInt16Data.from_int(value=value, endian=Endian.BIG_ENDIAN)
-        return cls(data=data, value=data.value)
+        data = Convert.uint16data_from_value(value=value)
+        return cls(data=data, value=data.value, endian=data.endian)
 
 
 class Value32(UInt32Data, Tag):
@@ -125,15 +129,17 @@ class Value32(UInt32Data, Tag):
     def parse(cls, data: Union[bytes, bytearray, ByteArray],
               tag: Optional[Tag] = None, length: Optional[Length] = None):  # -> Value32
         """ parse Value """
-        if isinstance(data, Value32):
+        if isinstance(data, cls):
             return data
-        data = UInt32Data.from_data(data=data, endian=Endian.BIG_ENDIAN)
-        return cls(data=data, value=data.value)
+        elif not isinstance(data, UInt32Data):
+            data = Convert.uint32data_from_data(data=data)
+        if data is not None:
+            return cls(data=data, value=data.value, endian=data.endian)
 
     @classmethod
     def new(cls, value: int):  # -> Value32
-        data = UInt32Data.from_int(value=value, endian=Endian.BIG_ENDIAN)
-        return cls(data=data, value=data.value)
+        data = Convert.uint32data_from_value(value=value)
+        return cls(data=data, value=data.value, endian=data.endian)
 
 
 class RawValue(Data, Value):
@@ -146,13 +152,12 @@ class RawValue(Data, Value):
     def parse(cls, data: Union[bytes, bytearray, ByteArray],
               tag: Optional[Tag] = None, length: Optional[Length] = None):  # -> RawValue
         """ parse Value """
-        if isinstance(data, RawValue):
+        if isinstance(data, cls):
             return data
-        return cls(data=data)
-
-    @classmethod
-    def new(cls, data: Union[bytes, bytearray, ByteArray]):  # -> RawValue
-        return cls(data=data)
+        elif isinstance(data, ByteArray):
+            return cls(buffer=data.buffer, offset=data.offset, size=data.size)
+        else:
+            return cls(buffer=data)
 
 
 class StringValue(Data, Value):
@@ -161,7 +166,10 @@ class StringValue(Data, Value):
     ZERO = None  # StringValue.parse(data=Data.ZERO)
 
     def __init__(self, data: Union[bytes, bytearray, ByteArray], string: str):
-        super().__init__(data=data)
+        if isinstance(data, ByteArray):
+            super().__init__(buffer=data.buffer, offset=data.offset, size=data.size)
+        else:
+            super().__init__(buffer=data)
         self.__string = string
 
     def __str__(self) -> str:
@@ -179,9 +187,11 @@ class StringValue(Data, Value):
     def parse(cls, data: Union[bytes, bytearray, ByteArray],
               tag: Optional[Tag] = None, length: Optional[Length] = None):  # -> StringValue
         """ parse Value """
-        if isinstance(data, StringValue):
+        if isinstance(data, cls):
             return data
-        string = data.get_bytes().decode('utf-8')
+        if isinstance(data, ByteArray):
+            data = data.get_bytes()
+        string = data.decode('utf-8')
         return cls(data=data, string=string)
 
     @classmethod

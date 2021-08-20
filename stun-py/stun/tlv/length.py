@@ -32,7 +32,7 @@ from abc import abstractmethod
 from typing import TypeVar, Generic, Union, Optional
 
 from udp.ba import ByteArray
-from udp.ba import Endian, IntegerData, UInt8Data, UInt16Data, UInt32Data, VarIntData
+from udp.ba import IntegerData, UInt8Data, UInt16Data, UInt32Data, VarIntData, Convert
 
 
 from .tag import Tag, T
@@ -81,10 +81,12 @@ class Length8(UInt8Data, Length):
     @classmethod
     def parse(cls, data: Union[bytes, bytearray, ByteArray], tag: Optional[Tag] = None):  # -> Length8
         """ parse Length """
-        if isinstance(data, Length8):
+        if isinstance(data, cls):
             return data
-        data = UInt8Data.from_data(data=data)
-        return cls(data=data, value=data.value)
+        elif not isinstance(data, UInt8Data):
+            data = UInt8Data.from_data(data=data)
+        if data is not None:
+            return cls(data=data, value=data.value)
 
     @classmethod
     def new(cls, value: int):  # -> Length8
@@ -101,15 +103,17 @@ class Length16(UInt16Data, Length):
     @classmethod
     def parse(cls, data: Union[bytes, bytearray, ByteArray], tag: Optional[Tag] = None):  # -> Length16
         """ parse Length """
-        if isinstance(data, Length16):
+        if isinstance(data, cls):
             return data
-        data = UInt16Data.from_data(data=data, endian=Endian.BIG_ENDIAN)
-        return cls(data=data, value=data.value)
+        elif not isinstance(data, UInt16Data):
+            data = Convert.uint16data_from_data(data=data)
+        if data is not None:
+            return cls(data=data, value=data.value, endian=data.endian)
 
     @classmethod
     def new(cls, value: int):  # -> Length16
-        data = UInt16Data.from_int(value=value, endian=Endian.BIG_ENDIAN)
-        return cls(data=data, value=data.value)
+        data = Convert.uint16data_from_value(value=value)
+        return cls(data=data, value=data.value, endian=data.endian)
 
 
 class Length32(UInt16Data, Length):
@@ -121,15 +125,17 @@ class Length32(UInt16Data, Length):
     @classmethod
     def parse(cls, data: Union[bytes, bytearray, ByteArray], tag: Optional[Tag] = None):  # -> Length32
         """ parse Length """
-        if isinstance(data, Length32):
+        if isinstance(data, cls):
             return data
-        data = UInt32Data.from_data(data=data, endian=Endian.BIG_ENDIAN)
-        return cls(data=data, value=data.value)
+        elif not isinstance(data, UInt32Data):
+            data = Convert.uint32data_from_data(data=data)
+        if data is not None:
+            return cls(data=data, value=data.value, endian=data.endian)
 
     @classmethod
     def new(cls, value: int):  # -> Length32
-        data = UInt32Data.from_int(value=value, endian=Endian.BIG_ENDIAN)
-        return cls(data=data, value=data.value)
+        data = Convert.uint32data_from_value(value=value)
+        return cls(data=data, value=data.value, endian=data.endian)
 
 
 class VarLength(VarIntData, Length):
@@ -141,10 +147,12 @@ class VarLength(VarIntData, Length):
     @classmethod
     def parse(cls, data: Union[bytes, bytearray, ByteArray], tag: Optional[Tag] = None):  # -> VarLength
         """ parse Length """
-        if isinstance(data, VarLength):
+        if isinstance(data, cls):
             return data
-        data = VarIntData.from_data(data=data)
-        return cls(data=data, value=data.value)
+        elif not isinstance(data, VarIntData):
+            data = VarIntData.from_data(data=data)
+        if data is not None:
+            return cls(data=data, value=data.value)
 
     @classmethod
     def new(cls, value: int):  # -> VarLength

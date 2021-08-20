@@ -183,12 +183,13 @@ class DiscreteChannel(Channel):
                 remote = None
             else:
                 raise error
-        if remote is not None:
-            # connected?
-            return self.read(max_len=max_len), remote
-        # UDP receiving
         try:
-            data, remote = sock.recvfrom(max_len)
+            if remote is None:
+                # UDP receiving
+                data, remote = sock.recvfrom(max_len)
+            else:
+                # connected?
+                data = sock.recv(max_len)
         except socket.error as error:
             if not self.__blocking:
                 if error.errno == 35 and error.strerror == 'Resource temporarily unavailable':

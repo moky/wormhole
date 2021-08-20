@@ -32,7 +32,7 @@ from abc import abstractmethod
 from typing import TypeVar, Generic, Union, Optional
 
 from udp.ba import ByteArray, Data
-from udp.ba import Endian, IntegerData, UInt8Data, UInt16Data, UInt32Data, VarIntData
+from udp.ba import IntegerData, UInt8Data, UInt16Data, UInt32Data, VarIntData, Convert
 
 
 """
@@ -77,10 +77,12 @@ class Tag8(UInt8Data, Tag):
     @classmethod
     def parse(cls, data: Union[bytes, bytearray, ByteArray]):  # -> Tag8
         """ parse Tag """
-        if isinstance(data, Tag8):
+        if isinstance(data, cls):
             return data
-        data = UInt8Data.from_data(data=data)
-        return cls(data=data, value=data.value)
+        elif not isinstance(data, UInt8Data):
+            data = UInt8Data.from_data(data=data)
+        if data is not None:
+            return cls(data=data, value=data.value)
 
     @classmethod
     def new(cls, value: int):  # -> Tag8
@@ -96,15 +98,17 @@ class Tag16(UInt16Data, Tag):
     @classmethod
     def parse(cls, data: Union[bytes, bytearray, ByteArray]):  # -> Tag16
         """ parse Tag """
-        if isinstance(data, Tag16):
+        if isinstance(data, cls):
             return data
-        data = UInt16Data.from_data(data=data, endian=Endian.BIG_ENDIAN)
-        return cls(data=data, value=data.value)
+        elif not isinstance(data, UInt16Data):
+            data = Convert.uint16data_from_data(data=data)
+        if data is not None:
+            return cls(data=data, value=data.value, endian=data.endian)
 
     @classmethod
     def new(cls, value: int):  # -> Tag16
-        data = UInt16Data.from_int(value=value, endian=Endian.BIG_ENDIAN)
-        return cls(data=data, value=data.value)
+        data = Convert.uint16data_from_value(value=value)
+        return cls(data=data, value=data.value, endian=data.endian)
 
 
 class Tag32(UInt32Data, Tag):
@@ -115,15 +119,17 @@ class Tag32(UInt32Data, Tag):
     @classmethod
     def parse(cls, data: Union[bytes, bytearray, ByteArray]):  # -> Tag32
         """ parse Tag """
-        if isinstance(data, Tag32):
+        if isinstance(data, cls):
             return data
-        data = UInt32Data.from_data(data=data, endian=Endian.BIG_ENDIAN)
-        return cls(data=data, value=data.value)
+        elif not isinstance(data, UInt32Data):
+            data = Convert.uint32data_from_data(data=data)
+        if data is not None:
+            return cls(data=data, value=data.value, endian=data.endian)
 
     @classmethod
     def new(cls, value: int):  # -> Tag32
-        data = UInt32Data.from_int(value=value, endian=Endian.BIG_ENDIAN)
-        return cls(data=data, value=data.value)
+        data = Convert.uint32data_from_value(value=value)
+        return cls(data=data, value=data.value, endian=data.endian)
 
 
 Tag8.ZERO = Tag8.parse(data=UInt8Data.ZERO)
@@ -149,7 +155,10 @@ class VarTag(Data, Tag):
     ZERO = None  # VarTag.new(content=Data.ZERO)
 
     def __init__(self, data: Union[bytes, bytearray, ByteArray], length: IntegerData, content: ByteArray):
-        super().__init__(data=data)
+        if isinstance(data, ByteArray):
+            super().__init__(buffer=data.buffer, offset=data.offset, size=data.size)
+        else:
+            super().__init__(buffer=data)
         self.__length = length
         self.__content = content
 
@@ -164,7 +173,7 @@ class VarTag(Data, Tag):
     @classmethod
     def parse(cls, data: Union[bytes, bytearray, ByteArray]):  # -> VarTag
         """ parse Tag """
-        if isinstance(data, VarTag):
+        if isinstance(data, cls):
             return data
         # get length
         length = VarIntData.from_data(data=data)
@@ -175,7 +184,7 @@ class VarTag(Data, Tag):
         if end > data.size:
             # raise ValueError('VarTag length error: %d, %d, %d' % (start, end, data.size))
             return None
-        if end < data.size:
+        elif end < data.size:
             # cut the tail
             data = data.slice(start=0, end=end)
         # get content
