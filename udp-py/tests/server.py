@@ -23,6 +23,9 @@ class ServerHub(PackageHub):
         super().__init__(delegate=delegate)
         self.__connection = None
 
+    def bind(self, local: tuple) -> Connection:
+        return self.connect(remote=None, local=local)
+
     def create_connection(self, remote: tuple, local: Optional[tuple] = None) -> Connection:
         if self.__connection is None:
             self.__connection = super().create_connection(remote=remote, local=local)
@@ -77,9 +80,10 @@ class Server(threading.Thread, ConnectionDelegate):
 
     def run(self):
         try:
-            self.hub.connect(remote=None, local=self.local_address)
+            self.hub.bind(local=self.local_address)
         except socket.error as error:
             print('failed to connect: %s' % error)
+        # running
         while self.__running:
             self.hub.tick()
             self.clean()

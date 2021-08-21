@@ -64,11 +64,12 @@ class BaseHub(Hub, Ticker):
             return False
         return conn.send(data=data, target=destination) != -1
 
-    def get_connection(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
+    def get_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Connection]:
         with self.__lock:
             return self.__seek(remote=remote, local=local)
 
-    def connect(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
+    def connect(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Connection]:
+        assert local is not None or remote is not None, 'both local & remote addresses are empty'
         # 1. try to get connection from cache pool
         conn = self.get_connection(remote=remote, local=local)
         if conn is not None:
@@ -88,10 +89,10 @@ class BaseHub(Hub, Ticker):
         return conn
 
     @abstractmethod
-    def create_connection(self, remote: tuple, local: Optional[tuple] = None) -> Connection:
+    def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
         raise NotImplemented
 
-    def disconnect(self, remote: tuple, local: Optional[tuple] = None):
+    def disconnect(self, remote: Optional[tuple], local: Optional[tuple]):
         with self.__lock:
             conn = self.__seek(remote=remote, local=local)
         if conn is not None:
@@ -129,7 +130,7 @@ class BaseHub(Hub, Ticker):
                     # clear the death clock for it
                     self.__dying_times.pop(pair, None)
 
-    def __seek(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
+    def __seek(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Connection]:
         if remote is None:
             assert local is not None, 'both local & remote addresses are empty'
             # get connection bound to local address
@@ -163,7 +164,7 @@ class BaseHub(Hub, Ticker):
                 if v is not None:
                     return v
 
-    def __create_indexes(self, connection: Connection, remote: tuple, local: tuple) -> bool:
+    def __create_indexes(self, connection: Connection, remote: Optional[tuple], local: Optional[tuple]) -> bool:
         if remote is None:
             if local is None:
                 # raise ValueError('both local & remote addresses are empty')
@@ -218,7 +219,7 @@ class BaseHub(Hub, Ticker):
             self.__connections.discard(connection)
 
 
-def build_pair(remote, local) -> Optional[tuple]:
+def build_pair(remote: Optional[tuple], local: Optional[tuple]) -> Optional[tuple]:
     if remote is None:
         if local is None:
             # raise ValueError('both local & remote addresses are empty')

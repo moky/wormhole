@@ -68,14 +68,14 @@ class PackageConnection(BaseConnection):
         payload = pack.body.get_bytes()
         delegate.connection_data_received(connection=self, remote=remote, wrapper=wrapper, payload=payload)
 
-    def send_command(self, body: bytes, source: tuple, destination: tuple):
+    def send_command(self, body: bytes, source: Optional[tuple], destination: tuple):
         pack = Package.new(data_type=DataType.COMMAND, body=Data(buffer=body))
         # append as Departure task to waiting queue
         self.__departure_hall.append(pack=pack, source=source, destination=destination)
         # send out tasks from waiting queue
         self.__process_expired_tasks()
 
-    def send_message(self, body: bytes, source: tuple, destination: tuple):
+    def send_message(self, body: bytes, source: Optional[tuple], destination: tuple):
         pack = Package.new(data_type=DataType.MESSAGE, body=Data(buffer=body))
         # append as Departure task to waiting queue
         self.__departure_hall.append(pack=pack, source=source, destination=destination)

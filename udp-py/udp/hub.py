@@ -49,7 +49,7 @@ class PackageHub(BaseHub):
     def delegate(self) -> ConnectionDelegate:
         return self.__delegate()
 
-    def create_connection(self, remote: tuple, local: Optional[tuple] = None) -> Connection:
+    def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
         # create connection with channel
         sock = self.create_channel(remote=remote, local=local)
         conn = PackageConnection(remote=remote, local=local, channel=sock)
@@ -61,7 +61,7 @@ class PackageHub(BaseHub):
         return conn
 
     @abstractmethod
-    def create_channel(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
+    def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
         raise NotImplemented
 
     def send_command(self, body: bytes, source: Optional[tuple], destination: tuple):
@@ -78,7 +78,7 @@ class PackageHub(BaseHub):
 class ActivePackageHub(PackageHub, ABC):
     """ Active Package Hub """
 
-    def create_connection(self, remote: tuple, local: Optional[tuple] = None) -> Connection:
+    def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
         # create connection with addresses
         conn = ActiveDiscreteConnection(remote=remote, local=local, hub=self)
         # set delegate
@@ -92,7 +92,7 @@ class ActivePackageHub(PackageHub, ABC):
 class ActiveDiscreteConnection(ActivePackageConnection):
     """ Active Discrete Package Connection """
 
-    def __init__(self, remote: tuple, local: tuple, hub: ActivePackageHub):
+    def __init__(self, remote: tuple, local: Optional[tuple], hub: ActivePackageHub):
         super().__init__(remote=remote, local=local)
         self.__hub = weakref.ref(hub)
 

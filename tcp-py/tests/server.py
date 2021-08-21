@@ -115,4 +115,4 @@ if __name__ == '__main__':
         remote_socket, remote_address = g_sock.accept()
         if remote_socket is not None:
             Server.slave_sockets.add(remote_socket)
-            Server.hub.connect(remote=remote_address)
+            Server.hub.connect(remote=remote_address, local=server_address)

@@ -52,7 +52,7 @@ class Departure:
     # if no response received
     EXPIRES = 120  # seconds
 
-    def __init__(self, packages: List[Package], source: tuple, destination: tuple):
+    def __init__(self, packages: List[Package], source: Optional[tuple], destination: tuple):
         super().__init__()
         self.__packages = packages
         first = packages[0]
@@ -74,7 +74,7 @@ class Departure:
         return self.__sn
 
     @property
-    def source(self) -> tuple:
+    def source(self) -> Optional[tuple]:
         return self.__source
 
     @property
@@ -135,7 +135,7 @@ class DepartureHall:
         self.__finished: Dict[bytes, float] = {}    # bytes(TransactionID) => timestamp
         self.__lock = threading.RLock()
 
-    def append(self, pack: Package, source: tuple, destination: tuple):
+    def append(self, pack: Package, source: Optional[tuple], destination: tuple):
         """ Append departure """
         if pack.head.data_type.is_message:
             fragments = Packer.split(package=pack)
