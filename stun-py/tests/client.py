@@ -5,13 +5,13 @@ import socket
 import sys
 import os
 import time
+import weakref
 from typing import Optional, Union
 
 from udp.ba import Data
-from udp import Connection
 from udp import Channel, DiscreteChannel
-from udp import ConnectionDelegate
-from udp import Hub, ActivePackageHub
+from udp import Connection, ConnectionDelegate
+from udp import Hub, BaseHub, BaseConnection
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
@@ -24,6 +24,19 @@ import stun
 SERVER_TEST = Hub.inet_address()
 
 STUN_SERVERS = [
+    # ("stun.xten.com", 3478),
+    ("stun.voipbuster.com", 3478),
+    # ("stun.sipgate.net", 3478),
+    # ("stun.ekiga.net", 3478),
+    # ("stun.schlund.de", 3478),
+    # ("stun.voipstunt.com", 3478),  # Full Cone NAT?
+    # ("stun.counterpath.com", 3478),
+    # ("stun.1und1.de", 3478),
+    # ("stun.gmx.net", 3478),
+    # ("stun.callwithus.com", 3478),
+    # ("stun.counterpath.net", 3478),
+    # ("stun.internetcalls.com", 3478),
+
     (SERVER_TEST, 3478),
     # (SERVER_GZ1, 3478),
     # (SERVER_GZ2, 3478),
@@ -34,12 +47,35 @@ LOCAL_IP = Hub.inet_address()
 LOCAL_PORT = 9527
 
 
-class ClientHub(ActivePackageHub):
+class ClientHub(BaseHub):
+
+    def __init__(self, delegate: ConnectionDelegate):
+        super().__init__()
+        self.__delegate = weakref.ref(delegate)
+        # client channel
+        self.__local_channel = None
+
+    @property
+    def delegate(self) -> ConnectionDelegate:
+        return self.__delegate()
+
+    def create_connection(self, remote: tuple, local: Optional[tuple] = None) -> Connection:
+        # create connection with channel
+        sock = self.create_channel(remote=remote, local=local)
+        conn = BaseConnection(remote=remote, local=local, channel=sock)
+        # set delegate
+        if conn.delegate is None:
+            conn.delegate = self.delegate
+        # start FSM
+        conn.start()
+        return conn
 
     def create_channel(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
-        channel = DiscreteChannel(remote=remote, local=local)
-        channel.configure_blocking(False)
-        return channel
+        if self.__local_channel is None:
+            channel = DiscreteChannel(remote=None, local=local)
+            channel.configure_blocking(False)
+            self.__local_channel = channel
+        return self.__local_channel
 
 
 class Client(stun.Client, ConnectionDelegate):
@@ -84,7 +120,7 @@ class Client(stun.Client, ConnectionDelegate):
                 source = self.source_address
             elif isinstance(source, int):
                 source = (self.source_address[0], source)
-            self.hub.send_message(body=data.get_bytes(), source=source, destination=destination)
+            self.hub.send(data=data.get_bytes(), source=source, destination=destination)
             return True
         except socket.error:
             return False

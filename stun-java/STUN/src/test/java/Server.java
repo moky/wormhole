@@ -1,57 +1,36 @@
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import chat.dim.net.BaseConnection;
+import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
-import chat.dim.net.PackageConnection;
 import chat.dim.type.Data;
 import chat.dim.udp.DiscreteChannel;
-import chat.dim.udp.PackageHub;
 
-class ServerConnection extends PackageConnection {
+class ServerHub extends BaseHub {
 
-    public ServerConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
-        super(byteChannel, remote, local);
-    }
-
-    @Override
-    public SocketAddress receive(ByteBuffer dst) throws IOException {
-        SocketAddress remote = super.receive(dst);
-        if (remote != null) {
-            Server.remoteAddress = remote;
-        }
-        return remote;
-    }
-}
-
-class ServerHub extends PackageHub {
+    private final WeakReference<Connection.Delegate> delegateRef;
 
     private Connection primaryConnection = null;
     private Connection secondaryConnection = null;
 
     public ServerHub(Connection.Delegate delegate) {
-        super(delegate);
+        super();
+        delegateRef = new WeakReference<>(delegate);
     }
 
-    private Connection createServerConnection(SocketAddress remote, SocketAddress local) {
-        // create connection with channel
-        ServerConnection conn = new ServerConnection(createChannel(remote, local), remote, local);
-        // set delegate
-        if (conn.getDelegate() == null) {
-            conn.setDelegate(getDelegate());
-        }
-        // start FSM
-        conn.start();
-        return conn;
+    public Connection.Delegate getDelegate() {
+        return delegateRef.get();
     }
 
     @Override
@@ -76,8 +55,19 @@ class ServerHub extends PackageHub {
         }
     }
 
-    @Override
-    protected Channel createChannel(SocketAddress remote, SocketAddress local) {
+    private Connection createServerConnection(SocketAddress remote, SocketAddress local) {
+        // create connection with channel
+        BaseConnection conn = new BaseConnection(createChannel(remote, local), remote, local);
+        // set delegate
+        if (conn.getDelegate() == null) {
+            conn.setDelegate(getDelegate());
+        }
+        // start FSM
+        conn.start();
+        return conn;
+    }
+
+    private Channel createChannel(SocketAddress remote, SocketAddress local) {
         if (local instanceof InetSocketAddress) {
             int port = ((InetSocketAddress) local).getPort();
             if (port == Server.PORT) {
@@ -149,7 +139,7 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
     @Override
     public int send(byte[] data, SocketAddress source, SocketAddress destination) {
         try {
-            hub.sendMessage(data, source, destination);
+            hub.send(data, source, destination);
             return 0;
         } catch (IOException e) {
             e.printStackTrace();
@@ -178,18 +168,16 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
 
     static SocketAddress primaryAddress;
     static SocketAddress secondaryAddress;
-    static SocketAddress remoteAddress;
 
     static DiscreteChannel primaryChannel;
     static DiscreteChannel secondaryChannel;
 
-    static PackageHub hub;
+    static ServerHub hub;
 
     public static void main(String[] args) throws IOException {
 
         primaryAddress = new InetSocketAddress(HOST, PORT);
         secondaryAddress = new InetSocketAddress(HOST, CHANGE_PORT);
-        remoteAddress = null;
 
         primaryChannel = new DiscreteChannel(DatagramChannel.open());
         primaryChannel.bind(primaryAddress);

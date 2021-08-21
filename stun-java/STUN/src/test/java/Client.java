@@ -1,5 +1,6 @@
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
@@ -9,24 +10,48 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import chat.dim.net.BaseConnection;
+import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
-import chat.dim.udp.ActivePackageHub;
 import chat.dim.udp.DiscreteChannel;
 
-class ClientHub extends ActivePackageHub {
+class ClientHub extends BaseHub {
+
+    private final WeakReference<Connection.Delegate> delegateRef;
+
+    private Channel localChannel = null;
 
     public ClientHub(Connection.Delegate delegate) {
-        super(delegate);
+        super();
+        delegateRef = new WeakReference<>(delegate);
+    }
+
+    public Connection.Delegate getDelegate() {
+        return delegateRef.get();
     }
 
     @Override
-    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-        Channel channel = new DiscreteChannel(remote, local);
-        channel.configureBlocking(false);
-        return channel;
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
+        // create connection with channel
+        BaseConnection conn = new BaseConnection(createChannel(remote, local), remote, local);
+        // set delegate
+        if (conn.getDelegate() == null) {
+            conn.setDelegate(getDelegate());
+        }
+        // start FSM
+        conn.start();
+        return conn;
+    }
+
+    private Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+        if (localChannel == null) {
+            localChannel = new DiscreteChannel(null, local);
+            localChannel.configureBlocking(false);
+        }
+        return localChannel;
     }
 }
 
@@ -56,7 +81,7 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
     @Override
     public int send(byte[] data, SocketAddress source, SocketAddress destination) {
         try {
-            hub.sendMessage(data, source, destination);
+            hub.send(data, source, destination);
             return 0;
         } catch (IOException e) {
             e.printStackTrace();
@@ -124,9 +149,22 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
 
     static SocketAddress remoteAddress;
 
-    static ActivePackageHub hub;
+    static ClientHub hub;
 
     public static void main(String[] args) {
+
+        //remoteAddress = new InetSocketAddress("stun.xten.com", 3478);
+        //remoteAddress = new InetSocketAddress("stun.voipbuster.com", 3478);
+        //remoteAddress = new InetSocketAddress("stun.sipgate.net", 3478);
+        //remoteAddress = new InetSocketAddress("stun.ekiga.net", 3478);
+        //remoteAddress = new InetSocketAddress("stun.schlund.de", 3478);
+        //remoteAddress = new InetSocketAddress("stun.voipstunt.com", 3478);  // Full Cone NAT?
+        //remoteAddress = new InetSocketAddress("stun.counterpath.com", 3478);
+        //remoteAddress = new InetSocketAddress("stun.1und1.de", 3478);
+        //remoteAddress = new InetSocketAddress("stun.gmx.net", 3478);
+        //remoteAddress = new InetSocketAddress("stun.callwithus.com", 3478);
+        //remoteAddress = new InetSocketAddress("stun.counterpath.net", 3478);
+        //remoteAddress = new InetSocketAddress("stun.internetcalls.com", 3478);
 
         remoteAddress = new InetSocketAddress(Server.HOST, Server.PORT);
         System.out.printf("connecting to STUN server: %s ...\n", remoteAddress);
