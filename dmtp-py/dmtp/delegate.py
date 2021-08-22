@@ -29,98 +29,9 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List
 
-from udp import Connection
-from udp import HubListener, Hub as UDPHub
-
-from .mtp.tlv import Data
-from .mtp import Package
-from .mtp import Departure, Arrival, Pool
-from .mtp import PeerDelegate, Peer as MTPPeer
-
-from .values import LocationValue
-
-
-class Hub(UDPHub, PeerDelegate):
-
-    def send_data(self, data: Data, destination: tuple, source: tuple) -> int:
-        return self.send(data=data.get_bytes(), destination=destination, source=source)
-
-
-class Peer(MTPPeer, HubListener):
-
-    def __init__(self, local_address: tuple, hub: Hub = None, pool: Pool = None):
-        super().__init__(pool=pool)
-        self.__local_address = local_address
-        if hub is None:
-            hub = self._create_hub(host=local_address[0], port=local_address[1])
-        self.__hub = hub
-        self.delegate = hub
-        hub.add_listener(listener=self)
-
-    @property
-    def local_address(self) -> tuple:
-        return self.__local_address
-
-    @property
-    def hub(self) -> Hub:
-        return self.__hub
-
-    # noinspection PyMethodMayBeStatic
-    def _create_hub(self, host: str, port: int) -> Hub:
-        hub = Hub()
-        hub.open(host=host, port=port)
-        # hub.start()
-        return hub
-
-    def start(self):
-        # start peer
-        super().start()
-        # start hub
-        self.hub.start()
-
-    def stop(self):
-        # stop hub
-        self.hub.stop()
-        # stop peer
-        super().stop()
-
-    #
-    #   Connections
-    #
-
-    def connect(self, remote_address: tuple) -> Optional[Connection]:
-        return self.hub.connect(destination=remote_address, source=self.local_address)
-
-    def disconnect(self, remote_address: tuple) -> set:
-        return self.hub.disconnect(destination=remote_address, source=self.local_address)
-
-    def get_connection(self, remote_address: tuple) -> Optional[Connection]:
-        return self.hub.get_connection(destination=remote_address, source=self.local_address)
-
-    #
-    #   Send
-    #
-
-    def send_command(self, pack: Package, destination: tuple, source: tuple = None) -> Departure:
-        if source is None:
-            source = self.local_address
-        return super().send_command(pack=pack, destination=destination, source=source)
-
-    def send_message(self, pack: Package, destination: tuple, source: tuple = None) -> Departure:
-        if source is None:
-            source = self.local_address
-        return super().send_message(pack=pack, destination=destination, source=source)
-
-    #
-    #   HubListener
-    #
-
-    def data_received(self, data: bytes, source: tuple, destination: tuple) -> Optional[bytes]:
-        task = Arrival(payload=Data(data=data), source=source, destination=destination)
-        self.pool.append_arrival(task=task)
-        return None
+from .protocol import LocationValue
 
 
 class LocationDelegate(ABC):
@@ -165,7 +76,7 @@ class LocationDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def get_locations(self, identifier: str) -> list:
+    def get_locations(self, identifier: str) -> List[LocationValue]:
         """
         Get locations list by ID
 

@@ -106,11 +106,13 @@ class Data(ByteArray):
 
     def __str__(self) -> str:
         data = self.get_bytes()
-        return data.decode('utf-8')
+        # return data.decode('utf-8')
+        return str(data)
 
     def __repr__(self) -> str:
         data = self.get_bytes()
-        return data.decode('utf-8')
+        # return data.decode('utf-8')
+        return str(data)
 
     @property
     def hex_string(self) -> str:

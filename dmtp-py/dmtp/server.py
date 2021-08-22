@@ -30,8 +30,8 @@
 
 from abc import ABC
 
-from .command import Command, WhoCommand, SignCommand, FromCommand
-from .command import CommandValue, LocationValue
+from .protocol import Command
+from .protocol import CommandValue, LocationValue
 
 from .node import Node
 
@@ -43,31 +43,31 @@ class Server(Node, ABC):
         if location.mapped_address == source:
             if super()._process_hello(location=location, source=source):
                 # location info accepted, create a connection to this source
-                self.peer.connect(remote_address=source)
+                self._connect(remote=source)
                 return True
         # response 'SIGN' command with 'ID' and 'ADDR'
-        cmd = SignCommand.new(identifier=location.identifier, mapped_address=source)
-        self.send_command(cmd=cmd, destination=source)
-        return True
+        cmd = Command.sign_command(identifier=location.identifier, mapped_address=source)
+        return self.send_command(cmd=cmd, destination=source)
 
     def _process_call(self, receiver: str, source: tuple) -> bool:
-        assert self.delegate is not None, 'contact delegate not set yet'
+        delegate = self.delegate
+        assert delegate is not None, 'contact delegate not set yet'
         if receiver is None:
             # raise ValueError('receiver ID not found')
             return False
         # get sessions of receiver
-        locations = self.delegate.get_locations(identifier=receiver)
+        locations = delegate.get_locations(identifier=receiver)
         if len(locations) == 0:
             # receiver offline
             # respond an empty 'FROM' command to the sender
-            cmd = FromCommand.new(identifier=receiver)
+            cmd = Command.from_command(identifier=receiver)
             self.send_command(cmd=cmd, destination=source)
             return False
         # receiver online
-        sender_location = self.delegate.get_location(address=source)
+        sender_location = delegate.get_location(address=source)
         if sender_location is None:
             # sender offline, ask sender to login again
-            cmd = WhoCommand.new()
+            cmd = Command.who_command()
             self.send_command(cmd=cmd, destination=source)
             return False
         # sender online
@@ -78,18 +78,18 @@ class Server(Node, ABC):
             if address is None:
                 continue
             # send 'FROM' command with sender's location info to the receiver
-            cmd = FromCommand.new(location=sender_location)
+            cmd = Command.from_command(location=sender_location)
             self.send_command(cmd=cmd, destination=address)
             # respond 'FROM' command with receiver's location info to sender
-            cmd = FromCommand.new(location=loc)
+            cmd = Command.from_command(location=loc)
             self.send_command(cmd=cmd, destination=source)
         return True
 
-    def process_command(self, cmd: Command, source: tuple) -> bool:
+    def _process_command(self, cmd: Command, source: tuple) -> bool:
         cmd_type = cmd.tag
         cmd_value = cmd.value
         if cmd_type == Command.CALL:
             assert isinstance(cmd_value, CommandValue), 'call cmd error: %s' % cmd_value
             return self._process_call(receiver=cmd_value.identifier, source=source)
         else:
-            return super().process_command(cmd=cmd, source=source)
+            return super()._process_command(cmd=cmd, source=source)

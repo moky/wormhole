@@ -30,12 +30,15 @@
 
 from typing import Union
 
-from .mtp.tlv import Data
+from udp.ba import ByteArray
+from stun import SourceAddressValue, MappedAddressValue
 
-from .tlv import Field, FieldName, FieldValue
-from .values import BinaryValue, StringValue, TimestampValue
-from .values import CommandValue, LocationValue
-from .address import SourceAddressValue, MappedAddressValue, RelayedAddressValue
+from ..tlv import Field, FieldParser
+from ..tlv import FieldName, FieldLength, FieldValue
+from ..tlv import StringValue, BinaryValue, TimestampValue
+
+from .address import RelayedAddressValue
+from .values import LocationValue
 
 
 """
@@ -105,32 +108,26 @@ from .address import SourceAddressValue, MappedAddressValue, RelayedAddressValue
 class Command(Field):
 
     # command names
-    WHO = FieldName(name='WHO')    # (S) location not found, ask receiver to say 'HI'
-    HELLO = FieldName(name='HI')   # (C) login with ID
-    SIGN = FieldName(name='SIGN')  # (S) ask client to login
-    CALL = FieldName(name='CALL')  # (C) ask server to help connecting with another user
-    FROM = FieldName(name='FROM')  # (S) help users connecting
-    BYE = FieldName(name='BYE')    # (C) logout with ID and address
-
-
-class WhoCommand(Command):
+    WHO = FieldName.from_str(name='WHO')    # (S) location not found, ask receiver to say 'HI'
+    HELLO = FieldName.from_str(name='HI')   # (C) login with ID
+    SIGN = FieldName.from_str(name='SIGN')  # (S) ask client to login
+    CALL = FieldName.from_str(name='CALL')  # (C) ask server to help connecting with another user
+    FROM = FieldName.from_str(name='FROM')  # (S) help users connecting
+    BYE = FieldName.from_str(name='BYE')    # (C) logout with ID and address
 
     @classmethod
-    def new(cls) -> Command:
-        return cls(tag=cls.WHO)
-
-
-class HelloCommand(Command):
+    def who_command(cls):
+        return cls.new(tag=cls.WHO)
 
     @classmethod
-    def new(cls, location: LocationValue = None,
-            identifier: Union[str, StringValue] = None,
-            source_address: Union[tuple, SourceAddressValue] = None,
-            mapped_address: Union[tuple, MappedAddressValue] = None,
-            relayed_address: Union[tuple, RelayedAddressValue] = None,
-            timestamp: Union[int, TimestampValue] = None,
-            signature: Union[bytes, bytearray, Data, BinaryValue] = None,
-            nat: Union[str, StringValue] = None) -> Command:
+    def hello_command(cls, location: LocationValue = None,
+                      identifier: Union[str, StringValue] = None,
+                      source_address: Union[tuple, SourceAddressValue] = None,
+                      mapped_address: Union[tuple, MappedAddressValue] = None,
+                      relayed_address: Union[tuple, RelayedAddressValue] = None,
+                      timestamp: Union[int, TimestampValue] = None,
+                      signature: Union[bytes, bytearray, ByteArray, BinaryValue] = None,
+                      nat: Union[str, StringValue] = None):
         # check location
         if location is None:
             assert identifier is not None, 'user ID empty'
@@ -139,61 +136,46 @@ class HelloCommand(Command):
                                          mapped_address=mapped_address,
                                          relayed_address=relayed_address,
                                          timestamp=timestamp, signature=signature, nat=nat)
-        return cls(tag=cls.HELLO, value=location)
-
-
-class SignCommand(Command):
+        return cls.new(tag=cls.HELLO, value=location)
 
     @classmethod
-    def new(cls, identifier: Union[str, StringValue],
-            source_address: Union[tuple, SourceAddressValue] = None,
-            mapped_address: Union[tuple, MappedAddressValue] = None,
-            relayed_address: Union[tuple, RelayedAddressValue] = None) -> Command:
+    def sign_command(cls, identifier: Union[str, StringValue],
+                     source_address: Union[tuple, SourceAddressValue] = None,
+                     mapped_address: Union[tuple, MappedAddressValue] = None,
+                     relayed_address: Union[tuple, RelayedAddressValue] = None):
         # create location
         value = LocationValue.new(identifier=identifier,
                                   source_address=source_address,
                                   mapped_address=mapped_address,
                                   relayed_address=relayed_address)
-        return cls(tag=cls.SIGN, value=value)
-
-
-class CallCommand(Command):
+        return cls.new(tag=cls.SIGN, value=value)
 
     @classmethod
-    def new(cls, identifier: Union[str, StringValue]) -> Command:
+    def call_command(cls, identifier: Union[str, StringValue]):
         value = LocationValue.new(identifier=identifier)
-        return cls(tag=cls.CALL, value=value)
-
-
-class FromCommand(Command):
+        return cls.new(tag=cls.CALL, value=value)
 
     @classmethod
-    def new(cls, location: LocationValue = None, identifier: Union[str, StringValue] = None) -> Command:
+    def from_command(cls, location: LocationValue = None, identifier: Union[str, StringValue] = None):
         if location is None:
             assert identifier is not None, 'UID should not be empty'
             location = LocationValue.new(identifier=identifier)
-        return cls(tag=cls.FROM, value=location)
-
-
-class ByeCommand(Command):
+        return cls.new(tag=cls.FROM, value=location)
 
     @classmethod
-    def new(cls, location: LocationValue) -> Command:
-        return cls(tag=cls.BYE, value=location)
+    def bye_command(cls, location: LocationValue):
+        return cls.new(tag=cls.BYE, value=location)
+
+    @classmethod
+    def parse_commands(cls, data: ByteArray):  # -> List[Command]
+        return cls.get_parser('command_parser').parse_entries(data=data)
 
 
-# classes for parsing command field
-FieldValue.register(tag=Command.HELLO, value_class=LocationValue)
-FieldValue.register(tag=Command.SIGN, value_class=LocationValue)
-FieldValue.register(tag=Command.CALL, value_class=CommandValue)
-FieldValue.register(tag=Command.FROM, value_class=LocationValue)
-FieldValue.register(tag=Command.BYE, value_class=LocationValue)
+class CommandParser(FieldParser[Command]):
+    """ Command Parser """
 
-# classes for parsing other field
-FieldValue.register(tag=Field.ID, value_class=StringValue)
-FieldValue.register(tag=Field.SOURCE_ADDRESS, value_class=SourceAddressValue)
-FieldValue.register(tag=Field.MAPPED_ADDRESS, value_class=MappedAddressValue)
-FieldValue.register(tag=Field.RELAYED_ADDRESS, value_class=RelayedAddressValue)
-FieldValue.register(tag=Field.TIME, value_class=TimestampValue)
-FieldValue.register(tag=Field.SIGNATURE, value_class=BinaryValue)
-FieldValue.register(tag=Field.NAT, value_class=StringValue)
+    def create_entry(self, data: ByteArray, tag: FieldName, length: FieldLength, value: FieldValue) -> Command:
+        return Command(data=data, tag=tag, length=length, value=value)
+
+
+Field.set_parser(name='command_parser', parser=CommandParser())

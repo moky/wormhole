@@ -65,17 +65,18 @@ public abstract class Client extends Node {
             //throw new RuntimeException("failed to update location: " + location);
             return false;
         }
+        boolean ok1 = false, ok2 = false;
         SocketAddress address = location.getSourceAddress();
         if (address != null) {
             connect(address);
-            sayHello(address);
+            ok1 = sayHello(address);
         }
         address = location.getMappedAddress();
         if (address != null) {
             connect(address);
-            sayHello(address);
+            ok2 = sayHello(address);
         }
-        return true;
+        return ok1 || ok2;
     }
 
     @Override

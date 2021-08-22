@@ -2,12 +2,12 @@
 #
 #   DMTP: Direct Message Transfer Protocol
 #
-#                                Written in 2020 by Moky <albert.moky@gmail.com>
+#                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2020 Albert Moky
+# Copyright (c) 2021 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,28 +28,40 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .protocol import Field, FieldName, FieldLength, FieldValue
-from .protocol import StringValue, TypeValue, TimestampValue, BinaryValue
-from .protocol import MappedAddressValue, SourceAddressValue, RelayedAddressValue
-from .protocol import CommandValue, LocationValue
-from .protocol import Command, Message
+from stun.tlv import Tag, TagParser
+from stun.tlv import Tag8, Tag16, Tag32, VarTag
+from stun.tlv import Length, LengthParser
+from stun.tlv import Length8, Length16, Length32, VarLength
+from stun.tlv import Value, ValueParser
+from stun.tlv import Value8, Value16, Value32, RawValue, StringValue
+from stun.tlv import Entry, EntryParser
+from stun.tlv import Triad, Parser
 
-from .delegate import LocationDelegate
-from .node import Node
-from .server import Server
-from .client import Client
+from .field import Field, FieldParser
+from .tag import StringTag as FieldName
+from .value import FieldLength, FieldValue
+from .value import MapValue
+from .value import Value8 as TypeValue
+from .value import Value32 as TimestampValue
+from .value import RawValue as BinaryValue
 
-name = "DMTP"
+name = "TLV"
 
 __author__ = 'Albert Moky'
 
 __all__ = [
-    'Field', 'FieldName', 'FieldLength', 'FieldValue',
-    'StringValue', 'TypeValue', 'TimestampValue', 'BinaryValue',
-    'MappedAddressValue', 'SourceAddressValue', 'RelayedAddressValue',
-    'CommandValue', 'LocationValue',
-    'Command', 'Message',
 
-    'LocationDelegate',
-    'Node', 'Server', 'Client',
+    'Tag', 'TagParser',
+    'Length', 'LengthParser',
+    'Value', 'ValueParser',
+    'Entry', 'EntryParser',
+
+    'Tag8', 'Tag16', 'Tag32', 'VarTag',
+    'Length8', 'Length16', 'Length32', 'VarLength',
+    'Value8', 'Value16', 'Value32', 'RawValue', 'StringValue',
+    'Triad', 'Parser',
+
+    'Field', 'FieldParser',
+    'FieldName', 'FieldLength', 'FieldValue',
+    'MapValue', 'TypeValue', 'TimestampValue', 'BinaryValue',
 ]

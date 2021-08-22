@@ -2,12 +2,12 @@
 #
 #   DMTP: Direct Message Transfer Protocol
 #
-#                                Written in 2020 by Moky <albert.moky@gmail.com>
+#                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2020 Albert Moky
+# Copyright (c) 2021 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,28 +28,34 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .protocol import Field, FieldName, FieldLength, FieldValue
-from .protocol import StringValue, TypeValue, TimestampValue, BinaryValue
-from .protocol import MappedAddressValue, SourceAddressValue, RelayedAddressValue
-from .protocol import CommandValue, LocationValue
-from .protocol import Command, Message
+from typing import Union
 
-from .delegate import LocationDelegate
-from .node import Node
-from .server import Server
-from .client import Client
+from udp.ba import ByteArray, Data, IntegerData
+from stun.tlv import VarTag
 
-name = "DMTP"
 
-__author__ = 'Albert Moky'
+class StringTag(VarTag):
 
-__all__ = [
-    'Field', 'FieldName', 'FieldLength', 'FieldValue',
-    'StringValue', 'TypeValue', 'TimestampValue', 'BinaryValue',
-    'MappedAddressValue', 'SourceAddressValue', 'RelayedAddressValue',
-    'CommandValue', 'LocationValue',
-    'Command', 'Message',
+    def __init__(self, data: Union[bytes, bytearray, ByteArray], length: IntegerData, content: ByteArray):
+        super().__init__(data=data, length=length, content=content)
+        self.__name = content.get_bytes().decode('utf-8')
 
-    'LocationDelegate',
-    'Node', 'Server', 'Client',
-]
+    def __str__(self) -> str:
+        return self.__name
+
+    def __repr__(self) -> str:
+        return self.__name
+
+    @property
+    def name(self) -> str:
+        return self.__name
+
+    @classmethod
+    def from_str(cls, name: str):  # -> StringTag
+        data = name.encode('utf-8')
+        content = Data(buffer=data)
+        return cls.new(content=content)
+
+    # @classmethod
+    # def parse(cls, data: Union[bytes, bytearray, ByteArray]):  # -> StringTag
+    #     return super().parse(data=data)

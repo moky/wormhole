@@ -30,8 +30,8 @@
 
 from abc import ABC
 
-from .command import Command
-from .command import LocationValue
+from .protocol import Command
+from .protocol import LocationValue
 from .node import Node
 
 
@@ -55,17 +55,18 @@ class Client(Node, ABC):
         # respond anything (say 'HI') to build the connection.
         assert self.delegate is not None, 'contact delegate not set'
         if self.delegate.store_location(location=location):
+            ok1 = ok2 = False
             address = location.source_address
             if address is not None:
-                self.peer.connect(remote_address=address)
-                self.say_hello(destination=address)
+                self._connect(remote=address)
+                ok1 = self.say_hello(destination=address)
             address = location.mapped_address
             if address is not None:
-                self.peer.connect(remote_address=address)
-                self.say_hello(destination=address)
-            return True
+                self._connect(remote=address)
+                ok2 = self.say_hello(destination=address)
+            return ok1 or ok2
 
-    def process_command(self, cmd: Command, source: tuple) -> bool:
+    def _process_command(self, cmd: Command, source: tuple) -> bool:
         cmd_type = cmd.tag
         cmd_value = cmd.value
         if cmd_type == Command.SIGN:
@@ -75,4 +76,4 @@ class Client(Node, ABC):
             assert isinstance(cmd_value, LocationValue), 'call from error: %s' % cmd_value
             return self._process_from(location=cmd_value)
         else:
-            return super().process_command(cmd=cmd, source=source)
+            return super()._process_command(cmd=cmd, source=source)

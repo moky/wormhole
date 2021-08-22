@@ -28,12 +28,12 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional
+from typing import Optional, Union, List
 
-from .mtp.tlv import Data
+from udp.ba import ByteArray
 
-from .tlv import Field, FieldName, FieldValue
-from .values import FieldsValue, BinaryValue, TypeValue, TimestampValue, StringValue
+from ..tlv import Field, FieldName
+from ..tlv import MapValue, StringValue, BinaryValue, TypeValue, TimestampValue
 
 
 """
@@ -51,7 +51,7 @@ from .values import FieldsValue, BinaryValue, TypeValue, TimestampValue, StringV
             G - Group ID (OPTIONAL)
             
             <Body>
-            D - content Data
+            D - content data
             V - signature, Verify it with content data and sender's meta.key
             K - symmetric Key for en/decrypt content data (OPTIONAL)
             
@@ -65,7 +65,7 @@ from .values import FieldsValue, BinaryValue, TypeValue, TimestampValue, StringV
         Fields:
             
             F - Filename
-            D - file content Data
+            D - file content data
             
             S - Sender (OPTIONAL)
             R - Receiver (OPTIONAL)
@@ -74,10 +74,10 @@ from .values import FieldsValue, BinaryValue, TypeValue, TimestampValue, StringV
 """
 
 
-class Message(FieldsValue):
+class Message(MapValue):
 
-    def __init__(self, fields: list, data: Data = None):
-        super().__init__(fields=fields, data=data)
+    def __init__(self, data: Union[bytes, bytearray, ByteArray], fields: List[Field]):
+        super().__init__(data=data, fields=fields)
         # envelope
         self.__sender: Optional[str] = None
         self.__receiver: Optional[str] = None
@@ -85,86 +85,85 @@ class Message(FieldsValue):
         self.__type: Optional[int] = None
         self.__group: Optional[str] = None
         # body
-        self.__content: Optional[Data] = None
-        self.__signature: Optional[Data] = None
-        self.__key: Optional[Data] = None
+        self.__content: Optional[bytes] = None
+        self.__signature: Optional[bytes] = None
+        self.__key: Optional[bytes] = None
         # attachments
-        self.__meta: Optional[Data] = None
-        self.__profile: Optional[Data] = None
+        self.__meta: Optional[bytes] = None
+        self.__profile: Optional[bytes] = None
         # file in message
         self.__filename: Optional[str] = None
 
     @property
     def sender(self) -> str:
         if self.__sender is None:
-            self.__sender = self._get_string_value(self.SENDER)
+            self.__sender = self.get_string_value(tag=self.SENDER)
         return self.__sender
 
     @property
     def receiver(self) -> str:
         if self.__receiver is None:
-            self.__receiver = self._get_string_value(self.RECEIVER)
+            self.__receiver = self.get_string_value(tag=self.RECEIVER)
         return self.__receiver
 
     @property
-    def time(self) -> Optional[int]:
+    def time(self) -> int:
         if self.__time is None:
-            self.__time = self._get_timestamp_value(self.TIME, 0)
+            self.__time = self.get_int_value(tag=self.TIME)
         return self.__time
 
     @property
     def type(self) -> Optional[int]:
         if self.__type is None:
-            self.__type = self._get_type_value(self.TYPE, 0)
+            self.__type = self.get_int_value(tag=self.TYPE)
         return self.__type
 
     @property
     def group(self) -> Optional[str]:
         if self.__group is None:
-            self.__group = self._get_string_value(self.GROUP)
+            self.__group = self.get_string_value(tag=self.GROUP)
         return self.__group
 
     @property
-    def content(self) -> Data:
+    def content(self) -> bytes:
         if self.__content is None:
-            self.__content = self._get_binary_value(self.CONTENT)
+            self.__content = self.get_binary_value(tag=self.CONTENT)
         return self.__content
 
     @property
-    def signature(self) -> Data:
+    def signature(self) -> bytes:
         if self.__signature is None:
-            self.__signature = self._get_binary_value(self.SIGNATURE)
+            self.__signature = self.get_binary_value(tag=self.SIGNATURE)
         return self.__signature
 
     @property
-    def key(self) -> Optional[Data]:
+    def key(self) -> Optional[bytes]:
         if self.__key is None:
-            self.__key = self._get_binary_value(self.KEY)
+            self.__key = self.get_binary_value(tag=self.KEY)
         return self.__key
 
     @property
-    def meta(self) -> Optional[Data]:
+    def meta(self) -> Optional[bytes]:
         if self.__meta is None:
-            self.__meta = self._get_binary_value(self.META)
+            self.__meta = self.get_binary_value(tag=self.META)
         return self.__meta
 
     @property
-    def profile(self) -> Optional[Data]:
+    def visa(self) -> Optional[bytes]:
         if self.__profile is None:
-            self.__profile = self._get_binary_value(self.PROFILE)
+            self.__profile = self.get_binary_value(tag=self.VISA)
         return self.__profile
 
     @property
     def filename(self) -> Optional[str]:
         if self.__filename is None:
-            self.__filename = self._get_string_value(self.FILENAME)
+            self.__filename = self.get_string_value(tag=self.FILENAME)
         return self.__filename
 
-    @classmethod
-    def parse(cls, data: Data, tag: FieldName = None, length=None):
-        fields = Field.parse_all(data=data)
-        assert len(fields) > 0, 'message error: %s' % data.get_bytes()
-        return Message(fields=fields, data=data)
+    # @classmethod
+    # def parse(cls, data: Union[bytes, bytearray, ByteArray],
+    #           tag: Optional[FieldName] = None, length: Optional[VarLength] = None):  # -> Message
+    #     return super().parse(data=data, tag=tag, length=length)
 
     @classmethod
     def __fetch_msg_field(cls, array: list, info: dict, s: str, name: str, tag: FieldName, clazz):
@@ -176,7 +175,7 @@ class Message(FieldsValue):
                 return None
         if not isinstance(value, clazz):
             value = clazz(value)
-        field = Field(tag=tag, value=value)
+        field = Field.new(tag=tag, value=value)
         array.append(field)
 
     @classmethod
@@ -194,41 +193,24 @@ class Message(FieldsValue):
         cls.__fetch_msg_field(fields, info, 'K', 'key', cls.KEY, BinaryValue)
         # attachments
         cls.__fetch_msg_field(fields, info, 'M', 'meta', cls.META, BinaryValue)
-        cls.__fetch_msg_field(fields, info, 'P', 'profile', cls.PROFILE, BinaryValue)
+        cls.__fetch_msg_field(fields, info, 'P', 'visa', cls.VISA, BinaryValue)
         # file
         cls.__fetch_msg_field(fields, info, 'F', 'filename', cls.FILENAME, StringValue)
         # create message with fields
-        return cls(fields=fields)
+        return cls.from_fields(fields=fields)
 
     # message field names
-    SENDER = FieldName(name='S')     # sender ID
-    RECEIVER = FieldName(name='R')   # receiver ID
-    TIME = FieldName(name='W')       # message time
-    TYPE = FieldName(name='T')       # message type
-    GROUP = FieldName(name='G')      # group ID
+    SENDER = FieldName.from_str(name='S')     # sender ID
+    RECEIVER = FieldName.from_str(name='R')   # receiver ID
+    TIME = FieldName.from_str(name='W')       # message time
+    TYPE = FieldName.from_str(name='T')       # message type
+    GROUP = FieldName.from_str(name='G')      # group ID
 
-    CONTENT = FieldName(name='D')    # message content Data; or file content Data
-    SIGNATURE = FieldName(name='V')  # signature for Verify content data with sender's meta.key
-    KEY = FieldName(name='K')        # encryption key (symmetric key data encrypted by public key)
+    CONTENT = FieldName.from_str(name='D')    # message content data; or file content data
+    SIGNATURE = FieldName.from_str(name='V')  # signature for Verify content data with sender's meta.key
+    KEY = FieldName.from_str(name='K')        # encryption key (symmetric key data encrypted by public key)
 
-    META = FieldName(name='M')       # meta info
-    PROFILE = FieldName(name='P')    # profile
+    META = FieldName.from_str(name='M')       # meta info
+    VISA = FieldName.from_str(name='P')       # visa (profile)
 
-    FILENAME = FieldName(name='F')   # Filename
-
-
-# classes for parsing message
-FieldValue.register(tag=Message.SENDER, value_class=StringValue)
-FieldValue.register(tag=Message.RECEIVER, value_class=StringValue)
-FieldValue.register(tag=Message.TIME, value_class=TimestampValue)
-FieldValue.register(tag=Message.TYPE, value_class=TypeValue)
-FieldValue.register(tag=Message.GROUP, value_class=StringValue)
-
-FieldValue.register(tag=Message.CONTENT, value_class=BinaryValue)
-FieldValue.register(tag=Message.SIGNATURE, value_class=BinaryValue)
-FieldValue.register(tag=Message.KEY, value_class=BinaryValue)
-
-FieldValue.register(tag=Message.META, value_class=BinaryValue)
-FieldValue.register(tag=Message.PROFILE, value_class=BinaryValue)
-
-FieldValue.register(tag=Message.FILENAME, value_class=StringValue)
+    FILENAME = FieldName.from_str(name='F')   # Filename

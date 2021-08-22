@@ -57,8 +57,7 @@ public abstract class Server extends Node {
         // respond 'SIGN' command with 'ID' and 'MAPPED-ADDRESS'
         String id = location.getIdentifier();
         Command cmd = Command.createSignCommand(id, source, null);
-        sendCommand(cmd, source);
-        return true;
+        return sendCommand(cmd, source);
     }
 
     protected boolean processCall(String receiver, SocketAddress source) {

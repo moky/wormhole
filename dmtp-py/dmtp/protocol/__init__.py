@@ -28,28 +28,17 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .protocol import Field, FieldName, FieldLength, FieldValue
-from .protocol import StringValue, TypeValue, TimestampValue, BinaryValue
-from .protocol import MappedAddressValue, SourceAddressValue, RelayedAddressValue
-from .protocol import CommandValue, LocationValue
-from .protocol import Command, Message
-
-from .delegate import LocationDelegate
-from .node import Node
-from .server import Server
-from .client import Client
-
-name = "DMTP"
-
-__author__ = 'Albert Moky'
+from .address import RelayedAddressValue
+from .values import CommandValue, LocationValue
+from .command import Command
+from .message import Message
+from .parsers import *
 
 __all__ = [
     'Field', 'FieldName', 'FieldLength', 'FieldValue',
     'StringValue', 'TypeValue', 'TimestampValue', 'BinaryValue',
     'MappedAddressValue', 'SourceAddressValue', 'RelayedAddressValue',
+
     'CommandValue', 'LocationValue',
     'Command', 'Message',
-
-    'LocationDelegate',
-    'Node', 'Server', 'Client',
 ]

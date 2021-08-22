@@ -82,7 +82,7 @@ class ActiveStreamHub(StreamHub, ABC):
 class ActiveStreamConnection(ActiveConnection):
     """ Active Stream Connection """
 
-    def __init__(self, remote: tuple, local: tuple, hub: ActiveStreamHub):
+    def __init__(self, remote: tuple, local: Optional[tuple], hub: ActiveStreamHub):
         super().__init__(remote=remote, local=local)
         self.__hub = weakref.ref(hub)
 

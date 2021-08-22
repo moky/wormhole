@@ -26,12 +26,12 @@ class ServerHub(PackageHub):
     def bind(self, local: tuple) -> Connection:
         return self.connect(remote=None, local=local)
 
-    def create_connection(self, remote: tuple, local: Optional[tuple] = None) -> Connection:
+    def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
         if self.__connection is None:
             self.__connection = super().create_connection(remote=remote, local=local)
         return self.__connection
 
-    def create_channel(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
+    def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
         sock = Server.master
         if sock is not None:
             return DiscreteChannel(sock=sock)

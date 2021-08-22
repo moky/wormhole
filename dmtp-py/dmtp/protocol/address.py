@@ -28,28 +28,15 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .protocol import Field, FieldName, FieldLength, FieldValue
-from .protocol import StringValue, TypeValue, TimestampValue, BinaryValue
-from .protocol import MappedAddressValue, SourceAddressValue, RelayedAddressValue
-from .protocol import CommandValue, LocationValue
-from .protocol import Command, Message
+from stun import MappedAddressValue
 
-from .delegate import LocationDelegate
-from .node import Node
-from .server import Server
-from .client import Client
 
-name = "DMTP"
+class RelayedAddressValue(MappedAddressValue):
+    """
+    RELAYED-ADDRESS
 
-__author__ = 'Albert Moky'
-
-__all__ = [
-    'Field', 'FieldName', 'FieldLength', 'FieldValue',
-    'StringValue', 'TypeValue', 'TimestampValue', 'BinaryValue',
-    'MappedAddressValue', 'SourceAddressValue', 'RelayedAddressValue',
-    'CommandValue', 'LocationValue',
-    'Command', 'Message',
-
-    'LocationDelegate',
-    'Node', 'Server', 'Client',
-]
+        The RELAYED-ADDRESS attribute is present in Allocate responses.
+        It specifies the address and port that the server allocated to the client.
+        It is encoded in the same way as MAPPED-ADDRESS.
+    """
+    pass

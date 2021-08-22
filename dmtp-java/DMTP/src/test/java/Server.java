@@ -3,7 +3,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 
 import chat.dim.dmtp.ContactManager;
@@ -14,28 +13,11 @@ import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
-import chat.dim.net.PackageConnection;
 import chat.dim.type.Data;
-import chat.dim.udp.ActivePackageHub;
 import chat.dim.udp.DiscreteChannel;
+import chat.dim.udp.PackageHub;
 
-class ServerConnection extends PackageConnection {
-
-    public ServerConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
-        super(byteChannel, remote, local);
-    }
-
-    @Override
-    public SocketAddress receive(ByteBuffer dst) throws IOException {
-        SocketAddress remote = super.receive(dst);
-        if (remote != null) {
-            Server.remoteAddress = remote;
-        }
-        return remote;
-    }
-}
-
-class ServerHub extends ActivePackageHub {
+class ServerHub extends PackageHub {
 
     private Connection connection = null;
 
@@ -43,29 +25,26 @@ class ServerHub extends ActivePackageHub {
         super(delegate);
     }
 
-    protected Connection createServerConnection(SocketAddress remote, SocketAddress local) {
-        // create connection with channel
-        ServerConnection conn = new ServerConnection(createChannel(remote, local), remote, local);
-        // set delegate
-        if (conn.getDelegate() == null) {
-            conn.setDelegate(getDelegate());
-        }
-        // start FSM
-        conn.start();
-        return conn;
+    public void bind(SocketAddress local) throws IOException {
+        connect(null, local);
     }
 
     @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
         if (connection == null) {
-            connection = createServerConnection(remote, local);
+            connection = super.createConnection(remote, local);
         }
         return connection;
     }
 
     @Override
-    protected Channel createChannel(SocketAddress remote, SocketAddress local) {
-        return Server.masterChannel;
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+        DatagramChannel sock = Server.master;
+        if (sock == null) {
+            return null;
+        } else {
+            return new DiscreteChannel(sock);
+        }
     }
 }
 
@@ -90,7 +69,7 @@ public class Server extends chat.dim.dmtp.Server implements Runnable, Connection
     @Override
     public void run() {
         try {
-            hub.connect(null, localAddress);
+            hub.bind(localAddress);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -165,8 +144,7 @@ public class Server extends chat.dim.dmtp.Server implements Runnable, Connection
     static ContactManager database;
 
     static SocketAddress localAddress;
-    static SocketAddress remoteAddress;
-    static DiscreteChannel masterChannel;
+    static DatagramChannel master;
 
     static ServerHub hub;
 
@@ -175,10 +153,9 @@ public class Server extends chat.dim.dmtp.Server implements Runnable, Connection
         System.out.printf("UDP server (%s:%d) starting ...\n", HOST, PORT);
 
         localAddress = new InetSocketAddress(HOST, PORT);
-        remoteAddress = null;
-        masterChannel = new DiscreteChannel(DatagramChannel.open());
-        masterChannel.bind(localAddress);
-        masterChannel.configureBlocking(false);
+        master = DatagramChannel.open();
+        master.socket().bind(localAddress);
+        master.configureBlocking(false);
 
         Server server = new Server();
 

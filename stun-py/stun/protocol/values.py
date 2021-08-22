@@ -97,10 +97,7 @@ class MappedAddressValue(RawValue):
     IPV6 = 0x02
 
     def __init__(self, data: Union[bytes, bytearray, ByteArray], ip: str, port: int, family: int):
-        if isinstance(data, ByteArray):
-            super().__init__(buffer=data.buffer, offset=data.offset, size=data.size)
-        else:
-            super().__init__(buffer=data)
+        super().__init__(data=data)
         self.__family = family
         self.__port = port
         self.__ip = ip
@@ -460,10 +457,7 @@ class SoftwareValue(RawValue):
     """
 
     def __init__(self, data: Union[bytes, bytearray, ByteArray], description: str):
-        if isinstance(data, ByteArray):
-            super().__init__(buffer=data.buffer, offset=data.offset, size=data.size)
-        else:
-            super().__init__(buffer=data)
+        super().__init__(data=data)
         self.__desc = description
 
     def __str__(self):

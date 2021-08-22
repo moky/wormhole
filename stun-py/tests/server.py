@@ -39,7 +39,7 @@ class ServerHub(BaseHub):
     def bind(self, local: tuple) -> Connection:
         return self.connect(remote=None, local=local)
 
-    def create_connection(self, remote: tuple, local: Optional[tuple] = None) -> Connection:
+    def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
         port = local[1]
         if port == SERVER_PORT:
             if self.__primary_connection is None:
@@ -52,7 +52,7 @@ class ServerHub(BaseHub):
         else:
             raise ConnectionError('port not defined: %d' % port)
 
-    def create_server_connection(self, remote: tuple, local: Optional[tuple] = None) -> Connection:
+    def create_server_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
         # create connection with channel
         sock = self.create_channel(remote=remote, local=local)
         conn = BaseConnection(remote=remote, local=local, channel=sock)
@@ -63,7 +63,7 @@ class ServerHub(BaseHub):
         conn.start()
         return conn
 
-    def create_channel(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
+    def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
         port = local[1]
         if port == SERVER_PORT:
             return DiscreteChannel(sock=Server.primary_socket)

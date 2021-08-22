@@ -29,41 +29,24 @@
 # ==============================================================================
 
 import weakref
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Optional
 
-from .mtp.tlv import Data
-from .mtp import Package, Command as DataTypeCommand, Message as DataTypeMessage
-from .mtp import PeerHandler, Pool
-from .mtp import Departure
+from udp.ba import ByteArray
+from udp.mtp import Header
 
 from .tlv import Field
-from .values import LocationValue
-from .command import Command, HelloCommand
-from .message import Message
-from .peer import Hub, Peer, LocationDelegate
+from .protocol import LocationValue
+from .protocol import Command, Message
+from .delegate import LocationDelegate
 
 
-class Node(PeerHandler):
+class Node(ABC):
 
-    def __init__(self, peer: Peer = None, local_address: tuple = None, hub: Hub = None, pool: Pool = None):
+    def __init__(self):
         super().__init__()
-        if peer is None:
-            peer = self.__create_peer(local_address=local_address, hub=hub, pool=pool)
-        self.__peer = peer
-        peer.handler = self
         # location delegate
         self.__delegate: Optional[weakref.ReferenceType] = None
-
-    # noinspection PyMethodMayBeStatic
-    def __create_peer(self, local_address: tuple, hub: Hub = None, pool: Pool = None):
-        peer = Peer(local_address=local_address, hub=hub, pool=pool)
-        # peer.start()
-        return peer
-
-    @property
-    def peer(self) -> Peer:
-        return self.__peer
 
     @property
     def delegate(self) -> Optional[LocationDelegate]:
@@ -77,42 +60,34 @@ class Node(PeerHandler):
         else:
             self.__delegate = weakref.ref(value)
 
-    def start(self):
-        # start peer
-        self.peer.start()
-
-    def stop(self):
-        # stop peer
-        self.peer.stop()
+    @abstractmethod
+    def _connect(self, remote: tuple):
+        raise NotImplemented
 
     #
     #   Send
     #
-    def send_command(self, cmd: Command, destination: tuple) -> Departure:
+    @abstractmethod
+    def send_command(self, cmd: Command, destination: tuple) -> bool:
         """
         Send command to destination address
 
         :param cmd:
         :param destination: remote address
-        :return: departure task with 'trans_id' in the payload
+        :return: False on error
         """
-        pack = Package.new(data_type=DataTypeCommand, body=cmd)
-        return self.peer.send_command(pack=pack, destination=destination)
+        raise NotImplemented
 
-    def send_message(self, msg: Message, destination: tuple) -> Departure:
+    @abstractmethod
+    def send_message(self, msg: Message, destination: tuple) -> bool:
         """
         Send message to destination address
 
         :param msg:
         :param destination: remote address
-        :return: departure task with 'trans_id' in the payload
+        :return: False on error
         """
-        pack = Package.new(data_type=DataTypeMessage, body=msg)
-        return self.peer.send_message(pack=pack, destination=destination)
-
-    #
-    #   Process
-    #
+        raise NotImplemented
 
     def say_hello(self, destination: tuple) -> bool:
         assert self.delegate is not None, 'contact delegate not set yet'
@@ -120,28 +95,43 @@ class Node(PeerHandler):
         if mine is None:
             # raise LookupError('failed to get my location')
             return False
-        cmd = HelloCommand.new(location=mine)
-        self.send_command(cmd=cmd, destination=destination)
-        return True
+        cmd = Command.hello_command(location=mine)
+        return self.send_command(cmd=cmd, destination=destination)
 
-    def _process_who(self, source: tuple) -> bool:
-        # say hi when the sender asked 'Who are you?'
-        return self.say_hello(destination=source)
-
-    # noinspection PyUnusedLocal
-    def _process_hello(self, location: LocationValue, source: tuple) -> bool:
-        # check signature before accept it
-        assert self.delegate is not None, 'contact delegate not set yet'
-        return self.delegate.store_location(location=location)
-
-    # noinspection PyUnusedLocal
-    def _process_bye(self, location: LocationValue, source: tuple) -> bool:
-        # check signature before cleaning location
-        assert self.delegate is not None, 'contact delegate not set yet'
-        return self.delegate.clear_location(location=location)
+    #
+    #   Receive
+    #
+    def _received(self, head: Header, body: ByteArray, source: tuple):
+        data_type = head.data_type
+        if data_type.is_message:
+            # process after received message data
+            fields = Field.parse_fields(data=body)
+            msg = Message(data=data_type, fields=fields)
+            return self._process_message(msg=msg, source=source)
+        elif data_type.is_command:
+            # process after received command data
+            ok = False
+            commands = Command.parse_commands(data=body)
+            for cmd in commands:
+                if self._process_command(cmd=cmd, source=source):
+                    ok = True
+            return ok
+        else:
+            raise TypeError('data type error: %s' % data_type)
 
     @abstractmethod
-    def process_command(self, cmd: Command, source: tuple) -> bool:
+    def _process_message(self, msg: Message, source: tuple) -> bool:
+        """
+        Process received message from remote source address
+
+        :param msg:         message info
+        :param source:      remote address
+        :return: False on error
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def _process_command(self, cmd: Command, source: tuple) -> bool:
         """
         Process received command from remote source address
 
@@ -164,29 +154,21 @@ class Node(PeerHandler):
             print('%s> unknown command: %s' % (clazz, cmd))
             return False
 
-    @abstractmethod
-    def process_message(self, msg: Message, source: tuple) -> bool:
-        """
-        Process received message from remote source address
-
-        :param msg:         message info
-        :param source:      remote address
-        :return: False on error
-        """
-        pass
-
     #
-    #   PeerHandler
+    #   Process
     #
-    def received_command(self, cmd: Data, source: tuple, destination: tuple) -> bool:
-        commands = Command.parse_all(data=cmd)
-        for pack in commands:
-            assert isinstance(pack, Command), 'command error: %s' % pack
-            self.process_command(cmd=pack, source=source)
-        return True
+    def _process_who(self, source: tuple) -> bool:
+        # say hi when the sender asked 'Who are you?'
+        return self.say_hello(destination=source)
 
-    def received_message(self, msg: Data, source: tuple, destination: tuple) -> bool:
-        fields = Field.parse_all(data=msg)
-        assert len(fields) > 0, 'message error: %s' % msg.get_bytes()
-        pack = Message(fields=fields, data=msg)
-        return self.process_message(msg=pack, source=source)
+    # noinspection PyUnusedLocal
+    def _process_hello(self, location: LocationValue, source: tuple) -> bool:
+        # check signature before accept it
+        assert self.delegate is not None, 'contact delegate not set yet'
+        return self.delegate.store_location(location=location)
+
+    # noinspection PyUnusedLocal
+    def _process_bye(self, location: LocationValue, source: tuple) -> bool:
+        # check signature before cleaning location
+        assert self.delegate is not None, 'contact delegate not set yet'
+        return self.delegate.clear_location(location=location)

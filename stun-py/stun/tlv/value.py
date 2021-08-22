@@ -147,6 +147,12 @@ class RawValue(Data, Value):
 
     ZERO = None  # RawValue.parse(data=Data.ZERO)
 
+    def __init__(self, data: Union[bytes, bytearray, ByteArray]):
+        if isinstance(data, ByteArray):
+            super().__init__(buffer=data.buffer, offset=data.offset, size=data.size)
+        else:
+            super().__init__(buffer=data)
+
     # noinspection PyUnusedLocal
     @classmethod
     def parse(cls, data: Union[bytes, bytearray, ByteArray],
@@ -154,10 +160,8 @@ class RawValue(Data, Value):
         """ parse Value """
         if isinstance(data, cls):
             return data
-        elif isinstance(data, ByteArray):
-            return cls(buffer=data.buffer, offset=data.offset, size=data.size)
         else:
-            return cls(buffer=data)
+            return cls(data=data)
 
 
 class StringValue(Data, Value):

@@ -18,7 +18,7 @@ from tcp import Hub, StreamHub, StreamChannel
 
 class ServerHub(StreamHub):
 
-    def create_channel(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
+    def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
         for sock in Server.slave_sockets:
             try:
                 if sock.getpeername() == remote:
@@ -58,7 +58,7 @@ class Server(threading.Thread, ConnectionDelegate):
 
     counter = 0
 
-    def __send(self, data: bytes, source: tuple, destination: tuple):
+    def __send(self, data: bytes, source: Optional[tuple], destination: tuple):
         self.hub.send(data=data, source=source, destination=destination)
 
     def start(self):
