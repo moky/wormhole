@@ -7,13 +7,13 @@ import sys
 import os
 import time
 import traceback
-from typing import Optional
+from typing import Optional, Dict
 
 from udp.ba import Data
 from udp.mtp import Header
-from udp import Hub
-from udp import Channel, Connection, ConnectionDelegate
-from udp import DiscreteChannel, PackageHub
+from udp import Channel, DiscreteChannel
+from udp import Connection, ConnectionDelegate
+from udp import Hub, PackageHub
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
@@ -27,25 +27,33 @@ class ServerHub(PackageHub):
 
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__(delegate=delegate)
-        self.__connection = None
+        self.__connection: Optional[Connection] = None
+        self.__sockets: Dict[tuple, socket.socket] = {}
 
     def bind(self, local: tuple) -> Connection:
+        sock = self.__sockets.get(local)
+        if sock is None:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+            sock.bind(local)
+            sock.setblocking(False)
+            self.__sockets[local] = sock
         return self.connect(remote=None, local=local)
 
+    # Override
     def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
         if self.__connection is None:
             self.__connection = super().create_connection(remote=remote, local=local)
         return self.__connection
 
+    # Override
     def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
-        sock = Server.master
+        sock = self.__sockets.get(local)
         if sock is not None:
             return DiscreteChannel(sock=sock)
 
 
 class Server(dmtp.Server, ConnectionDelegate):
-
-    master: Optional[socket.socket] = None
 
     def __init__(self, host: str, port: int):
         super().__init__()
@@ -64,6 +72,7 @@ class Server(dmtp.Server, ConnectionDelegate):
 
     @hub.setter
     def hub(self, peer: ServerHub):
+        peer.bind(local=self.__local_address)
         self.__hub = peer
 
     @property
@@ -86,11 +95,15 @@ class Server(dmtp.Server, ConnectionDelegate):
     def info(self, msg: str):
         print('> %s' % msg)
 
+    # noinspection PyMethodMayBeStatic
+    def error(self, msg: str):
+        print('ERROR> %s' % msg)
+
     def _connect(self, remote: tuple):
         try:
             self.hub.connect(remote=remote, local=self.local_address)
         except socket.error as error:
-            self.info('failed to connect to %s: %s' % (remote, error))
+            self.error('failed to connect to %s: %s' % (remote, error))
 
     def start(self):
         self.__running = True
@@ -101,7 +114,7 @@ class Server(dmtp.Server, ConnectionDelegate):
         try:
             self.hub.bind(local=local)
         except socket.error as error:
-            self.info('failed to bind to %s: %s' % (local, error))
+            self.error('failed to bind to %s: %s' % (local, error))
         # running
         while self.__running:
             self.hub.tick()
@@ -117,38 +130,39 @@ class Server(dmtp.Server, ConnectionDelegate):
             self._received(head=wrapper, body=body, source=remote)
 
     def _process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
-        print('received cmd from %s:\n\t%s' % (source, cmd))
+        self.info('received cmd from %s:\n\t%s' % (source, cmd))
         # noinspection PyBroadException
         try:
             return super()._process_command(cmd=cmd, source=source)
-        except Exception:
+        except Exception as error:
+            self.error('failed to process command (%s): %s' % (cmd, error))
             traceback.print_exc()
             return False
 
     def _process_message(self, msg: dmtp.Message, source: tuple) -> bool:
-        print('received msg from %s:\n\t%s' % (source, json.dumps(msg, cls=FieldValueEncoder)))
+        self.info('received msg from %s:\n\t%s' % (source, json.dumps(msg, cls=FieldValueEncoder)))
         # return super()._process_message(msg=msg, source=source)
         return True
 
     def send_command(self, cmd: dmtp.Command, destination: tuple) -> bool:
-        print('sending cmd to %s:\n\t%s' % (destination, cmd))
+        self.info('sending cmd to %s:\n\t%s' % (destination, cmd))
         try:
             body = cmd.get_bytes()
             source = self.local_address
             self.hub.send_command(body=body, source=source, destination=destination)
             return True
         except socket.error as error:
-            self.info('failed to send command: %s' % error)
+            self.error('failed to send command: %s' % error)
 
     def send_message(self, msg: dmtp.Message, destination: tuple) -> bool:
-        print('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=FieldValueEncoder)))
+        self.info('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=FieldValueEncoder)))
         try:
             body = msg.get_bytes()
             source = self.local_address
             self.hub.send_message(body=body, source=source, destination=destination)
             return True
         except socket.error as error:
-            self.info('failed to send message: %s' % error)
+            self.error('failed to send message: %s' % error)
 
     #
     #   Server actions
@@ -175,12 +189,6 @@ if __name__ == '__main__':
 
     # server hub
     g_server.hub = ServerHub(delegate=g_server)
-
-    # server socket
-    Server.master = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    Server.master.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-    Server.master.bind(g_server.local_address)
-    Server.master.setblocking(False)
 
     # database for location of contacts
     g_server.database = ContactManager(hub=g_server.hub, local=g_server.local_address)

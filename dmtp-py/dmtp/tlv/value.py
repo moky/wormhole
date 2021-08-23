@@ -46,8 +46,6 @@ class MapValue(RawValue, Dict[FieldName, FieldValue]):
         super().__init__(data=data)
         self.__dictionary = {}  # FieldName -> FieldValue
         for item in fields:
-            if isinstance(item.value, RawValue):
-                print('!!!!!!!! tag: %s' % item.tag)
             self.__dictionary[item.tag] = item.value
 
     @property

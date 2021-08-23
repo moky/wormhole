@@ -38,6 +38,7 @@ CLIENT_PORT = random.choice(range(9900, 9999))
 
 class ClientHub(ActivePackageHub):
 
+    # Override
     def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
         channel = DiscreteChannel(remote=remote, local=local)
         channel.configure_blocking(False)
@@ -46,18 +47,22 @@ class ClientHub(ActivePackageHub):
 
 class Client(dmtp.Client, ConnectionDelegate):
 
-    def __init__(self, host: str, port: int):
+    def __init__(self, local: tuple, remote: tuple):
         super().__init__()
-        self.__local_address = (host, port)
+        self.__local_address = local
+        self.__remote_address = remote
         self.__hub: Optional[ClientHub] = None
         self.__db: Optional[ContactManager] = None
         self.__running = False
-        self.remote_address = None
         self.nat = 'Unknown'
 
     @property
     def local_address(self) -> tuple:
         return self.__local_address
+
+    @property
+    def remote_address(self) -> tuple:
+        return self.__remote_address
 
     @property
     def hub(self) -> ClientHub:
@@ -87,11 +92,15 @@ class Client(dmtp.Client, ConnectionDelegate):
     def info(self, msg: str):
         print('> %s' % msg)
 
+    # noinspection PyMethodMayBeStatic
+    def error(self, msg: str):
+        print('ERROR> %s' % msg)
+
     def _connect(self, remote: tuple):
         try:
             self.hub.connect(remote=remote, local=self.local_address)
         except socket.error as error:
-            self.info('failed to connect to %s: %s' % (remote, error))
+            self.error('failed to connect to %s: %s' % (remote, error))
 
     def run(self):
         remote = self.remote_address
@@ -99,7 +108,7 @@ class Client(dmtp.Client, ConnectionDelegate):
         try:
             self.hub.connect(remote=remote, local=local)
         except socket.error as error:
-            self.info('failed to connect to %s: %s' % (remote, error))
+            self.error('failed to connect to %s: %s' % (remote, error))
         # running
         self.__running = True
         while self.__running:
@@ -116,38 +125,39 @@ class Client(dmtp.Client, ConnectionDelegate):
             self._received(head=wrapper, body=body, source=remote)
 
     def _process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
-        print('received cmd from %s:\n\t%s' % (source, cmd))
+        self.info('received cmd from %s:\n\t%s' % (source, cmd))
         # noinspection PyBroadException
         try:
             return super()._process_command(cmd=cmd, source=source)
-        except Exception:
+        except Exception as error:
+            self.error('failed to process cmd: %s, %s' % (cmd, error))
             traceback.print_exc()
             return False
 
     def _process_message(self, msg: dmtp.Message, source: tuple) -> bool:
-        print('received msg from %s:\n\t%s' % (source, json.dumps(msg, cls=FieldValueEncoder)))
+        self.info('received msg from %s:\n\t%s' % (source, json.dumps(msg, cls=FieldValueEncoder)))
         # return super()._process_message(msg=msg, source=source)
         return True
 
     def send_command(self, cmd: dmtp.Command, destination: tuple) -> bool:
-        print('sending cmd to %s:\n\t%s' % (destination, cmd))
+        self.info('sending cmd to %s:\n\t%s' % (destination, cmd))
         try:
             body = cmd.get_bytes()
             source = self.local_address
             self.hub.send_command(body=body, source=source, destination=destination)
             return True
         except socket.error as error:
-            self.info('failed to send command: %s' % error)
+            self.error('failed to send cmd: %s' % error)
 
     def send_message(self, msg: dmtp.Message, destination: tuple) -> bool:
-        print('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=FieldValueEncoder)))
+        self.info('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=FieldValueEncoder)))
         try:
             body = msg.get_bytes()
             source = self.local_address
             self.hub.send_message(body=body, source=source, destination=destination)
             return True
         except socket.error as error:
-            self.info('failed to send message: %s' % error)
+            self.error('failed to send msg: %s' % error)
 
     #
     #   Client actions
@@ -157,21 +167,20 @@ class Client(dmtp.Client, ConnectionDelegate):
         if super().say_hello(destination=destination):
             return True
         cmd = dmtp.Command.hello_command(identifier=self.identifier)
-        print('send cmd: %s' % cmd)
+        self.info('send cmd: %s' % cmd)
         self.send_command(cmd=cmd, destination=destination)
         return True
 
     def call(self, identifier: str) -> bool:
         cmd = dmtp.Command.call_command(identifier=identifier)
-        print('send cmd: %s' % cmd)
+        self.info('send cmd: %s' % cmd)
         self.send_command(cmd=cmd, destination=self.remote_address)
         return True
 
-    def login(self, identifier: str, server_address: tuple):
+    def login(self, identifier: str):
         self.identifier = identifier
-        self.remote_address = server_address
-        self._connect(remote=server_address)
-        self.say_hello(destination=server_address)
+        self._connect(remote=self.remote_address)
+        self.say_hello(destination=self.remote_address)
 
     def get_sessions(self, identifier: str) -> list:
         """
@@ -205,7 +214,7 @@ class Client(dmtp.Client, ConnectionDelegate):
     def send_text(self, receiver: str, msg: str) -> Optional[dmtp.Message]:
         sessions = self.get_sessions(identifier=receiver)
         if len(sessions) == 0:
-            print('user (%s) not login ...' % receiver)
+            self.info('user (%s) not login ...' % receiver)
             # ask the server to help building a connection
             self.call(identifier=receiver)
             return None
@@ -218,14 +227,12 @@ class Client(dmtp.Client, ConnectionDelegate):
         })
         for item in sessions:
             assert isinstance(item, Session), 'session error: %s' % item
-            print('send msg to %s:\n\t%s' % (item.address, msg))
+            self.info('send msg to %s:\n\t%s' % (item.address, msg))
             self.send_message(msg=msg, destination=item.address)
         return msg
 
 
 if __name__ == '__main__':
-    # create client
-    print('UDP client %s -> %s starting ...' % ((CLIENT_HOST, CLIENT_PORT), (SERVER_HOST, SERVER_PORT)))
 
     user = 'moky-%d' % CLIENT_PORT
     friend = 'moky'
@@ -235,8 +242,10 @@ if __name__ == '__main__':
         friend = sys.argv[2]
 
     # create client
-    g_client = Client(host=CLIENT_HOST, port=CLIENT_PORT)
-    g_client.remote_address = (SERVER_HOST, SERVER_PORT)
+    local_address = (CLIENT_HOST, CLIENT_PORT)
+    remote_address = (SERVER_HOST, SERVER_PORT)
+    print('UDP client %s -> %s starting ...' % (local_address, remote_address))
+    g_client = Client(local=local_address, remote=remote_address)
 
     # client hub
     g_client.hub = ClientHub(delegate=g_client)
@@ -249,7 +258,7 @@ if __name__ == '__main__':
     # g_client.start()
     threading.Thread(target=g_client.run).start()
 
-    g_client.login(identifier=user, server_address=(SERVER_HOST, SERVER_PORT))
+    g_client.login(identifier=user)
 
     # test send
     text = '你好 %s！' % friend

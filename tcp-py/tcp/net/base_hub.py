@@ -143,7 +143,7 @@ class BaseHub(Hub, Ticker):
                 if conn is not None:
                     return conn
             # get any connection bound to this local address
-            for _, v in table:
+            for v in table.values():
                 if v is not None:
                     return v
         else:
@@ -160,7 +160,7 @@ class BaseHub(Hub, Ticker):
                 if conn is not None:
                     return conn
             # get any connection connected to this remote address
-            for _, v in table:
+            for v in table.values():
                 if v is not None:
                     return v
 

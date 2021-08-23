@@ -13,14 +13,15 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from tcp import Connection, ConnectionDelegate
 from tcp import Channel, StreamChannel
+from tcp import Connection, ConnectionDelegate
 from tcp import Hub, ActiveStreamHub
 
 
 class ClientHub(ActiveStreamHub):
 
-    def create_channel(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
+    # Override
+    def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
         channel = StreamChannel(remote=remote, local=local)
         channel.configure_blocking(False)
         return channel
@@ -28,13 +29,27 @@ class ClientHub(ActiveStreamHub):
 
 class Client(threading.Thread, ConnectionDelegate):
 
-    remote_address: tuple = None
+    def __init__(self, local: tuple, remote: tuple):
+        super().__init__()
+        self.__local_address = local
+        self.__remote_address = remote
+        self.__hub: Optional[ClientHub] = None
 
-    hub: ClientHub = None
+    @property
+    def hub(self) -> ClientHub:
+        return self.__hub
+
+    @hub.setter
+    def hub(self, peer: ClientHub):
+        self.__hub = peer
 
     # noinspection PyMethodMayBeStatic
     def info(self, msg: str):
         print('> %s' % msg)
+
+    # noinspection PyMethodMayBeStatic
+    def error(self, msg: str):
+        print('ERROR> %s' % msg)
 
     def connection_state_changing(self, connection: Connection, current_state, next_state):
         self.info('!!! connection (%s, %s) state changed: %s -> %s'
@@ -44,21 +59,31 @@ class Client(threading.Thread, ConnectionDelegate):
         text = payload.decode('utf-8')
         self.info('<<< received (%d bytes) from %s: %s' % (len(payload), remote, text))
 
-    def __send(self, data: bytes, destination: tuple):
-        self.hub.send(data=data, source=None, destination=destination)
+    def __send(self, data: bytes):
+        try:
+            source = self.__local_address
+            destination = self.__remote_address
+            self.hub.send(data=data, source=source, destination=destination)
+        except Exception as error:
+            self.error('failed to send data: %d byte(s), %s' % (len(data), error))
 
     def __disconnect(self):
-        self.hub.disconnect(remote=self.remote_address, local=None)
+        self.hub.disconnect(remote=self.__remote_address, local=self.__local_address)
+
+    def start(self):
+        self.hub.connect(remote=self.__remote_address, local=self.__local_address)
+        super().start()
 
     def run(self):
         text = ''
         for _ in range(1024):
             text += ' Hello!'
-        for index in range(16):
-            data = '%d sheep: %s' % (index, text)
-            self.info('>>> sending (%d bytes): %s' % (len(data), data))
+        # test send
+        for i in range(16):
+            data = '%d sheep:%s' % (i, text)
             data = data.encode('utf-8')
-            self.__send(data=data, destination=self.remote_address)
+            self.info('>>> sending (%d bytes): %s' % (len(data), data))
+            self.__send(data=data)
             time.sleep(2)
         self.__disconnect()
 
@@ -72,12 +97,12 @@ CLIENT_PORT = random.choice(range(9900, 9999))
 
 if __name__ == '__main__':
 
+    local_address = (CLIENT_HOST, CLIENT_PORT)
     server_address = (SERVER_HOST, SERVER_PORT)
-    print('Connecting server (%s) ...' % str(server_address))
+    print('Connecting TCP server (%s->%s) ...' % (local_address, server_address))
 
-    g_client = Client()
+    g_client = Client(local=local_address, remote=server_address)
 
-    Client.remote_address = server_address
-    Client.hub = ClientHub(delegate=g_client)
+    g_client.hub = ClientHub(delegate=g_client)
 
     g_client.start()

@@ -6,47 +6,94 @@ import sys
 import os
 import threading
 import time
-from typing import Set, Optional
+import weakref
+from typing import Optional
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from tcp import Channel, ConnectionDelegate, Connection
-from tcp import Hub, StreamHub, StreamChannel
+from tcp import Channel, StreamChannel
+from tcp import Connection, ConnectionDelegate
+from tcp import Hub, StreamHub
 
 
 class ServerHub(StreamHub):
 
+    def __init__(self, delegate: ConnectionDelegate):
+        super().__init__(delegate=delegate)
+        self.__local_address: Optional[tuple] = None
+        self.__master: Optional[socket.socket] = None
+        self.__slaves = weakref.WeakValueDictionary()  # address -> socket
+        self.__running = False
+
+    @property
+    def running(self) -> bool:
+        return self.__running
+
+    def bind(self, local: tuple):
+        sock = self.__master
+        if sock is not None:
+            if not getattr(sock, '_closed', False):
+                sock.close()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        sock.setblocking(True)
+        sock.bind(local)
+        sock.listen(1)
+        # sock.setblocking(False)
+        self.__master = sock
+        self.__local_address = local
+
+    def start(self):
+        self.__running = True
+        threading.Thread(target=self.run).start()
+
+    def run(self):
+        while self.__running:
+            sock, address = self.__master.accept()
+            if sock is not None:
+                self.__slaves[address] = sock
+                self.connect(remote=address, local=self.__local_address)
+
+    # Override
     def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
-        for sock in Server.slave_sockets:
-            try:
-                if sock.getpeername() == remote:
-                    return StreamChannel(sock=sock)
-            except IOError as error:
-                print('ServerHub error: %s' % error)
+        sock = self.__slaves.get(remote)
+        if sock is not None:
+            return StreamChannel(sock=sock)
+        else:
+            raise LookupError('failed to get channel: %s -> %s' % (remote, local))
 
 
 class Server(threading.Thread, ConnectionDelegate):
 
-    local_address: tuple = None
-    master_socket: socket.socket = None
-    slave_sockets: Set[socket.socket] = set()
-
-    hub: ServerHub = None
-
-    def __init__(self):
+    def __init__(self, host: str, port: int):
         super().__init__()
-        self.__running = False
+        self.__local_address = (host, port)
+        self.__hub: Optional[ServerHub] = None
+
+    @property
+    def hub(self) -> ServerHub:
+        return self.__hub
+
+    @hub.setter
+    def hub(self, peer: ServerHub):
+        self.__hub = peer
 
     # noinspection PyMethodMayBeStatic
     def info(self, msg: str):
         print('> %s' % msg)
 
+    # noinspection PyMethodMayBeStatic
+    def error(self, msg: str):
+        print('ERROR> %s' % msg)
+
+    # Override
     def connection_state_changing(self, connection: Connection, current_state, next_state):
         self.info('!!! connection (%s, %s) state changed: %s -> %s'
                   % (connection.local_address, connection.remote_address, current_state, next_state))
 
+    # Override
     def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload: bytes):
         text = payload.decode('utf-8')
         self.info('<<< received (%d bytes) from %s: %s' % (len(payload), remote, text))
@@ -54,37 +101,41 @@ class Server(threading.Thread, ConnectionDelegate):
         self.counter += 1
         self.info('>>> responding: %s' % text)
         data = text.encode('utf-8')
-        self.__send(data=data, source=self.local_address, destination=remote)
+        self.__send(data=data, source=self.__local_address, destination=remote)
 
     counter = 0
 
     def __send(self, data: bytes, source: Optional[tuple], destination: tuple):
-        self.hub.send(data=data, source=source, destination=destination)
+        try:
+            self.hub.send(data=data, source=source, destination=destination)
+        except socket.error as error:
+            self.error('failed to send message: %s' % error)
 
     def start(self):
-        self.__running = True
+        self.hub.bind(local=self.__local_address)
+        self.hub.start()
         super().start()
 
     def run(self):
-        while self.__running:
+        while self.hub.running:
             self.hub.tick()
-            self.__clean()
+            # self.__clean()
             time.sleep(0.128)
 
-    def __clean(self):
-        sockets = set(self.slave_sockets)
-        dying = set()
-        # receive data
-        for sock in sockets:
-            if getattr(sock, '_closed', False):
-                dying.add(sock)
-        # check closed channels
-        if len(dying) > 0:
-            self.info('%d channel(s) dying' % len(dying))
-        for sock in dying:
-            self.slave_sockets.discard(sock)
-        if len(self.slave_sockets) > 0:
-            self.info('%d channel(s) alive' % len(self.slave_sockets))
+    # def __clean(self):
+    #     sockets = set(self.slave_sockets)
+    #     dying = set()
+    #     # receive data
+    #     for sock in sockets:
+    #         if getattr(sock, '_closed', False):
+    #             dying.add(sock)
+    #     # check closed channels
+    #     if len(dying) > 0:
+    #         self.info('%d channel(s) dying' % len(dying))
+    #     for sock in dying:
+    #         self.slave_sockets.discard(sock)
+    #     if len(self.slave_sockets) > 0:
+    #         self.info('%d channel(s) alive' % len(self.slave_sockets))
 
 
 SERVER_HOST = Hub.inet_address()
@@ -93,26 +144,10 @@ SERVER_PORT = 9394
 
 if __name__ == '__main__':
 
-    server_address = (SERVER_HOST, SERVER_PORT)
-    print('TCP server (%s) starting ...' % str(server_address))
+    print('TCP server (%s:%d) starting ...' % (SERVER_HOST, SERVER_PORT))
 
-    # binding server socket
-    g_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    g_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-    g_sock.setblocking(True)
-    g_sock.bind(server_address)
-    g_sock.listen(1)
-    # g_sock.setblocking(False)
+    g_server = Server(host=SERVER_HOST, port=SERVER_PORT)
 
-    Server.local_address = server_address
-    Server.master_socket = g_sock
+    g_server.hub = ServerHub(delegate=g_server)
 
-    g_server = Server()
-    Server.hub = ServerHub(delegate=g_server)
     g_server.start()
-
-    while True:
-        remote_socket, remote_address = g_sock.accept()
-        if remote_socket is not None:
-            Server.slave_sockets.add(remote_socket)
-            Server.hub.connect(remote=remote_address, local=server_address)

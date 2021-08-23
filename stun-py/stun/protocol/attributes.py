@@ -42,8 +42,8 @@ from udp.ba import ByteArray
 from udp.ba import Endian, UInt16Data, Convert
 
 from ..tlv import Tag16, TagParser
-from ..tlv import Length16, LengthParser
-from ..tlv import Value, RawValue, ValueParser
+from ..tlv import Length16 as AttributeLength, LengthParser
+from ..tlv import Value as AttributeValue, RawValue, ValueParser
 from ..tlv import Triad, Parser as TriadParser
 
 
@@ -170,17 +170,6 @@ AttributeType.XOR_ONLY = create_type(value=0x8021, name='XOR-ONLY')
 AttributeType.SOFTWARE = create_type(value=0x8022, name='SOFTWARE')
 AttributeType.ALTERNATE_SERVER = create_type(value=0x8023, name='ALTERNATE-SERVER')
 AttributeType.FINGERPRINT = create_type(value=0x8028, name='FINGERPRINT')
-
-
-#
-#  Attribute Length
-#
-AttributeLength = Length16
-
-#
-#  Attribute Value
-#
-AttributeValue = Value
 
 
 class Attribute(Triad[AttributeType, AttributeLength, AttributeValue]):
