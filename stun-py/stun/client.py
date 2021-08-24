@@ -38,7 +38,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from udp.ba import Data
+from udp.ba import ByteArray, Data
 
 from .protocol import Package, MessageType
 from .protocol import Attribute, AttributeType, AttributeLength, AttributeValue
@@ -58,6 +58,7 @@ class Client(Node, ABC):
     def receive(self) -> (Optional[bytes], Optional[tuple]):
         raise NotImplementedError
 
+    # Override
     def parse_attribute(self, attribute: Attribute, context: dict) -> bool:
         tag = attribute.tag
         value = attribute.value
@@ -98,7 +99,7 @@ class Client(Node, ABC):
         self.info('%s:\t%s' % (tag, value))
         return True
 
-    def __bind_request(self, remote_host: str, remote_port: int, body: Data) -> Optional[dict]:
+    def __bind_request(self, remote_host: str, remote_port: int, body: ByteArray) -> Optional[dict]:
         # 1. create STUN message package
         req = Package.new(msg_type=MessageType.BIND_REQUEST, body=body)
         trans_id = req.head.trans_id

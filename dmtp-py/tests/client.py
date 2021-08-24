@@ -51,26 +51,13 @@ class Client(dmtp.Client, ConnectionDelegate):
         super().__init__()
         self.__local_address = local
         self.__remote_address = remote
-        self.__hub: Optional[ClientHub] = None
+        self.__hub = ClientHub(delegate=self)
         self.__db: Optional[ContactManager] = None
         self.__running = False
-        self.nat = 'Unknown'
-
-    @property
-    def local_address(self) -> tuple:
-        return self.__local_address
-
-    @property
-    def remote_address(self) -> tuple:
-        return self.__remote_address
 
     @property
     def hub(self) -> ClientHub:
         return self.__hub
-
-    @hub.setter
-    def hub(self, peer: ClientHub):
-        self.__hub = peer
 
     @property
     def database(self) -> ContactManager:
@@ -90,40 +77,31 @@ class Client(dmtp.Client, ConnectionDelegate):
 
     # noinspection PyMethodMayBeStatic
     def info(self, msg: str):
-        print('> %s' % msg)
+        print('> ', msg)
 
     # noinspection PyMethodMayBeStatic
     def error(self, msg: str):
-        print('ERROR> %s' % msg)
+        print('ERROR> ', msg)
 
+    # Override
     def _connect(self, remote: tuple):
         try:
-            self.hub.connect(remote=remote, local=self.local_address)
+            self.__hub.connect(remote=remote, local=self.__local_address)
         except socket.error as error:
             self.error('failed to connect to %s: %s' % (remote, error))
 
-    def run(self):
-        remote = self.remote_address
-        local = self.local_address
-        try:
-            self.hub.connect(remote=remote, local=local)
-        except socket.error as error:
-            self.error('failed to connect to %s: %s' % (remote, error))
-        # running
-        self.__running = True
-        while self.__running:
-            self.hub.tick()
-            time.sleep(0.1)
-
+    # Override
     def connection_state_changing(self, connection: Connection, current_state, next_state):
         self.info('!!! connection (%s, %s) state changed: %s -> %s'
                   % (connection.local_address, connection.remote_address, current_state, next_state))
 
+    # Override
     def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload: bytes):
         if isinstance(wrapper, Header) and len(payload) > 0:
             body = Data(buffer=payload)
             self._received(head=wrapper, body=body, source=remote)
 
+    # Override
     def _process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
         self.info('received cmd from %s:\n\t%s' % (source, cmd))
         # noinspection PyBroadException
@@ -134,27 +112,30 @@ class Client(dmtp.Client, ConnectionDelegate):
             traceback.print_exc()
             return False
 
+    # Override
     def _process_message(self, msg: dmtp.Message, source: tuple) -> bool:
         self.info('received msg from %s:\n\t%s' % (source, json.dumps(msg, cls=FieldValueEncoder)))
         # return super()._process_message(msg=msg, source=source)
         return True
 
+    # Override
     def send_command(self, cmd: dmtp.Command, destination: tuple) -> bool:
         self.info('sending cmd to %s:\n\t%s' % (destination, cmd))
         try:
             body = cmd.get_bytes()
-            source = self.local_address
-            self.hub.send_command(body=body, source=source, destination=destination)
+            source = self.__local_address
+            self.__hub.send_command(body=body, source=source, destination=destination)
             return True
         except socket.error as error:
             self.error('failed to send cmd: %s' % error)
 
+    # Override
     def send_message(self, msg: dmtp.Message, destination: tuple) -> bool:
         self.info('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=FieldValueEncoder)))
         try:
             body = msg.get_bytes()
-            source = self.local_address
-            self.hub.send_message(body=body, source=source, destination=destination)
+            source = self.__local_address
+            self.__hub.send_message(body=body, source=source, destination=destination)
             return True
         except socket.error as error:
             self.error('failed to send msg: %s' % error)
@@ -163,6 +144,7 @@ class Client(dmtp.Client, ConnectionDelegate):
     #   Client actions
     #
 
+    # Override
     def say_hello(self, destination: tuple) -> bool:
         if super().say_hello(destination=destination):
             return True
@@ -174,13 +156,13 @@ class Client(dmtp.Client, ConnectionDelegate):
     def call(self, identifier: str) -> bool:
         cmd = dmtp.Command.call_command(identifier=identifier)
         self.info('send cmd: %s' % cmd)
-        self.send_command(cmd=cmd, destination=self.remote_address)
+        self.send_command(cmd=cmd, destination=self.__remote_address)
         return True
 
     def login(self, identifier: str):
         self.identifier = identifier
-        self._connect(remote=self.remote_address)
-        self.say_hello(destination=self.remote_address)
+        self._connect(remote=self.__remote_address)
+        self.say_hello(destination=self.__remote_address)
 
     def get_sessions(self, identifier: str) -> list:
         """
@@ -197,14 +179,14 @@ class Client(dmtp.Client, ConnectionDelegate):
             assert isinstance(loc, dmtp.LocationValue), 'location error: %s' % loc
             source_address = loc.source_address
             if source_address is not None:
-                conn = self.hub.connect(remote=source_address, local=None)
+                conn = self.__hub.connect(remote=source_address, local=None)
                 if conn is not None:
                     if conn.state in [ConnectionState.CONNECTED, ConnectionState.MAINTAINING, ConnectionState.EXPIRED]:
                         sessions.append(Session(location=loc, address=source_address))
                         continue
             mapped_address = loc.mapped_address
             if mapped_address is not None:
-                conn = self.hub.connect(remote=mapped_address, local=None)
+                conn = self.__hub.connect(remote=mapped_address, local=None)
                 if conn is not None:
                     if conn.state in [ConnectionState.CONNECTED, ConnectionState.MAINTAINING, ConnectionState.EXPIRED]:
                         sessions.append(Session(location=loc, address=mapped_address))
@@ -231,6 +213,16 @@ class Client(dmtp.Client, ConnectionDelegate):
             self.send_message(msg=msg, destination=item.address)
         return msg
 
+    def start(self):
+        self.__hub.connect(remote=self.__remote_address, local=self.__local_address)
+        self.__running = True
+        threading.Thread(target=self.run).start()
+
+    def run(self):
+        while self.__running:
+            self.__hub.tick()
+            time.sleep(0.1)
+
 
 if __name__ == '__main__':
 
@@ -247,16 +239,12 @@ if __name__ == '__main__':
     print('UDP client %s -> %s starting ...' % (local_address, remote_address))
     g_client = Client(local=local_address, remote=remote_address)
 
-    # client hub
-    g_client.hub = ClientHub(delegate=g_client)
-
     # database for location of contacts
-    g_client.database = ContactManager(hub=g_client.hub, local=g_client.local_address)
+    g_client.database = ContactManager(hub=g_client.hub, local=local_address)
     g_client.identifier = user
     g_client.delegate = g_client.database
 
-    # g_client.start()
-    threading.Thread(target=g_client.run).start()
+    g_client.start()
 
     g_client.login(identifier=user)
 

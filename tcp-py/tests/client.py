@@ -33,23 +33,15 @@ class Client(threading.Thread, ConnectionDelegate):
         super().__init__()
         self.__local_address = local
         self.__remote_address = remote
-        self.__hub: Optional[ClientHub] = None
-
-    @property
-    def hub(self) -> ClientHub:
-        return self.__hub
-
-    @hub.setter
-    def hub(self, peer: ClientHub):
-        self.__hub = peer
+        self.__hub = ClientHub(delegate=self)
 
     # noinspection PyMethodMayBeStatic
     def info(self, msg: str):
-        print('> %s' % msg)
+        print('> ', msg)
 
     # noinspection PyMethodMayBeStatic
     def error(self, msg: str):
-        print('ERROR> %s' % msg)
+        print('ERROR> ', msg)
 
     def connection_state_changing(self, connection: Connection, current_state, next_state):
         self.info('!!! connection (%s, %s) state changed: %s -> %s'
@@ -63,15 +55,15 @@ class Client(threading.Thread, ConnectionDelegate):
         try:
             source = self.__local_address
             destination = self.__remote_address
-            self.hub.send(data=data, source=source, destination=destination)
+            self.__hub.send(data=data, source=source, destination=destination)
         except Exception as error:
             self.error('failed to send data: %d byte(s), %s' % (len(data), error))
 
     def __disconnect(self):
-        self.hub.disconnect(remote=self.__remote_address, local=self.__local_address)
+        self.__hub.disconnect(remote=self.__remote_address, local=self.__local_address)
 
     def start(self):
-        self.hub.connect(remote=self.__remote_address, local=self.__local_address)
+        self.__hub.connect(remote=self.__remote_address, local=self.__local_address)
         super().start()
 
     def run(self):
@@ -102,7 +94,5 @@ if __name__ == '__main__':
     print('Connecting TCP server (%s->%s) ...' % (local_address, server_address))
 
     g_client = Client(local=local_address, remote=server_address)
-
-    g_client.hub = ClientHub(delegate=g_client)
 
     g_client.start()

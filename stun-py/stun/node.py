@@ -39,7 +39,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Union
 
-from udp.ba import Data
+from udp.ba import ByteArray
 
 from .protocol import Package, Attribute
 
@@ -94,7 +94,7 @@ class Node(ABC):
         print('[%s] %s' % (time_string, msg))
 
     @abstractmethod
-    def send(self, data: Data, destination: tuple, source: Union[tuple, int] = None) -> bool:
+    def send(self, data: ByteArray, destination: tuple, source: Union[tuple, int] = None) -> bool:
         """
         Send data to remote address
 
@@ -116,7 +116,7 @@ class Node(ABC):
         """
         raise NotImplemented
 
-    def parse_data(self, data: Data, context: dict) -> bool:
+    def parse_data(self, data: ByteArray, context: dict) -> bool:
         """
         Parse package data
 
@@ -128,7 +128,6 @@ class Node(ABC):
         pack = Package.parse(data=data)
         if pack is None:
             self.info('failed to parse package data: %d' % data.size)
-            pack = Package.parse(data=data)
             return False
         # 2. parse attributes
         attributes = Attribute.parse_attributes(data=pack.body)

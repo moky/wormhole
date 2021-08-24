@@ -37,7 +37,7 @@
 
 from abc import ABC
 
-from udp.ba import Data, MutableData
+from udp.ba import ByteArray, MutableData
 
 from .protocol import Package, Header, MessageType
 from .protocol import Attribute, AttributeType
@@ -82,6 +82,7 @@ class Server(Node, ABC):
         """
         self.change_port: int = change_port
 
+    # Override
     def parse_attribute(self, attribute: Attribute, context: dict) -> bool:
         tag = attribute.tag
         value = attribute.value
@@ -156,7 +157,7 @@ class Server(Node, ABC):
         pack = Package.new(msg_type=MessageType.BIND_RESPONSE, trans_id=head.trans_id, body=body)
         return self.send(data=pack, destination=(remote_ip, remote_port), source=(local_ip, local_port))
 
-    def handle(self, data: Data, remote_ip: str, remote_port: int) -> bool:
+    def handle(self, data: ByteArray, remote_ip: str, remote_port: int) -> bool:
         # parse request
         context = {}
         ok = self.parse_data(data=data, context=context)

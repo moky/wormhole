@@ -70,23 +70,15 @@ class Server(threading.Thread, ConnectionDelegate):
     def __init__(self, host: str, port: int):
         super().__init__()
         self.__local_address = (host, port)
-        self.__hub: Optional[ServerHub] = None
-
-    @property
-    def hub(self) -> ServerHub:
-        return self.__hub
-
-    @hub.setter
-    def hub(self, peer: ServerHub):
-        self.__hub = peer
+        self.__hub = ServerHub(delegate=self)
 
     # noinspection PyMethodMayBeStatic
     def info(self, msg: str):
-        print('> %s' % msg)
+        print('> ', msg)
 
     # noinspection PyMethodMayBeStatic
     def error(self, msg: str):
-        print('ERROR> %s' % msg)
+        print('ERROR> ', msg)
 
     # Override
     def connection_state_changing(self, connection: Connection, current_state, next_state):
@@ -107,18 +99,18 @@ class Server(threading.Thread, ConnectionDelegate):
 
     def __send(self, data: bytes, source: Optional[tuple], destination: tuple):
         try:
-            self.hub.send(data=data, source=source, destination=destination)
+            self.__hub.send(data=data, source=source, destination=destination)
         except socket.error as error:
             self.error('failed to send message: %s' % error)
 
     def start(self):
-        self.hub.bind(local=self.__local_address)
-        self.hub.start()
+        self.__hub.bind(local=self.__local_address)
+        self.__hub.start()
         super().start()
 
     def run(self):
-        while self.hub.running:
-            self.hub.tick()
+        while self.__hub.running:
+            self.__hub.tick()
             # self.__clean()
             time.sleep(0.128)
 
@@ -147,7 +139,5 @@ if __name__ == '__main__':
     print('TCP server (%s:%d) starting ...' % (SERVER_HOST, SERVER_PORT))
 
     g_server = Server(host=SERVER_HOST, port=SERVER_PORT)
-
-    g_server.hub = ServerHub(delegate=g_server)
 
     g_server.start()
