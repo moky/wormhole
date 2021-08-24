@@ -124,7 +124,7 @@ class DataType(UInt8Data):
         fixed = cls.__data_types.get(value)
         if fixed is not None:
             # assert isinstance(fixed, DataType)
-            return cls(data=data, value=data.value, name=fixed.name)
+            return cls(data=data, value=value, name=fixed.name)
 
     @classmethod
     def cache(cls, value: int, data_type):

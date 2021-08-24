@@ -68,7 +68,16 @@ public class VarLength extends VarIntData implements Length {
         return var == null ? null : new VarLength(var);
     }
 
+    public static VarLength from(int value) {
+        return new VarLength(VarIntData.from(value));
+    }
     public static VarLength from(long value) {
+        return new VarLength(VarIntData.from(value));
+    }
+    public static VarLength from(Integer value) {
+        return new VarLength(VarIntData.from(value));
+    }
+    public static VarLength from(Long value) {
         return new VarLength(VarIntData.from(value));
     }
 

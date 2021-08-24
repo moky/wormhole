@@ -77,6 +77,9 @@ public class Value16 extends UInt16Data implements Value {
     public static Value16 from(int value) {
         return new Value16(IntegerData.getUInt16Data(value));
     }
+    public static Value16 from(Integer value) {
+        return new Value16(IntegerData.getUInt16Data(value));
+    }
 
     // parse value with tag & length
     public static Value parse(ByteArray data, Tag tag, Length length) {

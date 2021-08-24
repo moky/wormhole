@@ -86,6 +86,9 @@ public class Length16 extends UInt16Data implements Length {
     public static Length16 from(int value) {
         return new Length16(IntegerData.getUInt16Data(value));
     }
+    public static Length16 from(Integer value) {
+        return new Length16(IntegerData.getUInt16Data(value));
+    }
 
     // parse length with tag
     public static Length parse(ByteArray data, Tag tag) {

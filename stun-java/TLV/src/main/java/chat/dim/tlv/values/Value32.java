@@ -74,7 +74,16 @@ public class Value32 extends UInt32Data implements Value {
         return new Value32(IntegerData.getUInt32Data(data));
     }
 
+    public static Value32 from(int value) {
+        return new Value32(IntegerData.getUInt32Data(value));
+    }
     public static Value32 from(long value) {
+        return new Value32(IntegerData.getUInt32Data(value));
+    }
+    public static Value32 from(Integer value) {
+        return new Value32(IntegerData.getUInt32Data(value));
+    }
+    public static Value32 from(Long value) {
         return new Value32(IntegerData.getUInt32Data(value));
     }
 

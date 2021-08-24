@@ -30,8 +30,8 @@
  */
 package chat.dim.dmtp.protocol;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -220,11 +220,11 @@ public class Message extends MapValue<Field> {
         if (object instanceof Value) {
             value = (Value) object;
         } else {
-            // try 'new Clazz(dict)'
+            // try 'Clazz.from(obj)'
             try {
-                Constructor<?> constructor = valueClass.getConstructor(object.getClass());
-                value = (Value) constructor.newInstance(object);
-            } catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+                Method method = valueClass.getMethod("from", object.getClass());
+                value = (Value) method.invoke(null, object);
+            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
                 value = null;
             }

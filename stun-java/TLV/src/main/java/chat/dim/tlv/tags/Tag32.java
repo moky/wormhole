@@ -75,6 +75,15 @@ public class Tag32 extends UInt32Data implements Tag {
     public static Tag32 from(int value) {
         return new Tag32(IntegerData.getUInt32Data(value));
     }
+    public static Tag32 from(long value) {
+        return new Tag32(IntegerData.getUInt32Data(value));
+    }
+    public static Tag32 from(Integer value) {
+        return new Tag32(IntegerData.getUInt32Data(value));
+    }
+    public static Tag32 from(Long value) {
+        return new Tag32(IntegerData.getUInt32Data(value));
+    }
 
     // parse tag
     public static Tag parse(ByteArray data) {

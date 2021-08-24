@@ -81,6 +81,12 @@ public class Tag8 extends UInt8Data implements Tag {
     public static Tag8 from(int value) {
         return new Tag8(value);
     }
+    public static Tag8 from(Byte value) {
+        return new Tag8(value);
+    }
+    public static Tag8 from(Integer value) {
+        return new Tag8(value);
+    }
 
     // parse tag
     public static Tag parse(ByteArray data) {

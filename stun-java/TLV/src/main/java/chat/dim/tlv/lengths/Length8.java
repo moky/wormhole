@@ -82,6 +82,12 @@ public class Length8 extends UInt8Data implements Length {
     public static Length8 from(int value) {
         return new Length8(value);
     }
+    public static Length8 from(Byte value) {
+        return new Length8(value);
+    }
+    public static Length8 from(Integer value) {
+        return new Length8(value);
+    }
 
     // parse length with tag
     public static Length parse(ByteArray data, Tag tag) {

@@ -83,6 +83,12 @@ public class Value8 extends UInt8Data implements Value {
     public static Value8 from(int value) {
         return new Value8(value);
     }
+    public static Value8 from(Byte value) {
+        return new Value8(value);
+    }
+    public static Value8 from(Integer value) {
+        return new Value8(value);
+    }
 
     // parse value with tag & length
     public static Value parse(ByteArray data, Tag tag, Length length) {

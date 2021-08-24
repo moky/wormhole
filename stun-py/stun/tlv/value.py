@@ -163,6 +163,13 @@ class RawValue(Data, Value):
         else:
             return cls(data=data)
 
+    @classmethod
+    def new(cls, data: Union[bytes, bytearray, ByteArray]):  # -> RawValue
+        if isinstance(data, cls):
+            return data
+        else:
+            return cls(data=data)
+
 
 class StringValue(Data, Value):
     """ String Value """

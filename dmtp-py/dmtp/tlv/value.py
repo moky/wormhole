@@ -153,21 +153,21 @@ class MapValue(RawValue, Dict[FieldName, FieldValue]):
     #   Getting Values
     #
 
-    def get_binary_value(self, tag: FieldName, default: bytes = b'') -> bytes:
+    def get_binary_value(self, tag: FieldName, default: Optional[bytes] = None) -> Optional[bytes]:
         value = self.get(tag)
         if isinstance(value, RawValue):
             return value.get_bytes()
         else:
             return default
 
-    def get_string_value(self, tag: FieldName, default: str = '') -> str:
+    def get_string_value(self, tag: FieldName, default: Optional[str] = None) -> Optional[str]:
         value = self.get(tag)
         if isinstance(value, StringValue):
             return value.string
         else:
             return default
 
-    def get_int_value(self, tag: FieldName, default: int = 0) -> int:
+    def get_int_value(self, tag: FieldName, default: Optional[int] = None) -> Optional[int]:
         value = self.get(tag)
         if isinstance(value, (Value8, Value16, Value32)):
             return value.value

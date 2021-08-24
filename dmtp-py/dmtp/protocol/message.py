@@ -109,7 +109,7 @@ class Message(MapValue):
     @property
     def time(self) -> int:
         if self.__time is None:
-            self.__time = self.get_int_value(tag=self.TIME)
+            self.__time = self.get_int_value(tag=self.TIME, default=0)
         return self.__time
 
     @property
@@ -174,7 +174,7 @@ class Message(MapValue):
                 # no this field
                 return None
         if not isinstance(value, clazz):
-            value = clazz(value)
+            value = clazz.new(value)
         field = Field.new(tag=tag, value=value)
         array.append(field)
 

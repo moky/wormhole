@@ -76,6 +76,15 @@ public class Length32 extends UInt32Data implements Length {
     public static Length32 from(int value) {
         return new Length32(IntegerData.getUInt32Data(value));
     }
+    public static Length32 from(long value) {
+        return new Length32(IntegerData.getUInt32Data(value));
+    }
+    public static Length32 from(Integer value) {
+        return new Length32(IntegerData.getUInt32Data(value));
+    }
+    public static Length32 from(Long value) {
+        return new Length32(IntegerData.getUInt32Data(value));
+    }
 
     // parse length with tag
     public static Length parse(ByteArray data, Tag tag) {

@@ -85,6 +85,9 @@ public class Tag16 extends UInt16Data implements Tag {
     public static Tag16 from(int value) {
         return new Tag16(IntegerData.getUInt16Data(value));
     }
+    public static Tag16 from(Integer value) {
+        return new Tag16(IntegerData.getUInt16Data(value));
+    }
 
     // parse tag
     public static Tag parse(ByteArray data) {
