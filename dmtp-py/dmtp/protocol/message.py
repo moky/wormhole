@@ -182,35 +182,35 @@ class Message(MapValue):
     def new(cls, info: dict):
         fields = []
         # envelope
-        cls.__fetch_msg_field(fields, info, 'S', 'sender', cls.SENDER, StringValue)
-        cls.__fetch_msg_field(fields, info, 'R', 'receiver', cls.RECEIVER, StringValue)
+        cls.__fetch_msg_field(fields, info, 'F', 'sender', cls.SENDER, StringValue)
+        cls.__fetch_msg_field(fields, info, 'T', 'receiver', cls.RECEIVER, StringValue)
         cls.__fetch_msg_field(fields, info, 'W', 'time', cls.TIME, TimestampValue)
-        cls.__fetch_msg_field(fields, info, 'T', 'type', cls.TYPE, TypeValue)
+        cls.__fetch_msg_field(fields, info, 'Y', 'type', cls.TYPE, TypeValue)
         cls.__fetch_msg_field(fields, info, 'G', 'group', cls.GROUP, StringValue)
         # body
         cls.__fetch_msg_field(fields, info, 'D', 'data', cls.CONTENT, BinaryValue)
-        cls.__fetch_msg_field(fields, info, 'V', 'signature', cls.SIGNATURE, BinaryValue)
+        cls.__fetch_msg_field(fields, info, 'S', 'signature', cls.SIGNATURE, BinaryValue)
         cls.__fetch_msg_field(fields, info, 'K', 'key', cls.KEY, BinaryValue)
         # attachments
         cls.__fetch_msg_field(fields, info, 'M', 'meta', cls.META, BinaryValue)
-        cls.__fetch_msg_field(fields, info, 'P', 'visa', cls.VISA, BinaryValue)
+        cls.__fetch_msg_field(fields, info, 'V', 'visa', cls.VISA, BinaryValue)
         # file
-        cls.__fetch_msg_field(fields, info, 'F', 'filename', cls.FILENAME, StringValue)
+        cls.__fetch_msg_field(fields, info, 'N', 'filename', cls.FILENAME, StringValue)
         # create message with fields
         return cls.from_fields(fields=fields)
 
     # message field names
-    SENDER = FieldName.from_str(name='S')     # sender ID
-    RECEIVER = FieldName.from_str(name='R')   # receiver ID
-    TIME = FieldName.from_str(name='W')       # message time
-    TYPE = FieldName.from_str(name='T')       # message type
-    GROUP = FieldName.from_str(name='G')      # group ID
+    SENDER = FieldName.from_str(name='F')     # From (sender id)
+    RECEIVER = FieldName.from_str(name='T')   # To (receiver id)
+    TIME = FieldName.from_str(name='W')       # When (message time)
+    TYPE = FieldName.from_str(name='Y')       # message tYpe
+    GROUP = FieldName.from_str(name='G')      # Group id
 
-    CONTENT = FieldName.from_str(name='D')    # message content data; or file content data
-    SIGNATURE = FieldName.from_str(name='V')  # signature for Verify content data with sender's meta.key
-    KEY = FieldName.from_str(name='K')        # encryption key (symmetric key data encrypted by public key)
+    CONTENT = FieldName.from_str(name='D')    # message content Data; or file content Data
+    SIGNATURE = FieldName.from_str(name='S')  # Signature for verifying content data
+    KEY = FieldName.from_str(name='K')        # Key(s) encrypted by receiver's public key
 
     META = FieldName.from_str(name='M')       # meta info
-    VISA = FieldName.from_str(name='P')       # visa (profile)
+    VISA = FieldName.from_str(name='V')       # visa info
 
-    FILENAME = FieldName.from_str(name='F')   # Filename
+    FILENAME = FieldName.from_str(name='N')   # fileName

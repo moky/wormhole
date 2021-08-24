@@ -239,20 +239,20 @@ public class Message extends MapValue<Field> {
     public static Message create(Map<String, Object> info) {
         List<Field> fields = new ArrayList<>();
         // envelope
-        fetchMsgField(fields, info, "S", "sender",    SENDER,    StringValue.class);
-        fetchMsgField(fields, info, "R", "receiver",  RECEIVER,  StringValue.class);
+        fetchMsgField(fields, info, "F", "sender",    SENDER,    StringValue.class);
+        fetchMsgField(fields, info, "T", "receiver",  RECEIVER,  StringValue.class);
         fetchMsgField(fields, info, "W", "time",      WHEN,      Value32.class);
-        fetchMsgField(fields, info, "T", "type",      TYPE,      Value8.class);
+        fetchMsgField(fields, info, "Y", "type",      TYPE,      Value8.class);
         fetchMsgField(fields, info, "G", "group",     GROUP,     StringValue.class);
         // body
         fetchMsgField(fields, info, "D", "data",      CONTENT,   RawValue.class);
-        fetchMsgField(fields, info, "V", "signature", VERIFY,    RawValue.class);
+        fetchMsgField(fields, info, "S", "signature", VERIFY,    RawValue.class);
         fetchMsgField(fields, info, "K", "key",       KEY,       RawValue.class);
         // attachments
         fetchMsgField(fields, info, "M", "meta",      META,      RawValue.class);
-        fetchMsgField(fields, info, "P", "visa",      VISA,      RawValue.class);
+        fetchMsgField(fields, info, "V", "visa",      VISA,      RawValue.class);
         // file
-        fetchMsgField(fields, info, "F", "filename",  FILENAME,  StringValue.class);
+        fetchMsgField(fields, info, "N", "filename",  FILENAME,  StringValue.class);
         // create message with fields
         return new Message(fields);
     }
@@ -336,20 +336,20 @@ public class Message extends MapValue<Field> {
     //  Message field names
     //
 
-    public static final StringTag SENDER    = StringTag.from("S");
-    public static final StringTag RECEIVER  = StringTag.from("R");
-    public static final StringTag WHEN      = StringTag.from("W");
-    public static final StringTag TYPE      = StringTag.from("T");
-    public static final StringTag GROUP     = StringTag.from("G");
+    public static final StringTag SENDER    = StringTag.from("F");  // From (sender id)
+    public static final StringTag RECEIVER  = StringTag.from("T");  // To (receiver id)
+    public static final StringTag WHEN      = StringTag.from("W");  // When (message time)
+    public static final StringTag TYPE      = StringTag.from("Y");  // message tYpe
+    public static final StringTag GROUP     = StringTag.from("G");  // Group id
 
     public static final StringTag CONTENT   = StringTag.from("D");  // message content Data; or file content Data
-    public static final StringTag VERIFY    = StringTag.from("V");  // signature for Verify content data with sender's meta.key
-    public static final StringTag KEY       = StringTag.from("K");
+    public static final StringTag VERIFY    = StringTag.from("S");  // Signature for verifying content data
+    public static final StringTag KEY       = StringTag.from("K");  // Key(s) encrypted by receiver's public key
 
-    public static final StringTag META      = StringTag.from("M");
-    public static final StringTag VISA      = StringTag.from("P");
+    public static final StringTag META      = StringTag.from("M");  // Meta info
+    public static final StringTag VISA      = StringTag.from("V");  // Visa info
 
-    public static final StringTag FILENAME  = StringTag.from("F");  // file in message
+    public static final StringTag FILENAME  = StringTag.from("N");  // fileName
 
     static {
         //
