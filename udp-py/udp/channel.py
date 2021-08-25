@@ -179,7 +179,7 @@ class DiscreteChannel(Channel):
         try:
             remote = sock.getpeername()
         except socket.error as error:
-            if error.errno == 57 and error.strerror == 'Socket is not connected':
+            if error.strerror == 'Socket is not connected':
                 remote = None
             else:
                 raise error
@@ -192,7 +192,7 @@ class DiscreteChannel(Channel):
                 data = sock.recv(max_len)
         except socket.error as error:
             if not self.__blocking:
-                if error.errno == 35 and error.strerror == 'Resource temporarily unavailable':
+                if error.strerror == 'Resource temporarily unavailable':
                     # received nothing
                     return None, None
             raise error
@@ -208,7 +208,7 @@ class DiscreteChannel(Channel):
         try:
             remote = sock.getpeername()
         except socket.error as error:
-            if error.errno == 57 and error.strerror == 'Socket is not connected':
+            if error.strerror == 'Socket is not connected':
                 remote = None
             else:
                 raise error

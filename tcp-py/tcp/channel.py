@@ -178,7 +178,7 @@ class StreamChannel(Channel):
             data = self.read(max_len=max_len)
         except socket.error as error:
             if not self.__blocking:
-                if error.errno == 35 and error.strerror == 'Resource temporarily unavailable':
+                if error.strerror == 'Resource temporarily unavailable':
                     # received nothing
                     return None, None
             raise error
