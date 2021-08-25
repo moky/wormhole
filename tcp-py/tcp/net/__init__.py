@@ -28,13 +28,14 @@
 # SOFTWARE.
 # ==============================================================================
 
+from .hub import Hub
 from .channel import Channel
 from .connection import Connection, Delegate as ConnectionDelegate
-from .hub import Hub
 
 from .state import ConnectionState, StateMachine as ConnectionStateMachine
 
 from .base_hub import BaseHub
+from .base_channel import BaseChannel
 from .base_conn import BaseConnection
 from .active_conn import ActiveConnection
 
@@ -43,9 +44,9 @@ __all__ = [
     #
     #   Interfaces
     #
+    'Hub',
     'Channel',
     'Connection', 'ConnectionDelegate',
-    'Hub',
 
     #
     #   FSM for Connection
@@ -53,9 +54,10 @@ __all__ = [
     'ConnectionState', 'ConnectionStateMachine',
 
     #
-    #   Common Classes
+    #   Base
     #
     'BaseHub',
+    'BaseChannel',
     'BaseConnection',
     'ActiveConnection',
 ]

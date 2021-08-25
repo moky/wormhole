@@ -28,11 +28,9 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .net import Channel
-from .net import Connection, ConnectionDelegate
+from .net import Hub, Channel, Connection, ConnectionDelegate
 from .net import ConnectionState, ConnectionStateMachine
-from .net import Hub, BaseHub
-from .net import BaseConnection, ActiveConnection
+from .net import BaseHub, BaseChannel, BaseConnection, ActiveConnection
 
 from .channel import StreamChannel
 from .hub import StreamHub, ActiveStreamHub
@@ -46,11 +44,9 @@ __all__ = [
     #
     #   Net
     #
-    'Channel',
-    'Connection', 'ConnectionDelegate',
+    'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
     'ConnectionState', 'ConnectionStateMachine',
-    'Hub', 'BaseHub',
-    'BaseConnection', 'ActiveConnection',
+    'BaseHub', 'BaseChannel', 'BaseConnection', 'ActiveConnection',
 
     #
     #   Stream

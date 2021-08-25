@@ -53,7 +53,7 @@ class Channel(ABC):
     #
 
     @abstractmethod
-    def read(self, max_len: int) -> bytes:
+    def read(self, max_len: int) -> Optional[bytes]:
         raise NotImplemented
 
     @abstractmethod
@@ -111,7 +111,7 @@ class Channel(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def receive(self, max_len: int) -> (bytes, tuple):
+    def receive(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
         raise NotImplemented
 
     @abstractmethod

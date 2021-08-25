@@ -28,11 +28,9 @@
 # SOFTWARE.
 # ==============================================================================
 
-from tcp import Channel
-from tcp import Connection, ConnectionDelegate
+from tcp import Hub, Channel, Connection, ConnectionDelegate
 from tcp import ConnectionState, ConnectionStateMachine
-from tcp import Hub, BaseHub
-from tcp import BaseConnection, ActiveConnection
+from tcp import BaseHub, BaseChannel, BaseConnection, ActiveConnection
 
 from .pack_conn import PackageConnection
 from .active_conn import ActivePackageConnection
@@ -42,11 +40,9 @@ __all__ = [
     #
     #   Net
     #
-    'Channel',
-    'Connection', 'ConnectionDelegate',
+    'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
     'ConnectionState', 'ConnectionStateMachine',
-    'Hub', 'BaseHub',
-    'BaseConnection', 'ActiveConnection',
+    'BaseHub', 'BaseChannel', 'BaseConnection', 'ActiveConnection',
 
     #
     #   Classes for Data Package
