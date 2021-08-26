@@ -13,6 +13,7 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
+from udp.ba import ByteArray
 from udp import Channel, DiscreteChannel
 from udp import Connection, ConnectionDelegate
 from udp import Hub, ActivePackageHub
@@ -50,7 +51,9 @@ class Client(threading.Thread, ConnectionDelegate):
 
     # Override
     def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):
-        text = payload.get_bytes().decode('utf-8')
+        if isinstance(payload, ByteArray):
+            payload = payload.get_bytes()
+        text = payload.decode('utf-8')
         self.info('<<< received (%d bytes) from %s: %s' % (len(payload), remote, text))
 
     def __send(self, data: bytes):

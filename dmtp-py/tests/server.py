@@ -9,7 +9,7 @@ import time
 import traceback
 from typing import Optional, Dict
 
-from udp.ba import Data
+from udp.ba import ByteArray, Data
 from udp.mtp import Header
 from udp import Channel, DiscreteChannel
 from udp import Connection, ConnectionDelegate
@@ -108,9 +108,10 @@ class Server(dmtp.Server, ConnectionDelegate):
 
     # Override
     def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload: bytes):
-        if isinstance(wrapper, Header) and len(payload) > 0:
-            body = Data(buffer=payload)
-            self._received(head=wrapper, body=body, source=remote)
+        assert isinstance(wrapper, Header), 'Header error: %s' % wrapper
+        if not isinstance(payload, ByteArray):
+            payload = Data(buffer=payload)
+        self._received(head=wrapper, body=payload, source=remote)
 
     # Override
     def _process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
@@ -160,8 +161,7 @@ class Server(dmtp.Server, ConnectionDelegate):
         if super().say_hello(destination=destination):
             return True
         cmd = dmtp.Command.hello_command(identifier=self.identifier)
-        self.send_command(cmd=cmd, destination=destination)
-        return True
+        return self.send_command(cmd=cmd, destination=destination)
 
     def start(self):
         self.__hub.bind(local=self.__local_address)

@@ -8,7 +8,7 @@ import time
 import weakref
 from typing import Optional, Union, Dict
 
-from udp.ba import ByteArray
+from udp.ba import ByteArray, Data
 from udp import Channel, DiscreteChannel
 from udp import Connection, ConnectionDelegate
 from udp import Hub, BaseHub, BaseConnection
@@ -95,11 +95,13 @@ class Client(stun.Client, ConnectionDelegate):
                   % (connection.local_address, connection.remote_address, current_state, next_state))
 
     # Override
-    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload: bytes):
+    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):
+        if not isinstance(payload, ByteArray):
+            payload = Data(buffer=payload)
         self.__cargoes.append((payload, remote))
 
     # Override
-    def receive(self) -> (Optional[bytes], Optional[tuple]):
+    def receive(self) -> (Optional[ByteArray], Optional[tuple]):
         data = None
         remote = None
         expired = time.time() + 2.0

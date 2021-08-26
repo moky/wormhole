@@ -32,7 +32,7 @@ from typing import Optional
 
 from tcp import Channel, BaseConnection
 
-from ..ba import Data
+from ..ba import ByteArray, Data
 from ..mtp import DataType, TransactionID, Package
 from ..mtp import ArrivalHall, Departure, DepartureHall
 
@@ -106,7 +106,7 @@ class PackageConnection(BaseConnection):
             self.send(data=pack.get_bytes(), target=task.destination)
         return True
 
-    def __respond_command(self, sn: TransactionID, body: Data, remote: tuple):
+    def __respond_command(self, sn: TransactionID, body: ByteArray, remote: tuple):
         res = Package.new(data_type=DataType.COMMAND_RESPONSE, sn=sn, body=body)
         self.send(data=res.get_bytes(), target=remote)
 

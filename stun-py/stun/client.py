@@ -55,7 +55,7 @@ class Client(Node, ABC):
         self.retries = 3
 
     @abstractmethod
-    def receive(self) -> (Optional[bytes], Optional[tuple]):
+    def receive(self) -> (Optional[ByteArray], Optional[tuple]):
         raise NotImplementedError
 
     # Override
@@ -118,13 +118,12 @@ class Client(Node, ABC):
                     # failed to receive data
                     return None
             else:
-                self.info('received %d bytes from %s' % (len(data), source))
+                self.info('received %d bytes from %s' % (data.size, source))
                 break
         # 3. parse response
         context = {
             'trans_id': trans_id,
         }
-        data = Data(buffer=data)
         if not self.parse_data(data=data, context=context):
             return None
         head = context.get('head')

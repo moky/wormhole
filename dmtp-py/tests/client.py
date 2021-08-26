@@ -11,7 +11,7 @@ import time
 import traceback
 from typing import Optional
 
-from udp.ba import Data
+from udp.ba import ByteArray, Data
 from udp.mtp import Header
 from udp import Hub
 from udp import Channel, Connection, ConnectionDelegate, ConnectionState
@@ -97,9 +97,10 @@ class Client(dmtp.Client, ConnectionDelegate):
 
     # Override
     def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload: bytes):
-        if isinstance(wrapper, Header) and len(payload) > 0:
-            body = Data(buffer=payload)
-            self._received(head=wrapper, body=body, source=remote)
+        assert isinstance(wrapper, Header), 'Header error: %s' % wrapper
+        if not isinstance(payload, ByteArray):
+            payload = Data(buffer=payload)
+        self._received(head=wrapper, body=payload, source=remote)
 
     # Override
     def _process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
@@ -150,14 +151,12 @@ class Client(dmtp.Client, ConnectionDelegate):
             return True
         cmd = dmtp.Command.hello_command(identifier=self.identifier)
         self.info('send cmd: %s' % cmd)
-        self.send_command(cmd=cmd, destination=destination)
-        return True
+        return self.send_command(cmd=cmd, destination=destination)
 
     def call(self, identifier: str) -> bool:
         cmd = dmtp.Command.call_command(identifier=identifier)
         self.info('send cmd: %s' % cmd)
-        self.send_command(cmd=cmd, destination=self.__remote_address)
-        return True
+        return self.send_command(cmd=cmd, destination=self.__remote_address)
 
     def login(self, identifier: str):
         self.identifier = identifier

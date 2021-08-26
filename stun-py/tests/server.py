@@ -93,9 +93,10 @@ class Server(stun.Server, threading.Thread, ConnectionDelegate):
                   % (connection.local_address, connection.remote_address, current_state, next_state))
 
     # Override
-    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload: bytes):
-        data = Data(buffer=payload)
-        self.handle(data=data, remote_ip=remote[0], remote_port=remote[1])
+    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):
+        if not isinstance(payload, ByteArray):
+            payload = Data(buffer=payload)
+        self.handle(data=payload, remote_ip=remote[0], remote_port=remote[1])
 
     # Override
     def send(self, data: ByteArray, destination: tuple, source: Union[tuple, int] = None) -> bool:
