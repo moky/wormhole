@@ -135,7 +135,7 @@ class DepartureHall:
         self.__finished: Dict[bytes, float] = {}    # bytes(TransactionID) => timestamp
         self.__lock = threading.RLock()
 
-    def append(self, pack: Package, source: Optional[tuple], destination: tuple):
+    def append(self, pack: Package, source: Optional[tuple], destination: tuple) -> Departure:
         """ Append departure """
         if pack.head.data_type.is_message:
             fragments = Packer.split(package=pack)
@@ -145,6 +145,7 @@ class DepartureHall:
         with self.__lock:
             self.__departures.append(task)
             self.__map[task.sn] = task
+        return task
 
     def remove(self, task: Departure):
         """ Remove departure """

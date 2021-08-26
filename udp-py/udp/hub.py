@@ -35,6 +35,7 @@ from typing import Optional
 from tcp import Channel, Connection, ConnectionDelegate
 from tcp import BaseHub
 
+from .mtp import Package, Departure
 from .net import PackageConnection, ActivePackageConnection
 
 
@@ -64,15 +65,20 @@ class PackageHub(BaseHub):
     def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
         raise NotImplemented
 
-    def send_command(self, body: bytes, source: Optional[tuple], destination: tuple):
+    def send_command(self, body: bytes, source: Optional[tuple], destination: tuple) -> Departure:
         conn = self.connect(remote=destination, local=source)
-        if isinstance(conn, PackageConnection):
-            conn.send_command(body=body, source=source, destination=destination)
+        assert isinstance(conn, PackageConnection), 'connection error: %s' % conn
+        return conn.send_command(body=body, source=source, destination=destination)
 
-    def send_message(self, body: bytes, source: Optional[tuple], destination: tuple):
+    def send_message(self, body: bytes, source: Optional[tuple], destination: tuple) -> Departure:
         conn = self.connect(remote=destination, local=source)
-        if isinstance(conn, PackageConnection):
-            conn.send_message(body=body, source=source, destination=destination)
+        assert isinstance(conn, PackageConnection), 'connection error: %s' % conn
+        return conn.send_message(body=body, source=source, destination=destination)
+
+    def send_package(self, pack: Package, source: Optional[tuple], destination: tuple) -> Departure:
+        conn = self.connect(remote=destination, local=source)
+        assert isinstance(conn, PackageConnection), 'connection error: %s' % conn
+        return conn.send_package(pack=pack, source=source, destination=destination)
 
 
 class ActivePackageHub(PackageHub, ABC):
