@@ -57,6 +57,7 @@ class BaseHub(Hub, Ticker):
         # mapping: (remote, local) => time to kill
         self.__dying_times: Dict[tuple, int] = {}
 
+    # Override
     def send(self, data: bytes, source: Optional[tuple], destination: tuple) -> bool:
         conn = self.connect(remote=destination, local=source)
         if conn is None or not conn.opened:
@@ -64,10 +65,12 @@ class BaseHub(Hub, Ticker):
             return False
         return conn.send(data=data, target=destination) != -1
 
+    # Override
     def get_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Connection]:
         with self.__lock:
             return self.__seek(remote=remote, local=local)
 
+    # Override
     def connect(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Connection]:
         assert local is not None or remote is not None, 'both local & remote addresses are empty'
         # 1. try to get connection from cache pool
@@ -92,6 +95,7 @@ class BaseHub(Hub, Ticker):
     def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
         raise NotImplemented
 
+    # Override
     def disconnect(self, remote: Optional[tuple], local: Optional[tuple]):
         with self.__lock:
             conn = self.__seek(remote=remote, local=local)
@@ -99,6 +103,7 @@ class BaseHub(Hub, Ticker):
             self.__remove(connection=conn)
             conn.close()
 
+    # Override
     def tick(self):
         # call 'tick()' to drive all connections
         connections = set()

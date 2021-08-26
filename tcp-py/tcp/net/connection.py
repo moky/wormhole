@@ -96,13 +96,13 @@ class Delegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload: bytes):
+    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):
         """
         Call when connection received data
 
         :param connection: current connection
         :param remote:     remote address
-        :param wrapper:    received data header
-        :param payload:    received data body
+        :param wrapper:    received data header (Header or None)
+        :param payload:    received data body (bytes, bytearray or ByteArray)
         """
         raise NotImplemented

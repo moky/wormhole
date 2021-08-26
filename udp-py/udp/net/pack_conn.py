@@ -44,6 +44,7 @@ class PackageConnection(BaseConnection):
         self.__arrival_hall = ArrivalHall()
         self.__departure_hall = DepartureHall()
 
+    # Override
     def tick(self):
         super().tick()
         try:
@@ -64,9 +65,7 @@ class PackageConnection(BaseConnection):
         if pack is None:
             return
         # callback
-        wrapper = pack.head
-        payload = pack.body.get_bytes()
-        delegate.connection_data_received(connection=self, remote=remote, wrapper=wrapper, payload=payload)
+        delegate.connection_data_received(connection=self, remote=remote, wrapper=pack.head, payload=pack.body)
 
     def send_command(self, body: bytes, source: Optional[tuple], destination: tuple) -> Departure:
         pack = Package.new(data_type=DataType.COMMAND, body=Data(buffer=body))

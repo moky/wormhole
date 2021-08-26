@@ -114,7 +114,7 @@ class BaseConnection(Connection, StateDelegate):
         else:
             return hash(remote) * 13 + hash(local)
 
-    @property
+    @property  # Override
     def local_address(self) -> Optional[tuple]:  # (str, int)
         sock = self._channel
         if sock is not None and sock.bound:
@@ -122,7 +122,7 @@ class BaseConnection(Connection, StateDelegate):
         else:
             return self._local_address
 
-    @property
+    @property  # Override
     def remote_address(self) -> Optional[tuple]:  # (str, int)
         sock = self._channel
         if sock is not None and sock.connected:
@@ -145,21 +145,22 @@ class BaseConnection(Connection, StateDelegate):
         now = time.time()
         return now > self.__last_received_time + (self.EXPIRES << 4)
 
-    @property
+    @property  # Override
     def opened(self) -> bool:
         sock = self.channel
         return sock is not None and sock.opened
 
-    @property
+    @property  # Override
     def bound(self) -> bool:
         sock = self.channel
         return sock is not None and sock.bound
 
-    @property
+    @property  # Override
     def connected(self) -> bool:
         sock = self.channel
         return sock is not None and sock.connected
 
+    # Override
     def close(self):
         try:
             sock = self._channel
@@ -190,6 +191,7 @@ class BaseConnection(Connection, StateDelegate):
             self.change_state(name=ConnectionState.ERROR)
             raise error
 
+    # Override
     def send(self, data: bytes, target: Optional[tuple] = None) -> int:
         sock = self.channel
         if sock is None or not sock.opened:
@@ -214,13 +216,15 @@ class BaseConnection(Connection, StateDelegate):
         if state != self.__fsm.current_state:
             self.__fsm.change_state(state=state)
 
-    @property
+    @property  # Override
     def state(self) -> ConnectionState:
         return self.__fsm.current_state
 
     #
     #   Ticker
     #
+
+    # Override
     def tick(self):
         self.__fsm.tick()
         if self.opened:
@@ -251,6 +255,8 @@ class BaseConnection(Connection, StateDelegate):
     #
     #   StateDelegate
     #
+
+    # Override
     def enter_state(self, state: ConnectionState, ctx: StateMachine):
         current = ctx.current_state
         if state == ConnectionState.CONNECTED:
@@ -264,11 +270,14 @@ class BaseConnection(Connection, StateDelegate):
         if delegate is not None:
             delegate.connection_state_changing(connection=self, current_state=current, next_state=state)
 
+    # Override
     def exit_state(self, state: ConnectionState, ctx: StateMachine):
         pass
 
+    # Override
     def pause_state(self, state: ConnectionState, ctx: StateMachine):
         pass
 
+    # Override
     def resume_state(self, state: ConnectionState, ctx: StateMachine):
         pass

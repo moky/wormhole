@@ -67,24 +67,27 @@ class ActiveConnection(BaseConnection):
                 self.__connecting -= 1
         return redo
 
-    @property
+    @property  # Override
     def channel(self) -> Channel:
         if self._channel is None:
             self.__reconnect()
         return self._channel
 
-    @property
+    @property  # Override
     def opened(self) -> bool:
         return self.__running
 
+    # Override
     def start(self):
         self.__running = True
         super().start()
 
+    # Override
     def stop(self):
         self.__running = False
         super().stop()
 
+    # Override
     def _receive(self, max_len: int) -> (bytes, tuple):
         data, remote = super()._receive(max_len=max_len)
         if data is None and remote is None and self._channel is None and self.__reconnect():
@@ -92,6 +95,7 @@ class ActiveConnection(BaseConnection):
             data, remote = super()._receive(max_len=max_len)
         return data, remote
 
+    # Override
     def send(self, data: bytes, target: Optional[tuple] = None) -> int:
         sent = super().send(data=data, target=target)
         if sent == -1 and self._channel is None and self.__reconnect():
@@ -99,6 +103,7 @@ class ActiveConnection(BaseConnection):
             sent = super().send(data=data, target=target)
         return sent
 
+    # Override
     def enter_state(self, state: ConnectionState, ctx: StateMachine):
         super().enter_state(state=state, ctx=ctx)
         if state == ConnectionState.EXPIRED:

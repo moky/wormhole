@@ -36,6 +36,7 @@ from tcp import BaseChannel
 class DiscreteChannel(BaseChannel):
     """ Discrete Package Channel """
 
+    # Override
     def _setup_socket(self) -> socket.socket:
         sock = self._sock
         if sock is None:
@@ -45,6 +46,7 @@ class DiscreteChannel(BaseChannel):
             self._sock = sock
         return sock
 
+    # Override
     def receive(self, max_len: int) -> (bytes, tuple):
         # check socket
         sock = self._sock
@@ -77,6 +79,7 @@ class DiscreteChannel(BaseChannel):
                 raise socket.error('remote peer reset socket')
         return data, remote
 
+    # Override
     def send(self, data: bytes, target: tuple) -> int:
         # check socket
         sock = self._sock

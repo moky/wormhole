@@ -50,12 +50,14 @@ class AutoMachine(BaseMachine, Runnable, ABC, Generic[C, T, S]):
         super().__init__(default=default)
         self.__thread: Optional[Thread] = None
 
+    # Override
     def start(self):
         super().start()
         if self.__thread is None:
             self.__thread = Thread(target=self.run)
             self.__thread.start()
 
+    # Override
     def stop(self):
         super().stop()
         t: Thread = self.__thread
@@ -63,6 +65,7 @@ class AutoMachine(BaseMachine, Runnable, ABC, Generic[C, T, S]):
             t.join()
             self.__thread = None
 
+    # Override
     def run(self):
         self.setup()
         try:

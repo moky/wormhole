@@ -43,12 +43,14 @@ class Client(threading.Thread, ConnectionDelegate):
     def error(self, msg: str):
         print('ERROR> ', msg)
 
+    # Override
     def connection_state_changing(self, connection: Connection, current_state, next_state):
         self.info('!!! connection (%s, %s) state changed: %s -> %s'
                   % (connection.local_address, connection.remote_address, current_state, next_state))
 
-    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload: bytes):
-        text = payload.decode('utf-8')
+    # Override
+    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):
+        text = payload.get_bytes().decode('utf-8')
         self.info('<<< received (%d bytes) from %s: %s' % (len(payload), remote, text))
 
     def __send(self, data: bytes):

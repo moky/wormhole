@@ -46,16 +46,19 @@ class MutableData(Data, MutableByteArray):
             size = 0
         super().__init__(buffer=buffer, offset=offset, size=size)
 
+    # Override
     def set_byte(self, index: int, value: int):
         index = get_data_helper().adjust_e(index=index, size=self._size)
         size = get_mutable_helper().set(value=value, index=index, data=self)
         if size > self._size:
             self._size = size
 
+    # Override
     def set_char(self, index: int, value: str):
         assert len(value) == 1, 'char value error: %s' % value
         self.set_byte(index=index, value=ord(value[0]))
 
+    # Override
     def update(self, index: int, source: Union[bytes, bytearray, ByteArray], start: int = 0, end: int = None):
         index = get_data_helper().adjust_e(index=index, size=self._size)
         source = get_sub_data(data=source, start=start, end=end)
@@ -63,12 +66,14 @@ class MutableData(Data, MutableByteArray):
         if size > self._size:
             self._size = size
 
+    # Override
     def append(self, source: Union[bytes, bytearray, ByteArray], start: int = 0, end: int = None):
         source = get_sub_data(data=source, start=start, end=end)
         size = get_mutable_helper().insert(src=source, index=self._size, data=self)
         if size > self._size:
             self._size = size
 
+    # Override
     def insert(self, index: int, source: Union[bytes, bytearray, ByteArray], start: int, end: int = None):
         index = get_data_helper().adjust_e(index=index, size=self._size)
         source = get_sub_data(data=source, start=start, end=end)
@@ -76,6 +81,7 @@ class MutableData(Data, MutableByteArray):
         if size > self._size:
             self._size = size
 
+    # Override
     def remove(self, index: int) -> int:
         index = get_data_helper().adjust_e(index=index, size=self._size)
         value, offset, size = get_mutable_helper().remove(index=index, data=self)
@@ -85,6 +91,7 @@ class MutableData(Data, MutableByteArray):
             self._size = size
         return value
 
+    # Override
     def shift(self) -> int:
         if self._size < 1:
             raise IndexError('data empty!')
@@ -93,12 +100,14 @@ class MutableData(Data, MutableByteArray):
         self._size -= 1
         return erased
 
+    # Override
     def pop(self) -> int:
         if self._size < 1:
             raise IndexError('data empty!')
         self._size -= 1
         return self._buffer[self._offset + self._size]
 
+    # Override
     def push(self, element: int):
         self.set_byte(index=self._size, value=element)
 

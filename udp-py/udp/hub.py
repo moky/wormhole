@@ -50,6 +50,7 @@ class PackageHub(BaseHub):
     def delegate(self) -> ConnectionDelegate:
         return self.__delegate()
 
+    # Override
     def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
         # create connection with channel
         sock = self.create_channel(remote=remote, local=local)
@@ -84,6 +85,7 @@ class PackageHub(BaseHub):
 class ActivePackageHub(PackageHub, ABC):
     """ Active Package Hub """
 
+    # Override
     def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
         # create connection with addresses
         conn = ActiveDiscreteConnection(remote=remote, local=local, hub=self)
@@ -102,6 +104,7 @@ class ActiveDiscreteConnection(ActivePackageConnection):
         super().__init__(remote=remote, local=local)
         self.__hub = weakref.ref(hub)
 
+    # Override
     def connect(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
         hub = self.__hub()
         # assert isinstance(hub, ActivePackageHub)

@@ -71,11 +71,11 @@ class IntData(Data, IntegerData):
     def __repr__(self) -> str:
         return str(self.__value)
 
-    @property
+    @property  # Override
     def endian(self) -> Endian:
         return self.__endian
 
-    @property
+    @property  # Override
     def value(self) -> int:
         return self.__value
 

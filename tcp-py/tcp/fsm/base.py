@@ -59,6 +59,7 @@ class BaseState(State, ABC, Generic[C, T]):
         assert transition not in self.__transitions, 'transition exists'
         self.__transitions.append(transition)
 
+    # Override
     def evaluate(self, ctx: C) -> T:
         for trans in self.__transitions:
             if trans.evaluate(ctx):
@@ -101,21 +102,23 @@ class BaseMachine(Machine, Generic[C, T, S]):
     def get_state(self, name: str) -> S:
         return self.__states.get(name)
 
-    @property
+    @property  # Override
     def default_state(self) -> S:
         return self.__states.get(self.__default)
 
-    @property
+    @property  # Override
     def current_state(self) -> S:
         return self.__current
 
-    @current_state.setter
+    @current_state.setter  # Override
     def current_state(self, state: S):
         self.__current = state
 
+    # Override
     def target_state(self, transition: BaseTransition[C]) -> S:
         return self.__states.get(transition.target)
 
+    # Override
     def change_state(self, state: Optional[S]):
         machine = self.context
         current = self.current_state
@@ -137,14 +140,18 @@ class BaseMachine(Machine, Generic[C, T, S]):
     #
     #   Actions
     #
+
+    # Override
     def start(self):
         self.change_state(state=self.default_state)
         self.__status = Status.RUNNING
 
+    # Override
     def stop(self):
         self.__status = Status.STOPPED
         self.change_state(state=None)
 
+    # Override
     def pause(self):
         machine = self.context
         current = self.current_state
@@ -154,6 +161,7 @@ class BaseMachine(Machine, Generic[C, T, S]):
         self.__status = Status.PAUSED
         current.on_pause(machine)
 
+    # Override
     def resume(self):
         machine = self.context
         current = self.current_state
@@ -166,6 +174,8 @@ class BaseMachine(Machine, Generic[C, T, S]):
     #
     #   Ticker
     #
+
+    # Override
     def tick(self):
         machine = self.context
         current = self.current_state

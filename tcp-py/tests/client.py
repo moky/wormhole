@@ -47,7 +47,7 @@ class Client(threading.Thread, ConnectionDelegate):
         self.info('!!! connection (%s, %s) state changed: %s -> %s'
                   % (connection.local_address, connection.remote_address, current_state, next_state))
 
-    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload: bytes):
+    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):
         text = payload.decode('utf-8')
         self.info('<<< received (%d bytes) from %s: %s' % (len(payload), remote, text))
 

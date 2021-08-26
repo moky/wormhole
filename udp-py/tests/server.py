@@ -73,8 +73,8 @@ class Server(threading.Thread, ConnectionDelegate):
                   % (connection.local_address, connection.remote_address, current_state, next_state))
 
     # Override
-    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload: bytes):
-        text = payload.decode('utf-8')
+    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):
+        text = payload.get_bytes().decode('utf-8')
         self.info('<<< received (%d bytes) from %s: %s' % (len(payload), remote, text))
         text = '%d# %d byte(s) received' % (self.counter, len(payload))
         self.counter += 1

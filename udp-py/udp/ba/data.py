@@ -58,15 +58,15 @@ class Data(ByteArray):
         else:
             self._size = size
 
-    @property
+    @property  # Override
     def buffer(self) -> Union[bytes, bytearray]:
         return self._buffer
 
-    @property
+    @property  # Override
     def offset(self) -> int:
         return self._offset
 
-    @property
+    @property  # Override
     def size(self) -> int:
         return self._size
 
@@ -114,11 +114,12 @@ class Data(ByteArray):
         # return data.decode('utf-8')
         return str(data)
 
-    @property
+    @property  # Override
     def hex_string(self) -> str:
         data = self.get_bytes()
         return hex_encode(data=data)
 
+    # Override
     def get_byte(self, index: int) -> int:
         index = get_data_helper().adjust_e(index=index, size=self._size)
         if index >= self._size:
@@ -126,6 +127,7 @@ class Data(ByteArray):
             raise IndexError('error index: %d, size: %d' % (index, self._size))
         return self._buffer[self._offset + index]
 
+    # Override
     def get_bytes(self, start: int = 0, end: int = None) -> bytes:
         start, end = adjust_positions(size=self._size, start=start, end=end)
         sub = get_slice(data=self, start=start, end=end)
@@ -134,6 +136,7 @@ class Data(ByteArray):
         else:
             return sub
 
+    # Override
     def slice(self, start: int, end: int = None) -> ByteArray:
         start, end = adjust_positions(size=self._size, start=start, end=end)
         if start == 0 and end == self._size:
@@ -146,6 +149,7 @@ class Data(ByteArray):
             # error
             return self.ZERO
 
+    # Override
     def concat(self, other: Union[bytes, bytearray, ByteArray]) -> ByteArray:
         if other is None:
             # other data is empty, take this data
@@ -158,6 +162,7 @@ class Data(ByteArray):
             # this data is empty, take the other one
             return other
 
+    # Override
     def find(self, sub: Union[bytes, bytearray, ByteArray], start: int = 0, end: int = None) -> int:
         if not isinstance(sub, ByteArray):
             sub = Data(buffer=sub)

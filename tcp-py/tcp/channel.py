@@ -37,6 +37,7 @@ from .net import BaseChannel
 class StreamChannel(BaseChannel):
     """ Stream Channel """
 
+    # Override
     def _setup_socket(self) -> socket.socket:
         sock = self._sock
         if sock is None:
@@ -46,6 +47,7 @@ class StreamChannel(BaseChannel):
             self._sock = sock
         return sock
 
+    # Override
     def receive(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
         data = self.read(max_len=max_len)
         if data is None or len(data) == 0:
@@ -53,6 +55,7 @@ class StreamChannel(BaseChannel):
         else:
             return data, self.remote_address
 
+    # Override
     def send(self, data: bytes, target: tuple) -> int:
         # TCP channel will be always connected
         # so the target address must be the remote address
