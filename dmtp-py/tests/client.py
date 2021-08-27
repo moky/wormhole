@@ -38,6 +38,20 @@ CLIENT_PORT = random.choice(range(9900, 9999))
 
 class ClientHub(ActivePackageHub):
 
+    def __init__(self, delegate: ConnectionDelegate):
+        super().__init__(delegate=delegate)
+        self.__running = False
+
+    @property
+    def running(self) -> bool:
+        return self.__running
+
+    def start(self):
+        self.__running = True
+
+    def stop(self):
+        self.__running = False
+
     # Override
     def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
         channel = DiscreteChannel(remote=remote, local=local)
@@ -53,7 +67,6 @@ class Client(dmtp.Client, ConnectionDelegate):
         self.__remote_address = remote
         self.__hub = ClientHub(delegate=self)
         self.__db: Optional[ContactManager] = None
-        self.__running = False
 
     @property
     def hub(self) -> ClientHub:
@@ -214,13 +227,27 @@ class Client(dmtp.Client, ConnectionDelegate):
 
     def start(self):
         self.__hub.connect(remote=self.__remote_address, local=self.__local_address)
-        self.__running = True
+        self.__hub.start()
         threading.Thread(target=self.run).start()
 
+    def stop(self):
+        self.__hub.stop()
+
     def run(self):
-        while self.__running:
+        while self.__hub.running:
             self.__hub.tick()
-            time.sleep(0.1)
+            time.sleep(0.0078125)
+
+    def test(self):
+        self.login(identifier=user)
+        # test send
+        text = '你好 %s！' % friend
+        index = 0
+        while self.__hub.running:
+            time.sleep(5)
+            print('---- [%d] ----: %s' % (index, text))
+            self.send_text(receiver=friend, msg='%s (%d)' % (text, index))
+            index += 1
 
 
 if __name__ == '__main__':
@@ -244,14 +271,5 @@ if __name__ == '__main__':
     g_client.delegate = g_client.database
 
     g_client.start()
-
-    g_client.login(identifier=user)
-
-    # test send
-    text = '你好 %s！' % friend
-    index = 0
-    while True:
-        time.sleep(5)
-        print('---- [%d]' % index)
-        g_client.send_text(receiver=friend, msg='%s (%d)' % (text, index))
-        index += 1
+    g_client.test()
+    g_client.stop()

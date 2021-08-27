@@ -30,13 +30,13 @@
 
 import weakref
 from abc import ABC
-from typing import List, Optional, Dict, Generic
+from typing import List, Optional, Dict
 
 from .machine import S, C, U, T
 from .machine import Transition, State, Machine, Status, Delegate
 
 
-class BaseTransition(Transition, ABC, Generic[C]):
+class BaseTransition(Transition[C], ABC):
     """ Transition with the name of target state """
 
     def __init__(self, target: str):
@@ -48,7 +48,7 @@ class BaseTransition(Transition, ABC, Generic[C]):
         return self.__target
 
 
-class BaseState(State, ABC, Generic[C, T]):
+class BaseState(State[C, T], ABC):
     """ State with transitions """
 
     def __init__(self):
@@ -67,7 +67,7 @@ class BaseState(State, ABC, Generic[C, T]):
                 return trans
 
 
-class BaseMachine(Machine, Generic[C, T, S]):
+class BaseMachine(Machine[C, T, S]):
 
     def __init__(self, default: str):
         super().__init__()

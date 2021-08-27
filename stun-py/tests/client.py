@@ -27,10 +27,21 @@ class ClientHub(BaseHub):
         self.__delegate = weakref.ref(delegate)
         self.__connections: Dict[tuple, Connection] = {}
         self.__sockets: Dict[tuple, socket.socket] = {}
+        self.__running = False
 
     @property
     def delegate(self) -> ConnectionDelegate:
         return self.__delegate()
+
+    @property
+    def running(self) -> bool:
+        return self.__running
+
+    def start(self):
+        self.__running = True
+
+    def stop(self):
+        self.__running = False
 
     def bind(self, local: tuple) -> Connection:
         sock = self.__sockets.get(local)
@@ -75,7 +86,6 @@ class Client(stun.Client, ConnectionDelegate):
         super().__init__(host=host, port=port)
         self.__cargoes = []
         self.__hub = ClientHub(delegate=self)
-        self.__hub.bind(local=self.source_address)
 
     @property
     def hub(self) -> ClientHub:
@@ -105,7 +115,7 @@ class Client(stun.Client, ConnectionDelegate):
         data = None
         remote = None
         expired = time.time() + 2.0
-        while True:
+        while self.__hub.running:
             if len(self.__cargoes) > 0:
                 cargo = self.__cargoes.pop(0)
                 data = cargo[0]
@@ -129,6 +139,13 @@ class Client(stun.Client, ConnectionDelegate):
             return True
         except socket.error:
             return False
+
+    def start(self):
+        self.__hub.bind(local=self.source_address)
+        self.__hub.start()
+
+    def stop(self):
+        self.__hub.stop()
 
     def detect(self, stun_host: str, stun_port: int):
         print('----------------------------------------------------------------')
@@ -168,8 +185,9 @@ LOCAL_PORT = 9527
 
 if __name__ == '__main__':
 
-    # create client
     g_client = Client(host=LOCAL_IP, port=LOCAL_PORT)
+
+    g_client.start()
 
     print('================================================================')
     print('== Local Address: (%s:%d)' % (LOCAL_IP, LOCAL_PORT))

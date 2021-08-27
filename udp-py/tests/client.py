@@ -21,6 +21,20 @@ from udp import Hub, ActivePackageHub
 
 class ClientHub(ActivePackageHub):
 
+    def __init__(self, delegate: ConnectionDelegate):
+        super().__init__(delegate=delegate)
+        self.__running = False
+
+    @property
+    def running(self) -> bool:
+        return self.__running
+
+    def start(self):
+        self.__running = True
+
+    def stop(self):
+        self.__running = False
+
     # Override
     def create_channel(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
         channel = DiscreteChannel(remote=remote, local=local)
@@ -28,7 +42,7 @@ class ClientHub(ActivePackageHub):
         return channel
 
 
-class Client(threading.Thread, ConnectionDelegate):
+class Client(ConnectionDelegate):
 
     def __init__(self, local: tuple, remote: tuple):
         super().__init__()
@@ -65,16 +79,20 @@ class Client(threading.Thread, ConnectionDelegate):
         except Exception as error:
             self.error('failed to send data: %s' % error)
 
-    def __disconnect(self):
-        self.__hub.disconnect(remote=self.__remote_address, local=self.__local_address)
-
-    # Override
     def start(self):
         self.__hub.connect(remote=self.__remote_address, local=self.__local_address)
-        super().start()
+        self.__hub.start()
+        threading.Thread(target=self.run).start()
 
-    # Override
+    def stop(self):
+        self.__hub.stop()
+
     def run(self):
+        while self.__hub.running:
+            self.__hub.tick()
+            time.sleep(0.0078125)
+
+    def test(self):
         text = ''
         for _ in range(1024):
             text += ' Hello!'
@@ -85,7 +103,6 @@ class Client(threading.Thread, ConnectionDelegate):
             self.info('>>> sending (%d) bytes): %s' % (len(data), data))
             self.__send(data=data)
             time.sleep(2)
-        self.__disconnect()
 
 
 SERVER_HOST = Hub.inet_address()
@@ -104,3 +121,5 @@ if __name__ == '__main__':
     g_client = Client(local=local_address, remote=server_address)
 
     g_client.start()
+    g_client.test()
+    g_client.stop()

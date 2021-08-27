@@ -30,10 +30,21 @@ class ServerHub(BaseHub):
         self.__delegate = weakref.ref(delegate)
         self.__connections: Dict[tuple, Connection] = {}
         self.__sockets: Dict[tuple, socket.socket] = {}
+        self.__running = False
 
     @property
     def delegate(self) -> ConnectionDelegate:
         return self.__delegate()
+
+    @property
+    def running(self) -> bool:
+        return self.__running
+
+    def start(self):
+        self.__running = True
+
+    def stop(self):
+        self.__running = False
 
     def bind(self, local: tuple) -> Connection:
         sock = self.__sockets.get(local)
@@ -72,12 +83,11 @@ class ServerHub(BaseHub):
             raise LookupError('failed to get channel: %s -> %s' % (remote, local))
 
 
-class Server(stun.Server, threading.Thread, ConnectionDelegate):
+class Server(stun.Server, ConnectionDelegate):
 
     def __init__(self, host: str = '0.0.0.0', port: int = 3478, change_port: int = 3479):
         super().__init__(host=host, port=port, change_port=change_port)
         self.__hub = ServerHub(delegate=self)
-        self.__running = False
 
     # noinspection PyMethodMayBeStatic
     def info(self, msg: str):
@@ -110,23 +120,21 @@ class Server(stun.Server, threading.Thread, ConnectionDelegate):
         except socket.error:
             return False
 
-    # Override
     def start(self):
         primary_address = self.source_address
         secondary_address = (self.source_address[0], self.change_port)
         self.__hub.bind(local=primary_address)
         self.__hub.bind(local=secondary_address)
-        self.__running = True
-        super().start()
+        self.__hub.start()
+        threading.Thread(target=self.run).start()
 
     def stop(self):
-        self.__running = False
+        self.__hub.stop()
 
-    # Override
     def run(self):
-        while self.__running:
+        while self.__hub.running:
             self.__hub.tick()
-            time.sleep(0.1)
+            time.sleep(0.0078125)
 
 
 # SERVER_HOST = '0.0.0.0'

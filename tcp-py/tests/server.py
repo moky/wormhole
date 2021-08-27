@@ -31,6 +31,20 @@ class ServerHub(StreamHub):
     def running(self) -> bool:
         return self.__running
 
+    def start(self):
+        self.__running = True
+        threading.Thread(target=self.run).start()
+
+    def stop(self):
+        self.__running = False
+
+    def run(self):
+        while self.__running:
+            sock, address = self.__master.accept()
+            if sock is not None:
+                self.__slaves[address] = sock
+                self.connect(remote=address, local=self.__local_address)
+
     def bind(self, local: tuple):
         sock = self.__master
         if sock is not None:
@@ -45,17 +59,6 @@ class ServerHub(StreamHub):
         self.__master = sock
         self.__local_address = local
 
-    def start(self):
-        self.__running = True
-        threading.Thread(target=self.run).start()
-
-    def run(self):
-        while self.__running:
-            sock, address = self.__master.accept()
-            if sock is not None:
-                self.__slaves[address] = sock
-                self.connect(remote=address, local=self.__local_address)
-
     # Override
     def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
         sock = self.__slaves.get(remote)
@@ -65,7 +68,7 @@ class ServerHub(StreamHub):
             raise LookupError('failed to get channel: %s -> %s' % (remote, local))
 
 
-class Server(threading.Thread, ConnectionDelegate):
+class Server(ConnectionDelegate):
 
     def __init__(self, host: str, port: int):
         super().__init__()
@@ -103,33 +106,18 @@ class Server(threading.Thread, ConnectionDelegate):
         except socket.error as error:
             self.error('failed to send message: %s' % error)
 
-    # Override
     def start(self):
         self.__hub.bind(local=self.__local_address)
         self.__hub.start()
-        super().start()
+        threading.Thread(target=self.run).start()
 
-    # Override
+    def stop(self):
+        self.__hub.stop()
+
     def run(self):
         while self.__hub.running:
             self.__hub.tick()
-            # self.__clean()
-            time.sleep(0.128)
-
-    # def __clean(self):
-    #     sockets = set(self.slave_sockets)
-    #     dying = set()
-    #     # receive data
-    #     for sock in sockets:
-    #         if getattr(sock, '_closed', False):
-    #             dying.add(sock)
-    #     # check closed channels
-    #     if len(dying) > 0:
-    #         self.info('%d channel(s) dying' % len(dying))
-    #     for sock in dying:
-    #         self.slave_sockets.discard(sock)
-    #     if len(self.slave_sockets) > 0:
-    #         self.info('%d channel(s) alive' % len(self.slave_sockets))
+            time.sleep(0.0078125)
 
 
 SERVER_HOST = Hub.inet_address()

@@ -29,22 +29,14 @@
 # ==============================================================================
 
 import time
-from abc import ABC, abstractmethod
 from threading import Thread
-from typing import Optional, Generic
+from typing import Optional
 
 from .machine import S, C, U, T
 from .base import BaseMachine
 
 
-class Runnable(ABC):
-
-    @abstractmethod
-    def run(self):
-        raise NotImplemented
-
-
-class AutoMachine(BaseMachine, Runnable, ABC, Generic[C, T, S]):
+class AutoMachine(BaseMachine[C, T, S]):
 
     def __init__(self, default: str):
         super().__init__(default=default)
@@ -53,19 +45,21 @@ class AutoMachine(BaseMachine, Runnable, ABC, Generic[C, T, S]):
     # Override
     def start(self):
         super().start()
-        if self.__thread is None:
-            self.__thread = Thread(target=self.run)
-            self.__thread.start()
+        self.__force_stop()
+        self.__thread = Thread(target=self.run)
+        self.__thread.start()
 
-    # Override
-    def stop(self):
-        super().stop()
+    def __force_stop(self):
         t: Thread = self.__thread
         if t is not None:
             t.join()
             self.__thread = None
 
     # Override
+    def stop(self):
+        super().stop()
+        self.__force_stop()
+
     def run(self):
         self.setup()
         try:

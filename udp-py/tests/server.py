@@ -24,6 +24,17 @@ class ServerHub(PackageHub):
         super().__init__(delegate=delegate)
         self.__connections: Dict[tuple, Connection] = {}
         self.__sockets: Dict[tuple, socket.socket] = {}
+        self.__running = False
+
+    @property
+    def running(self) -> bool:
+        return self.__running
+
+    def start(self):
+        self.__running = True
+
+    def stop(self):
+        self.__running = False
 
     def bind(self, local: tuple) -> Connection:
         sock = self.__sockets.get(local)
@@ -52,13 +63,12 @@ class ServerHub(PackageHub):
             raise LookupError('failed to get channel: %s -> %s' % (remote, local))
 
 
-class Server(threading.Thread, ConnectionDelegate):
+class Server(ConnectionDelegate):
 
     def __init__(self, host: str, port: int):
         super().__init__()
         self.__local_address = (host, port)
         self.__hub = ServerHub(delegate=self)
-        self.__running = False
 
     # noinspection PyMethodMayBeStatic
     def info(self, msg: str):
@@ -93,17 +103,18 @@ class Server(threading.Thread, ConnectionDelegate):
         except socket.error as error:
             self.error('failed to send message: %s' % error)
 
-    # Override
     def start(self):
         self.__hub.bind(local=self.__local_address)
-        self.__running = True
-        super().start()
+        self.__hub.start()
+        threading.Thread(target=self.run).start()
 
-    # Override
+    def stop(self):
+        self.__hub.stop()
+
     def run(self):
-        while self.__running:
+        while self.__hub.running:
             self.__hub.tick()
-            time.sleep(0.128)
+            time.sleep(0.0078125)
 
 
 SERVER_HOST = Hub.inet_address()
