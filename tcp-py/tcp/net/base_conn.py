@@ -67,8 +67,12 @@ class BaseConnection(Connection, StateDelegate):
         # Connection Delegate
         self.__delegate: Optional[weakref.ReferenceType] = None
         # Finite State Machine
-        self.__fsm = StateMachine(connection=self)
-        self.__fsm.delegate = self
+        self.__fsm = self._create_state_machine()
+
+    def _create_state_machine(self) -> StateMachine:
+        fsm = StateMachine(connection=self)
+        fsm.delegate = self
+        return fsm
 
     @property
     def delegate(self) -> ConnectionDelegate:

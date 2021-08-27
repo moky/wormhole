@@ -73,8 +73,13 @@ public class BaseConnection implements Connection, StateDelegate {
         lastSentTime = 0;
         lastReceivedTime = 0;
         // Finite State Machine
-        fsm = new StateMachine(this);
-        fsm.setDelegate(this);
+        fsm = getStateMachine();
+    }
+
+    protected StateMachine getStateMachine() {
+        StateMachine machine = new StateMachine(this);
+        machine.setDelegate(this);
+        return machine;
     }
 
     public Delegate getDelegate() {
