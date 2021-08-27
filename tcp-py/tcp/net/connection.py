@@ -85,13 +85,13 @@ class Delegate(ABC):
     """ Connection Delegate """
 
     @abstractmethod
-    def connection_state_changing(self, connection: Connection, current_state, next_state):
+    def connection_state_changed(self, connection: Connection, previous, current):
         """
         Call when connection status is going to change
 
-        :param connection:    current connection
-        :param current_state: current state
-        :param next_state     new state
+        :param connection: current connection
+        :param previous:   old state
+        :param current:    current (new) state
         """
         raise NotImplemented
 

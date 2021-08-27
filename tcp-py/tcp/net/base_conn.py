@@ -258,9 +258,13 @@ class BaseConnection(Connection, StateDelegate):
 
     # Override
     def enter_state(self, state: ConnectionState, ctx: StateMachine):
+        pass
+
+    # Override
+    def exit_state(self, state: ConnectionState, ctx: StateMachine):
         current = ctx.current_state
-        if state == ConnectionState.CONNECTED:
-            if current != ConnectionState.MAINTAINING:
+        if current == ConnectionState.CONNECTED:
+            if state != ConnectionState.MAINTAINING:
                 # change state to 'connected', reset times to just expired
                 timestamp = time.time() - self.EXPIRES - 1
                 self.__last_sent_time = timestamp
@@ -268,11 +272,7 @@ class BaseConnection(Connection, StateDelegate):
         # callback
         delegate = self.delegate
         if delegate is not None:
-            delegate.connection_state_changing(connection=self, current_state=current, next_state=state)
-
-    # Override
-    def exit_state(self, state: ConnectionState, ctx: StateMachine):
-        pass
+            delegate.connection_state_changed(connection=self, previous=state, current=current)
 
     # Override
     def pause_state(self, state: ConnectionState, ctx: StateMachine):

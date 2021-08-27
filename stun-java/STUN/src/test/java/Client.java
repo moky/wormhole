@@ -62,11 +62,11 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
     }
 
     @Override
-    public void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next) {
+    public void onConnectionStateChanged(Connection connection, ConnectionState previous, ConnectionState current) {
         info("!!! connection ("
                 + connection.getLocalAddress() + ", "
                 + connection.getRemoteAddress() + ") state changed: "
-                + current + " -> " + next);
+                + previous + " -> " + current);
     }
 
     @Override

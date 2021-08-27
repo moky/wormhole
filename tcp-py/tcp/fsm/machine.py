@@ -63,7 +63,8 @@ class State(ABC, Generic[C, T]):
     @abstractmethod
     def on_enter(self, ctx: C):
         """
-        Called after entered
+        Called before entered
+        (get current state from context)
 
         :param ctx: context (machine)
         """
@@ -73,6 +74,7 @@ class State(ABC, Generic[C, T]):
     def on_exit(self, ctx: C):
         """
         Called after exited
+        (get current state from context)
 
         :param ctx: context (machine)
         """
@@ -81,7 +83,7 @@ class State(ABC, Generic[C, T]):
     @abstractmethod
     def on_pause(self, ctx: C):
         """
-        Called after paused
+        Called before paused
 
         :param ctx: context (machine)
         """
@@ -97,12 +99,12 @@ class State(ABC, Generic[C, T]):
         raise NotImplemented
 
     @abstractmethod
-    def evaluate(self, ctx: C) -> T:
+    def evaluate(self, ctx: C) -> Optional[T]:
         """
         Called by machine.tick() to evaluate each transitions
 
         :param ctx: context (machine)
-        :return success transition, or null to stay the current state
+        :return success transition, or None to stay the current state
         """
         raise NotImplemented
 
@@ -113,7 +115,8 @@ class Delegate(ABC, Generic[C, T, S]):
     @abstractmethod
     def enter_state(self, state: S, ctx: C):
         """
-        Called before enter this state
+        Called before enter new state
+        (get current state from context)
 
         :param state: new state
         :param ctx:   context (machine)
@@ -123,9 +126,10 @@ class Delegate(ABC, Generic[C, T, S]):
     @abstractmethod
     def exit_state(self, state: S, ctx: C):
         """
-        Called before exit this state
+        Called after exit old state
+        (get current state from context)
 
-        :param state: current state
+        :param state: old state
         :param ctx:   context (machine)
         """
         raise NotImplemented
@@ -143,7 +147,7 @@ class Delegate(ABC, Generic[C, T, S]):
     @abstractmethod
     def resume_state(self, state: S, ctx: C):
         """
-        Called before resume this state
+        Called after resume this state
 
         :param state: current state
         :param ctx:   context (machine)

@@ -49,11 +49,11 @@ public class Server implements Runnable, Connection.Delegate {
     }
 
     @Override
-    public void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next) {
+    public void onConnectionStateChanged(Connection connection, ConnectionState previous, ConnectionState current) {
         Client.info("!!! connection ("
                 + connection.getLocalAddress() + ", "
                 + connection.getRemoteAddress() + ") state changed: "
-                + current + " -> " + next);
+                + previous + " -> " + current);
     }
 
     @Override

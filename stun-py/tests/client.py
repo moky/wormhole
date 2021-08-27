@@ -90,9 +90,9 @@ class Client(stun.Client, ConnectionDelegate):
         print('ERROR> ', msg)
 
     # Override
-    def connection_state_changing(self, connection: Connection, current_state, next_state):
+    def connection_state_changed(self, connection: Connection, previous, current):
         self.info('!!! connection (%s, %s) state changed: %s -> %s'
-                  % (connection.local_address, connection.remote_address, current_state, next_state))
+                  % (connection.local_address, connection.remote_address, previous, current))
 
     # Override
     def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):

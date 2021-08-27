@@ -88,9 +88,9 @@ class Server(stun.Server, threading.Thread, ConnectionDelegate):
         print('ERROR> ', msg)
 
     # Override
-    def connection_state_changing(self, connection: Connection, current_state, next_state):
+    def connection_state_changed(self, connection: Connection, previous, current):
         self.info('!!! connection (%s, %s) state changed: %s -> %s'
-                  % (connection.local_address, connection.remote_address, current_state, next_state))
+                  % (connection.local_address, connection.remote_address, previous, current))
 
     # Override
     def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):
@@ -110,6 +110,7 @@ class Server(stun.Server, threading.Thread, ConnectionDelegate):
         except socket.error:
             return False
 
+    # Override
     def start(self):
         primary_address = self.source_address
         secondary_address = (self.source_address[0], self.change_port)
@@ -121,6 +122,7 @@ class Server(stun.Server, threading.Thread, ConnectionDelegate):
     def stop(self):
         self.__running = False
 
+    # Override
     def run(self):
         while self.__running:
             self.__hub.tick()

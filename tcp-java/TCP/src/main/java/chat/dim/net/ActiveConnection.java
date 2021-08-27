@@ -123,10 +123,11 @@ public abstract class ActiveConnection extends BaseConnection {
     }
 
     @Override
-    public void enterState(ConnectionState state, StateMachine ctx) {
-        super.enterState(state, ctx);
+    public void exitState(ConnectionState previous, StateMachine ctx) {
+        super.exitState(previous, ctx);
 
-        if (state != null && state.equals(ConnectionState.EXPIRED)) {
+        ConnectionState current = ctx.getCurrentState();
+        if (current != null && current.equals(ConnectionState.EXPIRED)) {
             try {
                 heartbeat();
             } catch (IOException e) {

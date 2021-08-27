@@ -69,9 +69,9 @@ class Server(threading.Thread, ConnectionDelegate):
         print('ERROR> ', msg)
 
     # Override
-    def connection_state_changing(self, connection: Connection, current_state, next_state):
+    def connection_state_changed(self, connection: Connection, previous, current):
         self.info('!!! connection (%s, %s) state changed: %s -> %s'
-                  % (connection.local_address, connection.remote_address, current_state, next_state))
+                  % (connection.local_address, connection.remote_address, previous, current))
 
     # Override
     def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):
@@ -93,11 +93,13 @@ class Server(threading.Thread, ConnectionDelegate):
         except socket.error as error:
             self.error('failed to send message: %s' % error)
 
+    # Override
     def start(self):
         self.__hub.bind(local=self.__local_address)
         self.__running = True
         super().start()
 
+    # Override
     def run(self):
         while self.__running:
             self.__hub.tick()

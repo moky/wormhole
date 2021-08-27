@@ -104,9 +104,10 @@ class ActiveConnection(BaseConnection):
         return sent
 
     # Override
-    def enter_state(self, state: ConnectionState, ctx: StateMachine):
-        super().enter_state(state=state, ctx=ctx)
-        if state == ConnectionState.EXPIRED:
+    def exit_state(self, state: ConnectionState, ctx: StateMachine):
+        super().exit_state(state=state, ctx=ctx)
+        current = ctx.current_state
+        if current == ConnectionState.EXPIRED:
             try:
                 self.heartbeat()
             except socket.error as error:

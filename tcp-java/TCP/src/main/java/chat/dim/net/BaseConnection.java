@@ -317,10 +317,15 @@ public class BaseConnection implements Connection, StateDelegate {
     //
 
     @Override
-    public void enterState(ConnectionState state, StateMachine ctx) {
+    public void enterState(ConnectionState next, StateMachine ctx) {
+
+    }
+
+    @Override
+    public void exitState(ConnectionState previous, StateMachine ctx) {
         ConnectionState current = ctx.getCurrentState();
-        if (state != null && state.equals(ConnectionState.CONNECTED)) {
-            if (current == null || !current.equals(ConnectionState.MAINTAINING)) {
+        if (current != null && current.equals(ConnectionState.CONNECTED)) {
+            if (previous == null || !previous.equals(ConnectionState.MAINTAINING)) {
                 // change state to 'connected', reset times to just expired
                 long timestamp = (new Date()).getTime() - EXPIRES - 1;
                 lastSentTime = timestamp;
@@ -330,22 +335,17 @@ public class BaseConnection implements Connection, StateDelegate {
         // callback
         Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onConnectionStateChanging(this, current, state);
+            delegate.onConnectionStateChanged(this, previous, current);
         }
     }
 
     @Override
-    public void exitState(ConnectionState state, StateMachine ctx) {
+    public void pauseState(ConnectionState current, StateMachine ctx) {
 
     }
 
     @Override
-    public void pauseState(ConnectionState state, StateMachine ctx) {
-
-    }
-
-    @Override
-    public void resumeState(ConnectionState state, StateMachine ctx) {
+    public void resumeState(ConnectionState current, StateMachine ctx) {
 
     }
 }

@@ -82,11 +82,11 @@ public class Server extends chat.dim.dmtp.Server implements Runnable, Connection
     }
 
     @Override
-    public void onConnectionStateChanging(Connection connection, ConnectionState current, ConnectionState next) {
+    public void onConnectionStateChanged(Connection connection, ConnectionState previous, ConnectionState current) {
         Client.info("!!! connection ("
                 + connection.getLocalAddress() + ", "
                 + connection.getRemoteAddress() + ") state changed: "
-                + current + " -> " + next);
+                + previous + " -> " + current);
     }
 
     @Override

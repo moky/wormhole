@@ -60,7 +60,7 @@ class BaseState(State, ABC, Generic[C, T]):
         self.__transitions.append(transition)
 
     # Override
-    def evaluate(self, ctx: C) -> T:
+    def evaluate(self, ctx: C) -> Optional[T]:
         for trans in self.__transitions:
             if trans.evaluate(ctx):
                 # OK, get target state from this transition
@@ -121,21 +121,20 @@ class BaseMachine(Machine, Generic[C, T, S]):
     # Override
     def change_state(self, state: Optional[S]):
         machine = self.context
-        current = self.current_state
+        old = self.current_state
         delegate = self.delegate
         # events before state changed
         if delegate is not None:
-            if current is not None:
-                delegate.exit_state(current, machine)
-            if state is not None:
-                delegate.enter_state(state, machine)
+            delegate.enter_state(state, machine)
+        if state is not None:
+            state.on_enter(machine)
         # change state
         self.current_state = state
         # events after state changed
-        if current is not None:
-            current.on_exit(machine)
-        if state is not None:
-            state.on_enter(machine)
+        if delegate is not None:
+            delegate.exit_state(old, machine)
+        if old is not None:
+            old.on_exit(machine)
 
     #
     #   Actions
@@ -155,20 +154,24 @@ class BaseMachine(Machine, Generic[C, T, S]):
     def pause(self):
         machine = self.context
         current = self.current_state
+        # events before state paused
         delegate = self.delegate
         if delegate is not None:
             delegate.pause_state(current, machine)
-        self.__status = Status.PAUSED
         current.on_pause(machine)
+        # pause state
+        self.__status = Status.PAUSED
 
     # Override
     def resume(self):
         machine = self.context
         current = self.current_state
+        # reuse state
+        self.__status = Status.RUNNING
+        # events after state resumed
         delegate = self.delegate
         if delegate is not None:
             delegate.resume_state(current, machine)
-        self.__status = Status.RUNNING
         current.on_resume(machine)
 
     #
