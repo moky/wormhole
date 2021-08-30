@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  TCP: Transmission Control Protocol
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -41,9 +41,8 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
-import java.nio.channels.spi.AbstractSelectableChannel;
 
-public abstract class BaseChannel<C extends AbstractSelectableChannel> implements Channel {
+public abstract class BaseChannel<C extends SelectableChannel> implements Channel {
 
     protected C channel;
     protected boolean blocking;

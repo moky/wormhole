@@ -15,7 +15,7 @@ import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
 import chat.dim.type.Data;
-import chat.dim.udp.DiscreteChannel;
+import chat.dim.udp.PackageChannel;
 
 class ServerHub extends BaseHub {
 
@@ -169,8 +169,8 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
     static SocketAddress primaryAddress;
     static SocketAddress secondaryAddress;
 
-    static DiscreteChannel primaryChannel;
-    static DiscreteChannel secondaryChannel;
+    static PackageChannel primaryChannel;
+    static PackageChannel secondaryChannel;
 
     static ServerHub hub;
 
@@ -179,11 +179,11 @@ public class Server extends chat.dim.stun.Server implements Runnable, Connection
         primaryAddress = new InetSocketAddress(HOST, PORT);
         secondaryAddress = new InetSocketAddress(HOST, CHANGE_PORT);
 
-        primaryChannel = new DiscreteChannel(DatagramChannel.open());
+        primaryChannel = new PackageChannel(DatagramChannel.open());
         primaryChannel.bind(primaryAddress);
         primaryChannel.configureBlocking(false);
 
-        secondaryChannel = new DiscreteChannel(DatagramChannel.open());
+        secondaryChannel = new PackageChannel(DatagramChannel.open());
         secondaryChannel.bind(secondaryAddress);
         secondaryChannel.configureBlocking(false);
 

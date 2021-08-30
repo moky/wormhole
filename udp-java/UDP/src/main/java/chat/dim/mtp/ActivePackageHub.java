@@ -30,49 +30,35 @@
  */
 package chat.dim.mtp;
 
+import java.io.IOException;
 import java.net.SocketAddress;
-import java.util.Date;
 
-/**
- *  Data package received (wait for assembling)
- */
-public class Arrival extends Packer {
+import chat.dim.net.Channel;
+import chat.dim.net.Connection;
 
-    /**
-     *  Arrival task will be expired after 10 minutes if still not completed.
-     */
-    public static long EXPIRES = 600 * 1000; // milliseconds
+public abstract class ActivePackageHub extends PackageHub {
 
-    private long expired;  // expired time (timestamp in milliseconds)
-
-    public final SocketAddress source;
-    public final SocketAddress destination;
-
-    public Arrival(TransactionID sn, int pages, SocketAddress from, SocketAddress to) {
-        super(sn, pages);
-        source = from;
-        destination = to;
-    }
-
-    public boolean isExpired(long now) {
-        return expired < now;
+    public ActivePackageHub(Connection.Delegate delegate) {
+        super(delegate);
     }
 
     @Override
-    public Package insert(Package fragment) {
-        if (!fragment.isFragment()) {
-            // message (or command?) no need to assemble
-            return fragment;
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
+        // create connection with addresses
+        ActivePackageConnection conn = new ActivePackageConnection(remote, local) {
+            @Override
+            protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
+                return createChannel(remote, local);
+            }
+        };
+        // set delegate
+        if (conn.getDelegate() == null) {
+            conn.setDelegate(getDelegate());
         }
-        // message fragment
-        Package pack = super.insert(fragment);
-        if (pack == null) {
-            // update receive time
-            expired = (new Date()).getTime() + EXPIRES;
-            return null;
-        } else {
-            // all fragments received, remove this task
-            return pack;
-        }
+        // start FSM
+        conn.start();
+        return conn;
     }
+
+    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
 }

@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.udp;
+package chat.dim.mtp;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -37,7 +37,6 @@ import java.net.SocketAddress;
 import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
-import chat.dim.net.PackageConnection;
 
 public abstract class PackageHub extends BaseHub {
 

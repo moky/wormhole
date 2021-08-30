@@ -14,14 +14,14 @@ import chat.dim.dmtp.Session;
 import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.protocol.LocationValue;
 import chat.dim.dmtp.protocol.Message;
+import chat.dim.mtp.ActivePackageHub;
 import chat.dim.mtp.Header;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
 import chat.dim.type.Data;
-import chat.dim.udp.ActivePackageHub;
-import chat.dim.udp.DiscreteChannel;
+import chat.dim.udp.PackageChannel;
 
 class ClientHub extends ActivePackageHub {
 
@@ -31,7 +31,7 @@ class ClientHub extends ActivePackageHub {
 
     @Override
     protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-        Channel channel = new DiscreteChannel(remote, local);
+        Channel channel = new PackageChannel(remote, local);
         channel.configureBlocking(false);
         return channel;
     }

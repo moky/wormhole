@@ -37,14 +37,14 @@ import java.nio.channels.DatagramChannel;
 
 import chat.dim.net.BaseChannel;
 
-public class DiscreteChannel extends BaseChannel<DatagramChannel> {
+public class PackageChannel extends BaseChannel<DatagramChannel> {
 
-    public DiscreteChannel(DatagramChannel channel) throws IOException {
+    public PackageChannel(DatagramChannel channel) throws IOException {
         super(channel, channel.isBlocking(), channel.socket().getReuseAddress());
     }
 
     /**
-     *  Create discrete channel
+     *  Create package channel
      *
      * @param remoteAddress - remote address
      * @param localAddress  - local address
@@ -52,11 +52,11 @@ public class DiscreteChannel extends BaseChannel<DatagramChannel> {
      * @param reuse         - whether reuse address
      * @throws IOException on failed
      */
-    public DiscreteChannel(SocketAddress remoteAddress, SocketAddress localAddress,
+    public PackageChannel(SocketAddress remoteAddress, SocketAddress localAddress,
                            boolean nonBlocking, boolean reuse) throws IOException {
         super(remoteAddress, localAddress, nonBlocking, reuse);
     }
-    public DiscreteChannel(SocketAddress remoteAddress, SocketAddress localAddress) throws IOException {
+    public PackageChannel(SocketAddress remoteAddress, SocketAddress localAddress) throws IOException {
         this(remoteAddress, localAddress, false, false);
     }
 

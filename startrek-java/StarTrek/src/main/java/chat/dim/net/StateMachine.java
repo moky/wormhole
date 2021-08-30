@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  TCP: Transmission Control Protocol
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -49,7 +49,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
     }
 }
 
-class StateMachine extends BaseMachine<StateMachine, StateTransition, ConnectionState>
+public class StateMachine extends BaseMachine<StateMachine, StateTransition, ConnectionState>
         implements Context {
 
     private final WeakReference<BaseConnection> connectionRef;

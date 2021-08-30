@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  UDP: User Datagram Protocol
+ *  MTP: Message Transfer Protocol
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,38 +28,51 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.udp;
+package chat.dim.mtp;
 
-import java.io.IOException;
 import java.net.SocketAddress;
+import java.util.Date;
 
-import chat.dim.net.ActivePackageConnection;
-import chat.dim.net.Channel;
-import chat.dim.net.Connection;
+/**
+ *  Data package received (wait for assembling)
+ */
+public class Arrival extends Packer {
 
-public abstract class ActivePackageHub extends PackageHub {
+    /**
+     *  Arrival task will be expired after 10 minutes if still not completed.
+     */
+    public static long EXPIRES = 600 * 1000; // milliseconds
 
-    public ActivePackageHub(Connection.Delegate delegate) {
-        super(delegate);
+    private long expired;  // expired time (timestamp in milliseconds)
+
+    public final SocketAddress source;
+    public final SocketAddress destination;
+
+    public Arrival(TransactionID sn, int pages, SocketAddress from, SocketAddress to) {
+        super(sn, pages);
+        source = from;
+        destination = to;
+    }
+
+    public boolean isExpired(long now) {
+        return expired < now;
     }
 
     @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
-        // create connection with addresses
-        ActivePackageConnection conn = new ActivePackageConnection(remote, local) {
-            @Override
-            protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
-                return createChannel(remote, local);
-            }
-        };
-        // set delegate
-        if (conn.getDelegate() == null) {
-            conn.setDelegate(getDelegate());
+    public Package insert(Package fragment) {
+        if (!fragment.isFragment()) {
+            // message (or command?) no need to assemble
+            return fragment;
         }
-        // start FSM
-        conn.start();
-        return conn;
+        // message fragment
+        Package pack = super.insert(fragment);
+        if (pack == null) {
+            // update receive time
+            expired = (new Date()).getTime() + EXPIRES;
+            return null;
+        } else {
+            // all fragments received, remove this task
+            return pack;
+        }
     }
-
-    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
 }

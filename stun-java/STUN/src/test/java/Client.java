@@ -16,7 +16,7 @@ import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
-import chat.dim.udp.DiscreteChannel;
+import chat.dim.udp.PackageChannel;
 
 class ClientHub extends BaseHub {
 
@@ -48,7 +48,7 @@ class ClientHub extends BaseHub {
 
     private Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
         if (localChannel == null) {
-            localChannel = new DiscreteChannel(null, local);
+            localChannel = new PackageChannel(null, local);
             localChannel.configureBlocking(false);
         }
         return localChannel;

@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  TCP: Transmission Control Protocol
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *

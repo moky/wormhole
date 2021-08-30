@@ -16,7 +16,7 @@ plugins {
 
 group 'chat.dim'
 //version '1.0-SNAPSHOT'
-version '0.1.3'
+version '0.2.0'
 
 def mod = 'DMTP'
 def desc = 'Direct Message Transfer Protocol'
@@ -33,7 +33,8 @@ repositories {
 }
 
 dependencies {
-    compile group: 'chat.dim', name: 'UDP', version: '0.1.2'
+    compile group: 'chat.dim', name: 'TCP', version: '0.2.0'
+    compile group: 'chat.dim', name: 'UDP', version: '0.2.0'
     compile group: 'chat.dim', name: 'STUN', version: '0.1.3'
 
     testCompile group: 'junit', name: 'junit', version: '4.12'

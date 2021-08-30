@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  UDP: User Datagram Protocol
+ *  MTP: Message Transfer Protocol
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.mtp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -36,8 +36,9 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import chat.dim.mtp.DataType;
-import chat.dim.mtp.Package;
+import chat.dim.net.Channel;
+import chat.dim.net.ConnectionState;
+import chat.dim.net.StateMachine;
 import chat.dim.type.Data;
 
 public abstract class ActivePackageConnection extends PackageConnection {

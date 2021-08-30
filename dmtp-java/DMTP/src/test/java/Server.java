@@ -9,13 +9,13 @@ import chat.dim.dmtp.ContactManager;
 import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.protocol.Message;
 import chat.dim.mtp.Header;
+import chat.dim.mtp.PackageHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
 import chat.dim.type.Data;
-import chat.dim.udp.DiscreteChannel;
-import chat.dim.udp.PackageHub;
+import chat.dim.udp.PackageChannel;
 
 class ServerHub extends PackageHub {
 
@@ -43,7 +43,7 @@ class ServerHub extends PackageHub {
         if (sock == null) {
             return null;
         } else {
-            return new DiscreteChannel(sock);
+            return new PackageChannel(sock);
         }
     }
 }

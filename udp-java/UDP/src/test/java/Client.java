@@ -4,11 +4,11 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 
+import chat.dim.mtp.ActivePackageHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
-import chat.dim.udp.ActivePackageHub;
-import chat.dim.udp.DiscreteChannel;
+import chat.dim.udp.PackageChannel;
 
 class ClientHub extends ActivePackageHub {
 
@@ -18,7 +18,7 @@ class ClientHub extends ActivePackageHub {
 
     @Override
     protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-        Channel channel = new DiscreteChannel(remote, local);
+        Channel channel = new PackageChannel(remote, local);
         channel.configureBlocking(false);
         return channel;
     }

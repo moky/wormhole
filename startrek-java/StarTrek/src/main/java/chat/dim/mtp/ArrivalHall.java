@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  UDP: User Datagram Protocol
+ *  MTP: Message Transfer Protocol
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
