@@ -2,18 +2,35 @@
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
+import java.util.Random;
 
+import chat.dim.net.ActiveRawDataHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
-import chat.dim.tcp.ActiveStreamHub;
+import chat.dim.net.Hub;
 import chat.dim.tcp.StreamChannel;
 
-class ClientHub extends ActiveStreamHub {
+class ClientHub extends ActiveRawDataHub {
 
-    public ClientHub(Connection.Delegate delegate) {
+    private boolean running = false;
+
+    public ClientHub(Connection.Delegate<byte[]> delegate) {
         super(delegate);
+    }
+
+    boolean isRunning() {
+        return running;
+    }
+
+    void start() {
+        running = true;
+    }
+
+    void stop() {
+        running = false;
     }
 
     @Override
@@ -24,7 +41,18 @@ class ClientHub extends ActiveStreamHub {
     }
 }
 
-public class Client extends Thread implements Connection.Delegate {
+public class Client implements Runnable, Connection.Delegate<byte[]> {
+
+    private final SocketAddress localAddress;
+    private final SocketAddress remoteAddress;
+    private final ClientHub hub;
+
+    Client(SocketAddress local, SocketAddress remote) {
+        super();
+        localAddress = local;
+        remoteAddress = remote;
+        hub = new ClientHub(this);
+    }
 
     static void info(String msg) {
         System.out.printf("%s\n", msg);
@@ -42,7 +70,7 @@ public class Client extends Thread implements Connection.Delegate {
     }
 
     @Override
-    public void onConnectionStateChanged(Connection connection, ConnectionState previous, ConnectionState current) {
+    public void onConnectionStateChanged(Connection<byte[]> connection, ConnectionState previous, ConnectionState current) {
         info("!!! connection ("
                 + connection.getLocalAddress() + ", "
                 + connection.getRemoteAddress() + ") state changed: "
@@ -50,28 +78,52 @@ public class Client extends Thread implements Connection.Delegate {
     }
 
     @Override
-    public void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload) {
-        String text = new String(payload, StandardCharsets.UTF_8);
-        info("<<< received (" + payload.length + " bytes) from " + remote + ": " + text);
+    public void onConnectionDataReceived(Connection<byte[]> connection, SocketAddress remote, byte[] pack) {
+        String text = new String(pack, StandardCharsets.UTF_8);
+        info("<<< received (" + pack.length + " bytes) from " + remote + ": " + text);
     }
 
-    private void send(byte[] data, SocketAddress destination) {
+    private void send(byte[] data) {
         try {
-            hub.send(data, null, destination);
+            hub.send(data, localAddress, remoteAddress);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
     private void disconnect() {
         try {
-            hub.disconnect(remoteAddress, null);
+            hub.disconnect(remoteAddress, localAddress);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
+    public void start() {
+        try {
+            hub.connect(remoteAddress, localAddress);
+            hub.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        new Thread(this).start();
+    }
+
+    void stop() {
+        disconnect();
+        hub.stop();
+    }
+
     @Override
     public void run() {
+        while (hub.isRunning()) {
+            hub.tick();
+            if (hub.getActivatedCount() == 0) {
+                idle(8);
+            }
+        }
+    }
+
+    void test() {
 
         StringBuilder text = new StringBuilder();
         for (int index = 0; index < 1024; ++index) {
@@ -84,26 +136,34 @@ public class Client extends Thread implements Connection.Delegate {
             data = (index + " sheep:" + text).getBytes();
             info(">>> sending (" + data.length + " bytes): ");
             info(data);
-            send(data, remoteAddress);
+            send(data);
             idle(2000);
         }
-
-        disconnect();
     }
 
-    private static SocketAddress remoteAddress;
-    private static ClientHub hub;
+    static String HOST;
+    static int PORT;
+
+    static {
+        try {
+            HOST = Hub.getLocalAddressString();
+            Random random = new Random();
+            PORT = 9900 + random.nextInt(100);
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+    }
 
     public static void main(String[] args) {
 
-        info("Connecting server (" + Server.HOST + ":" + Server.PORT + ") ...");
+        SocketAddress local = new InetSocketAddress(Client.HOST, Client.PORT);
+        SocketAddress remote = new InetSocketAddress(Server.HOST, Server.PORT);
+        info("Connecting TCP server (" + local + "->" + remote + ") ...");
 
-        remoteAddress = new InetSocketAddress(Server.HOST, Server.PORT);
-
-        Client client = new Client();
-
-        hub = new ClientHub(client);
+        Client client = new Client(local, remote);
 
         client.start();
+        client.test();
+        client.stop();
     }
 }

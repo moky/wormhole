@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  TCP: Transmission Control Protocol
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
@@ -28,30 +28,29 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tcp;
+package chat.dim.net;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 
-import chat.dim.net.ActiveConnection;
-import chat.dim.net.Channel;
-import chat.dim.net.Connection;
+public abstract class RawDataHub extends BaseHub<byte[]> {
 
-public abstract class ActiveStreamHub extends StreamHub {
+    private final WeakReference<Connection.Delegate<byte[]>> delegateRef;
 
-    public ActiveStreamHub(Connection.Delegate delegate) {
-        super(delegate);
+    public RawDataHub(Connection.Delegate<byte[]> delegate) {
+        super();
+        delegateRef = new WeakReference<>(delegate);
+    }
+
+    public Connection.Delegate<byte[]> getDelegate() {
+        return delegateRef.get();
     }
 
     @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
-        // create connection with addresses
-        ActiveConnection conn = new ActiveConnection(remote, local) {
-            @Override
-            protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
-                return createChannel(remote, local);
-            }
-        };
+    protected Connection<byte[]> createConnection(SocketAddress remote, SocketAddress local) throws IOException {
+        // create connection with channel
+        RawDataConnection conn = new RawDataConnection(createChannel(remote, local), remote, local);
         // set delegate
         if (conn.getDelegate() == null) {
             conn.setDelegate(getDelegate());
@@ -60,4 +59,6 @@ public abstract class ActiveStreamHub extends StreamHub {
         conn.start();
         return conn;
     }
+
+    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
 }

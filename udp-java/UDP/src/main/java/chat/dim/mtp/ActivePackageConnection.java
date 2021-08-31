@@ -34,16 +34,16 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import chat.dim.net.Channel;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.StateMachine;
-import chat.dim.type.Data;
 
 public abstract class ActivePackageConnection extends PackageConnection {
 
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private int connecting;
     private boolean running;
 
@@ -65,7 +65,7 @@ public abstract class ActivePackageConnection extends PackageConnection {
         writeLock.lock();
         try {
             connecting += 1;
-            if (connecting == 1 && running) {
+            if (connecting == 1 && running && channel == null) {
                 changeState(ConnectionState.CONNECTING);
                 channel = connect(remoteAddress, localAddress);
                 if (channel == null) {
@@ -118,11 +118,11 @@ public abstract class ActivePackageConnection extends PackageConnection {
     }
 
     @Override
-    public int send(byte[] data, SocketAddress destination) throws IOException {
-        int sent = super.send(data, destination);
+    protected int send(ByteBuffer src, SocketAddress destination) throws IOException {
+        int sent = super.send(src, destination);
         if (sent == -1 && channel == null && reconnect()) {
             // try again
-            sent = super.send(data, destination);
+            sent = super.send(src, destination);
         }
         return sent;
     }
@@ -144,7 +144,6 @@ public abstract class ActivePackageConnection extends PackageConnection {
      *  Send a heartbeat package to remote address
      */
     public void heartbeat() throws IOException {
-        Package pack = Package.create(DataType.COMMAND, new Data(PING));
-        send(pack.getBytes(), getRemoteAddress());
+        sendCommand(PING, getRemoteAddress());
     }
 }

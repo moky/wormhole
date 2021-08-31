@@ -5,7 +5,10 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.channels.DatagramChannel;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.WeakHashMap;
 
+import chat.dim.mtp.Package;
 import chat.dim.mtp.PackageHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
@@ -15,41 +18,72 @@ import chat.dim.udp.PackageChannel;
 
 class ServerHub extends PackageHub {
 
-    private Connection connection = null;
+    private final Map<SocketAddress, Connection<Package>> connections = new WeakHashMap<>();
+    private final Map<SocketAddress, DatagramChannel> channels = new WeakHashMap<>();
+    private boolean running = false;
 
-    public ServerHub(Connection.Delegate delegate) {
+    public ServerHub(Connection.Delegate<Package> delegate) {
         super(delegate);
     }
 
-    @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
-        if (connection == null) {
-            connection = super.createConnection(remote, local);
+    void bind(SocketAddress local) throws IOException {
+        DatagramChannel sock = channels.get(local);
+        if (sock == null) {
+            sock = DatagramChannel.open();
+            sock.socket().bind(local);
+            sock.configureBlocking(false);
+            channels.put(local, sock);
         }
-        return connection;
+        connect(null, local);
+    }
+
+    boolean isRunning() {
+        return running;
+    }
+
+    void start() {
+        running = true;
+    }
+
+    void stop() {
+        running = false;
+    }
+
+    @Override
+    protected Connection<Package> createConnection(SocketAddress remote, SocketAddress local) throws IOException {
+        Connection<Package> conn = connections.get(local);
+        if (conn == null) {
+            conn = super.createConnection(remote, local);
+            connections.put(local, conn);
+        }
+        return conn;
     }
 
     @Override
     protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-        DatagramChannel sock = Server.master;
+        DatagramChannel sock = channels.get(local);
         if (sock == null) {
-            return null;
+            throw new SocketException("failed to get channel: " + remote + " -> " + local);
         } else {
             return new PackageChannel(sock);
         }
     }
 }
 
-public class Server implements Runnable, Connection.Delegate {
+public class Server implements Runnable, Connection.Delegate<Package> {
 
-    private boolean running;
+    private final SocketAddress localAddress;
 
-    public Server() {
-        running = false;
+    private final ServerHub hub;
+
+    public Server(SocketAddress local) {
+        super();
+        localAddress = local;
+        hub = new ServerHub(this);
     }
 
     @Override
-    public void onConnectionStateChanged(Connection connection, ConnectionState previous, ConnectionState current) {
+    public void onConnectionStateChanged(Connection<Package> connection, ConnectionState previous, ConnectionState current) {
         Client.info("!!! connection ("
                 + connection.getLocalAddress() + ", "
                 + connection.getRemoteAddress() + ") state changed: "
@@ -57,7 +91,8 @@ public class Server implements Runnable, Connection.Delegate {
     }
 
     @Override
-    public void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload) {
+    public void onConnectionDataReceived(Connection<Package> connection, SocketAddress remote, Package pack) {
+        byte[] payload = pack.body.getBytes();
         String text = new String(payload, StandardCharsets.UTF_8);
         Client.info("<<< received (" + payload.length + " bytes) from " + remote + ": " + text);
         text = (counter++) + "# " + payload.length + " byte(s) received";
@@ -75,23 +110,28 @@ public class Server implements Runnable, Connection.Delegate {
         }
     }
 
-    @Override
-    public void run() {
+    public void start() {
         try {
-            hub.connect(null, localAddress);
+            hub.bind(localAddress);
+            hub.start();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        running = true;
-        while (running) {
-            hub.tick();
-            clean();
-            Client.idle(128);
-        }
+        new Thread(this).start();
     }
 
-    private void clean() {
+    void stop() {
+        hub.stop();
+    }
 
+    @Override
+    public void run() {
+        while (hub.isRunning()) {
+            hub.tick();
+            if (hub.getActivatedCount() == 0) {
+                Client.idle(8);
+            }
+        }
     }
 
     static String HOST;
@@ -105,24 +145,12 @@ public class Server implements Runnable, Connection.Delegate {
         }
     }
 
-    static SocketAddress localAddress;
-    static DatagramChannel master;
-
-    private static ServerHub hub;
-
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
 
         Client.info("Starting server (" + HOST + ":" + PORT + ") ...");
 
-        localAddress = new InetSocketAddress(HOST, PORT);
-        master = DatagramChannel.open();
-        master.socket().bind(localAddress);
-        master.configureBlocking(false);
+        Server server = new Server(new InetSocketAddress(HOST, PORT));
 
-        Server server = new Server();
-
-        hub = new ServerHub(server);
-
-        new Thread(server).start();
+        server.start();
     }
 }

@@ -90,9 +90,9 @@ public abstract class Server extends Node {
      */
     public final int changePort;
 
-    public Server(String host, int port, int changePort,
+    public Server(InetSocketAddress sourceAddress, int changePort,
                   InetSocketAddress changedAddress, InetSocketAddress neighbour) {
-        super(new InetSocketAddress(host, port));
+        super(sourceAddress);
         this.changePort = changePort;
         this.changedAddress = changedAddress;
         this.neighbour = neighbour;

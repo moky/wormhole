@@ -34,11 +34,12 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public abstract class ActiveConnection extends BaseConnection {
+public abstract class ActiveConnection<P> extends BaseConnection<P> {
 
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private int connecting;
     private boolean running;
 
@@ -113,11 +114,11 @@ public abstract class ActiveConnection extends BaseConnection {
     }
 
     @Override
-    public int send(byte[] data, SocketAddress destination) throws IOException {
-        int sent = super.send(data, destination);
+    protected int send(ByteBuffer src, SocketAddress destination) throws IOException {
+        int sent = super.send(src, destination);
         if (sent == -1 && channel == null && reconnect()) {
             // try again
-            sent = super.send(data, destination);
+            sent = super.send(src, destination);
         }
         return sent;
     }
@@ -137,9 +138,7 @@ public abstract class ActiveConnection extends BaseConnection {
     }
 
     /**
-     *  Send a heartbeat package to remote address
+     *  Send a heartbeat package('PING') to remote address
      */
-    public void heartbeat() throws IOException {
-        // send 'PING'
-    }
+    public abstract void heartbeat() throws IOException;
 }

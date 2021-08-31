@@ -1,13 +1,13 @@
 /* license: https://mit-license.org
  *
- *  TCP: Transmission Control Protocol
+ *  Star Trek: Interstellar Transport
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,42 +28,45 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tcp;
+package chat.dim.net;
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 
-import chat.dim.net.BaseConnection;
-import chat.dim.net.BaseHub;
-import chat.dim.net.Channel;
-import chat.dim.net.Connection;
+public class RawDataConnection extends BaseConnection<byte[]> {
 
-public abstract class StreamHub extends BaseHub {
-
-    private final WeakReference<Connection.Delegate> delegateRef;
-
-    public StreamHub(Connection.Delegate delegate) {
-        super();
-        delegateRef = new WeakReference<>(delegate);
-    }
-
-    public Connection.Delegate getDelegate() {
-        return delegateRef.get();
+    public RawDataConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
+        super(byteChannel, remote, local);
     }
 
     @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
-        // create connection with channel
-        BaseConnection conn = new BaseConnection(createChannel(remote, local), remote, local);
-        // set delegate
-        if (conn.getDelegate() == null) {
-            conn.setDelegate(getDelegate());
-        }
-        // start FSM
-        conn.start();
-        return conn;
+    public int send(byte[] pack, SocketAddress destination) throws IOException {
+        ByteBuffer buffer = ByteBuffer.allocate(pack.length);
+        buffer.put(pack);
+        buffer.flip();
+        return send(buffer, destination);
     }
 
-    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
+    @Override
+    protected byte[] parse(byte[] data, SocketAddress remote) {
+        if (data.length < 6) {
+            if (Arrays.equals(data, PING)) {
+                // PING -> PONG
+                try {
+                    send(PONG, remote);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return null;
+            } else if (Arrays.equals(data, PONG) ||
+                    Arrays.equals(data, NOOP) ||
+                    Arrays.equals(data, OK)) {
+                // ignore them
+                return null;
+            }
+        }
+        return data;
+    }
 }

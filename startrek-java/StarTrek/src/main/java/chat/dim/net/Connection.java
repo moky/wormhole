@@ -35,7 +35,7 @@ import java.net.SocketAddress;
 
 import chat.dim.threading.Ticker;
 
-public interface Connection extends Ticker {
+public interface Connection<P> extends Ticker {
 
     //
     //  Flags
@@ -44,17 +44,19 @@ public interface Connection extends Ticker {
     boolean isBound();
     boolean isConnected();
 
+    boolean isActivated();  // whether received data just now
+
     SocketAddress getLocalAddress();
     SocketAddress getRemoteAddress();
 
     /**
      *  Send data
      *
-     * @param data        - outgo data
+     * @param pack        - outgo data package
      * @param destination - remote address; can be null when it's connected
      * @return count of bytes sent, probably zero when it's non-blocking mode
      */
-    int send(byte[] data, SocketAddress destination) throws IOException;
+    int send(P pack, SocketAddress destination) throws IOException;
 
     /**
      *  Close the connection
@@ -72,7 +74,7 @@ public interface Connection extends Ticker {
      *  Connection Delegate
      *  ~~~~~~~~~~~~~~~~~~~
      */
-    interface Delegate {
+    interface Delegate<P> {
 
         /**
          *  Call when connection state is going to change
@@ -81,16 +83,15 @@ public interface Connection extends Ticker {
          * @param previous   - old state
          * @param current    - new state
          */
-        void onConnectionStateChanged(Connection connection, ConnectionState previous, ConnectionState current);
+        void onConnectionStateChanged(Connection<P> connection, ConnectionState previous, ConnectionState current);
 
         /**
          *  Call when connection received data
          *
          * @param connection - current connection
          * @param remote     - remote address
-         * @param wrapper    - received data header
-         * @param payload    - received data body
+         * @param pack       - received data package
          */
-        void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload);
+        void onConnectionDataReceived(Connection<P> connection, SocketAddress remote, P pack);
     }
 }

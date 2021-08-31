@@ -30,7 +30,6 @@
  */
 package chat.dim.dmtp;
 
-import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.util.List;
@@ -39,6 +38,7 @@ import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.protocol.LocationValue;
 import chat.dim.dmtp.protocol.Message;
 import chat.dim.mtp.Header;
+import chat.dim.mtp.Package;
 import chat.dim.tlv.Field;
 import chat.dim.type.ByteArray;
 
@@ -89,11 +89,12 @@ public abstract class Node {
     //  Receive
     //
 
-    protected boolean onReceivedPackage(SocketAddress remote, Header head, ByteArray body) {
+    protected boolean onReceivedPackage(SocketAddress remote, Package pack) {
+        Header head = pack.head;
         if (head.isMessage()) {
-            return onReceivedMessage(body, remote);
+            return onReceivedMessage(pack.body, remote);
         } else if (head.isCommand()) {
-            return onReceivedCommand(body, remote);
+            return onReceivedCommand(pack.body, remote);
         } else {
             throw new IllegalArgumentException("data type error: " + head.type);
         }

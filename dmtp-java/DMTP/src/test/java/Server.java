@@ -4,57 +4,97 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.channels.DatagramChannel;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import chat.dim.dmtp.ContactManager;
+import chat.dim.dmtp.Server;
 import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.protocol.Message;
-import chat.dim.mtp.Header;
+import chat.dim.mtp.Package;
 import chat.dim.mtp.PackageHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
-import chat.dim.type.Data;
 import chat.dim.udp.PackageChannel;
 
 class ServerHub extends PackageHub {
 
-    private Connection connection = null;
+    private final Map<SocketAddress, Connection<Package>> connections = new WeakHashMap<>();
+    private final Map<SocketAddress, DatagramChannel> channels = new WeakHashMap<>();
+    private boolean running = false;
 
-    public ServerHub(Connection.Delegate delegate) {
+    public ServerHub(Connection.Delegate<Package> delegate) {
         super(delegate);
     }
 
-    public void bind(SocketAddress local) throws IOException {
+    void bind(SocketAddress local) throws IOException {
+        DatagramChannel sock = channels.get(local);
+        if (sock == null) {
+            sock = DatagramChannel.open();
+            sock.socket().bind(local);
+            sock.configureBlocking(false);
+            channels.put(local, sock);
+        }
         connect(null, local);
     }
 
+    boolean isRunning() {
+        return running;
+    }
+
+    void start() {
+        running = true;
+    }
+
+    void stop() {
+        running = false;
+    }
+
     @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
-        if (connection == null) {
-            connection = super.createConnection(remote, local);
+    protected Connection<Package> createConnection(SocketAddress remote, SocketAddress local) throws IOException {
+        Connection<Package> conn = connections.get(local);
+        if (conn == null) {
+            conn = super.createConnection(remote, local);
+            connections.put(local, conn);
         }
-        return connection;
+        return conn;
     }
 
     @Override
     protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-        DatagramChannel sock = Server.master;
+        DatagramChannel sock = channels.get(local);
         if (sock == null) {
-            return null;
+            throw new SocketException("failed to get channel: " + remote + " -> " + local);
         } else {
             return new PackageChannel(sock);
         }
     }
 }
 
-public class Server extends chat.dim.dmtp.Server implements Runnable, Connection.Delegate {
+class DmtpServer extends Server implements Runnable, Connection.Delegate<Package> {
 
-    private boolean running;
+    private final SocketAddress localAddress;
 
-    public Server() {
+    private final ServerHub hub;
+
+    public DmtpServer(SocketAddress local) {
         super();
-        running = false;
+        localAddress = local;
+        hub = new ServerHub(this);
+    }
+
+    static void info(String msg) {
+        System.out.printf("%s\n", msg);
+    }
+
+    static void idle(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -66,34 +106,41 @@ public class Server extends chat.dim.dmtp.Server implements Runnable, Connection
         }
     }
 
-    @Override
-    public void run() {
+    public void start() {
         try {
             hub.bind(localAddress);
+            hub.start();
         } catch (IOException e) {
             e.printStackTrace();
         }
+        new Thread(this).start();
+    }
 
-        running = true;
-        while (running) {
+    void stop() {
+        hub.stop();
+    }
+
+    @Override
+    public void run() {
+        while (hub.isRunning()) {
             hub.tick();
-            Client.idle(128);
+            if (hub.getActivatedCount() == 0) {
+                idle(8);
+            }
         }
     }
 
     @Override
     public void onConnectionStateChanged(Connection connection, ConnectionState previous, ConnectionState current) {
-        Client.info("!!! connection ("
+        info("!!! connection ("
                 + connection.getLocalAddress() + ", "
                 + connection.getRemoteAddress() + ") state changed: "
                 + previous + " -> " + current);
     }
 
     @Override
-    public void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload) {
-        if (wrapper instanceof Header && payload != null && payload.length > 0) {
-            onReceivedPackage(remote, (Header) wrapper, new Data(payload));
-        }
+    public void onConnectionDataReceived(Connection<Package> connection, SocketAddress remote, Package pack) {
+        onReceivedPackage(remote, pack);
     }
 
     @Override
@@ -143,29 +190,17 @@ public class Server extends chat.dim.dmtp.Server implements Runnable, Connection
 
     static ContactManager database;
 
-    static SocketAddress localAddress;
-    static DatagramChannel master;
-
-    static ServerHub hub;
-
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
 
         System.out.printf("UDP server (%s:%d) starting ...\n", HOST, PORT);
 
-        localAddress = new InetSocketAddress(HOST, PORT);
-        master = DatagramChannel.open();
-        master.socket().bind(localAddress);
-        master.configureBlocking(false);
-
-        Server server = new Server();
-
-        hub = new ServerHub(server);
+        DmtpServer server = new DmtpServer(new InetSocketAddress(HOST, PORT));
 
         // database for location of contacts
-        database = new ContactManager(hub, localAddress);
+        database = new ContactManager(server.hub, server.localAddress);
         database.identifier = "station@anywhere";
         server.setDelegate(database);
 
-        new Thread(server).start();
+        server.start();
     }
 }

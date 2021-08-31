@@ -1,13 +1,13 @@
 /* license: https://mit-license.org
  *
- *  MTP: Message Transfer Protocol
+ *  Star Trek: Interstellar Transport
  *
- *                                Written in 2021 by Moky <albert.moky@gmail.com>
+ *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2021 Albert Moky
+ * Copyright (c) 2020 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,24 +28,21 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.mtp;
+package chat.dim.net;
 
 import java.io.IOException;
 import java.net.SocketAddress;
 
-import chat.dim.net.Channel;
-import chat.dim.net.Connection;
+public abstract class ActiveRawDataHub extends RawDataHub {
 
-public abstract class ActivePackageHub extends PackageHub {
-
-    public ActivePackageHub(Connection.Delegate<Package> delegate) {
+    public ActiveRawDataHub(Connection.Delegate<byte[]> delegate) {
         super(delegate);
     }
 
     @Override
-    protected Connection<Package> createConnection(SocketAddress remote, SocketAddress local) {
+    protected Connection<byte[]> createConnection(SocketAddress remote, SocketAddress local) {
         // create connection with addresses
-        ActivePackageConnection conn = new ActivePackageConnection(remote, local) {
+        ActiveRawDataConnection conn = new ActiveRawDataConnection(remote, local) {
             @Override
             protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
                 return createChannel(remote, local);
@@ -59,6 +56,4 @@ public abstract class ActivePackageHub extends PackageHub {
         conn.start();
         return conn;
     }
-
-    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
 }

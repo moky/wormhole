@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import chat.dim.dmtp.Client;
 import chat.dim.dmtp.ContactManager;
 import chat.dim.dmtp.LocationDelegate;
 import chat.dim.dmtp.Session;
@@ -15,7 +16,7 @@ import chat.dim.dmtp.protocol.Command;
 import chat.dim.dmtp.protocol.LocationValue;
 import chat.dim.dmtp.protocol.Message;
 import chat.dim.mtp.ActivePackageHub;
-import chat.dim.mtp.Header;
+import chat.dim.mtp.Package;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
@@ -25,8 +26,22 @@ import chat.dim.udp.PackageChannel;
 
 class ClientHub extends ActivePackageHub {
 
-    public ClientHub(Connection.Delegate delegate) {
+    private boolean running = false;
+
+    public ClientHub(Connection.Delegate<Package> delegate) {
         super(delegate);
+    }
+
+    boolean isRunning() {
+        return running;
+    }
+
+    void start() {
+        running = true;
+    }
+
+    void stop() {
+        running = false;
     }
 
     @Override
@@ -37,13 +52,17 @@ class ClientHub extends ActivePackageHub {
     }
 }
 
-public class Client extends chat.dim.dmtp.Client implements Runnable, Connection.Delegate {
+class DmtpClient extends Client implements Runnable, Connection.Delegate<Package> {
 
-    private boolean running;
+    private final SocketAddress localAddress;
+    private final SocketAddress remoteAddress;
+    private final ClientHub hub;
 
-    public Client() {
+    DmtpClient(SocketAddress local, SocketAddress remote) {
         super();
-        running = false;
+        localAddress = local;
+        remoteAddress = remote;
+        hub = new ClientHub(this);
     }
 
     static void info(String msg) {
@@ -70,19 +89,36 @@ public class Client extends chat.dim.dmtp.Client implements Runnable, Connection
             e.printStackTrace();
         }
     }
-
-    @Override
-    public void run() {
+    private void disconnect() {
         try {
-            hub.connect(remoteAddress, localAddress);
+            hub.disconnect(remoteAddress, localAddress);
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
 
-        running = true;
-        while (running) {
+    public void start() {
+        try {
+            hub.connect(remoteAddress, localAddress);
+            hub.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        new Thread(this).start();
+    }
+
+    void stop() {
+        disconnect();
+        hub.stop();
+    }
+
+    @Override
+    public void run() {
+        while (hub.isRunning()) {
             hub.tick();
-            Client.idle(128);
+            if (hub.getActivatedCount() == 0) {
+                idle(8);
+            }
         }
     }
 
@@ -95,10 +131,8 @@ public class Client extends chat.dim.dmtp.Client implements Runnable, Connection
     }
 
     @Override
-    public void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload) {
-        if (wrapper instanceof Header && payload != null && payload.length > 0) {
-            onReceivedPackage(remote, (Header) wrapper, new Data(payload));
-        }
+    public void onConnectionDataReceived(Connection<Package> connection, SocketAddress remote, Package pack) {
+        onReceivedPackage(remote, pack);
     }
 
     @Override
@@ -151,9 +185,8 @@ public class Client extends chat.dim.dmtp.Client implements Runnable, Connection
         return true;
     }
 
-    public void login(String identifier, SocketAddress remoteAddress) throws IOException {
+    public void login(String identifier) throws IOException {
         database.identifier = identifier;
-        Client.remoteAddress = remoteAddress;
         hub.connect(remoteAddress, null);
         sayHello(remoteAddress);
     }
@@ -165,7 +198,7 @@ public class Client extends chat.dim.dmtp.Client implements Runnable, Connection
         List<LocationValue> locations = delegate.getLocations(receiver);
         SocketAddress sourceAddress;
         SocketAddress mappedAddress;
-        Connection conn;
+        Connection<Package> conn;
         ConnectionState state;
         for (LocationValue item : locations) {
             // source address
@@ -222,6 +255,19 @@ public class Client extends chat.dim.dmtp.Client implements Runnable, Connection
         }
     }
 
+    void test(String friend) throws IOException {
+
+        // test send
+        String text = "你好 " + friend + "!";
+        int index = 0;
+        while (index < 16777216) {
+            idle(5000);
+            System.out.printf("---- [%d]\n", index);
+            sendText(friend, text + " (" + index + ")");
+            ++index;
+        }
+    }
+
     static String HOST;
     static final int PORT = Data.random(1).getByte(0) + 9900;
 
@@ -235,41 +281,25 @@ public class Client extends chat.dim.dmtp.Client implements Runnable, Connection
 
     static ContactManager database;
 
-    static SocketAddress localAddress;
-    static SocketAddress remoteAddress;
-
-    static ClientHub hub;
-
     public static void main(String[] args) throws IOException {
 
-        localAddress = new InetSocketAddress(HOST, PORT);
-        remoteAddress = new InetSocketAddress(Server.HOST, Server.PORT);
-        System.out.printf("connecting to UDP server: %s ...\n", remoteAddress);
+        SocketAddress local = new InetSocketAddress(HOST, PORT);
+        SocketAddress remote = new InetSocketAddress(DmtpServer.HOST, DmtpServer.PORT);
+        System.out.printf("connecting to UDP server: %s ...\n", remote);
 
         String user = "moky-" + PORT;
         String friend = "moky";
 
-        Client client = new Client();
-
-        hub = new ClientHub(client);
+        DmtpClient client = new DmtpClient(local, remote);
 
         // database for location of contacts
-        database = new ContactManager(hub, localAddress);
+        database = new ContactManager(client.hub, client.localAddress);
         database.identifier = "moky-" + PORT;
         client.setDelegate(database);
 
-        new Thread(client).start();
-
-        client.login(user, remoteAddress);
-
-        // test send
-        String text = "你好 " + friend + "!";
-        int index = 0;
-        while (index < 16777216) {
-            idle(5000);
-            System.out.printf("---- [%d]\n", index);
-            client.sendText(friend, text + " (" + index + ")");
-            ++index;
-        }
+        client.start();
+        client.login(user);
+        client.test(friend);
+        client.stop();
     }
 }

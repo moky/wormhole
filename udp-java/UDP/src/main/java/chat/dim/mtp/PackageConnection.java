@@ -40,7 +40,7 @@ import chat.dim.net.Channel;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 
-public class PackageConnection extends BaseConnection {
+public class PackageConnection extends BaseConnection<Package> {
 
     private final ArrivalHall arrivalHall = new ArrivalHall();
     private final DepartureHall departureHall = new DepartureHall();
@@ -59,51 +59,29 @@ public class PackageConnection extends BaseConnection {
         }
     }
 
-    @Override
-    protected void process() throws IOException {
-        Delegate delegate = getDelegate();
-        if (delegate == null) {
-            return;
-        }
-        // receiving
-        ByteBuffer buffer = ByteBuffer.allocate(MSS);
-        SocketAddress remote = receive(buffer);
-        if (remote == null) {
-            return;
-        }
-        byte[] data = new byte[buffer.position()];
-        buffer.flip();
-        buffer.get(data);
-        // process for package
-        Package pack = processIncome(data, remote, getLocalAddress());
-        if (pack == null) {
-            return;
-        }
-        // callback
-        delegate.onConnectionDataReceived(this, remote, pack.head, pack.body.getBytes());
-    }
-
     /**
      *  Append the package into a waiting queue for sending out
      *
      * @param body        - message body
-     * @param source      - local address
      * @param destination - remote address
      * @throws IOException on error
      */
-    public void sendCommand(byte[] body, SocketAddress source, SocketAddress destination) throws IOException {
+    public void sendCommand(byte[] body, SocketAddress destination) throws IOException {
         Package pack = Package.create(DataType.COMMAND, new Data(body));
-        // append as Departure task to waiting queue
-        departureHall.appendDeparture(pack, source, destination);
-        // send out tasks from waiting queue
-        processExpiredTasks();
+        send(pack, destination);
     }
-    public void sendMessage(byte[] body, SocketAddress source, SocketAddress destination) throws IOException {
+    public void sendMessage(byte[] body, SocketAddress destination) throws IOException {
         Package pack = Package.create(DataType.MESSAGE, new Data(body));
+        send(pack, destination);
+    }
+
+    @Override
+    public int send(Package pack, SocketAddress destination) throws IOException {
         // append as Departure task to waiting queue
-        departureHall.appendDeparture(pack, source, destination);
+        departureHall.appendDeparture(pack, getLocalAddress(), destination);
         // send out tasks from waiting queue
         processExpiredTasks();
+        return 0;
     }
 
     private void processExpiredTasks() throws IOException {
@@ -131,22 +109,42 @@ public class PackageConnection extends BaseConnection {
             return false;
         }
         // send out all fragments
+        byte[] data;
+        ByteBuffer buffer = null;
         for (Package pack : fragments) {
-            send(pack.getBytes(), task.destination);
+            // get buffer for data pack
+            data = pack.getBytes();
+            if (buffer == null || buffer.capacity() < data.length) {
+                buffer = ByteBuffer.allocate(data.length);
+            } else {
+                buffer.clear();
+            }
+            buffer.put(data);
+            buffer.flip();
+            send(buffer, task.destination);
         }
         return true;
     }
 
-    private void respondCommand(TransactionID sn, byte[] body, SocketAddress remote) throws IOException {
+    private void respondCommand(TransactionID sn, byte[] body, SocketAddress remote) {
         Package res = Package.create(DataType.COMMAND_RESPONSE, sn, new Data(body));
-        send(res.getBytes(), remote);
+        try {
+            send(res, remote);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
-    private void respondMessage(TransactionID sn, int pages, int index, SocketAddress remote) throws IOException {
+    private void respondMessage(TransactionID sn, int pages, int index, SocketAddress remote) {
         Package res = Package.create(DataType.MESSAGE_RESPONSE, sn, pages, index, new Data(OK));
-        send(res.getBytes(), remote);
+        try {
+            send(res, remote);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    private Package processIncome(byte[] data, SocketAddress remote, SocketAddress destination) throws IOException {
+    @Override
+    protected Package parse(byte[] data, SocketAddress remote) {
         // process income package
         Package pack = Package.parse(new Data(data));
         if (pack == null) {
@@ -206,7 +204,7 @@ public class PackageConnection extends BaseConnection {
             respondMessage(head.sn, head.pages, head.index, remote);
             if (type.isFragment()) {
                 // check cached fragments
-                pack = arrivalHall.insertFragment(pack, remote, destination);
+                pack = arrivalHall.insertFragment(pack, remote, getLocalAddress());
             }
             // let the caller to process the message
         }
@@ -223,9 +221,5 @@ public class PackageConnection extends BaseConnection {
         return pack;
     }
 
-    static final byte[] PING = {'P', 'I', 'N', 'G'};
-    static final byte[] PONG = {'P', 'O', 'N', 'G'};
-    static final byte[] NOOP = {'N', 'O', 'O', 'P'};
-    static final byte[] OK = {'O', 'K'};
-    static final byte[] AGAIN = {'A', 'G', 'A', 'I', 'N'};
+    protected static final byte[] AGAIN = {'A', 'G', 'A', 'I', 'N'};
 }

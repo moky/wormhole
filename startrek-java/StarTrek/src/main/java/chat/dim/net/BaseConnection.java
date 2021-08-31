@@ -37,7 +37,7 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.Date;
 
-public class BaseConnection implements Connection, StateDelegate {
+public abstract class BaseConnection<P> implements Connection<P>, StateDelegate {
 
     /*  Maximum Segment Size
      *  ~~~~~~~~~~~~~~~~~~~~
@@ -54,7 +54,7 @@ public class BaseConnection implements Connection, StateDelegate {
 
     private final StateMachine fsm;
 
-    private WeakReference<Delegate> delegateRef;
+    private WeakReference<Delegate<P>> delegateRef;
 
     protected Channel channel;
 
@@ -64,6 +64,8 @@ public class BaseConnection implements Connection, StateDelegate {
     private long lastSentTime;
     private long lastReceivedTime;
 
+    private boolean activated;
+
     public BaseConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
         super();
         delegateRef = null;
@@ -72,6 +74,7 @@ public class BaseConnection implements Connection, StateDelegate {
         localAddress = local;
         lastSentTime = 0;
         lastReceivedTime = 0;
+        activated = false;
         // Finite State Machine
         fsm = getStateMachine();
     }
@@ -82,14 +85,14 @@ public class BaseConnection implements Connection, StateDelegate {
         return machine;
     }
 
-    public Delegate getDelegate() {
+    public Delegate<P> getDelegate() {
         if (delegateRef == null) {
             return null;
         } else {
             return delegateRef.get();
         }
     }
-    public void setDelegate(Delegate delegate) {
+    public void setDelegate(Delegate<P> delegate) {
         if (delegate == null) {
             delegateRef = null;
         } else {
@@ -97,12 +100,13 @@ public class BaseConnection implements Connection, StateDelegate {
         }
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public boolean equals(Object other) {
         if (this == other) {
             return true;
         } else if (other instanceof Connection) {
-            Connection conn = (Connection) other;
+            Connection<P> conn = (Connection<P>) other;
             return addressEqual(getRemoteAddress(), conn.getRemoteAddress()) &&
                     addressEqual(getLocalAddress(), conn.getLocalAddress());
         } else {
@@ -193,6 +197,11 @@ public class BaseConnection implements Connection, StateDelegate {
     }
 
     @Override
+    public boolean isActivated() {
+        return activated;
+    }
+
+    @Override
     public void close() {
         try {
             Channel sock = channel;
@@ -230,17 +239,13 @@ public class BaseConnection implements Connection, StateDelegate {
         }
     }
 
-    @Override
-    public int send(byte[] data, SocketAddress destination) throws IOException {
+    protected int send(ByteBuffer src, SocketAddress destination) throws IOException {
         Channel sock = getChannel();
         if (sock == null || !sock.isOpen()) {
             throw new SocketException("connection lost: " + sock);
         }
         try {
-            ByteBuffer buffer = ByteBuffer.allocate(data.length);
-            buffer.put(data);
-            buffer.flip();
-            int sent = sock.send(buffer, destination);
+            int sent = sock.send(src, destination);
             if (sent != -1) {
                 lastSentTime = (new Date()).getTime();
             }
@@ -283,30 +288,39 @@ public class BaseConnection implements Connection, StateDelegate {
         if (isOpen()) {
             // try to receive data when connection open
             try {
-                process();
+                activated = process();
             } catch (IOException e) {
                 //e.printStackTrace();
             }
+        } else {
+            activated = false;
         }
     }
 
-    protected void process() throws IOException {
-        Delegate delegate = getDelegate();
+    private boolean process() throws IOException {
+        Delegate<P> delegate = getDelegate();
         if (delegate == null) {
-            return;
+            return false;
         }
         // receiving
         ByteBuffer buffer = ByteBuffer.allocate(MSS);
         SocketAddress remote = receive(buffer);
         if (remote == null) {
-            return;
+            return false;
         }
+        // parse data
         byte[] data = new byte[buffer.position()];
         buffer.flip();
         buffer.get(data);
+        P pack = parse(data, remote);
         // callback
-        delegate.onConnectionDataReceived(this, remote, null, data);
+        if (pack != null) {
+            delegate.onConnectionDataReceived(this, remote, pack);
+        }
+        return true;
     }
+
+    protected abstract P parse(byte[] data, SocketAddress remote);
 
     public void start() {
         fsm.start();
@@ -338,7 +352,7 @@ public class BaseConnection implements Connection, StateDelegate {
             }
         }
         // callback
-        Delegate delegate = getDelegate();
+        Delegate<P> delegate = getDelegate();
         if (delegate != null) {
             delegate.onConnectionStateChanged(this, previous, current);
         }
@@ -353,4 +367,12 @@ public class BaseConnection implements Connection, StateDelegate {
     public void resumeState(ConnectionState current, StateMachine ctx) {
 
     }
+
+    //
+    //  Command bodies
+    //
+    protected static final byte[] PING = {'P', 'I', 'N', 'G'};
+    protected static final byte[] PONG = {'P', 'O', 'N', 'G'};
+    protected static final byte[] NOOP = {'N', 'O', 'O', 'P'};
+    protected static final byte[] OK = {'O', 'K'};
 }

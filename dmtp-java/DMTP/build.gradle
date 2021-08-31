@@ -33,7 +33,6 @@ repositories {
 }
 
 dependencies {
-    compile group: 'chat.dim', name: 'TCP', version: '0.2.0'
     compile group: 'chat.dim', name: 'UDP', version: '0.2.0'
     compile group: 'chat.dim', name: 'STUN', version: '0.1.3'
 

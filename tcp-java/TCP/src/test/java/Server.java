@@ -6,53 +6,95 @@ import java.net.SocketException;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
+import chat.dim.net.RawDataHub;
 import chat.dim.tcp.StreamChannel;
-import chat.dim.tcp.StreamHub;
 
-class ServerHub extends StreamHub {
+class ServerHub extends RawDataHub implements Runnable {
 
-    public ServerHub(Connection.Delegate delegate) {
+    private final Map<SocketAddress, SocketChannel> slaves = new WeakHashMap<>();
+    private SocketAddress localAddress = null;
+    private ServerSocketChannel master = null;
+    private boolean running = false;
+
+    public ServerHub(Connection.Delegate<byte[]> delegate) {
         super(delegate);
     }
 
+    void bind(SocketAddress local) throws IOException {
+        ServerSocketChannel sock = master;
+        if (sock != null && sock.isOpen()) {
+            sock.close();
+        }
+        sock = ServerSocketChannel.open();
+        sock.socket().bind(local);
+        sock.configureBlocking(false);
+        master = sock;
+        localAddress = local;
+    }
+
+    boolean isRunning() {
+        return running;
+    }
+
+    void start() {
+        running = true;
+        new Thread(this).start();
+    }
+
+    void stop() {
+        running = false;
+    }
+
     @Override
-    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-        SocketChannel sock = null;
-        for (SocketChannel item : Server.slaves) {
+    public void run() {
+        SocketChannel channel;
+        SocketAddress remote;
+        while (running) {
             try {
-                if (item.getRemoteAddress().equals(remote)) {
-                    sock = item;
-                    break;
+                channel = master.accept();
+                if (channel != null) {
+                    remote = channel.getRemoteAddress();
+                    slaves.put(remote, channel);
+                    connect(remote, localAddress);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    @Override
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+        SocketChannel sock = slaves.get(remote);
         if (sock == null) {
-            return null;
+            throw new SocketException("failed to get channel: " + remote + " -> " + local);
         } else {
             return new StreamChannel(sock);
         }
     }
 }
 
-public class Server implements Runnable, Connection.Delegate {
+public class Server implements Runnable, Connection.Delegate<byte[]> {
 
-    private boolean running;
+    private final SocketAddress localAddress;
 
-    public Server() {
-        running = false;
+    private final ServerHub hub;
+
+    public Server(SocketAddress local) {
+        super();
+        localAddress = local;
+        hub = new ServerHub(this);
     }
 
     @Override
-    public void onConnectionStateChanged(Connection connection, ConnectionState previous, ConnectionState current) {
+    public void onConnectionStateChanged(Connection<byte[]> connection, ConnectionState previous, ConnectionState current) {
         Client.info("!!! connection ("
                 + connection.getLocalAddress() + ", "
                 + connection.getRemoteAddress() + ") state changed: "
@@ -60,10 +102,10 @@ public class Server implements Runnable, Connection.Delegate {
     }
 
     @Override
-    public void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload) {
-        String text = new String(payload, StandardCharsets.UTF_8);
-        Client.info("<<< received (" + payload.length + " bytes) from " + remote + ": " + text);
-        text = (counter++) + "# " + payload.length + " byte(s) received";
+    public void onConnectionDataReceived(Connection<byte[]> connection, SocketAddress remote, byte[] pack) {
+        String text = new String(pack, StandardCharsets.UTF_8);
+        Client.info("<<< received (" + pack.length + " bytes) from " + remote + ": " + text);
+        text = (counter++) + "# " + pack.length + " byte(s) received";
         byte[] data = text.getBytes(StandardCharsets.UTF_8);
         Client.info(">>> responding: " + text);
         send(data, localAddress, remote);
@@ -79,50 +121,27 @@ public class Server implements Runnable, Connection.Delegate {
         }
     }
 
-    @Override
-    public void run() {
-        SocketChannel channel;
-        SocketAddress remote, local;
-        Connection conn;
-
-        running = true;
-        while (running) {
-            try {
-                channel = master.accept();
-                if (channel != null) {
-                    slaves.add(channel);
-                    remote = channel.getRemoteAddress();
-                    local = channel.getLocalAddress();
-                    conn = hub.connect(remote, local);
-                    assert conn != null : "connection error: " + remote + ", " + local;
-                } else {
-                    hub.tick();
-                    clean();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            Client.idle(128);
+    public void start() {
+        try {
+            hub.bind(localAddress);
+            hub.start();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+        new Thread(this).start();
     }
 
-    private void clean() {
-        Set<SocketChannel> channels = new HashSet<>(slaves);
-        // check closed channels
-        Set<SocketChannel> dying = new HashSet<>();
-        for (SocketChannel item : channels) {
-            if (!item.isOpen()) {
-                dying.add(item);
+    void stop() {
+        hub.stop();
+    }
+
+    @Override
+    public void run() {
+        while (hub.isRunning()) {
+            hub.tick();
+            if (hub.getActivatedCount() == 0) {
+                Client.idle(8);
             }
-        }
-        if (dying.size() > 0) {
-            Client.info(dying.size() + " channel(s) dying");
-            for (SocketChannel item : dying) {
-                slaves.remove(item);
-            }
-        }
-        if (slaves.size() > 0) {
-            Client.info(slaves.size() + " channel(s) alive");
         }
     }
 
@@ -137,25 +156,12 @@ public class Server implements Runnable, Connection.Delegate {
         }
     }
 
-    static SocketAddress localAddress;
-    static ServerSocketChannel master;
-    static final Set<SocketChannel> slaves = new HashSet<>();
-
-    private static ServerHub hub;
-
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
 
         Client.info("Starting server (" + HOST + ":" + PORT + ") ...");
 
-        localAddress = new InetSocketAddress(HOST, PORT);
-        master = ServerSocketChannel.open();
-        master.socket().bind(localAddress);
-        master.configureBlocking(false);
+        Server server = new Server(new InetSocketAddress(HOST, PORT));
 
-        Server server = new Server();
-
-        hub = new ServerHub(server);
-
-        new Thread(server).start();
+        server.start();
     }
 }

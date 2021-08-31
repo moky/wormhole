@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  UDP: User Datagram Protocol
+ *  MTP: Message Transfer Protocol
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -38,21 +38,21 @@ import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 
-public abstract class PackageHub extends BaseHub {
+public abstract class PackageHub extends BaseHub<Package> {
 
-    private final WeakReference<Connection.Delegate> delegateRef;
+    private final WeakReference<Connection.Delegate<Package>> delegateRef;
 
-    public PackageHub(Connection.Delegate delegate) {
+    public PackageHub(Connection.Delegate<Package> delegate) {
         super();
         delegateRef = new WeakReference<>(delegate);
     }
 
-    public Connection.Delegate getDelegate() {
+    public Connection.Delegate<Package> getDelegate() {
         return delegateRef.get();
     }
 
     @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
+    protected Connection<Package> createConnection(SocketAddress remote, SocketAddress local) throws IOException {
         // create connection with channel
         PackageConnection conn = new PackageConnection(createChannel(remote, local), remote, local);
         // set delegate
@@ -67,16 +67,16 @@ public abstract class PackageHub extends BaseHub {
     protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
 
     public void sendCommand(byte[] body, SocketAddress source, SocketAddress destination) throws IOException {
-        Connection conn = connect(destination, source);
+        Connection<Package> conn = connect(destination, source);
         if (conn instanceof PackageConnection) {
-            ((PackageConnection) conn).sendCommand(body, source, destination);
+            ((PackageConnection) conn).sendCommand(body, destination);
         }
     }
 
     public void sendMessage(byte[] body, SocketAddress source, SocketAddress destination) throws IOException {
-        Connection conn = connect(destination, source);
+        Connection<Package> conn = connect(destination, source);
         if (conn instanceof PackageConnection) {
-            ((PackageConnection) conn).sendMessage(body, source, destination);
+            ((PackageConnection) conn).sendMessage(body, destination);
         }
     }
 }

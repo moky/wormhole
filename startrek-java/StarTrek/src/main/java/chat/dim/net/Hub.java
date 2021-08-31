@@ -66,18 +66,18 @@ import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
 
-public interface Hub {
+public interface Hub<P> {
 
     /**
      *  Send data from source to destination
      *
-     * @param data        - payload
+     * @param pack        - data package
      * @param source      - from address (local);
      *                      if it's null, send via any connection connected to destination
      * @param destination - to address (remote)
      * @return false on error
      */
-    boolean send(byte[] data, SocketAddress source, SocketAddress destination) throws IOException;
+    boolean send(P pack, SocketAddress source, SocketAddress destination) throws IOException;
 
     /**
      *   Get connection if already exists
@@ -86,7 +86,7 @@ public interface Hub {
      * @param local  - local address
      * @return null on connection not found
      */
-    Connection getConnection(SocketAddress remote, SocketAddress local);
+    Connection<P> getConnection(SocketAddress remote, SocketAddress local);
 
     /**
      *  Get/create connection
@@ -95,7 +95,7 @@ public interface Hub {
      * @param local  - local address
      * @return null on error
      */
-    Connection connect(SocketAddress remote, SocketAddress local) throws IOException;
+    Connection<P> connect(SocketAddress remote, SocketAddress local) throws IOException;
 
     /**
      *  Close connection

@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  MTP: Message Transfer Protocol
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,37 +28,54 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.mtp;
+package chat.dim.net;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 
-import chat.dim.net.Channel;
-import chat.dim.net.Connection;
+public abstract class ActiveRawDataConnection extends ActiveConnection<byte[]> {
 
-public abstract class ActivePackageHub extends PackageHub {
+    public ActiveRawDataConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
+        super(byteChannel, remote, local);
+    }
 
-    public ActivePackageHub(Connection.Delegate<Package> delegate) {
-        super(delegate);
+    public ActiveRawDataConnection(SocketAddress remote, SocketAddress local) {
+        super(remote, local);
     }
 
     @Override
-    protected Connection<Package> createConnection(SocketAddress remote, SocketAddress local) {
-        // create connection with addresses
-        ActivePackageConnection conn = new ActivePackageConnection(remote, local) {
-            @Override
-            protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
-                return createChannel(remote, local);
-            }
-        };
-        // set delegate
-        if (conn.getDelegate() == null) {
-            conn.setDelegate(getDelegate());
-        }
-        // start FSM
-        conn.start();
-        return conn;
+    public int send(byte[] pack, SocketAddress destination) throws IOException {
+        ByteBuffer buffer = ByteBuffer.allocate(pack.length);
+        buffer.put(pack);
+        buffer.flip();
+        return send(buffer, destination);
     }
 
-    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
+    @Override
+    public void heartbeat() throws IOException {
+        send(PING, getRemoteAddress());
+    }
+
+    @Override
+    protected byte[] parse(byte[] data, SocketAddress remote) {
+        if (data.length < 6) {
+            if (Arrays.equals(data, PING)) {
+                // PING -> PONG
+                try {
+                    send(PONG, remote);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return null;
+            } else if (Arrays.equals(data, PONG) ||
+                    Arrays.equals(data, NOOP) ||
+                    Arrays.equals(data, OK)) {
+                // ignore them
+                return null;
+            }
+        }
+        return data;
+    }
 }

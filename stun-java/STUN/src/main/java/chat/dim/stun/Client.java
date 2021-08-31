@@ -58,8 +58,8 @@ public abstract class Client extends Node {
 
     public int retries = 3;
 
-    public Client(String host, int port) {
-        super(new InetSocketAddress(host, port));
+    public Client(InetSocketAddress sourceAddress) {
+        super(sourceAddress);
     }
 
     /**

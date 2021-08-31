@@ -1,6 +1,5 @@
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
@@ -10,55 +9,44 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import chat.dim.net.BaseConnection;
-import chat.dim.net.BaseHub;
-import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
-import chat.dim.udp.PackageChannel;
+import chat.dim.stun.Client;
 
-class ClientHub extends BaseHub {
+public class StunClient extends Client implements Runnable, Connection.Delegate<byte[]> {
 
-    private final WeakReference<Connection.Delegate> delegateRef;
+    private final SocketAddress remoteAddress;
+    private final StunHub hub;
 
-    private Channel localChannel = null;
-
-    public ClientHub(Connection.Delegate delegate) {
-        super();
-        delegateRef = new WeakReference<>(delegate);
+    StunClient(InetSocketAddress local, SocketAddress remote) {
+        super(local);
+        remoteAddress = remote;
+        hub = new StunHub(this);
     }
 
-    public Connection.Delegate getDelegate() {
-        return delegateRef.get();
+    public void start() {
+        try {
+            hub.bind(sourceAddress);
+            hub.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        new Thread(this).start();
+    }
+
+    void stop() {
+        hub.stop();
     }
 
     @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
-        // create connection with channel
-        BaseConnection conn = new BaseConnection(createChannel(remote, local), remote, local);
-        // set delegate
-        if (conn.getDelegate() == null) {
-            conn.setDelegate(getDelegate());
+    public void run() {
+        while (hub.isRunning()) {
+            hub.tick();
+            if (hub.getActivatedCount() == 0) {
+                idle(8);
+            }
         }
-        // start FSM
-        conn.start();
-        return conn;
-    }
-
-    private Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-        if (localChannel == null) {
-            localChannel = new PackageChannel(null, local);
-            localChannel.configureBlocking(false);
-        }
-        return localChannel;
-    }
-}
-
-public class Client extends chat.dim.stun.Client implements Connection.Delegate {
-
-    public Client(String host, int port) {
-        super(host, port);
     }
 
     @Override
@@ -70,9 +58,9 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
     }
 
     @Override
-    public void onConnectionDataReceived(Connection connection, SocketAddress remote, Object wrapper, byte[] payload) {
-        if (payload != null && payload.length > 0) {
-            chunks.add(payload);
+    public void onConnectionDataReceived(Connection<byte[]> connection, SocketAddress remote, byte[] pack) {
+        if (pack != null && pack.length > 0) {
+            chunks.add(pack);
         }
     }
 
@@ -105,7 +93,7 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
             if (timeout < (new Date()).getTime()) {
                 break;
             }
-            Client.idle(256);
+            idle(256);
         }
         info("received " + (data == null ? 0 : data.length) + " bytes from " + remoteAddress);
         return data;
@@ -147,10 +135,6 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
         }
     }
 
-    static SocketAddress remoteAddress;
-
-    static ClientHub hub;
-
     public static void main(String[] args) {
 
         //remoteAddress = new InetSocketAddress("stun.xten.com", 3478);
@@ -166,15 +150,14 @@ public class Client extends chat.dim.stun.Client implements Connection.Delegate 
         //remoteAddress = new InetSocketAddress("stun.counterpath.net", 3478);
         //remoteAddress = new InetSocketAddress("stun.internetcalls.com", 3478);
 
-        remoteAddress = new InetSocketAddress(Server.HOST, Server.PORT);
-        System.out.printf("connecting to STUN server: %s ...\n", remoteAddress);
+        System.out.printf("connecting to STUN server: (%s:%d) ...\n", StunServer.HOST, StunServer.PORT);
 
-        Client client = new Client(HOST, PORT);
+        InetSocketAddress local = new InetSocketAddress(HOST, PORT);
+        InetSocketAddress remote = new InetSocketAddress(StunServer.HOST, StunServer.PORT);
+        StunClient client = new StunClient(local, remote);
 
-        hub = new ClientHub(client);
-
-        client.detect(remoteAddress);
-
-        System.exit(0);
+        client.start();
+        client.detect(remote);
+        client.stop();
     }
 }
