@@ -30,12 +30,8 @@
  */
 package chat.dim.startrek;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import chat.dim.port.Arrival;
+import chat.dim.port.Departure;
 
 /**
  *  Star Dock
@@ -45,126 +41,68 @@ import java.util.Map;
  */
 public class Dock {
 
-    // tasks for sending out
-    private final List<Integer> priorities = new ArrayList<>();
-    private final Map<Integer, List<StarShip>> fleets = new HashMap<>();
+    // memory caches
+    private final ArrivalHall arrivalHall;
+    private final DepartureHall departureHall;
+
+    public Dock() {
+        super();
+        arrivalHall = createArrivalHall();
+        departureHall = createDepartureHall();
+    }
+
+    protected ArrivalHall createArrivalHall() {
+        return new ArrivalHall();
+    }
+
+    protected DepartureHall createDepartureHall() {
+        return new DepartureHall();
+    }
 
     /**
-     *  Park this ship in the Dock for departure
+     * Check received ship for completed package
      *
-     * @param task - outgo ship
+     * @param income - received ship carrying data package (fragment)
+     * @return ship carrying completed data package
+     */
+    public Arrival assembleArrival(final Arrival income) {
+        return arrivalHall.assembleArrival(income);
+    }
+
+    /**
+     *  Append outgoing ship to a fleet with priority
+     *
+     * @param ship - departure task
      * @return false on duplicated
      */
-    public boolean park(StarShip task) {
-        // 1. choose an array with priority
-        int prior = task.priority;
-        List<StarShip> array = fleets.get(prior);
-        if (array == null) {
-            // 1.1. create new array for this priority
-            array = new ArrayList<>();
-            fleets.put(prior, array);
-            // 1.2. insert the priority in a sorted list
-            int index = 0;
-            for (; index < priorities.size(); ++index) {
-                if (prior < priorities.get(index)) {
-                    // insert priority before the bigger one
-                    break;
-                }
-            }
-            priorities.add(index, prior);
-        }
-        // 2. check duplicated task
-        for (StarShip item : array) {
-            if (item == task) {
-                return false;
-            }
-        }
-        // 3. append to the tail
-        array.add(task);
-        return true;
+    public boolean appendDeparture(final Departure ship) {
+        return departureHall.appendDeparture(ship);
     }
 
     /**
-     *  Get next new ship(time == 0), remove it from the Dock
+     *  Check response from incoming ship
      *
-     * @return outgo ship
+     * @param response - incoming ship with SN
+     * @return finished task
      */
-    public StarShip pull() {
-        List<StarShip> array;
-        for (int prior : priorities) {
-            array = fleets.get(prior);
-            if (array == null) {
-                continue;
-            }
-            for (StarShip ship : array) {
-                if (ship.getTimestamp() == 0) {
-                    // update time and retires
-                    ship.update();
-                    array.remove(ship);
-                    return ship;
-                }
-            }
-        }
-        return null;
+    public Departure checkResponse(final Arrival response) {
+        return departureHall.checkResponse(response);
     }
 
     /**
-     *  Get ship with ID, remove it from the Dock
+     *  Get next timeout task
      *
-     * @param sn - ship ID
-     * @return outgo ship
+     * @return departure task
      */
-    public StarShip pull(byte[] sn) {
-        List<StarShip> array;
-        for (int prior : priorities) {
-            array = fleets.get(prior);
-            if (array == null) {
-                continue;
-            }
-            for (StarShip ship : array) {
-                if (Arrays.equals(ship.getSN(), sn)) {
-                    // just remove it
-                    array.remove(ship);
-                    return ship;
-                }
-            }
-        }
-        return null;
+    public Departure getNextDeparture() {
+        return departureHall.getNextDeparture();
     }
 
     /**
-     *  Get any ship timeout/expired
-     *    1. if expired, remove it from the park;
-     *    2. else, update time and retry (keep it in the park)
-     *
-     * @return outgo ship
+     * Clear all expired tasks
      */
-    public StarShip any() {
-        long expired = (new Date()).getTime() - StarShip.EXPIRES;
-        List<StarShip> array;
-        for (int prior : priorities) {
-            array = fleets.get(prior);
-            if (array == null) {
-                continue;
-            }
-            for (StarShip ship : array) {
-                if (ship.getTimestamp() > expired) {
-                    // not expired yet
-                    continue;
-                }
-                if (ship.getRetries() < StarShip.RETRIES) {
-                    // update time and retry
-                    ship.update();
-                    return ship;
-                }
-                // retried too many times
-                if (ship.isExpired()) {
-                    // task expired, remove it and don't retry
-                    array.remove(ship);
-                    return ship;
-                }
-            }
-        }
-        return null;
+    public void purge() {
+        arrivalHall.purge();
+        departureHall.purge();
     }
 }

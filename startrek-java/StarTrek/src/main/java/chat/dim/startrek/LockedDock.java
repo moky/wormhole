@@ -34,59 +34,73 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import chat.dim.port.Arrival;
+import chat.dim.port.Departure;
+
 public class LockedDock extends Dock {
 
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     @Override
-    public boolean park(StarShip task) {
-        boolean ok;
-        Lock writeLock = lock.writeLock();
+    public Arrival assembleArrival(final Arrival income) {
+        final Arrival completed;
+        final Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            ok = super.park(task);
+            completed = super.assembleArrival(income);
         } finally {
             writeLock.unlock();
         }
-        return ok;
+        return completed;
     }
 
     @Override
-    public StarShip pull() {
-        StarShip task;
-        Lock writeLock = lock.writeLock();
+    public boolean appendDeparture(final Departure ship) {
+        final boolean added;
+        final Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            task = super.pull();
+            added = super.appendDeparture(ship);
         } finally {
             writeLock.unlock();
         }
-        return task;
+        return added;
     }
 
     @Override
-    public StarShip pull(byte[] sn) {
-        StarShip task;
-        Lock writeLock = lock.writeLock();
+    public Departure checkResponse(final Arrival response) {
+        final Departure finished;
+        final Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            task = super.pull(sn);
+            finished = super.checkResponse(response);
         } finally {
             writeLock.unlock();
         }
-        return task;
+        return finished;
     }
 
     @Override
-    public StarShip any() {
-        StarShip task;
-        Lock writeLock = lock.writeLock();
+    public Departure getNextDeparture() {
+        final Departure next;
+        final Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            task = super.any();
+            next = super.getNextDeparture();
         } finally {
             writeLock.unlock();
         }
-        return task;
+        return next;
+    }
+
+    @Override
+    public void purge() {
+        final Lock writeLock = lock.writeLock();
+        writeLock.lock();
+        try {
+            super.purge();
+        } finally {
+            writeLock.unlock();
+        }
     }
 }

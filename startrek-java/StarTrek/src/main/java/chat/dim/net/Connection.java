@@ -30,12 +30,11 @@
  */
 package chat.dim.net;
 
-import java.io.IOException;
 import java.net.SocketAddress;
 
 import chat.dim.threading.Ticker;
 
-public interface Connection<P> extends Ticker {
+public interface Connection extends Ticker {
 
     //
     //  Flags
@@ -52,16 +51,16 @@ public interface Connection<P> extends Ticker {
     /**
      *  Send data
      *
-     * @param pack        - outgo data package
+     * @param data        - outgo data package
      * @param destination - remote address; can be null when it's connected
      * @return count of bytes sent, probably zero when it's non-blocking mode
      */
-    int send(P pack, SocketAddress destination) throws IOException;
+    int send(byte[] data, SocketAddress destination);
 
     /**
      *  Close the connection
      */
-    void close() throws IOException;
+    void close();
 
     /**
      *  Get state
@@ -74,24 +73,43 @@ public interface Connection<P> extends Ticker {
      *  Connection Delegate
      *  ~~~~~~~~~~~~~~~~~~~
      */
-    interface Delegate<P> {
+    interface Delegate {
 
         /**
-         *  Call when connection state is going to change
+         *  Called when connection state is going to change
          *
-         * @param connection - current connection
          * @param previous   - old state
          * @param current    - new state
+         * @param connection - current connection
          */
-        void onConnectionStateChanged(Connection<P> connection, ConnectionState previous, ConnectionState current);
+        void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection);
 
         /**
-         *  Call when connection received data
+         *  Called when connection received data
          *
-         * @param connection - current connection
+         * @param data       - received data package
          * @param remote     - remote address
-         * @param pack       - received data package
+         * @param connection - current connection
          */
-        void onConnectionDataReceived(Connection<P> connection, SocketAddress remote, P pack);
+        void onReceived(byte[] data, SocketAddress remote, Connection connection);
+
+        /**
+         *  Called after data sent
+         *
+         * @param data       - outgo data package
+         * @param remote     - remote address
+         * @param connection - current connection
+         */
+        void onSent(byte[] data, SocketAddress remote, Connection connection);
+
+        /**
+         *  Called when connection error
+         *
+         * @param error      - error message
+         * @param data       - outgo data package
+         * @param remote     - remote address
+         * @param connection - current connection
+         */
+        void onError(Throwable error, byte[] data, SocketAddress remote, Connection connection);
     }
 }

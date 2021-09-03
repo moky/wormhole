@@ -37,7 +37,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public abstract class ActiveConnection<P> extends BaseConnection<P> {
+public abstract class ActiveConnection extends BaseConnection {
 
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private int connecting;
@@ -122,23 +122,4 @@ public abstract class ActiveConnection<P> extends BaseConnection<P> {
         }
         return sent;
     }
-
-    @Override
-    public void exitState(ConnectionState previous, StateMachine ctx) {
-        super.exitState(previous, ctx);
-
-        ConnectionState current = ctx.getCurrentState();
-        if (current != null && current.equals(ConnectionState.EXPIRED)) {
-            try {
-                heartbeat();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    /**
-     *  Send a heartbeat package('PING') to remote address
-     */
-    public abstract void heartbeat() throws IOException;
 }

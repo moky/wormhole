@@ -30,44 +30,42 @@
  */
 package chat.dim.startrek;
 
+import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.net.SocketAddress;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
+import chat.dim.net.Connection;
+import chat.dim.net.ConnectionState;
+import chat.dim.port.Docker;
+import chat.dim.port.Gate;
 import chat.dim.skywalker.Runner;
 
-public abstract class StarGate extends Runner implements Gate {
+public abstract class StarGate extends Runner implements Gate, Connection.Delegate {
 
-    public final Dock dock;
+    private final Map<SocketAddress, Docker> dockerMap = new HashMap<>();
 
-    private Docker docker;
-    private WeakReference<Delegate> delegateRef;
+    private WeakReference<Delegate> delegateRef = null;
 
-    protected StarGate() {
-        super();
-        dock = createDock();
-        docker = null;
-        delegateRef = null;
+    public Docker getDocker(SocketAddress remote) {
+        return dockerMap.get(remote);
     }
-
-    protected Dock createDock() {
-        return new LockedDock();
-    }
-
-    public Docker getDocker() {
-        if (docker == null) {
-            docker = createDocker();
+    public void setDocker(SocketAddress remote, Docker worker) {
+        if (worker == null) {
+            // remove worker
+            worker = dockerMap.get(remote);
+            if (worker != null) {
+                dockerMap.remove(remote);
+            }
+        } else {
+            // set worker
+            dockerMap.put(remote, worker);
         }
-        return docker;
     }
 
-    // override to customize Worker
-    protected abstract Docker createDocker();
-
-    public void setDocker(Docker worker) {
-        docker = worker;
-    }
-
-    @Override
-    public Delegate getDelegate() {
+    public Gate.Delegate getDelegate() {
         if (delegateRef == null) {
             return null;
         } else {
@@ -83,93 +81,115 @@ public abstract class StarGate extends Runner implements Gate {
     }
 
     @Override
-    public boolean send(byte[] payload, int priority, Ship.Delegate delegate) {
-        Docker worker = getDocker();
-        if (worker == null) {
+    public Status getStatus(SocketAddress remote) {
+        Connection conn = getConnection(remote);
+        return conn == null ? Status.ERROR : Status.getStatus(conn.getState());
+    }
+
+    @Override
+    public boolean send(byte[] data, SocketAddress remote) {
+        Connection conn = getConnection(remote);
+        if (conn == null) {
             return false;
-        } else {
-            StarShip outgo = worker.pack(payload, priority, delegate);
-            return send(outgo);
         }
-    }
-
-    @Override
-    public boolean send(StarShip outgo) {
-        if (!getStatus().equals(Status.CONNECTED)) {
-            // not connect yet
+        Status status = Status.getStatus(conn.getState());
+        if (!status.equals(Status.CONNECTED)) {
             return false;
-        } else if (outgo.priority > StarShip.URGENT) {
-            // put the Ship into a waiting queue
-            return parkShip(outgo);
-        } else {
-            // send out directly
-            return send(outgo.getPackage());
         }
+        return conn.send(data, remote) != -1;
     }
 
-    //
-    //  Docking
-    //
+    protected abstract Connection getConnection(SocketAddress remote);
 
-    @Override
-    public boolean parkShip(StarShip outgo) {
-        return dock.park(outgo);
-    }
-
-    @Override
-    public StarShip pullShip() {
-        return dock.pull();
-    }
-
-    @Override
-    public StarShip pullShip(byte[] sn) {
-        return dock.pull(sn);
-    }
-
-    @Override
-    public StarShip anyShip() {
-        return dock.any();
-    }
+    // create new Docker with the advance party
+    protected abstract Docker createDocker(SocketAddress remote, byte[] data);
 
     //
     //  Runner
     //
 
     @Override
-    public void setup() {
-        super.setup();
-        // check connection
-        if (!isRunning()) {
-            // wait a second for connecting
-            idle();
-        }
-        // check docker
-        while (getDocker() == null && isRunning()) {
-            // waiting for docker
-            idle();
-        }
-        // setup docker
-        if (docker != null) {
-            docker.setup();
-        }
-    }
-
-    @Override
-    public void finish() {
-        // clean docker
-        if (docker != null) {
-            docker.finish();
-        }
-        super.finish();
-    }
-
-    @Override
     public boolean process() {
-        if (docker == null) {
-            //throw new NullPointerException("Star worker not found!");
-            return false;
-        } else {
-            return docker.process();
+        int counter = 0;
+        Map.Entry<SocketAddress, Docker> entry;
+        Docker worker;
+        Iterator<Map.Entry<SocketAddress, Docker>> iterator;
+        iterator = dockerMap.entrySet().iterator();
+        while (iterator.hasNext()) {
+            entry = iterator.next();
+            if (getConnection(entry.getKey()) == null) {
+                iterator.remove();
+                continue;
+            }
+            worker = entry.getValue();
+            if (worker != null && worker.process()) {
+                counter += 1;
+            }
         }
+        return counter > 0;
+    }
+
+    /**
+     *  Send a heartbeat package('PING') to remote address
+     */
+    protected void heartbeat(Connection connection) throws IOException {
+        SocketAddress remote = connection.getRemoteAddress();
+        Docker worker = getDocker(remote);
+        if (worker != null) {
+            worker.heartbeat();
+        }
+    }
+
+    //
+    //  Connection Delegate
+    //
+
+    @Override
+    public void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
+        // heartbeat when connection expired
+        if (current != null && current.equals(ConnectionState.EXPIRED)) {
+            try {
+                heartbeat(connection);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        // callback when status changed
+        Delegate delegate = getDelegate();
+        if (delegate != null) {
+            Status s1 = Status.getStatus(previous);
+            Status s2 = Status.getStatus(current);
+            if (!s1.equals(s2)) {
+                delegate.onStatusChanged(s1, s2, connection.getRemoteAddress(), this);
+            }
+        }
+    }
+
+    @Override
+    public void onReceived(byte[] data, SocketAddress remote, Connection connection) {
+        // get docker by remote address
+        Docker worker = getDocker(remote);
+        if (worker == null) {
+            // docker not exists, check the data to decide which docker should be created
+            worker = createDocker(remote, data);
+            if (worker != null) {
+                // the data has already moved into the docker (use data to initialize)
+                // so here pass nothing to process
+                worker.process(null);
+            }
+        } else {
+            // docker exists, call docker.process(data);
+            worker.process(data);
+        }
+    }
+
+    @Override
+    public void onSent(byte[] data, SocketAddress remote, Connection connection) {
+
+    }
+
+    @Override
+    public void onError(Throwable error, byte[] data, SocketAddress remote, Connection connection) {
+
     }
 }

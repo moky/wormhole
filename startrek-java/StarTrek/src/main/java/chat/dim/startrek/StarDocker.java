@@ -30,101 +30,128 @@
  */
 package chat.dim.startrek;
 
-import java.lang.ref.WeakReference;
+import java.net.SocketAddress;
 import java.util.Date;
+import java.util.List;
 
-import chat.dim.skywalker.Runner;
+import chat.dim.port.Arrival;
+import chat.dim.port.Departure;
+import chat.dim.port.Docker;
+import chat.dim.port.Gate;
 
-public abstract class StarDocker extends Runner implements Docker {
+public abstract class StarDocker implements Docker {
 
-    private final WeakReference<Gate> gateRef;
+    private final SocketAddress remoteAddress;
 
-    private long heartbeatExpired;
+    private final Dock dock;
 
-    protected StarDocker(Gate gate) {
+    protected StarDocker(SocketAddress remote) {
         super();
-        gateRef = new WeakReference<>(gate);
-        // time for checking heartbeat
-        heartbeatExpired = (new Date()).getTime() + 2000;
+        remoteAddress = remote;
+        dock = createDock();
     }
 
-    public Gate getGate() {
-        return gateRef.get();
+    protected Dock createDock() {
+        return new LockedDock();
+    }
+
+    protected abstract Gate getGate();
+
+    protected abstract Gate.Delegate getDelegate();
+
+    private Gate.Status getStatus() {
+        return getGate().getStatus(remoteAddress);
+    }
+    private boolean isConnected() {
+        return getStatus().equals(Gate.Status.CONNECTED);
+    }
+
+    private void onError(String message, Departure ship) {
+        Gate.Delegate delegate = getDelegate();
+        if (delegate != null) {
+            delegate.onError(new Error(message), ship, remoteAddress, getGate());
+        }
+    }
+
+    private boolean send(Departure outgo) {
+        List<byte[]> fragments = outgo.getFragments();
+        if (fragments == null || fragments.size() == 0) {
+            return true;
+        }
+        int success = 0;
+        Gate gate = getGate();
+        for (byte[] pack : fragments) {
+            if (gate.send(pack, remoteAddress)) {
+                success += 1;
+            }
+        }
+        long now = new Date().getTime();
+        if (outgo.update(now)) {
+            dock.appendDeparture(outgo);
+        }
+        return success == fragments.size();
     }
 
     @Override
     public boolean process() {
-        // 1. process income
-        Ship income = getIncomeShip();
-        if (income != null) {
-            // 1.1. remove linked package
-            removeLinkedShip(income);
-            // 1.2. process income package
-            StarShip res = processIncomeShip(income);
-            if (res != null) {
-                // if res.priority < 0, send the response immediately;
-                // or, put this ship into a waiting queue.
-                getGate().send(res);
-            }
-        }
-        // 2. process outgo
-        StarShip outgo = null;
-        if (getGate().getStatus().equals(Gate.Status.CONNECTED)) {
-            outgo = getOutgoShip();
-        }
-        if (outgo != null) {
-            if (outgo.isExpired()) {
-                // outgo Ship expired, callback
-                Ship.Delegate delegate = outgo.getDelegate();
-                if (delegate != null) {
-                    delegate.onSent(outgo, new Gate.Error(outgo, "Request timeout"));
-                }
-            } else if (!getGate().send(outgo.getPackage())) {
-                // failed to send outgo package, callback
-                Ship.Delegate delegate = outgo.getDelegate();
-                if (delegate != null) {
-                    delegate.onSent(outgo, new Gate.Error(outgo, "Connection error"));
-                }
-            }
-        }
-        // 3. heartbeat
-        if (income == null && outgo == null) {
-            // check time for next heartbeat
-            long now = (new Date()).getTime();
-            if (now > heartbeatExpired) {
-                if (getGate().isExpired()) {
-                    StarShip beat = getHeartbeat();
-                    if (beat != null) {
-                        // put the heartbeat into waiting queue
-                        getGate().parkShip(beat);
-                    }
-                }
-                // try heartbeat next 2 seconds
-                heartbeatExpired = now + 2000;
-            }
+        // 1. check gate status
+        if (!isConnected()) {
+            // not connected yet
             return false;
-        } else {
-            return true;
         }
+        // 2. get outgo
+        Departure outgo = getOutgoShip();
+        if (outgo == null) {
+            // nothing to do now
+            return false;
+        }
+        // 3. process outgo
+        long now = (new Date()).getTime();
+        if (outgo.isFailed(now)) {
+            // outgo Ship expired, callback
+            onError("Request timeout", outgo);
+        } else if (!send(outgo)) {
+            // failed to send outgo package, callback
+            onError("Connection error", outgo);
+        }
+        return true;
+    }
+
+    @Override
+    public void process(byte[] data) {
+        // 1. get income ship from data package
+        Arrival income = getIncomeShip(data);
+        if (income == null) {
+            // incomplete data package?
+            return;
+        } else {
+            // remove linked ship (same SN, same page index)
+            removeLinkedShip(income);
+        }
+        // 2. assemble package if incoming package is a fragment
+        income = dock.assembleArrival(income);
+        if (income == null) {
+            // it's a fragment
+            return;
+        }
+        // 3. callback
+        Gate.Delegate delegate = getDelegate();
+        assert delegate != null : "gate delegate should not empty";
+        delegate.onReceived(income, remoteAddress, getGate());
     }
 
     /**
      *  Get income Ship from Connection
      */
-    protected abstract Ship getIncomeShip();
+    protected abstract Arrival getIncomeShip(byte[] data);
 
-    /**
-     *  Process income Ship
-     */
-    protected abstract StarShip processIncomeShip(Ship income);
-
-    protected void removeLinkedShip(Ship income) {
-        StarShip linked = getOutgoShip(income);
+    protected void removeLinkedShip(Arrival income) {
+        Departure linked = dock.checkResponse(income);
         if (linked != null) {
             // callback for the linked outgo Ship and remove it
-            Ship.Delegate delegate = linked.getDelegate();
+            Gate.Delegate delegate = getDelegate();
             if (delegate != null) {
-                delegate.onSent(linked, null);
+                delegate.onSent(linked, remoteAddress, getGate());
             }
         }
     }
@@ -132,27 +159,23 @@ public abstract class StarDocker extends Runner implements Docker {
     /**
      *  Get outgo Ship from waiting queue
      */
-    protected StarShip getOutgoShip() {
-        // get next new task (time == 0)
-        StarShip outgo = getGate().pullShip();
-        if (outgo == null) {
-            // no more new task now, get any expired task
-            outgo = getGate().anyShip();
-        }
-        return outgo;
+    protected Departure getOutgoShip() {
+        return dock.getNextDeparture();
     }
 
     /**
-     *  get task with ID (income.SN)
+     *  Get an empty ship
      */
-    protected StarShip getOutgoShip(Ship income) {
-        return getGate().pullShip(income.getSN());
+    @Override
+    public void heartbeat() {
+        //send(pack(PING, Departure.Priority.SLOWER.value));
     }
 
-    /**
-     *  Get an empty ship for keeping connection alive
-     */
-    protected StarShip getHeartbeat() {
-        return null;
-    }
+    //
+    //  Command bodies
+    //
+    protected static final byte[] PING = {'P', 'I', 'N', 'G'};
+    protected static final byte[] PONG = {'P', 'O', 'N', 'G'};
+    protected static final byte[] NOOP = {'N', 'O', 'O', 'P'};
+    protected static final byte[] OK = {'O', 'K'};
 }

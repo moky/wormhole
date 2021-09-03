@@ -2,12 +2,12 @@
  *
  *  Star Trek: Interstellar Transport
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,43 +30,30 @@
  */
 package chat.dim.startrek;
 
-/**
- *  Star Ship
- *  ~~~~~~~~~
- *
- *  Container carrying data package
- */
-public interface Ship {
+import chat.dim.port.Arrival;
+
+public abstract class ArrivalShip implements Arrival {
 
     /**
-     *  Get the data package in this Ship
-     *
-     * @return the whole package
+     *  Arrival task will be expired after 10 minutes if still not completed.
      */
-    byte[] getPackage();
+    public static long EXPIRES = 600 * 1000; // milliseconds
 
-    /**
-     *  Get ID for this Ship
-     *
-     * @return SN
-     */
-    byte[] getSN();
+    private long expired;
 
-    /**
-     *  Get data in this Ship
-     *
-     * @return payload
-     */
-    byte[] getPayload();
+    protected ArrivalShip() {
+        super();
+        expired = 0;  // expired time (timestamp in milliseconds)
+    }
 
-    interface Delegate {
+    @Override
+    public boolean isFailed(long now) {
+        return now > expired;
+    }
 
-        /**
-         *  Callback when package sent
-         *
-         * @param ship      - package container
-         * @param error     - null on success
-         */
-        void onSent(Ship ship, Error error);
+    @Override
+    public boolean update(long now) {
+        expired = now + EXPIRES;
+        return true;
     }
 }

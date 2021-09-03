@@ -37,7 +37,7 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.Date;
 
-public abstract class BaseConnection<P> implements Connection<P>, StateDelegate {
+public class BaseConnection implements Connection, StateDelegate {
 
     /*  Maximum Segment Size
      *  ~~~~~~~~~~~~~~~~~~~~
@@ -54,7 +54,7 @@ public abstract class BaseConnection<P> implements Connection<P>, StateDelegate 
 
     private final StateMachine fsm;
 
-    private WeakReference<Delegate<P>> delegateRef;
+    private WeakReference<Delegate> delegateRef;
 
     protected Channel channel;
 
@@ -85,14 +85,14 @@ public abstract class BaseConnection<P> implements Connection<P>, StateDelegate 
         return machine;
     }
 
-    public Delegate<P> getDelegate() {
+    public Delegate getDelegate() {
         if (delegateRef == null) {
             return null;
         } else {
             return delegateRef.get();
         }
     }
-    public void setDelegate(Delegate<P> delegate) {
+    public void setDelegate(Delegate delegate) {
         if (delegate == null) {
             delegateRef = null;
         } else {
@@ -100,13 +100,12 @@ public abstract class BaseConnection<P> implements Connection<P>, StateDelegate 
         }
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public boolean equals(Object other) {
         if (this == other) {
             return true;
         } else if (other instanceof Connection) {
-            Connection<P> conn = (Connection<P>) other;
+            Connection conn = (Connection) other;
             return addressEqual(getRemoteAddress(), conn.getRemoteAddress()) &&
                     addressEqual(getLocalAddress(), conn.getLocalAddress());
         } else {
@@ -258,6 +257,35 @@ public abstract class BaseConnection<P> implements Connection<P>, StateDelegate 
         }
     }
 
+    @Override
+    public int send(byte[] pack, SocketAddress destination) {
+        ByteBuffer buffer = ByteBuffer.allocate(pack.length);
+        buffer.put(pack);
+        buffer.flip();
+        // try to send data
+        Throwable error = null;
+        int sent;
+        try {
+            sent = send(buffer, destination);
+            if (sent == -1) {
+                error = new Error("failed to send data: " + pack.length + " byte(s) to " + destination);
+            }
+        } catch (IOException e) {
+            error = e;
+            sent = -1;
+        }
+        // callback
+        Delegate delegate = getDelegate();
+        if (delegate != null) {
+            if (sent == -1) {
+                delegate.onError(error, pack, destination, this);
+            } else {
+                delegate.onSent(pack, destination, this);
+            }
+        }
+        return sent;
+    }
+
     //
     //  States
     //
@@ -291,6 +319,10 @@ public abstract class BaseConnection<P> implements Connection<P>, StateDelegate 
                 activated = process();
             } catch (IOException e) {
                 //e.printStackTrace();
+                Delegate delegate = getDelegate();
+                if (delegate != null) {
+                    delegate.onError(e, null, null, this);
+                }
             }
         } else {
             activated = false;
@@ -298,7 +330,7 @@ public abstract class BaseConnection<P> implements Connection<P>, StateDelegate 
     }
 
     private boolean process() throws IOException {
-        Delegate<P> delegate = getDelegate();
+        Delegate delegate = getDelegate();
         if (delegate == null) {
             return false;
         }
@@ -312,15 +344,10 @@ public abstract class BaseConnection<P> implements Connection<P>, StateDelegate 
         byte[] data = new byte[buffer.position()];
         buffer.flip();
         buffer.get(data);
-        P pack = parse(data, remote);
         // callback
-        if (pack != null) {
-            delegate.onConnectionDataReceived(this, remote, pack);
-        }
+        delegate.onReceived(data, remote, this);
         return true;
     }
-
-    protected abstract P parse(byte[] data, SocketAddress remote);
 
     public void start() {
         fsm.start();
@@ -352,9 +379,9 @@ public abstract class BaseConnection<P> implements Connection<P>, StateDelegate 
             }
         }
         // callback
-        Delegate<P> delegate = getDelegate();
+        Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onConnectionStateChanged(this, previous, current);
+            delegate.onStateChanged(previous, current, this);
         }
     }
 
@@ -367,12 +394,4 @@ public abstract class BaseConnection<P> implements Connection<P>, StateDelegate 
     public void resumeState(ConnectionState current, StateMachine ctx) {
 
     }
-
-    //
-    //  Command bodies
-    //
-    protected static final byte[] PING = {'P', 'I', 'N', 'G'};
-    protected static final byte[] PONG = {'P', 'O', 'N', 'G'};
-    protected static final byte[] NOOP = {'N', 'O', 'O', 'P'};
-    protected static final byte[] OK = {'O', 'K'};
 }

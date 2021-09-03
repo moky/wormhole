@@ -28,26 +28,36 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.startrek;
-
-import chat.dim.skywalker.Handler;
-import chat.dim.skywalker.Processor;
+package chat.dim.port;
 
 /**
- *  Star Worker
- *  ~~~~~~~~~~~
+ *  Star Ship
+ *  ~~~~~~~~~
  *
- *  Processor for Star Ships
+ *  Container carrying data package
  */
-public interface Docker extends Handler, Processor {
+public interface Ship {
 
     /**
-     *  Pack the payload to an outgo Ship
+     *  Get ID for this Ship
      *
-     * @param payload  - request data
-     * @param priority - smaller is faster (-1 is the most fast)
-     * @param delegate - callback
-     * @return StarShip containing payload
+     * @return SN
      */
-    StarShip pack(byte[] payload, int priority, Ship.Delegate delegate);
+    byte[] getSN();
+
+    /**
+     *  Check whether task failed
+     *
+     * @param now - current time
+     * @return true on failed
+     */
+    boolean isFailed(long now);
+
+    /**
+     *  Update expired time
+     *
+     * @param now - current time
+     * @return false on error (nothing changed)
+     */
+    boolean update(long now);
 }
