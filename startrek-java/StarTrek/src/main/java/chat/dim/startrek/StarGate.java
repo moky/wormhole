@@ -47,7 +47,17 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
 
     private final Map<SocketAddress, Docker> dockerMap = new HashMap<>();
 
-    private WeakReference<Delegate> delegateRef = null;
+    private final WeakReference<Delegate> delegateRef;
+
+    protected StarGate(Delegate delegate) {
+        super();
+        delegateRef = new WeakReference<>(delegate);
+    }
+
+    protected abstract Connection getConnection(SocketAddress remote);
+
+    // create new Docker with data (advance party)
+    protected abstract Docker createDocker(SocketAddress remote, byte[] data);
 
     public Docker getDocker(SocketAddress remote) {
         return dockerMap.get(remote);
@@ -66,18 +76,7 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
     }
 
     public Gate.Delegate getDelegate() {
-        if (delegateRef == null) {
-            return null;
-        } else {
-            return delegateRef.get();
-        }
-    }
-    public void setDelegate(Delegate delegate) {
-        if (delegate == null) {
-            delegateRef = null;
-        } else {
-            delegateRef = new WeakReference<>(delegate);
-        }
+        return delegateRef.get();
     }
 
     @Override
@@ -98,11 +97,6 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
         }
         return conn.send(data, remote) != -1;
     }
-
-    protected abstract Connection getConnection(SocketAddress remote);
-
-    // create new Docker with the advance party
-    protected abstract Docker createDocker(SocketAddress remote, byte[] data);
 
     //
     //  Runner

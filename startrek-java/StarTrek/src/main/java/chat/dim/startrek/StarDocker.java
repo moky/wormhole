@@ -41,7 +41,7 @@ import chat.dim.port.Gate;
 
 public abstract class StarDocker implements Docker {
 
-    private final SocketAddress remoteAddress;
+    protected final SocketAddress remoteAddress;
 
     private final Dock dock;
 
@@ -85,10 +85,6 @@ public abstract class StarDocker implements Docker {
                 success += 1;
             }
         }
-        long now = new Date().getTime();
-        if (outgo.update(now)) {
-            dock.appendDeparture(outgo);
-        }
         return success == fragments.size();
     }
 
@@ -99,14 +95,14 @@ public abstract class StarDocker implements Docker {
             // not connected yet
             return false;
         }
+        long now = (new Date()).getTime();
         // 2. get outgo
-        Departure outgo = getOutgoShip();
+        Departure outgo = getOutgoShip(now);
         if (outgo == null) {
             // nothing to do now
             return false;
         }
         // 3. process outgo
-        long now = (new Date()).getTime();
         if (outgo.isFailed(now)) {
             // outgo Ship expired, callback
             onError("Request timeout", outgo);
@@ -125,19 +121,15 @@ public abstract class StarDocker implements Docker {
             // incomplete data package?
             return;
         } else {
-            // remove linked ship (same SN, same page index)
+            // 2. remove linked ship (same SN, same page index)
             removeLinkedShip(income);
         }
-        // 2. assemble package if incoming package is a fragment
+        // 3. assemble package if incoming package is a fragment
         income = dock.assembleArrival(income);
-        if (income == null) {
-            // it's a fragment
-            return;
+        if (income != null) {
+            // 4. process as a complete package
+            processIncomeShip(income);
         }
-        // 3. callback
-        Gate.Delegate delegate = getDelegate();
-        assert delegate != null : "gate delegate should not empty";
-        delegate.onReceived(income, remoteAddress, getGate());
     }
 
     /**
@@ -156,19 +148,19 @@ public abstract class StarDocker implements Docker {
         }
     }
 
-    /**
-     *  Get outgo Ship from waiting queue
-     */
-    protected Departure getOutgoShip() {
-        return dock.getNextDeparture();
+    protected void processIncomeShip(final Arrival income) {
+        Gate.Delegate delegate = getDelegate();
+        assert delegate != null : "gate delegate should not empty";
+        delegate.onReceived(income, remoteAddress, getGate());
     }
 
     /**
-     *  Get an empty ship
+     *  Get outgo Ship from waiting queue
      */
-    @Override
-    public void heartbeat() {
-        //send(pack(PING, Departure.Priority.SLOWER.value));
+    protected Departure getOutgoShip(final long now) {
+        // this will be remove from the cache
+        // if needs retry, the caller should append it back to the queue
+        return dock.getNextDeparture(now);
     }
 
     //

@@ -31,23 +31,26 @@
 package chat.dim.net;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 
-public abstract class ActiveRawDataHub extends RawDataHub {
+public abstract class PlainHub extends BaseHub {
 
-    public ActiveRawDataHub(Connection.Delegate<byte[]> delegate) {
-        super(delegate);
+    private final WeakReference<Connection.Delegate> delegateRef;
+
+    public PlainHub(Connection.Delegate delegate) {
+        super();
+        delegateRef = new WeakReference<>(delegate);
+    }
+
+    public Connection.Delegate getDelegate() {
+        return delegateRef.get();
     }
 
     @Override
-    protected Connection<byte[]> createConnection(SocketAddress remote, SocketAddress local) {
-        // create connection with addresses
-        ActiveRawDataConnection conn = new ActiveRawDataConnection(remote, local) {
-            @Override
-            protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
-                return createChannel(remote, local);
-            }
-        };
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
+        // create connection with channel
+        BaseConnection conn = new BaseConnection(createChannel(remote, local), remote, local);
         // set delegate
         if (conn.getDelegate() == null) {
             conn.setDelegate(getDelegate());
@@ -56,4 +59,6 @@ public abstract class ActiveRawDataHub extends RawDataHub {
         conn.start();
         return conn;
     }
+
+    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
 }

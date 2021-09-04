@@ -50,14 +50,14 @@ public interface Docker extends Processor {
     Departure pack(byte[] payload, int priority);
 
     /**
-     *  Send 'PING' for keeping connection alive
-     */
-    void heartbeat();
-
-    /**
      *  Called when received data
      *
      * @param data   - received data package
      */
     void process(byte[] data);
+
+    /**
+     *  Send 'PING' for keeping connection alive
+     */
+    void heartbeat();
 }

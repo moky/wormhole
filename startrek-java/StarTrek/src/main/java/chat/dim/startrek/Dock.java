@@ -92,10 +92,11 @@ public class Dock {
     /**
      *  Get next timeout task
      *
+     * @param now - current time
      * @return departure task
      */
-    public Departure getNextDeparture() {
-        return departureHall.getNextDeparture();
+    public Departure getNextDeparture(final long now) {
+        return departureHall.getNextDeparture(now);
     }
 
     /**

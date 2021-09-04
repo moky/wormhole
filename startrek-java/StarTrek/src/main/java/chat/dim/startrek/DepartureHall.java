@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -148,19 +149,22 @@ public class DepartureHall {
     /**
      *  Get next new/timeout task
      *
+     * @param now - current time
      * @return departure task
      */
-    public Departure getNextDeparture() {
+    public Departure getNextDeparture(final long now) {
         // task.retries == 0
-        Departure next = getNextNewDeparture();
+        Departure next = getNextNewDeparture(now);
         if (next == null) {
             // task.retries <= MAX_RETRIES and timeout
-            next = getNextTimeoutDeparture();
+            next = getNextTimeoutDeparture(now);
         }
         return next;
     }
-    private Departure getNextNewDeparture() {
+    private Departure getNextNewDeparture(final long now) {
         List<Departure> fleet;
+        Iterator<Departure> iterator;
+        Departure ship;
         for (int priority : priorities) {
             // 1. get tasks with priority
             fleet = departureFleets.get(priority);
@@ -168,21 +172,23 @@ public class DepartureHall {
                 continue;
             }
             // 2. seeking new task in this priority
-            for (Departure ship : fleet) {
-                if (ship.getRetries() == 0) {
-                    // let the caller to update expired time and retries
-                    fleet.remove(ship);
+            iterator = fleet.iterator();
+            while (iterator.hasNext()) {
+                ship = iterator.next();
+                if (ship.getRetries() == -1) {
+                    // first time to try
+                    ship.update(now);
+                    iterator.remove();
                     return ship;
                 }
             }
         }
         return null;
     }
-    private Departure getNextTimeoutDeparture() {
-        final Set<Departure> failedTasks = new HashSet<>();
-        final long now = (new Date()).getTime();
-        Departure retrying = null;
+    private Departure getNextTimeoutDeparture(final long now) {
         List<Departure> fleet;
+        Iterator<Departure> iterator;
+        Departure ship;
         for (int priority : priorities) {
             // 1. get tasks with priority
             fleet = departureFleets.get(priority);
@@ -190,26 +196,18 @@ public class DepartureHall {
                 continue;
             }
             // 2. seeking timeout task in this priority
-            failedTasks.clear();
-            for (Departure ship : fleet) {
+            iterator = fleet.iterator();
+            while (iterator.hasNext()) {
+                ship = iterator.next();
                 if (ship.isTimeout(now)) {
-                    // let the caller to update expired time and retries
-                    retrying = ship;
-                    break;
+                    // update time and retry
+                    ship.update(now);
+                    iterator.remove();
+                    return ship;
+                } else if (ship.isFailed(now)) {
+                    // task expired, remove it
+                    iterator.remove();
                 }
-                if (ship.isFailed(now)) {
-                    // task expired
-                    failedTasks.add(ship);
-                }
-            }
-            // 3. clear expired tasks
-            if (failedTasks.size() > 0) {
-                clear(fleet, failedTasks, priority);
-            }
-
-            if (retrying != null) {
-                // got it
-                return retrying;
             }
         }
         return null;

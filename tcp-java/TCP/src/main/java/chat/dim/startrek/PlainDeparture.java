@@ -28,54 +28,35 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.startrek;
 
-import java.io.IOException;
-import java.net.SocketAddress;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
-public abstract class ActiveRawDataConnection extends ActiveConnection<byte[]> {
+import chat.dim.port.Arrival;
 
-    public ActiveRawDataConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
-        super(byteChannel, remote, local);
-    }
+public class PlainDeparture extends DepartureShip {
 
-    public ActiveRawDataConnection(SocketAddress remote, SocketAddress local) {
-        super(remote, local);
-    }
+    private final List<byte[]> fragments;
 
-    @Override
-    public int send(byte[] pack, SocketAddress destination) throws IOException {
-        ByteBuffer buffer = ByteBuffer.allocate(pack.length);
-        buffer.put(pack);
-        buffer.flip();
-        return send(buffer, destination);
+    public PlainDeparture(int prior, byte[] pack) {
+        super(prior);
+        fragments = new ArrayList<>();
+        fragments.add(pack);
     }
 
     @Override
-    public void heartbeat() throws IOException {
-        send(PING, getRemoteAddress());
+    public byte[] getSN() {
+        return null;
     }
 
     @Override
-    protected byte[] parse(byte[] data, SocketAddress remote) {
-        if (data.length < 6) {
-            if (Arrays.equals(data, PING)) {
-                // PING -> PONG
-                try {
-                    send(PONG, remote);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                return null;
-            } else if (Arrays.equals(data, PONG) ||
-                    Arrays.equals(data, NOOP) ||
-                    Arrays.equals(data, OK)) {
-                // ignore them
-                return null;
-            }
-        }
-        return data;
+    public List<byte[]> getFragments() {
+        return fragments;
+    }
+
+    @Override
+    public boolean checkResponse(Arrival arrival) {
+        return false;
     }
 }

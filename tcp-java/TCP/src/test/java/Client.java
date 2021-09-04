@@ -6,18 +6,21 @@ import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
 
-import chat.dim.net.ActiveRawDataHub;
+import chat.dim.net.ActivePlainHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
-import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
+import chat.dim.port.Arrival;
+import chat.dim.port.Departure;
+import chat.dim.port.Gate;
+import chat.dim.startrek.PlainArrival;
 import chat.dim.tcp.StreamChannel;
 
-class ClientHub extends ActiveRawDataHub {
+class ClientHub extends ActivePlainHub {
 
     private boolean running = false;
 
-    public ClientHub(Connection.Delegate<byte[]> delegate) {
+    public ClientHub(Connection.Delegate delegate) {
         super(delegate);
     }
 
@@ -41,67 +44,53 @@ class ClientHub extends ActiveRawDataHub {
     }
 }
 
-public class Client implements Runnable, Connection.Delegate<byte[]> {
+public class Client implements Runnable, Gate.Delegate {
 
     private final SocketAddress localAddress;
     private final SocketAddress remoteAddress;
-    private final ClientHub hub;
+
+    private final TCPGate<ClientHub> gate;
 
     Client(SocketAddress local, SocketAddress remote) {
         super();
         localAddress = local;
         remoteAddress = remote;
-        hub = new ClientHub(this);
-    }
-
-    static void info(String msg) {
-        System.out.printf("%s\n", msg);
-    }
-    static void info(byte[] data) {
-        info(new String(data, StandardCharsets.UTF_8));
-    }
-
-    static void idle(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        gate = new TCPGate<>(this);
+        gate.hub = new ClientHub(gate);
     }
 
     @Override
-    public void onConnectionStateChanged(Connection<byte[]> connection, ConnectionState previous, ConnectionState current) {
-        info("!!! connection ("
-                + connection.getLocalAddress() + ", "
-                + connection.getRemoteAddress() + ") state changed: "
-                + previous + " -> " + current);
+    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, Gate gate) {
+        TCPGate.info("!!! connection (" + remote + ") state changed: " + oldStatus + " -> " + newStatus);
     }
 
     @Override
-    public void onConnectionDataReceived(Connection<byte[]> connection, SocketAddress remote, byte[] pack) {
+    public void onReceived(Arrival ship, SocketAddress remote, Gate gate) {
+        assert ship instanceof PlainArrival : "income ship error: " + ship;
+        byte[] pack = ((PlainArrival) ship).getData();
         String text = new String(pack, StandardCharsets.UTF_8);
-        info("<<< received (" + pack.length + " bytes) from " + remote + ": " + text);
+        TCPGate.info("<<< received (" + pack.length + " bytes) from " + remote + ": " + text);
+    }
+
+    @Override
+    public void onSent(Departure ship, SocketAddress remote, Gate gate) {
+
+    }
+
+    @Override
+    public void onError(Error error, Departure ship, SocketAddress remote, Gate gate) {
+
     }
 
     private void send(byte[] data) {
-        try {
-            hub.send(data, localAddress, remoteAddress);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-    private void disconnect() {
-        try {
-            hub.disconnect(remoteAddress, localAddress);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        boolean ok = gate.send(data, remoteAddress);
+        assert ok;
     }
 
     public void start() {
         try {
-            hub.connect(remoteAddress, localAddress);
-            hub.start();
+            gate.hub.connect(remoteAddress, localAddress);
+            gate.hub.start();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -109,16 +98,15 @@ public class Client implements Runnable, Connection.Delegate<byte[]> {
     }
 
     void stop() {
-        disconnect();
-        hub.stop();
+        gate.hub.stop();
     }
 
     @Override
     public void run() {
-        while (hub.isRunning()) {
-            hub.tick();
-            if (hub.getActivatedCount() == 0) {
-                idle(8);
+        while (gate.hub.isRunning()) {
+            gate.hub.tick();
+            if (gate.hub.getActivatedCount() == 0) {
+                TCPGate.idle(8);
             }
         }
     }
@@ -134,10 +122,10 @@ public class Client implements Runnable, Connection.Delegate<byte[]> {
 
         for (int index = 0; index < 16; ++index) {
             data = (index + " sheep:" + text).getBytes();
-            info(">>> sending (" + data.length + " bytes): ");
-            info(data);
+            TCPGate.info(">>> sending (" + data.length + " bytes): ");
+            TCPGate.info(data);
             send(data);
-            idle(2000);
+            TCPGate.idle(2000);
         }
     }
 
@@ -158,7 +146,7 @@ public class Client implements Runnable, Connection.Delegate<byte[]> {
 
         SocketAddress local = new InetSocketAddress(Client.HOST, Client.PORT);
         SocketAddress remote = new InetSocketAddress(Server.HOST, Server.PORT);
-        info("Connecting TCP server (" + local + "->" + remote + ") ...");
+        TCPGate.info("Connecting TCP server (" + local + "->" + remote + ") ...");
 
         Client client = new Client(local, remote);
 

@@ -2,12 +2,12 @@
  *
  *  Star Trek: Interstellar Transport
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,37 +28,30 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.startrek;
 
-import java.io.IOException;
-import java.lang.ref.WeakReference;
-import java.net.SocketAddress;
+import chat.dim.port.Arrival;
 
-public abstract class RawDataHub extends BaseHub<byte[]> {
+public class PlainArrival extends ArrivalShip {
 
-    private final WeakReference<Connection.Delegate<byte[]>> delegateRef;
+    private final byte[] data;
 
-    public RawDataHub(Connection.Delegate<byte[]> delegate) {
+    public PlainArrival(byte[] pack) {
         super();
-        delegateRef = new WeakReference<>(delegate);
+        data = pack;
     }
 
-    public Connection.Delegate<byte[]> getDelegate() {
-        return delegateRef.get();
+    public byte[] getData() {
+        return data;
     }
 
     @Override
-    protected Connection<byte[]> createConnection(SocketAddress remote, SocketAddress local) throws IOException {
-        // create connection with channel
-        RawDataConnection conn = new RawDataConnection(createChannel(remote, local), remote, local);
-        // set delegate
-        if (conn.getDelegate() == null) {
-            conn.setDelegate(getDelegate());
-        }
-        // start FSM
-        conn.start();
-        return conn;
+    public byte[] getSN() {
+        return null;
     }
 
-    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
+    @Override
+    public Arrival assemble(Arrival arrival) {
+        return arrival;
+    }
 }

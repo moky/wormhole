@@ -2,12 +2,12 @@
  *
  *  Star Trek: Interstellar Transport
  *
- *                                Written in 2021 by Moky <albert.moky@gmail.com>
+ *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2021 Albert Moky
+ * Copyright (c) 2020 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,41 +32,28 @@ package chat.dim.net;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
 
-public class RawDataConnection extends BaseConnection<byte[]> {
+public abstract class ActivePlainHub extends PlainHub {
 
-    public RawDataConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
-        super(byteChannel, remote, local);
+    public ActivePlainHub(Connection.Delegate delegate) {
+        super(delegate);
     }
 
     @Override
-    public int send(byte[] pack, SocketAddress destination) throws IOException {
-        ByteBuffer buffer = ByteBuffer.allocate(pack.length);
-        buffer.put(pack);
-        buffer.flip();
-        return send(buffer, destination);
-    }
-
-    @Override
-    protected byte[] parse(byte[] data, SocketAddress remote) {
-        if (data.length < 6) {
-            if (Arrays.equals(data, PING)) {
-                // PING -> PONG
-                try {
-                    send(PONG, remote);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                return null;
-            } else if (Arrays.equals(data, PONG) ||
-                    Arrays.equals(data, NOOP) ||
-                    Arrays.equals(data, OK)) {
-                // ignore them
-                return null;
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
+        // create connection with addresses
+        ActiveConnection conn = new ActiveConnection(remote, local) {
+            @Override
+            protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
+                return createChannel(remote, local);
             }
+        };
+        // set delegate
+        if (conn.getDelegate() == null) {
+            conn.setDelegate(getDelegate());
         }
-        return data;
+        // start FSM
+        conn.start();
+        return conn;
     }
 }

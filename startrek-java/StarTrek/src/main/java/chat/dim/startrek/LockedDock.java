@@ -81,12 +81,12 @@ public class LockedDock extends Dock {
     }
 
     @Override
-    public Departure getNextDeparture() {
+    public Departure getNextDeparture(final long now) {
         final Departure next;
         final Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            next = super.getNextDeparture();
+            next = super.getNextDeparture(now);
         } finally {
             writeLock.unlock();
         }
