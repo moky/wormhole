@@ -6,32 +6,22 @@ import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
 
-import chat.dim.mtp.ActivePackageHub;
 import chat.dim.mtp.Package;
+import chat.dim.mtp.PackageArrival;
+import chat.dim.mtp.PackageDeparture;
+import chat.dim.net.ActivePackageHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
-import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
+import chat.dim.port.Arrival;
+import chat.dim.port.Departure;
+import chat.dim.port.Gate;
 import chat.dim.udp.PackageChannel;
 
 class ClientHub extends ActivePackageHub {
 
-    private boolean running = false;
-
-    public ClientHub(Connection.Delegate<Package> delegate) {
+    public ClientHub(Connection.Delegate delegate) {
         super(delegate);
-    }
-
-    boolean isRunning() {
-        return running;
-    }
-
-    void start() {
-        running = true;
-    }
-
-    void stop() {
-        running = false;
     }
 
     @Override
@@ -42,88 +32,65 @@ class ClientHub extends ActivePackageHub {
     }
 }
 
-public class Client implements Runnable, Connection.Delegate<Package> {
+public class Client implements Gate.Delegate {
 
     private final SocketAddress localAddress;
     private final SocketAddress remoteAddress;
-    private final ClientHub hub;
+
+    private final UDPGate<ClientHub> gate;
 
     Client(SocketAddress local, SocketAddress remote) {
         super();
         localAddress = local;
         remoteAddress = remote;
-        hub = new ClientHub(this);
+        gate = new UDPGate<>(this);
+        gate.hub = new ClientHub(gate);
     }
 
-    static void info(String msg) {
-        System.out.printf("%s\n", msg);
-    }
-    static void info(byte[] data) {
-        info(new String(data, StandardCharsets.UTF_8));
-    }
-
-    static void idle(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void onConnectionStateChanged(Connection<Package> connection, ConnectionState previous, ConnectionState current) {
-        info("!!! connection ("
-                + connection.getLocalAddress() + ", "
-                + connection.getRemoteAddress() + ") state changed: "
-                + previous + " -> " + current);
-    }
-
-    @Override
-    public void onConnectionDataReceived(Connection<Package> connection, SocketAddress remote, Package pack) {
-        byte[] payload = pack.body.getBytes();
-        String text = new String(payload, StandardCharsets.UTF_8);
-        info("<<< received (" + payload.length + " bytes) from " + remote + ": " + text);
-    }
-
-    private void send(byte[] data) {
-        try {
-            hub.sendCommand(data, localAddress, remoteAddress);
-            hub.sendMessage(data, localAddress, remoteAddress);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-    private void disconnect() {
-        try {
-            hub.disconnect(remoteAddress, localAddress);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void start() {
-        try {
-            hub.connect(remoteAddress, localAddress);
-            hub.start();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        new Thread(this).start();
+    public void start() throws IOException {
+        gate.hub.connect(remoteAddress, localAddress);
+        gate.start();
     }
 
     void stop() {
-        disconnect();
-        hub.stop();
+        gate.stop();
+    }
+
+    private void send(byte[] data) {
+        gate.sendCommand(data, remoteAddress);
+        gate.sendMessage(data, remoteAddress);
+    }
+
+    //
+    //  Gate Delegate
+    //
+
+    @Override
+    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, Gate gate) {
+        UDPGate.info("!!! connection (" + remote + ") state changed: " + oldStatus + " -> " + newStatus);
     }
 
     @Override
-    public void run() {
-        while (hub.isRunning()) {
-            hub.tick();
-            if (hub.getActivatedCount() == 0) {
-                idle(8);
-            }
-        }
+    public void onReceived(Arrival ship, SocketAddress remote, Gate gate) {
+        assert ship instanceof PackageArrival : "income ship error: " + ship;
+        Package pack = ((PackageArrival) ship).getPackage();
+        int headLen = pack.head.getSize();
+        int bodyLen = pack.body.getSize();
+        byte[] payload = pack.body.getBytes();
+        String text = new String(payload, StandardCharsets.UTF_8);
+        UDPGate.info("<<< received (" + headLen + " + " + bodyLen + " bytes) from " + remote + ": " + text);
+    }
+
+    @Override
+    public void onSent(Departure ship, SocketAddress remote, Gate gate) {
+        assert ship instanceof PackageDeparture;
+        int bodyLen = ((PackageDeparture) ship).bodyLength;
+        UDPGate.info("message sent: " + bodyLen + " byte(s) to " + remote);
+    }
+
+    @Override
+    public void onError(Error error, Departure ship, SocketAddress remote, Gate gate) {
+        UDPGate.error(error.getMessage());
     }
 
     void test() {
@@ -137,10 +104,10 @@ public class Client implements Runnable, Connection.Delegate<Package> {
 
         for (int index = 0; index < 16; ++index) {
             data = (index + " sheep:" + text).getBytes();
-            info(">>> sending (" + data.length + " bytes): ");
-            info(data);
+            UDPGate.info(">>> sending (" + data.length + " bytes): ");
+            UDPGate.info(data);
             send(data);
-            idle(2000);
+            UDPGate.idle(2000);
         }
     }
 
@@ -157,11 +124,11 @@ public class Client implements Runnable, Connection.Delegate<Package> {
         }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
 
         SocketAddress local = new InetSocketAddress(Client.HOST, Client.PORT);
         SocketAddress remote = new InetSocketAddress(Server.HOST, Server.PORT);
-        info("Connecting UDP server (" + local + "->" + remote + ") ...");
+        UDPGate.info("Connecting UDP server (" + local + " -> " + remote + ") ...");
 
         Client client = new Client(local, remote);
 

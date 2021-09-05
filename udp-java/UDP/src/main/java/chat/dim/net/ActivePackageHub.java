@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  MTP: Message Transfer Protocol
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,33 +28,26 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.mtp;
+package chat.dim.net;
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 
-import chat.dim.net.BaseHub;
-import chat.dim.net.Channel;
-import chat.dim.net.Connection;
+public abstract class ActivePackageHub extends PackageHub {
 
-public abstract class PackageHub extends BaseHub<Package> {
-
-    private final WeakReference<Connection.Delegate<Package>> delegateRef;
-
-    public PackageHub(Connection.Delegate<Package> delegate) {
-        super();
-        delegateRef = new WeakReference<>(delegate);
-    }
-
-    public Connection.Delegate<Package> getDelegate() {
-        return delegateRef.get();
+    public ActivePackageHub(Connection.Delegate delegate) {
+        super(delegate);
     }
 
     @Override
-    protected Connection<Package> createConnection(SocketAddress remote, SocketAddress local) throws IOException {
-        // create connection with channel
-        PackageConnection conn = new PackageConnection(createChannel(remote, local), remote, local);
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
+        // create connection with addresses
+        ActiveConnection conn = new ActiveConnection(remote, local) {
+            @Override
+            protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
+                return createChannel(remote, local);
+            }
+        };
         // set delegate
         if (conn.getDelegate() == null) {
             conn.setDelegate(getDelegate());
@@ -62,21 +55,5 @@ public abstract class PackageHub extends BaseHub<Package> {
         // start FSM
         conn.start();
         return conn;
-    }
-
-    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
-
-    public void sendCommand(byte[] body, SocketAddress source, SocketAddress destination) throws IOException {
-        Connection<Package> conn = connect(destination, source);
-        if (conn instanceof PackageConnection) {
-            ((PackageConnection) conn).sendCommand(body, destination);
-        }
-    }
-
-    public void sendMessage(byte[] body, SocketAddress source, SocketAddress destination) throws IOException {
-        Connection<Package> conn = connect(destination, source);
-        if (conn instanceof PackageConnection) {
-            ((PackageConnection) conn).sendMessage(body, destination);
-        }
     }
 }

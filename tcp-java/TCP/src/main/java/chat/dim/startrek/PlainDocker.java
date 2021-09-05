@@ -82,18 +82,27 @@ public class PlainDocker extends StarDocker {
     }
 
     @Override
-    protected void processIncomeShip(Arrival income) {
+    protected Arrival checkIncomeShip(Arrival income) {
         assert income instanceof PlainArrival : "income ship error: " + income;
         byte[] data = ((PlainArrival) income).getData();
         if (Arrays.equals(data, PING)) {
             // PING -> PONG
-            getGate().send(PONG, remoteAddress);
+            Departure outgo = pack(PONG, Departure.Priority.SLOWER.value);
+            dock.appendDeparture(outgo);
+            return null;
         } else if (Arrays.equals(data, PONG)
                 || Arrays.equals(data, NOOP)) {
             // ignore
-            return;
+            return null;
         }
-        super.processIncomeShip(income);
+        return income;
+    }
+
+    public void sendData(byte[] payload, int priority) {
+        dock.appendDeparture(pack(payload, priority));
+    }
+    public void sendData(byte[] payload) {
+        sendData(payload, Departure.Priority.NORMAL.value);
     }
 
     @Override
@@ -103,7 +112,8 @@ public class PlainDocker extends StarDocker {
 
     @Override
     public void heartbeat() {
-        getGate().send(PING, remoteAddress);
+        Departure outgo = pack(PING, Departure.Priority.SLOWER.value);
+        dock.appendDeparture(outgo);
     }
 
     static final byte[] PING = {'P', 'I', 'N', 'G'};

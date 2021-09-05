@@ -88,22 +88,23 @@ public class DepartureHall {
         return true;
     }
     private void insertPriority(final int priority) {
+        int total = priorities.size();
         int index = 0, value;
         // seeking position for new priority
-        for (; index < priorities.size(); ++index) {
+        for (; index < total; ++index) {
             value = priorities.get(index);
-            if (value < priority) {
-                // current value is smaller than the new value,
-                // keep going
-                continue;
+            if (value == priority) {
+                // duplicated
+                return;
+            } else if (value > priority) {
+                // got it
+                break;
             }
-            if (value > priority) {
-                // insert new value before the bigger one
-                priorities.add(index, priority);
-            }
-            // OK
-            return;
+            // current value is smaller than the new value,
+            // keep going
         }
+        // insert new value before the bigger one
+        priorities.add(index, priority);
     }
 
     /**
@@ -165,6 +166,7 @@ public class DepartureHall {
         List<Departure> fleet;
         Iterator<Departure> iterator;
         Departure ship;
+        byte[] sn;
         for (int priority : priorities) {
             // 1. get tasks with priority
             fleet = departureFleets.get(priority);
@@ -178,7 +180,12 @@ public class DepartureHall {
                 if (ship.getRetries() == -1) {
                     // first time to try
                     ship.update(now);
+                    // remove this ship
                     iterator.remove();
+                    sn = ship.getSN();
+                    if (sn != null) {
+                        departureMap.remove(sn);
+                    }
                     return ship;
                 }
             }
@@ -189,6 +196,7 @@ public class DepartureHall {
         List<Departure> fleet;
         Iterator<Departure> iterator;
         Departure ship;
+        byte[] sn;
         for (int priority : priorities) {
             // 1. get tasks with priority
             fleet = departureFleets.get(priority);
@@ -202,11 +210,20 @@ public class DepartureHall {
                 if (ship.isTimeout(now)) {
                     // update time and retry
                     ship.update(now);
+                    // remove this ship
                     iterator.remove();
+                    sn = ship.getSN();
+                    if (sn != null) {
+                        departureMap.remove(sn);
+                    }
                     return ship;
                 } else if (ship.isFailed(now)) {
-                    // task expired, remove it
+                    // task expired, remove this ship
                     iterator.remove();
+                    sn = ship.getSN();
+                    if (sn != null) {
+                        departureMap.remove(sn);
+                    }
                 }
             }
         }

@@ -42,5 +42,5 @@ public interface Arrival extends Ship {
      * @param income - income ship carried with message fragment
      * @return new ship carried the whole data package
      */
-    Arrival assemble(Arrival income);
+    Arrival assemble(final Arrival income);
 }

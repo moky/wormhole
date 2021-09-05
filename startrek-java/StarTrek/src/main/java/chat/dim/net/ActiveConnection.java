@@ -62,12 +62,12 @@ public abstract class ActiveConnection extends BaseConnection {
         try {
             connecting += 1;
             if (connecting == 1 && running) {
-                changeState(ConnectionState.CONNECTING);
+                changeState(ConnectionState.PREPARING);
                 channel = connect(remoteAddress, localAddress);
                 if (channel == null) {
                     changeState(ConnectionState.ERROR);
                 } else {
-                    changeState(ConnectionState.CONNECTED);
+                    changeState(ConnectionState.READY);
                     redo = true;
                 }
             }

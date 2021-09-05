@@ -3,18 +3,20 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 
+import chat.dim.mtp.DataType;
+import chat.dim.mtp.Package;
+import chat.dim.mtp.PackageDocker;
 import chat.dim.net.BaseHub;
 import chat.dim.net.Connection;
-import chat.dim.port.Departure;
 import chat.dim.port.Docker;
-import chat.dim.startrek.PlainDocker;
 import chat.dim.startrek.StarGate;
+import chat.dim.type.Data;
 
-public class TCPGate<H extends BaseHub> extends StarGate {
+public class UDPGate<H extends BaseHub> extends StarGate {
 
     H hub = null;
 
-    public TCPGate(Delegate delegate) {
+    public UDPGate(Delegate delegate) {
         super(delegate);
     }
 
@@ -44,7 +46,7 @@ public class TCPGate<H extends BaseHub> extends StarGate {
     @Override
     protected Docker createDocker(SocketAddress remote, byte[] data) {
         // TODO: check data format before creating docker
-        return new PlainDocker(remote, data, this);
+        return new PackageDocker(remote, data, this);
     }
 
     @Override
@@ -61,10 +63,18 @@ public class TCPGate<H extends BaseHub> extends StarGate {
         return worker;
     }
 
-    void sendMessage(byte[] payload, SocketAddress destination) {
+    void sendCommand(byte[] body, SocketAddress destination) {
         Docker worker = getDocker(destination);
-        assert worker instanceof PlainDocker : "docker error: " + worker;
-        ((PlainDocker) worker).sendData(payload);
+        assert worker instanceof PackageDocker : "docker error: " + worker;
+        Package pack = Package.create(DataType.COMMAND, new Data(body));
+        ((PackageDocker) worker).sendPackage(pack);
+    }
+
+    void sendMessage(byte[] body, SocketAddress destination) {
+        Docker worker = getDocker(destination);
+        assert worker instanceof PackageDocker : "docker error: " + worker;
+        Package pack = Package.create(DataType.MESSAGE, new Data(body));
+        ((PackageDocker) worker).sendPackage(pack);
     }
 
     static void info(String msg) {

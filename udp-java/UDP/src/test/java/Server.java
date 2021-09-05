@@ -5,24 +5,26 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.channels.DatagramChannel;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.WeakHashMap;
 
 import chat.dim.mtp.Package;
-import chat.dim.mtp.PackageHub;
+import chat.dim.mtp.PackageArrival;
+import chat.dim.mtp.PackageDeparture;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
-import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
+import chat.dim.net.PackageHub;
+import chat.dim.port.Arrival;
+import chat.dim.port.Departure;
+import chat.dim.port.Gate;
 import chat.dim.udp.PackageChannel;
 
 class ServerHub extends PackageHub {
 
-    private final Map<SocketAddress, Connection<Package>> connections = new WeakHashMap<>();
-    private final Map<SocketAddress, DatagramChannel> channels = new WeakHashMap<>();
-    private boolean running = false;
+    private final Map<SocketAddress, DatagramChannel> channels = new HashMap<>();
 
-    public ServerHub(Connection.Delegate<Package> delegate) {
+    public ServerHub(Connection.Delegate delegate) {
         super(delegate);
     }
 
@@ -37,101 +39,81 @@ class ServerHub extends PackageHub {
         connect(null, local);
     }
 
-    boolean isRunning() {
-        return running;
-    }
-
-    void start() {
-        running = true;
-    }
-
-    void stop() {
-        running = false;
-    }
-
-    @Override
-    protected Connection<Package> createConnection(SocketAddress remote, SocketAddress local) throws IOException {
-        Connection<Package> conn = connections.get(local);
-        if (conn == null) {
-            conn = super.createConnection(remote, local);
-            connections.put(local, conn);
-        }
-        return conn;
-    }
-
     @Override
     protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
         DatagramChannel sock = channels.get(local);
         if (sock == null) {
             throw new SocketException("failed to get channel: " + remote + " -> " + local);
         } else {
-            return new PackageChannel(sock);
+            Channel channel = new PackageChannel(sock);
+            channel.configureBlocking(false);
+            return channel;
         }
     }
 }
 
-public class Server implements Runnable, Connection.Delegate<Package> {
+public class Server implements Gate.Delegate {
 
     private final SocketAddress localAddress;
 
-    private final ServerHub hub;
+    private final UDPGate<ServerHub> gate;
 
     public Server(SocketAddress local) {
         super();
         localAddress = local;
-        hub = new ServerHub(this);
+        gate = new UDPGate<>(this);
+        gate.hub = new ServerHub(gate);
+    }
+
+    public void start() throws IOException {
+        gate.hub.bind(localAddress);
+        gate.start();
+    }
+
+    private void send(byte[] data, SocketAddress destination) {
+        try {
+            gate.hub.connect(destination, localAddress);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        gate.sendCommand(data, destination);
+    }
+
+    //
+    //  Gate Delegate
+    //
+
+    @Override
+    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, Gate gate) {
+        UDPGate.info("!!! connection (" + remote + ") state changed: " + oldStatus + " -> " + newStatus);
     }
 
     @Override
-    public void onConnectionStateChanged(Connection<Package> connection, ConnectionState previous, ConnectionState current) {
-        Client.info("!!! connection ("
-                + connection.getLocalAddress() + ", "
-                + connection.getRemoteAddress() + ") state changed: "
-                + previous + " -> " + current);
-    }
-
-    @Override
-    public void onConnectionDataReceived(Connection<Package> connection, SocketAddress remote, Package pack) {
+    public void onReceived(Arrival ship, SocketAddress remote, Gate gate) {
+        assert ship instanceof PackageArrival : "income ship error: " + ship;
+        Package pack = ((PackageArrival) ship).getPackage();
+        int headLen = pack.head.getSize();
+        int bodyLen = pack.body.getSize();
         byte[] payload = pack.body.getBytes();
         String text = new String(payload, StandardCharsets.UTF_8);
-        Client.info("<<< received (" + payload.length + " bytes) from " + remote + ": " + text);
+        UDPGate.info("<<< received (" + headLen + " + " + bodyLen + " bytes) from " + remote + ": " + text);
         text = (counter++) + "# " + payload.length + " byte(s) received";
         byte[] data = text.getBytes(StandardCharsets.UTF_8);
-        Client.info(">>> responding: " + text);
-        send(data, localAddress, remote);
+        UDPGate.info(">>> responding: " + text);
+        send(data, remote);
     }
     static int counter = 0;
 
-    private void send(byte[] data, SocketAddress source, SocketAddress destination) {
-        try {
-            hub.sendMessage(data, source, destination);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void start() {
-        try {
-            hub.bind(localAddress);
-            hub.start();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        new Thread(this).start();
-    }
-
-    void stop() {
-        hub.stop();
+    @Override
+    public void onSent(Departure ship, SocketAddress remote, Gate gate) {
+        assert ship instanceof PackageDeparture;
+        int bodyLen = ((PackageDeparture) ship).bodyLength;
+        UDPGate.info("message sent: " + bodyLen + " byte(s) to " + remote);
     }
 
     @Override
-    public void run() {
-        while (hub.isRunning()) {
-            hub.tick();
-            if (hub.getActivatedCount() == 0) {
-                Client.idle(8);
-            }
-        }
+    public void onError(Error error, Departure ship, SocketAddress remote, Gate gate) {
+        UDPGate.error(error.getMessage());
     }
 
     static String HOST;
@@ -145,11 +127,14 @@ public class Server implements Runnable, Connection.Delegate<Package> {
         }
     }
 
-    public static void main(String[] args) {
+    static Server server;
 
-        Client.info("Starting server (" + HOST + ":" + PORT + ") ...");
+    public static void main(String[] args) throws IOException {
 
-        Server server = new Server(new InetSocketAddress(HOST, PORT));
+        SocketAddress local = new InetSocketAddress(HOST, PORT);
+        UDPGate.info("Starting UDP server (" + local + ") ...");
+
+        server = new Server(local);
 
         server.start();
     }

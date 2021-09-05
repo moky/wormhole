@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Trek: Interstellar Transport
+ *  MTP: Message Transfer Protocol
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,41 +28,85 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.startrek;
+package chat.dim.mtp;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import chat.dim.port.Arrival;
+import chat.dim.startrek.DepartureShip;
 
-public class PlainDeparture extends DepartureShip {
+public class PackageDeparture extends DepartureShip {
 
-    private final byte[] completed;
+    private final byte[] sn;
+
+    private final List<Package> packages;
     private final List<byte[]> fragments;
 
-    public PlainDeparture(int prior, byte[] pack) {
-        super(prior);
-        completed = pack;
-        fragments = new ArrayList<>();
-        fragments.add(pack);
-    }
+    public final int bodyLength;
 
-    public byte[] getPackage() {
-        return completed;
+    public PackageDeparture(int prior, Package pack) {
+        super(prior);
+        bodyLength = pack.head.bodyLength;
+        sn = pack.head.sn.getBytes();
+        if (pack.isMessage()) {
+            packages = Packer.split(pack);
+        } else {
+            packages = new ArrayList<>();
+            packages.add(pack);
+        }
+        fragments = new ArrayList<>();
     }
 
     @Override
     public byte[] getSN() {
-        return null;
+        return sn;
     }
 
     @Override
     public List<byte[]> getFragments() {
+        if (fragments.size() == 0 && packages.size() > 0) {
+            for (Package pack : packages) {
+                fragments.add(pack.getBytes());
+            }
+        }
         return fragments;
     }
 
     @Override
     public boolean checkResponse(Arrival arrival) {
+        int count = 0;
+        assert arrival instanceof PackageArrival : "arrival ship error: " + arrival;
+        List<Package> array = ((PackageArrival) arrival).getFragments();
+        if (array == null) {
+            // it's a completed data package
+            Package pack = ((PackageArrival) arrival).getPackage();
+            if (removePage(pack.head.index)) {
+                ++count;
+            }
+        } else {
+            for (Package pack : array) {
+                if (removePage(pack.head.index)) {
+                    ++count;
+                }
+            }
+        }
+        if (count == 0) {
+            return false;
+        }
+        fragments.clear();
+        return true;
+    }
+    private boolean removePage(int index) {
+        Iterator<Package> iterator = packages.iterator();
+        while (iterator.hasNext()) {
+            if (iterator.next().head.index == index) {
+                // got it
+                iterator.remove();
+                return true;
+            }
+        }
         return false;
     }
 }

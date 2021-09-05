@@ -30,6 +30,7 @@
  */
 package chat.dim.startrek;
 
+import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.Date;
 import java.util.List;
@@ -43,7 +44,7 @@ public abstract class StarDocker implements Docker {
 
     protected final SocketAddress remoteAddress;
 
-    private final Dock dock;
+    protected final Dock dock;
 
     protected StarDocker(SocketAddress remote) {
         super();
@@ -59,21 +60,14 @@ public abstract class StarDocker implements Docker {
 
     protected abstract Gate.Delegate getDelegate();
 
-    private Gate.Status getStatus() {
-        return getGate().getStatus(remoteAddress);
-    }
-    private boolean isConnected() {
-        return getStatus().equals(Gate.Status.CONNECTED);
-    }
-
-    private void onError(String message, Departure ship) {
+    private void onError(final String message, final Departure ship) {
         Gate.Delegate delegate = getDelegate();
         if (delegate != null) {
             delegate.onError(new Error(message), ship, remoteAddress, getGate());
         }
     }
 
-    private boolean send(Departure outgo) {
+    protected boolean sendOutgoShip(final Departure outgo) throws IOException {
         List<byte[]> fragments = outgo.getFragments();
         if (fragments == null || fragments.size() == 0) {
             return true;
@@ -91,8 +85,9 @@ public abstract class StarDocker implements Docker {
     @Override
     public boolean process() {
         // 1. check gate status
-        if (!isConnected()) {
-            // not connected yet
+        Gate.Status status = getGate().getStatus(remoteAddress);
+        if (!status.equals(Gate.Status.READY)) {
+            // not ready yet
             return false;
         }
         long now = (new Date()).getTime();
@@ -106,41 +101,62 @@ public abstract class StarDocker implements Docker {
         if (outgo.isFailed(now)) {
             // outgo Ship expired, callback
             onError("Request timeout", outgo);
-        } else if (!send(outgo)) {
-            // failed to send outgo package, callback
-            onError("Connection error", outgo);
+        } else {
+            try {
+                if (!sendOutgoShip(outgo)) {
+                    // failed to send outgo package, callback
+                    onError("Connection error", outgo);
+                }
+            } catch (IOException e) {
+                //e.printStackTrace();
+                onError(e.getMessage(), outgo);
+            }
         }
         return true;
     }
 
     @Override
-    public void process(byte[] data) {
-        // 1. get income ship from data package
+    public void process(final byte[] data) {
+        // 1. get income ship from received data
         Arrival income = getIncomeShip(data);
         if (income == null) {
-            // incomplete data package?
             return;
-        } else {
-            // 2. remove linked ship (same SN, same page index)
-            removeLinkedShip(income);
         }
-        // 3. assemble package if incoming package is a fragment
-        income = dock.assembleArrival(income);
-        if (income != null) {
-            // 4. process as a complete package
-            processIncomeShip(income);
+        // 2. check income ship for response
+        income = checkIncomeShip(income);
+        if (income == null) {
+            return;
         }
+        // 3. process income ship with completed data package
+        processIncomeShip(income);
     }
 
     /**
-     *  Get income Ship from Connection
+     *  Get income Ship from received data
+     *
+     * @param data - received data
+     * @return income ship carrying data package/fragment
      */
-    protected abstract Arrival getIncomeShip(byte[] data);
+    protected abstract Arrival getIncomeShip(final byte[] data);
 
-    protected void removeLinkedShip(Arrival income) {
+    /**
+     *  Check income ship for responding
+     *
+     * @param income - income ship carrying data package/fragment
+     * @return income ship carrying completed data package
+     */
+    protected abstract Arrival checkIncomeShip(final Arrival income);
+
+    /**
+     *  Check and remove linked departure ship
+     *
+     * @param income - income ship with SN
+     */
+    protected void checkResponse(final Arrival income) {
+        // check response for linked departure ship (same SN)
         Departure linked = dock.checkResponse(income);
         if (linked != null) {
-            // callback for the linked outgo Ship and remove it
+            // all fragments responded, task finished
             Gate.Delegate delegate = getDelegate();
             if (delegate != null) {
                 delegate.onSent(linked, remoteAddress, getGate());
@@ -148,6 +164,11 @@ public abstract class StarDocker implements Docker {
         }
     }
 
+    /**
+     *  Process income ship
+     *
+     * @param income - income ship carrying completed data package
+     */
     protected void processIncomeShip(final Arrival income) {
         Gate.Delegate delegate = getDelegate();
         assert delegate != null : "gate delegate should not empty";
@@ -162,12 +183,4 @@ public abstract class StarDocker implements Docker {
         // if needs retry, the caller should append it back to the queue
         return dock.getNextDeparture(now);
     }
-
-    //
-    //  Command bodies
-    //
-    protected static final byte[] PING = {'P', 'I', 'N', 'G'};
-    protected static final byte[] PONG = {'P', 'O', 'N', 'G'};
-    protected static final byte[] NOOP = {'N', 'O', 'O', 'P'};
-    protected static final byte[] OK = {'O', 'K'};
 }

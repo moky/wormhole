@@ -30,6 +30,7 @@
  */
 package chat.dim.port;
 
+import java.io.IOException;
 import java.net.SocketAddress;
 
 import chat.dim.net.ConnectionState;
@@ -47,7 +48,7 @@ public interface Gate {
      * @param remote - remote address
      * @return false on error
      */
-    boolean send(byte[] data, SocketAddress remote);
+    boolean send(final byte[] data, final SocketAddress remote) throws IOException;
 
     /**
      *  Get gate status with direction
@@ -55,30 +56,30 @@ public interface Gate {
      * @param remote - remote address
      * @return gate status
      */
-    Status getStatus(SocketAddress remote);
+    Status getStatus(final SocketAddress remote);
 
     enum Status {
 
-        ERROR     (-1),
-        INIT       (0),
-        CONNECTING (1),
-        CONNECTED  (2);
+        ERROR    (-1),
+        INIT      (0),
+        PREPARING (1),
+        READY     (2);
 
         public final int value;
 
-        Status(int v) {
+        Status(final int v) {
             value = v;
         }
 
-        public static Status getStatus(ConnectionState state) {
+        public static Status getStatus(final ConnectionState state) {
             if (state == null) {
                 return INIT;
-            } else if (state.equals(ConnectionState.CONNECTED)
+            } else if (state.equals(ConnectionState.READY)
                     || state.equals(ConnectionState.EXPIRED)
                     || state.equals(ConnectionState.MAINTAINING)) {
-                return CONNECTED;
-            } else if (state.equals(ConnectionState.CONNECTING)) {
-                return CONNECTING;
+                return READY;
+            } else if (state.equals(ConnectionState.PREPARING)) {
+                return PREPARING;
             } else if (state.equals(ConnectionState.ERROR)) {
                 return ERROR;
             } else {

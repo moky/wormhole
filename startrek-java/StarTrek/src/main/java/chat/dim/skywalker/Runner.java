@@ -56,19 +56,17 @@ public abstract class Runner implements Runnable, Handler, Processor {
 
     @Override
     public void run() {
-        running = true;
         setup();
         try {
             handle();
         } finally {
             finish();
-            running = false;
         }
     }
 
     @Override
     public void setup() {
-        // do nothing
+        running = true;
     }
 
     @Override
@@ -82,6 +80,6 @@ public abstract class Runner implements Runnable, Handler, Processor {
 
     @Override
     public void finish() {
-        // do nothing
+        running = false;
     }
 }

@@ -60,7 +60,7 @@ public abstract class BaseHub implements Hub, Ticker {
     //    mapping: (remote, local) => Connection
     //    mapping: (remote, null) => Connection
     //    mapping: (local, null) => Connection
-    private final Map<SocketAddress, Map<SocketAddress, Connection>> connectionMap = new WeakHashMap<>();
+    private final Map<SocketAddress, Map<SocketAddress, Connection>> connectionMap = new HashMap<>();
 
     // mapping: (remote, local) => time to kill
     private final Map<Pair<SocketAddress, SocketAddress>, Long> dyingTimes = new HashMap<>();

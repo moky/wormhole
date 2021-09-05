@@ -49,7 +49,7 @@ public abstract class DepartureShip implements Departure {
 
     private final int priority;
 
-    protected DepartureShip(int prior) {
+    protected DepartureShip(final int prior) {
         super();
         lastTime = 0;  // last tried time (timestamp in milliseconds)
         retries = -1;  // totally 3 times to be sent at the most
@@ -67,17 +67,17 @@ public abstract class DepartureShip implements Departure {
     }
 
     @Override
-    public boolean isTimeout(long now) {
+    public boolean isTimeout(final long now) {
         return retries < MAX_RETRIES && now > lastTime + EXPIRES;
     }
 
     @Override
-    public boolean isFailed(long now) {
+    public boolean isFailed(final long now) {
         return now > lastTime + EXPIRES * (MAX_RETRIES - retries + 2);
     }
 
     @Override
-    public boolean update(long now) {
+    public boolean update(final long now) {
         if (retries >= MAX_RETRIES) {
             // retried too many times
             return false;

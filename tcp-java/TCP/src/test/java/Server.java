@@ -17,6 +17,7 @@ import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Gate;
 import chat.dim.startrek.PlainArrival;
+import chat.dim.startrek.PlainDeparture;
 import chat.dim.tcp.StreamChannel;
 
 class ServerHub extends PlainHub implements Runnable {
@@ -40,10 +41,6 @@ class ServerHub extends PlainHub implements Runnable {
         sock.configureBlocking(false);
         master = sock;
         localAddress = local;
-    }
-
-    boolean isRunning() {
-        return running;
     }
 
     void start() {
@@ -80,7 +77,7 @@ class ServerHub extends PlainHub implements Runnable {
     }
 }
 
-public class Server implements Runnable, Gate.Delegate {
+public class Server implements Gate.Delegate {
 
     private final SocketAddress localAddress;
 
@@ -92,6 +89,20 @@ public class Server implements Runnable, Gate.Delegate {
         gate = new TCPGate<>(this);
         gate.hub = new ServerHub(gate);
     }
+
+    public void start() throws IOException {
+        gate.hub.bind(localAddress);
+        gate.hub.start();
+        gate.start();
+    }
+
+    private void send(byte[] data, SocketAddress destination) {
+        gate.sendMessage(data, destination);
+    }
+
+    //
+    //  Gate Delegate
+    //
 
     @Override
     public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, Gate gate) {
@@ -113,37 +124,14 @@ public class Server implements Runnable, Gate.Delegate {
 
     @Override
     public void onSent(Departure ship, SocketAddress remote, Gate gate) {
-
+        assert ship instanceof PlainDeparture;
+        int bodyLen = ((PlainDeparture) ship).getPackage().length;
+        TCPGate.info("message sent: " + bodyLen + " byte(s) to " + remote);
     }
 
     @Override
     public void onError(Error error, Departure ship, SocketAddress remote, Gate gate) {
-
-    }
-
-    private void send(byte[] data, SocketAddress destination) {
-        boolean ok = gate.send(data, destination);
-        assert ok;
-    }
-
-    public void start() {
-        try {
-            gate.hub.bind(localAddress);
-            gate.hub.start();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        new Thread(this).start();
-    }
-
-    @Override
-    public void run() {
-        while (gate.hub.isRunning()) {
-            gate.hub.tick();
-            if (gate.hub.getActivatedCount() == 0) {
-                TCPGate.idle(8);
-            }
-        }
+        TCPGate.error(error.getMessage());
     }
 
     static String HOST;
@@ -157,11 +145,14 @@ public class Server implements Runnable, Gate.Delegate {
         }
     }
 
-    public static void main(String[] args) {
+    static Server server;
 
-        TCPGate.info("Starting server (" + HOST + ":" + PORT + ") ...");
+    public static void main(String[] args) throws IOException {
 
-        Server server = new Server(new InetSocketAddress(HOST, PORT));
+        SocketAddress local = new InetSocketAddress(HOST, PORT);
+        TCPGate.info("Starting TCP server (" + local + ") ...");
+
+        server = new Server(local);
 
         server.start();
     }

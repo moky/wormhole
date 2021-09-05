@@ -45,7 +45,7 @@ public interface Departure extends Ship {
 
         public final int value;
 
-        Priority(int v) {
+        Priority(final int v) {
             value = v;
         }
     }
@@ -65,7 +65,7 @@ public interface Departure extends Ship {
      * @param now - current time
      * @return true on retry
      */
-    boolean isTimeout(long now);
+    boolean isTimeout(final long now);
 
     /**
      *  Get fragments to sent
@@ -81,5 +81,5 @@ public interface Departure extends Ship {
      * @param response - income ship carried with response
      * @return true on task finished
      */
-    boolean checkResponse(Arrival response);
+    boolean checkResponse(final Arrival response);
 }

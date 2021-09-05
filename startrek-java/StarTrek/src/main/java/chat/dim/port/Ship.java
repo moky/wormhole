@@ -51,7 +51,7 @@ public interface Ship {
      * @param now - current time
      * @return true on failed
      */
-    boolean isFailed(long now);
+    boolean isFailed(final long now);
 
     /**
      *  Update expired time
@@ -59,5 +59,5 @@ public interface Ship {
      * @param now - current time
      * @return false on error (nothing changed)
      */
-    boolean update(long now);
+    boolean update(final long now);
 }

@@ -323,6 +323,7 @@ public class BaseConnection implements Connection, StateDelegate {
                 if (delegate != null) {
                     delegate.onError(e, null, null, this);
                 }
+                activated = false;
             }
         } else {
             activated = false;
@@ -370,9 +371,9 @@ public class BaseConnection implements Connection, StateDelegate {
     @Override
     public void exitState(ConnectionState previous, StateMachine ctx) {
         ConnectionState current = ctx.getCurrentState();
-        if (current != null && current.equals(ConnectionState.CONNECTED)) {
+        if (current != null && current.equals(ConnectionState.READY)) {
             if (previous == null || !previous.equals(ConnectionState.MAINTAINING)) {
-                // change state to 'connected', reset times to just expired
+                // change state to 'ready', reset times to just expired
                 long timestamp = (new Date()).getTime() - EXPIRES - 1;
                 lastSentTime = timestamp;
                 lastReceivedTime = timestamp;

@@ -47,14 +47,14 @@ public interface Docker extends Processor {
      * @param priority    - smaller is faster (-1 is the most fast)
      * @return StarShip containing payload
      */
-    Departure pack(byte[] payload, int priority);
+    Departure pack(final byte[] payload, final int priority);
 
     /**
      *  Called when received data
      *
      * @param data   - received data package
      */
-    void process(byte[] data);
+    void process(final byte[] data);
 
     /**
      *  Send 'PING' for keeping connection alive

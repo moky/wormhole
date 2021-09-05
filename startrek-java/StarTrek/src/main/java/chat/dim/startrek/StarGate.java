@@ -55,6 +55,7 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
     }
 
     protected abstract Connection getConnection(SocketAddress remote);
+    protected abstract Connection connect(SocketAddress remote) throws IOException;
 
     // create new Docker with data (advance party)
     protected abstract Docker createDocker(SocketAddress remote, byte[] data);
@@ -62,7 +63,7 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
     public Docker getDocker(SocketAddress remote) {
         return dockerMap.get(remote);
     }
-    public void setDocker(SocketAddress remote, Docker worker) {
+    protected void setDocker(SocketAddress remote, Docker worker) {
         if (worker == null) {
             // remove worker
             worker = dockerMap.get(remote);
@@ -86,13 +87,13 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
     }
 
     @Override
-    public boolean send(byte[] data, SocketAddress remote) {
-        Connection conn = getConnection(remote);
+    public boolean send(byte[] data, SocketAddress remote) throws IOException {
+        Connection conn = connect(remote);
         if (conn == null) {
             return false;
         }
         Status status = Status.getStatus(conn.getState());
-        if (!status.equals(Status.CONNECTED)) {
+        if (!status.equals(Status.READY)) {
             return false;
         }
         return conn.send(data, remote) != -1;
@@ -167,6 +168,7 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
             // docker not exists, check the data to decide which docker should be created
             worker = createDocker(remote, data);
             if (worker != null) {
+                setDocker(remote, worker);
                 // the data has already moved into the docker (use data to initialize)
                 // so here pass nothing to process
                 worker.process(null);

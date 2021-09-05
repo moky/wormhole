@@ -30,49 +30,53 @@
  */
 package chat.dim.mtp;
 
-import java.net.SocketAddress;
-import java.util.Date;
+import chat.dim.port.Arrival;
+import chat.dim.startrek.ArrivalShip;
 
-/**
- *  Data package received (wait for assembling)
- */
-public class Arrival extends Packer {
+import java.util.List;
 
-    /**
-     *  Arrival task will be expired after 10 minutes if still not completed.
-     */
-    public static long EXPIRES = 600 * 1000; // milliseconds
+public class PackageArrival extends ArrivalShip {
 
-    private long expired;  // expired time (timestamp in milliseconds)
+    private final byte[] sn;
 
-    public final SocketAddress source;
-    public final SocketAddress destination;
+    private final Packer packer;
+    private Package completed;
 
-    public Arrival(TransactionID sn, int pages, SocketAddress from, SocketAddress to) {
-        super(sn, pages);
-        source = from;
-        destination = to;
+    public PackageArrival(Package pack) {
+        super();
+        sn = pack.head.sn.getBytes();
+        if (pack.isFragment()) {
+            packer = new Packer(pack.head.sn, pack.head.pages);
+            completed = packer.insert(pack);
+        } else {
+            packer = null;
+            completed = pack;
+        }
     }
 
-    public boolean isExpired(long now) {
-        return expired < now;
+    public Package getPackage() {
+        return completed;
     }
 
     @Override
-    public Package insert(Package fragment) {
-        if (!fragment.isFragment()) {
-            // message (or command?) no need to assemble
-            return fragment;
+    public byte[] getSN() {
+        return sn;
+    }
+
+    @Override
+    public Arrival assemble(Arrival arrival) {
+        if (completed == null) {
+            assert arrival instanceof PackageArrival : "arrival ship error: " + arrival;
+            List<Package> fragments = ((PackageArrival) arrival).getFragments();
+            assert fragments != null && fragments.size() > 0 : "fragments error: " + arrival;
+            for (Package item : fragments) {
+                completed = packer.insert(item);
+            }
         }
-        // message fragment
-        Package pack = super.insert(fragment);
-        if (pack == null) {
-            // update receive time
-            expired = (new Date()).getTime() + EXPIRES;
-            return null;
-        } else {
-            // all fragments received, remove this task
-            return pack;
-        }
+        return completed == null ? null : new PackageArrival(completed);
+    }
+
+    List<Package> getFragments() {
+        return packer == null ? null : packer.getFragments();
     }
 }

@@ -33,16 +33,16 @@ package chat.dim.net;
 /*
  *    Finite States:
  *
- *             //===============\\          (Sent)          //==============\\
+ *             //===============\\          (Start)         //==============\\
  *             ||               || -----------------------> ||              ||
- *             ||    Default    ||                          ||  Connecting  ||
+ *             ||    Default    ||                          ||   Preparing  ||
  *             || (Not Connect) || <----------------------- ||              ||
  *             \\===============//         (Timeout)        \\==============//
  *                                                               |       |
  *             //===============\\                               |       |
  *             ||               || <-----------------------------+       |
- *             ||     Error     ||          (Error)                 (Received)
- *             ||               || <-----------------------------+       |
+ *             ||     Error     ||          (Error)                 (Connected
+ *             ||               || <-----------------------------+   or bound)
  *             \\===============//                               |       |
  *                 A       A                                     |       |
  *                 |       |            //===========\\          |       |
@@ -54,7 +54,7 @@ package chat.dim.net;
  *                 |       |                   |                 |       V
  *             //===============\\     (Sent)  |            //==============\\
  *             ||               || <-----------+            ||              ||
- *             ||  Maintaining  ||                          ||  Connected   ||
+ *             ||  Maintaining  ||                          ||     Ready    ||
  *             ||               || -----------------------> ||              ||
  *             \\===============//       (Received)         \\==============//
  */
@@ -68,17 +68,17 @@ import chat.dim.fsm.BaseState;
  *  Defined for indicating connection state
  *
  *      DEFAULT     - 'initialized', or sent timeout
- *      CONNECTING  - sent 'PING', waiting for response
- *      CONNECTED   - got response recently
- *      EXPIRED     - long time, needs maintaining (still connected)
+ *      PREPARING   - connecting or binding
+ *      READY       - got response recently
+ *      EXPIRED     - long time, needs maintaining (still connected/bound)
  *      MAINTAINING - sent 'PING', waiting for response
  *      ERROR       - long long time no response, connection lost
  */
 public class ConnectionState extends BaseState<StateMachine, StateTransition> {
 
     public static final String DEFAULT     = "default";
-    public static final String CONNECTING  = "connecting";
-    public static final String CONNECTED   = "connected";
+    public static final String PREPARING   = "preparing";
+    public static final String READY       = "ready";
     public static final String MAINTAINING = "maintaining";
     public static final String EXPIRED     = "expired";
     public static final String ERROR       = "error";

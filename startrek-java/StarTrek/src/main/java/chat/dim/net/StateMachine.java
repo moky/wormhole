@@ -62,8 +62,8 @@ public class StateMachine extends BaseMachine<StateMachine, StateTransition, Con
         // init states
         StateBuilder builder = getStateBuilder();
         setState(builder.getDefaultState());
-        setState(builder.getConnectingState());
-        setState(builder.getConnectedState());
+        setState(builder.getPreparingState());
+        setState(builder.getReadyState());
         setState(builder.getExpiredState());
         setState(builder.getMaintainingState());
         setState(builder.getErrorState());
@@ -103,28 +103,28 @@ class StateBuilder {
     // Connection not started yet
     ConnectionState getDefaultState() {
         ConnectionState state = getNamedState(ConnectionState.DEFAULT);
-        // Default -> Connecting
-        state.addTransition(builder.getDefaultConnectingTransition());
+        // Default -> Preparing
+        state.addTransition(builder.getDefaultPreparingTransition());
         return state;
     }
 
-    // Connection started, not connected yet
-    ConnectionState getConnectingState() {
-        ConnectionState state = getNamedState(ConnectionState.CONNECTING);
-        // Connecting -> Connected
-        state.addTransition(builder.getConnectingConnectedTransition());
-        // Connecting -> Default
-        state.addTransition(builder.getConnectingDefaultTransition());
+    // Connection started, preparing to connect/bind
+    ConnectionState getPreparingState() {
+        ConnectionState state = getNamedState(ConnectionState.PREPARING);
+        // Preparing -> Ready
+        state.addTransition(builder.getPreparingConnectedTransition());
+        // Preparing -> Default
+        state.addTransition(builder.getPreparingDefaultTransition());
         return state;
     }
 
     // Normal state of connection
-    ConnectionState getConnectedState() {
-        ConnectionState state = getNamedState(ConnectionState.CONNECTED);
-        // Connected -> Expired
-        state.addTransition(builder.getConnectedExpiredTransition());
-        // Connected -> Error
-        state.addTransition(builder.getConnectedErrorTransition());
+    ConnectionState getReadyState() {
+        ConnectionState state = getNamedState(ConnectionState.READY);
+        // Ready -> Expired
+        state.addTransition(builder.getReadyExpiredTransition());
+        // Ready -> Error
+        state.addTransition(builder.getReadyErrorTransition());
         return state;
     }
 
@@ -141,8 +141,8 @@ class StateBuilder {
     // Heartbeat sent, waiting response
     ConnectionState getMaintainingState() {
         ConnectionState state = getNamedState(ConnectionState.MAINTAINING);
-        // Maintaining -> Connected
-        state.addTransition(builder.getMaintainingConnectedTransition());
+        // Maintaining -> Ready
+        state.addTransition(builder.getMaintainingReadyTransition());
         // Maintaining -> Expired
         state.addTransition(builder.getMaintainingExpiredTransition());
         // Maintaining -> Error
@@ -161,32 +161,32 @@ class StateBuilder {
 
 class TransitionBuilder {
 
-    // Default -> Connecting
-    StateTransition getDefaultConnectingTransition() {
-        return new StateTransition(ConnectionState.CONNECTING) {
+    // Default -> Preparing
+    StateTransition getDefaultPreparingTransition() {
+        return new StateTransition(ConnectionState.PREPARING) {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
-                // connection started? change state to 'connecting'
+                // connection started? change state to 'preparing'
                 return conn != null && conn.isOpen();
             }
         };
     }
 
-    // Connecting -> Connected
-    StateTransition getConnectingConnectedTransition() {
-        return new StateTransition(ConnectionState.CONNECTED) {
+    // Preparing -> Ready
+    StateTransition getPreparingConnectedTransition() {
+        return new StateTransition(ConnectionState.READY) {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
-                // connection connected, change state to 'connected'
-                return conn != null && conn.isOpen() && conn.isConnected();
+                // connected or bound, change state to 'ready'
+                return conn != null && conn.isOpen() && (conn.isConnected() || conn.isBound());
             }
         };
     }
 
-    // Connecting -> Default
-    StateTransition getConnectingDefaultTransition() {
+    // Preparing -> Default
+    StateTransition getPreparingDefaultTransition() {
         return new StateTransition(ConnectionState.DEFAULT) {
             @Override
             public boolean evaluate(StateMachine ctx) {
@@ -197,8 +197,8 @@ class TransitionBuilder {
         };
     }
 
-    // Connected -> Expired
-    StateTransition getConnectedExpiredTransition() {
+    // Ready -> Expired
+    StateTransition getReadyExpiredTransition() {
         return new StateTransition(ConnectionState.EXPIRED) {
             @Override
             public boolean evaluate(StateMachine ctx) {
@@ -211,8 +211,8 @@ class TransitionBuilder {
         };
     }
 
-    // Connected -> Error
-    StateTransition getConnectedErrorTransition() {
+    // Ready -> Error
+    StateTransition getReadyErrorTransition() {
         return new StateTransition(ConnectionState.ERROR) {
             @Override
             public boolean evaluate(StateMachine ctx) {
@@ -249,14 +249,14 @@ class TransitionBuilder {
         };
     }
 
-    // Maintaining -> Connected
-    StateTransition getMaintainingConnectedTransition() {
-        return new StateTransition(ConnectionState.CONNECTED) {
+    // Maintaining -> Ready
+    StateTransition getMaintainingReadyTransition() {
+        return new StateTransition(ConnectionState.READY) {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 BaseConnection conn = ctx.getConnection();
                 // connection still alive, and
-                // received recently, change state to 'connected'
+                // received recently, change state to 'ready'
                 return conn != null && conn.isOpen() && conn.isConnected()
                         && conn.isReceivedRecently((new Date()).getTime());
             }

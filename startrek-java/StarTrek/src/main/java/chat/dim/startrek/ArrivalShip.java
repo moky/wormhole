@@ -47,12 +47,12 @@ public abstract class ArrivalShip implements Arrival {
     }
 
     @Override
-    public boolean isFailed(long now) {
+    public boolean isFailed(final long now) {
         return now > expired;
     }
 
     @Override
-    public boolean update(long now) {
+    public boolean update(final long now) {
         expired = now + EXPIRES;
         return true;
     }
