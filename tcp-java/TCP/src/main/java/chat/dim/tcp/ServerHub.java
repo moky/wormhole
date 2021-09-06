@@ -38,6 +38,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+import chat.dim.net.BaseConnection;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 
@@ -89,7 +90,19 @@ public class ServerHub extends StreamHub implements Runnable {
     }
 
     @Override
-    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
+        // create connection with channel
+        BaseConnection conn = new BaseConnection(createChannel(remote, local), remote, local);
+        // set delegate
+        if (conn.getDelegate() == null) {
+            conn.setDelegate(getDelegate());
+        }
+        // start FSM
+        conn.start();
+        return conn;
+    }
+
+    private Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
         SocketChannel sock = slaves.get(remote);
         if (sock == null) {
             throw new SocketException("failed to get channel: " + remote + " -> " + local);

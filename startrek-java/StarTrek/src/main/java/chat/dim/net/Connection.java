@@ -87,29 +87,32 @@ public interface Connection extends Ticker {
         /**
          *  Called when connection received data
          *
-         * @param data       - received data package
-         * @param remote     - remote address
-         * @param connection - current connection
+         * @param data        - received data package
+         * @param source      - remote address
+         * @param destination - local address
+         * @param connection  - current connection
          */
-        void onReceived(byte[] data, SocketAddress remote, Connection connection);
+        void onReceived(byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
 
         /**
          *  Called after data sent
          *
-         * @param data       - outgo data package
-         * @param remote     - remote address
-         * @param connection - current connection
+         * @param data        - outgo data package
+         * @param source      - local address
+         * @param destination - remote address
+         * @param connection  - current connection
          */
-        void onSent(byte[] data, SocketAddress remote, Connection connection);
+        void onSent(byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
 
         /**
          *  Called when connection error
          *
-         * @param error      - error message
-         * @param data       - outgo data package
-         * @param remote     - remote address
-         * @param connection - current connection
+         * @param error       - error message
+         * @param data        - outgo data package
+         * @param source      - local address
+         * @param destination - remote address
+         * @param connection  - current connection
          */
-        void onError(Throwable error, byte[] data, SocketAddress remote, Connection connection);
+        void onError(Throwable error, byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
     }
 }

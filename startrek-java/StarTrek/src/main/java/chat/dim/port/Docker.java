@@ -32,6 +32,8 @@ package chat.dim.port;
 
 import chat.dim.skywalker.Processor;
 
+import java.net.SocketAddress;
+
 /**
  *  Star Worker
  *  ~~~~~~~~~~~
@@ -41,6 +43,9 @@ import chat.dim.skywalker.Processor;
 public interface Docker<D extends Departure<A, I>, A extends Arrival<A, I>, I>
         extends Processor {
 
+    SocketAddress getLocalAddress();
+    SocketAddress getRemoteAddress();
+
     /**
      *  Pack the payload to an outgo Ship
      *
@@ -48,14 +53,14 @@ public interface Docker<D extends Departure<A, I>, A extends Arrival<A, I>, I>
      * @param priority    - smaller is faster (-1 is the most fast)
      * @return StarShip containing payload
      */
-    D pack(final byte[] payload, final int priority);
+    D pack(byte[] payload, int priority);
 
     /**
      *  Called when received data
      *
      * @param data   - received data package
      */
-    void process(final byte[] data);
+    void process(byte[] data);
 
     /**
      *  Send 'PING' for keeping connection alive

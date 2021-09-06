@@ -33,9 +33,7 @@ package chat.dim.startrek;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
@@ -44,11 +42,24 @@ import chat.dim.port.Departure;
 import chat.dim.port.Docker;
 import chat.dim.port.Gate;
 import chat.dim.skywalker.Runner;
+import chat.dim.type.DirectionalObjectPool;
 
 public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I>, I>
         extends Runner implements Gate, Connection.Delegate {
 
-    private final Map<SocketAddress, Docker<D, A, I>> dockerMap = new HashMap<>();
+    private final DirectionalObjectPool<Docker<D, A, I>> dockerPool = new DirectionalObjectPool<Docker<D, A, I>>() {
+        @Override
+        protected Docker<D, A, I> create(SocketAddress remote, SocketAddress local) throws IOException {
+            List<byte[]> data = advanceParties.get(remote);
+            Docker<D, A, I> worker = createDocker(remote, local, data);
+            if (worker != null) {
+                // docker created, remove cache data
+                advanceParties.remove(remote);
+            }
+            return worker;
+        }
+    };
+    private final Map<SocketAddress, List<byte[]>> advanceParties = new HashMap<>();
 
     private final WeakReference<Delegate<D, A, I>> delegateRef;
 
@@ -57,26 +68,23 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
         delegateRef = new WeakReference<>(delegate);
     }
 
-    protected abstract Connection getConnection(SocketAddress remote);
-    protected abstract Connection connect(SocketAddress remote) throws IOException;
+    protected abstract Connection getConnection(SocketAddress remote, SocketAddress local);
+    protected abstract Connection connect(SocketAddress remote, SocketAddress local) throws IOException;
 
     // create new Docker with data (advance party)
-    protected abstract Docker<D, A, I> createDocker(SocketAddress remote, byte[] data);
+    protected abstract Docker<D, A, I> createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data);
 
-    public Docker<D, A, I> getDocker(SocketAddress remote) {
-        return dockerMap.get(remote);
-    }
-    protected void setDocker(SocketAddress remote, Docker<D, A, I> worker) {
-        if (worker == null) {
-            // remove worker
-            worker = dockerMap.get(remote);
-            if (worker != null) {
-                dockerMap.remove(remote);
-            }
-        } else {
-            // set worker
-            dockerMap.put(remote, worker);
+    public Docker<D, A, I> getDocker(SocketAddress remote, SocketAddress local, boolean create) {
+        try {
+            return dockerPool.seek(remote, local, create);
+        } catch (IOException e) {
+            e.printStackTrace();
+            // should not happen
+            return null;
         }
+    }
+    protected void setDocker(Docker<D, A, I> worker, SocketAddress remote, SocketAddress local) {
+        dockerPool.update(worker, remote, local);
     }
 
     public Gate.Delegate<D, A, I> getDelegate() {
@@ -84,14 +92,14 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
     }
 
     @Override
-    public Status getStatus(SocketAddress remote) {
-        Connection conn = getConnection(remote);
+    public Status getStatus(SocketAddress remote, SocketAddress local) {
+        Connection conn = getConnection(remote, local);
         return conn == null ? Status.ERROR : Status.getStatus(conn.getState());
     }
 
     @Override
-    public boolean send(byte[] data, SocketAddress remote) throws IOException {
-        Connection conn = connect(remote);
+    public boolean send(byte[] data, SocketAddress source, SocketAddress destination) throws IOException {
+        Connection conn = connect(destination, source);
         if (conn == null) {
             return false;
         }
@@ -99,7 +107,7 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
         if (!status.equals(Status.READY)) {
             return false;
         }
-        return conn.send(data, remote) != -1;
+        return conn.send(data, destination) != -1;
     }
 
     //
@@ -109,18 +117,16 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
     @Override
     public boolean process() {
         int counter = 0;
-        Map.Entry<SocketAddress, Docker<D, A, I>> entry;
-        Docker<D, A, I> worker;
-        Iterator<Map.Entry<SocketAddress, Docker<D, A, I>>> iterator;
-        iterator = dockerMap.entrySet().iterator();
-        while (iterator.hasNext()) {
-            entry = iterator.next();
-            if (getConnection(entry.getKey()) == null) {
-                iterator.remove();
-                continue;
-            }
-            worker = entry.getValue();
-            if (worker != null && worker.process()) {
+        Set<Docker<D, A, I>> dockers = dockerPool.all();
+        SocketAddress remote, local;
+        for (Docker<D, A, I> worker : dockers) {
+            remote = worker.getRemoteAddress();
+            local = worker.getLocalAddress();
+            // check connection
+            if (getConnection(remote, local) == null) {
+                // connection lost, remove worker
+                dockerPool.remove(worker, remote, local);
+            } else if (worker.process()) {
                 counter += 1;
             }
         }
@@ -132,7 +138,8 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
      */
     protected void heartbeat(Connection connection) throws IOException {
         SocketAddress remote = connection.getRemoteAddress();
-        Docker<D, A, I> worker = getDocker(remote);
+        SocketAddress local = connection.getLocalAddress();
+        Docker<D, A, I> worker = getDocker(remote, local, false);
         if (worker != null) {
             worker.heartbeat();
         }
@@ -164,14 +171,20 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
     }
 
     @Override
-    public void onReceived(byte[] data, SocketAddress remote, Connection connection) {
+    public void onReceived(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
         // get docker by remote address
-        Docker<D, A, I> worker = getDocker(remote);
+        Docker<D, A, I> worker = getDocker(source, destination, false);
         if (worker == null) {
+            // save advance parties from this source address
+            List<byte[]> parties = advanceParties.get(source);
+            if (parties == null) {
+                parties = new ArrayList<>();
+            }
+            parties.add(data);
+            advanceParties.put(source, parties);
             // docker not exists, check the data to decide which docker should be created
-            worker = createDocker(remote, data);
+            worker = getDocker(source, destination, true);
             if (worker != null) {
-                setDocker(remote, worker);
                 // the data has already moved into the docker (use data to initialize)
                 // so here pass nothing to process
                 worker.process(null);
@@ -183,12 +196,12 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
     }
 
     @Override
-    public void onSent(byte[] data, SocketAddress remote, Connection connection) {
+    public void onSent(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
 
     }
 
     @Override
-    public void onError(Throwable error, byte[] data, SocketAddress remote, Connection connection) {
+    public void onError(Throwable error, byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
 
     }
 }

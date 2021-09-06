@@ -60,11 +60,4 @@ public class ClientHub extends PackageHub {
         conn.start();
         return conn;
     }
-
-    @Override
-    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-        Channel channel = new PackageChannel(remote, local);
-        channel.configureBlocking(false);
-        return channel;
-    }
 }

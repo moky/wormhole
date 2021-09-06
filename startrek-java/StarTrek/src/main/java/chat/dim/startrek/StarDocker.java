@@ -42,14 +42,26 @@ import chat.dim.port.Gate;
 
 public abstract class StarDocker<D extends Departure<A, I>, A extends Arrival<A, I>, I> implements Docker<D, A, I> {
 
-    protected final SocketAddress remoteAddress;
+    private final SocketAddress remoteAddress;
+    private final SocketAddress localAddress;
 
     protected final Dock<D, A, I> dock;
 
-    protected StarDocker(SocketAddress remote) {
+    protected StarDocker(SocketAddress remote, SocketAddress local) {
         super();
         remoteAddress = remote;
+        localAddress = local;
         dock = createDock();
+    }
+
+    @Override
+    public SocketAddress getRemoteAddress() {
+        return remoteAddress;
+    }
+
+    @Override
+    public SocketAddress getLocalAddress() {
+        return localAddress;
     }
 
     protected Dock<D, A, I> createDock() {
@@ -60,10 +72,10 @@ public abstract class StarDocker<D extends Departure<A, I>, A extends Arrival<A,
 
     protected abstract Gate.Delegate<D, A, I> getDelegate();
 
-    private void onError(final String message, final D ship) {
+    private void onOutgoError(final String message, final D ship) {
         Gate.Delegate<D, A, I> delegate = getDelegate();
         if (delegate != null) {
-            delegate.onError(new Error(message), ship, remoteAddress, getGate());
+            delegate.onError(new Error(message), ship, localAddress, remoteAddress, getGate());
         }
     }
 
@@ -75,7 +87,7 @@ public abstract class StarDocker<D extends Departure<A, I>, A extends Arrival<A,
         int success = 0;
         Gate gate = getGate();
         for (byte[] pack : fragments) {
-            if (gate.send(pack, remoteAddress)) {
+            if (gate.send(pack, localAddress, remoteAddress)) {
                 success += 1;
             }
         }
@@ -85,7 +97,7 @@ public abstract class StarDocker<D extends Departure<A, I>, A extends Arrival<A,
     @Override
     public boolean process() {
         // 1. check gate status
-        Gate.Status status = getGate().getStatus(remoteAddress);
+        Gate.Status status = getGate().getStatus(remoteAddress, localAddress);
         if (!status.equals(Gate.Status.READY)) {
             // not ready yet
             return false;
@@ -100,16 +112,16 @@ public abstract class StarDocker<D extends Departure<A, I>, A extends Arrival<A,
         // 3. process outgo
         if (outgo.isFailed(now)) {
             // outgo Ship expired, callback
-            onError("Request timeout", outgo);
+            onOutgoError("Request timeout", outgo);
         } else {
             try {
                 if (!sendOutgoShip(outgo)) {
                     // failed to send outgo package, callback
-                    onError("Connection error", outgo);
+                    onOutgoError("Connection error", outgo);
                 }
             } catch (IOException e) {
                 //e.printStackTrace();
-                onError(e.getMessage(), outgo);
+                onOutgoError(e.getMessage(), outgo);
             }
         }
         return true;
@@ -159,7 +171,7 @@ public abstract class StarDocker<D extends Departure<A, I>, A extends Arrival<A,
             // all fragments responded, task finished
             Gate.Delegate<D, A, I> delegate = getDelegate();
             if (delegate != null) {
-                delegate.onSent(linked, remoteAddress, getGate());
+                delegate.onSent(linked, localAddress, remoteAddress, getGate());
             }
         }
     }
@@ -172,7 +184,7 @@ public abstract class StarDocker<D extends Departure<A, I>, A extends Arrival<A,
     protected void processIncomeShip(final A income) {
         Gate.Delegate<D, A, I> delegate = getDelegate();
         assert delegate != null : "gate delegate should not empty";
-        delegate.onReceived(income, remoteAddress, getGate());
+        delegate.onReceived(income, remoteAddress, localAddress, getGate());
     }
 
     /**

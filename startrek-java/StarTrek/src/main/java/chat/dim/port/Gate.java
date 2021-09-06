@@ -44,19 +44,21 @@ public interface Gate {
     /**
      *  Send payload to the remote peer
      *
-     * @param data   - outgoing data package
-     * @param remote - remote address
+     * @param data        - outgoing data package
+     * @param source      - local address
+     * @param destination - remote address
      * @return false on error
      */
-    boolean send(final byte[] data, final SocketAddress remote) throws IOException;
+    boolean send(byte[] data, SocketAddress source, SocketAddress destination) throws IOException;
 
     /**
      *  Get gate status with direction
      *
      * @param remote - remote address
+     * @param local  - local address
      * @return gate status
      */
-    Status getStatus(final SocketAddress remote);
+    Status getStatus(SocketAddress remote, SocketAddress local);
 
     enum Status {
 
@@ -67,11 +69,11 @@ public interface Gate {
 
         public final int value;
 
-        Status(final int v) {
+        Status(int v) {
             value = v;
         }
 
-        public static Status getStatus(final ConnectionState state) {
+        public static Status getStatus(ConnectionState state) {
             if (state == null) {
                 return INIT;
             } else if (state.equals(ConnectionState.READY)
@@ -107,29 +109,32 @@ public interface Gate {
         /**
          *  Callback when new package received
          *
-         * @param ship      - data package container
-         * @param remote    - remote address
-         * @param gate      - current gate
+         * @param ship        - data package container
+         * @param source      - remote address
+         * @param destination - local address
+         * @param gate        - current gate
          */
-        void onReceived(A ship, SocketAddress remote, Gate gate);
+        void onReceived(A ship, SocketAddress source, SocketAddress destination, Gate gate);
 
         /**
          *  Callback when package sent
          *
-         * @param ship      - package container
-         * @param remote    - remote address
-         * @param gate      - current gate
+         * @param ship        - package container
+         * @param source      - local address
+         * @param destination - remote address
+         * @param gate        - current gate
          */
-        void onSent(D ship, SocketAddress remote, Gate gate);
+        void onSent(D ship, SocketAddress source, SocketAddress destination, Gate gate);
 
         /**
          *  Callback when package sent failed
          *
-         * @param error     - error message
-         * @param ship      - package container
-         * @param remote    - remote address
-         * @param gate      - current gate
+         * @param error       - error message
+         * @param ship        - package container
+         * @param source      - local address
+         * @param destination - remote address
+         * @param gate        - current gate
          */
-        void onError(Error error, D ship, SocketAddress remote, Gate gate);
+        void onError(Error error, D ship, SocketAddress source, SocketAddress destination, Gate gate);
     }
 }

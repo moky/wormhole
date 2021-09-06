@@ -37,7 +37,7 @@ public class Client implements Gate.Delegate<PlainDeparture, PlainArrival, Objec
     }
 
     private void send(byte[] data) {
-        gate.sendMessage(data, remoteAddress);
+        gate.sendMessage(data, localAddress, remoteAddress);
     }
 
     //
@@ -50,20 +50,20 @@ public class Client implements Gate.Delegate<PlainDeparture, PlainArrival, Objec
     }
 
     @Override
-    public void onReceived(PlainArrival ship, SocketAddress remote, Gate gate) {
+    public void onReceived(PlainArrival ship, SocketAddress source, SocketAddress destination, Gate gate) {
         byte[] pack = ship.getData();
         String text = new String(pack, StandardCharsets.UTF_8);
-        TCPGate.info("<<< received (" + pack.length + " bytes) from " + remote + ": " + text);
+        TCPGate.info("<<< received (" + pack.length + " bytes) from " + source + ": " + text);
     }
 
     @Override
-    public void onSent(PlainDeparture ship, SocketAddress remote, Gate gate) {
+    public void onSent(PlainDeparture ship, SocketAddress source, SocketAddress destination, Gate gate) {
         int bodyLen = ship.getPackage().length;
-        TCPGate.info("message sent: " + bodyLen + " byte(s) to " + remote);
+        TCPGate.info("message sent: " + bodyLen + " byte(s) to " + destination);
     }
 
     @Override
-    public void onError(Error error, PlainDeparture ship, SocketAddress remote, Gate gate) {
+    public void onError(Error error, PlainDeparture ship, SocketAddress source, SocketAddress destination, Gate gate) {
         TCPGate.error(error.getMessage());
     }
 

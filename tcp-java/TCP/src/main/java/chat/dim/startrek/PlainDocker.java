@@ -33,20 +33,21 @@ package chat.dim.startrek;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.util.Arrays;
+import java.util.List;
 
 import chat.dim.port.Departure;
 import chat.dim.port.Gate;
 
 public class PlainDocker extends StarDocker<PlainDeparture, PlainArrival, Object> {
 
-    private byte[] head;
+    private List<byte[]> advanceParties;
 
     private final WeakReference<StarGate<PlainDeparture, PlainArrival, Object>> gateRef;
 
-    public PlainDocker(SocketAddress remote, byte[] advanceParty,
+    public PlainDocker(SocketAddress remote, SocketAddress local, List<byte[]> parties,
                        StarGate<PlainDeparture, PlainArrival, Object> gate) {
-        super(remote);
-        head = advanceParty;
+        super(remote, local);
+        advanceParties = parties;
         gateRef = new WeakReference<>(gate);
     }
 
@@ -63,14 +64,15 @@ public class PlainDocker extends StarDocker<PlainDeparture, PlainArrival, Object
 
     @Override
     public void process(byte[] data) {
-        if (data == null) {
-            if (head == null) {
-                return;
+        if (data != null) {
+            super.process(data);
+        } else if (advanceParties != null) {
+            // process advance parties
+            for (byte[] item : advanceParties) {
+                super.process(item);
             }
-            data = head;
-            head = null;
+            advanceParties = null;
         }
-        super.process(data);
     }
 
     @Override

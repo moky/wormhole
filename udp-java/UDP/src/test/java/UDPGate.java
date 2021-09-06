@@ -2,6 +2,7 @@
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import chat.dim.mtp.DataType;
 import chat.dim.mtp.Package;
@@ -37,44 +38,32 @@ public class UDPGate<H extends BaseHub> extends StarGate<PackageDeparture, Packa
     }
 
     @Override
-    protected Connection getConnection(SocketAddress remote) {
-        return hub.getConnection(remote, null);
+    protected Connection getConnection(SocketAddress remote, SocketAddress local) {
+        return hub.getConnection(remote, local);
     }
 
     @Override
-    protected Connection connect(SocketAddress remote) throws IOException {
-        return hub.connect(remote, null);
+    protected Connection connect(SocketAddress remote, SocketAddress local) throws IOException {
+        return hub.connect(remote, local);
     }
 
     @Override
-    protected Docker<PackageDeparture, PackageArrival, TransactionID> createDocker(SocketAddress remote, byte[] data) {
+    protected Docker<PackageDeparture, PackageArrival, TransactionID> createDocker(SocketAddress remote,
+                                                                                   SocketAddress local,
+                                                                                   List<byte[]> data) {
         // TODO: check data format before creating docker
-        return new PackageDocker(remote, data, this);
+        return new PackageDocker(remote, local, data, this);
     }
 
-    @Override
-    public Docker<PackageDeparture, PackageArrival, TransactionID> getDocker(SocketAddress remote) {
-        Docker<PackageDeparture, PackageArrival, TransactionID> worker = super.getDocker(remote);
-        if (worker == null) {
-            if (getConnection(remote) != null) {
-                worker = createDocker(remote, null);
-                if (worker != null) {
-                    setDocker(remote, worker);
-                }
-            }
-        }
-        return worker;
-    }
-
-    void sendCommand(byte[] body, SocketAddress destination) {
+    void sendCommand(byte[] body, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.COMMAND, new Data(body));
-        Object worker = getDocker(destination);
+        Object worker = getDocker(destination, source, true);
         ((PackageDocker) worker).sendPackage(pack);
     }
 
-    void sendMessage(byte[] body, SocketAddress destination) {
+    void sendMessage(byte[] body, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.MESSAGE, new Data(body));
-        Object worker = getDocker(destination);
+        Object worker = getDocker(destination, source, true);
         ((PackageDocker) worker).sendPackage(pack);
     }
 

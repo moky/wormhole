@@ -33,8 +33,11 @@ package chat.dim.udp;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
+import java.net.SocketException;
+import java.nio.channels.DatagramChannel;
+import java.util.Map;
+import java.util.WeakHashMap;
 
-import chat.dim.net.BaseConnection;
 import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
@@ -42,6 +45,8 @@ import chat.dim.net.Connection;
 public abstract class PackageHub extends BaseHub {
 
     private final WeakReference<Connection.Delegate> delegateRef;
+
+    protected final Map<SocketAddress, DatagramChannel> channels = new WeakHashMap<>();
 
     public PackageHub(Connection.Delegate delegate) {
         super();
@@ -52,18 +57,25 @@ public abstract class PackageHub extends BaseHub {
         return delegateRef.get();
     }
 
-    @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
-        // create connection with channel
-        BaseConnection conn = new BaseConnection(createChannel(remote, local), remote, local);
-        // set delegate
-        if (conn.getDelegate() == null) {
-            conn.setDelegate(getDelegate());
+    public void bind(SocketAddress local) throws IOException {
+        DatagramChannel sock = channels.get(local);
+        if (sock == null) {
+            sock = DatagramChannel.open();
+            sock.socket().bind(local);
+            sock.configureBlocking(false);
+            channels.put(local, sock);
         }
-        // start FSM
-        conn.start();
-        return conn;
+        connect(null, local);
     }
 
-    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+        DatagramChannel sock = channels.get(local);
+        if (sock == null) {
+            throw new SocketException("failed to get channel: " + remote + " -> " + local);
+        } else {
+            Channel channel = new PackageChannel(sock);
+            channel.configureBlocking(false);
+            return channel;
+        }
+    }
 }

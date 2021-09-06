@@ -61,8 +61,7 @@ public class ClientHub extends StreamHub {
         return conn;
     }
 
-    @Override
-    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+    private Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
         Channel channel = new StreamChannel(remote, local);
         channel.configureBlocking(false);
         return channel;

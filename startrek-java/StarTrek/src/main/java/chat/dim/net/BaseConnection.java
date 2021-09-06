@@ -278,9 +278,9 @@ public class BaseConnection implements Connection, StateDelegate {
         Delegate delegate = getDelegate();
         if (delegate != null) {
             if (sent == -1) {
-                delegate.onError(error, pack, destination, this);
+                delegate.onError(error, pack, getLocalAddress(), destination, this);
             } else {
-                delegate.onSent(pack, destination, this);
+                delegate.onSent(pack, getLocalAddress(), destination, this);
             }
         }
         return sent;
@@ -321,7 +321,7 @@ public class BaseConnection implements Connection, StateDelegate {
                 //e.printStackTrace();
                 Delegate delegate = getDelegate();
                 if (delegate != null) {
-                    delegate.onError(e, null, null, this);
+                    delegate.onError(e, null, null, null, this);
                 }
                 activated = false;
             }
@@ -346,7 +346,7 @@ public class BaseConnection implements Connection, StateDelegate {
         buffer.flip();
         buffer.get(data);
         // callback
-        delegate.onReceived(data, remote, this);
+        delegate.onReceived(data, remote, getLocalAddress(), this);
         return true;
     }
 

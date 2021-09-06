@@ -30,6 +30,7 @@ public class Client implements Gate.Delegate<PackageDeparture, PackageArrival, T
     }
 
     public void start() throws IOException {
+        gate.hub.bind(localAddress);
         gate.hub.connect(remoteAddress, localAddress);
         gate.start();
     }
@@ -39,8 +40,8 @@ public class Client implements Gate.Delegate<PackageDeparture, PackageArrival, T
     }
 
     private void send(byte[] data) {
-        gate.sendCommand(data, remoteAddress);
-        gate.sendMessage(data, remoteAddress);
+        gate.sendCommand(data, localAddress, remoteAddress);
+        gate.sendMessage(data, localAddress, remoteAddress);
     }
 
     //
@@ -53,27 +54,27 @@ public class Client implements Gate.Delegate<PackageDeparture, PackageArrival, T
     }
 
     @Override
-    public void onReceived(PackageArrival ship, SocketAddress remote, Gate gate) {
+    public void onReceived(PackageArrival ship, SocketAddress source, SocketAddress destination, Gate gate) {
         Package pack = ship.getPackage();
         int headLen = pack.head.getSize();
         int bodyLen = pack.body.getSize();
         byte[] payload = pack.body.getBytes();
         String text = new String(payload, StandardCharsets.UTF_8);
-        UDPGate.info("<<< received (" + headLen + " + " + bodyLen + " bytes) from " + remote + ": " + text);
+        UDPGate.info("<<< received (" + headLen + " + " + bodyLen + " bytes) from " + source + ": " + text);
     }
 
     @Override
-    public void onSent(PackageDeparture ship, SocketAddress remote, Gate gate) {
+    public void onSent(PackageDeparture ship, SocketAddress source, SocketAddress destination, Gate gate) {
         Package pack = ship.getPackage();
         int bodyLen = pack.head.bodyLength;
         if (bodyLen == -1) {
             bodyLen = pack.body.getSize();
         }
-        UDPGate.info("message sent: " + bodyLen + " byte(s) to " + remote);
+        UDPGate.info("message sent: " + bodyLen + " byte(s) to " + destination);
     }
 
     @Override
-    public void onError(Error error, PackageDeparture ship, SocketAddress remote, Gate gate) {
+    public void onError(Error error, PackageDeparture ship, SocketAddress source, SocketAddress destination, Gate gate) {
         UDPGate.error(error.getMessage());
     }
 

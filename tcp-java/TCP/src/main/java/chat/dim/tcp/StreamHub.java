@@ -30,13 +30,9 @@
  */
 package chat.dim.tcp;
 
-import java.io.IOException;
 import java.lang.ref.WeakReference;
-import java.net.SocketAddress;
 
-import chat.dim.net.BaseConnection;
 import chat.dim.net.BaseHub;
-import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 
 public abstract class StreamHub extends BaseHub {
@@ -51,19 +47,4 @@ public abstract class StreamHub extends BaseHub {
     public Connection.Delegate getDelegate() {
         return delegateRef.get();
     }
-
-    @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
-        // create connection with channel
-        BaseConnection conn = new BaseConnection(createChannel(remote, local), remote, local);
-        // set delegate
-        if (conn.getDelegate() == null) {
-            conn.setDelegate(getDelegate());
-        }
-        // start FSM
-        conn.start();
-        return conn;
-    }
-
-    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
 }

@@ -44,16 +44,14 @@ import chat.dim.type.Data;
 
 public class PackageDocker extends StarDocker<PackageDeparture, PackageArrival, TransactionID> {
 
-    private ByteArray cached = null;
+    private List<byte[]> advanceParties;
 
     private final WeakReference<StarGate<PackageDeparture, PackageArrival, TransactionID>> gateRef;
 
-    public PackageDocker(SocketAddress remote, byte[] advanceParty,
+    public PackageDocker(SocketAddress remote, SocketAddress local, List<byte[]> parties,
                          StarGate<PackageDeparture, PackageArrival, TransactionID> gate) {
-        super(remote);
-        if (advanceParty != null && advanceParty.length > 0) {
-            cached = new Data(advanceParty);
-        }
+        super(remote, local);
+        advanceParties = parties;
         gateRef = new WeakReference<>(gate);
     }
 
@@ -71,40 +69,40 @@ public class PackageDocker extends StarDocker<PackageDeparture, PackageArrival, 
     @Override
     public void process(final byte[] data) {
         if (data != null) {
-            if (cached == null) {
-                cached = new Data(data);
-            } else {
-                cached = cached.concat(data);
+            super.process(data);
+        } else if (advanceParties != null) {
+            // process advance parties
+            for (byte[] item : advanceParties) {
+                super.process(item);
             }
-        }
-        if (cached != null && cached.getSize() > 0) {
-            super.process(cached.getBytes());
+            advanceParties = null;
         }
     }
 
-    private Package getPackage(ByteArray data) {
+    private Package getPackage(final ByteArray data) {
         Header head = Header.parse(data);
         if (head == null) {
             // FIXME: data error?
-            cached = null;
             return null;
         }
         int dataLen = data.getSize();
         int headLen = head.getSize();
         int bodyLen = head.bodyLength;
         int packLen = bodyLen == -1 ? dataLen : headLen + bodyLen;
+        ByteArray pack;
         if (/*bodyLen == -1 || */packLen == dataLen) {
             // no sticky data after the tail
-            cached = null;
+            pack = data;
         } else if (packLen < dataLen) {
+            // TODO: keep the sticky data?
+            //       cached = data.slice(packLen);
             // cut the tail
-            cached = data.slice(packLen);
-            data = data.slice(0, packLen);
+            pack = data.slice(0, packLen);
         } else {
             // wait for more data
             return null;
         }
-        return new Package(data, head, data.slice(head.getSize()));
+        return new Package(pack, head, data.slice(head.getSize()));
     }
 
     @Override
@@ -208,14 +206,7 @@ public class PackageDocker extends StarDocker<PackageDeparture, PackageArrival, 
             // FIXME:
             dock.appendDeparture(outgo);
         }
-        int success = 0;
-        Gate gate = getGate();
-        for (byte[] pack : fragments) {
-            if (gate.send(pack, remoteAddress)) {
-                success += 1;
-            }
-        }
-        return success == fragments.size();
+        return super.sendOutgoShip(outgo);
     }
 
     private void respondCommand(TransactionID sn, byte[] body) {
