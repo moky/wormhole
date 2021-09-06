@@ -5,18 +5,21 @@ import java.nio.charset.StandardCharsets;
 
 import chat.dim.mtp.DataType;
 import chat.dim.mtp.Package;
+import chat.dim.mtp.PackageArrival;
+import chat.dim.mtp.PackageDeparture;
 import chat.dim.mtp.PackageDocker;
+import chat.dim.mtp.TransactionID;
 import chat.dim.net.BaseHub;
 import chat.dim.net.Connection;
 import chat.dim.port.Docker;
 import chat.dim.startrek.StarGate;
 import chat.dim.type.Data;
 
-public class UDPGate<H extends BaseHub> extends StarGate {
+public class UDPGate<H extends BaseHub> extends StarGate<PackageDeparture, PackageArrival, TransactionID> {
 
     H hub = null;
 
-    public UDPGate(Delegate delegate) {
+    public UDPGate(Delegate<PackageDeparture, PackageArrival, TransactionID> delegate) {
         super(delegate);
     }
 
@@ -44,14 +47,14 @@ public class UDPGate<H extends BaseHub> extends StarGate {
     }
 
     @Override
-    protected Docker createDocker(SocketAddress remote, byte[] data) {
+    protected Docker<PackageDeparture, PackageArrival, TransactionID> createDocker(SocketAddress remote, byte[] data) {
         // TODO: check data format before creating docker
         return new PackageDocker(remote, data, this);
     }
 
     @Override
-    public Docker getDocker(SocketAddress remote) {
-        Docker worker = super.getDocker(remote);
+    public Docker<PackageDeparture, PackageArrival, TransactionID> getDocker(SocketAddress remote) {
+        Docker<PackageDeparture, PackageArrival, TransactionID> worker = super.getDocker(remote);
         if (worker == null) {
             if (getConnection(remote) != null) {
                 worker = createDocker(remote, null);
@@ -64,16 +67,14 @@ public class UDPGate<H extends BaseHub> extends StarGate {
     }
 
     void sendCommand(byte[] body, SocketAddress destination) {
-        Docker worker = getDocker(destination);
-        assert worker instanceof PackageDocker : "docker error: " + worker;
         Package pack = Package.create(DataType.COMMAND, new Data(body));
+        Object worker = getDocker(destination);
         ((PackageDocker) worker).sendPackage(pack);
     }
 
     void sendMessage(byte[] body, SocketAddress destination) {
-        Docker worker = getDocker(destination);
-        assert worker instanceof PackageDocker : "docker error: " + worker;
         Package pack = Package.create(DataType.MESSAGE, new Data(body));
+        Object worker = getDocker(destination);
         ((PackageDocker) worker).sendPackage(pack);
     }
 

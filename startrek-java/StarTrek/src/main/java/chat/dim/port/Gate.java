@@ -92,7 +92,7 @@ public interface Gate {
      *  Gate Delegate
      *  ~~~~~~~~~~~~~
      */
-    interface Delegate {
+    interface Delegate<D extends Departure<A, I>, A extends Arrival<A, I>, I> {
 
         /**
          *  Callback when connection status changed
@@ -111,7 +111,7 @@ public interface Gate {
          * @param remote    - remote address
          * @param gate      - current gate
          */
-        void onReceived(Arrival ship, SocketAddress remote, Gate gate);
+        void onReceived(A ship, SocketAddress remote, Gate gate);
 
         /**
          *  Callback when package sent
@@ -120,7 +120,7 @@ public interface Gate {
          * @param remote    - remote address
          * @param gate      - current gate
          */
-        void onSent(Departure ship, SocketAddress remote, Gate gate);
+        void onSent(D ship, SocketAddress remote, Gate gate);
 
         /**
          *  Callback when package sent failed
@@ -130,6 +130,6 @@ public interface Gate {
          * @param remote    - remote address
          * @param gate      - current gate
          */
-        void onError(Error error, Departure ship, SocketAddress remote, Gate gate);
+        void onError(Error error, D ship, SocketAddress remote, Gate gate);
     }
 }

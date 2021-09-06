@@ -6,14 +6,12 @@ import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 
 import chat.dim.net.Hub;
-import chat.dim.port.Arrival;
-import chat.dim.port.Departure;
 import chat.dim.port.Gate;
 import chat.dim.startrek.PlainArrival;
 import chat.dim.startrek.PlainDeparture;
 import chat.dim.tcp.ServerHub;
 
-public class Server implements Gate.Delegate {
+public class Server implements Gate.Delegate<PlainDeparture, PlainArrival, Object> {
 
     private final SocketAddress localAddress;
 
@@ -46,9 +44,8 @@ public class Server implements Gate.Delegate {
     }
 
     @Override
-    public void onReceived(Arrival ship, SocketAddress remote, Gate gate) {
-        assert ship instanceof PlainArrival : "income ship error: " + ship;
-        byte[] pack = ((PlainArrival) ship).getData();
+    public void onReceived(PlainArrival ship, SocketAddress remote, Gate gate) {
+        byte[] pack = ship.getData();
         String text = new String(pack, StandardCharsets.UTF_8);
         TCPGate.info("<<< received (" + pack.length + " bytes) from " + remote + ": " + text);
         text = (counter++) + "# " + pack.length + " byte(s) received";
@@ -59,14 +56,13 @@ public class Server implements Gate.Delegate {
     static int counter = 0;
 
     @Override
-    public void onSent(Departure ship, SocketAddress remote, Gate gate) {
-        assert ship instanceof PlainDeparture;
-        int bodyLen = ((PlainDeparture) ship).getPackage().length;
+    public void onSent(PlainDeparture ship, SocketAddress remote, Gate gate) {
+        int bodyLen = ship.getPackage().length;
         TCPGate.info("message sent: " + bodyLen + " byte(s) to " + remote);
     }
 
     @Override
-    public void onError(Error error, Departure ship, SocketAddress remote, Gate gate) {
+    public void onError(Error error, PlainDeparture ship, SocketAddress remote, Gate gate) {
         TCPGate.error(error.getMessage());
     }
 

@@ -34,7 +34,7 @@ package chat.dim.port;
  *  Incoming Ship
  *  ~~~~~~~~~~~~~
  */
-public interface Arrival extends Ship {
+public interface Arrival<A extends Arrival<A, I>, I> extends Ship<I> {
 
     /**
      *  Data package can be sent as separated batches
@@ -42,5 +42,5 @@ public interface Arrival extends Ship {
      * @param income - income ship carried with message fragment
      * @return new ship carried the whole data package
      */
-    Arrival assemble(final Arrival income);
+    A assemble(final A income);
 }

@@ -34,10 +34,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import chat.dim.port.Arrival;
 import chat.dim.startrek.DepartureShip;
 
-public class PackageDeparture extends DepartureShip {
+public class PackageDeparture extends DepartureShip<PackageArrival, TransactionID> {
 
     private final Package completed;
 
@@ -61,7 +60,7 @@ public class PackageDeparture extends DepartureShip {
     }
 
     @Override
-    public Object getSN() {
+    public TransactionID getSN() {
         return completed.head.sn;
     }
 
@@ -76,13 +75,12 @@ public class PackageDeparture extends DepartureShip {
     }
 
     @Override
-    public boolean checkResponse(Arrival arrival) {
+    public boolean checkResponse(PackageArrival arrival) {
         int count = 0;
-        assert arrival instanceof PackageArrival : "arrival ship error: " + arrival;
-        List<Package> array = ((PackageArrival) arrival).getFragments();
+        List<Package> array = arrival.getFragments();
         if (array == null) {
             // it's a completed data package
-            Package pack = ((PackageArrival) arrival).getPackage();
+            Package pack = arrival.getPackage();
             if (removePage(pack.head.index)) {
                 ++count;
             }

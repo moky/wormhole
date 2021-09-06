@@ -9,13 +9,12 @@ import java.util.Random;
 import chat.dim.mtp.Package;
 import chat.dim.mtp.PackageArrival;
 import chat.dim.mtp.PackageDeparture;
+import chat.dim.mtp.TransactionID;
 import chat.dim.net.Hub;
-import chat.dim.port.Arrival;
-import chat.dim.port.Departure;
 import chat.dim.port.Gate;
 import chat.dim.udp.ClientHub;
 
-public class Client implements Gate.Delegate {
+public class Client implements Gate.Delegate<PackageDeparture, PackageArrival, TransactionID> {
 
     private final SocketAddress localAddress;
     private final SocketAddress remoteAddress;
@@ -54,9 +53,8 @@ public class Client implements Gate.Delegate {
     }
 
     @Override
-    public void onReceived(Arrival ship, SocketAddress remote, Gate gate) {
-        assert ship instanceof PackageArrival : "income ship error: " + ship;
-        Package pack = ((PackageArrival) ship).getPackage();
+    public void onReceived(PackageArrival ship, SocketAddress remote, Gate gate) {
+        Package pack = ship.getPackage();
         int headLen = pack.head.getSize();
         int bodyLen = pack.body.getSize();
         byte[] payload = pack.body.getBytes();
@@ -65,9 +63,8 @@ public class Client implements Gate.Delegate {
     }
 
     @Override
-    public void onSent(Departure ship, SocketAddress remote, Gate gate) {
-        assert ship instanceof PackageDeparture;
-        Package pack = ((PackageDeparture) ship).getPackage();
+    public void onSent(PackageDeparture ship, SocketAddress remote, Gate gate) {
+        Package pack = ship.getPackage();
         int bodyLen = pack.head.bodyLength;
         if (bodyLen == -1) {
             bodyLen = pack.body.getSize();
@@ -76,7 +73,7 @@ public class Client implements Gate.Delegate {
     }
 
     @Override
-    public void onError(Error error, Departure ship, SocketAddress remote, Gate gate) {
+    public void onError(Error error, PackageDeparture ship, SocketAddress remote, Gate gate) {
         UDPGate.error(error.getMessage());
     }
 

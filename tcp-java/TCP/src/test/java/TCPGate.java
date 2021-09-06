@@ -6,14 +6,16 @@ import java.nio.charset.StandardCharsets;
 import chat.dim.net.BaseHub;
 import chat.dim.net.Connection;
 import chat.dim.port.Docker;
+import chat.dim.startrek.PlainArrival;
+import chat.dim.startrek.PlainDeparture;
 import chat.dim.startrek.PlainDocker;
 import chat.dim.startrek.StarGate;
 
-public class TCPGate<H extends BaseHub> extends StarGate {
+public class TCPGate<H extends BaseHub> extends StarGate<PlainDeparture, PlainArrival, Object> {
 
     H hub = null;
 
-    public TCPGate(Delegate delegate) {
+    public TCPGate(Delegate<PlainDeparture, PlainArrival, Object> delegate) {
         super(delegate);
     }
 
@@ -41,14 +43,14 @@ public class TCPGate<H extends BaseHub> extends StarGate {
     }
 
     @Override
-    protected Docker createDocker(SocketAddress remote, byte[] data) {
+    protected Docker<PlainDeparture, PlainArrival, Object> createDocker(SocketAddress remote, byte[] data) {
         // TODO: check data format before creating docker
         return new PlainDocker(remote, data, this);
     }
 
     @Override
-    public Docker getDocker(SocketAddress remote) {
-        Docker worker = super.getDocker(remote);
+    public Docker<PlainDeparture, PlainArrival, Object> getDocker(SocketAddress remote) {
+        Docker<PlainDeparture, PlainArrival, Object> worker = super.getDocker(remote);
         if (worker == null) {
             if (getConnection(remote) != null) {
                 worker = createDocker(remote, null);
@@ -61,8 +63,7 @@ public class TCPGate<H extends BaseHub> extends StarGate {
     }
 
     void sendMessage(byte[] payload, SocketAddress destination) {
-        Docker worker = getDocker(destination);
-        assert worker instanceof PlainDocker : "docker error: " + worker;
+        Object worker = getDocker(destination);
         ((PlainDocker) worker).sendData(payload);
     }
 

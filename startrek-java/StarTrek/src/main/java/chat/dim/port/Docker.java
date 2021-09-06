@@ -38,7 +38,8 @@ import chat.dim.skywalker.Processor;
  *
  *  Processor for Star Ships
  */
-public interface Docker extends Processor {
+public interface Docker<D extends Departure<A, I>, A extends Arrival<A, I>, I>
+        extends Processor {
 
     /**
      *  Pack the payload to an outgo Ship
@@ -47,7 +48,7 @@ public interface Docker extends Processor {
      * @param priority    - smaller is faster (-1 is the most fast)
      * @return StarShip containing payload
      */
-    Departure pack(final byte[] payload, final int priority);
+    D pack(final byte[] payload, final int priority);
 
     /**
      *  Called when received data

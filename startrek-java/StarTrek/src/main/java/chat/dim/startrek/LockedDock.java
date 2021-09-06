@@ -37,13 +37,14 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 
-public class LockedDock extends Dock {
+public class LockedDock<D extends Departure<A, I>, A extends Arrival<A, I>, I>
+        extends Dock<D, A, I> {
 
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     @Override
-    public Arrival assembleArrival(final Arrival income) {
-        final Arrival completed;
+    public A assembleArrival(final A income) {
+        final A completed;
         final Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
@@ -55,7 +56,7 @@ public class LockedDock extends Dock {
     }
 
     @Override
-    public boolean appendDeparture(final Departure ship) {
+    public boolean appendDeparture(final D ship) {
         final boolean added;
         final Lock writeLock = lock.writeLock();
         writeLock.lock();
@@ -68,8 +69,8 @@ public class LockedDock extends Dock {
     }
 
     @Override
-    public Departure checkResponse(final Arrival response) {
-        final Departure finished;
+    public D checkResponse(final A response) {
+        final D finished;
         final Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
@@ -81,8 +82,8 @@ public class LockedDock extends Dock {
     }
 
     @Override
-    public Departure getNextDeparture(final long now) {
-        final Departure next;
+    public D getNextDeparture(final long now) {
+        final D next;
         final Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {

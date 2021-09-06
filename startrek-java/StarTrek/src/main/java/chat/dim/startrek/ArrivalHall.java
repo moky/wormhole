@@ -43,12 +43,12 @@ import chat.dim.port.Arrival;
  *  Memory cache for Arrivals
  *  ~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-public class ArrivalHall {
+public class ArrivalHall<A extends Arrival<A, I>, I> {
 
-    private final Set<Arrival> arrivals = new HashSet<>();
-    private final Map<Object, Arrival> arrivalMap = new WeakHashMap<>();
+    private final Set<A> arrivals = new HashSet<>();
+    private final Map<I, A> arrivalMap = new WeakHashMap<>();
 
-    private final Map<Object, Long> arrivalFinished = new HashMap<>();  // ID -> timestamp
+    private final Map<I, Long> arrivalFinished = new HashMap<>();  // ID -> timestamp
 
     /**
      *  Check received ship for completed package
@@ -56,9 +56,9 @@ public class ArrivalHall {
      * @param income - received ship carrying data package (fragment)
      * @return ship carrying completed data package
      */
-    public Arrival assembleArrival(final Arrival income) {
+    public A assembleArrival(final A income) {
         // check ship ID (SN)
-        final Object sn = income.getSN();
+        final I sn = income.getSN();
         if (sn == null) {
             // separated package ship must have SN for assembling
             // we consider it to be a ship carrying a whole package here
@@ -70,7 +70,7 @@ public class ArrivalHall {
             // task already finished
             return null;
         }
-        Arrival task = arrivalMap.get(sn);
+        A task = arrivalMap.get(sn);
         if (task == null) {
             // new arrival, try assembling to check whether a fragment
             task = income.assemble(income);
@@ -85,7 +85,7 @@ public class ArrivalHall {
             }
         }
         // insert as fragment
-        final Arrival completed = task.assemble(income);
+        final A completed = task.assemble(income);
         if (completed == null) {
             // not completed yet, waiting for more fragments
             return null;
@@ -102,10 +102,10 @@ public class ArrivalHall {
      *  Clear all expired tasks
      */
     public void purge() {
-        final Set<Arrival> failedTasks = new HashSet<>();
+        final Set<A> failedTasks = new HashSet<>();
         final long now = (new Date()).getTime();
         // 1. seeking expired tasks
-        for (Arrival ship : arrivals) {
+        for (A ship : arrivals) {
             if (ship.isFailed(now)) {
                 // task expired
                 failedTasks.add(ship);
@@ -113,9 +113,9 @@ public class ArrivalHall {
         }
         // 2. clear expired tasks
         if (failedTasks.size() > 0) {
-            Object sn;
+            I sn;
             // remove expired tasks
-            for (Arrival ship : failedTasks) {
+            for (A ship : failedTasks) {
                 arrivals.remove(ship);
                 // remove mapping with SN
                 sn = ship.getSN();

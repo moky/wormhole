@@ -39,17 +39,20 @@ import java.util.Map;
 
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
+import chat.dim.port.Arrival;
+import chat.dim.port.Departure;
 import chat.dim.port.Docker;
 import chat.dim.port.Gate;
 import chat.dim.skywalker.Runner;
 
-public abstract class StarGate extends Runner implements Gate, Connection.Delegate {
+public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I>, I>
+        extends Runner implements Gate, Connection.Delegate {
 
-    private final Map<SocketAddress, Docker> dockerMap = new HashMap<>();
+    private final Map<SocketAddress, Docker<D, A, I>> dockerMap = new HashMap<>();
 
-    private final WeakReference<Delegate> delegateRef;
+    private final WeakReference<Delegate<D, A, I>> delegateRef;
 
-    protected StarGate(Delegate delegate) {
+    protected StarGate(Delegate<D, A, I> delegate) {
         super();
         delegateRef = new WeakReference<>(delegate);
     }
@@ -58,12 +61,12 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
     protected abstract Connection connect(SocketAddress remote) throws IOException;
 
     // create new Docker with data (advance party)
-    protected abstract Docker createDocker(SocketAddress remote, byte[] data);
+    protected abstract Docker<D, A, I> createDocker(SocketAddress remote, byte[] data);
 
-    public Docker getDocker(SocketAddress remote) {
+    public Docker<D, A, I> getDocker(SocketAddress remote) {
         return dockerMap.get(remote);
     }
-    protected void setDocker(SocketAddress remote, Docker worker) {
+    protected void setDocker(SocketAddress remote, Docker<D, A, I> worker) {
         if (worker == null) {
             // remove worker
             worker = dockerMap.get(remote);
@@ -76,7 +79,7 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
         }
     }
 
-    public Gate.Delegate getDelegate() {
+    public Gate.Delegate<D, A, I> getDelegate() {
         return delegateRef.get();
     }
 
@@ -106,9 +109,9 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
     @Override
     public boolean process() {
         int counter = 0;
-        Map.Entry<SocketAddress, Docker> entry;
-        Docker worker;
-        Iterator<Map.Entry<SocketAddress, Docker>> iterator;
+        Map.Entry<SocketAddress, Docker<D, A, I>> entry;
+        Docker<D, A, I> worker;
+        Iterator<Map.Entry<SocketAddress, Docker<D, A, I>>> iterator;
         iterator = dockerMap.entrySet().iterator();
         while (iterator.hasNext()) {
             entry = iterator.next();
@@ -129,7 +132,7 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
      */
     protected void heartbeat(Connection connection) throws IOException {
         SocketAddress remote = connection.getRemoteAddress();
-        Docker worker = getDocker(remote);
+        Docker<D, A, I> worker = getDocker(remote);
         if (worker != null) {
             worker.heartbeat();
         }
@@ -150,7 +153,7 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
             }
         }
         // callback when status changed
-        Delegate delegate = getDelegate();
+        Delegate<D, A, I> delegate = getDelegate();
         if (delegate != null) {
             Status s1 = Status.getStatus(previous);
             Status s2 = Status.getStatus(current);
@@ -163,7 +166,7 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
     @Override
     public void onReceived(byte[] data, SocketAddress remote, Connection connection) {
         // get docker by remote address
-        Docker worker = getDocker(remote);
+        Docker<D, A, I> worker = getDocker(remote);
         if (worker == null) {
             // docker not exists, check the data to decide which docker should be created
             worker = createDocker(remote, data);

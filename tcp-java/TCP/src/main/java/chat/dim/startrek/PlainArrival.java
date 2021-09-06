@@ -30,9 +30,7 @@
  */
 package chat.dim.startrek;
 
-import chat.dim.port.Arrival;
-
-public class PlainArrival extends ArrivalShip {
+public class PlainArrival extends ArrivalShip<PlainArrival, Object> {
 
     private final byte[] data;
 
@@ -51,7 +49,7 @@ public class PlainArrival extends ArrivalShip {
     }
 
     @Override
-    public Arrival assemble(Arrival arrival) {
+    public PlainArrival assemble(PlainArrival arrival) {
         return arrival;
     }
 }

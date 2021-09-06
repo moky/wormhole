@@ -39,11 +39,11 @@ import chat.dim.port.Departure;
  *
  *  Parking Star Ships
  */
-public class Dock {
+public class Dock<D extends Departure<A, I>, A extends Arrival<A, I>, I> {
 
     // memory caches
-    private final ArrivalHall arrivalHall;
-    private final DepartureHall departureHall;
+    private final ArrivalHall<A, I> arrivalHall;
+    private final DepartureHall<D, A, I> departureHall;
 
     public Dock() {
         super();
@@ -51,12 +51,12 @@ public class Dock {
         departureHall = createDepartureHall();
     }
 
-    protected ArrivalHall createArrivalHall() {
-        return new ArrivalHall();
+    protected ArrivalHall<A, I> createArrivalHall() {
+        return new ArrivalHall<>();
     }
 
-    protected DepartureHall createDepartureHall() {
-        return new DepartureHall();
+    protected DepartureHall<D, A, I> createDepartureHall() {
+        return new DepartureHall<>();
     }
 
     /**
@@ -65,7 +65,7 @@ public class Dock {
      * @param income - received ship carrying data package (fragment)
      * @return ship carrying completed data package
      */
-    public Arrival assembleArrival(final Arrival income) {
+    public A assembleArrival(final A income) {
         return arrivalHall.assembleArrival(income);
     }
 
@@ -75,7 +75,7 @@ public class Dock {
      * @param ship - departure task
      * @return false on duplicated
      */
-    public boolean appendDeparture(final Departure ship) {
+    public boolean appendDeparture(final D ship) {
         return departureHall.appendDeparture(ship);
     }
 
@@ -85,7 +85,7 @@ public class Dock {
      * @param response - incoming ship with SN
      * @return finished task
      */
-    public Departure checkResponse(final Arrival response) {
+    public D checkResponse(final A response) {
         return departureHall.checkResponse(response);
     }
 
@@ -95,7 +95,7 @@ public class Dock {
      * @param now - current time
      * @return departure task
      */
-    public Departure getNextDeparture(final long now) {
+    public D getNextDeparture(final long now) {
         return departureHall.getNextDeparture(now);
     }
 

@@ -40,11 +40,11 @@ import chat.dim.port.Departure;
 import chat.dim.port.Docker;
 import chat.dim.port.Gate;
 
-public abstract class StarDocker implements Docker {
+public abstract class StarDocker<D extends Departure<A, I>, A extends Arrival<A, I>, I> implements Docker<D, A, I> {
 
     protected final SocketAddress remoteAddress;
 
-    protected final Dock dock;
+    protected final Dock<D, A, I> dock;
 
     protected StarDocker(SocketAddress remote) {
         super();
@@ -52,22 +52,22 @@ public abstract class StarDocker implements Docker {
         dock = createDock();
     }
 
-    protected Dock createDock() {
-        return new LockedDock();
+    protected Dock<D, A, I> createDock() {
+        return new LockedDock<>();
     }
 
     protected abstract Gate getGate();
 
-    protected abstract Gate.Delegate getDelegate();
+    protected abstract Gate.Delegate<D, A, I> getDelegate();
 
-    private void onError(final String message, final Departure ship) {
-        Gate.Delegate delegate = getDelegate();
+    private void onError(final String message, final D ship) {
+        Gate.Delegate<D, A, I> delegate = getDelegate();
         if (delegate != null) {
             delegate.onError(new Error(message), ship, remoteAddress, getGate());
         }
     }
 
-    protected boolean sendOutgoShip(final Departure outgo) throws IOException {
+    protected boolean sendOutgoShip(final D outgo) throws IOException {
         List<byte[]> fragments = outgo.getFragments();
         if (fragments == null || fragments.size() == 0) {
             return true;
@@ -92,7 +92,7 @@ public abstract class StarDocker implements Docker {
         }
         long now = (new Date()).getTime();
         // 2. get outgo
-        Departure outgo = getOutgoShip(now);
+        D outgo = getOutgoShip(now);
         if (outgo == null) {
             // nothing to do now
             return false;
@@ -118,7 +118,7 @@ public abstract class StarDocker implements Docker {
     @Override
     public void process(final byte[] data) {
         // 1. get income ship from received data
-        Arrival income = getIncomeShip(data);
+        A income = getIncomeShip(data);
         if (income == null) {
             return;
         }
@@ -137,7 +137,7 @@ public abstract class StarDocker implements Docker {
      * @param data - received data
      * @return income ship carrying data package/fragment
      */
-    protected abstract Arrival getIncomeShip(final byte[] data);
+    protected abstract A getIncomeShip(final byte[] data);
 
     /**
      *  Check income ship for responding
@@ -145,19 +145,19 @@ public abstract class StarDocker implements Docker {
      * @param income - income ship carrying data package/fragment
      * @return income ship carrying completed data package
      */
-    protected abstract Arrival checkIncomeShip(final Arrival income);
+    protected abstract A checkIncomeShip(final A income);
 
     /**
      *  Check and remove linked departure ship
      *
      * @param income - income ship with SN
      */
-    protected void checkResponse(final Arrival income) {
+    protected void checkResponse(final A income) {
         // check response for linked departure ship (same SN)
-        Departure linked = dock.checkResponse(income);
+        D linked = dock.checkResponse(income);
         if (linked != null) {
             // all fragments responded, task finished
-            Gate.Delegate delegate = getDelegate();
+            Gate.Delegate<D, A, I> delegate = getDelegate();
             if (delegate != null) {
                 delegate.onSent(linked, remoteAddress, getGate());
             }
@@ -169,8 +169,8 @@ public abstract class StarDocker implements Docker {
      *
      * @param income - income ship carrying completed data package
      */
-    protected void processIncomeShip(final Arrival income) {
-        Gate.Delegate delegate = getDelegate();
+    protected void processIncomeShip(final A income) {
+        Gate.Delegate<D, A, I> delegate = getDelegate();
         assert delegate != null : "gate delegate should not empty";
         delegate.onReceived(income, remoteAddress, getGate());
     }
@@ -178,7 +178,7 @@ public abstract class StarDocker implements Docker {
     /**
      *  Get outgo Ship from waiting queue
      */
-    protected Departure getOutgoShip(final long now) {
+    protected D getOutgoShip(final long now) {
         // this will be remove from the cache
         // if needs retry, the caller should append it back to the queue
         return dock.getNextDeparture(now);
