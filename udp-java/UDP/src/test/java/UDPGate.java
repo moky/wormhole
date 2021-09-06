@@ -25,7 +25,6 @@ public class UDPGate<H extends BaseHub> extends StarGate<PackageDeparture, Packa
     }
 
     public void start() {
-        setup();
         new Thread(this).start();
     }
 

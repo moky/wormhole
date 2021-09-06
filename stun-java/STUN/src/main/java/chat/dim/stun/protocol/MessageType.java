@@ -96,10 +96,10 @@ public class MessageType extends UInt16Data {
 
     private static final Map<Integer, MessageType> s_types = new HashMap<>();
 
-    public static MessageType BindRequest               = create(0x0001, "Bind Request");
-    public static MessageType BindResponse              = create(0x0101, "Bind Response");
-    public static MessageType BindErrorResponse         = create(0x0111, "Bind Error Response");
-    public static MessageType SharedSecretRequest       = create(0x0002, "Shared Secret Request");
-    public static MessageType SharedSecretResponse      = create(0x0102, "Shared Secret Response");
-    public static MessageType SharedSecretErrorResponse = create(0x0112, "Shared Secret Error Response");
+    public static final MessageType BindRequest               = create(0x0001, "Bind Request");
+    public static final MessageType BindResponse              = create(0x0101, "Bind Response");
+    public static final MessageType BindErrorResponse         = create(0x0111, "Bind Error Response");
+    public static final MessageType SharedSecretRequest       = create(0x0002, "Shared Secret Request");
+    public static final MessageType SharedSecretResponse      = create(0x0102, "Shared Secret Response");
+    public static final MessageType SharedSecretErrorResponse = create(0x0112, "Shared Secret Error Response");
 }

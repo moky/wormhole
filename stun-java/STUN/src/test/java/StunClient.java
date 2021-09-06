@@ -3,78 +3,73 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import chat.dim.net.Connection;
-import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
+import chat.dim.port.Gate;
+import chat.dim.startrek.PlainArrival;
+import chat.dim.startrek.PlainDeparture;
 import chat.dim.stun.Client;
+import chat.dim.udp.ClientHub;
 
-public class StunClient extends Client implements Runnable, Connection.Delegate<byte[]> {
+public class StunClient extends Client implements Gate.Delegate<PlainDeparture, PlainArrival, Object> {
 
-    private final SocketAddress remoteAddress;
-    private final StunHub hub;
+    private SocketAddress remoteAddress = null;
 
-    StunClient(InetSocketAddress local, SocketAddress remote) {
+    private final UDPGate<ClientHub> gate;
+
+    StunClient(InetSocketAddress local) {
         super(local);
-        remoteAddress = remote;
-        hub = new StunHub(this);
+        gate = new UDPGate<>(this);
+        gate.hub = new ClientHub(gate);
     }
 
-    public void start() {
-        try {
-            hub.bind(sourceAddress);
-            hub.start();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        new Thread(this).start();
+    public void start() throws IOException {
+        gate.hub.bind(sourceAddress);
+        gate.start();
     }
 
     void stop() {
-        hub.stop();
+        gate.stop();
+    }
+
+    //
+    //  Gate Delegate
+    //
+
+    @Override
+    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, Gate gate) {
+        UDPGate.info("!!! connection (" + remote + ") state changed: " + oldStatus + " -> " + newStatus);
     }
 
     @Override
-    public void run() {
-        while (hub.isRunning()) {
-            hub.tick();
-            if (hub.getActivatedCount() == 0) {
-                idle(8);
-            }
-        }
-    }
-
-    @Override
-    public void onConnectionStateChanged(Connection connection, ConnectionState previous, ConnectionState current) {
-        info("!!! connection ("
-                + connection.getLocalAddress() + ", "
-                + connection.getRemoteAddress() + ") state changed: "
-                + previous + " -> " + current);
-    }
-
-    @Override
-    public void onConnectionDataReceived(Connection<byte[]> connection, SocketAddress remote, byte[] pack) {
+    public void onReceived(PlainArrival ship, SocketAddress source, SocketAddress destination, Gate gate) {
+        byte[] pack = ship.getData();
         if (pack != null && pack.length > 0) {
             chunks.add(pack);
         }
     }
-
     private final List<byte[]> chunks = new ArrayList<>();
 
     @Override
+    public void onSent(PlainDeparture ship, SocketAddress source, SocketAddress destination, Gate gate) {
+        byte[] pack = ship.getPackage();
+        int bodyLen = pack.length;
+        UDPGate.info("message sent: " + bodyLen + " byte(s) to " + destination);
+    }
+
+    @Override
+    public void onError(Error error, PlainDeparture ship, SocketAddress source, SocketAddress destination, Gate gate) {
+        UDPGate.error(error.getMessage());
+    }
+
+    @Override
     public int send(byte[] data, SocketAddress source, SocketAddress destination) {
-        try {
-            hub.send(data, source, destination);
-            return 0;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return -1;
-        }
+        gate.sendData(data, source, destination);
+        return 0;
     }
 
     @Override
@@ -82,10 +77,6 @@ public class StunClient extends Client implements Runnable, Connection.Delegate<
         byte[] data = null;
         long timeout = (new Date()).getTime() + 2000;
         while (true) {
-            if (chunks.size() == 0) {
-                // drive hub to receive data
-                hub.tick();
-            }
             if (chunks.size() > 0) {
                 data = chunks.remove(0);
                 break;
@@ -93,7 +84,7 @@ public class StunClient extends Client implements Runnable, Connection.Delegate<
             if (timeout < (new Date()).getTime()) {
                 break;
             }
-            idle(256);
+            UDPGate.idle(256);
         }
         info("received " + (data == null ? 0 : data.length) + " bytes from " + remoteAddress);
         return data;
@@ -101,21 +92,12 @@ public class StunClient extends Client implements Runnable, Connection.Delegate<
 
     @Override
     protected void info(String msg) {
-        Date currentTime = new Date();
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        String dateString = formatter.format(currentTime);
-        System.out.printf("[%s] %s\n", dateString, msg);
+        UDPGate.info(msg);
     }
 
-    static void idle(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void detect(SocketAddress serverAddress) {
+    public void detect(SocketAddress serverAddress) throws IOException {
+        remoteAddress = serverAddress;
+        gate.hub.connect(remoteAddress, sourceAddress);
         info("----------------------------------------------------------------");
         info("-- Detection starts from : " + serverAddress);
         Map<String, Object> res = getNatType(serverAddress);
@@ -135,9 +117,9 @@ public class StunClient extends Client implements Runnable, Connection.Delegate<
         }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
 
-        //remoteAddress = new InetSocketAddress("stun.xten.com", 3478);
+        InetSocketAddress a1 = new InetSocketAddress("stun.xten.com", 3478);
         //remoteAddress = new InetSocketAddress("stun.voipbuster.com", 3478);
         //remoteAddress = new InetSocketAddress("stun.sipgate.net", 3478);
         //remoteAddress = new InetSocketAddress("stun.ekiga.net", 3478);
@@ -154,9 +136,10 @@ public class StunClient extends Client implements Runnable, Connection.Delegate<
 
         InetSocketAddress local = new InetSocketAddress(HOST, PORT);
         InetSocketAddress remote = new InetSocketAddress(StunServer.HOST, StunServer.PORT);
-        StunClient client = new StunClient(local, remote);
+        StunClient client = new StunClient(local);
 
         client.start();
+        client.detect(a1);
         client.detect(remote);
         client.stop();
     }

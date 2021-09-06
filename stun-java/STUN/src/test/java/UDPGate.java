@@ -1,7 +1,8 @@
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 import chat.dim.net.BaseHub;
@@ -12,11 +13,11 @@ import chat.dim.startrek.PlainDeparture;
 import chat.dim.startrek.PlainDocker;
 import chat.dim.startrek.StarGate;
 
-public class TCPGate<H extends BaseHub> extends StarGate<PlainDeparture, PlainArrival, Object> {
+public class UDPGate<H extends BaseHub> extends StarGate<PlainDeparture, PlainArrival, Object> {
 
     H hub = null;
 
-    public TCPGate(Delegate<PlainDeparture, PlainArrival, Object> delegate) {
+    public UDPGate(Delegate<PlainDeparture, PlainArrival, Object> delegate) {
         super(delegate);
     }
 
@@ -43,22 +44,23 @@ public class TCPGate<H extends BaseHub> extends StarGate<PlainDeparture, PlainAr
     }
 
     @Override
-    protected Docker<PlainDeparture, PlainArrival, Object> createDocker(SocketAddress remote, SocketAddress local,
+    protected Docker<PlainDeparture, PlainArrival, Object> createDocker(SocketAddress remote,
+                                                                        SocketAddress local,
                                                                         List<byte[]> data) {
         // TODO: check data format before creating docker
         return new PlainDocker(remote, local, data, this);
     }
 
-    void sendMessage(byte[] payload, SocketAddress source, SocketAddress destination) {
+    void sendData(byte[] data, SocketAddress source, SocketAddress destination) {
         Object worker = getDocker(destination, source, true);
-        ((PlainDocker) worker).sendData(payload);
+        ((PlainDocker) worker).sendData(data);
     }
 
     static void info(String msg) {
-        System.out.printf("%s\n", msg);
-    }
-    static void info(byte[] data) {
-        info(new String(data, StandardCharsets.UTF_8));
+        Date currentTime = new Date();
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String dateString = formatter.format(currentTime);
+        System.out.printf("[%s] %s\n", dateString, msg);
     }
     static void error(String msg) {
         System.out.printf("ERROR> %s\n", msg);

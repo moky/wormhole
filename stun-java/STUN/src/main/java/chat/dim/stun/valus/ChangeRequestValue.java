@@ -131,7 +131,7 @@ public class ChangeRequestValue extends Value32 {
 
     private static final Map<Integer, ChangeRequestValue> s_values = new HashMap<>();
 
-    public static ChangeRequestValue ChangeIP        = create(0x00000004, "ChangeIP");
-    public static ChangeRequestValue ChangePort      = create(0x00000002, "ChangePort");
-    public static ChangeRequestValue ChangeIPAndPort = create(0x00000006, "ChangeIPAndPort");
+    public static final ChangeRequestValue ChangeIP        = create(0x00000004, "ChangeIP");
+    public static final ChangeRequestValue ChangePort      = create(0x00000002, "ChangePort");
+    public static final ChangeRequestValue ChangeIPAndPort = create(0x00000006, "ChangeIPAndPort");
 }
