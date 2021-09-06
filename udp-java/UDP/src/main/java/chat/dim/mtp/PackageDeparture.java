@@ -39,17 +39,14 @@ import chat.dim.startrek.DepartureShip;
 
 public class PackageDeparture extends DepartureShip {
 
-    private final byte[] sn;
+    private final Package completed;
 
     private final List<Package> packages;
     private final List<byte[]> fragments;
 
-    public final int bodyLength;
-
     public PackageDeparture(int prior, Package pack) {
         super(prior);
-        bodyLength = pack.head.bodyLength;
-        sn = pack.head.sn.getBytes();
+        completed = pack;
         if (pack.isMessage()) {
             packages = Packer.split(pack);
         } else {
@@ -59,9 +56,13 @@ public class PackageDeparture extends DepartureShip {
         fragments = new ArrayList<>();
     }
 
+    public Package getPackage() {
+        return completed;
+    }
+
     @Override
-    public byte[] getSN() {
-        return sn;
+    public Object getSN() {
+        return completed.head.sn;
     }
 
     @Override

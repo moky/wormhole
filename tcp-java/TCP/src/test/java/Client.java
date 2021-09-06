@@ -6,30 +6,13 @@ import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
 
-import chat.dim.net.ActivePlainHub;
-import chat.dim.net.Channel;
-import chat.dim.net.Connection;
 import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Gate;
 import chat.dim.startrek.PlainArrival;
 import chat.dim.startrek.PlainDeparture;
-import chat.dim.tcp.StreamChannel;
-
-class ClientHub extends ActivePlainHub {
-
-    public ClientHub(Connection.Delegate delegate) {
-        super(delegate);
-    }
-
-    @Override
-    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-        Channel channel = new StreamChannel(remote, local);
-        channel.configureBlocking(false);
-        return channel;
-    }
-}
+import chat.dim.tcp.ClientHub;
 
 public class Client implements Gate.Delegate {
 
@@ -104,6 +87,8 @@ public class Client implements Gate.Delegate {
             send(data);
             TCPGate.idle(2000);
         }
+
+        TCPGate.idle(16000);
     }
 
     static String HOST;

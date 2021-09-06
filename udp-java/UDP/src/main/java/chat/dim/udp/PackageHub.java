@@ -1,13 +1,13 @@
 /* license: https://mit-license.org
  *
- *  Star Trek: Interstellar Transport
+ *  UDP: User Datagram Protocol
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,17 +28,22 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.udp;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 
-public abstract class PlainHub extends BaseHub {
+import chat.dim.net.BaseConnection;
+import chat.dim.net.BaseHub;
+import chat.dim.net.Channel;
+import chat.dim.net.Connection;
+
+public abstract class PackageHub extends BaseHub {
 
     private final WeakReference<Connection.Delegate> delegateRef;
 
-    public PlainHub(Connection.Delegate delegate) {
+    public PackageHub(Connection.Delegate delegate) {
         super();
         delegateRef = new WeakReference<>(delegate);
     }

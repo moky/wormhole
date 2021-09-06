@@ -43,7 +43,7 @@ public interface Ship {
      *
      * @return SN
      */
-    byte[] getSN();
+    Object getSN();
 
     /**
      *  Check whether task failed

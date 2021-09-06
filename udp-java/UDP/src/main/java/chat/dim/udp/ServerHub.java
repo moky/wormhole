@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Trek: Interstellar Transport
+ *  UDP: User Datagram Protocol
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,30 +28,46 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.startrek;
+package chat.dim.udp;
 
-import chat.dim.port.Arrival;
+import java.io.IOException;
+import java.net.SocketAddress;
+import java.net.SocketException;
+import java.nio.channels.DatagramChannel;
+import java.util.Map;
+import java.util.WeakHashMap;
 
-public class PlainArrival extends ArrivalShip {
+import chat.dim.net.Channel;
+import chat.dim.net.Connection;
 
-    private final byte[] data;
+public class ServerHub extends PackageHub {
 
-    public PlainArrival(byte[] pack) {
-        super();
-        data = pack;
+    private final Map<SocketAddress, DatagramChannel> channels = new WeakHashMap<>();
+
+    public ServerHub(Connection.Delegate delegate) {
+        super(delegate);
     }
 
-    public byte[] getData() {
-        return data;
+    public void bind(SocketAddress local) throws IOException {
+        DatagramChannel sock = channels.get(local);
+        if (sock == null) {
+            sock = DatagramChannel.open();
+            sock.socket().bind(local);
+            sock.configureBlocking(false);
+            channels.put(local, sock);
+        }
+        connect(null, local);
     }
 
     @Override
-    public Object getSN() {
-        return null;
-    }
-
-    @Override
-    public Arrival assemble(Arrival arrival) {
-        return arrival;
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+        DatagramChannel sock = channels.get(local);
+        if (sock == null) {
+            throw new SocketException("failed to get channel: " + remote + " -> " + local);
+        } else {
+            Channel channel = new PackageChannel(sock);
+            channel.configureBlocking(false);
+            return channel;
+        }
     }
 }

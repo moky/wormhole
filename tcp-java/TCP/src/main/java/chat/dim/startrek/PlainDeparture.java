@@ -52,7 +52,7 @@ public class PlainDeparture extends DepartureShip {
     }
 
     @Override
-    public byte[] getSN() {
+    public Object getSN() {
         return null;
     }
 

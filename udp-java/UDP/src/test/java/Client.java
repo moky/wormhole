@@ -9,28 +9,11 @@ import java.util.Random;
 import chat.dim.mtp.Package;
 import chat.dim.mtp.PackageArrival;
 import chat.dim.mtp.PackageDeparture;
-import chat.dim.net.ActivePackageHub;
-import chat.dim.net.Channel;
-import chat.dim.net.Connection;
 import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Gate;
-import chat.dim.udp.PackageChannel;
-
-class ClientHub extends ActivePackageHub {
-
-    public ClientHub(Connection.Delegate delegate) {
-        super(delegate);
-    }
-
-    @Override
-    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-        Channel channel = new PackageChannel(remote, local);
-        channel.configureBlocking(false);
-        return channel;
-    }
-}
+import chat.dim.udp.ClientHub;
 
 public class Client implements Gate.Delegate {
 
@@ -84,7 +67,11 @@ public class Client implements Gate.Delegate {
     @Override
     public void onSent(Departure ship, SocketAddress remote, Gate gate) {
         assert ship instanceof PackageDeparture;
-        int bodyLen = ((PackageDeparture) ship).bodyLength;
+        Package pack = ((PackageDeparture) ship).getPackage();
+        int bodyLen = pack.head.bodyLength;
+        if (bodyLen == -1) {
+            bodyLen = pack.body.getSize();
+        }
         UDPGate.info("message sent: " + bodyLen + " byte(s) to " + remote);
     }
 
@@ -109,6 +96,8 @@ public class Client implements Gate.Delegate {
             send(data);
             UDPGate.idle(2000);
         }
+
+        UDPGate.idle(5000);
     }
 
     static String HOST;

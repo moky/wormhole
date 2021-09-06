@@ -5,7 +5,6 @@ import java.nio.charset.StandardCharsets;
 
 import chat.dim.net.BaseHub;
 import chat.dim.net.Connection;
-import chat.dim.port.Departure;
 import chat.dim.port.Docker;
 import chat.dim.startrek.PlainDocker;
 import chat.dim.startrek.StarGate;

@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Trek: Interstellar Transport
+ *  TCP: Transmission Control Protocol
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,14 +28,18 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.tcp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
 
-public abstract class ActivePackageHub extends PackageHub {
+import chat.dim.net.ActiveConnection;
+import chat.dim.net.Channel;
+import chat.dim.net.Connection;
 
-    public ActivePackageHub(Connection.Delegate delegate) {
+public class ClientHub extends StreamHub {
+
+    public ClientHub(Connection.Delegate delegate) {
         super(delegate);
     }
 
@@ -55,5 +59,12 @@ public abstract class ActivePackageHub extends PackageHub {
         // start FSM
         conn.start();
         return conn;
+    }
+
+    @Override
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+        Channel channel = new StreamChannel(remote, local);
+        channel.configureBlocking(false);
+        return channel;
     }
 }

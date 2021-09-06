@@ -53,8 +53,8 @@ public class DepartureHall {
     private final List<Integer> priorities = new ArrayList<>();
     private final Map<Integer, List<Departure>> departureFleets = new HashMap<>();
 
-    private final Map<byte[], Departure> departureMap = new WeakHashMap<>();
-    private final Map<byte[], Long> departureFinished = new HashMap<>();  // ID -> timestamp
+    private final Map<Object, Departure> departureMap = new WeakHashMap<>();
+    private final Map<Object, Long> departureFinished = new HashMap<>();  // ID -> timestamp
 
     /**
      *  Append outgoing ship to a fleet with priority
@@ -81,7 +81,7 @@ public class DepartureHall {
         // 2. append to the tail
         fleet.add(ship);
         // 3. build mapping if SN exists
-        final byte[] sn = ship.getSN();
+        final Object sn = ship.getSN();
         if (sn != null) {
             departureMap.put(sn, ship);
         }
@@ -115,7 +115,7 @@ public class DepartureHall {
      */
     public Departure checkResponse(final Arrival response) {
         Departure finished = null;
-        final byte[] sn = response.getSN();
+        final Object sn = response.getSN();
         assert sn != null : "SN not found: " + response;
         // check whether this task has already finished
         final Long time = departureFinished.get(sn);
@@ -133,7 +133,7 @@ public class DepartureHall {
         }
         return finished;
     }
-    private void remove(final Departure ship, final byte[] sn) {
+    private void remove(final Departure ship, final Object sn) {
         final int priority = ship.getPriority();
         final List<Departure> fleet = departureFleets.get(priority);
         if (fleet != null) {
@@ -166,7 +166,7 @@ public class DepartureHall {
         List<Departure> fleet;
         Iterator<Departure> iterator;
         Departure ship;
-        byte[] sn;
+        Object sn;
         for (int priority : priorities) {
             // 1. get tasks with priority
             fleet = departureFleets.get(priority);
@@ -196,7 +196,7 @@ public class DepartureHall {
         List<Departure> fleet;
         Iterator<Departure> iterator;
         Departure ship;
-        byte[] sn;
+        Object sn;
         for (int priority : priorities) {
             // 1. get tasks with priority
             fleet = departureFleets.get(priority);
@@ -258,7 +258,7 @@ public class DepartureHall {
         }
     }
     private void clear(List<Departure> fleet, final Set<Departure> failedTasks, final int priority) {
-        byte[] sn;
+        Object sn;
         // remove expired tasks
         for (Departure ship : failedTasks) {
             fleet.remove(ship);

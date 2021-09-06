@@ -37,14 +37,14 @@ import java.util.List;
 
 public class PackageArrival extends ArrivalShip {
 
-    private final byte[] sn;
+    private final TransactionID sn;
 
     private final Packer packer;
     private Package completed;
 
     public PackageArrival(Package pack) {
         super();
-        sn = pack.head.sn.getBytes();
+        sn = pack.head.sn;
         if (pack.isFragment()) {
             packer = new Packer(pack.head.sn, pack.head.pages);
             completed = packer.insert(pack);
@@ -59,7 +59,7 @@ public class PackageArrival extends ArrivalShip {
     }
 
     @Override
-    public byte[] getSN() {
+    public Object getSN() {
         return sn;
     }
 

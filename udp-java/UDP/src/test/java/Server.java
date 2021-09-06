@@ -3,54 +3,16 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.nio.channels.DatagramChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
 
 import chat.dim.mtp.Package;
 import chat.dim.mtp.PackageArrival;
 import chat.dim.mtp.PackageDeparture;
-import chat.dim.net.Channel;
-import chat.dim.net.Connection;
 import chat.dim.net.Hub;
-import chat.dim.net.PackageHub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Gate;
-import chat.dim.udp.PackageChannel;
-
-class ServerHub extends PackageHub {
-
-    private final Map<SocketAddress, DatagramChannel> channels = new HashMap<>();
-
-    public ServerHub(Connection.Delegate delegate) {
-        super(delegate);
-    }
-
-    void bind(SocketAddress local) throws IOException {
-        DatagramChannel sock = channels.get(local);
-        if (sock == null) {
-            sock = DatagramChannel.open();
-            sock.socket().bind(local);
-            sock.configureBlocking(false);
-            channels.put(local, sock);
-        }
-        connect(null, local);
-    }
-
-    @Override
-    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-        DatagramChannel sock = channels.get(local);
-        if (sock == null) {
-            throw new SocketException("failed to get channel: " + remote + " -> " + local);
-        } else {
-            Channel channel = new PackageChannel(sock);
-            channel.configureBlocking(false);
-            return channel;
-        }
-    }
-}
+import chat.dim.udp.ServerHub;
 
 public class Server implements Gate.Delegate {
 
@@ -107,7 +69,11 @@ public class Server implements Gate.Delegate {
     @Override
     public void onSent(Departure ship, SocketAddress remote, Gate gate) {
         assert ship instanceof PackageDeparture;
-        int bodyLen = ((PackageDeparture) ship).bodyLength;
+        Package pack = ((PackageDeparture) ship).getPackage();
+        int bodyLen = pack.head.bodyLength;
+        if (bodyLen == -1) {
+            bodyLen = pack.body.getSize();
+        }
         UDPGate.info("message sent: " + bodyLen + " byte(s) to " + remote);
     }
 

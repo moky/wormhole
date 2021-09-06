@@ -1,13 +1,13 @@
 /* license: https://mit-license.org
  *
- *  Star Trek: Interstellar Transport
+ *  TCP: Transmission Control Protocol
  *
- *                                Written in 2020 by Moky <albert.moky@gmail.com>
+ *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2020 Albert Moky
+ * Copyright (c) 2021 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,26 +28,34 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.tcp;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 
-public abstract class ActivePlainHub extends PlainHub {
+import chat.dim.net.BaseConnection;
+import chat.dim.net.BaseHub;
+import chat.dim.net.Channel;
+import chat.dim.net.Connection;
 
-    public ActivePlainHub(Connection.Delegate delegate) {
-        super(delegate);
+public abstract class StreamHub extends BaseHub {
+
+    private final WeakReference<Connection.Delegate> delegateRef;
+
+    public StreamHub(Connection.Delegate delegate) {
+        super();
+        delegateRef = new WeakReference<>(delegate);
+    }
+
+    public Connection.Delegate getDelegate() {
+        return delegateRef.get();
     }
 
     @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
-        // create connection with addresses
-        ActiveConnection conn = new ActiveConnection(remote, local) {
-            @Override
-            protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
-                return createChannel(remote, local);
-            }
-        };
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
+        // create connection with channel
+        BaseConnection conn = new BaseConnection(createChannel(remote, local), remote, local);
         // set delegate
         if (conn.getDelegate() == null) {
             conn.setDelegate(getDelegate());
@@ -56,4 +64,6 @@ public abstract class ActivePlainHub extends PlainHub {
         conn.start();
         return conn;
     }
+
+    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
 }

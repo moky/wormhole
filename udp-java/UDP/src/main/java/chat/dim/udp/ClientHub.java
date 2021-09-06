@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Trek: Interstellar Transport
+ *  UDP: User Datagram Protocol
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,29 +28,30 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.udp;
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 
-public abstract class PackageHub extends BaseHub {
+import chat.dim.net.ActiveConnection;
+import chat.dim.net.Channel;
+import chat.dim.net.Connection;
 
-    private final WeakReference<Connection.Delegate> delegateRef;
+public class ClientHub extends PackageHub {
 
-    public PackageHub(Connection.Delegate delegate) {
-        super();
-        delegateRef = new WeakReference<>(delegate);
-    }
-
-    public Connection.Delegate getDelegate() {
-        return delegateRef.get();
+    public ClientHub(Connection.Delegate delegate) {
+        super(delegate);
     }
 
     @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
-        // create connection with channel
-        BaseConnection conn = new BaseConnection(createChannel(remote, local), remote, local);
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
+        // create connection with addresses
+        ActiveConnection conn = new ActiveConnection(remote, local) {
+            @Override
+            protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
+                return createChannel(remote, local);
+            }
+        };
         // set delegate
         if (conn.getDelegate() == null) {
             conn.setDelegate(getDelegate());
@@ -60,5 +61,10 @@ public abstract class PackageHub extends BaseHub {
         return conn;
     }
 
-    protected abstract Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException;
+    @Override
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
+        Channel channel = new PackageChannel(remote, local);
+        channel.configureBlocking(false);
+        return channel;
+    }
 }
