@@ -30,8 +30,6 @@
  */
 package chat.dim.net;
 
-import javafx.util.Pair;
-
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.Date;
@@ -40,21 +38,12 @@ import java.util.Map;
 import java.util.Set;
 
 import chat.dim.threading.Ticker;
-import chat.dim.type.DirectionalObjectPool;
+import chat.dim.type.AddressPairMap;
+import chat.dim.type.Pair;
 
 public abstract class BaseHub implements Hub, Ticker {
 
-    private final DirectionalObjectPool<Connection> connectionPool = new DirectionalObjectPool<Connection>() {
-        @Override
-        protected Connection create(SocketAddress remote, SocketAddress local) {
-            try {
-                return createConnection(remote, local);
-            } catch (IOException e) {
-                e.printStackTrace();
-                return null;
-            }
-        }
-    };
+    private final AddressPairMap<Connection> connectionPool = new AddressPairMap<>();
 
     // mapping: (remote, local) => time to kill
     private final Map<Pair<SocketAddress, SocketAddress>, Long> dyingTimes = new HashMap<>();
@@ -80,33 +69,34 @@ public abstract class BaseHub implements Hub, Ticker {
 
     @Override
     public Connection getConnection(SocketAddress remote, SocketAddress local) {
-        try {
-            return connectionPool.seek(remote, local, false);
-        } catch (IOException e) {
-            e.printStackTrace();
-            // should not happen
-            return null;
-        }
+        return connectionPool.get(remote, local);
     }
 
     @Override
     public Connection connect(SocketAddress remote, SocketAddress local) throws IOException {
-        return connectionPool.seek(remote, local, true);
+        Connection conn = connectionPool.get(remote, local);
+        if (conn == null) {
+            conn = createConnection(remote, local);
+            if (conn != null) {
+                connectionPool.put(remote, local, conn);
+            }
+        }
+        return conn;
     }
 
     @Override
-    public void disconnect(SocketAddress remote, SocketAddress local) throws IOException {
+    public void disconnect(SocketAddress remote, SocketAddress local) {
         assert local != null || remote != null : "both local & remote addresses are empty";
-        Connection conn = connectionPool.seek(remote, local, false);
+        Connection conn = connectionPool.get(remote, local);
         if (conn != null) {
             conn.close();
-            connectionPool.remove(conn, remote, local);
+            connectionPool.remove(remote, local, conn);
         }
     }
 
     @Override
     public void tick() {
-        Set<Connection> candidates = connectionPool.all();
+        Set<Connection> candidates = connectionPool.allValues();
         activatedConnectionCount = 0;
 
         SocketAddress remote, local;
@@ -135,7 +125,7 @@ public abstract class BaseHub implements Hub, Ticker {
                     dyingTimes.put(aPair, now + DYING_EXPIRES);
                 } else if (expired < now) {
                     // times up, kill it
-                    connectionPool.remove(conn, remote, local);
+                    connectionPool.remove(remote, local, conn);
                     // clear the death clock for it
                     dyingTimes.remove(aPair);
                 }
@@ -148,9 +138,9 @@ public abstract class BaseHub implements Hub, Ticker {
                 //throw new NullPointerException("both local & remote addresses are empty");
                 return null;
             }
-            return new Pair<>(DirectionalObjectPool.anyRemoteAddress, local);
+            return new Pair<>(AddressPairMap.AnyAddress, local);
         } else if (local == null) {
-            return new Pair<>(remote, DirectionalObjectPool.anyLocalAddress);
+            return new Pair<>(remote, AddressPairMap.AnyAddress);
         } else {
             return new Pair<>(remote, local);
         }

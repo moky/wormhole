@@ -33,7 +33,11 @@ package chat.dim.startrek;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
@@ -42,23 +46,13 @@ import chat.dim.port.Departure;
 import chat.dim.port.Docker;
 import chat.dim.port.Gate;
 import chat.dim.skywalker.Runner;
-import chat.dim.type.DirectionalObjectPool;
+import chat.dim.type.AddressPairMap;
 
 public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I>, I>
         extends Runner implements Gate, Connection.Delegate {
 
-    private final DirectionalObjectPool<Docker<D, A, I>> dockerPool = new DirectionalObjectPool<Docker<D, A, I>>() {
-        @Override
-        protected Docker<D, A, I> create(SocketAddress remote, SocketAddress local) throws IOException {
-            List<byte[]> data = advanceParties.get(remote);
-            Docker<D, A, I> worker = createDocker(remote, local, data);
-            if (worker != null) {
-                // docker created, remove cache data
-                advanceParties.remove(remote);
-            }
-            return worker;
-        }
-    };
+    private final AddressPairMap<Docker<D, A, I>> dockerPool = new AddressPairMap<>();
+
     private final Map<SocketAddress, List<byte[]>> advanceParties = new HashMap<>();
 
     private final WeakReference<Delegate<D, A, I>> delegateRef;
@@ -75,16 +69,20 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
     protected abstract Docker<D, A, I> createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data);
 
     public Docker<D, A, I> getDocker(SocketAddress remote, SocketAddress local, boolean create) {
-        try {
-            return dockerPool.seek(remote, local, create);
-        } catch (IOException e) {
-            e.printStackTrace();
-            // should not happen
-            return null;
+        Docker<D, A, I> worker = dockerPool.get(remote, local);
+        if (worker == null && create) {
+            List<byte[]> data = advanceParties.get(remote);
+            worker = createDocker(remote, local, data);
+            if (worker != null) {
+                dockerPool.put(remote, local, worker);
+                // docker created, remove cache data
+                advanceParties.remove(remote);
+            }
         }
+        return worker;
     }
     protected void setDocker(Docker<D, A, I> worker, SocketAddress remote, SocketAddress local) {
-        dockerPool.update(worker, remote, local);
+        dockerPool.put(remote, local, worker);
     }
 
     public Gate.Delegate<D, A, I> getDelegate() {
@@ -117,7 +115,7 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
     @Override
     public boolean process() {
         int counter = 0;
-        Set<Docker<D, A, I>> dockers = dockerPool.all();
+        Set<Docker<D, A, I>> dockers = dockerPool.allValues();
         SocketAddress remote, local;
         for (Docker<D, A, I> worker : dockers) {
             remote = worker.getRemoteAddress();
@@ -125,7 +123,7 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
             // check connection
             if (getConnection(remote, local) == null) {
                 // connection lost, remove worker
-                dockerPool.remove(worker, remote, local);
+                dockerPool.remove(remote, local, worker);
             } else if (worker.process()) {
                 counter += 1;
             }
