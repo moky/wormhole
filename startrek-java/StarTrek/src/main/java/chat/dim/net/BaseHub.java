@@ -43,13 +43,18 @@ import chat.dim.type.Pair;
 
 public abstract class BaseHub implements Hub, Ticker {
 
-    private final AddressPairMap<Connection> connectionPool = new AddressPairMap<>();
+    private final ConnectionPool connectionPool;
 
     // mapping: (remote, local) => time to kill
     private final Map<Pair<SocketAddress, SocketAddress>, Long> dyingTimes = new HashMap<>();
     public static long DYING_EXPIRES = 120 * 1000;
 
     private int activatedConnectionCount = -1;
+
+    protected BaseHub() {
+        super();
+        connectionPool = new ConnectionPool(this);
+    }
 
     public int getActivatedCount() {
         return activatedConnectionCount;
@@ -69,41 +74,38 @@ public abstract class BaseHub implements Hub, Ticker {
 
     @Override
     public Connection getConnection(SocketAddress remote, SocketAddress local) {
-        return connectionPool.get(remote, local);
+        try {
+            return connectionPool.get(remote, local, false);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     @Override
     public Connection connect(SocketAddress remote, SocketAddress local) throws IOException {
-        Connection conn = connectionPool.get(remote, local);
-        if (conn == null) {
-            conn = createConnection(remote, local);
-            if (conn != null) {
-                connectionPool.put(remote, local, conn);
-            }
-        }
-        return conn;
+        return connectionPool.get(remote, local, true);
     }
 
     @Override
     public void disconnect(SocketAddress remote, SocketAddress local) {
         assert local != null || remote != null : "both local & remote addresses are empty";
-        Connection conn = connectionPool.get(remote, local);
+        Connection conn = connectionPool.remove(remote, local, null);
         if (conn != null) {
             conn.close();
-            connectionPool.remove(remote, local, conn);
         }
     }
 
     @Override
     public void tick() {
-        Set<Connection> candidates = connectionPool.allValues();
+        Set<Connection> connections = connectionPool.all();
         activatedConnectionCount = 0;
 
         SocketAddress remote, local;
         Pair<SocketAddress, SocketAddress> aPair;  // (remote, local)
         long now = (new Date()).getTime();
         Long expired;
-        for (Connection conn : candidates) {
+        for (Connection conn : connections) {
             // call 'tick()' to drive all connections
             conn.tick();
             if (conn.isActivated()) {

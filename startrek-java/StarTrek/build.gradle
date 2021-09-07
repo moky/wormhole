@@ -20,6 +20,12 @@ group 'chat.dim'
 //version '1.0-SNAPSHOT'
 version '0.2.0'
 
+def mod = 'StarTrek'
+def desc = 'Interstellar Transport'
+
+def gitUrl = 'https://github.com/moky/wormhole.git'
+def siteUrl = 'https://github.com/moky/wormhole'
+
 sourceCompatibility = 1.8
 
 repositories {
@@ -46,17 +52,14 @@ tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
 
-def gitUrl = 'https://github.com/moky/wormhole.git'
-def siteUrl = 'https://github.com/moky/wormhole'
-
 install {
     repositories.mavenInstaller {
         // This generates POM.xml with proper parameters
         pom {
             project {
                 packaging 'jar'
-                name 'StarTrek'
-                description 'Interstellar Transport'
+                name mod
+                description desc
                 url siteUrl
                 licenses {
                     license {
@@ -135,8 +138,8 @@ uploadArchives {
 
             pom.project {
                 packaging 'jar'
-                name 'StarTrek'
-                description 'Interstellar Transport'
+                name mod
+                description desc
                 url siteUrl
                 licenses {
                     license {

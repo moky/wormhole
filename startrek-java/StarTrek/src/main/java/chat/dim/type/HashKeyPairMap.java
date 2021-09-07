@@ -41,6 +41,7 @@ public class HashKeyPairMap<K, V> extends WeakKeyPairMap<K, V> {
         super(any);
     }
 
+    @Override
     public Set<V> allValues() {
         return new HashSet<>(cachedValues);
     }
@@ -48,8 +49,8 @@ public class HashKeyPairMap<K, V> extends WeakKeyPairMap<K, V> {
     @Override
     public void put(K remote, K local, V value) {
         // the caller may create different connections with same pair (remote, local)
-        // so here we remove it first to make sure it's clean
-        cachedValues.remove(value);
+        // so here we try to remove it first to make sure it's clean
+        clear(remote, local, value);
         // cache it
         cachedValues.add(value);
         // create indexes for this connection
@@ -58,14 +59,19 @@ public class HashKeyPairMap<K, V> extends WeakKeyPairMap<K, V> {
 
     @Override
     public void remove(K remote, K local, V value) {
-        if (value == null) {
-            value = get(remote, local);
-            if (value != null) {
-                cachedValues.remove(value);
-            }
-        } else {
+        // clear cached connection
+        clear(remote, local, value);
+        // remove indexes
+        super.remove(remote, local, value);
+    }
+
+    private void clear(K remote, K local, V value) {
+        V old = get(remote, local);
+        if (old != null) {
+            cachedValues.remove(old);
+        }
+        if (value != null && value != old) {
             cachedValues.remove(value);
         }
-        super.remove(remote, local, value);
     }
 }

@@ -79,39 +79,13 @@ public class PackageDocker extends StarDocker<PackageDeparture, PackageArrival, 
         }
     }
 
-    private Package getPackage(final ByteArray data) {
-        Header head = Header.parse(data);
-        if (head == null) {
-            // FIXME: data error?
-            return null;
-        }
-        int dataLen = data.getSize();
-        int headLen = head.getSize();
-        int bodyLen = head.bodyLength;
-        int packLen = bodyLen == -1 ? dataLen : headLen + bodyLen;
-        ByteArray pack;
-        if (/*bodyLen == -1 || */packLen == dataLen) {
-            // no sticky data after the tail
-            pack = data;
-        } else if (packLen < dataLen) {
-            // TODO: keep the sticky data?
-            //       cached = data.slice(packLen);
-            // cut the tail
-            pack = data.slice(0, packLen);
-        } else {
-            // wait for more data
-            return null;
-        }
-        return new Package(pack, head, data.slice(head.getSize()));
-    }
-
     @Override
     protected PackageArrival getIncomeShip(byte[] data) {
-        Package pack = getPackage(new Data(data));
+        final Package pack = Package.parse(new Data(data));
         if (pack == null) {
             return null;
         }
-        ByteArray body = pack.body;
+        final ByteArray body = pack.body;
         if (body == null || body.getSize() == 0) {
             // should not happen
             return null;
@@ -131,9 +105,9 @@ public class PackageDocker extends StarDocker<PackageDeparture, PackageArrival, 
             pack = fragments.get(0);
         }
         // check data type in package header
-        Header head = pack.head;
-        DataType type = head.type;
-        ByteArray body = pack.body;
+        final Header head = pack.head;
+        final DataType type = head.type;
+        final ByteArray body = pack.body;
 
         if (type.isCommandResponse()) {
             // process CommandResponse:
@@ -184,13 +158,15 @@ public class PackageDocker extends StarDocker<PackageDeparture, PackageArrival, 
             // let the caller to process the message
         }
 
-        if (body.equals(NOOP)) {
-            // do nothing
-            return null;
-        } else if (body.equals(PING) || body.equals(PONG)) {
-            // FIXME: these bodies should be in a Command
-            // ignore them
-            return null;
+        if (body.getSize() == 4) {
+            if (body.equals(NOOP)) {
+                // do nothing
+                return null;
+            } else if (body.equals(PING) || body.equals(PONG)) {
+                // FIXME: these bodies should be in a Command
+                // ignore them
+                return null;
+            }
         }
 
         return income;
@@ -198,7 +174,7 @@ public class PackageDocker extends StarDocker<PackageDeparture, PackageArrival, 
 
     @Override
     protected boolean sendOutgoShip(final PackageDeparture outgo) throws IOException {
-        List<byte[]> fragments = outgo.getFragments();
+        final List<byte[]> fragments = outgo.getFragments();
         if (fragments == null || fragments.size() == 0) {
             return true;
         }
