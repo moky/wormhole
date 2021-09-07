@@ -31,7 +31,7 @@ public class Client implements Gate.Delegate<PackageDeparture, PackageArrival, T
 
     public void start() throws IOException {
         gate.hub.bind(localAddress);
-        gate.hub.connect(remoteAddress, localAddress);
+        gate.connect(remoteAddress, localAddress);
         gate.start();
     }
 

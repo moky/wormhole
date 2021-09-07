@@ -28,7 +28,7 @@ public class Client implements Gate.Delegate<PlainDeparture, PlainArrival, Objec
     }
 
     public void start() throws IOException {
-        gate.hub.connect(remoteAddress, localAddress);
+        gate.connect(remoteAddress, localAddress);
         gate.start();
     }
 

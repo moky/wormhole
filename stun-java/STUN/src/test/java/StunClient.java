@@ -97,7 +97,7 @@ public class StunClient extends Client implements Gate.Delegate<PlainDeparture, 
 
     public void detect(SocketAddress serverAddress) throws IOException {
         remoteAddress = serverAddress;
-        gate.hub.connect(remoteAddress, sourceAddress);
+        gate.connect(remoteAddress, sourceAddress);
         info("----------------------------------------------------------------");
         info("-- Detection starts from : " + serverAddress);
         Map<String, Object> res = getNatType(serverAddress);

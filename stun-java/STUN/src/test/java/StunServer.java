@@ -61,7 +61,7 @@ public class StunServer extends Server implements Gate.Delegate<PlainDeparture, 
     @Override
     public int send(byte[] data, SocketAddress source, SocketAddress destination) {
         try {
-            gate.hub.connect(destination, source);
+            gate.connect(destination, source);
             gate.sendData(data, source, destination);
             return 0;
         } catch (IOException e) {
