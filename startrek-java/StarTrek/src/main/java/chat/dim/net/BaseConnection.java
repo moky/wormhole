@@ -64,8 +64,6 @@ public class BaseConnection implements Connection, StateDelegate {
     private long lastSentTime;
     private long lastReceivedTime;
 
-    private boolean activated;
-
     public BaseConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
         super();
         delegateRef = null;
@@ -74,7 +72,6 @@ public class BaseConnection implements Connection, StateDelegate {
         localAddress = local;
         lastSentTime = 0;
         lastReceivedTime = 0;
-        activated = false;
         // Finite State Machine
         fsm = getStateMachine();
     }
@@ -196,11 +193,6 @@ public class BaseConnection implements Connection, StateDelegate {
     }
 
     @Override
-    public boolean isActivated() {
-        return activated;
-    }
-
-    @Override
     public void close() {
         try {
             Channel sock = channel;
@@ -309,38 +301,35 @@ public class BaseConnection implements Connection, StateDelegate {
         return fsm.getCurrentState();
     }
 
+    private final ByteBuffer buffer = ByteBuffer.allocate(MSS);
+
     @Override
-    public void tick() {
+    public boolean process() {
         fsm.tick();
 
-        if (isOpen()) {
-            // try to receive data when connection open
-            try {
-                activated = process();
-            } catch (IOException e) {
-                //e.printStackTrace();
-                Delegate delegate = getDelegate();
-                if (delegate != null) {
-                    delegate.onError(e, null, null, null, this);
-                }
-                activated = false;
-            }
-        } else {
-            activated = false;
+        if (!isOpen()) {
+            return false;
         }
-    }
-
-    private boolean process() throws IOException {
         Delegate delegate = getDelegate();
         if (delegate == null) {
             return false;
         }
+
         // receiving
-        ByteBuffer buffer = ByteBuffer.allocate(MSS);
-        SocketAddress remote = receive(buffer);
-        if (remote == null) {
+        buffer.clear();
+        SocketAddress remote;
+        try {
+            remote = receive(buffer);
+        } catch (IOException e) {
+            //e.printStackTrace();
+            delegate.onError(e, null, null, null, this);
             return false;
         }
+        if (remote == null || buffer.position() == 0) {
+            // received nothing
+            return false;
+        }
+
         // parse data
         byte[] data = new byte[buffer.position()];
         buffer.flip();

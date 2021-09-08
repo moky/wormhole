@@ -6,14 +6,15 @@ import java.util.List;
 import chat.dim.mtp.DataType;
 import chat.dim.mtp.Package;
 import chat.dim.mtp.PackageDocker;
-import chat.dim.net.BaseHub;
 import chat.dim.net.Connection;
+import chat.dim.net.Hub;
 import chat.dim.port.Docker;
 import chat.dim.startrek.StarGate;
 import chat.dim.type.Data;
 
-public class UDPGate<H extends BaseHub> extends StarGate {
+public class UDPGate<H extends Hub> extends StarGate implements Runnable {
 
+    private boolean running = false;
     H hub = null;
 
     public UDPGate(Delegate delegate) {
@@ -24,12 +25,25 @@ public class UDPGate<H extends BaseHub> extends StarGate {
         new Thread(this).start();
     }
 
+    public void stop() {
+        running = false;
+    }
+
+    @Override
+    public void run() {
+        running = true;
+        while (running) {
+            if (!process()) {
+                idle(8);
+            }
+        }
+    }
+
     @Override
     public boolean process() {
-        hub.tick();
-        boolean available = hub.getActivatedCount() > 0;
+        boolean activated = hub.process();
         boolean busy = super.process();
-        return available || busy;
+        return activated || busy;
     }
 
     @Override
@@ -56,13 +70,13 @@ public class UDPGate<H extends BaseHub> extends StarGate {
 
     void sendCommand(byte[] body, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.COMMAND, new Data(body));
-        Object worker = getDocker(destination, source, true);
+        Object worker = getDocker(destination, source, null);
         ((PackageDocker) worker).sendPackage(pack);
     }
 
     void sendMessage(byte[] body, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.MESSAGE, new Data(body));
-        Object worker = getDocker(destination, source, true);
+        Object worker = getDocker(destination, source, null);
         ((PackageDocker) worker).sendPackage(pack);
     }
 

@@ -37,11 +37,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import chat.dim.threading.Ticker;
 import chat.dim.type.AddressPairMap;
 import chat.dim.type.Pair;
 
-public abstract class BaseHub implements Hub, Ticker {
+public abstract class BaseHub implements Hub {
 
     private final ConnectionPool connectionPool;
 
@@ -49,15 +48,9 @@ public abstract class BaseHub implements Hub, Ticker {
     private final Map<Pair<SocketAddress, SocketAddress>, Long> dyingTimes = new HashMap<>();
     public static long DYING_EXPIRES = 120 * 1000;
 
-    private int activatedConnectionCount = -1;
-
     protected BaseHub() {
         super();
         connectionPool = new ConnectionPool(this);
-    }
-
-    public int getActivatedCount() {
-        return activatedConnectionCount;
     }
 
     @Override
@@ -97,19 +90,18 @@ public abstract class BaseHub implements Hub, Ticker {
     }
 
     @Override
-    public void tick() {
-        Set<Connection> connections = connectionPool.all();
-        activatedConnectionCount = 0;
+    public boolean process() {
+        int activatedCount = 0;
 
         SocketAddress remote, local;
         Pair<SocketAddress, SocketAddress> aPair;  // (remote, local)
         long now = (new Date()).getTime();
         Long expired;
+        Set<Connection> connections = connectionPool.all();
         for (Connection conn : connections) {
-            // call 'tick()' to drive all connections
-            conn.tick();
-            if (conn.isActivated()) {
-                activatedConnectionCount += 1;
+            // drive all connections to process
+            if (conn.process()) {
+                ++activatedCount;
             }
             // check closed connection(s)
             remote = conn.getRemoteAddress();
@@ -133,6 +125,8 @@ public abstract class BaseHub implements Hub, Ticker {
                 }
             }
         }
+
+        return activatedCount > 0;
     }
     private Pair<SocketAddress, SocketAddress> buildPair(SocketAddress remote, SocketAddress local) {
         if (remote == null) {

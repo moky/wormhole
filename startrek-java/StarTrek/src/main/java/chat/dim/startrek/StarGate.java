@@ -43,10 +43,9 @@ import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.port.Docker;
 import chat.dim.port.Gate;
-import chat.dim.skywalker.Runner;
 import chat.dim.type.AddressPairMap;
 
-public abstract class StarGate extends Runner implements Gate, Connection.Delegate {
+public abstract class StarGate implements Gate, Connection.Delegate {
 
     private final AddressPairMap<Docker> dockerPool = new AddressPairMap<>();
 
@@ -65,20 +64,21 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
     // create new Docker with data (advance party)
     protected abstract Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data);
 
-    public Docker getDocker(SocketAddress remote, SocketAddress local, boolean create) {
+    // if docker not exists, create after checking data format
+    protected Docker getDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
         Docker worker = dockerPool.get(remote, local);
-        if (worker == null && create) {
-            List<byte[]> data = advanceParties.get(remote);
+        if (worker == null) {
             worker = createDocker(remote, local, data);
             if (worker != null) {
                 dockerPool.put(remote, local, worker);
-                // docker created, remove cache data
-                advanceParties.remove(remote);
             }
         }
         return worker;
     }
-    protected void setDocker(Docker worker, SocketAddress remote, SocketAddress local) {
+    protected Docker getDocker(SocketAddress remote, SocketAddress local) {
+        return dockerPool.get(remote, local);
+    }
+    protected void setDocker(SocketAddress remote, SocketAddress local, Docker worker) {
         dockerPool.put(remote, local, worker);
     }
 
@@ -134,7 +134,7 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
     protected void heartbeat(Connection connection) throws IOException {
         SocketAddress remote = connection.getRemoteAddress();
         SocketAddress local = connection.getLocalAddress();
-        Docker worker = getDocker(remote, local, false);
+        Docker worker = getDocker(remote, local);
         if (worker != null) {
             worker.heartbeat();
         }
@@ -167,26 +167,31 @@ public abstract class StarGate extends Runner implements Gate, Connection.Delega
 
     @Override
     public void onReceived(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
-        // get docker by remote address
-        Docker worker = getDocker(source, destination, false);
-        if (worker == null) {
-            // save advance parties from this source address
-            List<byte[]> parties = advanceParties.get(source);
-            if (parties == null) {
-                parties = new ArrayList<>();
+        // get docker by (remote, local)
+        Docker worker = getDocker(source, destination);
+        if (worker != null) {
+            // docker exists, call docker.onReceived(data);
+            worker.onReceived(data);
+            return;
+        }
+
+        // save advance parties from this source address
+        List<byte[]> parties = advanceParties.get(source);
+        if (parties == null) {
+            parties = new ArrayList<>();
+        }
+        parties.add(data);
+        advanceParties.put(source, parties);
+
+        // docker not exists, check the data to decide which docker should be created
+        worker = getDocker(source, destination, parties);
+        if (worker != null) {
+            // process advance parties one by one
+            for (byte[] part : parties) {
+                worker.onReceived(part);
             }
-            parties.add(data);
-            advanceParties.put(source, parties);
-            // docker not exists, check the data to decide which docker should be created
-            worker = getDocker(source, destination, true);
-            if (worker != null) {
-                // the data has already moved into the docker (use data to initialize)
-                // so here pass nothing to process
-                worker.process(null);
-            }
-        } else {
-            // docker exists, call docker.process(data);
-            worker.process(data);
+            // remove advance parties
+            advanceParties.remove(source);
         }
     }
 

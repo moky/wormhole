@@ -11,8 +11,9 @@ import chat.dim.port.Docker;
 import chat.dim.startrek.PlainDocker;
 import chat.dim.startrek.StarGate;
 
-public class UDPGate<H extends BaseHub> extends StarGate {
+public class UDPGate<H extends BaseHub> extends StarGate implements Runnable {
 
+    private boolean running = false;
     H hub = null;
 
     public UDPGate(Delegate delegate) {
@@ -23,12 +24,25 @@ public class UDPGate<H extends BaseHub> extends StarGate {
         new Thread(this).start();
     }
 
+    public void stop() {
+        running = false;
+    }
+
+    @Override
+    public void run() {
+        running = true;
+        while (running) {
+            if (!process()) {
+                idle(8);
+            }
+        }
+    }
+
     @Override
     public boolean process() {
-        hub.tick();
-        boolean available = hub.getActivatedCount() > 0;
+        boolean activated = hub.process();
         boolean busy = super.process();
-        return available || busy;
+        return activated || busy;
     }
 
     @Override
@@ -48,7 +62,7 @@ public class UDPGate<H extends BaseHub> extends StarGate {
     }
 
     void sendData(byte[] data, SocketAddress source, SocketAddress destination) {
-        Object worker = getDocker(destination, source, true);
+        Object worker = getDocker(destination, source, null);
         ((PlainDocker) worker).sendData(data);
     }
 

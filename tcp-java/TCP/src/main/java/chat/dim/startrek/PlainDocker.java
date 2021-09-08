@@ -63,13 +63,13 @@ public class PlainDocker extends StarDocker {
     }
 
     @Override
-    public void process(byte[] data) {
+    public void onReceived(byte[] data) {
         if (data != null) {
-            super.process(data);
+            super.onReceived(data);
         } else if (advanceParties != null) {
             // process advance parties
             for (byte[] item : advanceParties) {
-                super.process(item);
+                super.onReceived(item);
             }
             advanceParties = null;
         }

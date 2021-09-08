@@ -76,16 +76,16 @@ class ConnectionPool {
         assert local != null || remote != null : "both local & remote addresses are empty";
         Connection conn;
         if (create) {
-            Lock writeLock = lock.writeLock();
-            writeLock.lock();
+            Lock readLock = lock.readLock();
+            readLock.lock();
             try {
                 conn = map.get(remote, local);
             } finally {
-                writeLock.unlock();
+                readLock.unlock();
             }
         } else {
-            Lock readLock = lock.readLock();
-            readLock.lock();
+            Lock writeLock = lock.writeLock();
+            writeLock.lock();
             try {
                 conn = map.get(remote, local);
                 if (conn == null) {
@@ -95,7 +95,7 @@ class ConnectionPool {
                     }
                 }
             } finally {
-                readLock.unlock();
+                writeLock.unlock();
             }
         }
         return conn;

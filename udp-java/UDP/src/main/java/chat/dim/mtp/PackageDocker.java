@@ -68,13 +68,13 @@ public class PackageDocker extends StarDocker {
     }
 
     @Override
-    public void process(final byte[] data) {
+    public void onReceived(final byte[] data) {
         if (data != null) {
-            super.process(data);
+            super.onReceived(data);
         } else if (advanceParties != null) {
             // process advance parties
             for (byte[] item : advanceParties) {
-                super.process(item);
+                super.onReceived(item);
             }
             advanceParties = null;
         }

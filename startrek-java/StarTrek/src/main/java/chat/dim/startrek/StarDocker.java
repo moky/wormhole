@@ -127,7 +127,7 @@ public abstract class StarDocker implements Docker {
     }
 
     @Override
-    public void process(final byte[] data) {
+    public void onReceived(final byte[] data) {
         // 1. get income ship from received data
         Arrival income = getIncomeShip(data);
         if (income == null) {

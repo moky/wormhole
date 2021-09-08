@@ -32,9 +32,9 @@ package chat.dim.net;
 
 import java.net.SocketAddress;
 
-import chat.dim.threading.Ticker;
+import chat.dim.skywalker.Processor;
 
-public interface Connection extends Ticker {
+public interface Connection extends Processor {
 
     //
     //  Flags
@@ -42,8 +42,6 @@ public interface Connection extends Ticker {
     boolean isOpen();  // not closed
     boolean isBound();
     boolean isConnected();
-
-    boolean isActivated();  // whether received data just now
 
     SocketAddress getLocalAddress();
     SocketAddress getRemoteAddress();

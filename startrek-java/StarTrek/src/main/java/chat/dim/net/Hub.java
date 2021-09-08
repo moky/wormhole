@@ -66,7 +66,9 @@ import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
 
-public interface Hub {
+import chat.dim.skywalker.Processor;
+
+public interface Hub extends Processor {
 
     /**
      *  Send data from source to destination

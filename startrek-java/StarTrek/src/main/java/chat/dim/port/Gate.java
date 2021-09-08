@@ -34,12 +34,13 @@ import java.io.IOException;
 import java.net.SocketAddress;
 
 import chat.dim.net.ConnectionState;
+import chat.dim.skywalker.Processor;
 
 /**
  *  Star Gate
  *  ~~~~~~~~~
  */
-public interface Gate {
+public interface Gate extends Processor {
 
     /**
      *  Send payload to the remote peer

@@ -4,14 +4,15 @@ import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-import chat.dim.net.BaseHub;
 import chat.dim.net.Connection;
+import chat.dim.net.Hub;
 import chat.dim.port.Docker;
 import chat.dim.startrek.PlainDocker;
 import chat.dim.startrek.StarGate;
 
-public class TCPGate<H extends BaseHub> extends StarGate {
+public class TCPGate<H extends Hub> extends StarGate implements Runnable {
 
+    private boolean running = false;
     H hub = null;
 
     public TCPGate(Delegate delegate) {
@@ -22,12 +23,25 @@ public class TCPGate<H extends BaseHub> extends StarGate {
         new Thread(this).start();
     }
 
+    public void stop() {
+        running = false;
+    }
+
+    @Override
+    public void run() {
+        running = true;
+        while (running) {
+            if (!process()) {
+                idle(8);
+            }
+        }
+    }
+
     @Override
     public boolean process() {
-        hub.tick();
-        boolean available = hub.getActivatedCount() > 0;
+        boolean activated = hub.process();
         boolean busy = super.process();
-        return available || busy;
+        return activated || busy;
     }
 
     @Override
@@ -47,7 +61,7 @@ public class TCPGate<H extends BaseHub> extends StarGate {
     }
 
     void sendMessage(byte[] payload, SocketAddress source, SocketAddress destination) {
-        Object worker = getDocker(destination, source, true);
+        Object worker = getDocker(destination, source, null);
         ((PlainDocker) worker).sendData(payload);
     }
 
