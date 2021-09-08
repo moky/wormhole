@@ -45,14 +45,10 @@ import chat.dim.type.Data;
 
 public class PackageDocker extends StarDocker {
 
-    private List<byte[]> advanceParties;
-
     private final WeakReference<StarGate> gateRef;
 
-    public PackageDocker(SocketAddress remote, SocketAddress local, List<byte[]> parties,
-                         StarGate gate) {
+    public PackageDocker(SocketAddress remote, SocketAddress local, StarGate gate) {
         super(remote, local);
-        advanceParties = parties;
         gateRef = new WeakReference<>(gate);
     }
 
@@ -65,19 +61,6 @@ public class PackageDocker extends StarDocker {
     protected Gate.Delegate getDelegate() {
         StarGate gate = gateRef.get();
         return gate == null ? null : gate.getDelegate();
-    }
-
-    @Override
-    public void onReceived(final byte[] data) {
-        if (data != null) {
-            super.onReceived(data);
-        } else if (advanceParties != null) {
-            // process advance parties
-            for (byte[] item : advanceParties) {
-                super.onReceived(item);
-            }
-            advanceParties = null;
-        }
     }
 
     @Override

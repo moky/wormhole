@@ -184,6 +184,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
 
         // save advance party from this source address
         List<byte[]> advanceParty = cacheAdvanceParty(data, source, destination, connection);
+        assert advanceParty != null && advanceParty.size() > 0 : "advance party error";
 
         // docker not exists, check the data to decide which docker should be created
         worker = getDocker(source, destination, advanceParty);
