@@ -51,10 +51,12 @@ public class Dock {
         departureHall = createDepartureHall();
     }
 
+    // override for user-customized hall
     protected ArrivalHall createArrivalHall() {
         return new ArrivalHall();
     }
 
+    // override for user-customized hall
     protected DepartureHall createDepartureHall() {
         return new DepartureHall();
     }
@@ -66,6 +68,8 @@ public class Dock {
      * @return ship carrying completed data package
      */
     public Arrival assembleArrival(final Arrival income) {
+        // check fragment from income ship,
+        // return a completed package if all fragments received
         return arrivalHall.assembleArrival(income);
     }
 
@@ -86,6 +90,8 @@ public class Dock {
      * @return finished task
      */
     public Departure checkResponse(final Arrival response) {
+        // check departure tasks with SN
+        // remove package/fragment if matched (check page index for fragments too)
         return departureHall.checkResponse(response);
     }
 
@@ -96,6 +102,8 @@ public class Dock {
      * @return departure task
      */
     public Departure getNextDeparture(final long now) {
+        // this will be remove from the cache
+        // if needs retry, the caller should append it back to the queue
         return departureHall.getNextDeparture(now);
     }
 

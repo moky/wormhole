@@ -33,7 +33,7 @@ public class DmtpServer extends Server implements Gate.Delegate {
     @Override
     protected void connect(SocketAddress remote) {
         try {
-            gate.connect(remote, localAddress);
+            gate.hub.connect(remote, localAddress);
         } catch (IOException e) {
             e.printStackTrace();
         }

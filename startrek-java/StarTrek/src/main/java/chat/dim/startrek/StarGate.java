@@ -33,10 +33,7 @@ package chat.dim.startrek;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import chat.dim.net.Connection;
@@ -49,8 +46,6 @@ public abstract class StarGate implements Gate, Connection.Delegate {
 
     private final AddressPairMap<Docker> dockerPool = new AddressPairMap<>();
 
-    private final Map<SocketAddress, List<byte[]>> advanceParties = new HashMap<>();
-
     private final WeakReference<Delegate> delegateRef;
 
     protected StarGate(Delegate delegate) {
@@ -58,10 +53,27 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         delegateRef = new WeakReference<>(delegate);
     }
 
-    protected abstract Connection getConnection(SocketAddress remote, SocketAddress local);
-    protected abstract Connection connect(SocketAddress remote, SocketAddress local) throws IOException;
+    public Delegate getDelegate() {
+        return delegateRef.get();
+    }
 
-    // create new Docker with data (advance party)
+    /**
+     *  Get connection from hub
+     *
+     * @param remote - remote address
+     * @param local  - local address
+     * @return exists connection
+     */
+    protected abstract Connection getConnection(SocketAddress remote, SocketAddress local);
+
+    /**
+     *  create new Docker with data (advance party)
+     *
+     * @param remote - remote address
+     * @param local  - local address
+     * @param data   - advance party
+     * @return docker
+     */
     protected abstract Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data);
 
     // if docker not exists, create after checking data format
@@ -75,15 +87,10 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         }
         return worker;
     }
+
+    // get exists docker
     protected Docker getDocker(SocketAddress remote, SocketAddress local) {
         return dockerPool.get(remote, local);
-    }
-    protected void setDocker(SocketAddress remote, SocketAddress local, Docker worker) {
-        dockerPool.put(remote, local, worker);
-    }
-
-    public Gate.Delegate getDelegate() {
-        return delegateRef.get();
     }
 
     @Override
@@ -94,7 +101,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
 
     @Override
     public boolean send(byte[] data, SocketAddress source, SocketAddress destination) throws IOException {
-        Connection conn = connect(destination, source);
+        Connection conn = getConnection(destination, source);
         if (conn == null) {
             return false;
         }
@@ -106,7 +113,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     }
 
     //
-    //  Runner
+    //  Processor
     //
 
     @Override
@@ -175,33 +182,32 @@ public abstract class StarGate implements Gate, Connection.Delegate {
             return;
         }
 
-        // save advance parties from this source address
-        List<byte[]> parties = advanceParties.get(source);
-        if (parties == null) {
-            parties = new ArrayList<>();
-        }
-        parties.add(data);
-        advanceParties.put(source, parties);
+        // save advance party from this source address
+        List<byte[]> advanceParty = cacheAdvanceParty(data, source, destination, connection);
 
         // docker not exists, check the data to decide which docker should be created
-        worker = getDocker(source, destination, parties);
+        worker = getDocker(source, destination, advanceParty);
         if (worker != null) {
             // process advance parties one by one
-            for (byte[] part : parties) {
+            for (byte[] part : advanceParty) {
                 worker.onReceived(part);
             }
-            // remove advance parties
-            advanceParties.remove(source);
+            // remove advance party
+            clearAdvanceParty(source, destination, connection);
         }
     }
 
+    // cache the advance party before decide which docker to use
+    protected abstract List<byte[]> cacheAdvanceParty(byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
+    protected abstract void clearAdvanceParty(SocketAddress source, SocketAddress destination, Connection connection);
+
     @Override
     public void onSent(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
-
+        // ignore this event
     }
 
     @Override
     public void onError(Throwable error, byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
-
+        // ignore this event
     }
 }

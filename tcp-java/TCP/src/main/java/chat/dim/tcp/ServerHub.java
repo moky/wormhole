@@ -39,10 +39,11 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 import chat.dim.net.BaseConnection;
+import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 
-public class ServerHub extends StreamHub implements Runnable {
+public class ServerHub extends BaseHub implements Runnable {
 
     private final Map<SocketAddress, SocketChannel> slaves = new WeakHashMap<>();
     private SocketAddress localAddress = null;

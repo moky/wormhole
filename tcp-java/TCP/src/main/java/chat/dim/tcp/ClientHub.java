@@ -34,10 +34,11 @@ import java.io.IOException;
 import java.net.SocketAddress;
 
 import chat.dim.net.ActiveConnection;
+import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 
-public class ClientHub extends StreamHub {
+public class ClientHub extends BaseHub {
 
     public ClientHub(Connection.Delegate delegate) {
         super(delegate);

@@ -74,9 +74,8 @@ public interface Hub extends Processor {
      *  Send data from source to destination
      *
      * @param data        - data package
-     * @param source      - from address (local);
-     *                      if it's null, send via any connection connected to destination
-     * @param destination - to address (remote)
+     * @param source      - local address; null for any connection (connected to destination)
+     * @param destination - remote address
      * @return false on error
      */
     boolean send(byte[] data, SocketAddress source, SocketAddress destination) throws IOException;

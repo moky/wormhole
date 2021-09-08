@@ -31,7 +31,6 @@
 package chat.dim.udp;
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.channels.DatagramChannel;
@@ -44,17 +43,10 @@ import chat.dim.net.Connection;
 
 public abstract class PackageHub extends BaseHub {
 
-    private final WeakReference<Connection.Delegate> delegateRef;
-
     protected final Map<SocketAddress, DatagramChannel> channels = new WeakHashMap<>();
 
-    public PackageHub(Connection.Delegate delegate) {
-        super();
-        delegateRef = new WeakReference<>(delegate);
-    }
-
-    public Connection.Delegate getDelegate() {
-        return delegateRef.get();
+    protected PackageHub(Connection.Delegate delegate) {
+        super(delegate);
     }
 
     public void bind(SocketAddress local) throws IOException {

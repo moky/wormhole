@@ -52,31 +52,6 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
     }
 
     @Override
-    public void put(K remote, K local, V value) {
-        // create indexes with key pair (remote, local)
-        K key1, key2;
-        if (remote == null) {
-            assert local != null : "local & remote addresses should not empty at the same time";
-            key1 = local;
-            key2 = defaultKey;
-        } else if (local == null) {
-            key1 = remote;
-            key2 = defaultKey;
-        } else {
-            key1 = remote;
-            key2 = local;
-        }
-        Map<K, V> table = map.get(key1);
-        if (table == null) {
-            table = new WeakHashMap<>();
-            table.put(key2, value);
-            map.put(key1, table);
-        } else {
-            table.put(key2, value);
-        }
-    }
-
-    @Override
     public V get(K remote, K local) {
         K key1, key2;
         if (remote == null) {
@@ -109,6 +84,35 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
     }
 
     @Override
+    public void put(K remote, K local, V value) {
+        // create indexes with key pair (remote, local)
+        K key1, key2;
+        if (remote == null) {
+            assert local != null : "local & remote addresses should not empty at the same time";
+            key1 = local;
+            key2 = defaultKey;
+        } else if (local == null) {
+            key1 = remote;
+            key2 = defaultKey;
+        } else {
+            key1 = remote;
+            key2 = local;
+        }
+        Map<K, V> table = map.get(key1);
+        if (table != null) {
+            if (value == null) {
+                table.remove(key2);
+            } else {
+                table.put(key2, value);
+            }
+        } else if (value != null) {
+            table = new WeakHashMap<>();
+            table.put(key2, value);
+            map.put(key1, table);
+        }
+    }
+
+    @Override
     public V remove(K remote, K local, V value) {
         // remove indexes with key pair (remote, local)
         K key1, key2;
@@ -124,6 +128,6 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
             key2 = local;
         }
         Map<K, V> table = map.get(key1);
-        return table == null ? value : table.remove(key2);
+        return table == null ? null : table.remove(key2);
     }
 }

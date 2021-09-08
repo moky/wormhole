@@ -13,6 +13,7 @@ import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Gate;
+import chat.dim.skywalker.Runner;
 import chat.dim.udp.ClientHub;
 
 public class Client implements Gate.Delegate {
@@ -32,7 +33,7 @@ public class Client implements Gate.Delegate {
 
     public void start() throws IOException {
         gate.hub.bind(localAddress);
-        gate.connect(remoteAddress, localAddress);
+        gate.hub.connect(remoteAddress, localAddress);
         gate.start();
     }
 
@@ -95,10 +96,10 @@ public class Client implements Gate.Delegate {
             UDPGate.info(">>> sending (" + data.length + " bytes): ");
             UDPGate.info(data);
             send(data);
-            UDPGate.idle(2000);
+            Runner.idle(2000);
         }
 
-        UDPGate.idle(5000);
+        Runner.idle(5000);
     }
 
     static String HOST;

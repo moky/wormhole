@@ -32,12 +32,8 @@ public class Server implements Gate.Delegate {
         gate.start();
     }
 
-    private void send(byte[] data, SocketAddress destination) {
-        try {
-            gate.connect(destination, localAddress);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    private void send(byte[] data, SocketAddress destination) throws IOException {
+        gate.hub.connect(destination, localAddress);
         gate.sendCommand(data, localAddress, destination);
     }
 
@@ -59,10 +55,15 @@ public class Server implements Gate.Delegate {
         byte[] payload = pack.body.getBytes();
         String text = new String(payload, StandardCharsets.UTF_8);
         UDPGate.info("<<< received (" + headLen + " + " + bodyLen + " bytes) from " + source + ": " + text);
+
         text = (counter++) + "# " + payload.length + " byte(s) received";
         byte[] data = text.getBytes(StandardCharsets.UTF_8);
         UDPGate.info(">>> responding: " + text);
-        send(data, source);
+        try {
+            send(data, source);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
     static int counter = 0;
 

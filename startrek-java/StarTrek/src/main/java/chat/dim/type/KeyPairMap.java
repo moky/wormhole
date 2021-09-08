@@ -35,13 +35,11 @@ import java.util.Set;
 public interface KeyPairMap<K, V> {
 
     /**
-     *  Set value by key pair (remote, local)
+     *  Get all mapped values
      *
-     * @param remote - remote address
-     * @param local  - local address
-     * @param value  - mapping value
+     * @return values
      */
-    void put(K remote, K local, V value);
+    Set<V> allValues();
 
     /**
      *  Get value by key pair (remote, local)
@@ -53,6 +51,15 @@ public interface KeyPairMap<K, V> {
     V get(K remote, K local);
 
     /**
+     *  Set value by key pair (remote, local)
+     *
+     * @param remote - remote address
+     * @param local  - local address
+     * @param value  - mapping value
+     */
+    void put(K remote, K local, V value);
+
+    /**
      *  Remove mapping by key pair (remote, local)
      *
      * @param remote - remote address
@@ -61,11 +68,4 @@ public interface KeyPairMap<K, V> {
      * @return removed value
      */
     V remove(K remote, K local, V value);
-
-    /**
-     *  Get all mapped values
-     *
-     * @return values
-     */
-    Set<V> allValues();
 }

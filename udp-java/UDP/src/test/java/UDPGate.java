@@ -1,5 +1,4 @@
 
-import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -10,6 +9,7 @@ import chat.dim.mtp.PackageDocker;
 import chat.dim.net.Connection;
 import chat.dim.net.Hub;
 import chat.dim.port.Docker;
+import chat.dim.skywalker.Runner;
 import chat.dim.startrek.StarGate;
 import chat.dim.type.Data;
 
@@ -35,7 +35,7 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
         running = true;
         while (running) {
             if (!process()) {
-                idle(8);
+                Runner.idle(8);
             }
         }
     }
@@ -53,25 +53,31 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     }
 
     @Override
-    protected Connection connect(SocketAddress remote, SocketAddress local) throws IOException {
-        return hub.connect(remote, local);
-    }
-
-    @Override
     protected Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
         // TODO: check data format before creating docker
         return new PackageDocker(remote, local, data, this);
     }
 
+    @Override
+    protected List<byte[]> cacheAdvanceParty(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
+        // TODO: cache the advance party before decide which docker to use
+        return null;
+    }
+
+    @Override
+    protected void clearAdvanceParty(SocketAddress source, SocketAddress destination, Connection connection) {
+        // TODO: remove advance party for this connection
+    }
+
     void sendCommand(byte[] body, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.COMMAND, new Data(body));
-        Object worker = getDocker(destination, source, null);
+        Docker worker = getDocker(destination, source, null);
         ((PackageDocker) worker).sendPackage(pack);
     }
 
     void sendMessage(byte[] body, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.MESSAGE, new Data(body));
-        Object worker = getDocker(destination, source, null);
+        Docker worker = getDocker(destination, source, null);
         ((PackageDocker) worker).sendPackage(pack);
     }
 
@@ -83,13 +89,5 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     }
     static void error(String msg) {
         System.out.printf("ERROR> %s\n", msg);
-    }
-
-    static void idle(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
     }
 }

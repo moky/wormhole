@@ -24,6 +24,7 @@ import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Gate;
+import chat.dim.skywalker.Runner;
 import chat.dim.type.Data;
 import chat.dim.udp.ClientHub;
 
@@ -49,7 +50,7 @@ public class DmtpClient extends Client implements Gate.Delegate {
     @Override
     public void connect(SocketAddress remote) {
         try {
-            gate.connect(remote, localAddress);
+            gate.hub.connect(remote, localAddress);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -57,7 +58,7 @@ public class DmtpClient extends Client implements Gate.Delegate {
 
     public void start() throws IOException {
         gate.hub.bind(localAddress);
-        gate.connect(remoteAddress, localAddress);
+        gate.hub.connect(remoteAddress, localAddress);
         gate.start();
     }
 
@@ -143,7 +144,7 @@ public class DmtpClient extends Client implements Gate.Delegate {
 
     public void login(String identifier) throws IOException {
         database.identifier = identifier;
-        gate.connect(remoteAddress, localAddress);
+        gate.hub.connect(remoteAddress, localAddress);
         sayHello(remoteAddress);
     }
 
@@ -160,7 +161,7 @@ public class DmtpClient extends Client implements Gate.Delegate {
             // source address
             sourceAddress = item.getSourceAddress();
             if (sourceAddress != null) {
-                conn = gate.connect(sourceAddress, localAddress);
+                conn = gate.hub.connect(sourceAddress, localAddress);
                 if (conn != null) {
                     state = conn.getState();
                     if (state != null && (state.equals(ConnectionState.READY) ||
@@ -174,7 +175,7 @@ public class DmtpClient extends Client implements Gate.Delegate {
             // mapped address
             mappedAddress = item.getMappedAddress();
             if (mappedAddress != null) {
-                conn = gate.connect(mappedAddress, localAddress);
+                conn = gate.hub.connect(mappedAddress, localAddress);
                 if (conn != null) {
                     state = conn.getState();
                     if (state != null && (state.equals(ConnectionState.READY) ||
@@ -217,7 +218,7 @@ public class DmtpClient extends Client implements Gate.Delegate {
         String text = "你好 " + friend + "!";
         int index = 0;
         while (index < 16777216) {
-            UDPGate.idle(5000);
+            Runner.idle(5000);
             UDPGate.info("---- [" + index + "]");
             sendText(friend, text + " (" + index + ")");
             ++index;

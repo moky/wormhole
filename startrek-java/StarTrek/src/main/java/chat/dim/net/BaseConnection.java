@@ -194,6 +194,11 @@ public class BaseConnection implements Connection, StateDelegate {
 
     @Override
     public void close() {
+        closeChannel();
+        changeState(ConnectionState.DEFAULT);
+    }
+
+    private void closeChannel() {
         try {
             Channel sock = channel;
             if (sock != null && sock.isOpen()) {
@@ -203,7 +208,6 @@ public class BaseConnection implements Connection, StateDelegate {
             e.printStackTrace();
         } finally {
             channel = null;
-            changeState(ConnectionState.DEFAULT);
         }
     }
 
@@ -224,7 +228,7 @@ public class BaseConnection implements Connection, StateDelegate {
             return remote;
         } catch (IOException e) {
             // [TCP] failed to receive data
-            close();
+            closeChannel();
             changeState(ConnectionState.ERROR);
             throw e;
         }
@@ -243,7 +247,7 @@ public class BaseConnection implements Connection, StateDelegate {
             return sent;
         } catch (IOException e) {
             // [TCP] failed to send data
-            close();
+            closeChannel();
             changeState(ConnectionState.ERROR);
             throw e;
         }
@@ -344,7 +348,7 @@ public class BaseConnection implements Connection, StateDelegate {
     }
 
     public void stop() {
-        close();
+        closeChannel();
         fsm.stop();
     }
 

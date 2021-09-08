@@ -42,14 +42,6 @@ public abstract class Runner implements Runnable, Handler, Processor {
         return running;
     }
 
-    protected void idle() {
-        try {
-            Thread.sleep(8);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
     public void stop() {
         running = false;
     }
@@ -73,7 +65,7 @@ public abstract class Runner implements Runnable, Handler, Processor {
     public void handle() {
         while (isRunning()) {
             if (!process()) {
-                idle();
+                idle(8);
             }
         }
     }
@@ -81,5 +73,13 @@ public abstract class Runner implements Runnable, Handler, Processor {
     @Override
     public void finish() {
         running = false;
+    }
+
+    public static void idle(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }

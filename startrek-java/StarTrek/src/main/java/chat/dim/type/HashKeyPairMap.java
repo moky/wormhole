@@ -48,17 +48,13 @@ public class HashKeyPairMap<K, V> extends WeakKeyPairMap<K, V> {
 
     @Override
     public void put(K remote, K local, V value) {
-        // the caller may create different values with same pair (remote, local)
-        // so here we should try to remove it first to make sure it's clean
-        V old = get(remote, local);
-        if (old != null) {
-            cachedValues.remove(old);
-        }
-        if (value != null && value != old) {
+        if (value != null) {
+            // the caller may create different values with same pair (remote, local)
+            // so here we should try to remove it first to make sure it's clean
             cachedValues.remove(value);
+            // cache it
+            cachedValues.add(value);
         }
-        // cache it
-        cachedValues.add(value);
         // create indexes
         super.put(remote, local, value);
     }

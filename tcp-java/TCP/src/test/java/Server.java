@@ -33,7 +33,7 @@ public class Server implements Gate.Delegate {
     }
 
     private void send(byte[] data, SocketAddress destination) {
-        gate.sendMessage(data, localAddress, destination);
+        gate.sendData(data, localAddress, destination);
     }
 
     //

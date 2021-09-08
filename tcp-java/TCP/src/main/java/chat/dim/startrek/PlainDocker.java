@@ -101,7 +101,8 @@ public class PlainDocker extends StarDocker {
     }
 
     public void sendData(byte[] payload, int priority) {
-        dock.appendDeparture(pack(payload, priority));
+        Departure ship = pack(payload, priority);
+        dock.appendDeparture(ship);
     }
     public void sendData(byte[] payload) {
         sendData(payload, Departure.Priority.NORMAL.value);

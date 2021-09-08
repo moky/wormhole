@@ -64,6 +64,7 @@ public abstract class StarDocker implements Docker {
         return localAddress;
     }
 
+    // override for user-customized dock
     protected Dock createDock() {
         return new LockedDock();
     }
@@ -72,26 +73,15 @@ public abstract class StarDocker implements Docker {
 
     protected abstract Gate.Delegate getDelegate();
 
-    protected boolean sendOutgoShip(final Departure outgo) throws IOException {
-        List<byte[]> fragments = outgo.getFragments();
-        if (fragments == null || fragments.size() == 0) {
-            return true;
-        }
-        int success = 0;
-        Gate gate = getGate();
-        for (byte[] pack : fragments) {
-            if (gate.send(pack, localAddress, remoteAddress)) {
-                success += 1;
-            }
-        }
-        return success == fragments.size();
+    private boolean isReady() {
+        Gate.Status status = getGate().getStatus(remoteAddress, localAddress);
+        return status.equals(Gate.Status.READY);
     }
 
     @Override
     public boolean process() {
         // 1. check gate status
-        Gate.Status status = getGate().getStatus(remoteAddress, localAddress);
-        if (!status.equals(Gate.Status.READY)) {
+        if (!isReady()) {
             // not ready yet
             return false;
         }
@@ -188,10 +178,34 @@ public abstract class StarDocker implements Docker {
 
     /**
      *  Get outgo Ship from waiting queue
+     *
+     * @param now - current time
+     * @return next new or timeout task
      */
     protected Departure getOutgoShip(final long now) {
         // this will be remove from the cache
         // if needs retry, the caller should append it back to the queue
         return dock.getNextDeparture(now);
+    }
+
+    /**
+     *  Sending all fragments in the ship
+     *
+     * @param outgo - outgo ship carried package/fragments
+     * @return true on sent
+     */
+    protected boolean sendOutgoShip(final Departure outgo) throws IOException {
+        List<byte[]> fragments = outgo.getFragments();
+        if (fragments == null || fragments.size() == 0) {
+            return true;
+        }
+        int success = 0;
+        Gate gate = getGate();
+        for (byte[] pack : fragments) {
+            if (gate.send(pack, localAddress, remoteAddress)) {
+                success += 1;
+            }
+        }
+        return success == fragments.size();
     }
 }

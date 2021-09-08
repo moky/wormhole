@@ -10,6 +10,7 @@ import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Gate;
+import chat.dim.skywalker.Runner;
 import chat.dim.startrek.PlainArrival;
 import chat.dim.startrek.PlainDeparture;
 import chat.dim.tcp.ClientHub;
@@ -30,7 +31,7 @@ public class Client implements Gate.Delegate {
     }
 
     public void start() throws IOException {
-        gate.connect(remoteAddress, localAddress);
+        gate.hub.connect(remoteAddress, localAddress);
         gate.start();
     }
 
@@ -39,7 +40,7 @@ public class Client implements Gate.Delegate {
     }
 
     private void send(byte[] data) {
-        gate.sendMessage(data, localAddress, remoteAddress);
+        gate.sendData(data, localAddress, remoteAddress);
     }
 
     //
@@ -85,10 +86,10 @@ public class Client implements Gate.Delegate {
             TCPGate.info(">>> sending (" + data.length + " bytes): ");
             TCPGate.info(data);
             send(data);
-            TCPGate.idle(2000);
+            Runner.idle(2000);
         }
 
-        TCPGate.idle(16000);
+        Runner.idle(16000);
     }
 
     static String HOST;

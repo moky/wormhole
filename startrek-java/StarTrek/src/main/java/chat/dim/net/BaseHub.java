@@ -31,6 +31,7 @@
 package chat.dim.net;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.util.Date;
 import java.util.HashMap;
@@ -42,20 +43,26 @@ import chat.dim.type.Pair;
 
 public abstract class BaseHub implements Hub {
 
-    private final ConnectionPool connectionPool;
-
+    public static long DYING_EXPIRES = 120 * 1000;
     // mapping: (remote, local) => time to kill
     private final Map<Pair<SocketAddress, SocketAddress>, Long> dyingTimes = new HashMap<>();
-    public static long DYING_EXPIRES = 120 * 1000;
 
-    protected BaseHub() {
+    private final AddressPairMap<Connection> connectionPool = new AddressPairMap<>();
+
+    private final WeakReference<Connection.Delegate> delegateRef;
+
+    protected BaseHub(Connection.Delegate delegate) {
         super();
-        connectionPool = new ConnectionPool(this);
+        delegateRef = new WeakReference<>(delegate);
+    }
+
+    public Connection.Delegate getDelegate() {
+        return delegateRef.get();
     }
 
     @Override
     public boolean send(byte[] data, SocketAddress source, SocketAddress destination) throws IOException {
-        Connection conn = connect(destination, source);
+        Connection conn = connectionPool.get(destination, source);
         if (conn == null || !conn.isOpen()) {
             // connection closed
             return false;
@@ -63,22 +70,31 @@ public abstract class BaseHub implements Hub {
         return conn.send(data, destination) != -1;
     }
 
-    protected abstract Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException;
-
     @Override
     public Connection getConnection(SocketAddress remote, SocketAddress local) {
-        try {
-            return connectionPool.get(remote, local, false);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
+        return connectionPool.get(remote, local);
     }
 
     @Override
     public Connection connect(SocketAddress remote, SocketAddress local) throws IOException {
-        return connectionPool.get(remote, local, true);
+        Connection conn = connectionPool.get(remote, local);
+        if (conn == null) {
+            conn = createConnection(remote, local);
+            if (conn != null) {
+                connectionPool.put(remote, local, conn);
+            }
+        }
+        return conn;
     }
+
+    /**
+     *  Create connection with direction (remote, local)
+     *
+     * @param remote - remote address
+     * @param local  - local address
+     * @return new connection
+     */
+    protected abstract Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException;
 
     @Override
     public void disconnect(SocketAddress remote, SocketAddress local) {
@@ -97,17 +113,19 @@ public abstract class BaseHub implements Hub {
         Pair<SocketAddress, SocketAddress> aPair;  // (remote, local)
         long now = (new Date()).getTime();
         Long expired;
-        Set<Connection> connections = connectionPool.all();
+        Set<Connection> connections = connectionPool.allValues();
         for (Connection conn : connections) {
-            // drive all connections to process
+            // 1. drive all connections to process
             if (conn.process()) {
                 ++activatedCount;
             }
-            // check closed connection(s)
+
             remote = conn.getRemoteAddress();
             local = conn.getLocalAddress();
             aPair = buildPair(remote, local);
             assert aPair != null : "connection error: " + conn;
+
+            // 2. check closed connection(s)
             if (conn.isOpen()) {
                 // connection still alive, revive it
                 dyingTimes.remove(aPair);
@@ -128,7 +146,8 @@ public abstract class BaseHub implements Hub {
 
         return activatedCount > 0;
     }
-    private Pair<SocketAddress, SocketAddress> buildPair(SocketAddress remote, SocketAddress local) {
+
+    private static Pair<SocketAddress, SocketAddress> buildPair(SocketAddress remote, SocketAddress local) {
         if (remote == null) {
             if (local == null) {
                 //throw new NullPointerException("both local & remote addresses are empty");

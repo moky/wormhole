@@ -12,6 +12,7 @@ import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Gate;
+import chat.dim.skywalker.Runner;
 import chat.dim.startrek.PlainArrival;
 import chat.dim.startrek.PlainDeparture;
 import chat.dim.stun.Client;
@@ -44,7 +45,7 @@ public class StunClient extends Client implements Gate.Delegate {
 
     @Override
     public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, Gate gate) {
-        UDPGate.info("!!! connection (" + remote + ") state changed: " + oldStatus + " -> " + newStatus);
+        info("!!! connection (" + remote + ") state changed: " + oldStatus + " -> " + newStatus);
     }
 
     @Override
@@ -61,7 +62,7 @@ public class StunClient extends Client implements Gate.Delegate {
     public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
         assert outgo instanceof PlainDeparture : "departure ship error: " + outgo;
         int bodyLen = ((PlainDeparture) outgo).getPackage().length;
-        UDPGate.info("message sent: " + bodyLen + " byte(s) to " + destination);
+        info("message sent: " + bodyLen + " byte(s) to " + destination);
     }
 
     @Override
@@ -87,7 +88,7 @@ public class StunClient extends Client implements Gate.Delegate {
             if (timeout < (new Date()).getTime()) {
                 break;
             }
-            UDPGate.idle(256);
+            Runner.idle(256);
         }
         info("received " + (data == null ? 0 : data.length) + " bytes from " + remoteAddress);
         return data;
@@ -100,7 +101,7 @@ public class StunClient extends Client implements Gate.Delegate {
 
     public void detect(SocketAddress serverAddress) throws IOException {
         remoteAddress = serverAddress;
-        gate.connect(remoteAddress, sourceAddress);
+        gate.hub.connect(remoteAddress, sourceAddress);
         info("----------------------------------------------------------------");
         info("-- Detection starts from : " + serverAddress);
         Map<String, Object> res = getNatType(serverAddress);
@@ -122,18 +123,18 @@ public class StunClient extends Client implements Gate.Delegate {
 
     public static void main(String[] args) throws IOException {
 
-        InetSocketAddress a1 = new InetSocketAddress("stun.xten.com", 3478);
-        //remoteAddress = new InetSocketAddress("stun.voipbuster.com", 3478);
-        //remoteAddress = new InetSocketAddress("stun.sipgate.net", 3478);
-        //remoteAddress = new InetSocketAddress("stun.ekiga.net", 3478);
-        //remoteAddress = new InetSocketAddress("stun.schlund.de", 3478);
-        //remoteAddress = new InetSocketAddress("stun.voipstunt.com", 3478);  // Full Cone NAT?
-        //remoteAddress = new InetSocketAddress("stun.counterpath.com", 3478);
-        //remoteAddress = new InetSocketAddress("stun.1und1.de", 3478);
-        //remoteAddress = new InetSocketAddress("stun.gmx.net", 3478);
-        //remoteAddress = new InetSocketAddress("stun.callwithus.com", 3478);
-        //remoteAddress = new InetSocketAddress("stun.counterpath.net", 3478);
-        //remoteAddress = new InetSocketAddress("stun.internetcalls.com", 3478);
+        InetSocketAddress a01 = new InetSocketAddress("stun.xten.com", 3478);
+        InetSocketAddress a02 = new InetSocketAddress("stun.voipbuster.com", 3478);
+        InetSocketAddress a03 = new InetSocketAddress("stun.sipgate.net", 3478);
+        InetSocketAddress a04 = new InetSocketAddress("stun.ekiga.net", 3478);
+        InetSocketAddress a05 = new InetSocketAddress("stun.schlund.de", 3478);
+        InetSocketAddress a06 = new InetSocketAddress("stun.voipstunt.com", 3478);  // Full Cone NAT?
+        InetSocketAddress a07 = new InetSocketAddress("stun.counterpath.com", 3478);
+        InetSocketAddress a08 = new InetSocketAddress("stun.1und1.de", 3478);
+        InetSocketAddress a09 = new InetSocketAddress("stun.gmx.net", 3478);
+        InetSocketAddress a10 = new InetSocketAddress("stun.callwithus.com", 3478);
+        InetSocketAddress a11 = new InetSocketAddress("stun.counterpath.net", 3478);
+        InetSocketAddress a12 = new InetSocketAddress("stun.internetcalls.com", 3478);
 
         System.out.printf("connecting to STUN server: (%s:%d) ...\n", StunServer.HOST, StunServer.PORT);
 
@@ -142,7 +143,7 @@ public class StunClient extends Client implements Gate.Delegate {
         StunClient client = new StunClient(local);
 
         client.start();
-        client.detect(a1);
+        client.detect(a06);
         client.detect(remote);
         client.stop();
     }
