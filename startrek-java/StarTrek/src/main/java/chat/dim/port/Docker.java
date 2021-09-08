@@ -40,8 +40,7 @@ import java.net.SocketAddress;
  *
  *  Processor for Star Ships
  */
-public interface Docker<D extends Departure<A, I>, A extends Arrival<A, I>, I>
-        extends Processor {
+public interface Docker extends Processor {
 
     SocketAddress getLocalAddress();
     SocketAddress getRemoteAddress();
@@ -53,7 +52,7 @@ public interface Docker<D extends Departure<A, I>, A extends Arrival<A, I>, I>
      * @param priority    - smaller is faster (-1 is the most fast)
      * @return StarShip containing payload
      */
-    D pack(byte[] payload, int priority);
+    Departure pack(byte[] payload, int priority);
 
     /**
      *  Called when received data

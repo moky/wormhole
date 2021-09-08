@@ -39,11 +39,11 @@ import chat.dim.port.Departure;
  *
  *  Parking Star Ships
  */
-public class Dock<D extends Departure<A, I>, A extends Arrival<A, I>, I> {
+public class Dock {
 
     // memory caches
-    private final ArrivalHall<A, I> arrivalHall;
-    private final DepartureHall<D, A, I> departureHall;
+    private final ArrivalHall arrivalHall;
+    private final DepartureHall departureHall;
 
     public Dock() {
         super();
@@ -51,12 +51,12 @@ public class Dock<D extends Departure<A, I>, A extends Arrival<A, I>, I> {
         departureHall = createDepartureHall();
     }
 
-    protected ArrivalHall<A, I> createArrivalHall() {
-        return new ArrivalHall<>();
+    protected ArrivalHall createArrivalHall() {
+        return new ArrivalHall();
     }
 
-    protected DepartureHall<D, A, I> createDepartureHall() {
-        return new DepartureHall<>();
+    protected DepartureHall createDepartureHall() {
+        return new DepartureHall();
     }
 
     /**
@@ -65,7 +65,7 @@ public class Dock<D extends Departure<A, I>, A extends Arrival<A, I>, I> {
      * @param income - received ship carrying data package (fragment)
      * @return ship carrying completed data package
      */
-    public A assembleArrival(final A income) {
+    public Arrival assembleArrival(final Arrival income) {
         return arrivalHall.assembleArrival(income);
     }
 
@@ -75,7 +75,7 @@ public class Dock<D extends Departure<A, I>, A extends Arrival<A, I>, I> {
      * @param ship - departure task
      * @return false on duplicated
      */
-    public boolean appendDeparture(final D ship) {
+    public boolean appendDeparture(final Departure ship) {
         return departureHall.appendDeparture(ship);
     }
 
@@ -85,7 +85,7 @@ public class Dock<D extends Departure<A, I>, A extends Arrival<A, I>, I> {
      * @param response - incoming ship with SN
      * @return finished task
      */
-    public D checkResponse(final A response) {
+    public Departure checkResponse(final Arrival response) {
         return departureHall.checkResponse(response);
     }
 
@@ -95,7 +95,7 @@ public class Dock<D extends Departure<A, I>, A extends Arrival<A, I>, I> {
      * @param now - current time
      * @return departure task
      */
-    public D getNextDeparture(final long now) {
+    public Departure getNextDeparture(final long now) {
         return departureHall.getNextDeparture(now);
     }
 

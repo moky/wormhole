@@ -6,12 +6,14 @@ import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 
 import chat.dim.net.Hub;
+import chat.dim.port.Arrival;
+import chat.dim.port.Departure;
 import chat.dim.port.Gate;
 import chat.dim.startrek.PlainArrival;
 import chat.dim.startrek.PlainDeparture;
 import chat.dim.tcp.ServerHub;
 
-public class Server implements Gate.Delegate<PlainDeparture, PlainArrival, Object> {
+public class Server implements Gate.Delegate {
 
     private final SocketAddress localAddress;
 
@@ -44,25 +46,27 @@ public class Server implements Gate.Delegate<PlainDeparture, PlainArrival, Objec
     }
 
     @Override
-    public void onReceived(PlainArrival ship, SocketAddress source, SocketAddress destination, Gate gate) {
-        byte[] pack = ship.getData();
-        String text = new String(pack, StandardCharsets.UTF_8);
-        TCPGate.info("<<< received (" + pack.length + " bytes) from " + source + ": " + text);
-        text = (counter++) + "# " + pack.length + " byte(s) received";
-        byte[] data = text.getBytes(StandardCharsets.UTF_8);
+    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Gate gate) {
+        assert income instanceof PlainArrival : "arrival ship error: " + income;
+        byte[] data = ((PlainArrival) income).getPackage();
+        String text = new String(data, StandardCharsets.UTF_8);
+        TCPGate.info("<<< received (" + data.length + " bytes) from " + source + ": " + text);
+        text = (counter++) + "# " + data.length + " byte(s) received";
+        data = text.getBytes(StandardCharsets.UTF_8);
         TCPGate.info(">>> responding: " + text);
         send(data, source);
     }
     static int counter = 0;
 
     @Override
-    public void onSent(PlainDeparture ship, SocketAddress source, SocketAddress destination, Gate gate) {
-        int bodyLen = ship.getPackage().length;
+    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+        assert outgo instanceof PlainDeparture : "departure ship error: " + outgo;
+        int bodyLen = ((PlainDeparture) outgo).getPackage().length;
         TCPGate.info("message sent: " + bodyLen + " byte(s) to " + destination);
     }
 
     @Override
-    public void onError(Error error, PlainDeparture ship, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onError(Error error, Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
         TCPGate.error(error.getMessage());
     }
 

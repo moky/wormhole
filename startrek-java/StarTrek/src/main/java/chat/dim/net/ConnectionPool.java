@@ -46,8 +46,8 @@ import chat.dim.type.AddressPairMap;
  */
 class ConnectionPool {
 
-    private final ReadWriteLock connectionLock = new ReentrantReadWriteLock();
-    private final AddressPairMap<Connection> connectionMap = new AddressPairMap<>();
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    private final AddressPairMap<Connection> map = new AddressPairMap<>();
 
     private final WeakReference<BaseHub> delegate;
 
@@ -62,12 +62,12 @@ class ConnectionPool {
 
     Set<Connection> all() {
         Set<Connection> connections;
-        Lock writeLock = connectionLock.writeLock();
-        writeLock.lock();
+        Lock readLock = lock.readLock();
+        readLock.lock();
         try {
-            connections = connectionMap.allValues();
+            connections = map.allValues();
         } finally {
-            writeLock.unlock();
+            readLock.unlock();
         }
         return connections;
     }
@@ -76,22 +76,22 @@ class ConnectionPool {
         assert local != null || remote != null : "both local & remote addresses are empty";
         Connection conn;
         if (create) {
-            Lock writeLock = connectionLock.writeLock();
+            Lock writeLock = lock.writeLock();
             writeLock.lock();
             try {
-                conn = connectionMap.get(remote, local);
+                conn = map.get(remote, local);
             } finally {
                 writeLock.unlock();
             }
         } else {
-            Lock readLock = connectionLock.readLock();
+            Lock readLock = lock.readLock();
             readLock.lock();
             try {
-                conn = connectionMap.get(remote, local);
+                conn = map.get(remote, local);
                 if (conn == null) {
                     conn = getHub().createConnection(remote, local);
                     if (conn != null) {
-                        connectionMap.put(remote, local, conn);
+                        map.put(remote, local, conn);
                     }
                 }
             } finally {
@@ -103,13 +103,13 @@ class ConnectionPool {
 
     Connection remove(SocketAddress remote, SocketAddress local, Connection conn) {
         assert local != null || remote != null : "both local & remote addresses are empty";
-        Lock writeLock = connectionLock.writeLock();
+        Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
             if (conn == null) {
-                conn = connectionMap.get(remote, local);
+                conn = map.get(remote, local);
             }
-            connectionMap.remove(remote, local, conn);
+            map.remove(remote, local, conn);
         } finally {
             writeLock.unlock();
         }

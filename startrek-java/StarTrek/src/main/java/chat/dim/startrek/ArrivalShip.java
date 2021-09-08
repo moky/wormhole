@@ -32,7 +32,7 @@ package chat.dim.startrek;
 
 import chat.dim.port.Arrival;
 
-public abstract class ArrivalShip<A extends Arrival<A, I>, I> implements Arrival<A, I> {
+public abstract class ArrivalShip implements Arrival {
 
     /**
      *  Arrival task will be expired after 10 minutes if still not completed.

@@ -5,6 +5,8 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 
 import chat.dim.net.Hub;
+import chat.dim.port.Arrival;
+import chat.dim.port.Departure;
 import chat.dim.port.Gate;
 import chat.dim.startrek.PlainArrival;
 import chat.dim.startrek.PlainDeparture;
@@ -12,7 +14,7 @@ import chat.dim.stun.Server;
 import chat.dim.type.Data;
 import chat.dim.udp.ServerHub;
 
-public class StunServer extends Server implements Gate.Delegate<PlainDeparture, PlainArrival, Object> {
+public class StunServer extends Server implements Gate.Delegate {
 
     private final UDPGate<ServerHub> gate;
 
@@ -40,21 +42,23 @@ public class StunServer extends Server implements Gate.Delegate<PlainDeparture, 
     }
 
     @Override
-    public void onReceived(PlainArrival ship, SocketAddress source, SocketAddress destination, Gate gate) {
-        byte[] pack = ship.getData();
-        if (pack != null && pack.length > 0) {
-            handle(new Data(pack), (InetSocketAddress) source);
+    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Gate gate) {
+        assert income instanceof PlainArrival : "arrival ship error: " + income;
+        byte[] data = ((PlainArrival) income).getPackage();
+        if (data != null && data.length > 0) {
+            handle(new Data(data), (InetSocketAddress) source);
         }
     }
 
     @Override
-    public void onSent(PlainDeparture ship, SocketAddress source, SocketAddress destination, Gate gate) {
-        int bodyLen = ship.getPackage().length;
+    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+        assert outgo instanceof PlainDeparture : "departure ship error: " + outgo;
+        int bodyLen = ((PlainDeparture) outgo).getPackage().length;
         UDPGate.info("message sent: " + bodyLen + " byte(s) to " + destination);
     }
 
     @Override
-    public void onError(Error error, PlainDeparture ship, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onError(Error error, Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
         UDPGate.error(error.getMessage());
     }
 

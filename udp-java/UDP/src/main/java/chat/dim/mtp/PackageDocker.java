@@ -35,6 +35,7 @@ import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.util.List;
 
+import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Gate;
 import chat.dim.startrek.StarDocker;
@@ -42,14 +43,14 @@ import chat.dim.startrek.StarGate;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 
-public class PackageDocker extends StarDocker<PackageDeparture, PackageArrival, TransactionID> {
+public class PackageDocker extends StarDocker {
 
     private List<byte[]> advanceParties;
 
-    private final WeakReference<StarGate<PackageDeparture, PackageArrival, TransactionID>> gateRef;
+    private final WeakReference<StarGate> gateRef;
 
     public PackageDocker(SocketAddress remote, SocketAddress local, List<byte[]> parties,
-                         StarGate<PackageDeparture, PackageArrival, TransactionID> gate) {
+                         StarGate gate) {
         super(remote, local);
         advanceParties = parties;
         gateRef = new WeakReference<>(gate);
@@ -61,8 +62,8 @@ public class PackageDocker extends StarDocker<PackageDeparture, PackageArrival, 
     }
 
     @Override
-    protected Gate.Delegate<PackageDeparture, PackageArrival, TransactionID> getDelegate() {
-        StarGate<PackageDeparture, PackageArrival, TransactionID> gate = gateRef.get();
+    protected Gate.Delegate getDelegate() {
+        StarGate gate = gateRef.get();
         return gate == null ? null : gate.getDelegate();
     }
 
@@ -80,7 +81,7 @@ public class PackageDocker extends StarDocker<PackageDeparture, PackageArrival, 
     }
 
     @Override
-    protected PackageArrival getIncomeShip(byte[] data) {
+    protected Arrival getIncomeShip(byte[] data) {
         final Package pack = Package.parse(new Data(data));
         if (pack == null) {
             return null;
@@ -94,10 +95,12 @@ public class PackageDocker extends StarDocker<PackageDeparture, PackageArrival, 
     }
 
     @Override
-    protected PackageArrival checkIncomeShip(PackageArrival income) {
-        Package pack = income.getPackage();
+    protected Arrival checkIncomeShip(Arrival income) {
+        assert income instanceof PackageArrival : "income ship error: " + income;
+        PackageArrival ship = (PackageArrival) income;
+        Package pack = ship.getPackage();
         if (pack == null) {
-            List<Package> fragments = income.getFragments();
+            List<Package> fragments = ship.getFragments();
             if (fragments == null || fragments.size() == 0) {
                 throw new NullPointerException("fragments error: " + income);
             }
@@ -173,7 +176,7 @@ public class PackageDocker extends StarDocker<PackageDeparture, PackageArrival, 
     }
 
     @Override
-    protected boolean sendOutgoShip(final PackageDeparture outgo) throws IOException {
+    protected boolean sendOutgoShip(final Departure outgo) throws IOException {
         final List<byte[]> fragments = outgo.getFragments();
         if (fragments == null || fragments.size() == 0) {
             return true;
@@ -195,7 +198,7 @@ public class PackageDocker extends StarDocker<PackageDeparture, PackageArrival, 
     }
 
     public void sendPackage(Package pack, int priority) {
-        PackageDeparture ship = new PackageDeparture(priority, pack);
+        Departure ship = new PackageDeparture(priority, pack);
         dock.appendDeparture(ship);
     }
     public void sendPackage(Package pack) {
@@ -203,7 +206,7 @@ public class PackageDocker extends StarDocker<PackageDeparture, PackageArrival, 
     }
 
     @Override
-    public PackageDeparture pack(byte[] payload, int priority) {
+    public Departure pack(byte[] payload, int priority) {
         Package pack = Package.create(DataType.MESSAGE, new Data(payload));
         return new PackageDeparture(priority, pack);
     }

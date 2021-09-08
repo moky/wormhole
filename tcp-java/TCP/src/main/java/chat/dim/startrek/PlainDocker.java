@@ -35,17 +35,17 @@ import java.net.SocketAddress;
 import java.util.Arrays;
 import java.util.List;
 
+import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Gate;
 
-public class PlainDocker extends StarDocker<PlainDeparture, PlainArrival, Object> {
+public class PlainDocker extends StarDocker {
 
     private List<byte[]> advanceParties;
 
-    private final WeakReference<StarGate<PlainDeparture, PlainArrival, Object>> gateRef;
+    private final WeakReference<StarGate> gateRef;
 
-    public PlainDocker(SocketAddress remote, SocketAddress local, List<byte[]> parties,
-                       StarGate<PlainDeparture, PlainArrival, Object> gate) {
+    public PlainDocker(SocketAddress remote, SocketAddress local, List<byte[]> parties, StarGate gate) {
         super(remote, local);
         advanceParties = parties;
         gateRef = new WeakReference<>(gate);
@@ -57,8 +57,8 @@ public class PlainDocker extends StarDocker<PlainDeparture, PlainArrival, Object
     }
 
     @Override
-    protected Gate.Delegate<PlainDeparture, PlainArrival, Object> getDelegate() {
-        StarGate<PlainDeparture, PlainArrival, Object> gate = gateRef.get();
+    protected Gate.Delegate getDelegate() {
+        StarGate gate = gateRef.get();
         return gate == null ? null : gate.getDelegate();
     }
 
@@ -76,7 +76,7 @@ public class PlainDocker extends StarDocker<PlainDeparture, PlainArrival, Object
     }
 
     @Override
-    protected PlainArrival getIncomeShip(byte[] data) {
+    protected Arrival getIncomeShip(byte[] data) {
         if (data == null || data.length == 0) {
             return null;
         }
@@ -84,8 +84,9 @@ public class PlainDocker extends StarDocker<PlainDeparture, PlainArrival, Object
     }
 
     @Override
-    protected PlainArrival checkIncomeShip(PlainArrival income) {
-        byte[] data = income.getData();
+    protected Arrival checkIncomeShip(Arrival income) {
+        assert income instanceof PlainArrival : "arrival ship error: " + income;
+        byte[] data = ((PlainArrival) income).getPackage();
         if (Arrays.equals(data, PING)) {
             // PING -> PONG
             PlainDeparture outgo = pack(PONG, Departure.Priority.SLOWER.value);

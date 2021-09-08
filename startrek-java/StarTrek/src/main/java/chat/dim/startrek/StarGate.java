@@ -41,23 +41,20 @@ import java.util.Set;
 
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
-import chat.dim.port.Arrival;
-import chat.dim.port.Departure;
 import chat.dim.port.Docker;
 import chat.dim.port.Gate;
 import chat.dim.skywalker.Runner;
 import chat.dim.type.AddressPairMap;
 
-public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I>, I>
-        extends Runner implements Gate, Connection.Delegate {
+public abstract class StarGate extends Runner implements Gate, Connection.Delegate {
 
-    private final AddressPairMap<Docker<D, A, I>> dockerPool = new AddressPairMap<>();
+    private final AddressPairMap<Docker> dockerPool = new AddressPairMap<>();
 
     private final Map<SocketAddress, List<byte[]>> advanceParties = new HashMap<>();
 
-    private final WeakReference<Delegate<D, A, I>> delegateRef;
+    private final WeakReference<Delegate> delegateRef;
 
-    protected StarGate(Delegate<D, A, I> delegate) {
+    protected StarGate(Delegate delegate) {
         super();
         delegateRef = new WeakReference<>(delegate);
     }
@@ -66,10 +63,10 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
     protected abstract Connection connect(SocketAddress remote, SocketAddress local) throws IOException;
 
     // create new Docker with data (advance party)
-    protected abstract Docker<D, A, I> createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data);
+    protected abstract Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data);
 
-    public Docker<D, A, I> getDocker(SocketAddress remote, SocketAddress local, boolean create) {
-        Docker<D, A, I> worker = dockerPool.get(remote, local);
+    public Docker getDocker(SocketAddress remote, SocketAddress local, boolean create) {
+        Docker worker = dockerPool.get(remote, local);
         if (worker == null && create) {
             List<byte[]> data = advanceParties.get(remote);
             worker = createDocker(remote, local, data);
@@ -81,11 +78,11 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
         }
         return worker;
     }
-    protected void setDocker(Docker<D, A, I> worker, SocketAddress remote, SocketAddress local) {
+    protected void setDocker(Docker worker, SocketAddress remote, SocketAddress local) {
         dockerPool.put(remote, local, worker);
     }
 
-    public Gate.Delegate<D, A, I> getDelegate() {
+    public Gate.Delegate getDelegate() {
         return delegateRef.get();
     }
 
@@ -115,9 +112,9 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
     @Override
     public boolean process() {
         int counter = 0;
-        Set<Docker<D, A, I>> dockers = dockerPool.allValues();
+        Set<Docker> dockers = dockerPool.allValues();
         SocketAddress remote, local;
-        for (Docker<D, A, I> worker : dockers) {
+        for (Docker worker : dockers) {
             remote = worker.getRemoteAddress();
             local = worker.getLocalAddress();
             // check connection
@@ -137,7 +134,7 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
     protected void heartbeat(Connection connection) throws IOException {
         SocketAddress remote = connection.getRemoteAddress();
         SocketAddress local = connection.getLocalAddress();
-        Docker<D, A, I> worker = getDocker(remote, local, false);
+        Docker worker = getDocker(remote, local, false);
         if (worker != null) {
             worker.heartbeat();
         }
@@ -158,7 +155,7 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
             }
         }
         // callback when status changed
-        Delegate<D, A, I> delegate = getDelegate();
+        Delegate delegate = getDelegate();
         if (delegate != null) {
             Status s1 = Status.getStatus(previous);
             Status s2 = Status.getStatus(current);
@@ -171,7 +168,7 @@ public abstract class StarGate<D extends Departure<A, I>, A extends Arrival<A, I
     @Override
     public void onReceived(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
         // get docker by remote address
-        Docker<D, A, I> worker = getDocker(source, destination, false);
+        Docker worker = getDocker(source, destination, false);
         if (worker == null) {
             // save advance parties from this source address
             List<byte[]> parties = advanceParties.get(source);

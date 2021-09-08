@@ -18,15 +18,16 @@ import chat.dim.dmtp.protocol.Message;
 import chat.dim.mtp.Package;
 import chat.dim.mtp.PackageArrival;
 import chat.dim.mtp.PackageDeparture;
-import chat.dim.mtp.TransactionID;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
+import chat.dim.port.Arrival;
+import chat.dim.port.Departure;
 import chat.dim.port.Gate;
 import chat.dim.type.Data;
 import chat.dim.udp.ClientHub;
 
-public class DmtpClient extends Client implements Gate.Delegate<PackageDeparture, PackageArrival, TransactionID> {
+public class DmtpClient extends Client implements Gate.Delegate {
 
     private final SocketAddress localAddress;
     private final SocketAddress remoteAddress;
@@ -74,14 +75,16 @@ public class DmtpClient extends Client implements Gate.Delegate<PackageDeparture
     }
 
     @Override
-    public void onReceived(PackageArrival ship, SocketAddress source, SocketAddress destination, Gate gate) {
-        Package pack = ship.getPackage();
+    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Gate gate) {
+        assert income instanceof PackageArrival : "arrival ship error: " + income;
+        Package pack = ((PackageArrival) income).getPackage();
         onReceivedPackage(source, pack);
     }
 
     @Override
-    public void onSent(PackageDeparture ship, SocketAddress source, SocketAddress destination, Gate gate) {
-        Package pack = ship.getPackage();
+    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+        assert outgo instanceof PackageDeparture : "departure ship error: " + outgo;
+        Package pack = ((PackageDeparture) outgo).getPackage();
         int bodyLen = pack.head.bodyLength;
         if (bodyLen == -1) {
             bodyLen = pack.body.getSize();
@@ -90,7 +93,7 @@ public class DmtpClient extends Client implements Gate.Delegate<PackageDeparture
     }
 
     @Override
-    public void onError(Error error, PackageDeparture ship, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onError(Error error, Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
         UDPGate.error(error.getMessage());
     }
 

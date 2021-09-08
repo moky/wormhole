@@ -36,14 +36,14 @@ package chat.dim.port;
  *
  *  Container carrying data package
  */
-public interface Ship<I> {
+public interface Ship {
 
     /**
      *  Get ID for this Ship
      *
      * @return SN
      */
-    I getSN();
+    Object getSN();
 
     /**
      *  Check whether task failed

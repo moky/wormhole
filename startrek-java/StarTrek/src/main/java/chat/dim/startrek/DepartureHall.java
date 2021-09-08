@@ -47,14 +47,14 @@ import chat.dim.port.Departure;
  *  Memory cache for Departures
  *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-public class DepartureHall<D extends Departure<A, I>, A extends Arrival<A, I>, I> {
+public class DepartureHall {
 
     // tasks for sending out
     private final List<Integer> priorities = new ArrayList<>();
-    private final Map<Integer, List<D>> departureFleets = new HashMap<>();
+    private final Map<Integer, List<Departure>> departureFleets = new HashMap<>();
 
-    private final Map<I, D> departureMap = new WeakHashMap<>();
-    private final Map<I, Long> departureFinished = new HashMap<>();  // ID -> timestamp
+    private final Map<Object, Departure> departureMap = new WeakHashMap<>();
+    private final Map<Object, Long> departureFinished = new HashMap<>();  // ID -> timestamp
 
     /**
      *  Append outgoing ship to a fleet with priority
@@ -62,10 +62,10 @@ public class DepartureHall<D extends Departure<A, I>, A extends Arrival<A, I>, I
      * @param ship - departure task
      * @return false on duplicated
      */
-    public boolean appendDeparture(final D ship) {
+    public boolean appendDeparture(final Departure ship) {
         final int priority = ship.getPriority();
         // 1. choose an array with priority
-        List<D> fleet = departureFleets.get(priority);
+        List<Departure> fleet = departureFleets.get(priority);
         if (fleet == null) {
             // 1.1. create new array for this priority
             fleet = new ArrayList<>();
@@ -81,7 +81,7 @@ public class DepartureHall<D extends Departure<A, I>, A extends Arrival<A, I>, I
         // 2. append to the tail
         fleet.add(ship);
         // 3. build mapping if SN exists
-        final I sn = ship.getSN();
+        final Object sn = ship.getSN();
         if (sn != null) {
             departureMap.put(sn, ship);
         }
@@ -113,15 +113,15 @@ public class DepartureHall<D extends Departure<A, I>, A extends Arrival<A, I>, I
      * @param response - incoming ship with SN
      * @return finished task
      */
-    public D checkResponse(final A response) {
-        D finished = null;
-        final I sn = response.getSN();
+    public Departure checkResponse(final Arrival response) {
+        Departure finished = null;
+        final Object sn = response.getSN();
         assert sn != null : "SN not found: " + response;
         // check whether this task has already finished
         final Long time = departureFinished.get(sn);
         if (time == null || time == 0) {
             // check departure
-            final D ship = departureMap.get(sn);
+            final Departure ship = departureMap.get(sn);
             if (ship != null && ship.checkResponse(response)) {
                 // all fragments sent, departure task finished
                 finished = ship;
@@ -133,9 +133,9 @@ public class DepartureHall<D extends Departure<A, I>, A extends Arrival<A, I>, I
         }
         return finished;
     }
-    private void remove(final D ship, final I sn) {
+    private void remove(final Departure ship, final Object sn) {
         final int priority = ship.getPriority();
-        final List<D> fleet = departureFleets.get(priority);
+        final List<Departure> fleet = departureFleets.get(priority);
         if (fleet != null) {
             fleet.remove(ship);
             // remove array when empty
@@ -153,20 +153,20 @@ public class DepartureHall<D extends Departure<A, I>, A extends Arrival<A, I>, I
      * @param now - current time
      * @return departure task
      */
-    public D getNextDeparture(final long now) {
+    public Departure getNextDeparture(final long now) {
         // task.retries == 0
-        D next = getNextNewDeparture(now);
+        Departure next = getNextNewDeparture(now);
         if (next == null) {
             // task.retries <= MAX_RETRIES and timeout
             next = getNextTimeoutDeparture(now);
         }
         return next;
     }
-    private D getNextNewDeparture(final long now) {
-        List<D> fleet;
-        Iterator<D> iterator;
-        D ship;
-        I sn;
+    private Departure getNextNewDeparture(final long now) {
+        List<Departure> fleet;
+        Iterator<Departure> iterator;
+        Departure ship;
+        Object sn;
         for (int priority : priorities) {
             // 1. get tasks with priority
             fleet = departureFleets.get(priority);
@@ -190,11 +190,11 @@ public class DepartureHall<D extends Departure<A, I>, A extends Arrival<A, I>, I
         }
         return null;
     }
-    private D getNextTimeoutDeparture(final long now) {
-        List<D> fleet;
-        Iterator<D> iterator;
-        D ship;
-        I sn;
+    private Departure getNextTimeoutDeparture(final long now) {
+        List<Departure> fleet;
+        Iterator<Departure> iterator;
+        Departure ship;
+        Object sn;
         for (int priority : priorities) {
             // 1. get tasks with priority
             fleet = departureFleets.get(priority);
@@ -230,9 +230,9 @@ public class DepartureHall<D extends Departure<A, I>, A extends Arrival<A, I>, I
      *  Clear all expired tasks
      */
     public void purge() {
-        final Set<D> failedTasks = new HashSet<>();
+        final Set<Departure> failedTasks = new HashSet<>();
         final long now = (new Date()).getTime();
-        List<D> fleet;
+        List<Departure> fleet;
         for (int priority : priorities) {
             // 0. get tasks with priority
             fleet = departureFleets.get(priority);
@@ -241,7 +241,7 @@ public class DepartureHall<D extends Departure<A, I>, A extends Arrival<A, I>, I
             }
             failedTasks.clear();
             // 1. seeking expired tasks in this priority
-            for (D ship : fleet) {
+            for (Departure ship : fleet) {
                 if (ship.isFailed(now)) {
                     // task expired
                     failedTasks.add(ship);
@@ -253,10 +253,10 @@ public class DepartureHall<D extends Departure<A, I>, A extends Arrival<A, I>, I
             }
         }
     }
-    private void clear(List<D> fleet, final Set<D> failedTasks, final int priority) {
-        I sn;
+    private void clear(List<Departure> fleet, final Set<Departure> failedTasks, final int priority) {
+        Object sn;
         // remove expired tasks
-        for (D ship : failedTasks) {
+        for (Departure ship : failedTasks) {
             fleet.remove(ship);
             // remove mapping when SN exists
             sn = ship.getSN();

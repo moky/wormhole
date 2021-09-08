@@ -8,12 +8,13 @@ import java.nio.charset.StandardCharsets;
 import chat.dim.mtp.Package;
 import chat.dim.mtp.PackageArrival;
 import chat.dim.mtp.PackageDeparture;
-import chat.dim.mtp.TransactionID;
 import chat.dim.net.Hub;
+import chat.dim.port.Arrival;
+import chat.dim.port.Departure;
 import chat.dim.port.Gate;
 import chat.dim.udp.ServerHub;
 
-public class Server implements Gate.Delegate<PackageDeparture, PackageArrival, TransactionID> {
+public class Server implements Gate.Delegate {
 
     private final SocketAddress localAddress;
 
@@ -50,8 +51,9 @@ public class Server implements Gate.Delegate<PackageDeparture, PackageArrival, T
     }
 
     @Override
-    public void onReceived(PackageArrival ship, SocketAddress source, SocketAddress destination, Gate gate) {
-        Package pack = ship.getPackage();
+    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Gate gate) {
+        assert income instanceof PackageArrival : "arrival ship error: " + income;
+        Package pack = ((PackageArrival) income).getPackage();
         int headLen = pack.head.getSize();
         int bodyLen = pack.body.getSize();
         byte[] payload = pack.body.getBytes();
@@ -65,8 +67,9 @@ public class Server implements Gate.Delegate<PackageDeparture, PackageArrival, T
     static int counter = 0;
 
     @Override
-    public void onSent(PackageDeparture ship, SocketAddress source, SocketAddress destination, Gate gate) {
-        Package pack = ship.getPackage();
+    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+        assert outgo instanceof PackageDeparture : "departure ship error: " + outgo;
+        Package pack = ((PackageDeparture) outgo).getPackage();
         int bodyLen = pack.head.bodyLength;
         if (bodyLen == -1) {
             bodyLen = pack.body.getSize();
@@ -75,7 +78,7 @@ public class Server implements Gate.Delegate<PackageDeparture, PackageArrival, T
     }
 
     @Override
-    public void onError(Error error, PackageDeparture ship, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onError(Error error, Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
         UDPGate.error(error.getMessage());
     }
 

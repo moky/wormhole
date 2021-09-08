@@ -53,7 +53,7 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
 
     @Override
     public void put(K remote, K local, V value) {
-        // create indexes for this connection
+        // create indexes with key pair (remote, local)
         K key1, key2;
         if (remote == null) {
             assert local != null : "local & remote addresses should not empty at the same time";
@@ -109,8 +109,8 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
     }
 
     @Override
-    public void remove(K remote, K local, V value) {
-        // remove indexes for this connection
+    public V remove(K remote, K local, V value) {
+        // remove indexes with key pair (remote, local)
         K key1, key2;
         if (remote == null) {
             assert local != null : "local & remote addresses should not empty at the same time";
@@ -124,8 +124,6 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
             key2 = local;
         }
         Map<K, V> table = map.get(key1);
-        if (table != null) {
-            table.remove(key2);
-        }
+        return table == null ? value : table.remove(key2);
     }
 }

@@ -7,16 +7,14 @@ import java.util.List;
 import chat.dim.net.BaseHub;
 import chat.dim.net.Connection;
 import chat.dim.port.Docker;
-import chat.dim.startrek.PlainArrival;
-import chat.dim.startrek.PlainDeparture;
 import chat.dim.startrek.PlainDocker;
 import chat.dim.startrek.StarGate;
 
-public class TCPGate<H extends BaseHub> extends StarGate<PlainDeparture, PlainArrival, Object> {
+public class TCPGate<H extends BaseHub> extends StarGate {
 
     H hub = null;
 
-    public TCPGate(Delegate<PlainDeparture, PlainArrival, Object> delegate) {
+    public TCPGate(Delegate delegate) {
         super(delegate);
     }
 
@@ -43,8 +41,7 @@ public class TCPGate<H extends BaseHub> extends StarGate<PlainDeparture, PlainAr
     }
 
     @Override
-    protected Docker<PlainDeparture, PlainArrival, Object> createDocker(SocketAddress remote, SocketAddress local,
-                                                                        List<byte[]> data) {
+    protected Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
         // TODO: check data format before creating docker
         return new PlainDocker(remote, local, data, this);
     }

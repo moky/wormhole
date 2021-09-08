@@ -6,21 +6,18 @@ import java.util.List;
 
 import chat.dim.mtp.DataType;
 import chat.dim.mtp.Package;
-import chat.dim.mtp.PackageArrival;
-import chat.dim.mtp.PackageDeparture;
 import chat.dim.mtp.PackageDocker;
-import chat.dim.mtp.TransactionID;
 import chat.dim.net.BaseHub;
 import chat.dim.net.Connection;
 import chat.dim.port.Docker;
 import chat.dim.startrek.StarGate;
 import chat.dim.type.Data;
 
-public class UDPGate<H extends BaseHub> extends StarGate<PackageDeparture, PackageArrival, TransactionID> {
+public class UDPGate<H extends BaseHub> extends StarGate {
 
     H hub = null;
 
-    public UDPGate(Delegate<PackageDeparture, PackageArrival, TransactionID> delegate) {
+    public UDPGate(Delegate delegate) {
         super(delegate);
     }
 
@@ -47,9 +44,7 @@ public class UDPGate<H extends BaseHub> extends StarGate<PackageDeparture, Packa
     }
 
     @Override
-    protected Docker<PackageDeparture, PackageArrival, TransactionID> createDocker(SocketAddress remote,
-                                                                                   SocketAddress local,
-                                                                                   List<byte[]> data) {
+    protected Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
         // TODO: check data format before creating docker
         return new PackageDocker(remote, local, data, this);
     }

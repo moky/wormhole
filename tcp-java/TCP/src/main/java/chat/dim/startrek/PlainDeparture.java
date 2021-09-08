@@ -33,7 +33,9 @@ package chat.dim.startrek;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PlainDeparture extends DepartureShip<PlainArrival, Object> {
+import chat.dim.port.Arrival;
+
+public class PlainDeparture extends DepartureShip {
 
     private final byte[] completed;
     private final List<byte[]> fragments;
@@ -60,7 +62,7 @@ public class PlainDeparture extends DepartureShip<PlainArrival, Object> {
     }
 
     @Override
-    public boolean checkResponse(PlainArrival arrival) {
+    public boolean checkResponse(Arrival arrival) {
         return false;
     }
 }

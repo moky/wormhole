@@ -48,24 +48,8 @@ public class HashKeyPairMap<K, V> extends WeakKeyPairMap<K, V> {
 
     @Override
     public void put(K remote, K local, V value) {
-        // the caller may create different connections with same pair (remote, local)
-        // so here we try to remove it first to make sure it's clean
-        clear(remote, local, value);
-        // cache it
-        cachedValues.add(value);
-        // create indexes for this connection
-        super.put(remote, local, value);
-    }
-
-    @Override
-    public void remove(K remote, K local, V value) {
-        // clear cached connection
-        clear(remote, local, value);
-        // remove indexes
-        super.remove(remote, local, value);
-    }
-
-    private void clear(K remote, K local, V value) {
+        // the caller may create different values with same pair (remote, local)
+        // so here we should try to remove it first to make sure it's clean
         V old = get(remote, local);
         if (old != null) {
             cachedValues.remove(old);
@@ -73,5 +57,23 @@ public class HashKeyPairMap<K, V> extends WeakKeyPairMap<K, V> {
         if (value != null && value != old) {
             cachedValues.remove(value);
         }
+        // cache it
+        cachedValues.add(value);
+        // create indexes
+        super.put(remote, local, value);
+    }
+
+    @Override
+    public V remove(K remote, K local, V value) {
+        // remove indexes
+        V old = super.remove(remote, local, value);
+        if (old != null) {
+            cachedValues.remove(old);
+        }
+        // clear cached value
+        if (value != null && value != old) {
+            cachedValues.remove(value);
+        }
+        return old == null ? value : old;
     }
 }

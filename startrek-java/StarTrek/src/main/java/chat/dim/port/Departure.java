@@ -36,7 +36,7 @@ import java.util.List;
  *  Outgoing Ship
  *  ~~~~~~~~~~~~~
  */
-public interface Departure<A extends Arrival<A, I>, I> extends Ship<I> {
+public interface Departure extends Ship {
 
     enum Priority {
         URGENT (-1),
@@ -81,5 +81,5 @@ public interface Departure<A extends Arrival<A, I>, I> extends Ship<I> {
      * @param response - income ship carried with response
      * @return true on task finished
      */
-    boolean checkResponse(A response);
+    boolean checkResponse(Arrival response);
 }

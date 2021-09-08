@@ -30,10 +30,9 @@
  */
 package chat.dim.startrek;
 
-import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 
-public abstract class DepartureShip<A extends Arrival<A, I>, I> implements Departure<A, I> {
+public abstract class DepartureShip implements Departure {
 
     /**
      *  Departure task will be expired after 2 minutes if no response received.
