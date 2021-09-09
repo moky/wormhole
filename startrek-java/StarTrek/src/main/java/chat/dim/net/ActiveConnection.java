@@ -61,7 +61,7 @@ public abstract class ActiveConnection extends BaseConnection {
         writeLock.lock();
         try {
             connecting += 1;
-            if (connecting == 1 && running) {
+            if (connecting == 1 && running && channel == null) {
                 changeState(ConnectionState.PREPARING);
                 channel = connect(remoteAddress, localAddress);
                 if (channel == null) {

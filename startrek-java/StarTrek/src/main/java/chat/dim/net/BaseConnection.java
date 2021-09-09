@@ -193,6 +193,11 @@ public class BaseConnection implements Connection, StateDelegate {
     }
 
     @Override
+    public boolean isAlive() {
+        return isOpen() && (isConnected() || isBound());
+    }
+
+    @Override
     public void close() {
         closeChannel();
         changeState(ConnectionState.DEFAULT);
@@ -326,10 +331,10 @@ public class BaseConnection implements Connection, StateDelegate {
             remote = receive(buffer);
         } catch (IOException e) {
             //e.printStackTrace();
-            delegate.onError(e, null, null, null, this);
+            delegate.onError(e, null, null, getLocalAddress(), this);
             return false;
         }
-        if (remote == null || buffer.position() == 0) {
+        if (buffer.position() == 0) {
             // received nothing
             return false;
         }

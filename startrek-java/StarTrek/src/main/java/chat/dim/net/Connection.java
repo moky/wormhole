@@ -43,6 +43,8 @@ public interface Connection extends Processor {
     boolean isBound();
     boolean isConnected();
 
+    boolean isAlive();  // isOpen && (isConnected() || isBound())
+
     SocketAddress getLocalAddress();
     SocketAddress getRemoteAddress();
 

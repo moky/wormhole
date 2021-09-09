@@ -112,7 +112,7 @@ class StateBuilder {
     ConnectionState getPreparingState() {
         ConnectionState state = getNamedState(ConnectionState.PREPARING);
         // Preparing -> Ready
-        state.addTransition(builder.getPreparingConnectedTransition());
+        state.addTransition(builder.getPreparingReadyTransition());
         // Preparing -> Default
         state.addTransition(builder.getPreparingDefaultTransition());
         return state;
@@ -174,13 +174,13 @@ class TransitionBuilder {
     }
 
     // Preparing -> Ready
-    StateTransition getPreparingConnectedTransition() {
+    StateTransition getPreparingReadyTransition() {
         return new StateTransition(ConnectionState.READY) {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
                 // connected or bound, change state to 'ready'
-                return conn != null && conn.isOpen() && (conn.isConnected() || conn.isBound());
+                return conn != null && conn.isAlive();
             }
         };
     }
@@ -205,8 +205,7 @@ class TransitionBuilder {
                 BaseConnection conn = ctx.getConnection();
                 // connection still alive, but
                 // long time no response, change state to 'maintain_expired'
-                return conn != null && conn.isOpen() && conn.isConnected()
-                        && !conn.isReceivedRecently((new Date()).getTime());
+                return conn != null && conn.isAlive() && !conn.isReceivedRecently((new Date()).getTime());
             }
         };
     }
@@ -231,8 +230,7 @@ class TransitionBuilder {
                 BaseConnection conn = ctx.getConnection();
                 // connection still alive, and
                 // sent recently, change state to 'maintaining'
-                return conn != null && conn.isOpen() && conn.isConnected()
-                        && conn.isSentRecently((new Date()).getTime());
+                return conn != null && conn.isAlive() && conn.isSentRecently((new Date()).getTime());
             }
         };
     }
@@ -257,8 +255,7 @@ class TransitionBuilder {
                 BaseConnection conn = ctx.getConnection();
                 // connection still alive, and
                 // received recently, change state to 'ready'
-                return conn != null && conn.isOpen() && conn.isConnected()
-                        && conn.isReceivedRecently((new Date()).getTime());
+                return conn != null && conn.isAlive() && conn.isReceivedRecently((new Date()).getTime());
             }
         };
     }
@@ -271,8 +268,7 @@ class TransitionBuilder {
                 BaseConnection conn = ctx.getConnection();
                 // connection still alive, but
                 // long time no sending, change state to 'maintain_expired'
-                return conn != null && conn.isOpen() && conn.isConnected()
-                        && !conn.isSentRecently((new Date()).getTime());
+                return conn != null && conn.isAlive() && !conn.isSentRecently((new Date()).getTime());
             }
         };
     }
@@ -285,8 +281,7 @@ class TransitionBuilder {
                 BaseConnection conn = ctx.getConnection();
                 // connection lost, or
                 // long long time no response, change state to 'error
-                return conn == null || !conn.isOpen()
-                        || conn.isNotReceivedLongTimeAgo((new Date()).getTime());
+                return conn == null || !conn.isOpen() || conn.isNotReceivedLongTimeAgo((new Date()).getTime());
             }
         };
     }

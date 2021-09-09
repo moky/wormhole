@@ -65,7 +65,7 @@ public abstract class Runner implements Runnable, Handler, Processor {
     public void handle() {
         while (isRunning()) {
             if (!process()) {
-                idle(8);
+                idle();
             }
         }
     }
@@ -73,6 +73,10 @@ public abstract class Runner implements Runnable, Handler, Processor {
     @Override
     public void finish() {
         running = false;
+    }
+
+    protected void idle() {
+        idle(8);
     }
 
     public static void idle(long millis) {
