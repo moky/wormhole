@@ -84,7 +84,7 @@ public abstract class DepartureShip implements Departure {
         }
         // update retried time
         lastTime = now;
-        // decrease counter
+        // increase counter
         ++retries;
         return true;
     }

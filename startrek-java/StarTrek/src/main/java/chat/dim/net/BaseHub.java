@@ -63,8 +63,8 @@ public abstract class BaseHub implements Hub {
     @Override
     public boolean send(byte[] data, SocketAddress source, SocketAddress destination) throws IOException {
         Connection conn = connectionPool.get(destination, source);
-        if (conn == null || !conn.isOpen()) {
-            // connection closed
+        if (conn == null || !conn.isAlive()) {
+            // connection not ready
             return false;
         }
         return conn.send(data, destination) != -1;

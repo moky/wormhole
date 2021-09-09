@@ -45,6 +45,7 @@ class BaseTransition(Transition[C], ABC):
 
     @property
     def target(self) -> str:
+        """ target state name """
         return self.__target
 
 
@@ -184,7 +185,8 @@ class BaseMachine(Machine[C, T, S]):
         current = self.current_state
         if current is not None and self.__status == Status.RUNNING:
             trans = current.evaluate(machine)
-            if isinstance(trans, BaseTransition):
+            if trans is not None:
+                # assert isinstance(trans, BaseTransition), 'transition error: %s' % trans
                 target = self.target_state(transition=trans)
                 assert target is not None, 'target state error: %s' % trans.target
                 self.change_state(state=target)

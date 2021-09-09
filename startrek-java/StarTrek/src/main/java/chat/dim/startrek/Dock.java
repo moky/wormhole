@@ -69,7 +69,7 @@ public class Dock {
      */
     public Arrival assembleArrival(final Arrival income) {
         // check fragment from income ship,
-        // return a completed package if all fragments received
+        // return a ship with completed package if all fragments received
         return arrivalHall.assembleArrival(income);
     }
 
@@ -96,14 +96,14 @@ public class Dock {
     }
 
     /**
-     *  Get next timeout task
+     *  Get next new/timeout task
      *
      * @param now - current time
      * @return departure task
      */
     public Departure getNextDeparture(final long now) {
-        // this will be remove from the cache
-        // if needs retry, the caller should append it back to the queue
+        // this will be remove from the queue,
+        // if needs retry, the caller should append it back
         return departureHall.getNextDeparture(now);
     }
 

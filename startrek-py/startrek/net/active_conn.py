@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   TCP: Transmission Control Protocol
+#   Star Trek: Interstellar Transport
 #
 #                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
@@ -28,17 +28,16 @@
 # SOFTWARE.
 # ==============================================================================
 
-import socket
 import threading
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Optional
 
 from .channel import Channel
-from .state import ConnectionState, StateMachine
+from .state import ConnectionState
 from .base_conn import BaseConnection
 
 
-class ActiveConnection(BaseConnection):
+class ActiveConnection(BaseConnection, ABC):
 
     def __init__(self, remote: tuple, local: Optional[tuple] = None, channel: Optional[Channel] = None):
         super().__init__(remote=remote, local=local, channel=channel)
@@ -55,13 +54,13 @@ class ActiveConnection(BaseConnection):
         with self.__lock:
             try:
                 self.__connecting += 1
-                if self.__connecting == 1 and self.__running:
-                    self.change_state(name=ConnectionState.CONNECTING)
+                if self.__connecting == 1 and self.__running and self._channel is None:
+                    self.change_state(name=ConnectionState.PREPARING)
                     self._channel = self.connect(remote=self._remote_address, local=self._local_address)
                     if self._channel is None:
                         self.change_state(name=ConnectionState.ERROR)
                     else:
-                        self.change_state(name=ConnectionState.CONNECTED)
+                        self.change_state(name=ConnectionState.READY)
                         redo = True
             finally:
                 self.__connecting -= 1
@@ -96,23 +95,9 @@ class ActiveConnection(BaseConnection):
         return data, remote
 
     # Override
-    def send(self, data: bytes, target: Optional[tuple] = None) -> int:
-        sent = super().send(data=data, target=target)
+    def _send(self, data: bytes, target: Optional[tuple] = None) -> int:
+        sent = super()._send(data=data, target=target)
         if sent == -1 and self._channel is None and self.__reconnect():
             # try again
-            sent = super().send(data=data, target=target)
+            sent = super()._send(data=data, target=target)
         return sent
-
-    # Override
-    def exit_state(self, state: ConnectionState, ctx: StateMachine):
-        super().exit_state(state=state, ctx=ctx)
-        current = ctx.current_state
-        if current == ConnectionState.EXPIRED:
-            try:
-                self.heartbeat()
-            except socket.error as error:
-                print('[NET] failed to heartbeat: %s' % error)
-
-    def heartbeat(self):
-        # send 'PING'
-        pass

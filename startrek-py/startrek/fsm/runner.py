@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   Star Trek: Interstellar Transport
+#   Finite State Machine
 #
 #                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
@@ -32,6 +32,26 @@ import time
 from abc import ABC, abstractmethod
 
 
+class Ticker(ABC):
+
+    @abstractmethod
+    def tick(self):
+        """ Drive current thread forward """
+        raise NotImplemented
+
+
+class Processor(ABC):
+
+    @abstractmethod
+    def process(self) -> bool:
+        """
+        Do the job
+
+        :return: False on nothing to do
+        """
+        raise NotImplemented
+
+
 class Handler(ABC):
 
     @abstractmethod
@@ -50,18 +70,6 @@ class Handler(ABC):
         raise NotImplemented
 
 
-class Processor(ABC):
-
-    @abstractmethod
-    def process(self) -> bool:
-        """
-        Do the job
-
-        :return: False on nothing to do
-        """
-        raise NotImplemented
-
-
 class Runnable(ABC):
 
     @abstractmethod
@@ -70,7 +78,7 @@ class Runnable(ABC):
         raise NotImplemented
 
 
-class Runner(Runnable, Handler, Processor):
+class Runner(Runnable, Handler, Processor, ABC):
     """
         Runner
         ~~~~~~
@@ -87,16 +95,8 @@ class Runner(Runnable, Handler, Processor):
     def running(self) -> bool:
         return self.__running
 
-    # noinspection PyMethodMayBeStatic
-    def _idle(self):
-        time.sleep(0.0078125)
-
     def stop(self):
         self.__running = False
-
-    #
-    #   Runnable
-    #
 
     # Override
     def run(self):
@@ -105,10 +105,6 @@ class Runner(Runnable, Handler, Processor):
             self.handle()
         finally:
             self.finish()
-
-    #
-    #   Handler
-    #
 
     # Override
     def setup(self):
@@ -124,10 +120,6 @@ class Runner(Runnable, Handler, Processor):
     def finish(self):
         self.__running = False
 
-    #
-    #   Processor
-    #
-
-    # Override
-    def process(self) -> bool:
-        pass
+    # noinspection PyMethodMayBeStatic
+    def _idle(self):
+        time.sleep(0.0078125)

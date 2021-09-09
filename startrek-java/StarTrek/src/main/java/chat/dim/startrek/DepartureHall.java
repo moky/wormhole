@@ -114,7 +114,6 @@ public class DepartureHall {
      * @return finished task
      */
     public Departure checkResponse(final Arrival response) {
-        Departure finished = null;
         final Object sn = response.getSN();
         assert sn != null : "SN not found: " + response;
         // check whether this task has already finished
@@ -124,14 +123,14 @@ public class DepartureHall {
             final Departure ship = departureMap.get(sn);
             if (ship != null && ship.checkResponse(response)) {
                 // all fragments sent, departure task finished
-                finished = ship;
                 // remove it and clear mapping when SN exists
                 remove(ship, sn);
                 // mark finished time
                 departureFinished.put(sn, (new Date()).getTime());
+                return ship;
             }
         }
-        return finished;
+        return null;
     }
     private void remove(final Departure ship, final Object sn) {
         final int priority = ship.getPriority();
@@ -157,7 +156,7 @@ public class DepartureHall {
         // task.retries == 0
         Departure next = getNextNewDeparture(now);
         if (next == null) {
-            // task.retries <= MAX_RETRIES and timeout
+            // task.retries < MAX_RETRIES and timeout
             next = getNextTimeoutDeparture(now);
         }
         return next;
@@ -234,22 +233,22 @@ public class DepartureHall {
         final long now = (new Date()).getTime();
         List<Departure> fleet;
         for (int priority : priorities) {
-            // 0. get tasks with priority
+            // 1. get tasks with priority
             fleet = departureFleets.get(priority);
             if (fleet == null) {
                 continue;
             }
-            failedTasks.clear();
-            // 1. seeking expired tasks in this priority
+            // 2. seeking expired tasks in this priority
             for (Departure ship : fleet) {
                 if (ship.isFailed(now)) {
                     // task expired
                     failedTasks.add(ship);
                 }
             }
-            // 2. clear expired tasks
+            // 3. clear expired tasks
             if (failedTasks.size() > 0) {
                 clear(fleet, failedTasks, priority);
+                failedTasks.clear();
             }
         }
     }

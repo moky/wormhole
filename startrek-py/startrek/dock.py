@@ -29,10 +29,10 @@
 # ==============================================================================
 
 import threading
-import time
-from typing import Optional, List, Dict
+from typing import Optional
 
-from .starship import StarShip
+from .arrival import Arrival, ArrivalHall
+from .departure import Departure, DepartureHall
 
 
 """
@@ -47,88 +47,66 @@ class Dock:
 
     def __init__(self):
         super().__init__()
-        # tasks for sending out
-        self.__priorities: List[int] = []
-        self.__fleets: Dict[int, List[StarShip]] = {}
+        # memory caches
+        self.__arrival_hall = self._create_arrival_hall()
+        self.__departure_hall = self._create_departure_hall()
 
-    def put(self, ship: StarShip) -> bool:
-        """ Park this ship in the Dock for departure """
-        # 1. choose an array with priority
-        priority = ship.priority
-        fleet = self.__fleets.get(priority)
-        if fleet is None:
-            # 1.1. create new array for this priority
-            fleet = []
-            self.__fleets[priority] = fleet
-            # 1.2. insert the priority in a sorted list
-            index = 0
-            count = len(self.__priorities)
-            while index < count:
-                if priority < self.__priorities[index]:
-                    # insert priority before the bigger one
-                    break
-                else:
-                    index += 1
-            self.__priorities.insert(index, priority)
-        # 2. check duplicated task
-        for item in fleet:
-            if item is ship:
-                return False
-        # 3. append to the tail
-        fleet.append(ship)
-        return True
+    # noinspection PyMethodMayBeStatic
+    def _create_arrival_hall(self) -> ArrivalHall:
+        """ Override for user-customized hall """
+        return ArrivalHall()
 
-    # @overload
-    # def pop(self) -> Optional[StarShip]:
-    #     """ Get a new Ship(time == 0) and remove it from the Dock """
-    #     pass
-    #
-    # @overload
-    # def pop(self, sn: bytes) -> Optional[StarShip]:
-    #     """ Get a Ship(with SN as ID) and remove it from the Dock """
-    #     pass
+    # noinspection PyMethodMayBeStatic
+    def _create_departure_hall(self) -> DepartureHall:
+        """ Override for user-customized hall """
+        return DepartureHall()
 
-    def pop(self, sn: Optional[bytes] = None) -> Optional[StarShip]:
-        # search in fleets ordered by priority
-        if sn is None:
-            # get next new ship
-            for priority in self.__priorities:
-                fleet = self.__fleets.get(priority, [])
-                for ship in fleet:
-                    if ship.time == 0:
-                        # update time and try
-                        ship.update()
-                        fleet.remove(ship)
-                        return ship
-        else:
-            # get ship with ID
-            for priority in self.__priorities:
-                fleet = self.__fleets.get(priority, [])
-                for ship in fleet:
-                    if ship.sn == sn:
-                        # just remove it
-                        fleet.remove(ship)
-                        return ship
+    def assemble_arrival(self, ship: Arrival) -> Optional[Arrival]:
+        """
+        Check income ship for completed package
 
-    def any(self) -> Optional[StarShip]:
-        """ Get any Ship timeout/expired """
-        expired = int(time.time()) - StarShip.EXPIRES
-        for priority in self.__priorities:
-            # search in fleets ordered by priority
-            fleet = self.__fleets.get(priority, [])
-            for ship in fleet:
-                if ship.time > expired:
-                    # not expired yet
-                    continue
-                if ship.retries < StarShip.RETRIES:
-                    # update time and retry
-                    ship.update()
-                    return ship
-                # retried too many times
-                if ship.expired:
-                    # task expired, remove it and don't retry
-                    fleet.remove(ship)
-                    return ship
+        :param ship: received ship carrying data package/fragment
+        :return a ship carrying completed data package
+        """
+        # check fragment from income ship,
+        # return a ship with completed package if all fragments received
+        return self.__arrival_hall.assemble_arrival(ship=ship)
+
+    def append_departure(self, ship: Departure) -> bool:
+        """
+        Append outgoing ship to a fleet with priority
+
+        :param ship: departure task
+        :return False on duplicated
+        """
+        return self.__departure_hall.append_departure(ship=ship)
+
+    def check_response(self, ship: Arrival) -> Optional[Departure]:
+        """
+        Check response from the income ship
+
+        :param ship: income ship with SN
+        :return finished departure task
+        """
+        # check departure tasks with SN
+        # remove package/fragment if matched (check page index for fragments too)
+        return self.__departure_hall.check_response(ship=ship)
+
+    def next_departure(self, now: int) -> Optional[Departure]:
+        """
+        Get next new/timeout task
+
+        :param now: current timestamp
+        :return departure task
+        """
+        # this will be remove from the queue,
+        # if needs retry, the caller should append it back
+        return self.__departure_hall.next_departure(now=now)
+
+    def purge(self):
+        """ Clear all expired tasks """
+        self.__arrival_hall.purge()
+        self.__departure_hall.purge()
 
 
 class LockedDock(Dock):
@@ -137,14 +115,22 @@ class LockedDock(Dock):
         super().__init__()
         self.__lock = threading.Lock()
 
-    def put(self, ship: StarShip) -> bool:
+    def assemble_arrival(self, ship: Arrival) -> Optional[Arrival]:
         with self.__lock:
-            return super().put(ship=ship)
+            return super().assemble_arrival(ship=ship)
 
-    def pop(self, sn: Optional[bytes] = None) -> Optional[StarShip]:
+    def append_departure(self, ship: Departure) -> bool:
         with self.__lock:
-            return super().pop(sn=sn)
+            return super().append_departure(ship=ship)
 
-    def any(self) -> Optional[StarShip]:
+    def check_response(self, ship: Arrival) -> Optional[Departure]:
         with self.__lock:
-            return super().any()
+            return super().check_response(ship=ship)
+
+    def next_departure(self, now: int) -> Optional[Departure]:
+        with self.__lock:
+            return super().next_departure(now=now)
+
+    def purge(self):
+        with self.__lock:
+            return super().purge()

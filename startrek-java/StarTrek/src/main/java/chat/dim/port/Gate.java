@@ -43,7 +43,7 @@ import chat.dim.skywalker.Processor;
 public interface Gate extends Processor {
 
     /**
-     *  Send payload to the remote peer
+     *  Send data to the remote peer
      *
      * @param data        - outgoing data package
      * @param source      - local address
@@ -103,9 +103,10 @@ public interface Gate extends Processor {
          * @param oldStatus - last status
          * @param newStatus - current status
          * @param remote    - remote address
+         * @param local     - local address
          * @param gate      - current gate
          */
-        void onStatusChanged(Status oldStatus, Status newStatus, SocketAddress remote, Gate gate);
+        void onStatusChanged(Status oldStatus, Status newStatus, SocketAddress remote, SocketAddress local, Gate gate);
 
         /**
          *  Callback when new package received

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   Star Trek: Interstellar Transport
+#   Finite State Machine
 #
 #                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
@@ -28,45 +28,63 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import ABC, abstractmethod
-from typing import Union
+import time
+from threading import Thread
+from typing import Optional
 
-"""
-    Star Ship
-    ~~~~~~~~~
-
-    Container carrying data package
-"""
+from .runner import Handler, Runnable
+from .machine import S, C, U, T
+from .base import BaseMachine
 
 
-class Ship(ABC):
-    """ Star Ship for carrying data package """
+class AutoMachine(BaseMachine[C, T, S], Runnable, Handler):
 
-    @property
-    def package(self) -> bytes:
-        """ Get the package in this Ship """
-        raise NotImplemented
+    def __init__(self, default: str):
+        super().__init__(default=default)
+        self.__thread: Optional[Thread] = None
 
-    @property
-    def sn(self) -> bytes:
-        """ Get ID for this Ship """
-        raise NotImplemented
+    # Override
+    def start(self):
+        super().start()
+        self.__force_stop()
+        self.__thread = Thread(target=self.run)
+        self.__thread.start()
 
-    @property
-    def payload(self) -> bytes:
-        """ Get data containing in the package """
-        raise NotImplemented
+    def __force_stop(self):
+        t: Thread = self.__thread
+        if t is not None:
+            t.join()
+            self.__thread = None
 
+    # Override
+    def stop(self):
+        super().stop()
+        self.__force_stop()
 
-class ShipDelegate(ABC):
-    """ Star Ship Delegate """
+    # Override
+    def run(self):
+        self.setup()
+        try:
+            self.handle()
+        finally:
+            self.finish()
 
-    @abstractmethod
-    def ship_sent(self, ship: Ship, error: Union[OSError, IOError] = None):
-        """
-        Callback when package sent
+    # Override
+    def setup(self):
+        """ prepare for running """
+        pass
 
-        :param ship:       package container
-        :param error:      None on success
-        """
-        raise NotImplemented
+    # Override
+    def finish(self):
+        """ clean up after run """
+        pass
+
+    # Override
+    def handle(self):
+        while self.current_state is not None:
+            self.tick()
+            self._idle()
+
+    # noinspection PyMethodMayBeStatic
+    def _idle(self):
+        time.sleep(0.125)

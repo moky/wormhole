@@ -28,38 +28,55 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .net import Hub, Channel, Connection, ConnectionDelegate
-from .net import ConnectionState, ConnectionStateMachine
-from .net import BaseHub, BaseChannel, BaseConnection, ActiveConnection
-
-from .port import Ship, Arrival, Departure, DeparturePriority
-from .port import Docker, Gate, GateStatus, GateDelegate
-
-from .arrival import ArrivalShip, ArrivalHall
-from .departure import DepartureShip, DepartureHall
-from .dock import Dock, LockedDock
-from .stardocker import StarDocker
-from .stargate import StarGate
+from typing import TypeVar, Generic
 
 
-"""
-    Star Trek
-    ~~~~~~~~~
-    
-    Interstellar Transport
-"""
+K = TypeVar('K')
+V = TypeVar('V')
 
 
-__all__ = [
+class Pair(Generic[K, V]):
 
-    'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
-    'ConnectionState', 'ConnectionStateMachine',
-    'BaseHub', 'BaseChannel', 'BaseConnection', 'ActiveConnection',
+    def __init__(self, key: K, value: V):
+        super().__init__()
+        self.__key = key
+        self.__value = value
 
-    'Ship', 'Arrival', 'Departure', 'DeparturePriority', 'Docker',
-    'Gate', 'GateStatus', 'GateDelegate',
+    @property
+    def key(self) -> K:
+        return self.__key
 
-    'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
-    'Dock', 'LockedDock',
-    'StarDocker', 'StarGate',
-]
+    @property
+    def value(self) -> V:
+        return self.__value
+
+    def __str__(self):
+        return '%s=%s' % (self.__key, self.__value)
+
+    def __repr__(self):
+        return '%s=%s' % (self.__key, self.__value)
+
+    def __hash__(self):
+        # name's hashCode is multiplied by an arbitrary prime number (13)
+        # in order to make sure there is a difference in the hashCode between
+        # these two parameters:
+        #  name: a  value: aa
+        #  name: aa value: a
+        if self.__value is None:
+            return hash(self.__key) * 13
+        else:
+            return hash(self.__key) * 13 + hash(self.__value)
+
+    def __eq__(self, other):
+        if self is other:
+            return True
+        elif isinstance(other, Pair):
+            return self.__key == other.__key and self.__value == other.__value
+
+    def __ne__(self, other):
+        if self is other:
+            return False
+        elif isinstance(other, Pair):
+            return self.__key != other.__key or self.__value != other.__value
+        else:
+            return True

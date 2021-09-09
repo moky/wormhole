@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   TCP: Transmission Control Protocol
+#   Star Trek: Interstellar Transport
 #
 #                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
@@ -28,36 +28,61 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .hub import Hub
-from .channel import Channel
-from .connection import Connection, Delegate as ConnectionDelegate
+from abc import ABC, abstractmethod
+from typing import Optional
 
-from .state import ConnectionState, StateMachine as ConnectionStateMachine
+from ..fsm import Processor
 
-from .base_hub import BaseHub
-from .base_channel import BaseChannel
-from .base_conn import BaseConnection
-from .active_conn import ActiveConnection
 
-__all__ = [
+class Connection(Processor, ABC):
 
     #
-    #   Interfaces
+    #   Flags
     #
-    'Hub',
-    'Channel',
-    'Connection', 'ConnectionDelegate',
 
-    #
-    #   FSM for Connection
-    #
-    'ConnectionState', 'ConnectionStateMachine',
+    @property
+    def opened(self) -> bool:
+        """ not closed """
+        raise NotImplemented
 
-    #
-    #   Base
-    #
-    'BaseHub',
-    'BaseChannel',
-    'BaseConnection',
-    'ActiveConnection',
-]
+    @property
+    def bound(self) -> bool:
+        """ is_bound() """
+        raise NotImplemented
+
+    @property
+    def connected(self) -> bool:
+        """ is_connected() """
+        raise NotImplemented
+
+    @property
+    def alive(self) -> bool:
+        """ is_opened() and (is_connected() or is_bound()) """
+        raise NotImplemented
+
+    @property
+    def local_address(self) -> Optional[tuple]:  # (str, int)
+        raise NotImplemented
+
+    @property
+    def remote_address(self) -> Optional[tuple]:  # (str, int)
+        raise NotImplemented
+
+    @abstractmethod
+    def send(self, data: bytes, target: Optional[tuple] = None) -> int:
+        """
+        Send data
+
+        :param data:   outgo buffer
+        :param target: remote address; can be None when it's connected
+        :return: count of bytes sent, probably zero when it's non-blocking mode
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def close(self):
+        raise NotImplemented
+
+    @property
+    def state(self):  # -> ConnectionState:
+        raise NotImplemented

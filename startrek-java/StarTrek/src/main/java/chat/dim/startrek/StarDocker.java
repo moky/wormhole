@@ -143,7 +143,7 @@ public abstract class StarDocker implements Docker {
     /**
      *  Check income ship for responding
      *
-     * @param income - income ship carrying data package/fragment
+     * @param income - income ship carrying data package/fragment/response
      * @return income ship carrying completed data package
      */
     protected abstract Arrival checkIncomeShip(final Arrival income);
@@ -183,8 +183,8 @@ public abstract class StarDocker implements Docker {
      * @return next new or timeout task
      */
     protected Departure getOutgoShip(final long now) {
-        // this will be remove from the cache
-        // if needs retry, the caller should append it back to the queue
+        // this will be remove from the queue,
+        // if needs retry, the caller should append it back
         return dock.getNextDeparture(now);
     }
 

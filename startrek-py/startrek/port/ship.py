@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   TCP: Transmission Control Protocol
+#   Star Trek: Interstellar Transport
 #
 #                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
@@ -29,91 +29,98 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from enum import IntEnum
+from typing import List
 
 
-class Channel(ABC):
-
-    @property
-    def opened(self) -> bool:
-        """ is_open() """
-        raise NotImplemented
+class Ship(ABC):
 
     @property
-    def bound(self) -> bool:
-        """ is_bound() """
+    def sn(self):
+        """ Get ID for this ship """
         raise NotImplemented
 
     @abstractmethod
-    def close(self):
-        raise NotImplemented
+    def is_failed(self, now: int) -> bool:
+        """
+        Check whether task failed
 
-    #
-    #   Byte Channel
-    #
-
-    @abstractmethod
-    def read(self, max_len: int) -> Optional[bytes]:
+        :param now: current timestamp
+        :return true on failed
+        """
         raise NotImplemented
 
     @abstractmethod
-    def write(self, data: bytes) -> int:
+    def update(self, now: int) -> bool:
+        """
+        Update expired time
+
+        :param now: current timestamp
+        :return false on error (nothing changed)
+        """
         raise NotImplemented
 
-    #
-    #   Selectable Channel
-    #
+
+class Arrival(Ship):
+    """ Incoming Ship """
 
     @abstractmethod
-    def configure_blocking(self, blocking: bool):
+    def assemble(self, ship):  # -> Optional[Arrival]:
+        """
+        Data package can be sent as separated batches
+
+        :param ship: arrival ship carrying with data package/fragment
+        :return new ship carrying the whole data package
+        """
         raise NotImplemented
+
+
+class Departure(Ship):
+    """ Departure Ship """
 
     @property
-    def blocking(self) -> bool:
-        """ is_blocking() """
-        raise NotImplemented
-
-    #
-    #   Network Channel
-    #
-
-    @abstractmethod
-    def bind(self, address: Optional[tuple] = None, host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
-        raise NotImplemented
-
-    @property
-    def local_address(self) -> Optional[tuple]:  # (str, int)
-        raise NotImplemented
-
-    #
-    #   Socket/Datagram Channel
-    #
-
-    @property
-    def connected(self) -> bool:
-        """ is_connected() """
-        raise NotImplemented
-
-    @abstractmethod
-    def connect(self, address: Optional[tuple] = None, host: Optional[str] = '127.0.0.1', port: Optional[int] = 0):
+    def priority(self) -> int:
         raise NotImplemented
 
     @property
-    def remote_address(self) -> Optional[tuple]:  # (str, int)
-        raise NotImplemented
-
-    #
-    #   Datagram Channel
-    #
-
-    @abstractmethod
-    def disconnect(self):
+    def retries(self) -> int:
+        """ How many times retried """
         raise NotImplemented
 
     @abstractmethod
-    def receive(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
+    def is_timeout(self, now: int) -> bool:
+        """
+        Check whether task needs retry
+
+        :param now: current time
+        :return true on retry
+        """
+        raise NotImplemented
+
+    @property
+    def fragments(self) -> List[bytes]:
+        """
+        Get fragments to sent
+
+        :return remaining (separated) data package
+        """
         raise NotImplemented
 
     @abstractmethod
-    def send(self, data: bytes, target: tuple) -> int:
+    def check_response(self, ship: Arrival) -> bool:
+        """
+        The received ship may carried a response for the departure
+        if all fragments responded, means this task is finished.
+
+        :param ship: income ship carrying response
+        :return true on task finished
+        """
         raise NotImplemented
+
+
+class Priority(IntEnum):
+    """ Departure Ship Priority """
+
+    URGENT = -1
+    NORMAL = 0
+    SLOWER = 1

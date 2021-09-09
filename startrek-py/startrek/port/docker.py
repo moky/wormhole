@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   TCP: Transmission Control Protocol
+#   Star Trek: Interstellar Transport
 #
 #                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
@@ -28,81 +28,55 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Optional
 
-from ..fsm import Ticker
+from ..fsm import Processor
+
+from .ship import Departure
 
 
-class Connection(Ticker, ABC):
+class Docker(Processor):
+    """
+        Star Worker
+        ~~~~~~~~~~~
 
-    #
-    #   Flags
-    #
+        Processor for Star Ships
+    """
 
     @property
-    def opened(self) -> bool:
-        """ not closed """
+    def remote_address(self) -> tuple:
+        """ Remote address of connection """
         raise NotImplemented
 
     @property
-    def bound(self) -> bool:
-        raise NotImplemented
-
-    @property
-    def connected(self) -> bool:
-        raise NotImplemented
-
-    @property
-    def local_address(self) -> Optional[tuple]:  # (str, int)
-        raise NotImplemented
-
-    @property
-    def remote_address(self) -> Optional[tuple]:  # (str, int)
+    def local_address(self) -> Optional[tuple]:
+        """ Local address of connection """
         raise NotImplemented
 
     @abstractmethod
-    def send(self, data: bytes, target: Optional[tuple] = None) -> int:
+    def pack(self, payload: bytes, priority: int = 0) -> Departure:
         """
-        Send data
+        Pack the payload to an outgo Ship
 
-        :param data:   outgo buffer
-        :param target: remote address; can be None when it's connected
-        :return: count of bytes sent, probably zero when it's non-blocking mode
+        :param payload:  request data
+        :param priority: smaller is faster (-1 is the most fast)
+        :return: Departure ship carrying package with payload
         """
         raise NotImplemented
 
     @abstractmethod
-    def close(self):
-        raise NotImplemented
-
-    @property
-    def state(self):  # -> ConnectionState:
-        raise NotImplemented
-
-
-class Delegate(ABC):
-    """ Connection Delegate """
-
-    @abstractmethod
-    def connection_state_changed(self, connection: Connection, previous, current):
+    def process_received(self, data: bytes):
         """
-        Call when connection status is going to change
+        Called when received data
 
-        :param connection: current connection
-        :param previous:   old state
-        :param current:    current (new) state
+        :param data: received data package
         """
         raise NotImplemented
 
     @abstractmethod
-    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):
+    def heartbeat(self):
         """
-        Call when connection received data
-
-        :param connection: current connection
-        :param remote:     remote address
-        :param wrapper:    received data header (Header or None)
-        :param payload:    received data body (bytes, bytearray or ByteArray)
+        Send 'PING' for keeping connection alive
         """
         raise NotImplemented

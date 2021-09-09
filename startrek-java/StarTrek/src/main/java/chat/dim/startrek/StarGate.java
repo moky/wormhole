@@ -58,7 +58,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     }
 
     /**
-     *  Get connection from hub
+     *  Get exists connection from hub
      *
      * @param remote - remote address
      * @param local  - local address
@@ -67,7 +67,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     protected abstract Connection getConnection(SocketAddress remote, SocketAddress local);
 
     /**
-     *  create new Docker with data (advance party)
+     *  Create new docker for received data
      *
      * @param remote - remote address
      * @param local  - local address
@@ -129,6 +129,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
                 // connection lost, remove worker
                 dockerPool.remove(remote, local, worker);
             } else if (worker.process()) {
+                // it's busy
                 counter += 1;
             }
         }
@@ -167,7 +168,9 @@ public abstract class StarGate implements Gate, Connection.Delegate {
             Status s1 = Status.getStatus(previous);
             Status s2 = Status.getStatus(current);
             if (!s1.equals(s2)) {
-                delegate.onStatusChanged(s1, s2, connection.getRemoteAddress(), this);
+                SocketAddress remote = connection.getRemoteAddress();
+                SocketAddress local = connection.getLocalAddress();
+                delegate.onStatusChanged(s1, s2, remote, local, this);
             }
         }
     }

@@ -28,147 +28,193 @@
 # SOFTWARE.
 # ==============================================================================
 
+import socket
 import weakref
-from abc import abstractmethod
-from typing import Optional
+from typing import Optional, List
 
-from .runner import Runner
-
-from .ship import ShipDelegate
-from .starship import StarShip
-from .dock import Dock, LockedDock
-from .docker import Docker
-from .gate import Gate, GateStatus, GateDelegate
+from .types import AddressPairMap
+from .net import Connection, ConnectionDelegate, ConnectionState
+from .port import Docker, Gate, GateDelegate, GateStatus
+from .port.gate import status_from_state
 
 
-class StarGate(Runner, Gate):
+class StarGate(Gate, ConnectionDelegate):
     """
         Star Gate
         ~~~~~~~~~
 
-        @abstract properties:
-            expired()
-            status()
-
         @abstract methods:
-            - _create_docker()
-            - send(data)
-            - receive(length, remove)
+            - get_connection(remote, local)
+            - create_docker(remote, local, advance_party)
+            - cache_advance_party(data, source, destination, connection)
+            - clear_advance_party(source, destination, connection)
     """
 
-    def __init__(self):
+    def __init__(self, delegate: GateDelegate):
         super().__init__()
-        self.__dock = self._create_dock()
-        self.__docker: Optional[Docker] = None
-        self.__delegate: Optional[weakref.ReferenceType] = None
+        self.__delegate = weakref.ref(delegate)
+        self.__docker_pool = AddressPairMap()
 
-    # noinspection PyMethodMayBeStatic
-    def _create_dock(self) -> Dock:
-        return LockedDock()
-
-    @property
-    def docker(self) -> Optional[Docker]:
-        if self.__docker is None:
-            self.__docker = self._create_docker()
-        return self.__docker
-
-    def _create_docker(self) -> Optional[Docker]:
-        """ Override to customize Docker """
-        raise NotImplemented
-
-    @docker.setter
-    def docker(self, worker: Docker):
-        self.__docker = worker
-
-    # Override
     @property
     def delegate(self) -> Optional[GateDelegate]:
-        if self.__delegate is None:
-            return None
-        else:
-            return self.__delegate()
+        return self.__delegate()
 
-    @delegate.setter
-    def delegate(self, handler: GateDelegate):
-        if handler is None:
-            self.__delegate = None
-        else:
-            self.__delegate = weakref.ref(handler)
+    # protected
+    def get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+        """
+        Get exists connection from hub
+
+        :param remote: remote address
+        :param local:  local address
+        :return exists connection
+        """
+        raise NotImplemented
+
+    # protected
+    def create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
+        """
+        Create new docker for received data
+
+        :param remote:        remote address
+        :param local:         local address
+        :param advance_party: received data
+        :return docker
+        """
+        raise NotImplemented
+
+    # protected
+    def get_docker(self, remote: tuple, local: Optional[tuple], advance_party: Optional[List[bytes]] = None):
+        worker = self.__docker_pool.get(remote=remote, local=local)
+        if worker is None and advance_party is not None:
+            # if docker not exists, create after checking data format
+            worker = self.create_docker(remote=remote, local=local, advance_party=advance_party)
+            if worker is not None:
+                self.__docker_pool.put(remote=remote, local=local, value=worker)
+        return worker
 
     # Override
-    def send_payload(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> bool:
-        worker = self.docker
+    def gate_status(self, remote: tuple, local: Optional[tuple]) -> GateStatus:
+        conn = self.get_connection(remote=remote, local=local)
+        if conn is None:
+            return GateStatus.ERROR
+        else:
+            return status_from_state(state=conn.state)
+
+    # Override
+    def send_data(self, data: bytes, source: Optional[tuple], destination: tuple) -> bool:
+        conn = self.get_connection(remote=destination, local=source)
+        if conn is not None:
+            status = status_from_state(state=conn.state)
+            if status == GateStatus.READY:
+                return conn.send(data=data, target=destination) != -1
+
+    #
+    #   Processor
+    #
+
+    # Override
+    def process(self):
+        counter = 0
+        dockers = self.__docker_pool.values
+        for worker in dockers:
+            assert isinstance(worker, Docker), 'docker error: %s' % worker
+            remote = worker.remote_address
+            local = worker.local_address
+            # check connection
+            if self.get_connection(remote=remote, local=local) is None:
+                # connection lost, remove docker
+                self.__docker_pool.remove(remote=remote, local=local, value=worker)
+            elif worker.process():
+                # it's busy
+                counter += 1
+        return counter > 0
+
+    # protected
+    def heartbeat(self, connection: Connection):
+        remote = connection.remote_address
+        local = connection.local_address
+        worker = self.get_docker(remote=remote, local=local)
         if worker is not None:
-            outgo = worker.pack(payload=payload, priority=priority, delegate=delegate)
-            return self.send_ship(ship=outgo)
+            worker.heartbeat()
+
+    #
+    #   Connection Delegate
+    #
 
     # Override
-    def send_ship(self, ship: StarShip) -> bool:
-        if self.status != GateStatus.Connected:
-            # not connect yet
-            return False
-        elif ship.priority > StarShip.URGENT:
-            # put the Ship into a waiting queue
-            return self.park_ship(ship=ship)
-        else:
-            # send out directly
-            return self.send(data=ship.package)
+    def connection_state_changed(self, connection: Connection,
+                                 previous: ConnectionState, current: ConnectionState):
+        # heartbeat when connection expired
+        if current == ConnectionState.EXPIRED:
+            try:
+                self.heartbeat(connection=connection)
+            except socket.error as error:
+                print('[NET] heartbeat error: %s' % error)
+        # callback when status changed
+        delegate = self.delegate
+        if delegate is not None:
+            s1 = status_from_state(state=previous)
+            s2 = status_from_state(state=current)
+            if s1 != s2:
+                remote = connection.remote_address
+                local = connection.local_address
+                delegate.gate_status_changed(gate=self, remote=remote, local=local, previous=s1, current=s2)
 
-    #
-    #   Connection
-    #
+    # Override
+    def connection_received(self, connection: Connection,
+                            source: tuple, destination: Optional[tuple], data: bytes):
+        # get docker by (remote, local)
+        worker = self.get_docker(remote=source, local=destination)
+        if worker is not None:
+            # docker exists, call docker.onReceived(data)
+            worker.process_received(data=data)
+            return
+        # save advance party from this source address
+        party = self.cache_advance_party(data=data, source=source, destination=destination, connection=connection)
+        assert party is not None and len(party) > 0, 'advance party error'
+        # docker not exists, check the data to decide which docker should be created
+        worker = self.get_docker(remote=source, local=destination, advance_party=party)
+        if worker is not None:
+            # process advance parties one by one
+            for item in party:
+                worker.process_received(data=item)
+            # remove advance party
+            self.clear_advance_party(source=source, destination=destination, connection=connection)
 
-    @abstractmethod
-    def send(self, data: bytes) -> bool:
+    # protected
+    def cache_advance_party(self, data: bytes, source: tuple, destination: Optional[tuple],
+                            connection: Connection) -> List[bytes]:
+        """
+        Cache the advance party before decide which docker to use
+
+        :param data:        received data
+        :param source:      remote address
+        :param destination: local address
+        :param connection:  current connection
+        :return all cached data
+        """
         raise NotImplemented
 
-    @abstractmethod
-    def receive(self, length: int, remove: bool) -> Optional[bytes]:
+    # protected
+    def clear_advance_party(self, source: tuple, destination: Optional[tuple], connection: Connection):
+        """
+        Clear all advance parties after docker created
+
+        :param source:      remote address
+        :param destination: local address
+        :param connection:  current connection
+        """
         raise NotImplemented
 
-    #
-    #   Docking
-    #
+    # Override
+    def connection_sent(self, connection: Connection,
+                        source: Optional[tuple], destination: tuple, data: bytes):
+        # ignore this event
+        pass
 
     # Override
-    def park_ship(self, ship: StarShip) -> bool:
-        return self.__dock.put(ship=ship)
-
-    # Override
-    def pull_ship(self, sn: Optional[bytes] = None) -> Optional[StarShip]:
-        return self.__dock.pop(sn=sn)
-
-    # Override
-    def any_ship(self) -> Optional[StarShip]:
-        return self.__dock.any()
-
-    #
-    #   Runner
-    #
-
-    # Override
-    def setup(self):
-        super().setup()
-        # check connection
-        if not self.running:
-            # wait a second for connecting
-            self._idle()
-        # check docker
-        while self.docker is None and self.running:
-            # waiting for docker
-            self._idle()
-        # setup docker
-        if self.__docker is not None:
-            self.__docker.setup()
-
-    def finish(self):
-        # clean docker
-        if self.__docker is not None:
-            self.__docker.finish()
-        super().finish()
-
-    def process(self) -> bool:
-        if self.__docker is not None:
-            return self.__docker.process()
-        # else:
-        #     raise AssertionError('Star worker not found!')
+    def connection_error(self, connection: Connection,
+                         source: Optional[tuple], destination: Optional[tuple], data: Optional[bytes],
+                         error):
+        # ignore this event
+        pass

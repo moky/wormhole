@@ -32,6 +32,8 @@ from abc import ABC, abstractmethod
 from enum import IntEnum
 from typing import Optional, TypeVar, Generic
 
+from .runner import Ticker
+
 S = TypeVar('S')  # State
 C = TypeVar('C')  # Context
 U = TypeVar('U')
@@ -152,14 +154,6 @@ class Delegate(ABC, Generic[C, T, S]):
         :param state: current state
         :param ctx:   context (machine)
         """
-        raise NotImplemented
-
-
-class Ticker(ABC):
-
-    @abstractmethod
-    def tick(self):
-        """ Drive current thread forward """
         raise NotImplemented
 
 

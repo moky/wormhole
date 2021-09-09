@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   TCP: Transmission Control Protocol
+#   Star Trek: Interstellar Transport
 #
 #                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
@@ -32,6 +32,8 @@ import socket
 from abc import ABC, abstractmethod
 from typing import Optional, Set
 
+from ..fsm import Processor
+
 from .connection import Connection
 
 
@@ -61,17 +63,16 @@ from .connection import Connection
 """
 
 
-class Hub(ABC):
+class Hub(Processor, ABC):
 
     @abstractmethod
-    def send(self, data: bytes, source: Optional[tuple], destination: tuple) -> bool:
+    def send_data(self, data: bytes, source: Optional[tuple], destination: tuple) -> bool:
         """
         Send data from source to destination
 
         :param data:        payload
-        :param source:      from address (local);
-                            if it's None, send via any connection connected to destination
-        :param destination: to address (remote)
+        :param source:      local address; None for any connection (connected to destination)
+        :param destination: remote address
         :return: False on error
         """
         raise NotImplemented
