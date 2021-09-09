@@ -121,7 +121,11 @@ class Hub(Processor, ABC):
     def addr_info(cls):  # -> List[Tuple[Union[AddressFamily, int], Union[SocketKind, int], int, str, Tuple[Any, ...]]]
         host = socket.gethostname()
         if host is not None:
-            return socket.getaddrinfo(host, None)
+            try:
+                return socket.getaddrinfo(host, None)
+            except socket.error as error:
+                print('[NET] failed to get address info: %s' % error)
+                return []
 
     @classmethod
     def inet_addresses(cls) -> Set[str]:

@@ -23,12 +23,12 @@ public class Server implements Gate.Delegate {
         super();
         localAddress = local;
         gate = new TCPGate<>(this);
-        gate.hub = new ServerHub(gate);
+        gate.setHub(new ServerHub(gate));
     }
 
     public void start() throws IOException {
-        gate.hub.bind(localAddress);
-        gate.hub.start();
+        gate.getHub().bind(localAddress);
+        gate.getHub().start();
         gate.start();
     }
 
@@ -41,8 +41,8 @@ public class Server implements Gate.Delegate {
     //
 
     @Override
-    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, Gate gate) {
-        TCPGate.info("!!! connection (" + remote + ") state changed: " + oldStatus + " -> " + newStatus);
+    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, SocketAddress local, Gate gate) {
+        TCPGate.info("!!! connection (" + local + ", " + remote + ") state changed: " + oldStatus + " -> " + newStatus);
     }
 
     @Override

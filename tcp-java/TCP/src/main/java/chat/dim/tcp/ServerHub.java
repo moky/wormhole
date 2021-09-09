@@ -71,11 +71,19 @@ public class ServerHub extends BaseHub implements Runnable {
         new Thread(this).start();
     }
 
+    public void stop() {
+        running = false;
+    }
+
+    public boolean isRunning() {
+        return running;
+    }
+
     @Override
     public void run() {
         SocketChannel channel;
         SocketAddress remote;
-        while (running) {
+        while (isRunning()) {
             try {
                 channel = master.accept();
                 System.out.println("new channel: " + channel);

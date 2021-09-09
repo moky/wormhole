@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import random
-import threading
 import time
 
 import sys
@@ -13,80 +12,75 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from tcp import Channel, StreamChannel
-from tcp import Connection, ConnectionDelegate
-from tcp import Hub, ActiveStreamHub
+from tcp import Gate, GateDelegate, GateStatus
+from tcp import Hub, ClientHub
+from tcp import Arrival, PlainArrival, Departure, PlainDeparture
+
+from tests.gate import TCPGate
 
 
-class ClientHub(ActiveStreamHub):
-
-    def __init__(self, delegate: ConnectionDelegate):
-        super().__init__(delegate=delegate)
-        self.__running = False
-
-    @property
-    def running(self) -> bool:
-        return self.__running
-
-    def start(self):
-        self.__running = True
-
-    def stop(self):
-        self.__running = False
-
-    # Override
-    def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
-        channel = StreamChannel(remote=remote, local=local)
-        channel.configure_blocking(False)
-        return channel
-
-
-class Client(ConnectionDelegate):
+class Client(GateDelegate):
 
     def __init__(self, local: tuple, remote: tuple):
         super().__init__()
         self.__local_address = local
         self.__remote_address = remote
-        self.__hub = ClientHub(delegate=self)
+        gate = TCPGate(delegate=self)
+        gate.hub = ClientHub(delegate=gate)
+        self.__gate = gate
 
-    # noinspection PyMethodMayBeStatic
-    def info(self, msg: str):
-        print('> ', msg)
+    @property
+    def local_address(self) -> tuple:
+        return self.__local_address
 
-    # noinspection PyMethodMayBeStatic
-    def error(self, msg: str):
-        print('ERROR> ', msg)
+    @property
+    def remote_address(self) -> tuple:
+        return self.__remote_address
 
-    # Override
-    def connection_state_changed(self, connection: Connection, previous, current):
-        self.info('!!! connection (%s, %s) state changed: %s -> %s'
-                  % (connection.local_address, connection.remote_address, previous, current))
+    @property
+    def gate(self) -> TCPGate:
+        return self.__gate
 
-    # Override
-    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):
-        text = payload.decode('utf-8')
-        self.info('<<< received (%d bytes) from %s: %s' % (len(payload), remote, text))
-
-    def __send(self, data: bytes):
-        try:
-            source = self.__local_address
-            destination = self.__remote_address
-            self.__hub.send(data=data, source=source, destination=destination)
-        except Exception as error:
-            self.error('failed to send data: %d byte(s), %s' % (len(data), error))
+    @property
+    def hub(self) -> ClientHub:
+        return self.gate.hub
 
     def start(self):
-        self.__hub.connect(remote=self.__remote_address, local=self.__local_address)
-        self.__hub.start()
-        threading.Thread(target=self.run).start()
+        self.hub.connect(remote=self.remote_address, local=self.local_address)
+        self.gate.start()
 
     def stop(self):
-        self.__hub.stop()
+        self.gate.stop()
 
-    def run(self):
-        while self.__hub.running:
-            self.__hub.tick()
-            time.sleep(0.0078125)
+    def send(self, data: bytes):
+        self.gate.send_payload(payload=data, source=self.local_address, destination=self.remote_address)
+
+    #
+    #   Gate Delegate
+    #
+
+    # Override
+    def gate_status_changed(self, gate: Gate, remote: tuple, local: Optional[tuple],
+                            previous: GateStatus, current: GateStatus):
+        TCPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (local, remote, previous, current))
+
+    # Override
+    def gate_received(self, gate: Gate, source: tuple, destination: Optional[tuple], ship: Arrival):
+        assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
+        data = ship.package
+        text = data.decode('utf-8')
+        TCPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
+
+    # Override
+    def gate_sent(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure):
+        assert isinstance(ship, PlainDeparture), 'departure ship error: %s' % ship
+        data = ship.package
+        size = len(data)
+        TCPGate.info('message sent: %d byte(s) to %s' % (size, destination))
+
+    # Override
+    def gate_error(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure, error):
+        TCPGate.error('gate error (%s, %s): %s' % (source, destination, error))
 
     def test(self):
         text = ''
@@ -96,9 +90,10 @@ class Client(ConnectionDelegate):
         for i in range(16):
             data = '%d sheep:%s' % (i, text)
             data = data.encode('utf-8')
-            self.info('>>> sending (%d bytes): %s' % (len(data), data))
-            self.__send(data=data)
+            TCPGate.info('>>> sending (%d bytes): %s' % (len(data), data))
+            self.send(data=data)
             time.sleep(2)
+        time.sleep(16)
 
 
 SERVER_HOST = Hub.inet_address()

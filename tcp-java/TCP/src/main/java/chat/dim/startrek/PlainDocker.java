@@ -70,15 +70,17 @@ public class PlainDocker extends StarDocker {
     protected Arrival checkIncomeShip(Arrival income) {
         assert income instanceof PlainArrival : "arrival ship error: " + income;
         byte[] data = ((PlainArrival) income).getPackage();
-        if (Arrays.equals(data, PING)) {
-            // PING -> PONG
-            PlainDeparture outgo = pack(PONG, Departure.Priority.SLOWER.value);
-            dock.appendDeparture(outgo);
-            return null;
-        } else if (Arrays.equals(data, PONG)
-                || Arrays.equals(data, NOOP)) {
-            // ignore
-            return null;
+        if (data.length == 4) {
+            if (Arrays.equals(data, PING)) {
+                // PING -> PONG
+                PlainDeparture outgo = pack(PONG, Departure.Priority.SLOWER.value);
+                dock.appendDeparture(outgo);
+                return null;
+            } else if (Arrays.equals(data, PONG)
+                    || Arrays.equals(data, NOOP)) {
+                // ignore
+                return null;
+            }
         }
         return income;
     }

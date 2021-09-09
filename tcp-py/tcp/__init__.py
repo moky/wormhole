@@ -28,12 +28,23 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .net import Hub, Channel, Connection, ConnectionDelegate
-from .net import ConnectionState, ConnectionStateMachine
-from .net import BaseHub, BaseChannel, BaseConnection, ActiveConnection
 
+from startrek import Hub, Channel, Connection, ConnectionDelegate
+from startrek import ConnectionState, ConnectionStateMachine
+from startrek import BaseHub, BaseChannel, BaseConnection, ActiveConnection
+
+from startrek import Ship, Arrival, Departure, DeparturePriority
+from startrek import Docker, Gate, GateStatus, GateDelegate
+
+from startrek import ArrivalShip, ArrivalHall
+from startrek import DepartureShip, DepartureHall
+from startrek import Dock, LockedDock
+from startrek import StarDocker
+from startrek import StarGate
+
+from .startrek import PlainArrival, PlainDeparture, PlainDocker
 from .channel import StreamChannel
-from .hub import StreamHub, ActiveStreamHub
+from .hub import ServerHub, ClientHub
 
 name = "TCP"
 
@@ -41,16 +52,17 @@ __author__ = 'Albert Moky'
 
 __all__ = [
 
-    #
-    #   Net
-    #
     'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
     'ConnectionState', 'ConnectionStateMachine',
     'BaseHub', 'BaseChannel', 'BaseConnection', 'ActiveConnection',
+    'Ship', 'Arrival', 'Departure', 'DeparturePriority', 'Docker',
+    'Gate', 'GateStatus', 'GateDelegate',
+    'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
+    'Dock', 'LockedDock',
+    'StarDocker', 'StarGate',
 
-    #
-    #   Stream
-    #
+    'PlainArrival', 'PlainDeparture', 'PlainDocker',
+
     'StreamChannel',
-    'StreamHub', 'ActiveStreamHub',
+    'ServerHub', 'ClientHub',
 ]

@@ -66,6 +66,10 @@ class StarDocker(Docker):
         return LockedDock()
 
     @property
+    def dock(self) -> Dock:
+        return self.__dock
+
+    @property
     def remote_address(self) -> tuple:
         return self.__remote
 

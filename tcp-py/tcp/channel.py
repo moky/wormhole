@@ -31,7 +31,7 @@
 import socket
 from typing import Optional
 
-from .net import BaseChannel
+from startrek import BaseChannel
 
 
 class StreamChannel(BaseChannel):

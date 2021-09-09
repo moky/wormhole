@@ -1,6 +1,7 @@
 
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 import chat.dim.net.Connection;
@@ -13,10 +14,21 @@ import chat.dim.startrek.StarGate;
 public class TCPGate<H extends Hub> extends StarGate implements Runnable {
 
     private boolean running = false;
-    H hub = null;
+    private H hub = null;
 
     public TCPGate(Delegate delegate) {
         super(delegate);
+    }
+
+    public H getHub() {
+        return hub;
+    }
+    public void setHub(H h) {
+        hub = h;
+    }
+
+    public boolean isRunning() {
+        return running;
     }
 
     public void start() {
@@ -30,11 +42,15 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
     @Override
     public void run() {
         running = true;
-        while (running) {
+        while (isRunning()) {
             if (!process()) {
-                Runner.idle(8);
+                idle();
             }
         }
+    }
+
+    protected void idle() {
+        Runner.idle(8);
     }
 
     @Override
@@ -58,7 +74,11 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
     @Override
     protected List<byte[]> cacheAdvanceParty(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
         // TODO: cache the advance party before decide which docker to use
-        return null;
+        List<byte[]> array = new ArrayList<>();
+        if (data != null) {
+            array.add(data);
+        }
+        return array;
     }
 
     @Override

@@ -1,123 +1,83 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import socket
 import sys
 import os
-import threading
-import time
-import weakref
 from typing import Optional
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from tcp import Channel, StreamChannel
-from tcp import Connection, ConnectionDelegate
-from tcp import Hub, StreamHub
+from tcp import Gate, GateDelegate, GateStatus
+from tcp import Hub, ServerHub
+from tcp import Arrival, PlainArrival, Departure, PlainDeparture
+
+from tests.gate import TCPGate
 
 
-class ServerHub(StreamHub):
-
-    def __init__(self, delegate: ConnectionDelegate):
-        super().__init__(delegate=delegate)
-        self.__local_address: Optional[tuple] = None
-        self.__master: Optional[socket.socket] = None
-        self.__slaves = weakref.WeakValueDictionary()  # address -> socket
-        self.__running = False
-
-    @property
-    def running(self) -> bool:
-        return self.__running
-
-    def start(self):
-        self.__running = True
-        threading.Thread(target=self.run).start()
-
-    def stop(self):
-        self.__running = False
-
-    def run(self):
-        while self.__running:
-            sock, address = self.__master.accept()
-            if sock is not None:
-                self.__slaves[address] = sock
-                self.connect(remote=address, local=self.__local_address)
-
-    def bind(self, local: tuple):
-        sock = self.__master
-        if sock is not None:
-            if not getattr(sock, '_closed', False):
-                sock.close()
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        sock.setblocking(True)
-        sock.bind(local)
-        sock.listen(1)
-        # sock.setblocking(False)
-        self.__master = sock
-        self.__local_address = local
-
-    # Override
-    def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
-        sock = self.__slaves.get(remote)
-        if sock is not None:
-            return StreamChannel(sock=sock)
-        else:
-            raise LookupError('failed to get channel: %s -> %s' % (remote, local))
-
-
-class Server(ConnectionDelegate):
+class Server(GateDelegate):
 
     def __init__(self, host: str, port: int):
         super().__init__()
         self.__local_address = (host, port)
-        self.__hub = ServerHub(delegate=self)
+        gate = TCPGate(delegate=self)
+        gate.hub = ServerHub(delegate=gate)
+        self.__gate = gate
 
-    # noinspection PyMethodMayBeStatic
-    def info(self, msg: str):
-        print('> ', msg)
+    @property
+    def local_address(self) -> tuple:
+        return self.__local_address
 
-    # noinspection PyMethodMayBeStatic
-    def error(self, msg: str):
-        print('ERROR> ', msg)
+    @property
+    def gate(self) -> TCPGate:
+        return self.__gate
+
+    @property
+    def hub(self) -> ServerHub:
+        return self.gate.hub
+
+    def start(self):
+        self.hub.bind(address=self.local_address)
+        self.hub.start()
+        self.gate.start()
+
+    def send(self, data: bytes, destination: tuple):
+        self.gate.send_payload(payload=data, source=self.local_address, destination=destination)
+
+    #
+    #   Gate Delegate
+    #
 
     # Override
-    def connection_state_changed(self, connection: Connection, previous, current):
-        self.info('!!! connection (%s, %s) state changed: %s -> %s'
-                  % (connection.local_address, connection.remote_address, previous, current))
+    def gate_status_changed(self, gate: Gate, remote: tuple, local: Optional[tuple],
+                            previous: GateStatus, current: GateStatus):
+        TCPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (local, remote, previous, current))
 
     # Override
-    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):
-        text = payload.decode('utf-8')
-        self.info('<<< received (%d bytes) from %s: %s' % (len(payload), remote, text))
-        text = '%d# %d byte(s) received' % (self.counter, len(payload))
+    def gate_received(self, gate: Gate, source: tuple, destination: Optional[tuple], ship: Arrival):
+        assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
+        data = ship.package
+        text = data.decode('utf-8')
+        TCPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
+        text = '%d# %d byte(s) received' % (self.counter, len(data))
         self.counter += 1
-        self.info('>>> responding: %s' % text)
+        TCPGate.info('>>> responding: %s' % text)
         data = text.encode('utf-8')
-        self.__send(data=data, source=self.__local_address, destination=remote)
+        self.send(data=data, destination=source)
 
     counter = 0
 
-    def __send(self, data: bytes, source: Optional[tuple], destination: tuple):
-        try:
-            self.__hub.send(data=data, source=source, destination=destination)
-        except socket.error as error:
-            self.error('failed to send message: %s' % error)
+    # Override
+    def gate_sent(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure):
+        assert isinstance(ship, PlainDeparture), 'departure ship error: %s' % ship
+        data = ship.package
+        size = len(data)
+        TCPGate.info('message sent: %d byte(s) to %s' % (size, destination))
 
-    def start(self):
-        self.__hub.bind(local=self.__local_address)
-        self.__hub.start()
-        threading.Thread(target=self.run).start()
-
-    def stop(self):
-        self.__hub.stop()
-
-    def run(self):
-        while self.__hub.running:
-            self.__hub.tick()
-            time.sleep(0.0078125)
+    # Override
+    def gate_error(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure, error):
+        TCPGate.error('gate error (%s, %s): %s' % (source, destination, error))
 
 
 SERVER_HOST = Hub.inet_address()

@@ -28,26 +28,64 @@
 # SOFTWARE.
 # ==============================================================================
 
+import socket
+import threading
 import weakref
-from abc import ABC, abstractmethod
 from typing import Optional
 
-from .net import Channel
-from .net import Connection, ConnectionDelegate
-from .net import BaseConnection, ActiveConnection
-from .net import BaseHub
+from startrek.fsm import Runnable
+from startrek import Channel, Connection, ConnectionDelegate
+from startrek import BaseHub, BaseConnection, ActiveConnection
+
+from .channel import StreamChannel
 
 
-class StreamHub(BaseHub):
-    """ Base Stream Hub """
+class ServerHub(BaseHub, Runnable):
+    """ Stream Server Hub """
 
     def __init__(self, delegate: ConnectionDelegate):
-        super().__init__()
-        self.__delegate = weakref.ref(delegate)
+        super().__init__(delegate=delegate)
+        self.__slaves = weakref.WeakValueDictionary()  # address -> socket
+        self.__local_address: Optional[tuple] = None
+        self.__master: Optional[socket.socket] = None
+        self.__running = False
+
+    def bind(self, address: Optional[tuple] = None, host: Optional[str] = None, port: Optional[int] = 0):
+        if address is None:
+            address = (host, port)
+        sock = self.__master
+        if sock is not None:
+            if not getattr(sock, '_closed', False):
+                sock.close()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        sock.setblocking(True)
+        sock.bind(address)
+        sock.listen(1)
+        # sock.setblocking(False)
+        self.__master = sock
+        self.__local_address = address
+
+    def start(self):
+        self.__running = True
+        threading.Thread(target=self.run).start()
+
+    def stop(self):
+        self.__running = False
 
     @property
-    def delegate(self) -> ConnectionDelegate:
-        return self.__delegate()
+    def running(self) -> bool:
+        return self.__running
+
+    def run(self):
+        while self.running:
+            try:
+                sock, address = self.__master.accept()
+                if sock is not None:
+                    self.__slaves[address] = sock
+                    self.connect(remote=address, local=self.__local_address)
+            except socket.error as error:
+                print('[NET] accept connection error: %s' % error)
 
     # Override
     def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
@@ -61,18 +99,21 @@ class StreamHub(BaseHub):
         conn.start()
         return conn
 
-    @abstractmethod
     def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
-        raise NotImplemented
+        sock = self.__slaves.get(remote)
+        if sock is not None:
+            return StreamChannel(sock=sock)
+        else:
+            raise LookupError('failed to get channel: %s -> %s' % (remote, local))
 
 
-class ActiveStreamHub(StreamHub, ABC):
-    """ Active Stream Hub """
+class ClientHub(BaseHub):
+    """ Stream Client Hub """
 
     # Override
     def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
         # create connection with addresses
-        conn = ActiveStreamConnection(remote=remote, local=local, hub=self)
+        conn = ActiveStreamConnection(remote=remote, local=local)
         # set delegate
         if conn.delegate is None:
             conn.delegate = self.delegate
@@ -84,12 +125,8 @@ class ActiveStreamHub(StreamHub, ABC):
 class ActiveStreamConnection(ActiveConnection):
     """ Active Stream Connection """
 
-    def __init__(self, remote: tuple, local: Optional[tuple], hub: ActiveStreamHub):
-        super().__init__(remote=remote, local=local)
-        self.__hub = weakref.ref(hub)
-
     # Override
     def connect(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
-        hub = self.__hub()
-        # assert isinstance(hub, ActiveStreamHub)
-        return hub.create_channel(remote=remote, local=local)
+        channel = StreamChannel(remote=remote, local=local)
+        channel.configure_blocking(False)
+        return channel
