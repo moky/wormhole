@@ -38,6 +38,7 @@ import java.util.List;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Gate;
+import chat.dim.startrek.DepartureShip;
 import chat.dim.startrek.StarDocker;
 import chat.dim.startrek.StarGate;
 import chat.dim.type.ByteArray;
@@ -124,7 +125,7 @@ public class PackageDocker extends StarDocker {
             //      'OK'
             //      'AGAIN'
             if (body.equals(AGAIN)) {
-                // TODO: reset maxRetries?
+                // TODO: reset retries?
                 return null;
             }
             checkResponse(income);
@@ -164,8 +165,8 @@ public class PackageDocker extends StarDocker {
         if (fragments == null || fragments.size() == 0) {
             return true;
         }
-        if (outgo.getRetries() < 2) {
-            // FIXME:
+        if (outgo.getRetries() < DepartureShip.MAX_RETRIES) {
+            // put back for next retry
             dock.appendDeparture(outgo);
         }
         return super.sendOutgoShip(outgo);

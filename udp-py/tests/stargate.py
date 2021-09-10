@@ -5,16 +5,18 @@ import time
 from typing import Generic, TypeVar, Optional, List
 
 from startrek.fsm import Runnable
-from tcp import Connection
-from tcp import GateDelegate, Docker
-from tcp import StarGate
-from tcp import PlainDocker
+from udp.ba import Data
+from udp.mtp import DataType, Package
+from udp import Connection
+from udp import GateDelegate, Docker
+from udp import StarGate
+from udp import PackageDocker
 
 
 H = TypeVar('H')
 
 
-class TCPGate(StarGate, Runnable, Generic[H]):
+class UDPGate(StarGate, Runnable, Generic[H]):
 
     def __init__(self, delegate: GateDelegate):
         super().__init__(delegate=delegate)
@@ -29,15 +31,15 @@ class TCPGate(StarGate, Runnable, Generic[H]):
     def hub(self, h: H):
         self.__hub = h
 
-    @property
-    def running(self) -> bool:
-        return self.__running
-
     def start(self):
         threading.Thread(target=self.run).start()
 
     def stop(self):
         self.__running = False
+
+    @property
+    def running(self) -> bool:
+        return self.__running
 
     # Override
     def run(self):
@@ -69,7 +71,7 @@ class TCPGate(StarGate, Runnable, Generic[H]):
     # Override
     def create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
         # TODO: check data format before creating docker
-        return PlainDocker(remote=remote, local=local, gate=self)
+        return PackageDocker(remote=remote, local=local, gate=self)
 
     # Override
     def cache_advance_party(self, data: bytes, source: tuple, destination: Optional[tuple],
@@ -85,10 +87,17 @@ class TCPGate(StarGate, Runnable, Generic[H]):
         # TODO: remove advance party for this connection
         pass
 
-    def send_payload(self, payload: bytes, source: Optional[tuple], destination: tuple):
+    def send_command(self, body: bytes, source: Optional[tuple], destination: tuple):
+        pack = Package.new(data_type=DataType.COMMAND, body=Data(buffer=body))
         worker = self.get_docker(remote=destination, local=source, advance_party=[])
-        if isinstance(worker, PlainDocker):
-            worker.send_data(payload=payload)
+        if isinstance(worker, PackageDocker):
+            worker.send_package(pack=pack)
+
+    def send_message(self, body: bytes, source: Optional[tuple], destination: tuple):
+        pack = Package.new(data_type=DataType.MESSAGE, body=Data(buffer=body))
+        worker = self.get_docker(remote=destination, local=source, advance_party=[])
+        if isinstance(worker, PackageDocker):
+            worker.send_package(pack=pack)
 
     @classmethod
     def info(cls, msg: str):

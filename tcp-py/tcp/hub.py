@@ -67,7 +67,6 @@ class ServerHub(BaseHub, Runnable):
         self.__local_address = address
 
     def start(self):
-        self.__running = True
         threading.Thread(target=self.run).start()
 
     def stop(self):
@@ -78,6 +77,7 @@ class ServerHub(BaseHub, Runnable):
         return self.__running
 
     def run(self):
+        self.__running = True
         while self.running:
             try:
                 sock, address = self.__master.accept()

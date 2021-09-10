@@ -33,9 +33,6 @@ from .header import Header
 from .package import Package
 from .packer import Packer
 
-from .arrival import Arrival, ArrivalHall
-from .departure import Departure, DepartureHall
-
 name = "MTP"
 
 __author__ = 'Albert Moky'
@@ -46,7 +43,4 @@ __all__ = [
     'Header',
     'Package',
     'Packer',
-
-    'Arrival', 'ArrivalHall',
-    'Departure', 'DepartureHall',
 ]

@@ -34,8 +34,8 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.channels.DatagramChannel;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.WeakHashMap;
 
 import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
@@ -43,7 +43,7 @@ import chat.dim.net.Connection;
 
 public abstract class PackageHub extends BaseHub {
 
-    protected final Map<SocketAddress, DatagramChannel> channels = new WeakHashMap<>();
+    protected final Map<SocketAddress, DatagramChannel> channels = new HashMap<>();
 
     protected PackageHub(Connection.Delegate delegate) {
         super(delegate);

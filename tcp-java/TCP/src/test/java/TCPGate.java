@@ -27,16 +27,16 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
         hub = h;
     }
 
-    public boolean isRunning() {
-        return running;
-    }
-
     public void start() {
         new Thread(this).start();
     }
 
     public void stop() {
         running = false;
+    }
+
+    public boolean isRunning() {
+        return running;
     }
 
     @Override

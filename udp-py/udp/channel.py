@@ -30,10 +30,10 @@
 
 import socket
 
-from tcp import BaseChannel
+from startrek import BaseChannel
 
 
-class DiscreteChannel(BaseChannel):
+class PackageChannel(BaseChannel):
     """ Discrete Package Channel """
 
     # Override

@@ -28,33 +28,53 @@
 # SOFTWARE.
 # ==============================================================================
 
+import socket
 import weakref
-from abc import ABC, abstractmethod
-from typing import Optional
+from abc import ABC
+from typing import Optional, Dict
 
-from tcp import Channel, Connection, ConnectionDelegate
-from tcp import BaseHub
+from startrek import Channel, Connection, ConnectionDelegate
+from startrek import BaseHub, BaseConnection, ActiveConnection
 
-from .mtp import Package, Departure
-from .net import PackageConnection, ActivePackageConnection
+from .channel import PackageChannel
 
 
-class PackageHub(BaseHub):
+class PackageHub(BaseHub, ABC):
     """ Base Package Hub """
 
     def __init__(self, delegate: ConnectionDelegate):
-        super().__init__()
-        self.__delegate = weakref.ref(delegate)
+        super().__init__(delegate=delegate)
+        self.__channels: Dict[tuple, socket.socket] = {}  # address => socket
 
-    @property
-    def delegate(self) -> ConnectionDelegate:
-        return self.__delegate()
+    def bind(self, address: Optional[tuple] = None, host: Optional[str] = None, port: Optional[int] = 0):
+        if address is None:
+            address = (host, port)
+        sock = self.__channels.get(address)
+        if sock is None:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+            sock.setblocking(True)
+            sock.bind(address)
+            sock.setblocking(False)
+            self.__channels[address] = sock
+        return self.connect(remote=None, local=address)
+
+    def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
+        sock = self.__channels.get(local)
+        if sock is not None:
+            return PackageChannel(sock=sock)
+        else:
+            raise LookupError('failed to get channel: %s -> %s' % (remote, local))
+
+
+class ServerHub(PackageHub):
+    """ Package Server Hub """
 
     # Override
     def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
         # create connection with channel
         sock = self.create_channel(remote=remote, local=local)
-        conn = PackageConnection(remote=remote, local=local, channel=sock)
+        conn = BaseConnection(remote=remote, local=local, channel=sock)
         # set delegate
         if conn.delegate is None:
             conn.delegate = self.delegate
@@ -62,33 +82,14 @@ class PackageHub(BaseHub):
         conn.start()
         return conn
 
-    @abstractmethod
-    def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
-        raise NotImplemented
 
-    def send_command(self, body: bytes, source: Optional[tuple], destination: tuple) -> Departure:
-        conn = self.connect(remote=destination, local=source)
-        assert isinstance(conn, PackageConnection), 'connection error: %s' % conn
-        return conn.send_command(body=body, source=source, destination=destination)
-
-    def send_message(self, body: bytes, source: Optional[tuple], destination: tuple) -> Departure:
-        conn = self.connect(remote=destination, local=source)
-        assert isinstance(conn, PackageConnection), 'connection error: %s' % conn
-        return conn.send_message(body=body, source=source, destination=destination)
-
-    def send_package(self, pack: Package, source: Optional[tuple], destination: tuple) -> Departure:
-        conn = self.connect(remote=destination, local=source)
-        assert isinstance(conn, PackageConnection), 'connection error: %s' % conn
-        return conn.send_package(pack=pack, source=source, destination=destination)
-
-
-class ActivePackageHub(PackageHub, ABC):
-    """ Active Package Hub """
+class ClientHub(PackageHub):
+    """ Package Client Hub """
 
     # Override
     def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
         # create connection with addresses
-        conn = ActiveDiscreteConnection(remote=remote, local=local, hub=self)
+        conn = ActivePackageConnection(remote=remote, local=local, hub=self)
         # set delegate
         if conn.delegate is None:
             conn.delegate = self.delegate
@@ -97,15 +98,17 @@ class ActivePackageHub(PackageHub, ABC):
         return conn
 
 
-class ActiveDiscreteConnection(ActivePackageConnection):
-    """ Active Discrete Package Connection """
+class ActivePackageConnection(ActiveConnection):
+    """ Active Package Connection """
 
-    def __init__(self, remote: tuple, local: Optional[tuple], hub: ActivePackageHub):
+    def __init__(self, remote: tuple, local: Optional[tuple], hub: PackageHub):
         super().__init__(remote=remote, local=local)
         self.__hub = weakref.ref(hub)
 
+    @property
+    def hub(self) -> PackageHub:
+        return self.__hub()
+
     # Override
     def connect(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
-        hub = self.__hub()
-        # assert isinstance(hub, ActivePackageHub)
-        return hub.create_channel(remote=remote, local=local)
+        return self.hub.create_channel(remote=remote, local=local)

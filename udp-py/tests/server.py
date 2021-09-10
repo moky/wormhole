@@ -1,120 +1,85 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import socket
 import sys
 import os
-import threading
-import time
-from typing import Optional, Dict
+from typing import Optional
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from udp.ba import ByteArray
-from udp import Channel, DiscreteChannel
-from udp import Connection, ConnectionDelegate
-from udp import Hub, PackageHub
+from udp import Gate, GateDelegate, GateStatus
+from udp import Hub, ServerHub
+from udp import Arrival, PackageArrival, Departure, PackageDeparture
+
+from tests.stargate import UDPGate
 
 
-class ServerHub(PackageHub):
-
-    def __init__(self, delegate: ConnectionDelegate):
-        super().__init__(delegate=delegate)
-        self.__connections: Dict[tuple, Connection] = {}
-        self.__sockets: Dict[tuple, socket.socket] = {}
-        self.__running = False
-
-    @property
-    def running(self) -> bool:
-        return self.__running
-
-    def start(self):
-        self.__running = True
-
-    def stop(self):
-        self.__running = False
-
-    def bind(self, local: tuple) -> Connection:
-        sock = self.__sockets.get(local)
-        if sock is None:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-            sock.bind(local)
-            sock.setblocking(False)
-            self.__sockets[local] = sock
-        return self.connect(remote=None, local=local)
-
-    # Override
-    def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
-        conn = self.__connections.get(local)
-        if conn is None:
-            conn = super().create_connection(remote=None, local=local)
-            self.__connections[local] = conn
-        return conn
-
-    # Override
-    def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
-        sock = self.__sockets.get(local)
-        if sock is not None:
-            return DiscreteChannel(sock=sock)
-        else:
-            raise LookupError('failed to get channel: %s -> %s' % (remote, local))
-
-
-class Server(ConnectionDelegate):
+class Server(GateDelegate):
 
     def __init__(self, host: str, port: int):
         super().__init__()
         self.__local_address = (host, port)
-        self.__hub = ServerHub(delegate=self)
+        gate = UDPGate(delegate=self)
+        gate.hub = ServerHub(delegate=gate)
+        self.__gate = gate
 
-    # noinspection PyMethodMayBeStatic
-    def info(self, msg: str):
-        print('> ', msg)
+    @property
+    def local_address(self) -> tuple:
+        return self.__local_address
 
-    # noinspection PyMethodMayBeStatic
-    def error(self, msg: str):
-        print('ERROR> ', msg)
+    @property
+    def gate(self) -> UDPGate:
+        return self.__gate
+
+    @property
+    def hub(self) -> ServerHub:
+        return self.gate.hub
+
+    def start(self):
+        self.hub.bind(address=self.local_address)
+        self.gate.start()
+
+    def send(self, data: bytes, destination: tuple):
+        self.hub.connect(remote=destination, local=self.local_address)
+        self.gate.send_message(body=data, source=self.local_address, destination=destination)
+
+    #
+    #   Gate Delegate
+    #
 
     # Override
-    def connection_state_changed(self, connection: Connection, previous, current):
-        self.info('!!! connection (%s, %s) state changed: %s -> %s'
-                  % (connection.local_address, connection.remote_address, previous, current))
+    def gate_status_changed(self, gate: Gate, remote: tuple, local: Optional[tuple],
+                            previous: GateStatus, current: GateStatus):
+        UDPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (local, remote, previous, current))
 
     # Override
-    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):
-        if isinstance(payload, ByteArray):
-            payload = payload.get_bytes()
-        text = payload.decode('utf-8')
-        self.info('<<< received (%d bytes) from %s: %s' % (len(payload), remote, text))
-        text = '%d# %d byte(s) received' % (self.counter, len(payload))
+    def gate_received(self, gate: Gate, source: tuple, destination: Optional[tuple], ship: Arrival):
+        assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
+        pack = ship.package
+        data = pack.body.get_bytes()
+        text = data.decode('utf-8')
+        UDPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
+        text = '%d# %d byte(s) received' % (self.counter, len(data))
         self.counter += 1
-        self.info('>>> responding: %s' % text)
+        UDPGate.info('>>> responding: %s' % text)
         data = text.encode('utf-8')
-        self.__send(data=data, source=self.__local_address, destination=remote)
+        self.send(data=data, destination=source)
 
     counter = 0
 
-    def __send(self, data: bytes, source: tuple, destination: tuple):
-        try:
-            self.__hub.send_message(body=data, source=source, destination=destination)
-        except socket.error as error:
-            self.error('failed to send message: %s' % error)
+    # Override
+    def gate_sent(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure):
+        assert isinstance(ship, PackageDeparture), 'departure ship error: %s' % ship
+        pack = ship.package
+        data = pack.body.get_bytes()
+        size = len(data)
+        UDPGate.info('message sent: %d byte(s) to %s' % (size, destination))
 
-    def start(self):
-        self.__hub.bind(local=self.__local_address)
-        self.__hub.start()
-        threading.Thread(target=self.run).start()
-
-    def stop(self):
-        self.__hub.stop()
-
-    def run(self):
-        while self.__hub.running:
-            self.__hub.tick()
-            time.sleep(0.0078125)
+    # Override
+    def gate_error(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure, error):
+        UDPGate.error('gate error (%s, %s): %s' % (source, destination, error))
 
 
 SERVER_HOST = Hub.inet_address()

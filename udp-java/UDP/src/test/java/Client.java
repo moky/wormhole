@@ -28,12 +28,12 @@ public class Client implements Gate.Delegate {
         localAddress = local;
         remoteAddress = remote;
         gate = new UDPGate<>(this);
-        gate.hub = new ClientHub(gate);
+        gate.setHub(new ClientHub(gate));
     }
 
     public void start() throws IOException {
-        gate.hub.bind(localAddress);
-        gate.hub.connect(remoteAddress, localAddress);
+        gate.getHub().bind(localAddress);
+        gate.getHub().connect(remoteAddress, localAddress);
         gate.start();
     }
 
@@ -51,8 +51,8 @@ public class Client implements Gate.Delegate {
     //
 
     @Override
-    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, Gate gate) {
-        UDPGate.info("!!! connection (" + remote + ") state changed: " + oldStatus + " -> " + newStatus);
+    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, SocketAddress local, Gate gate) {
+        UDPGate.info("!!! connection (" + local + ", " + remote + ") state changed: " + oldStatus + " -> " + newStatus);
     }
 
     @Override

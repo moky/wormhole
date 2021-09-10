@@ -24,17 +24,17 @@ public class Server implements Gate.Delegate {
         super();
         localAddress = local;
         gate = new UDPGate<>(this);
-        gate.hub = new ServerHub(gate);
+        gate.setHub(new ServerHub(gate));
     }
 
     public void start() throws IOException {
-        gate.hub.bind(localAddress);
+        gate.getHub().bind(localAddress);
         gate.start();
     }
 
     private void send(byte[] data, SocketAddress destination) throws IOException {
-        gate.hub.connect(destination, localAddress);
-        gate.sendCommand(data, localAddress, destination);
+        gate.getHub().connect(destination, localAddress);
+        gate.sendMessage(data, localAddress, destination);
     }
 
     //
@@ -42,8 +42,8 @@ public class Server implements Gate.Delegate {
     //
 
     @Override
-    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, Gate gate) {
-        UDPGate.info("!!! connection (" + remote + ") state changed: " + oldStatus + " -> " + newStatus);
+    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, SocketAddress local, Gate gate) {
+        UDPGate.info("!!! connection (" + local + ", " + remote + ") state changed: " + oldStatus + " -> " + newStatus);
     }
 
     @Override

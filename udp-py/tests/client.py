@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import random
-import threading
 import time
 
 import sys
@@ -13,96 +12,92 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from udp.ba import ByteArray
-from udp import Channel, DiscreteChannel
-from udp import Connection, ConnectionDelegate
-from udp import Hub, ActivePackageHub
+from udp import Gate, GateDelegate, GateStatus
+from udp import Hub, ClientHub
+from udp import Arrival, PackageArrival, Departure, PackageDeparture
+
+from tests.stargate import UDPGate
 
 
-class ClientHub(ActivePackageHub):
-
-    def __init__(self, delegate: ConnectionDelegate):
-        super().__init__(delegate=delegate)
-        self.__running = False
-
-    @property
-    def running(self) -> bool:
-        return self.__running
-
-    def start(self):
-        self.__running = True
-
-    def stop(self):
-        self.__running = False
-
-    # Override
-    def create_channel(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
-        channel = DiscreteChannel(remote=remote, local=local)
-        channel.configure_blocking(False)
-        return channel
-
-
-class Client(ConnectionDelegate):
+class Client(GateDelegate):
 
     def __init__(self, local: tuple, remote: tuple):
         super().__init__()
         self.__local_address = local
         self.__remote_address = remote
-        self.__hub = ClientHub(delegate=self)
+        gate = UDPGate(delegate=self)
+        gate.hub = ClientHub(delegate=gate)
+        self.__gate = gate
 
-    # noinspection PyMethodMayBeStatic
-    def info(self, msg: str):
-        print('> ', msg)
+    @property
+    def local_address(self) -> tuple:
+        return self.__local_address
 
-    # noinspection PyMethodMayBeStatic
-    def error(self, msg: str):
-        print('ERROR> ', msg)
+    @property
+    def remote_address(self) -> tuple:
+        return self.__remote_address
 
-    # Override
-    def connection_state_changed(self, connection: Connection, previous, current):
-        self.info('!!! connection (%s, %s) state changed: %s -> %s'
-                  % (connection.local_address, connection.remote_address, previous, current))
+    @property
+    def gate(self) -> UDPGate:
+        return self.__gate
 
-    # Override
-    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):
-        if isinstance(payload, ByteArray):
-            payload = payload.get_bytes()
-        text = payload.decode('utf-8')
-        self.info('<<< received (%d bytes) from %s: %s' % (len(payload), remote, text))
-
-    def __send(self, data: bytes):
-        try:
-            source = self.__local_address
-            destination = self.__remote_address
-            self.__hub.send_command(body=data, source=source, destination=destination)
-            self.__hub.send_message(body=data, source=source, destination=destination)
-        except Exception as error:
-            self.error('failed to send data: %s' % error)
+    @property
+    def hub(self) -> ClientHub:
+        return self.gate.hub
 
     def start(self):
-        self.__hub.connect(remote=self.__remote_address, local=self.__local_address)
-        self.__hub.start()
-        threading.Thread(target=self.run).start()
+        self.hub.bind(address=self.local_address)
+        self.hub.connect(remote=self.remote_address, local=self.local_address)
+        self.gate.start()
 
     def stop(self):
-        self.__hub.stop()
+        self.gate.stop()
 
-    def run(self):
-        while self.__hub.running:
-            self.__hub.tick()
-            time.sleep(0.0078125)
+    def send(self, data: bytes):
+        self.gate.send_command(body=data, source=self.local_address, destination=self.remote_address)
+        self.gate.send_message(body=data, source=self.local_address, destination=self.remote_address)
+
+    #
+    #   Gate Delegate
+    #
+
+    # Override
+    def gate_status_changed(self, gate: Gate, remote: tuple, local: Optional[tuple],
+                            previous: GateStatus, current: GateStatus):
+        UDPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (local, remote, previous, current))
+
+    # Override
+    def gate_received(self, gate: Gate, source: tuple, destination: Optional[tuple], ship: Arrival):
+        assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
+        pack = ship.package
+        data = pack.body.get_bytes()
+        text = data.decode('utf-8')
+        UDPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
+
+    # Override
+    def gate_sent(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure):
+        assert isinstance(ship, PackageDeparture), 'departure ship error: %s' % ship
+        pack = ship.package
+        data = pack.body.get_bytes()
+        size = len(data)
+        UDPGate.info('message sent: %d byte(s) to %s' % (size, destination))
+
+    # Override
+    def gate_error(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure, error):
+        UDPGate.error('gate error (%s, %s): %s' % (source, destination, error))
 
     def test(self):
         text = ''
         for _ in range(1024):
             text += ' Hello!'
         # test send
-        for i in range(0, 32, 2):
+        for i in range(16):
             data = '%d sheep:%s' % (i, text)
             data = data.encode('utf-8')
-            self.info('>>> sending (%d) bytes): %s' % (len(data), data))
-            self.__send(data=data)
+            UDPGate.info('>>> sending (%d bytes): %s' % (len(data), data))
+            self.send(data=data)
             time.sleep(2)
+        time.sleep(16)
 
 
 SERVER_HOST = Hub.inet_address()

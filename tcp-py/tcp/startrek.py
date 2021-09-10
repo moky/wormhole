@@ -32,7 +32,7 @@ import weakref
 from typing import List, Optional
 
 from startrek import Arrival, ArrivalShip, Departure, DepartureShip, DeparturePriority
-from startrek import Gate, GateDelegate
+from startrek import GateDelegate
 from startrek import StarDocker, StarGate
 
 

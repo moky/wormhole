@@ -67,7 +67,6 @@ public class ServerHub extends BaseHub implements Runnable {
     }
 
     public void start() {
-        running = true;
         new Thread(this).start();
     }
 
@@ -83,6 +82,7 @@ public class ServerHub extends BaseHub implements Runnable {
     public void run() {
         SocketChannel channel;
         SocketAddress remote;
+        running = true;
         while (isRunning()) {
             try {
                 channel = master.accept();

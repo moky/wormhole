@@ -13,7 +13,7 @@ from tcp import Gate, GateDelegate, GateStatus
 from tcp import Hub, ServerHub
 from tcp import Arrival, PlainArrival, Departure, PlainDeparture
 
-from tests.gate import TCPGate
+from tests.stargate import TCPGate
 
 
 class Server(GateDelegate):

@@ -16,7 +16,7 @@ from tcp import Gate, GateDelegate, GateStatus
 from tcp import Hub, ClientHub
 from tcp import Arrival, PlainArrival, Departure, PlainDeparture
 
-from tests.gate import TCPGate
+from tests.stargate import TCPGate
 
 
 class Client(GateDelegate):
