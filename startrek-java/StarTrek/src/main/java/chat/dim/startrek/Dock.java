@@ -76,11 +76,11 @@ public class Dock {
     /**
      *  Append outgoing ship to a fleet with priority
      *
-     * @param ship - departure task
+     * @param outgo - departure task
      * @return false on duplicated
      */
-    public boolean appendDeparture(final Departure ship) {
-        return departureHall.appendDeparture(ship);
+    public boolean appendDeparture(final Departure outgo) {
+        return departureHall.appendDeparture(outgo);
     }
 
     /**

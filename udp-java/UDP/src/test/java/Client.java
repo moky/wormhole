@@ -9,31 +9,31 @@ import java.util.Random;
 import chat.dim.mtp.Package;
 import chat.dim.mtp.PackageArrival;
 import chat.dim.mtp.PackageDeparture;
+import chat.dim.net.Connection;
 import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Gate;
 import chat.dim.skywalker.Runner;
-import chat.dim.udp.ClientHub;
+import chat.dim.udp.PackageHub;
 
 public class Client implements Gate.Delegate {
 
     private final SocketAddress localAddress;
     private final SocketAddress remoteAddress;
 
-    private final UDPGate<ClientHub> gate;
+    private final UDPGate<PackageHub> gate;
 
     Client(SocketAddress local, SocketAddress remote) {
         super();
         localAddress = local;
         remoteAddress = remote;
         gate = new UDPGate<>(this);
-        gate.setHub(new ClientHub(gate));
+        gate.setHub(new PackageHub(gate));
     }
 
     public void start() throws IOException {
         gate.getHub().bind(localAddress);
-        gate.getHub().connect(remoteAddress, localAddress);
         gate.start();
     }
 
@@ -56,7 +56,7 @@ public class Client implements Gate.Delegate {
     }
 
     @Override
-    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Connection connection) {
         assert income instanceof PackageArrival : "arrival ship error: " + income;
         Package pack = ((PackageArrival) income).getPackage();
         int headLen = pack.head.getSize();
@@ -67,7 +67,7 @@ public class Client implements Gate.Delegate {
     }
 
     @Override
-    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         assert outgo instanceof PackageDeparture : "departure ship error: " + outgo;
         Package pack = ((PackageDeparture) outgo).getPackage();
         int bodyLen = pack.head.bodyLength;
@@ -78,7 +78,7 @@ public class Client implements Gate.Delegate {
     }
 
     @Override
-    public void onError(Error error, Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onError(Throwable error, Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         UDPGate.error(error.getMessage());
     }
 

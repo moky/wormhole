@@ -30,6 +30,10 @@
  */
 package chat.dim.port;
 
+import java.net.SocketAddress;
+
+import chat.dim.net.Connection;
+
 /**
  *  Star Ship
  *  ~~~~~~~~~
@@ -60,4 +64,45 @@ public interface Ship {
      * @return false on error (nothing changed)
      */
     boolean update(long now);
+
+    /**
+     *  Ship Delegate
+     *  ~~~~~~~~~~~~~
+     */
+    interface Delegate {
+
+        /**
+         *  Callback when new package received
+         *
+         * @param arrival     - income data package container
+         * @param source      - remote address
+         * @param destination - local address
+         * @param connection  - current connection
+         */
+        void onReceived(Arrival arrival,
+                        SocketAddress source, SocketAddress destination, Connection connection);
+
+        /**
+         *  Callback when package sent
+         *
+         * @param departure   - outgo data package container
+         * @param source      - local address
+         * @param destination - remote address
+         * @param connection  - current connection
+         */
+        void onSent(Departure departure,
+                    SocketAddress source, SocketAddress destination, Connection connection);
+
+        /**
+         *  Callback when package sent failed
+         *
+         * @param error       - error message
+         * @param departure   - outgo data package container
+         * @param source      - local address
+         * @param destination - remote address
+         * @param connection  - current connection
+         */
+        void onError(Throwable error, Departure departure,
+                     SocketAddress source, SocketAddress destination, Connection connection);
+    }
 }

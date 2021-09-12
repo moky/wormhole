@@ -59,10 +59,15 @@ public interface Docker extends Processor {
      *
      * @param data   - received data package
      */
-    void onReceived(byte[] data);
+    void processReceived(byte[] data);
 
     /**
      *  Send 'PING' for keeping connection alive
      */
     void heartbeat();
+
+    /**
+     *  Clear all expired tasks
+     */
+    void purge();
 }

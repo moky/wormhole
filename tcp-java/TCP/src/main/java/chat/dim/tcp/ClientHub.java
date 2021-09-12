@@ -32,39 +32,46 @@ package chat.dim.tcp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.nio.channels.SocketChannel;
 
-import chat.dim.net.ActiveConnection;
-import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 
-public class ClientHub extends BaseHub {
+public class ClientHub extends StreamHub {
 
     public ClientHub(Connection.Delegate delegate) {
         super(delegate);
     }
 
     @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
-        // create connection with addresses
-        ActiveConnection conn = new ActiveConnection(remote, local) {
-            @Override
-            protected Channel connect(SocketAddress remote, SocketAddress local) throws IOException {
-                return createChannel(remote, local);
+    public Channel getChannel(SocketAddress remote, SocketAddress local) {
+        Channel sock = super.getChannel(remote, local);
+        if (sock == null) {
+            sock = createChannel(remote, local);
+            if (sock != null) {
+                setChannel(remote, sock);
             }
-        };
-        // set delegate
-        if (conn.getDelegate() == null) {
-            conn.setDelegate(getDelegate());
         }
-        // start FSM
-        conn.start();
-        return conn;
+        return sock;
     }
 
-    private Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-        Channel channel = new StreamChannel(remote, local);
-        channel.configureBlocking(false);
-        return channel;
+    private Channel createChannel(SocketAddress remote, SocketAddress local) {
+        SocketChannel sock;
+        try {
+            sock = createSocketChannel(remote);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return new StreamChannel(sock, remote, local);
+    }
+
+    private static SocketChannel createSocketChannel(SocketAddress remote) throws IOException {
+        SocketChannel sock = SocketChannel.open();
+        sock.configureBlocking(true);
+        sock.socket().setReuseAddress(false);
+        sock.connect(remote);
+        sock.configureBlocking(false);
+        return sock;
     }
 }

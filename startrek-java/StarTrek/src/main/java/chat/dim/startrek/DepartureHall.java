@@ -59,11 +59,11 @@ public class DepartureHall {
     /**
      *  Append outgoing ship to a fleet with priority
      *
-     * @param ship - departure task
+     * @param outgo - departure task
      * @return false on duplicated
      */
-    public boolean appendDeparture(final Departure ship) {
-        final int priority = ship.getPriority();
+    public boolean appendDeparture(final Departure outgo) {
+        final int priority = outgo.getPriority();
         // 1. choose an array with priority
         List<Departure> fleet = departureFleets.get(priority);
         if (fleet == null) {
@@ -74,16 +74,16 @@ public class DepartureHall {
             insertPriority(priority);
         } else {
             // 1.3. check duplicated task
-            if (fleet.contains(ship)) {
+            if (fleet.contains(outgo)) {
                 return false;
             }
         }
         // 2. append to the tail
-        fleet.add(ship);
+        fleet.add(outgo);
         // 3. build mapping if SN exists
-        final Object sn = ship.getSN();
+        final Object sn = outgo.getSN();
         if (sn != null) {
-            departureMap.put(sn, ship);
+            departureMap.put(sn, outgo);
         }
         return true;
     }
@@ -238,6 +238,7 @@ public class DepartureHall {
             if (fleet == null) {
                 continue;
             }
+            failedTasks.clear();
             // 2. seeking expired tasks in this priority
             for (Departure ship : fleet) {
                 if (ship.isFailed(now)) {
@@ -248,7 +249,6 @@ public class DepartureHall {
             // 3. clear expired tasks
             if (failedTasks.size() > 0) {
                 clear(fleet, failedTasks, priority);
-                failedTasks.clear();
             }
         }
     }

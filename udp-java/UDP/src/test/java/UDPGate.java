@@ -9,6 +9,7 @@ import chat.dim.mtp.Package;
 import chat.dim.mtp.PackageDocker;
 import chat.dim.net.Connection;
 import chat.dim.net.Hub;
+import chat.dim.port.Departure;
 import chat.dim.port.Docker;
 import chat.dim.skywalker.Runner;
 import chat.dim.startrek.StarGate;
@@ -58,19 +59,23 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
 
     @Override
     public boolean process() {
-        boolean activated = hub.process();
-        boolean busy = super.process();
-        return activated || busy;
+        boolean incoming = hub.process();
+        boolean outgoing = super.process();
+        return incoming || outgoing;
     }
 
     @Override
-    protected Connection getConnection(SocketAddress remote, SocketAddress local) {
+    public Connection getConnection(SocketAddress remote, SocketAddress local) {
         return hub.getConnection(remote, local);
     }
 
     @Override
     protected Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
         // TODO: check data format before creating docker
+        Connection conn = getConnection(remote, local);
+        if (conn == null) {
+            info("connection not found: " + remote);
+        }
         return new PackageDocker(remote, local, this);
     }
 
@@ -89,16 +94,23 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
         // TODO: remove advance party for this connection
     }
 
-    void sendCommand(byte[] body, SocketAddress source, SocketAddress destination) {
+    public void sendCommand(byte[] body, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.COMMAND, new Data(body));
-        Docker worker = getDocker(destination, source, null);
-        ((PackageDocker) worker).sendPackage(pack);
+        send(pack, Departure.Priority.SLOWER.value, source, destination);
     }
 
-    void sendMessage(byte[] body, SocketAddress source, SocketAddress destination) {
+    public void sendMessage(byte[] body, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.MESSAGE, new Data(body));
+        send(pack, source, destination);
+    }
+
+    public void send(Package pack, int priority, SocketAddress source, SocketAddress destination) {
         Docker worker = getDocker(destination, source, null);
-        ((PackageDocker) worker).sendPackage(pack);
+        ((PackageDocker) worker).send(pack, priority);
+    }
+    public void send(Package pack, SocketAddress source, SocketAddress destination) {
+        Docker worker = getDocker(destination, source, null);
+        ((PackageDocker) worker).send(pack);
     }
 
     static void info(String msg) {

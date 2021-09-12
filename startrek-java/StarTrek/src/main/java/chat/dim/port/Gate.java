@@ -30,7 +30,41 @@
  */
 package chat.dim.port;
 
-import java.io.IOException;
+/*
+ *  Architecture:
+ *
+ *                 Gate (Ship)       Gate (Ship)     Gate (Ship)
+ *                 Delegate          Delegate        Delegate
+ *                     ^                 ^               ^
+ *                     :                 :               :
+ *        ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~
+ *                     :                 :               :
+ *          +==========V=================V===============V==========+
+ *          ||         :                 :               :         ||
+ *          ||         :      Gate       :               :         ||
+ *          ||         :                 :               :         ||
+ *          ||  +------------+    +------------+   +------------+  ||
+ *          ||  |   docker   |    |   docker   |   |   docker   |  ||
+ *          +===+------------+====+------------+===+------------+===+
+ *          ||  | connection |    | connection |   | connection |  ||
+ *          ||  +------------+    +------------+   +------------+  ||
+ *          ||          :                :               :         ||
+ *          ||          :      HUB       :...............:         ||
+ *          ||          :                        :                 ||
+ *          ||     +-----------+           +-----------+           ||
+ *          ||     |  channel  |           |  channel  |           ||
+ *          +======+-----------+===========+-----------+============+
+ *                 |  socket   |           |  socket   |
+ *                 +-----^-----+           +-----^-----+
+ *                       : (TCP)                 : (UDP)
+ *                       :               ........:........
+ *                       :               :               :
+ *        ~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~
+ *                       :               :               :
+ *                       V               V               V
+ *                  Remote Peer     Remote Peer     Remote Peer
+ */
+
 import java.net.SocketAddress;
 
 import chat.dim.net.ConnectionState;
@@ -41,16 +75,6 @@ import chat.dim.skywalker.Processor;
  *  ~~~~~~~~~
  */
 public interface Gate extends Processor {
-
-    /**
-     *  Send data to the remote peer
-     *
-     * @param data        - outgoing data package
-     * @param source      - local address
-     * @param destination - remote address
-     * @return false on error
-     */
-    boolean send(byte[] data, SocketAddress source, SocketAddress destination) throws IOException;
 
     /**
      *  Get gate status with direction
@@ -95,48 +119,18 @@ public interface Gate extends Processor {
      *  Gate Delegate
      *  ~~~~~~~~~~~~~
      */
-    interface Delegate {
+    interface Delegate extends Ship.Delegate {
 
         /**
          *  Callback when connection status changed
          *
-         * @param oldStatus - last status
-         * @param newStatus - current status
-         * @param remote    - remote address
-         * @param local     - local address
-         * @param gate      - current gate
-         */
-        void onStatusChanged(Status oldStatus, Status newStatus, SocketAddress remote, SocketAddress local, Gate gate);
-
-        /**
-         *  Callback when new package received
-         *
-         * @param income      - data package container
-         * @param source      - remote address
-         * @param destination - local address
+         * @param oldStatus   - last status
+         * @param newStatus   - current status
+         * @param remote      - remote address
+         * @param local       - local address
          * @param gate        - current gate
          */
-        void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Gate gate);
-
-        /**
-         *  Callback when package sent
-         *
-         * @param outgo       - package container
-         * @param source      - local address
-         * @param destination - remote address
-         * @param gate        - current gate
-         */
-        void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Gate gate);
-
-        /**
-         *  Callback when package sent failed
-         *
-         * @param error       - error message
-         * @param outgo       - package container
-         * @param source      - local address
-         * @param destination - remote address
-         * @param gate        - current gate
-         */
-        void onError(Error error, Departure outgo, SocketAddress source, SocketAddress destination, Gate gate);
+        void onStatusChanged(Status oldStatus, Status newStatus,
+                             SocketAddress remote, SocketAddress local, Gate gate);
     }
 }

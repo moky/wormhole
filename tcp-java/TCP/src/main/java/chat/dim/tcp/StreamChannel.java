@@ -39,42 +39,19 @@ import chat.dim.net.BaseChannel;
 
 public class StreamChannel extends BaseChannel<SocketChannel> {
 
-    public StreamChannel(SocketChannel channel) throws IOException {
-        super(channel, channel.isBlocking(), channel.socket().getReuseAddress());
-    }
-
-    /**
-     *  Create stream channel
-     *
-     * @param remoteAddress - remote address
-     * @param localAddress  - local address
-     * @param nonBlocking   - whether blocking mode
-     * @param reuse         - whether reuse address
-     * @throws IOException on failed
-     */
-    public StreamChannel(SocketAddress remoteAddress, SocketAddress localAddress,
-                         boolean nonBlocking, boolean reuse) throws IOException {
-        super(remoteAddress, localAddress, nonBlocking, reuse);
-    }
-    public StreamChannel(SocketAddress remote, SocketAddress local) throws IOException {
-        this(remote, local, false, false);
-    }
-
-    @Override
-    protected SocketChannel setupChannel() throws IOException {
-        if (channel == null) {
-            channel = SocketChannel.open();
-            channel.configureBlocking(blocking);
-            channel.socket().setReuseAddress(reuseAddress);
-        }
-        return channel;
+    public StreamChannel(SocketChannel channel, SocketAddress remote, SocketAddress local) {
+        super(channel, remote, local);
     }
 
     @Override
     public SocketAddress receive(ByteBuffer dst) throws IOException {
-        int res = channel.read(dst);
+        SocketChannel impl = getChannel();
+        if (impl == null) {
+            return null;
+        }
+        int res = impl.read(dst);
         if (res > 0) {
-            return channel.getRemoteAddress();
+            return impl.getRemoteAddress();
         } else if (res < 0) {
             // channel closed by client
             close();
@@ -84,8 +61,12 @@ public class StreamChannel extends BaseChannel<SocketChannel> {
 
     @Override
     public int send(ByteBuffer src, SocketAddress target) throws IOException {
-        assert target == null || target.equals(channel.getRemoteAddress()) :
-                "target address error: " + target + ", " + channel.getRemoteAddress();
-        return channel.write(src);
+        SocketChannel impl = getChannel();
+        if (impl == null) {
+            return -1;
+        }
+        assert target == null || target.equals(impl.getRemoteAddress()) :
+                "target address error: " + target + ", " + impl.getRemoteAddress();
+        return impl.write(src);
     }
 }

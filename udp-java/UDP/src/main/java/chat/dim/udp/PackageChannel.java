@@ -39,55 +39,36 @@ import chat.dim.net.BaseChannel;
 
 public class PackageChannel extends BaseChannel<DatagramChannel> {
 
-    public PackageChannel(DatagramChannel channel) throws IOException {
-        super(channel, channel.isBlocking(), channel.socket().getReuseAddress());
-    }
-
-    /**
-     *  Create package channel
-     *
-     * @param remoteAddress - remote address
-     * @param localAddress  - local address
-     * @param nonBlocking   - whether blocking mode
-     * @param reuse         - whether reuse address
-     * @throws IOException on failed
-     */
-    public PackageChannel(SocketAddress remoteAddress, SocketAddress localAddress,
-                           boolean nonBlocking, boolean reuse) throws IOException {
-        super(remoteAddress, localAddress, nonBlocking, reuse);
-    }
-    public PackageChannel(SocketAddress remoteAddress, SocketAddress localAddress) throws IOException {
-        this(remoteAddress, localAddress, false, false);
-    }
-
-    @Override
-    protected DatagramChannel setupChannel() throws IOException {
-        if (channel == null) {
-            channel = DatagramChannel.open();
-            channel.configureBlocking(blocking);
-            channel.socket().setReuseAddress(reuseAddress);
-        }
-        return channel;
+    public PackageChannel(DatagramChannel channel, SocketAddress remote, SocketAddress local) {
+        super(channel, remote, local);
     }
 
     @Override
     public SocketAddress receive(ByteBuffer dst) throws IOException {
-        if (channel.isConnected()) {
-            return channel.read(dst) > 0 ? channel.getRemoteAddress() : null;
+        DatagramChannel impl = getChannel();
+        if (impl == null) {
+            return null;
+        }
+        if (impl.isConnected()) {
+            return impl.read(dst) > 0 ? impl.getRemoteAddress() : null;
         } else {
-            return channel.receive(dst);
+            return impl.receive(dst);
         }
     }
 
     @Override
     public int send(ByteBuffer src, SocketAddress target) throws IOException {
-        if (channel.isConnected()) {
-            assert target == null || target.equals(channel.getRemoteAddress()) :
-                    "target address error: " + target + ", " + channel.getRemoteAddress();
-            return channel.write(src);
+        DatagramChannel impl = getChannel();
+        if (impl == null) {
+            return -1;
+        }
+        if (impl.isConnected()) {
+            assert target == null || target.equals(impl.getRemoteAddress()) :
+                    "target address error: " + target + ", " + impl.getRemoteAddress();
+            return impl.write(src);
         } else {
             assert target != null : "target address missed for unbound channel";
-            return channel.send(src, target);
+            return impl.send(src, target);
         }
     }
 }

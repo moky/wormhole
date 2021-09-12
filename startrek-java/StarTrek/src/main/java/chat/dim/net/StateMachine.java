@@ -52,9 +52,9 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
 public class StateMachine extends BaseMachine<StateMachine, StateTransition, ConnectionState>
         implements Context {
 
-    private final WeakReference<BaseConnection> connectionRef;
+    private final WeakReference<Connection> connectionRef;
 
-    public StateMachine(BaseConnection connection) {
+    public StateMachine(Connection connection) {
         super(ConnectionState.DEFAULT);
 
         connectionRef = new WeakReference<>(connection);
@@ -82,7 +82,7 @@ public class StateMachine extends BaseMachine<StateMachine, StateTransition, Con
         addState(state.name, state);
     }
 
-    BaseConnection getConnection() {
+    Connection getConnection() {
         return connectionRef.get();
     }
 }
@@ -152,10 +152,7 @@ class StateBuilder {
 
     // Connection lost
     ConnectionState getErrorState() {
-        ConnectionState state = getNamedState(ConnectionState.ERROR);
-        // Error -> Default
-        state.addTransition(builder.getErrorDefaultTransition());
-        return state;
+        return getNamedState(ConnectionState.ERROR);
     }
 }
 
@@ -202,10 +199,11 @@ class TransitionBuilder {
         return new StateTransition(ConnectionState.EXPIRED) {
             @Override
             public boolean evaluate(StateMachine ctx) {
-                BaseConnection conn = ctx.getConnection();
+                Connection conn = ctx.getConnection();
+                TimedConnection timed = (TimedConnection) conn;
                 // connection still alive, but
                 // long time no response, change state to 'maintain_expired'
-                return conn != null && conn.isAlive() && !conn.isReceivedRecently((new Date()).getTime());
+                return conn != null && conn.isAlive() && !timed.isReceivedRecently((new Date()).getTime());
             }
         };
     }
@@ -227,10 +225,11 @@ class TransitionBuilder {
         return new StateTransition(ConnectionState.MAINTAINING) {
             @Override
             public boolean evaluate(StateMachine ctx) {
-                BaseConnection conn = ctx.getConnection();
+                Connection conn = ctx.getConnection();
+                TimedConnection timed = (TimedConnection) conn;
                 // connection still alive, and
                 // sent recently, change state to 'maintaining'
-                return conn != null && conn.isAlive() && conn.isSentRecently((new Date()).getTime());
+                return conn != null && conn.isAlive() && timed.isSentRecently((new Date()).getTime());
             }
         };
     }
@@ -252,10 +251,11 @@ class TransitionBuilder {
         return new StateTransition(ConnectionState.READY) {
             @Override
             public boolean evaluate(StateMachine ctx) {
-                BaseConnection conn = ctx.getConnection();
+                Connection conn = ctx.getConnection();
+                TimedConnection timed = (TimedConnection) conn;
                 // connection still alive, and
                 // received recently, change state to 'ready'
-                return conn != null && conn.isAlive() && conn.isReceivedRecently((new Date()).getTime());
+                return conn != null && conn.isAlive() && timed.isReceivedRecently((new Date()).getTime());
             }
         };
     }
@@ -265,10 +265,11 @@ class TransitionBuilder {
         return new StateTransition(ConnectionState.EXPIRED) {
             @Override
             public boolean evaluate(StateMachine ctx) {
-                BaseConnection conn = ctx.getConnection();
+                Connection conn = ctx.getConnection();
+                TimedConnection timed = (TimedConnection) conn;
                 // connection still alive, but
                 // long time no sending, change state to 'maintain_expired'
-                return conn != null && conn.isAlive() && !conn.isSentRecently((new Date()).getTime());
+                return conn != null && conn.isAlive() && !timed.isSentRecently((new Date()).getTime());
             }
         };
     }
@@ -278,22 +279,11 @@ class TransitionBuilder {
         return new StateTransition(ConnectionState.ERROR) {
             @Override
             public boolean evaluate(StateMachine ctx) {
-                BaseConnection conn = ctx.getConnection();
+                Connection conn = ctx.getConnection();
+                TimedConnection timed = (TimedConnection) conn;
                 // connection lost, or
                 // long long time no response, change state to 'error
-                return conn == null || !conn.isOpen() || conn.isNotReceivedLongTimeAgo((new Date()).getTime());
-            }
-        };
-    }
-
-    // Error -> Default
-    StateTransition getErrorDefaultTransition() {
-        return new StateTransition(ConnectionState.DEFAULT) {
-            @Override
-            public boolean evaluate(StateMachine ctx) {
-                Connection conn = ctx.getConnection();
-                // connection reset, change state to 'not_connect'
-                return conn != null && conn.isOpen();
+                return conn == null || !conn.isOpen() || timed.isNotReceivedLongTimeAgo((new Date()).getTime());
             }
         };
     }

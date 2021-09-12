@@ -33,45 +33,45 @@ package chat.dim.net;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.Date;
 
-public class BaseConnection implements Connection, StateDelegate {
+interface TimedConnection {
 
-    /*  Maximum Segment Size
-     *  ~~~~~~~~~~~~~~~~~~~~
-     *  Buffer size for receiving package
-     *
-     *  MTU        : 1500 bytes (excludes 14 bytes ethernet header & 4 bytes FCS)
-     *  IP header  :   20 bytes
-     *  TCP header :   20 bytes
-     *  UDP header :    8 bytes
-     */
-    public static int MSS = 1472;  // 1500 - 20 - 8
+    boolean isSentRecently(long now);
+
+    boolean isReceivedRecently(long now);
+
+    boolean isNotReceivedLongTimeAgo(long now);
+}
+
+public class BaseConnection implements Connection, TimedConnection, StateDelegate {
 
     public static long EXPIRES = 16 * 1000;  // 16 seconds
 
-    private final StateMachine fsm;
-
-    private WeakReference<Delegate> delegateRef;
-
-    protected Channel channel;
-
+    private Channel channel;
     protected final SocketAddress localAddress;
     protected final SocketAddress remoteAddress;
 
     private long lastSentTime;
     private long lastReceivedTime;
 
-    public BaseConnection(Channel byteChannel, SocketAddress remote, SocketAddress local) {
+    private WeakReference<Delegate> delegateRef;
+    private WeakReference<Hub> hubRef;
+
+    private final StateMachine fsm;
+
+    public BaseConnection(Channel sock, SocketAddress remote, SocketAddress local) {
         super();
-        delegateRef = null;
-        channel = byteChannel;
+        channel = sock;
         remoteAddress = remote;
         localAddress = local;
+
         lastSentTime = 0;
         lastReceivedTime = 0;
+
+        delegateRef = null;
+        hubRef = null;
         // Finite State Machine
         fsm = getStateMachine();
     }
@@ -83,18 +83,21 @@ public class BaseConnection implements Connection, StateDelegate {
     }
 
     public Delegate getDelegate() {
-        if (delegateRef == null) {
-            return null;
-        } else {
-            return delegateRef.get();
-        }
+        return delegateRef.get();
     }
     public void setDelegate(Delegate delegate) {
-        if (delegate == null) {
-            delegateRef = null;
-        } else {
-            delegateRef = new WeakReference<>(delegate);
-        }
+        delegateRef = new WeakReference<>(delegate);
+    }
+
+    public Hub getHub() {
+        return hubRef.get();
+    }
+    public void setHub(Hub hub) {
+        hubRef = new WeakReference<>(hub);
+    }
+
+    protected Channel getChannel() {
+        return channel;
     }
 
     @Override
@@ -140,55 +143,29 @@ public class BaseConnection implements Connection, StateDelegate {
 
     @Override
     public SocketAddress getLocalAddress() {
-        Channel sock = channel;
-        if (sock != null && sock.isBound()) {
-            try {
-                return sock.getLocalAddress();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
         return localAddress;
     }
 
     @Override
     public SocketAddress getRemoteAddress() {
-        Channel sock = channel;
-        if (sock != null && sock.isConnected()) {
-            try {
-                return sock.getRemoteAddress();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
         return remoteAddress;
-    }
-
-    boolean isSentRecently(long now) {
-        return now < lastSentTime + EXPIRES;
-    }
-    boolean isReceivedRecently(long now) {
-        return now < lastReceivedTime + EXPIRES;
-    }
-    boolean isNotReceivedLongTimeAgo(long now) {
-        return now > lastReceivedTime + (EXPIRES << 4);
     }
 
     @Override
     public boolean isOpen() {
-        Channel sock = channel;
+        Channel sock = getChannel();
         return sock != null && sock.isOpen();
     }
 
     @Override
     public boolean isBound() {
-        Channel sock = channel;
+        Channel sock = getChannel();
         return sock != null && sock.isBound();
     }
 
     @Override
     public boolean isConnected() {
-        Channel sock = channel;
+        Channel sock = getChannel();
         return sock != null && sock.isConnected();
     }
 
@@ -200,62 +177,42 @@ public class BaseConnection implements Connection, StateDelegate {
     @Override
     public void close() {
         closeChannel();
-        changeState(ConnectionState.DEFAULT);
     }
 
     private void closeChannel() {
-        try {
-            Channel sock = channel;
-            if (sock != null && sock.isOpen()) {
-                sock.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            channel = null;
+        if (channel == null) {
+            return;
         }
+        getHub().closeChannel(channel);
+        channel = null;
     }
 
-    protected Channel getChannel() throws IOException {
-        return channel;
+    @Override
+    public boolean isSentRecently(long now) {
+        return now < lastSentTime + EXPIRES;
+    }
+    @Override
+    public boolean isReceivedRecently(long now) {
+        return now < lastReceivedTime + EXPIRES;
+    }
+    @Override
+    public boolean isNotReceivedLongTimeAgo(long now) {
+        return now > lastReceivedTime + (EXPIRES << 4);
     }
 
-    protected SocketAddress receive(ByteBuffer dst) throws IOException {
-        Channel sock = getChannel();
-        if (sock == null || !sock.isOpen()) {
-            throw new SocketException("connection lost: " + sock);
-        }
-        try {
-            SocketAddress remote = sock.receive(dst);
-            if (remote != null) {
-                lastReceivedTime = (new Date()).getTime();
-            }
-            return remote;
-        } catch (IOException e) {
-            // [TCP] failed to receive data
-            closeChannel();
-            changeState(ConnectionState.ERROR);
-            throw e;
-        }
+    @Override
+    public void received(byte[] data) {
+        lastReceivedTime = (new Date()).getTime();  // update received time
+        getDelegate().onReceived(data, remoteAddress, localAddress, this);
     }
 
     protected int send(ByteBuffer src, SocketAddress destination) throws IOException {
-        Channel sock = getChannel();
-        if (sock == null || !sock.isOpen()) {
-            throw new SocketException("connection lost: " + sock);
+        Channel channel = getChannel();
+        int sent = channel.send(src, destination);
+        if (sent != -1) {
+            lastSentTime = (new Date()).getTime();  // update sent time
         }
-        try {
-            int sent = sock.send(src, destination);
-            if (sent != -1) {
-                lastSentTime = (new Date()).getTime();
-            }
-            return sent;
-        } catch (IOException e) {
-            // [TCP] failed to send data
-            closeChannel();
-            changeState(ConnectionState.ERROR);
-            throw e;
-        }
+        return sent;
     }
 
     @Override
@@ -265,24 +222,20 @@ public class BaseConnection implements Connection, StateDelegate {
         buffer.flip();
         // try to send data
         Throwable error = null;
-        int sent;
+        int sent = -1;
         try {
             sent = send(buffer, destination);
             if (sent == -1) {
                 error = new Error("failed to send data: " + pack.length + " byte(s) to " + destination);
             }
         } catch (IOException e) {
+            e.printStackTrace();
             error = e;
-            sent = -1;
         }
-        // callback
-        Delegate delegate = getDelegate();
-        if (delegate != null) {
-            if (sent == -1) {
-                delegate.onError(error, pack, getLocalAddress(), destination, this);
-            } else {
-                delegate.onSent(pack, getLocalAddress(), destination, this);
-            }
+        if (error == null) {
+            getDelegate().onSent(pack, getLocalAddress(), destination, this);
+        } else {
+            getDelegate().onError(error, pack, getLocalAddress(), destination, this);
         }
         return sent;
     }
@@ -291,61 +244,14 @@ public class BaseConnection implements Connection, StateDelegate {
     //  States
     //
 
-    protected void changeState(String name) {
-        ConnectionState oldState = fsm.getCurrentState();
-        ConnectionState newState = fsm.getState(name);
-        if (oldState == null) {
-            if (newState != null) {
-                fsm.changeState(newState);
-            }
-        } else if (newState == null) {
-            fsm.changeState(null);
-        } else if (!newState.equals(oldState)) {
-            fsm.changeState(newState);
-        }
-    }
-
     @Override
     public ConnectionState getState() {
         return fsm.getCurrentState();
     }
 
-    private final ByteBuffer buffer = ByteBuffer.allocate(MSS);
-
     @Override
-    public boolean process() {
+    public void tick() {
         fsm.tick();
-
-        if (!isOpen()) {
-            return false;
-        }
-        Delegate delegate = getDelegate();
-        if (delegate == null) {
-            return false;
-        }
-
-        // receiving
-        buffer.clear();
-        SocketAddress remote;
-        try {
-            remote = receive(buffer);
-        } catch (IOException e) {
-            //e.printStackTrace();
-            delegate.onError(e, null, null, getLocalAddress(), this);
-            return false;
-        }
-        if (buffer.position() == 0) {
-            // received nothing
-            return false;
-        }
-
-        // parse data
-        byte[] data = new byte[buffer.position()];
-        buffer.flip();
-        buffer.get(data);
-        // callback
-        delegate.onReceived(data, remote, getLocalAddress(), this);
-        return true;
     }
 
     public void start() {
@@ -378,10 +284,7 @@ public class BaseConnection implements Connection, StateDelegate {
             }
         }
         // callback
-        Delegate delegate = getDelegate();
-        if (delegate != null) {
-            delegate.onStateChanged(previous, current, this);
-        }
+        getDelegate().onStateChanged(previous, current, this);
     }
 
     @Override

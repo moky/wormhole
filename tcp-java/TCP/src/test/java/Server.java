@@ -5,6 +5,7 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 
+import chat.dim.net.Connection;
 import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
@@ -33,7 +34,7 @@ public class Server implements Gate.Delegate {
     }
 
     private void send(byte[] data, SocketAddress destination) {
-        gate.sendData(data, localAddress, destination);
+        gate.send(data, localAddress, destination);
     }
 
     //
@@ -46,7 +47,7 @@ public class Server implements Gate.Delegate {
     }
 
     @Override
-    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Connection connection) {
         assert income instanceof PlainArrival : "arrival ship error: " + income;
         byte[] data = ((PlainArrival) income).getPackage();
         String text = new String(data, StandardCharsets.UTF_8);
@@ -59,14 +60,14 @@ public class Server implements Gate.Delegate {
     static int counter = 0;
 
     @Override
-    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         assert outgo instanceof PlainDeparture : "departure ship error: " + outgo;
         int bodyLen = ((PlainDeparture) outgo).getPackage().length;
         TCPGate.info("message sent: " + bodyLen + " byte(s) to " + destination);
     }
 
     @Override
-    public void onError(Error error, Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onError(Throwable error, Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         TCPGate.error(error.getMessage());
     }
 

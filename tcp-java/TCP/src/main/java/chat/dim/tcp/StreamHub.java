@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  UDP: User Datagram Protocol
+ *  TCP: Transmission Control Protocol
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,38 +28,26 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.udp;
+package chat.dim.tcp;
 
-import java.io.IOException;
 import java.net.SocketAddress;
-import java.nio.channels.DatagramChannel;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 import chat.dim.net.BaseConnection;
 import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 
-public class PackageHub extends BaseHub {
+public class StreamHub extends BaseHub {
 
-    // local => channel
-    protected final Map<SocketAddress, Channel> channels = new HashMap<>();
+    // remote => channel
+    private final Map<SocketAddress, Channel> channels = new WeakHashMap<>();
 
-    public PackageHub(Connection.Delegate delegate) {
+    public StreamHub(Connection.Delegate delegate) {
         super(delegate);
-    }
-
-    public void bind(SocketAddress local) throws IOException {
-        Channel sock = channels.get(local);
-        if (sock == null) {
-            DatagramChannel udp = DatagramChannel.open();
-            udp.socket().bind(local);
-            udp.configureBlocking(false);
-            channels.put(local, new PackageChannel(udp, null, local));
-        }
     }
 
     @Override
@@ -88,12 +76,7 @@ public class PackageHub extends BaseHub {
 
     @Override
     public Channel getChannel(SocketAddress remote, SocketAddress local) {
-        return channels.get(local);
-    }
-
-    @Override
-    protected Set<Channel> allChannels() {
-        return new HashSet<>(channels.values());
+        return channels.get(remote);
     }
 
     @Override
@@ -103,5 +86,18 @@ public class PackageHub extends BaseHub {
         }
         channels.remove(channel.getRemoteAddress());
         super.closeChannel(channel);
+    }
+
+    protected void setChannel(SocketAddress remote, Channel sock) {
+        if (sock == null) {
+            channels.remove(remote);
+        } else {
+            channels.put(remote, sock);
+        }
+    }
+
+    @Override
+    protected Set<Channel> allChannels() {
+        return new HashSet<>(channels.values());
     }
 }

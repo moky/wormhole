@@ -64,7 +64,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
      * @param local  - local address
      * @return exists connection
      */
-    protected abstract Connection getConnection(SocketAddress remote, SocketAddress local);
+    public abstract Connection getConnection(SocketAddress remote, SocketAddress local);
 
     /**
      *  Create new docker for received data
@@ -99,41 +99,51 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         return conn == null ? Status.ERROR : Status.getStatus(conn.getState());
     }
 
-    @Override
-    public boolean send(byte[] data, SocketAddress source, SocketAddress destination) throws IOException {
-        Connection conn = getConnection(destination, source);
-        if (conn == null) {
-            return false;
-        }
-        Status status = Status.getStatus(conn.getState());
-        if (!status.equals(Status.READY)) {
-            return false;
-        }
-        return conn.send(data, destination) != -1;
-    }
-
     //
     //  Processor
     //
 
     @Override
     public boolean process() {
-        int counter = 0;
         Set<Docker> dockers = dockerPool.allValues();
+        // 1. drive all dockers to process
+        int count = drive(dockers);
+        // 2 remove retired dockers
+        cleanup(dockers);
+        return count > 0;
+    }
+    protected int drive(Set<Docker> dockers) {
+        int count = 0;
+        for (Docker worker : dockers) {
+            if (worker.process()) {
+                // it's busy
+                ++count;
+            }
+        }
+        return count;
+    }
+    protected void cleanup(Set<Docker> dockers) {
         SocketAddress remote, local;
+        Connection conn;
+        ConnectionState state;
         for (Docker worker : dockers) {
             remote = worker.getRemoteAddress();
             local = worker.getLocalAddress();
-            // check connection
-            if (getConnection(remote, local) == null) {
+            // check connection state
+            conn = getConnection(remote, local);
+            if (conn == null) {
+                state = null;
+            } else {
+                state = conn.getState();
+            }
+            if (state == null || state.equals(ConnectionState.ERROR)) {
                 // connection lost, remove worker
                 dockerPool.remove(remote, local, worker);
-            } else if (worker.process()) {
-                // it's busy
-                counter += 1;
+            } else {
+                // clear expired tasks
+                worker.purge();
             }
         }
-        return counter > 0;
     }
 
     /**
@@ -163,15 +173,12 @@ public abstract class StarGate implements Gate, Connection.Delegate {
             }
         }
         // callback when status changed
-        Delegate delegate = getDelegate();
-        if (delegate != null) {
-            Status s1 = Status.getStatus(previous);
-            Status s2 = Status.getStatus(current);
-            if (!s1.equals(s2)) {
-                SocketAddress remote = connection.getRemoteAddress();
-                SocketAddress local = connection.getLocalAddress();
-                delegate.onStatusChanged(s1, s2, remote, local, this);
-            }
+        Status s1 = Status.getStatus(previous);
+        Status s2 = Status.getStatus(current);
+        if (!s1.equals(s2)) {
+            SocketAddress remote = connection.getRemoteAddress();
+            SocketAddress local = connection.getLocalAddress();
+            getDelegate().onStatusChanged(s1, s2, remote, local, this);
         }
     }
 
@@ -181,7 +188,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         Docker worker = getDocker(source, destination);
         if (worker != null) {
             // docker exists, call docker.onReceived(data);
-            worker.onReceived(data);
+            worker.processReceived(data);
             return;
         }
 
@@ -194,7 +201,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         if (worker != null) {
             // process advance parties one by one
             for (byte[] part : advanceParty) {
-                worker.onReceived(part);
+                worker.processReceived(part);
             }
             // remove advance party
             clearAdvanceParty(source, destination, connection);

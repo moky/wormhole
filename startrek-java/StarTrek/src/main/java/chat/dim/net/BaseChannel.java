@@ -44,62 +44,42 @@ import java.nio.channels.WritableByteChannel;
 
 public abstract class BaseChannel<C extends SelectableChannel> implements Channel {
 
-    protected C channel;
-    protected boolean blocking;
-    protected final boolean reuseAddress;
-
-    public BaseChannel(C channel, boolean blocking, boolean reuse) {
-        super();
-        this.channel = channel;
-        this.blocking = blocking;
-        this.reuseAddress = reuse;
-    }
+    private C channel;
+    private SocketAddress remoteAddress;
+    private SocketAddress localAddress;
 
     /**
      *  Create stream channel
      *
-     * @param remoteAddress - remote address
-     * @param localAddress  - local address
-     * @param nonBlocking   - whether blocking mode
-     * @param reuse         - whether reuse address
-     * @throws IOException on failed
+     * @param sock        - socket/datagram channel
+     * @param remote      - remote address
+     * @param local       - local address
      */
-    public BaseChannel(SocketAddress remoteAddress, SocketAddress localAddress,
-                         boolean nonBlocking, boolean reuse) throws IOException {
+    public BaseChannel(C sock, SocketAddress remote, SocketAddress local) {
         super();
-        blocking = !nonBlocking;
-        reuseAddress = reuse;
-        // setup inner channel
-        channel = null;
-        setupChannel();
-        // bind to local address
-        if (localAddress != null) {
-            bind(localAddress);
-        }
-        // connect to remote address
-        if (remoteAddress != null) {
-            connect(remoteAddress);
-        }
+        channel = sock;
+        remoteAddress = remote;
+        localAddress = local;
     }
 
-    protected abstract C setupChannel() throws IOException;
+    protected C getChannel() {
+        return channel;
+    }
 
     @Override
     public SelectableChannel configureBlocking(boolean block) throws IOException {
-        blocking = block;
-        C impl = channel;
+        C impl = getChannel();
         if (impl == null) {
-            impl = setupChannel();
-        } else {
-            impl.configureBlocking(block);
+            throw new SocketException("socket closed");
         }
+        impl.configureBlocking(block);
         return impl;
     }
 
     @Override
     public boolean isBlocking() {
         C impl = channel;
-        return impl != null ? impl.isBlocking() : blocking;
+        return impl != null && impl.isBlocking();
     }
 
     @Override
@@ -133,41 +113,37 @@ public abstract class BaseChannel<C extends SelectableChannel> implements Channe
     }
 
     @Override
-    public SocketAddress getLocalAddress() throws IOException {
-        C impl = channel;
-        if (impl instanceof NetworkChannel) {
-            return ((NetworkChannel) impl).getLocalAddress();
-        } else {
-            return null;
-        }
+    public SocketAddress getLocalAddress() {
+        return localAddress;
     }
 
     @Override
-    public SocketAddress getRemoteAddress() throws IOException {
-        C impl = channel;
-        if (impl instanceof SocketChannel) {
-            return ((SocketChannel) impl).getRemoteAddress();
-        } else if (impl instanceof DatagramChannel) {
-            return ((DatagramChannel) impl).getRemoteAddress();
-        } else {
-            return null;
-        }
+    public SocketAddress getRemoteAddress() {
+        return remoteAddress;
     }
 
     @Override
     public NetworkChannel bind(SocketAddress local) throws IOException {
-        C impl = setupChannel();
+        C impl = getChannel();
+        if (impl == null) {
+            throw new SocketException("socket closed");
+        }
+        localAddress = local;
         return ((NetworkChannel) impl).bind(local);
     }
 
     @Override
     public NetworkChannel connect(SocketAddress remote) throws IOException {
-        C impl = setupChannel();
+        C impl = getChannel();
+        if (impl == null) {
+            throw new SocketException("socket closed");
+        }
         if (impl instanceof SocketChannel) {
             ((SocketChannel) impl).connect(remote);
         } else if (impl instanceof DatagramChannel) {
             ((DatagramChannel) impl).connect(remote);
         }
+        remoteAddress = remote;
         return (NetworkChannel) impl;
     }
 
@@ -193,7 +169,7 @@ public abstract class BaseChannel<C extends SelectableChannel> implements Channe
 
     @Override
     public int read(ByteBuffer dst) throws IOException {
-        C impl = channel;
+        C impl = getChannel();
         if (impl instanceof ReadableByteChannel) {
             return ((ReadableByteChannel) impl).read(dst);
         } else {
@@ -203,9 +179,9 @@ public abstract class BaseChannel<C extends SelectableChannel> implements Channe
 
     @Override
     public int write(ByteBuffer src) throws IOException {
-        C impl = channel;
+        C impl = getChannel();
         if (impl instanceof WritableByteChannel) {
-            return ((WritableByteChannel) channel).write(src);
+            return ((WritableByteChannel) impl).write(src);
         } else {
             throw new SocketException("socket lost, cannot write data: " + src.position() + " byte(s)");
         }

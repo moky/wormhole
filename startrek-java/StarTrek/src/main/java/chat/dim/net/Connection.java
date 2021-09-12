@@ -32,9 +32,9 @@ package chat.dim.net;
 
 import java.net.SocketAddress;
 
-import chat.dim.skywalker.Processor;
+import chat.dim.threading.Ticker;
 
-public interface Connection extends Processor {
+public interface Connection extends Ticker {
 
     //
     //  Flags
@@ -56,6 +56,13 @@ public interface Connection extends Processor {
      * @return count of bytes sent, probably zero when it's non-blocking mode
      */
     int send(byte[] data, SocketAddress destination);
+
+    /**
+     *  Process received data
+     *
+     * @param data - received data
+     */
+    void received(byte[] data);
 
     /**
      *  Close the connection

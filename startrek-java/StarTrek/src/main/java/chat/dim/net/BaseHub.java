@@ -33,19 +33,23 @@ package chat.dim.net;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.nio.ByteBuffer;
 import java.util.Set;
 
 import chat.dim.type.AddressPairMap;
-import chat.dim.type.Pair;
 
 public abstract class BaseHub implements Hub {
 
-    public static long DYING_EXPIRES = 120 * 1000;
-    // mapping: (remote, local) => time to kill
-    private final Map<Pair<SocketAddress, SocketAddress>, Long> dyingTimes = new HashMap<>();
+    /*  Maximum Segment Size
+     *  ~~~~~~~~~~~~~~~~~~~~
+     *  Buffer size for receiving package
+     *
+     *  MTU        : 1500 bytes (excludes 14 bytes ethernet header & 4 bytes FCS)
+     *  IP header  :   20 bytes
+     *  TCP header :   20 bytes
+     *  UDP header :    8 bytes
+     */
+    public static int MSS = 1472;  // 1500 - 20 - 8
 
     private final AddressPairMap<Connection> connectionPool = new AddressPairMap<>();
 
@@ -60,14 +64,23 @@ public abstract class BaseHub implements Hub {
         return delegateRef.get();
     }
 
+    /**
+     *  Get all channels
+     *
+     * @return all channels
+     */
+    protected abstract Set<Channel> allChannels();
+
     @Override
-    public boolean send(byte[] data, SocketAddress source, SocketAddress destination) throws IOException {
-        Connection conn = connectionPool.get(destination, source);
-        if (conn == null || !conn.isAlive()) {
-            // connection not ready
-            return false;
+    public void closeChannel(Channel channel) {
+        if (channel == null || !channel.isOpen()) {
+            return;
         }
-        return conn.send(data, destination) != -1;
+        try {
+            channel.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -75,31 +88,15 @@ public abstract class BaseHub implements Hub {
         return connectionPool.get(remote, local);
     }
 
-    @Override
-    public Connection connect(SocketAddress remote, SocketAddress local) throws IOException {
-        Connection conn = connectionPool.get(remote, local);
-        if (conn == null) {
-            conn = createConnection(remote, local);
-            if (conn != null) {
-                connectionPool.put(remote, local, conn);
-            }
-        }
-        return conn;
+    protected void setConnection(SocketAddress remote, SocketAddress local, Connection connection) {
+        connectionPool.put(remote, local, connection);
     }
 
-    /**
-     *  Create connection with direction (remote, local)
-     *
-     * @param remote - remote address
-     * @param local  - local address
-     * @return new connection
-     */
-    protected abstract Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException;
-
     @Override
-    public void disconnect(SocketAddress remote, SocketAddress local) {
-        assert local != null || remote != null : "both local & remote addresses are empty";
-        Connection conn = connectionPool.remove(remote, local, null);
+    public void closeConnection(Connection connection) {
+        SocketAddress remote = connection.getRemoteAddress();
+        SocketAddress local = connection.getLocalAddress();
+        Connection conn = connectionPool.remove(remote, local, connection);
         if (conn != null) {
             conn.close();
         }
@@ -107,57 +104,56 @@ public abstract class BaseHub implements Hub {
 
     @Override
     public boolean process() {
-        int activatedCount = 0;
-
-        SocketAddress remote, local;
-        Pair<SocketAddress, SocketAddress> aPair;  // (remote, local)
-        long now = (new Date()).getTime();
-        Long expired;
+        int count = 0;
+        // 1. drive all channels to receive data
+        Set<Channel> channels = allChannels();
+        for (Channel sock : channels) {
+            if (sock.isOpen() && drive(sock)) {
+                // received data from this socket channel
+                count += 1;
+            }
+        }
+        // 2. drive all connections to move on
         Set<Connection> connections = connectionPool.allValues();
+        ConnectionState state;
         for (Connection conn : connections) {
-            // 1. drive all connections to process
-            if (conn.process()) {
-                ++activatedCount;
-            }
-
-            remote = conn.getRemoteAddress();
-            local = conn.getLocalAddress();
-            aPair = buildPair(remote, local);
-            assert aPair != null : "connection error: " + conn;
-
-            // 2. check closed connection(s)
-            if (conn.isOpen()) {
-                // connection still alive, revive it
-                dyingTimes.remove(aPair);
-            } else {
-                // connection is closed, check dying time
-                expired = dyingTimes.get(aPair);
-                if (expired == null || expired == 0) {
-                    // set death clock
-                    dyingTimes.put(aPair, now + DYING_EXPIRES);
-                } else if (expired < now) {
-                    // times up, kill it
-                    connectionPool.remove(remote, local, conn);
-                    // clear the death clock for it
-                    dyingTimes.remove(aPair);
-                }
+            // drive connection to go on
+            conn.tick();
+            // check connection state
+            state = conn.getState();
+            if (state == null || state.equals(ConnectionState.ERROR)) {
+                // connection lost
+                closeConnection(conn);
             }
         }
-
-        return activatedCount > 0;
+        return count > 0;
     }
 
-    private static Pair<SocketAddress, SocketAddress> buildPair(SocketAddress remote, SocketAddress local) {
+    protected boolean drive(Channel sock) {
+        // try to receive
+        buffer.clear();
+        SocketAddress remote;
+        try {
+            remote = sock.receive(buffer);
+        } catch (IOException e) {
+            e.printStackTrace();
+            // socket error, remove the channel
+            closeChannel(sock);
+            return false;
+        }
         if (remote == null) {
-            if (local == null) {
-                //throw new NullPointerException("both local & remote addresses are empty");
-                return null;
-            }
-            return new Pair<>(AddressPairMap.AnyAddress, local);
-        } else if (local == null) {
-            return new Pair<>(remote, AddressPairMap.AnyAddress);
-        } else {
-            return new Pair<>(remote, local);
+            // received nothing
+            return false;
         }
+        // get connection for processing received data
+        Connection conn = getConnection(remote, sock.getLocalAddress());
+        if (conn != null) {
+            byte[] data = new byte[buffer.position()];
+            buffer.flip();
+            buffer.get(data);
+            conn.received(data);
+        }
+        return true;
     }
+    private final ByteBuffer buffer = ByteBuffer.allocate(MSS);
 }

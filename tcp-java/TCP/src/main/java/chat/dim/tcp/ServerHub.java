@@ -32,20 +32,13 @@ package chat.dim.tcp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.Map;
-import java.util.WeakHashMap;
 
-import chat.dim.net.BaseConnection;
-import chat.dim.net.BaseHub;
-import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 
-public class ServerHub extends BaseHub implements Runnable {
+public class ServerHub extends StreamHub implements Runnable {
 
-    private final Map<SocketAddress, SocketChannel> slaves = new WeakHashMap<>();
     private SocketAddress localAddress = null;
     private ServerSocketChannel master = null;
     private boolean running = false;
@@ -80,43 +73,20 @@ public class ServerHub extends BaseHub implements Runnable {
 
     @Override
     public void run() {
-        SocketChannel channel;
+        SocketChannel sock;
         SocketAddress remote;
         running = true;
         while (isRunning()) {
             try {
-                channel = master.accept();
-                System.out.println("new channel: " + channel);
-                if (channel != null) {
-                    remote = channel.getRemoteAddress();
-                    slaves.put(remote, channel);
-                    connect(remote, localAddress);
+                sock = master.accept();
+                System.out.println("new channel: " + sock);
+                if (sock != null) {
+                    remote = sock.getRemoteAddress();
+                    setChannel(remote, new StreamChannel(sock, remote, localAddress));
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
-    }
-
-    @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) throws IOException {
-        // create connection with channel
-        BaseConnection conn = new BaseConnection(createChannel(remote, local), remote, local);
-        // set delegate
-        if (conn.getDelegate() == null) {
-            conn.setDelegate(getDelegate());
-        }
-        // start FSM
-        conn.start();
-        return conn;
-    }
-
-    private Channel createChannel(SocketAddress remote, SocketAddress local) throws IOException {
-        SocketChannel sock = slaves.get(remote);
-        if (sock == null) {
-            throw new SocketException("failed to get channel: " + remote + " -> " + local);
-        } else {
-            return new StreamChannel(sock);
         }
     }
 }

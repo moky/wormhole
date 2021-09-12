@@ -50,18 +50,18 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
     }
 
     protected void idle() {
-        Runner.idle(8);
+        Runner.idle(128);
     }
 
     @Override
     public boolean process() {
-        boolean activated = hub.process();
-        boolean busy = super.process();
-        return activated || busy;
+        boolean incoming = hub.process();
+        boolean outgoing = super.process();
+        return incoming || outgoing;
     }
 
     @Override
-    protected Connection getConnection(SocketAddress remote, SocketAddress local) {
+    public Connection getConnection(SocketAddress remote, SocketAddress local) {
         return hub.getConnection(remote, local);
     }
 
@@ -86,9 +86,9 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
         // TODO: remove advance party for this connection
     }
 
-    void sendData(byte[] payload, SocketAddress source, SocketAddress destination) {
+    public void send(byte[] payload, SocketAddress source, SocketAddress destination) {
         Docker worker = getDocker(destination, source, null);
-        ((PlainDocker) worker).sendData(payload);
+        ((PlainDocker) worker).send(payload);
     }
 
     static void info(String msg) {

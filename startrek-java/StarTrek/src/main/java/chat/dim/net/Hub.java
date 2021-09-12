@@ -31,30 +31,34 @@
 package chat.dim.net;
 
 /*
- *  Topology:
+ *  Architecture:
  *
- *                          +---------------+
- *                          |      APP      |
- *                          +---------------+
- *                              |       A
- *                              |       |
- *                              V       |
- *          +-----------------------------------------------+
- *          |                                               |
- *          |     +----------+     HUB     +----------+     |
- *          |     |  socket  |             |  socket  |     |
- *          +-----+----------+-------------+----------+-----+
- *                   |    A                   |  |  A
- *                   |    |   (connections)   |  |  |
- *                   |    |    (+channels)    |  |  |
- *                   |    |                   |  |  |
- *          ~~~~~~~~~|~~~~|~~~~~~~~~~~~~~~~~~~|~~|~~|~~~~~~~~
- *          ~~~~~~~~~|~~~~|~~~~~~~~~~~~~~~~~~~|~~|~~|~~~~~~~~
- *                   |    |                   |  |  |
- *                   V    |                   V  V  |
+ *                 Connection        Connection      Connection
+ *                 Delegate          Delegate        Delegate
+ *                     ^                 ^               ^
+ *                     :                 :               :
+ *        ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~
+ *                     :                 :               :
+ *          +===+------V-----+====+------V-----+===+-----V------+===+
+ *          ||  | connection |    | connection |   | connection |  ||
+ *          ||  +------------+    +------------+   +------------+  ||
+ *          ||          :                :               :         ||
+ *          ||          :      HUB       :...............:         ||
+ *          ||          :                        :                 ||
+ *          ||     +-----------+           +-----------+           ||
+ *          ||     |  channel  |           |  channel  |           ||
+ *          +======+-----------+===========+-----------+============+
+ *                 |  socket   |           |  socket   |
+ *                 +-----^-----+           +-----^-----+
+ *                       : (TCP)                 : (UDP)
+ *                       :               ........:........
+ *                       :               :               :
+ *        ~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~
+ *                       :               :               :
+ *                       V               V               V
+ *                  Remote Peer     Remote Peer     Remote Peer
  */
 
-import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -68,20 +72,30 @@ import java.util.Set;
 
 import chat.dim.skywalker.Processor;
 
+/**
+ *  Channels Container
+ *  ~~~~~~~~~~~~~~~~~~
+ */
 public interface Hub extends Processor {
 
     /**
-     *  Send data from source to destination
+     *  Get opened channel with direction (remote, local)
      *
-     * @param data        - data package
-     * @param source      - local address; null for any connection (connected to destination)
-     * @param destination - remote address
-     * @return false on error
+     * @param remote - remote address
+     * @param local  - local address
+     * @return null on socket closed
      */
-    boolean send(byte[] data, SocketAddress source, SocketAddress destination) throws IOException;
+    Channel getChannel(SocketAddress remote, SocketAddress local);
 
     /**
-     *   Get connection if already exists
+     *  Close socket channel
+     *
+     * @param channel - socket channel
+     */
+    void closeChannel(Channel channel);
+
+    /**
+     *  Get connection with direction (remote, local)
      *
      * @param remote - remote address
      * @param local  - local address
@@ -90,21 +104,11 @@ public interface Hub extends Processor {
     Connection getConnection(SocketAddress remote, SocketAddress local);
 
     /**
-     *  Get/create connection
-     *
-     * @param remote - remote address
-     * @param local  - local address
-     * @return null on error
-     */
-    Connection connect(SocketAddress remote, SocketAddress local) throws IOException;
-
-    /**
      *  Close connection
      *
-     * @param remote - remote address
-     * @param local  - local address
+     * @param connection - closing connection
      */
-    void disconnect(SocketAddress remote, SocketAddress local) throws IOException;
+    void closeConnection(Connection connection);
 
     //
     //  Local Address

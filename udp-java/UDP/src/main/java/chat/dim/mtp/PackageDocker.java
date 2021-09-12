@@ -30,14 +30,14 @@
  */
 package chat.dim.mtp;
 
-import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.util.List;
 
+import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
-import chat.dim.port.Gate;
+import chat.dim.port.Ship;
 import chat.dim.startrek.DepartureShip;
 import chat.dim.startrek.StarDocker;
 import chat.dim.startrek.StarGate;
@@ -54,18 +54,25 @@ public class PackageDocker extends StarDocker {
     }
 
     @Override
-    protected Gate getGate() {
-        return gateRef.get();
-    }
-
-    @Override
-    protected Gate.Delegate getDelegate() {
+    protected Connection getConnection() {
         StarGate gate = gateRef.get();
-        return gate == null ? null : gate.getDelegate();
+        if (gate == null) {
+            return null;
+        }
+        return gate.getConnection(getRemoteAddress(), getLocalAddress());
     }
 
     @Override
-    protected Arrival getIncomeShip(byte[] data) {
+    protected Ship.Delegate getDelegate() {
+        StarGate gate = gateRef.get();
+        if (gate == null) {
+            return null;
+        }
+        return gate.getDelegate();
+    }
+
+    @Override
+    protected Arrival getArrival(byte[] data) {
         final Package pack = Package.parse(new Data(data));
         if (pack == null) {
             return null;
@@ -79,7 +86,7 @@ public class PackageDocker extends StarDocker {
     }
 
     @Override
-    protected Arrival checkIncomeShip(Arrival income) {
+    protected Arrival checkArrival(Arrival income) {
         assert income instanceof PackageArrival : "income ship error: " + income;
         PackageArrival ship = (PackageArrival) income;
         Package pack = ship.getPackage();
@@ -137,7 +144,7 @@ public class PackageDocker extends StarDocker {
             // let the caller to process it
         } else if (type.isMessageFragment()) {
             // assemble MessageFragment with cached fragments to completed Message
-            income = dock.assembleArrival(income);
+            income = assembleArrival(income);
             // let the caller to process the completed message
         } else if (type.isMessage()) {
             // respond for Message
@@ -160,33 +167,27 @@ public class PackageDocker extends StarDocker {
     }
 
     @Override
-    protected boolean sendOutgoShip(final Departure outgo) throws IOException {
-        final List<byte[]> fragments = outgo.getFragments();
-        if (fragments == null || fragments.size() == 0) {
-            return true;
-        }
-        if (outgo.getRetries() < DepartureShip.MAX_RETRIES) {
+    protected Departure getNextDeparture(final long now) {
+        Departure outgo = super.getNextDeparture(now);
+        if (outgo != null && outgo.getRetries() < DepartureShip.MAX_RETRIES) {
             // put back for next retry
-            dock.appendDeparture(outgo);
+            appendDeparture(outgo);
         }
-        return super.sendOutgoShip(outgo);
+        return outgo;
     }
 
     private void respondCommand(TransactionID sn, byte[] body) {
-        Package pack = Package.create(DataType.COMMAND_RESPONSE, sn, new Data(body));
-        sendPackage(pack);
+        send(Package.create(DataType.COMMAND_RESPONSE, sn, new Data(body)));
     }
     private void respondMessage(TransactionID sn, int pages, int index) {
-        Package pack = Package.create(DataType.MESSAGE_RESPONSE, sn, pages, index, new Data(OK));
-        sendPackage(pack);
+        send(Package.create(DataType.MESSAGE_RESPONSE, sn, pages, index, new Data(OK)));
     }
 
-    public void sendPackage(Package pack, int priority) {
-        Departure ship = new PackageDeparture(priority, pack);
-        dock.appendDeparture(ship);
+    public void send(Package pack) {
+        send(pack, Departure.Priority.NORMAL.value);
     }
-    public void sendPackage(Package pack) {
-        sendPackage(pack, Departure.Priority.NORMAL.value);
+    public void send(Package pack, int priority) {
+        appendDeparture(new PackageDeparture(priority, pack));
     }
 
     @Override
@@ -198,7 +199,7 @@ public class PackageDocker extends StarDocker {
     @Override
     public void heartbeat() {
         Package pack = Package.create(DataType.COMMAND, new Data(PING));
-        sendPackage(pack, Departure.Priority.SLOWER.value);
+        send(pack, Departure.Priority.SLOWER.value);
     }
 
     static final byte[] PING = {'P', 'I', 'N', 'G'};

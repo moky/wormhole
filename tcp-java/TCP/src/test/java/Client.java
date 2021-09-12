@@ -1,11 +1,11 @@
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
 
+import chat.dim.net.Connection;
 import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
@@ -30,8 +30,7 @@ public class Client implements Gate.Delegate {
         gate.setHub(new ClientHub(gate));
     }
 
-    public void start() throws IOException {
-        gate.getHub().connect(remoteAddress, localAddress);
+    public void start() {
         gate.start();
     }
 
@@ -40,7 +39,7 @@ public class Client implements Gate.Delegate {
     }
 
     private void send(byte[] data) {
-        gate.sendData(data, localAddress, remoteAddress);
+        gate.send(data, localAddress, remoteAddress);
     }
 
     //
@@ -53,7 +52,7 @@ public class Client implements Gate.Delegate {
     }
 
     @Override
-    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Connection connection) {
         assert income instanceof PlainArrival : "arrival ship error: " + income;
         byte[] data = ((PlainArrival) income).getPackage();
         String text = new String(data, StandardCharsets.UTF_8);
@@ -61,14 +60,14 @@ public class Client implements Gate.Delegate {
     }
 
     @Override
-    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         assert outgo instanceof PlainDeparture : "departure ship error: " + outgo;
         int bodyLen = ((PlainDeparture) outgo).getPackage().length;
         TCPGate.info("message sent: " + bodyLen + " byte(s) to " + destination);
     }
 
     @Override
-    public void onError(Error error, Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onError(Throwable error, Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         TCPGate.error(error.getMessage());
     }
 
@@ -105,7 +104,7 @@ public class Client implements Gate.Delegate {
         }
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
 
         SocketAddress local = new InetSocketAddress(Client.HOST, Client.PORT);
         SocketAddress remote = new InetSocketAddress(Server.HOST, Server.PORT);

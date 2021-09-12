@@ -171,7 +171,7 @@ public interface Channel extends ByteChannel {
      * @throws  IOException
      *          If an I/O error occurs
      */
-    SocketAddress getLocalAddress() throws IOException;
+    SocketAddress getLocalAddress();// throws IOException;
 
 
     /*================================================*\
@@ -272,7 +272,7 @@ public interface Channel extends ByteChannel {
      *
      * @since 1.7
      */
-    SocketAddress getRemoteAddress() throws IOException;
+    SocketAddress getRemoteAddress();// throws IOException;
 
 
     /*================================================*\

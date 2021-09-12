@@ -35,17 +35,18 @@ import java.net.SocketAddress;
 import java.util.Date;
 import java.util.List;
 
+import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Docker;
-import chat.dim.port.Gate;
+import chat.dim.port.Ship;
 
 public abstract class StarDocker implements Docker {
 
     private final SocketAddress remoteAddress;
     private final SocketAddress localAddress;
 
-    protected final Dock dock;
+    private final Dock dock;
 
     protected StarDocker(SocketAddress remote, SocketAddress local) {
         super();
@@ -69,67 +70,69 @@ public abstract class StarDocker implements Docker {
         return new LockedDock();
     }
 
-    protected abstract Gate getGate();
+    /**
+     *  Get related connection which status is 'ready'
+     *
+     * @return related connection
+     */
+    protected abstract Connection getConnection();
 
-    protected abstract Gate.Delegate getDelegate();
-
-    private boolean isReady() {
-        Gate.Status status = getGate().getStatus(remoteAddress, localAddress);
-        return status.equals(Gate.Status.READY);
-    }
+    /**
+     *  Get delegate for handling events
+     *
+     * @return gate delegate
+     */
+    protected abstract Ship.Delegate getDelegate();
 
     @Override
     public boolean process() {
-        // 1. check gate status
-        if (!isReady()) {
-            // not ready yet
+        // 1. get connection which is ready for sending data
+        Connection conn = getConnection();
+        if (conn == null) {
+            // connection not ready now
             return false;
         }
         long now = (new Date()).getTime();
-        // 2. get outgo
-        Departure outgo = getOutgoShip(now);
+        // 2. get outgo task
+        Departure outgo = getNextDeparture(now);
         if (outgo == null) {
             // nothing to do now
             return false;
         }
-        // 3. process outgo
+        // 3. process outgo task
         if (outgo.isFailed(now)) {
-            // outgo Ship expired, callback
-            onOutgoError("Request timeout", outgo);
+            // outgo task expired, callback
+            getDelegate().onError(new Error("Response timeout"), outgo, localAddress, remoteAddress, conn);
         } else {
             try {
-                if (!sendOutgoShip(outgo)) {
+                if (!sendDeparture(outgo)) {
                     // failed to send outgo package, callback
-                    onOutgoError("Connection error", outgo);
+                    getDelegate().onError(new Error("Connection error"), outgo, localAddress, remoteAddress, conn);
                 }
             } catch (IOException e) {
                 //e.printStackTrace();
-                onOutgoError(e.getMessage(), outgo);
+                getDelegate().onError(e, outgo, localAddress, remoteAddress, conn);
             }
         }
         return true;
     }
-    private void onOutgoError(final String message, final Departure ship) {
-        Gate.Delegate delegate = getDelegate();
-        if (delegate != null) {
-            delegate.onError(new Error(message), ship, localAddress, remoteAddress, getGate());
-        }
-    }
 
     @Override
-    public void onReceived(final byte[] data) {
+    public void processReceived(final byte[] data) {
         // 1. get income ship from received data
-        Arrival income = getIncomeShip(data);
+        Arrival income = getArrival(data);
         if (income == null) {
+            // waiting for more data
             return;
         }
         // 2. check income ship for response
-        income = checkIncomeShip(income);
+        income = checkArrival(income);
         if (income == null) {
+            // waiting for more fragment
             return;
         }
         // 3. process income ship with completed data package
-        processIncomeShip(income);
+        getDelegate().onReceived(income, remoteAddress, localAddress, getConnection());
     }
 
     /**
@@ -138,7 +141,7 @@ public abstract class StarDocker implements Docker {
      * @param data - received data
      * @return income ship carrying data package/fragment
      */
-    protected abstract Arrival getIncomeShip(final byte[] data);
+    protected abstract Arrival getArrival(final byte[] data);
 
     /**
      *  Check income ship for responding
@@ -146,34 +149,42 @@ public abstract class StarDocker implements Docker {
      * @param income - income ship carrying data package/fragment/response
      * @return income ship carrying completed data package
      */
-    protected abstract Arrival checkIncomeShip(final Arrival income);
+    protected abstract Arrival checkArrival(final Arrival income);
 
     /**
-     *  Check and remove linked departure ship
+     *  Check and remove linked departure ship with same SN (and page index for fragment)
      *
      * @param income - income ship with SN
+     * @return linked outgo ship
      */
-    protected void checkResponse(final Arrival income) {
+    protected Departure checkResponse(final Arrival income) {
         // check response for linked departure ship (same SN)
         Departure linked = dock.checkResponse(income);
         if (linked != null) {
             // all fragments responded, task finished
-            Gate.Delegate delegate = getDelegate();
-            if (delegate != null) {
-                delegate.onSent(linked, localAddress, remoteAddress, getGate());
-            }
+            getDelegate().onSent(linked, localAddress, remoteAddress, getConnection());
         }
+        return linked;
     }
 
     /**
-     *  Process income ship
+     * Check received ship for completed package
      *
-     * @param income - income ship carrying completed data package
+     * @param income - income ship carrying data package (fragment)
+     * @return ship carrying completed data package
      */
-    protected void processIncomeShip(final Arrival income) {
-        Gate.Delegate delegate = getDelegate();
-        assert delegate != null : "gate delegate should not empty";
-        delegate.onReceived(income, remoteAddress, localAddress, getGate());
+    protected Arrival assembleArrival(final Arrival income) {
+        return dock.assembleArrival(income);
+    }
+
+    /**
+     *  Append outgo Ship to the waiting queue
+     *
+     * @param outgo - departure task
+     * @return false on duplicated
+     */
+    protected boolean appendDeparture(final Departure outgo) {
+        return dock.appendDeparture(outgo);
     }
 
     /**
@@ -182,7 +193,7 @@ public abstract class StarDocker implements Docker {
      * @param now - current time
      * @return next new or timeout task
      */
-    protected Departure getOutgoShip(final long now) {
+    protected Departure getNextDeparture(final long now) {
         // this will be remove from the queue,
         // if needs retry, the caller should append it back
         return dock.getNextDeparture(now);
@@ -194,18 +205,28 @@ public abstract class StarDocker implements Docker {
      * @param outgo - outgo ship carried package/fragments
      * @return true on sent
      */
-    protected boolean sendOutgoShip(final Departure outgo) throws IOException {
+    private boolean sendDeparture(final Departure outgo) throws IOException {
         List<byte[]> fragments = outgo.getFragments();
         if (fragments == null || fragments.size() == 0) {
+            // all fragments sent
             return true;
         }
+        Connection conn = getConnection();
+        if (conn == null) {
+            // connection not ready now
+            return false;
+        }
         int success = 0;
-        Gate gate = getGate();
         for (byte[] pack : fragments) {
-            if (gate.send(pack, localAddress, remoteAddress)) {
+            if (conn.send(pack, remoteAddress) != -1) {
                 success += 1;
             }
         }
         return success == fragments.size();
+    }
+
+    @Override
+    public void purge() {
+        dock.purge();
     }
 }

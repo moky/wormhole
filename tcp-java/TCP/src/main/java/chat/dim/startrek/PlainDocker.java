@@ -34,9 +34,10 @@ import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.util.Arrays;
 
+import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
-import chat.dim.port.Gate;
+import chat.dim.port.Ship;
 
 public class PlainDocker extends StarDocker {
 
@@ -48,18 +49,25 @@ public class PlainDocker extends StarDocker {
     }
 
     @Override
-    protected Gate getGate() {
-        return gateRef.get();
-    }
-
-    @Override
-    protected Gate.Delegate getDelegate() {
+    protected Connection getConnection() {
         StarGate gate = gateRef.get();
-        return gate == null ? null : gate.getDelegate();
+        if (gate == null) {
+            return null;
+        }
+        return gate.getConnection(getRemoteAddress(), getLocalAddress());
     }
 
     @Override
-    protected Arrival getIncomeShip(byte[] data) {
+    protected Ship.Delegate getDelegate() {
+        StarGate gate = gateRef.get();
+        if (gate == null) {
+            return null;
+        }
+        return gate.getDelegate();
+    }
+
+    @Override
+    protected Arrival getArrival(byte[] data) {
         if (data == null || data.length == 0) {
             return null;
         }
@@ -67,14 +75,13 @@ public class PlainDocker extends StarDocker {
     }
 
     @Override
-    protected Arrival checkIncomeShip(Arrival income) {
+    protected Arrival checkArrival(Arrival income) {
         assert income instanceof PlainArrival : "arrival ship error: " + income;
         byte[] data = ((PlainArrival) income).getPackage();
         if (data.length == 4) {
             if (Arrays.equals(data, PING)) {
                 // PING -> PONG
-                PlainDeparture outgo = pack(PONG, Departure.Priority.SLOWER.value);
-                dock.appendDeparture(outgo);
+                appendDeparture(pack(PONG, Departure.Priority.SLOWER.value));
                 return null;
             } else if (Arrays.equals(data, PONG)
                     || Arrays.equals(data, NOOP)) {
@@ -85,12 +92,8 @@ public class PlainDocker extends StarDocker {
         return income;
     }
 
-    public void sendData(byte[] payload, int priority) {
-        Departure ship = pack(payload, priority);
-        dock.appendDeparture(ship);
-    }
-    public void sendData(byte[] payload) {
-        sendData(payload, Departure.Priority.NORMAL.value);
+    public void send(byte[] payload) {
+        appendDeparture(pack(payload, Departure.Priority.NORMAL.value));
     }
 
     @Override
@@ -100,8 +103,7 @@ public class PlainDocker extends StarDocker {
 
     @Override
     public void heartbeat() {
-        PlainDeparture outgo = pack(PING, Departure.Priority.SLOWER.value);
-        dock.appendDeparture(outgo);
+        appendDeparture(pack(PING, Departure.Priority.SLOWER.value));
     }
 
     static final byte[] PING = {'P', 'I', 'N', 'G'};
