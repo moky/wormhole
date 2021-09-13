@@ -30,74 +30,74 @@
  */
 package chat.dim.tcp;
 
+import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 
-import chat.dim.net.BaseConnection;
 import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
+import chat.dim.type.Pair;
 
 public class StreamHub extends BaseHub {
 
-    // remote => channel
-    private final Map<SocketAddress, Channel> channels = new WeakHashMap<>();
+    // (remote, local) => channel
+    private final Map<Pair<SocketAddress, SocketAddress>, Channel> channels = new WeakHashMap<>();
 
     public StreamHub(Connection.Delegate delegate) {
         super(delegate);
     }
 
     @Override
-    public Connection getConnection(SocketAddress remote, SocketAddress local) {
-        Connection conn = super.getConnection(remote, local);
-        if (conn == null) {
-            conn = createConnection(remote, local);
-            if (conn != null) {
-                setConnection(remote, local, conn);
-            }
-        }
-        return conn;
+    protected Set<Channel> allChannels() {
+        return new HashSet<>(channels.values());
     }
 
-    private Connection createConnection(SocketAddress remote, SocketAddress local) {
-        Channel sock = getChannel(remote, local);
-        if (sock == null || !sock.isOpen()) {
-            return null;
-        }
-        BaseConnection conn = new BaseConnection(sock, remote, local);
-        conn.setDelegate(getDelegate());
-        conn.setHub(this);
-        conn.start();  // start FSM
-        return conn;
+    protected void putChannel(Channel channel) {
+        SocketAddress remote = channel.getRemoteAddress();
+        SocketAddress local = channel.getLocalAddress();
+        channels.put(new Pair<>(remote, local), channel);
     }
 
     @Override
     public Channel getChannel(SocketAddress remote, SocketAddress local) {
-        return channels.get(remote);
+        return channels.get(new Pair<>(remote, local));
     }
 
     @Override
     public void closeChannel(Channel channel) {
         if (channel == null) {
             return;
-        }
-        channels.remove(channel.getRemoteAddress());
-        super.closeChannel(channel);
-    }
-
-    protected void setChannel(SocketAddress remote, Channel sock) {
-        if (sock == null) {
-            channels.remove(remote);
         } else {
-            channels.put(remote, sock);
+            removeChannel(channel);
+        }
+        try {
+            if (channel.isOpen()) {
+                channel.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
-    @Override
-    protected Set<Channel> allChannels() {
-        return new HashSet<>(channels.values());
+    private void removeChannel(Channel channel) {
+        SocketAddress remote = channel.getRemoteAddress();
+        SocketAddress local = channel.getLocalAddress();
+        if (channels.remove(new Pair<>(remote, local)) == channel) {
+            // removed by key
+            return;
+        }
+        // remove by value
+        Iterator<Map.Entry<Pair<SocketAddress, SocketAddress>, Channel>> it;
+        it = channels.entrySet().iterator();
+        while (it.hasNext()) {
+            if (it.next().getValue() == channel) {
+                it.remove();
+            }
+        }
     }
 }

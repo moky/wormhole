@@ -12,7 +12,6 @@ import chat.dim.port.Departure;
 import chat.dim.port.Gate;
 import chat.dim.skywalker.Runner;
 import chat.dim.startrek.PlainArrival;
-import chat.dim.startrek.PlainDeparture;
 import chat.dim.tcp.ClientHub;
 
 public class Client implements Gate.Delegate {
@@ -48,7 +47,7 @@ public class Client implements Gate.Delegate {
 
     @Override
     public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, SocketAddress local, Gate gate) {
-        TCPGate.info("!!! connection (" + local + ", " + remote + ") state changed: " + oldStatus + " -> " + newStatus);
+        TCPGate.info("!!! connection (" + remote + ", " + local + ") state changed: " + oldStatus + " -> " + newStatus);
     }
 
     @Override
@@ -61,9 +60,8 @@ public class Client implements Gate.Delegate {
 
     @Override
     public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
-        assert outgo instanceof PlainDeparture : "departure ship error: " + outgo;
-        int bodyLen = ((PlainDeparture) outgo).getPackage().length;
-        TCPGate.info("message sent: " + bodyLen + " byte(s) to " + destination);
+        // plain departure has no response,
+        // we would not know whether the task is success here
     }
 
     @Override

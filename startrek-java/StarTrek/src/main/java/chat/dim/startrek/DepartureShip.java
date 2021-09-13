@@ -68,12 +68,12 @@ public abstract class DepartureShip implements Departure {
 
     @Override
     public boolean isTimeout(final long now) {
-        return retries < MAX_RETRIES && now > lastTime + EXPIRES;
+        return retries < MAX_RETRIES && lastTime + EXPIRES < now;
     }
 
     @Override
     public boolean isFailed(final long now) {
-        return now > lastTime + EXPIRES * (MAX_RETRIES - retries + 2);
+        return 0 < lastTime && lastTime + EXPIRES * (MAX_RETRIES - retries + 2) < now;
     }
 
     @Override

@@ -79,10 +79,9 @@ public class ServerHub extends StreamHub implements Runnable {
         while (isRunning()) {
             try {
                 sock = master.accept();
-                System.out.println("new channel: " + sock);
                 if (sock != null) {
                     remote = sock.getRemoteAddress();
-                    setChannel(remote, new StreamChannel(sock, remote, localAddress));
+                    putChannel(new StreamChannel(sock, remote, localAddress));
                 }
             } catch (IOException e) {
                 e.printStackTrace();

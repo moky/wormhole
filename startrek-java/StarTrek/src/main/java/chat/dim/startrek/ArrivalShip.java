@@ -48,7 +48,7 @@ public abstract class ArrivalShip implements Arrival {
 
     @Override
     public boolean isFailed(final long now) {
-        return now > expired;
+        return 0 < expired && expired < now;
     }
 
     @Override

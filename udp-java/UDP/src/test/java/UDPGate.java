@@ -1,7 +1,9 @@
 
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import chat.dim.mtp.DataType;
@@ -9,7 +11,6 @@ import chat.dim.mtp.Package;
 import chat.dim.mtp.PackageDocker;
 import chat.dim.net.Connection;
 import chat.dim.net.Hub;
-import chat.dim.port.Departure;
 import chat.dim.port.Docker;
 import chat.dim.skywalker.Runner;
 import chat.dim.startrek.StarGate;
@@ -74,7 +75,9 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
         // TODO: check data format before creating docker
         Connection conn = getConnection(remote, local);
         if (conn == null) {
-            info("connection not found: " + remote);
+            error("connection not found: " + remote + ", " + local);
+        } else {
+            info("creating docker: " + remote + ", " + local);
         }
         return new PackageDocker(remote, local, this);
     }
@@ -96,7 +99,7 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
 
     public void sendCommand(byte[] body, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.COMMAND, new Data(body));
-        send(pack, Departure.Priority.SLOWER.value, source, destination);
+        send(pack/*, Departure.Priority.SLOWER.value*/, source, destination);
     }
 
     public void sendMessage(byte[] body, SocketAddress source, SocketAddress destination) {
@@ -113,11 +116,13 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
         ((PackageDocker) worker).send(pack);
     }
 
-    static void info(String msg) {
-        System.out.printf("%s\n", msg);
-    }
     static void info(byte[] data) {
         info(new String(data, StandardCharsets.UTF_8));
+    }
+    static void info(String msg) {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String now = formatter.format(new Date());
+        System.out.printf("[%s] %s\n", now, msg);
     }
     static void error(String msg) {
         System.out.printf("ERROR> %s\n", msg);

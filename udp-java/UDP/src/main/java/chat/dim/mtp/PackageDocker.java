@@ -72,7 +72,7 @@ public class PackageDocker extends StarDocker {
     }
 
     @Override
-    protected Arrival getArrival(byte[] data) {
+    protected Arrival getArrival(final byte[] data) {
         final Package pack = Package.parse(new Data(data));
         if (pack == null) {
             return null;
@@ -86,7 +86,7 @@ public class PackageDocker extends StarDocker {
     }
 
     @Override
-    protected Arrival checkArrival(Arrival income) {
+    protected Arrival checkArrival(final Arrival income) {
         assert income instanceof PackageArrival : "income ship error: " + income;
         PackageArrival ship = (PackageArrival) income;
         Package pack = ship.getPackage();
@@ -144,8 +144,8 @@ public class PackageDocker extends StarDocker {
             // let the caller to process it
         } else if (type.isMessageFragment()) {
             // assemble MessageFragment with cached fragments to completed Message
-            income = assembleArrival(income);
             // let the caller to process the completed message
+            return assembleArrival(income);
         } else if (type.isMessage()) {
             // respond for Message
             respondMessage(head.sn, head.pages, head.index);

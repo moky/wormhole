@@ -35,10 +35,10 @@ import java.net.SocketAddress;
 import java.nio.channels.DatagramChannel;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import chat.dim.net.BaseConnection;
 import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
@@ -53,37 +53,23 @@ public class PackageHub extends BaseHub {
     }
 
     public void bind(SocketAddress local) throws IOException {
-        Channel sock = channels.get(local);
+        Channel sock = getChannel(null, local);
         if (sock == null) {
             DatagramChannel udp = DatagramChannel.open();
             udp.socket().bind(local);
             udp.configureBlocking(false);
-            channels.put(local, new PackageChannel(udp, null, local));
+            putChannel(new PackageChannel(udp, null, local));
         }
     }
 
     @Override
-    public Connection getConnection(SocketAddress remote, SocketAddress local) {
-        Connection conn = super.getConnection(remote, local);
-        if (conn == null) {
-            conn = createConnection(remote, local);
-            if (conn != null) {
-                setConnection(remote, local, conn);
-            }
-        }
-        return conn;
+    protected Set<Channel> allChannels() {
+        return new HashSet<>(channels.values());
     }
 
-    private Connection createConnection(SocketAddress remote, SocketAddress local) {
-        Channel sock = getChannel(remote, local);
-        if (sock == null || !sock.isOpen()) {
-            return null;
-        }
-        BaseConnection conn = new BaseConnection(sock, remote, local);
-        conn.setDelegate(getDelegate());
-        conn.setHub(this);
-        conn.start();  // start FSM
-        return conn;
+    protected void putChannel(Channel channel) {
+        SocketAddress local = channel.getLocalAddress();
+        channels.put(local, channel);
     }
 
     @Override
@@ -92,16 +78,35 @@ public class PackageHub extends BaseHub {
     }
 
     @Override
-    protected Set<Channel> allChannels() {
-        return new HashSet<>(channels.values());
+    public void closeChannel(Channel channel) {
+        if (channel == null || !channel.isConnected()) {
+            // DON'T close bound socket channel
+            return;
+        } else {
+            removeChannel(channel);
+        }
+        try {
+            if (channel.isOpen()) {
+                channel.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    @Override
-    public void closeChannel(Channel channel) {
-        if (channel == null) {
+    private void removeChannel(Channel channel) {
+        SocketAddress local = channel.getLocalAddress();
+        if (channels.remove(local) == channel) {
+            // removed by key
             return;
         }
-        channels.remove(channel.getRemoteAddress());
-        super.closeChannel(channel);
+        // remove by value
+        Iterator<Map.Entry<SocketAddress, Channel>> it;
+        it = channels.entrySet().iterator();
+        while (it.hasNext()) {
+            if (it.next().getValue() == channel) {
+                it.remove();
+            }
+        }
     }
 }

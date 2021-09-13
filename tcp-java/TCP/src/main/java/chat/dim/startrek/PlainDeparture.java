@@ -53,6 +53,7 @@ public class PlainDeparture extends DepartureShip {
 
     @Override
     public Object getSN() {
+        // plain ship has no SN
         return null;
     }
 
@@ -63,6 +64,7 @@ public class PlainDeparture extends DepartureShip {
 
     @Override
     public boolean checkResponse(Arrival arrival) {
+        // plain departure needs no response
         return false;
     }
 }

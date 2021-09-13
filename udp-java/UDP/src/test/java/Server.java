@@ -43,7 +43,7 @@ public class Server implements Gate.Delegate {
 
     @Override
     public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, SocketAddress local, Gate gate) {
-        UDPGate.info("!!! connection (" + local + ", " + remote + ") state changed: " + oldStatus + " -> " + newStatus);
+        UDPGate.info("!!! connection (" + remote + ", " + local + ") state changed: " + oldStatus + " -> " + newStatus);
     }
 
     @Override

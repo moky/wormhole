@@ -42,8 +42,8 @@ public class Client implements Gate.Delegate {
     }
 
     private void send(byte[] data) {
-        gate.sendCommand(data, localAddress, remoteAddress);
         gate.sendMessage(data, localAddress, remoteAddress);
+        gate.sendCommand(data, localAddress, remoteAddress);
     }
 
     //
@@ -52,7 +52,7 @@ public class Client implements Gate.Delegate {
 
     @Override
     public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, SocketAddress local, Gate gate) {
-        UDPGate.info("!!! connection (" + local + ", " + remote + ") state changed: " + oldStatus + " -> " + newStatus);
+        UDPGate.info("!!! connection (" + remote + ", " + local + ") state changed: " + oldStatus + " -> " + newStatus);
     }
 
     @Override
@@ -90,6 +90,7 @@ public class Client implements Gate.Delegate {
         }
 
         byte[] data;
+        Runner.idle(5000);
 
         for (int index = 0; index < 16; ++index) {
             data = (index + " sheep:" + text).getBytes();

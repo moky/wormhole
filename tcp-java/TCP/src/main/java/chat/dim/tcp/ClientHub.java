@@ -45,20 +45,23 @@ public class ClientHub extends StreamHub {
 
     @Override
     public Channel getChannel(SocketAddress remote, SocketAddress local) {
-        Channel sock = super.getChannel(remote, local);
-        if (sock == null) {
-            sock = createChannel(remote, local);
-            if (sock != null) {
-                setChannel(remote, sock);
+        Channel channel = super.getChannel(remote, local);
+        if (channel == null) {
+            channel = createChannel(remote, local);
+            if (channel != null) {
+                putChannel(channel);
             }
         }
-        return sock;
+        return channel;
     }
 
     private Channel createChannel(SocketAddress remote, SocketAddress local) {
         SocketChannel sock;
         try {
-            sock = createSocketChannel(remote);
+            sock = createSocket(remote, local);
+            if (local == null) {
+                local = sock.getLocalAddress();
+            }
         } catch (IOException e) {
             e.printStackTrace();
             return null;
@@ -66,10 +69,13 @@ public class ClientHub extends StreamHub {
         return new StreamChannel(sock, remote, local);
     }
 
-    private static SocketChannel createSocketChannel(SocketAddress remote) throws IOException {
+    private static SocketChannel createSocket(SocketAddress remote, SocketAddress local) throws IOException {
         SocketChannel sock = SocketChannel.open();
         sock.configureBlocking(true);
         sock.socket().setReuseAddress(false);
+        if (local != null) {
+            sock.bind(local);
+        }
         sock.connect(remote);
         sock.configureBlocking(false);
         return sock;

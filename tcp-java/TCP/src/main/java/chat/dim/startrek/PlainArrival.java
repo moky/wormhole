@@ -47,11 +47,14 @@ public class PlainArrival extends ArrivalShip {
 
     @Override
     public Object getSN() {
+        // plain ship has no SN
         return null;
     }
 
     @Override
     public Arrival assemble(Arrival income) {
-        return income;
+        assert this == income : "plain arrival error: " + income + ", " + this;
+        // plain arrival needs no assembling
+        return this;
     }
 }

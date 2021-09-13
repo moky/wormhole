@@ -76,6 +76,10 @@ public abstract class StarGate implements Gate, Connection.Delegate {
      */
     protected abstract Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data);
 
+    protected void removeDocker(SocketAddress remote, SocketAddress local, Docker docker) {
+        dockerPool.remove(remote, local, docker);
+    }
+
     // if docker not exists, create after checking data format
     protected Docker getDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
         Docker worker = dockerPool.get(remote, local);
@@ -138,7 +142,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
             }
             if (state == null || state.equals(ConnectionState.ERROR)) {
                 // connection lost, remove worker
-                dockerPool.remove(remote, local, worker);
+                removeDocker(remote, local, worker);
             } else {
                 // clear expired tasks
                 worker.purge();
@@ -164,20 +168,25 @@ public abstract class StarGate implements Gate, Connection.Delegate {
 
     @Override
     public void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
-        // heartbeat when connection expired
-        if (current != null && current.equals(ConnectionState.EXPIRED)) {
+        SocketAddress remote = connection.getRemoteAddress();
+        SocketAddress local = connection.getLocalAddress();
+        if (current == null) {
+            assert previous != null : "should not happen";
+        } else if (current.equals(ConnectionState.EXPIRED)) {
+            // heartbeat when connection expired
             try {
                 heartbeat(connection);
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        } else if (current.equals(ConnectionState.ERROR)) {
+            // connection lost, remove the docker for it
+            removeDocker(remote, local, null);
         }
         // callback when status changed
         Status s1 = Status.getStatus(previous);
         Status s2 = Status.getStatus(current);
         if (!s1.equals(s2)) {
-            SocketAddress remote = connection.getRemoteAddress();
-            SocketAddress local = connection.getLocalAddress();
             getDelegate().onStatusChanged(s1, s2, remote, local, this);
         }
     }

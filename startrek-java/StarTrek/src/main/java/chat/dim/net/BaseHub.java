@@ -71,25 +71,28 @@ public abstract class BaseHub implements Hub {
      */
     protected abstract Set<Channel> allChannels();
 
-    @Override
-    public void closeChannel(Channel channel) {
-        if (channel == null || !channel.isOpen()) {
-            return;
+    private Connection createConnection(SocketAddress remote, SocketAddress local) {
+        Channel sock = getChannel(remote, local);
+        if (sock == null || !sock.isOpen()) {
+            return null;
         }
-        try {
-            channel.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        BaseConnection conn = new BaseConnection(sock, remote, local);
+        conn.setDelegate(getDelegate());
+        conn.setHub(this);
+        conn.start();  // start FSM
+        return conn;
     }
 
     @Override
     public Connection getConnection(SocketAddress remote, SocketAddress local) {
-        return connectionPool.get(remote, local);
-    }
-
-    protected void setConnection(SocketAddress remote, SocketAddress local, Connection connection) {
-        connectionPool.put(remote, local, connection);
+        Connection conn = connectionPool.get(remote, local);
+        if (conn == null) {
+            conn = createConnection(remote, local);
+            if (conn != null) {
+                connectionPool.put(remote, local, conn);
+            }
+        }
+        return conn;
     }
 
     @Override

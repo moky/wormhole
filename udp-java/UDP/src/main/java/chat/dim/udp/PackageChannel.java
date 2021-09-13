@@ -50,7 +50,7 @@ public class PackageChannel extends BaseChannel<DatagramChannel> {
             return null;
         }
         if (impl.isConnected()) {
-            return impl.read(dst) > 0 ? impl.getRemoteAddress() : null;
+            return impl.read(dst) > 0 ? getRemoteAddress() : null;
         } else {
             return impl.receive(dst);
         }
@@ -63,8 +63,8 @@ public class PackageChannel extends BaseChannel<DatagramChannel> {
             return -1;
         }
         if (impl.isConnected()) {
-            assert target == null || target.equals(impl.getRemoteAddress()) :
-                    "target address error: " + target + ", " + impl.getRemoteAddress();
+            assert target == null || target.equals(getRemoteAddress()) :
+                    "target address error: " + target + ", " + getRemoteAddress();
             return impl.write(src);
         } else {
             assert target != null : "target address missed for unbound channel";
