@@ -55,19 +55,19 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     }
 
     protected void idle() {
-        Runner.idle(8);
+        Runner.idle(128);
     }
 
     @Override
     public boolean process() {
-        boolean incoming = hub.process();
+        boolean incoming = getHub().process();
         boolean outgoing = super.process();
         return incoming || outgoing;
     }
 
     @Override
     public Connection getConnection(SocketAddress remote, SocketAddress local) {
-        return hub.getConnection(remote, local);
+        return getHub().getConnection(remote, local);
     }
 
     @Override

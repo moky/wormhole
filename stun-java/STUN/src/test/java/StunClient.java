@@ -7,7 +7,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
+import chat.dim.net.Connection;
 import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
@@ -16,27 +18,32 @@ import chat.dim.skywalker.Runner;
 import chat.dim.startrek.PlainArrival;
 import chat.dim.startrek.PlainDeparture;
 import chat.dim.stun.Client;
-import chat.dim.udp.ClientHub;
+import chat.dim.udp.PackageHub;
 
 public class StunClient extends Client implements Gate.Delegate {
 
-    private SocketAddress remoteAddress = null;
-
-    private final UDPGate<ClientHub> gate;
+    private final UDPGate<PackageHub> gate;
 
     StunClient(InetSocketAddress local) {
         super(local);
         gate = new UDPGate<>(this);
-        gate.hub = new ClientHub(gate);
+        gate.setHub(new PackageHub(gate));
+    }
+
+    private UDPGate<PackageHub> getGate() {
+        return gate;
+    }
+    private PackageHub getHub() {
+        return gate.getHub();
     }
 
     public void start() throws IOException {
-        gate.hub.bind(sourceAddress);
-        gate.start();
+        getHub().bind(sourceAddress);
+        getGate().start();
     }
 
     void stop() {
-        gate.stop();
+        getGate().stop();
     }
 
     //
@@ -44,12 +51,12 @@ public class StunClient extends Client implements Gate.Delegate {
     //
 
     @Override
-    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, Gate gate) {
-        info("!!! connection (" + remote + ") state changed: " + oldStatus + " -> " + newStatus);
+    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, SocketAddress local, Gate gate) {
+        info("!!! connection (" + remote + ", " + local + ") state changed: " + oldStatus + " -> " + newStatus);
     }
 
     @Override
-    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Connection connection) {
         assert income instanceof PlainArrival : "arrival ship error: " + income;
         byte[] data = ((PlainArrival) income).getPackage();
         if (data != null && data.length > 0) {
@@ -59,20 +66,20 @@ public class StunClient extends Client implements Gate.Delegate {
     private final List<byte[]> chunks = new ArrayList<>();
 
     @Override
-    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         assert outgo instanceof PlainDeparture : "departure ship error: " + outgo;
         int bodyLen = ((PlainDeparture) outgo).getPackage().length;
         info("message sent: " + bodyLen + " byte(s) to " + destination);
     }
 
     @Override
-    public void onError(Error error, Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onError(Throwable error, Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         UDPGate.error(error.getMessage());
     }
 
     @Override
     public int send(byte[] data, SocketAddress source, SocketAddress destination) {
-        gate.sendData(data, source, destination);
+        getGate().sendData(data, source, destination);
         return 0;
     }
 
@@ -84,13 +91,14 @@ public class StunClient extends Client implements Gate.Delegate {
             if (chunks.size() > 0) {
                 data = chunks.remove(0);
                 break;
-            }
-            if (timeout < (new Date()).getTime()) {
+            } else if (timeout < (new Date()).getTime()) {
+                // timeout
                 break;
+            } else {
+                Runner.idle(256);
             }
-            Runner.idle(256);
         }
-        info("received " + (data == null ? 0 : data.length) + " bytes from " + remoteAddress);
+        info("received " + (data == null ? 0 : data.length) + " bytes");
         return data;
     }
 
@@ -99,9 +107,7 @@ public class StunClient extends Client implements Gate.Delegate {
         UDPGate.info(msg);
     }
 
-    public void detect(SocketAddress serverAddress) throws IOException {
-        remoteAddress = serverAddress;
-        gate.hub.connect(remoteAddress, sourceAddress);
+    public void detect(SocketAddress serverAddress) {
         info("----------------------------------------------------------------");
         info("-- Detection starts from : " + serverAddress);
         Map<String, Object> res = getNatType(serverAddress);
@@ -111,40 +117,46 @@ public class StunClient extends Client implements Gate.Delegate {
     }
 
     static String HOST;
-    static final int PORT = 9527;
+    static int PORT;
 
     static {
         try {
             HOST = Hub.getLocalAddressString();
+            Random random = new Random();
+            PORT = 19900 + random.nextInt(100);
         } catch (SocketException e) {
             e.printStackTrace();
         }
     }
 
+    static InetSocketAddress[] servers = {
+            new InetSocketAddress(StunServer.HOST, StunServer.PORT),
+
+            //new InetSocketAddress("stun.xten.com", 3478),
+            //new InetSocketAddress("stun.voipbuster.com", 3478),
+            //new InetSocketAddress("stun.sipgate.net", 3478),
+            //new InetSocketAddress("stun.ekiga.net", 3478),
+            //new InetSocketAddress("stun.schlund.de", 3478),
+            new InetSocketAddress("stun.voipstunt.com", 3478),
+            //new InetSocketAddress("stun.counterpath.com", 3478),
+            //new InetSocketAddress("stun.1und1.de", 3478),
+            //new InetSocketAddress("stun.gmx.net", 3478),
+            //new InetSocketAddress("stun.callwithus.com", 3478),
+            //new InetSocketAddress("stun.counterpath.net", 3478),
+            //new InetSocketAddress("stun.internetcalls.com", 3478),
+    };
+
     public static void main(String[] args) throws IOException {
 
-        InetSocketAddress a01 = new InetSocketAddress("stun.xten.com", 3478);
-        InetSocketAddress a02 = new InetSocketAddress("stun.voipbuster.com", 3478);
-        InetSocketAddress a03 = new InetSocketAddress("stun.sipgate.net", 3478);
-        InetSocketAddress a04 = new InetSocketAddress("stun.ekiga.net", 3478);
-        InetSocketAddress a05 = new InetSocketAddress("stun.schlund.de", 3478);
-        InetSocketAddress a06 = new InetSocketAddress("stun.voipstunt.com", 3478);  // Full Cone NAT?
-        InetSocketAddress a07 = new InetSocketAddress("stun.counterpath.com", 3478);
-        InetSocketAddress a08 = new InetSocketAddress("stun.1und1.de", 3478);
-        InetSocketAddress a09 = new InetSocketAddress("stun.gmx.net", 3478);
-        InetSocketAddress a10 = new InetSocketAddress("stun.callwithus.com", 3478);
-        InetSocketAddress a11 = new InetSocketAddress("stun.counterpath.net", 3478);
-        InetSocketAddress a12 = new InetSocketAddress("stun.internetcalls.com", 3478);
-
-        System.out.printf("connecting to STUN server: (%s:%d) ...\n", StunServer.HOST, StunServer.PORT);
-
         InetSocketAddress local = new InetSocketAddress(HOST, PORT);
-        InetSocketAddress remote = new InetSocketAddress(StunServer.HOST, StunServer.PORT);
         StunClient client = new StunClient(local);
 
         client.start();
-        client.detect(a06);
-        client.detect(remote);
+
+        for (InetSocketAddress stun : servers) {
+            client.detect(stun);
+        }
+
         client.stop();
     }
 }

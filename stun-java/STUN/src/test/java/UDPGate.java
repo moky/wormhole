@@ -1,6 +1,7 @@
 
 import java.net.SocketAddress;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -14,10 +15,17 @@ import chat.dim.startrek.StarGate;
 public class UDPGate<H extends Hub> extends StarGate implements Runnable {
 
     private boolean running = false;
-    H hub = null;
+    private H hub = null;
 
     public UDPGate(Delegate delegate) {
         super(delegate);
+    }
+
+    public H getHub() {
+        return hub;
+    }
+    public void setHub(H h) {
+        hub = h;
     }
 
     public void start() {
@@ -28,38 +36,50 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
         running = false;
     }
 
+    public boolean isRunning() {
+        return running;
+    }
+
     @Override
     public void run() {
         running = true;
-        while (running) {
+        while (isRunning()) {
             if (!process()) {
-                Runner.idle(8);
+                idle();
             }
         }
     }
 
-    @Override
-    public boolean process() {
-        boolean activated = hub.process();
-        boolean busy = super.process();
-        return activated || busy;
+    protected void idle() {
+        Runner.idle(128);
     }
 
     @Override
-    protected Connection getConnection(SocketAddress remote, SocketAddress local) {
-        return hub.getConnection(remote, local);
+    public boolean process() {
+        boolean incoming = getHub().process();
+        boolean outgoing = super.process();
+        return incoming || outgoing;
+    }
+
+    @Override
+    public Connection getConnection(SocketAddress remote, SocketAddress local) {
+        return getHub().getConnection(remote, local);
     }
 
     @Override
     protected Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
-        // TODO: check data format before creating docker
+        // STUN package has no wrapper, so we use plain docker here
         return new PlainDocker(remote, local, this);
     }
 
     @Override
     protected List<byte[]> cacheAdvanceParty(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
         // TODO: cache the advance party before decide which docker to use
-        return null;
+        List<byte[]> array = new ArrayList<>();
+        if (data != null) {
+            array.add(data);
+        }
+        return array;
     }
 
     @Override
@@ -69,7 +89,7 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
 
     void sendData(byte[] payload, SocketAddress source, SocketAddress destination) {
         Docker worker = getDocker(destination, source, null);
-        ((PlainDocker) worker).sendData(payload);
+        ((PlainDocker) worker).send(payload);
     }
 
     static void info(String msg) {

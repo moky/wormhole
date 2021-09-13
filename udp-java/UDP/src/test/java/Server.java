@@ -28,13 +28,20 @@ public class Server implements Gate.Delegate {
         gate.setHub(new PackageHub(gate));
     }
 
+    private UDPGate<PackageHub> getGate() {
+        return gate;
+    }
+    private PackageHub getHub() {
+        return gate.getHub();
+    }
+
     public void start() throws IOException {
-        gate.getHub().bind(localAddress);
-        gate.start();
+        getHub().bind(localAddress);
+        getGate().start();
     }
 
     private void send(byte[] data, SocketAddress destination) throws IOException {
-        gate.sendCommand(data, localAddress, destination);
+        getGate().sendCommand(data, localAddress, destination);
     }
 
     //

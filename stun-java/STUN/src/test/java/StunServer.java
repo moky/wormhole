@@ -4,6 +4,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 
+import chat.dim.net.Connection;
 import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
@@ -12,37 +13,48 @@ import chat.dim.startrek.PlainArrival;
 import chat.dim.startrek.PlainDeparture;
 import chat.dim.stun.Server;
 import chat.dim.type.Data;
-import chat.dim.udp.ServerHub;
+import chat.dim.udp.PackageHub;
 
 public class StunServer extends Server implements Gate.Delegate {
 
-    private final UDPGate<ServerHub> gate;
+    private final UDPGate<PackageHub> gate;
 
     public StunServer(InetSocketAddress sourceAddress, int changePort,
                   InetSocketAddress changedAddress, InetSocketAddress neighbour) {
         super(sourceAddress, changePort, changedAddress, neighbour);
         gate = new UDPGate<>(this);
-        gate.hub = new ServerHub(gate);
+        gate.setHub(new PackageHub(gate));
+    }
+
+    private UDPGate<PackageHub> getGate() {
+        return gate;
+    }
+    private PackageHub getHub() {
+        return gate.getHub();
     }
 
     public void start() throws IOException {
         SocketAddress secondaryAddress = new InetSocketAddress(sourceAddress.getAddress(), changePort);
-        gate.hub.bind(sourceAddress);
-        gate.hub.bind(secondaryAddress);
-        gate.start();
+        getHub().bind(sourceAddress);
+        getHub().bind(secondaryAddress);
+        getGate().start();
 
         info("STUN server started");
         info("source address: " + sourceAddress + ", another port: " + changePort + ", neighbour server: " + neighbour);
         info("changed address: " + changedAddress);
     }
 
+    //
+    //  Gate Delegate
+    //
+
     @Override
-    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, Gate gate) {
-        info("!!! connection (" + remote + ") state changed: " + oldStatus + " -> " + newStatus);
+    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, SocketAddress local, Gate gate) {
+        info("!!! connection (" + remote + ", " + local + ") state changed: " + oldStatus + " -> " + newStatus);
     }
 
     @Override
-    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Connection connection) {
         assert income instanceof PlainArrival : "arrival ship error: " + income;
         byte[] data = ((PlainArrival) income).getPackage();
         if (data != null && data.length > 0) {
@@ -51,27 +63,21 @@ public class StunServer extends Server implements Gate.Delegate {
     }
 
     @Override
-    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         assert outgo instanceof PlainDeparture : "departure ship error: " + outgo;
         int bodyLen = ((PlainDeparture) outgo).getPackage().length;
         info("message sent: " + bodyLen + " byte(s) to " + destination);
     }
 
     @Override
-    public void onError(Error error, Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onError(Throwable error, Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         UDPGate.error(error.getMessage());
     }
 
     @Override
     public int send(byte[] data, SocketAddress source, SocketAddress destination) {
-        try {
-            gate.hub.connect(destination, source);
-            gate.sendData(data, source, destination);
-            return 0;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return -1;
-        }
+        getGate().sendData(data, source, destination);
+        return 0;
     }
 
     @Override

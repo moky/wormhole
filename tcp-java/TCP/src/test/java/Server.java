@@ -26,14 +26,21 @@ public class Server implements Gate.Delegate {
         gate.setHub(new ServerHub(gate));
     }
 
+    private TCPGate<ServerHub> getGate() {
+        return gate;
+    }
+    private ServerHub getHub() {
+        return gate.getHub();
+    }
+
     public void start() throws IOException {
-        gate.getHub().bind(localAddress);
-        gate.getHub().start();
-        gate.start();
+        getHub().bind(localAddress);
+        getHub().start();
+        getGate().start();
     }
 
     private void send(byte[] data, SocketAddress destination) {
-        gate.send(data, localAddress, destination);
+        getGate().send(data, localAddress, destination);
     }
 
     //

@@ -1,5 +1,8 @@
 
 import java.net.SocketAddress;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import chat.dim.mtp.DataType;
@@ -15,10 +18,17 @@ import chat.dim.type.Data;
 public class UDPGate<H extends Hub> extends StarGate implements Runnable {
 
     private boolean running = false;
-    H hub = null;
+    private H hub = null;
 
     public UDPGate(Delegate delegate) {
         super(delegate);
+    }
+
+    public H getHub() {
+        return hub;
+    }
+    public void setHub(H h) {
+        hub = h;
     }
 
     public void start() {
@@ -29,26 +39,34 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
         running = false;
     }
 
+    public boolean isRunning() {
+        return running;
+    }
+
     @Override
     public void run() {
         running = true;
-        while (running) {
+        while (isRunning()) {
             if (!process()) {
-                Runner.idle(8);
+                idle();
             }
         }
     }
 
-    @Override
-    public boolean process() {
-        boolean activated = hub.process();
-        boolean busy = super.process();
-        return activated || busy;
+    protected void idle() {
+        Runner.idle(128);
     }
 
     @Override
-    protected Connection getConnection(SocketAddress remote, SocketAddress local) {
-        return hub.getConnection(remote, local);
+    public boolean process() {
+        boolean incoming = getHub().process();
+        boolean outgoing = super.process();
+        return incoming || outgoing;
+    }
+
+    @Override
+    public Connection getConnection(SocketAddress remote, SocketAddress local) {
+        return getHub().getConnection(remote, local);
     }
 
     @Override
@@ -60,7 +78,11 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     @Override
     protected List<byte[]> cacheAdvanceParty(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
         // TODO: cache the advance party before decide which docker to use
-        return null;
+        List<byte[]> array = new ArrayList<>();
+        if (data != null) {
+            array.add(data);
+        }
+        return array;
     }
 
     @Override
@@ -70,18 +92,27 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
 
     void sendCommand(byte[] body, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.COMMAND, new Data(body));
-        Docker worker = getDocker(destination, source, null);
-        ((PackageDocker) worker).sendPackage(pack);
+        send(pack/*, Departure.Priority.SLOWER.value*/, source, destination);
     }
 
     void sendMessage(byte[] body, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.MESSAGE, new Data(body));
+        send(pack, source, destination);
+    }
+
+    public void send(Package pack, int priority, SocketAddress source, SocketAddress destination) {
         Docker worker = getDocker(destination, source, null);
-        ((PackageDocker) worker).sendPackage(pack);
+        ((PackageDocker) worker).send(pack, priority);
+    }
+    public void send(Package pack, SocketAddress source, SocketAddress destination) {
+        Docker worker = getDocker(destination, source, null);
+        ((PackageDocker) worker).send(pack);
     }
 
     static void info(String msg) {
-        System.out.printf("%s\n", msg);
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String now = formatter.format(new Date());
+        System.out.printf("[%s] %s\n", now, msg);
     }
     static void error(String msg) {
         System.out.printf("ERROR> %s\n", msg);

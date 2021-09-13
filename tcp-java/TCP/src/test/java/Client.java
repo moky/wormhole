@@ -29,16 +29,20 @@ public class Client implements Gate.Delegate {
         gate.setHub(new ClientHub(gate));
     }
 
+    private TCPGate<ClientHub> getGate() {
+        return gate;
+    }
+
     public void start() {
-        gate.start();
+        getGate().start();
     }
 
     void stop() {
-        gate.stop();
+        getGate().stop();
     }
 
     private void send(byte[] data) {
-        gate.send(data, localAddress, remoteAddress);
+        getGate().send(data, localAddress, remoteAddress);
     }
 
     //

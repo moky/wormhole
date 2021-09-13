@@ -32,18 +32,25 @@ public class Client implements Gate.Delegate {
         gate.setHub(new PackageHub(gate));
     }
 
+    private UDPGate<PackageHub> getGate() {
+        return gate;
+    }
+    private PackageHub getHub() {
+        return gate.getHub();
+    }
+
     public void start() throws IOException {
-        gate.getHub().bind(localAddress);
-        gate.start();
+        getHub().bind(localAddress);
+        getGate().start();
     }
 
     void stop() {
-        gate.stop();
+        getGate().stop();
     }
 
     private void send(byte[] data) {
-        gate.sendMessage(data, localAddress, remoteAddress);
-        gate.sendCommand(data, localAddress, remoteAddress);
+        getGate().sendMessage(data, localAddress, remoteAddress);
+        getGate().sendCommand(data, localAddress, remoteAddress);
     }
 
     //

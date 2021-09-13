@@ -26,21 +26,28 @@ import chat.dim.port.Departure;
 import chat.dim.port.Gate;
 import chat.dim.skywalker.Runner;
 import chat.dim.type.Data;
-import chat.dim.udp.ClientHub;
+import chat.dim.udp.PackageHub;
 
 public class DmtpClient extends Client implements Gate.Delegate {
 
     private final SocketAddress localAddress;
     private final SocketAddress remoteAddress;
 
-    private final UDPGate<ClientHub> gate;
+    private final UDPGate<PackageHub> gate;
 
     DmtpClient(SocketAddress local, SocketAddress remote) {
         super();
         localAddress = local;
         remoteAddress = remote;
         gate = new UDPGate<>(this);
-        gate.hub = new ClientHub(gate);
+        gate.setHub(new PackageHub(gate));
+    }
+
+    private UDPGate<PackageHub> getGate() {
+        return gate;
+    }
+    private PackageHub getHub() {
+        return gate.getHub();
     }
 
     private String getIdentifier() {
@@ -49,21 +56,17 @@ public class DmtpClient extends Client implements Gate.Delegate {
 
     @Override
     public void connect(SocketAddress remote) {
-        try {
-            gate.hub.connect(remote, localAddress);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        getHub().getConnection(remote, localAddress);
     }
 
     public void start() throws IOException {
-        gate.hub.bind(localAddress);
-        gate.hub.connect(remoteAddress, localAddress);
-        gate.start();
+        getHub().bind(localAddress);
+        getHub().getConnection(remoteAddress, localAddress);
+        getGate().start();
     }
 
     void stop() {
-        gate.stop();
+        getGate().stop();
     }
 
     //
@@ -71,30 +74,30 @@ public class DmtpClient extends Client implements Gate.Delegate {
     //
 
     @Override
-    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, Gate gate) {
-        UDPGate.info("!!! connection (" + remote + ") state changed: " + oldStatus + " -> " + newStatus);
+    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, SocketAddress local, Gate gate) {
+        UDPGate.info("!!! connection (" + remote + ", " + local + ") state changed: " + oldStatus + " -> " + newStatus);
     }
 
     @Override
-    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Connection connection) {
         assert income instanceof PackageArrival : "arrival ship error: " + income;
         Package pack = ((PackageArrival) income).getPackage();
         onReceivedPackage(source, pack);
     }
 
     @Override
-    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         assert outgo instanceof PackageDeparture : "departure ship error: " + outgo;
-        Package pack = ((PackageDeparture) outgo).getPackage();
-        int bodyLen = pack.head.bodyLength;
-        if (bodyLen == -1) {
-            bodyLen = pack.body.getSize();
-        }
-        UDPGate.info("message sent: " + bodyLen + " byte(s) to " + destination);
+        //Package pack = ((PackageDeparture) outgo).getPackage();
+        //int bodyLen = pack.head.bodyLength;
+        //if (bodyLen == -1) {
+        //    bodyLen = pack.body.getSize();
+        //}
+        //UDPGate.info("message sent: " + bodyLen + " byte(s) to " + destination);
     }
 
     @Override
-    public void onError(Error error, Departure outgo, SocketAddress source, SocketAddress destination, Gate gate) {
+    public void onError(Throwable error, Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         UDPGate.error(error.getMessage());
     }
 
@@ -104,13 +107,13 @@ public class DmtpClient extends Client implements Gate.Delegate {
 
     @Override
     public boolean sendMessage(Message msg, SocketAddress destination) {
-        gate.sendMessage(msg.getBytes(), localAddress, destination);
+        getGate().sendMessage(msg.getBytes(), localAddress, destination);
         return true;
     }
 
     @Override
     public boolean sendCommand(Command cmd, SocketAddress destination) {
-        gate.sendCommand(cmd.getBytes(), localAddress, destination);
+        getGate().sendCommand(cmd.getBytes(), localAddress, destination);
         return true;
     }
 
@@ -142,13 +145,13 @@ public class DmtpClient extends Client implements Gate.Delegate {
         return true;
     }
 
-    public void login(String identifier) throws IOException {
+    public void login(String identifier) {
         database.identifier = identifier;
-        gate.hub.connect(remoteAddress, localAddress);
+        getHub().getConnection(remoteAddress, localAddress);
         sayHello(remoteAddress);
     }
 
-    public List<Session> getSessions(String receiver) throws IOException {
+    public List<Session> getSessions(String receiver) {
         List<Session> sessions = new ArrayList<>();
         LocationDelegate delegate = getDelegate();
         assert delegate != null : "location delegate not set";
@@ -161,7 +164,7 @@ public class DmtpClient extends Client implements Gate.Delegate {
             // source address
             sourceAddress = item.getSourceAddress();
             if (sourceAddress != null) {
-                conn = gate.hub.connect(sourceAddress, localAddress);
+                conn = getHub().getConnection(sourceAddress, localAddress);
                 if (conn != null) {
                     state = conn.getState();
                     if (state != null && (state.equals(ConnectionState.READY) ||
@@ -175,7 +178,7 @@ public class DmtpClient extends Client implements Gate.Delegate {
             // mapped address
             mappedAddress = item.getMappedAddress();
             if (mappedAddress != null) {
-                conn = gate.hub.connect(mappedAddress, localAddress);
+                conn = getHub().getConnection(mappedAddress, localAddress);
                 if (conn != null) {
                     state = conn.getState();
                     if (state != null && (state.equals(ConnectionState.READY) ||
@@ -194,7 +197,7 @@ public class DmtpClient extends Client implements Gate.Delegate {
     //  test
     //
 
-    void sendText(String receiver, String text) throws IOException {
+    void sendText(String receiver, String text) {
         List<Session> sessions = getSessions(receiver);
         if (sessions.size() == 0) {
             UDPGate.error("user (" + receiver + ") not login ...");
@@ -212,7 +215,7 @@ public class DmtpClient extends Client implements Gate.Delegate {
         }
     }
 
-    void test(String friend) throws IOException {
+    void test(String friend) {
 
         // test send
         String text = "你好 " + friend + "!";
@@ -250,7 +253,7 @@ public class DmtpClient extends Client implements Gate.Delegate {
         DmtpClient client = new DmtpClient(local, remote);
 
         // database for location of contacts
-        database = new ContactManager(client.gate.hub, client.localAddress);
+        database = new ContactManager(client.getHub(), client.localAddress);
         database.identifier = "moky-" + PORT;
         client.setDelegate(database);
 
