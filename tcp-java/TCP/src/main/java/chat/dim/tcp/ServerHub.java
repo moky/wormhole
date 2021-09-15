@@ -84,7 +84,7 @@ public class ServerHub extends StreamHub implements Runnable {
                     putChannel(new StreamChannel(sock, remote, localAddress));
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
         }
     }

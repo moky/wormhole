@@ -71,10 +71,13 @@ public abstract class BaseHub implements Hub {
      */
     protected abstract Set<Channel> allChannels();
 
-    private Connection createConnection(SocketAddress remote, SocketAddress local) {
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
         Channel sock = getChannel(remote, local);
-        if (sock == null || !sock.isOpen()) {
+        if (sock == null/* || !sock.isOpen()*/) {
             return null;
+        }
+        if (local == null) {
+            local = sock.getLocalAddress();
         }
         BaseConnection conn = new BaseConnection(sock, remote, local);
         conn.setDelegate(getDelegate());
@@ -101,6 +104,14 @@ public abstract class BaseHub implements Hub {
         SocketAddress local = connection.getLocalAddress();
         Connection conn = connectionPool.remove(remote, local, connection);
         if (conn != null) {
+            conn.close();
+        }
+    }
+
+    private void closeConnection(SocketAddress remote, SocketAddress local) {
+        Connection conn = connectionPool.get(remote, local);
+        if (conn != null) {
+            connectionPool.remove(remote, local, conn);
             conn.close();
         }
     }
@@ -139,9 +150,11 @@ public abstract class BaseHub implements Hub {
         try {
             remote = sock.receive(buffer);
         } catch (IOException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             // socket error, remove the channel
             closeChannel(sock);
+            // remove connected connection
+            closeConnection(sock.getRemoteAddress(), sock.getLocalAddress());
             return false;
         }
         if (remote == null) {

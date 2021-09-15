@@ -32,11 +32,11 @@ package chat.dim.tcp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.WeakHashMap;
 
 import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
@@ -46,7 +46,7 @@ import chat.dim.type.Pair;
 public class StreamHub extends BaseHub {
 
     // (remote, local) => channel
-    private final Map<Pair<SocketAddress, SocketAddress>, Channel> channels = new WeakHashMap<>();
+    private final Map<Pair<SocketAddress, SocketAddress>, Channel> channels = new HashMap<>();
 
     public StreamHub(Connection.Delegate delegate) {
         super(delegate);
@@ -80,7 +80,7 @@ public class StreamHub extends BaseHub {
                 channel.close();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
         }
     }
 

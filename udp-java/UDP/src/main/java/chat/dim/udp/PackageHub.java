@@ -90,7 +90,7 @@ public class PackageHub extends BaseHub {
                 channel.close();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
         }
     }
 

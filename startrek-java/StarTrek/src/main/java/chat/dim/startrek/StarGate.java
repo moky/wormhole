@@ -170,24 +170,23 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     public void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
         SocketAddress remote = connection.getRemoteAddress();
         SocketAddress local = connection.getLocalAddress();
-        if (current == null) {
-            assert previous != null : "should not happen";
+        if (current == null || current.equals(ConnectionState.ERROR)) {
+            // connection lost, remove the docker for it
+            removeDocker(remote, local, null);
         } else if (current.equals(ConnectionState.EXPIRED)) {
             // heartbeat when connection expired
             try {
                 heartbeat(connection);
             } catch (IOException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
-        } else if (current.equals(ConnectionState.ERROR)) {
-            // connection lost, remove the docker for it
-            removeDocker(remote, local, null);
         }
         // callback when status changed
+        Delegate delegate = getDelegate();
         Status s1 = Status.getStatus(previous);
         Status s2 = Status.getStatus(current);
-        if (!s1.equals(s2)) {
-            getDelegate().onStatusChanged(s1, s2, remote, local, this);
+        if (!s1.equals(s2) && delegate != null) {
+            delegate.onStatusChanged(s1, s2, remote, local, this);
         }
     }
 

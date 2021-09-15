@@ -67,6 +67,11 @@ public abstract class BaseChannel<C extends SelectableChannel> implements Channe
     }
 
     @Override
+    public String toString() {
+        return "<" + getClass().getName() + ": remote=" + remoteAddress + ", local=" + localAddress + " />";
+    }
+
+    @Override
     public SelectableChannel configureBlocking(boolean block) throws IOException {
         C impl = getChannel();
         if (impl == null) {
@@ -128,8 +133,9 @@ public abstract class BaseChannel<C extends SelectableChannel> implements Channe
         if (impl == null) {
             throw new SocketException("socket closed");
         }
+        NetworkChannel bound = ((NetworkChannel) impl).bind(local);
         localAddress = local;
-        return ((NetworkChannel) impl).bind(local);
+        return bound;
     }
 
     @Override
@@ -142,6 +148,8 @@ public abstract class BaseChannel<C extends SelectableChannel> implements Channe
             ((SocketChannel) impl).connect(remote);
         } else if (impl instanceof DatagramChannel) {
             ((DatagramChannel) impl).connect(remote);
+        } else {
+            throw new SocketException("unknown datagram channel: " + impl);
         }
         remoteAddress = remote;
         return (NetworkChannel) impl;

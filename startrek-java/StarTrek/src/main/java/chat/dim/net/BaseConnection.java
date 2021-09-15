@@ -33,6 +33,7 @@ package chat.dim.net;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.Date;
 
@@ -73,10 +74,10 @@ public class BaseConnection implements Connection, TimedConnection, StateDelegat
         delegateRef = null;
         hubRef = null;
         // Finite State Machine
-        fsm = getStateMachine();
+        fsm = createStateMachine();
     }
 
-    protected StateMachine getStateMachine() {
+    protected StateMachine createStateMachine() {
         StateMachine machine = new StateMachine(this);
         machine.setDelegate(this);
         return machine;
@@ -98,6 +99,11 @@ public class BaseConnection implements Connection, TimedConnection, StateDelegat
 
     protected Channel getChannel() {
         return channel;
+    }
+
+    @Override
+    public String toString() {
+        return "<" + getClass().getName() + ": remote=" + remoteAddress + ", local=" + localAddress + " />";
     }
 
     @Override
@@ -177,13 +183,17 @@ public class BaseConnection implements Connection, TimedConnection, StateDelegat
     @Override
     public void close() {
         closeChannel();
+        fsm.stop();
     }
 
     private void closeChannel() {
         if (channel == null) {
             return;
         }
-        getHub().closeChannel(channel);
+        Hub hub = getHub();
+        if (hub != null) {
+            hub.closeChannel(channel);
+        }
         channel = null;
     }
 
@@ -203,12 +213,18 @@ public class BaseConnection implements Connection, TimedConnection, StateDelegat
     @Override
     public void received(byte[] data) {
         lastReceivedTime = (new Date()).getTime();  // update received time
-        getDelegate().onReceived(data, remoteAddress, localAddress, this);
+        Delegate delegate = getDelegate();
+        if (delegate != null) {
+            delegate.onReceived(data, remoteAddress, localAddress, this);
+        }
     }
 
     protected int send(ByteBuffer src, SocketAddress destination) throws IOException {
-        Channel channel = getChannel();
-        int sent = channel.send(src, destination);
+        Channel sock = getChannel();
+        if (sock == null) {
+            throw new SocketException("socket channel lost");
+        }
+        int sent = sock.send(src, destination);
         if (sent != -1) {
             lastSentTime = (new Date()).getTime();  // update sent time
         }
@@ -229,13 +245,17 @@ public class BaseConnection implements Connection, TimedConnection, StateDelegat
                 error = new Error("failed to send data: " + pack.length + " byte(s) to " + destination);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             error = e;
+            close();
         }
-        if (error == null) {
-            getDelegate().onSent(pack, getLocalAddress(), destination, this);
-        } else {
-            getDelegate().onError(error, pack, getLocalAddress(), destination, this);
+        Delegate delegate = getDelegate();
+        if (delegate != null) {
+            if (error == null) {
+                delegate.onSent(pack, getLocalAddress(), destination, this);
+            } else {
+                delegate.onError(error, pack, getLocalAddress(), destination, this);
+            }
         }
         return sent;
     }
@@ -284,7 +304,10 @@ public class BaseConnection implements Connection, TimedConnection, StateDelegat
             }
         }
         // callback
-        getDelegate().onStateChanged(previous, current, this);
+        Delegate delegate = getDelegate();
+        if (delegate != null) {
+            delegate.onStateChanged(previous, current, this);
+        }
     }
 
     @Override

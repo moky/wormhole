@@ -57,14 +57,14 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
 
     @Override
     public boolean process() {
-        boolean incoming = hub.process();
+        boolean incoming = getHub().process();
         boolean outgoing = super.process();
         return incoming || outgoing;
     }
 
     @Override
     public Connection getConnection(SocketAddress remote, SocketAddress local) {
-        return hub.getConnection(remote, local);
+        return getHub().getConnection(remote, local);
     }
 
     @Override

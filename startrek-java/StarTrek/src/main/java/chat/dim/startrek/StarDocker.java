@@ -100,19 +100,25 @@ public abstract class StarDocker implements Docker {
             return false;
         }
         // 3. process outgo task
+        Throwable error = null;
         if (outgo.isFailed(now)) {
             // outgo task expired, callback
-            getDelegate().onError(new Error("Response timeout"), outgo, localAddress, remoteAddress, conn);
+            error = new Error("Response timeout");
         } else {
             try {
                 if (!sendDeparture(outgo)) {
                     // failed to send outgo package, callback
-                    getDelegate().onError(new Error("Connection error"), outgo, localAddress, remoteAddress, conn);
+                    error = new Error("Connection error");
                 }
             } catch (IOException e) {
                 //e.printStackTrace();
-                getDelegate().onError(e, outgo, localAddress, remoteAddress, conn);
+                error = e;
             }
+        }
+        // callback
+        Ship.Delegate delegate = getDelegate();
+        if (error != null && delegate != null) {
+            delegate.onError(error, outgo, localAddress, remoteAddress, conn);
         }
         return true;
     }
@@ -132,7 +138,10 @@ public abstract class StarDocker implements Docker {
             return;
         }
         // 3. process income ship with completed data package
-        getDelegate().onReceived(income, remoteAddress, localAddress, getConnection());
+        Ship.Delegate delegate = getDelegate();
+        if (delegate != null) {
+            delegate.onReceived(income, remoteAddress, localAddress, getConnection());
+        }
     }
 
     /**
@@ -160,9 +169,14 @@ public abstract class StarDocker implements Docker {
     protected Departure checkResponse(final Arrival income) {
         // check response for linked departure ship (same SN)
         Departure linked = dock.checkResponse(income);
-        if (linked != null) {
-            // all fragments responded, task finished
-            getDelegate().onSent(linked, localAddress, remoteAddress, getConnection());
+        if (linked == null) {
+            // linked departure task not found
+            return null;
+        }
+        // all fragments responded, task finished
+        Ship.Delegate delegate = getDelegate();
+        if (delegate != null) {
+            delegate.onSent(linked, localAddress, remoteAddress, getConnection());
         }
         return linked;
     }

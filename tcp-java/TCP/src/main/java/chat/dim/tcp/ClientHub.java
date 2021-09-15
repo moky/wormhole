@@ -63,7 +63,7 @@ public class ClientHub extends StreamHub {
                 local = sock.getLocalAddress();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             return null;
         }
         return new StreamChannel(sock, remote, local);
