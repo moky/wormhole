@@ -50,9 +50,10 @@ public interface Docker extends Processor {
      *
      * @param payload     - request data
      * @param priority    - smaller is faster (-1 is the most fast)
-     * @return StarShip containing payload
+     * @param delegate    - callback handler for the departure ship
+     * @return departure ship containing payload
      */
-    Departure pack(byte[] payload, int priority);
+    Departure pack(byte[] payload, int priority, Ship.Delegate delegate);
 
     /**
      *  Called when received data

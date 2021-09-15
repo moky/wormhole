@@ -100,10 +100,6 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
         send(pack, source, destination);
     }
 
-    public void send(Package pack, int priority, SocketAddress source, SocketAddress destination) {
-        Docker worker = getDocker(destination, source, null);
-        ((PackageDocker) worker).send(pack, priority);
-    }
     public void send(Package pack, SocketAddress source, SocketAddress destination) {
         Docker worker = getDocker(destination, source, null);
         ((PackageDocker) worker).send(pack);

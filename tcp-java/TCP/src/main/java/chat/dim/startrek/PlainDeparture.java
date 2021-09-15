@@ -40,8 +40,8 @@ public class PlainDeparture extends DepartureShip {
     private final byte[] completed;
     private final List<byte[]> fragments;
 
-    public PlainDeparture(int prior, byte[] pack) {
-        super(prior);
+    public PlainDeparture(Delegate delegate, int prior, byte[] pack) {
+        super(delegate, prior);
         completed = pack;
         fragments = new ArrayList<>();
         fragments.add(pack);

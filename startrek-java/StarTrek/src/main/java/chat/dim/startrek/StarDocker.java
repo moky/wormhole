@@ -231,8 +231,8 @@ public abstract class StarDocker implements Docker {
             return false;
         }
         int success = 0;
-        for (byte[] pack : fragments) {
-            if (conn.send(pack, remoteAddress) != -1) {
+        for (byte[] pkg : fragments) {
+            if (conn.send(pkg, remoteAddress) != -1) {
                 success += 1;
             }
         }

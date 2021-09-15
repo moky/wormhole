@@ -76,6 +76,9 @@ public abstract class BaseHub implements Hub {
         if (sock == null/* || !sock.isOpen()*/) {
             return null;
         }
+        if (remote == null) {
+            remote = sock.getRemoteAddress();
+        }
         if (local == null) {
             local = sock.getLocalAddress();
         }
@@ -92,6 +95,12 @@ public abstract class BaseHub implements Hub {
         if (conn == null) {
             conn = createConnection(remote, local);
             if (conn != null) {
+                if (remote == null) {
+                    remote = conn.getRemoteAddress();
+                }
+                if (local == null) {
+                    local = conn.getLocalAddress();
+                }
                 connectionPool.put(remote, local, conn);
             }
         }

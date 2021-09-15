@@ -30,6 +30,8 @@
  */
 package chat.dim.startrek;
 
+import java.lang.ref.WeakReference;
+
 import chat.dim.port.Departure;
 
 public abstract class DepartureShip implements Departure {
@@ -49,11 +51,25 @@ public abstract class DepartureShip implements Departure {
 
     private final int priority;
 
-    protected DepartureShip(final int prior) {
+    private final WeakReference<Delegate> delegateRef;
+
+    protected DepartureShip(Delegate delegate, int prior) {
         super();
+        // specific delegate for this ship
+        if (delegate == null) {
+            delegateRef = null;
+        } else {
+            delegateRef = new WeakReference<>(delegate);
+        }
+        // ship priority
+        priority = prior;
+
         lastTime = 0;  // last tried time (timestamp in milliseconds)
         retries = -1;  // totally 3 times to be sent at the most
-        priority = prior;
+    }
+
+    public Delegate getDelegate() {
+        return delegateRef == null ? null : delegateRef.get();
     }
 
     @Override

@@ -32,6 +32,7 @@ package chat.dim.udp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 
@@ -47,7 +48,7 @@ public class PackageChannel extends BaseChannel<DatagramChannel> {
     public SocketAddress receive(ByteBuffer dst) throws IOException {
         DatagramChannel impl = getChannel();
         if (impl == null) {
-            return null;
+            throw new SocketException("socket channel lost");
         }
         if (impl.isConnected()) {
             return impl.read(dst) > 0 ? getRemoteAddress() : null;
@@ -60,7 +61,7 @@ public class PackageChannel extends BaseChannel<DatagramChannel> {
     public int send(ByteBuffer src, SocketAddress target) throws IOException {
         DatagramChannel impl = getChannel();
         if (impl == null) {
-            return -1;
+            throw new SocketException("socket channel lost");
         }
         if (impl.isConnected()) {
             assert target == null || target.equals(getRemoteAddress()) :

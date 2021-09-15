@@ -73,35 +73,35 @@ public class PackageDocker extends StarDocker {
 
     @Override
     protected Arrival getArrival(final byte[] data) {
-        final Package pack = Package.parse(new Data(data));
-        if (pack == null) {
+        final Package pkg = Package.parse(new Data(data));
+        if (pkg == null) {
             return null;
         }
-        final ByteArray body = pack.body;
+        final ByteArray body = pkg.body;
         if (body == null || body.getSize() == 0) {
             // should not happen
             return null;
         }
-        return new PackageArrival(pack);
+        return new PackageArrival(pkg);
     }
 
     @Override
     protected Arrival checkArrival(final Arrival income) {
         assert income instanceof PackageArrival : "income ship error: " + income;
         PackageArrival ship = (PackageArrival) income;
-        Package pack = ship.getPackage();
-        if (pack == null) {
+        Package pkg = ship.getPackage();
+        if (pkg == null) {
             List<Package> fragments = ship.getFragments();
             if (fragments == null || fragments.size() == 0) {
                 throw new NullPointerException("fragments error: " + income);
             }
             // each ship can carry one fragment only
-            pack = fragments.get(0);
+            pkg = fragments.get(0);
         }
         // check data type in package header
-        final Header head = pack.head;
+        final Header head = pkg.head;
         final DataType type = head.type;
-        final ByteArray body = pack.body;
+        final ByteArray body = pkg.body;
 
         if (type.isCommandResponse()) {
             // process CommandResponse:
@@ -183,23 +183,29 @@ public class PackageDocker extends StarDocker {
         send(Package.create(DataType.MESSAGE_RESPONSE, sn, pages, index, new Data(OK)));
     }
 
-    public void send(Package pack) {
-        send(pack, Departure.Priority.NORMAL.value);
+    public void send(Package pkg) {
+        send(pkg, Departure.Priority.NORMAL.value, getDelegate());
     }
-    public void send(Package pack, int priority) {
-        appendDeparture(new PackageDeparture(priority, pack));
+
+    public void send(Package pkg, int priority, Ship.Delegate delegate) {
+        Departure ship = new PackageDeparture(delegate, priority, pkg);
+        appendDeparture(ship);
+    }
+    public void send(Departure ship) {
+        appendDeparture(ship);
     }
 
     @Override
-    public Departure pack(byte[] payload, int priority) {
-        Package pack = Package.create(DataType.MESSAGE, new Data(payload));
-        return new PackageDeparture(priority, pack);
+    public Departure pack(byte[] payload, int priority, Ship.Delegate delegate) {
+        Package pkg = Package.create(DataType.MESSAGE, new Data(payload));
+        return new PackageDeparture(delegate, priority, pkg);
     }
 
     @Override
     public void heartbeat() {
-        Package pack = Package.create(DataType.COMMAND, new Data(PING));
-        send(pack, Departure.Priority.SLOWER.value);
+        Package pkg = Package.create(DataType.COMMAND, new Data(PING));
+        Departure ship = new PackageDeparture(null, Departure.Priority.SLOWER.value, pkg);
+        appendDeparture(ship);
     }
 
     static final byte[] PING = {'P', 'I', 'N', 'G'};

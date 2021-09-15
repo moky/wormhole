@@ -81,7 +81,7 @@ public class PlainDocker extends StarDocker {
         if (data.length == 4) {
             if (Arrays.equals(data, PING)) {
                 // PING -> PONG
-                appendDeparture(pack(PONG, Departure.Priority.SLOWER.value));
+                appendDeparture(pack(PONG, Departure.Priority.SLOWER.value, null));
                 return null;
             } else if (Arrays.equals(data, PONG)
                     || Arrays.equals(data, NOOP)) {
@@ -93,17 +93,26 @@ public class PlainDocker extends StarDocker {
     }
 
     public void send(byte[] payload) {
-        appendDeparture(pack(payload, Departure.Priority.NORMAL.value));
+        send(payload, Departure.Priority.NORMAL.value, getDelegate());
+    }
+
+    public void send(byte[] payload, int priority, Ship.Delegate delegate) {
+        Departure ship = pack(payload, priority, delegate);
+        appendDeparture(ship);
+    }
+    public void send(Departure ship) {
+        appendDeparture(ship);
     }
 
     @Override
-    public PlainDeparture pack(byte[] payload, int priority) {
-        return new PlainDeparture(priority, payload);
+    public PlainDeparture pack(byte[] payload, int priority, Ship.Delegate delegate) {
+        return new PlainDeparture(delegate, priority, payload);
     }
 
     @Override
     public void heartbeat() {
-        appendDeparture(pack(PING, Departure.Priority.SLOWER.value));
+        Departure ship = pack(PING, Departure.Priority.SLOWER.value, null);
+        appendDeparture(ship);
     }
 
     static final byte[] PING = {'P', 'I', 'N', 'G'};

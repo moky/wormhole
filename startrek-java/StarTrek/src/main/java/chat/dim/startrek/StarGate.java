@@ -227,6 +227,9 @@ public abstract class StarGate implements Gate, Connection.Delegate {
 
     @Override
     public void onError(Throwable error, byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
-        // ignore this event
+        // failed to send data
+        if (error != null && destination != null) {
+            removeDocker(destination, source, null);
+        }
     }
 }

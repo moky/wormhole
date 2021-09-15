@@ -44,8 +44,8 @@ public class PackageDeparture extends DepartureShip {
     private final List<Package> packages;
     private final List<byte[]> fragments;
 
-    public PackageDeparture(int prior, Package pack) {
-        super(prior);
+    public PackageDeparture(Delegate delegate, int prior, Package pack) {
+        super(delegate, prior);
         completed = pack;
         if (pack.isMessage()) {
             packages = Packer.split(pack);

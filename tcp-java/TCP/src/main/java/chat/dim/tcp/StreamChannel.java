@@ -32,6 +32,7 @@ package chat.dim.tcp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
@@ -47,7 +48,7 @@ public class StreamChannel extends BaseChannel<SocketChannel> {
     public SocketAddress receive(ByteBuffer dst) throws IOException {
         SocketChannel impl = getChannel();
         if (impl == null) {
-            return null;
+            throw new SocketException("socket channel lost");
         }
         int res = impl.read(dst);
         if (res > 0) {
@@ -63,7 +64,7 @@ public class StreamChannel extends BaseChannel<SocketChannel> {
     public int send(ByteBuffer src, SocketAddress target) throws IOException {
         SocketChannel impl = getChannel();
         if (impl == null) {
-            return -1;
+            throw new SocketException("socket channel lost");
         }
         assert target == null || target.equals(impl.getRemoteAddress()) :
                 "target address error: " + target + ", " + impl.getRemoteAddress();
