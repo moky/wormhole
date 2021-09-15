@@ -164,16 +164,14 @@ class MappedAddressValue(RawValue):
             raise NotImplementedError('only IPV4 now')
 
     @classmethod
-    def new(cls, ip: str, port: int, family: int = IPV4):
-        if family == cls.IPV4:
-            data = MutableData(capacity=8)
-            data.push(0)
-            data.push(family)
-            data.append(Convert.uint16data_from_value(value=port))
-            data.append(cls.data_from_ipv4(ip=ip))
-            return cls(data=data, ip=ip, port=port, family=family)
-        else:
-            raise NotImplementedError('only IPV4 now')
+    def new_ipv4(cls, ip: str, port: int):
+        family = cls.IPV4
+        data = MutableData(capacity=8)
+        data.push(0)
+        data.push(family)
+        data.append(Convert.uint16data_from_value(value=port))
+        data.append(cls.data_from_ipv4(ip=ip))
+        return cls(data=data, ip=ip, port=port, family=family)
 
 
 """

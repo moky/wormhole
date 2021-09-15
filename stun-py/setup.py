@@ -34,6 +34,7 @@ setup(
         'Operating System :: OS Independent',
     ],
     install_requires=[
-        'udp>=0.4.6',
+        'udp>=0.4.8',
+        'startrek',
     ]
 )

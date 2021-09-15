@@ -37,7 +37,7 @@
 
 from abc import ABC
 
-from udp.ba import ByteArray, MutableData
+from udp.ba import MutableData
 
 from .protocol import Package, Header, MessageType
 from .protocol import Attribute, AttributeType
@@ -109,12 +109,12 @@ class Server(Node, ABC):
         """
         assert self.neighbour is not None, 'neighbour address not set'
         # create attributes
-        value = MappedAddressValue.new(ip=remote_ip, port=remote_port)
+        value = MappedAddressValue.new_ipv4(ip=remote_ip, port=remote_port)
         data1 = Attribute.new(tag=AttributeType.MAPPED_ADDRESS, value=value)
         # pack
         body = data1
         pack = Package.new(msg_type=head.msg_type, trans_id=head.trans_id, body=body)
-        return self.send(data=pack, destination=self.neighbour)
+        return self.send(data=pack.get_bytes(), destination=self.neighbour)
 
     def _respond(self, head: Header, remote_ip: str, remote_port: int, local_port: int) -> bool:
         # local (server) address
@@ -126,7 +126,7 @@ class Server(Node, ABC):
         changed_ip = self.changed_address[0]
         changed_port = self.changed_address[1]
         # create attributes
-        value = MappedAddressValue.new(ip=remote_ip, port=remote_port)
+        value = MappedAddressValue.new_ipv4(ip=remote_ip, port=remote_port)
         data1 = Attribute.new(tag=AttributeType.MAPPED_ADDRESS, value=value)
         # Xor
         data = XorMappedAddressValue.xor(data=value, factor=head.trans_id)
@@ -137,10 +137,10 @@ class Server(Node, ABC):
         value = XorMappedAddressValue2(data=data, ip=remote_ip, port=remote_port, family=value.family)
         data5 = Attribute.new(tag=AttributeType.XOR_MAPPED_ADDRESS2, value=value)
         # source address
-        value = SourceAddressValue.new(ip=local_ip, port=local_port)
+        value = SourceAddressValue.new_ipv4(ip=local_ip, port=local_port)
         data2 = Attribute.new(tag=AttributeType.SOURCE_ADDRESS, value=value)
         # changed address
-        value = ChangedAddressValue.new(ip=changed_ip, port=changed_port)
+        value = ChangedAddressValue.new_ipv4(ip=changed_ip, port=changed_port)
         data3 = Attribute.new(tag=AttributeType.CHANGED_ADDRESS, value=value)
         # software
         value = SoftwareValue.new(description=self.software)
@@ -155,9 +155,9 @@ class Server(Node, ABC):
         body.append(data5)
         body.append(data6)
         pack = Package.new(msg_type=MessageType.BIND_RESPONSE, trans_id=head.trans_id, body=body)
-        return self.send(data=pack, destination=(remote_ip, remote_port), source=(local_ip, local_port))
+        return self.send(data=pack.get_bytes(), destination=(remote_ip, remote_port), source=(local_ip, local_port))
 
-    def handle(self, data: ByteArray, remote_ip: str, remote_port: int) -> bool:
+    def handle(self, data: bytes, remote_ip: str, remote_port: int) -> bool:
         # parse request
         context = {}
         ok = self.parse_data(data=data, context=context)

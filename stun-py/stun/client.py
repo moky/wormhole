@@ -55,7 +55,7 @@ class Client(Node, ABC):
         self.retries = 3
 
     @abstractmethod
-    def receive(self) -> (Optional[ByteArray], Optional[tuple]):
+    def receive(self) -> (Optional[bytes], Optional[tuple]):
         raise NotImplementedError
 
     # Override
@@ -106,7 +106,7 @@ class Client(Node, ABC):
         # 2. send and get response
         count = 0
         while True:
-            if not self.send(data=req, destination=(remote_host, remote_port)):
+            if not self.send(data=req.get_bytes(), destination=(remote_host, remote_port)):
                 # failed to send data
                 return None
             data, source = self.receive()
@@ -118,7 +118,7 @@ class Client(Node, ABC):
                     # failed to receive data
                     return None
             else:
-                self.info('received %d bytes from %s' % (data.size, source))
+                self.info('received %d bytes from %s' % (len(data), source))
                 break
         # 3. parse response
         context = {

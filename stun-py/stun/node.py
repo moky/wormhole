@@ -35,11 +35,8 @@
     Common interfaces for STUN Server or Client nodes
 """
 
-import time
 from abc import ABC, abstractmethod
 from typing import Union
-
-from udp.ba import ByteArray
 
 from .protocol import Package, Attribute
 
@@ -87,14 +84,12 @@ class Node(ABC):
         """
         return self.__local_address
 
-    # noinspection PyMethodMayBeStatic
     def info(self, msg: str):
-        time_array = time.localtime(int(time.time()))
-        time_string = time.strftime('%y-%m-%d %H:%M:%S', time_array)
-        print('[%s] %s' % (time_string, msg))
+        # override to print logs
+        pass
 
     @abstractmethod
-    def send(self, data: ByteArray, destination: tuple, source: Union[tuple, int] = None) -> bool:
+    def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> bool:
         """
         Send data to remote address
 
@@ -116,7 +111,7 @@ class Node(ABC):
         """
         raise NotImplemented
 
-    def parse_data(self, data: ByteArray, context: dict) -> bool:
+    def parse_data(self, data: bytes, context: dict) -> bool:
         """
         Parse package data
 

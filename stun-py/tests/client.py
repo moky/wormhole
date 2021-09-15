@@ -1,153 +1,118 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
-
+import random
 import socket
 import sys
 import os
 import time
-import weakref
-from typing import Optional, Union, Dict
+from typing import Optional, Union
 
-from udp.ba import ByteArray, Data
-from udp import Channel, DiscreteChannel
-from udp import Connection, ConnectionDelegate
-from udp import Hub, BaseHub, BaseConnection
+from udp import Gate, GateDelegate, GateStatus
+from udp import Hub, ClientHub, Arrival, Departure
+
+from tcp import PlainArrival, PlainDeparture
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-import stun
+from stun import Client
+
+from tests.stargate import UDPGate
 
 
-class ClientHub(BaseHub):
-
-    def __init__(self, delegate: ConnectionDelegate):
-        super().__init__()
-        self.__delegate = weakref.ref(delegate)
-        self.__connections: Dict[tuple, Connection] = {}
-        self.__sockets: Dict[tuple, socket.socket] = {}
-        self.__running = False
-
-    @property
-    def delegate(self) -> ConnectionDelegate:
-        return self.__delegate()
-
-    @property
-    def running(self) -> bool:
-        return self.__running
-
-    def start(self):
-        self.__running = True
-
-    def stop(self):
-        self.__running = False
-
-    def bind(self, local: tuple) -> Connection:
-        sock = self.__sockets.get(local)
-        if sock is None:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-            sock.bind(local)
-            sock.setblocking(False)
-            self.__sockets[local] = sock
-        return self.connect(remote=None, local=local)
-
-    # Override
-    def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
-        conn = self.__connections.get(local)
-        if conn is None:
-            conn = self.__create_connection(remote=None, local=local)
-            self.__connections[local] = conn
-        return conn
-
-    def __create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
-        # create connection with channel
-        sock = self.create_channel(remote=remote, local=local)
-        conn = BaseConnection(remote=remote, local=local, channel=sock)
-        # set delegate
-        if conn.delegate is None:
-            conn.delegate = self.delegate
-        # start FSM
-        conn.start()
-        return conn
-
-    def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
-        sock = self.__sockets.get(local)
-        if sock is not None:
-            return DiscreteChannel(sock=sock)
-        else:
-            raise LookupError('failed to get channel: %s -> %s' % (remote, local))
-
-
-class Client(stun.Client, ConnectionDelegate):
+class StunClient(Client, GateDelegate):
 
     def __init__(self, host: str, port: int):
         super().__init__(host=host, port=port)
         self.__cargoes = []
-        self.__hub = ClientHub(delegate=self)
+        gate = UDPGate(delegate=self)
+        gate.hub = ClientHub(delegate=gate)
+        self.__gate = gate
+
+    @property
+    def gate(self) -> UDPGate:
+        return self.__gate
 
     @property
     def hub(self) -> ClientHub:
-        return self.__hub
+        return self.gate.hub
 
-    # noinspection PyMethodMayBeStatic
-    def info(self, msg: str):
-        print('> ', msg)
+    def start(self):
+        self.hub.bind(address=self.source_address)
+        self.gate.start()
 
-    # noinspection PyMethodMayBeStatic
-    def error(self, msg: str):
-        print('ERROR> ', msg)
+    def stop(self):
+        self.gate.stop()
 
-    # Override
-    def connection_state_changed(self, connection: Connection, previous, current):
-        self.info('!!! connection (%s, %s) state changed: %s -> %s'
-                  % (connection.local_address, connection.remote_address, previous, current))
+    #
+    #   Gate Delegate
+    #
 
     # Override
-    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload):
-        if not isinstance(payload, ByteArray):
-            payload = Data(buffer=payload)
-        self.__cargoes.append((payload, remote))
+    def gate_status_changed(self, gate: Gate, remote: tuple, local: Optional[tuple],
+                            previous: GateStatus, current: GateStatus):
+        UDPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (local, remote, previous, current))
 
     # Override
-    def receive(self) -> (Optional[ByteArray], Optional[tuple]):
+    def gate_received(self, gate: Gate, source: tuple, destination: Optional[tuple], ship: Arrival):
+        assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
+        data = ship.package
+        if not isinstance(data, bytes) or len(data) == 0:
+            # should not happen
+            return None
+        self.__cargoes.append((data, source))
+
+    # Override
+    def gate_sent(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure):
+        assert isinstance(ship, PlainDeparture), 'departure ship error: %s' % ship
+        data = ship.package
+        size = len(data)
+        UDPGate.info('message sent: %d byte(s) to %s' % (size, destination))
+
+    # Override
+    def gate_error(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure, error):
+        UDPGate.error('gate error (%s, %s): %s' % (source, destination, error))
+
+    # Override
+    def receive(self) -> (Optional[bytes], Optional[tuple]):
         data = None
         remote = None
         expired = time.time() + 2.0
-        while self.__hub.running:
+        while True:
             if len(self.__cargoes) > 0:
                 cargo = self.__cargoes.pop(0)
                 data = cargo[0]
                 remote = cargo[1]
                 break
-            if time.time() > expired:
+            elif time.time() > expired:
+                # timeout
                 break
             else:
                 time.sleep(0.2)
-                self.__hub.tick()
+        if data is not None:
+            self.info('received %d byte(s) from %s' % (len(data), remote))
         return data, remote
 
     # Override
-    def send(self, data: ByteArray, destination: tuple, source: Union[tuple, int] = None) -> bool:
+    def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> bool:
+        if source is None:
+            source = self.source_address
+        elif isinstance(source, int):
+            source = (self.source_address[0], source)
         try:
-            if source is None:
-                source = self.source_address
-            elif isinstance(source, int):
-                source = (self.source_address[0], source)
-            self.__hub.send(data=data.get_bytes(), source=source, destination=destination)
+            self.gate.send_payload(payload=data, source=source, destination=destination)
             return True
         except socket.error:
             return False
 
-    def start(self):
-        self.__hub.bind(local=self.source_address)
-        self.__hub.start()
-
-    def stop(self):
-        self.__hub.stop()
+    # Override
+    def info(self, msg: str):
+        UDPGate.info(msg=msg)
 
     def detect(self, stun_host: str, stun_port: int):
+        remote = (stun_host, stun_port)
+        self.hub.connect(remote=remote, local=self.source_address)
         print('----------------------------------------------------------------')
         print('-- Detection starts from:', stun_host)
         res = self.get_nat_type(stun_host=stun_host, stun_port=stun_port)
@@ -180,12 +145,12 @@ STUN_SERVERS = [
 ]
 
 LOCAL_IP = Hub.inet_address()
-LOCAL_PORT = 9527
+LOCAL_PORT = random.choice(range(19900, 19999))
 
 
 if __name__ == '__main__':
 
-    g_client = Client(host=LOCAL_IP, port=LOCAL_PORT)
+    g_client = StunClient(host=LOCAL_IP, port=LOCAL_PORT)
 
     g_client.start()
 
@@ -197,3 +162,5 @@ if __name__ == '__main__':
     # exit
     print('== Local Address: (%s:%d)' % (LOCAL_IP, LOCAL_PORT))
     print('================================================================')
+
+    g_client.stop()
