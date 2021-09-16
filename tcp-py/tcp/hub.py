@@ -30,22 +30,64 @@
 
 import socket
 import threading
-import weakref
-from typing import Optional
+from typing import Optional, Set, Dict
 
+from startrek.types import Pair
 from startrek.fsm import Runnable
-from startrek import Channel, Connection, ConnectionDelegate
-from startrek import BaseHub, BaseConnection, ActiveConnection
+from startrek import Channel, ConnectionDelegate
+from startrek import BaseHub
 
 from .channel import StreamChannel
 
 
-class ServerHub(BaseHub, Runnable):
+class StreamHub(BaseHub):
+
+    def __init__(self, delegate: ConnectionDelegate):
+        super().__init__(delegate=delegate)
+        self.__channels: Dict[Pair[tuple, tuple], Channel] = {}
+
+    def channels(self) -> Set[Channel]:
+        return set(self.__channels.values())
+
+    # protected
+    def put_channel(self, channel: Channel):
+        remote = channel.remote_address
+        local = channel.local_address
+        self.__channels[Pair(remote, local)] = channel
+
+    def open(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
+        return self.__channels.get(Pair(remote, local))
+
+    def close(self, channel: Channel):
+        if channel is None:
+            return False
+        else:
+            self.__remove(channel=channel)
+        try:
+            if channel.opened:
+                channel.close()
+            return True
+        except socket.error:
+            return False
+
+    def __remove(self, channel: Channel):
+        remote = channel.remote_address
+        local = channel.local_address
+        if self.__channels.pop(Pair(remote, local), None) == channel:
+            # removed by key
+            return True
+        # remove by value
+        for key in self.__channels:
+            if self.__channels.get(key) == channel:
+                self.__channels.pop(key, None)
+                return True
+
+
+class ServerHub(StreamHub, Runnable):
     """ Stream Server Hub """
 
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__(delegate=delegate)
-        self.__slaves = weakref.WeakValueDictionary()  # address -> socket
         self.__local_address: Optional[tuple] = None
         self.__master: Optional[socket.socket] = None
         self.__running = False
@@ -54,9 +96,8 @@ class ServerHub(BaseHub, Runnable):
         if address is None:
             address = (host, port)
         sock = self.__master
-        if sock is not None:
-            if not getattr(sock, '_closed', False):
-                sock.close()
+        if sock is not None and not getattr(sock, '_closed', False):
+            sock.close()
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         sock.setblocking(True)
@@ -82,51 +123,42 @@ class ServerHub(BaseHub, Runnable):
             try:
                 sock, address = self.__master.accept()
                 if sock is not None:
-                    self.__slaves[address] = sock
-                    self.connect(remote=address, local=self.__local_address)
+                    channel = StreamChannel(sock=sock, remote=address, local=self.__local_address)
+                    self.put_channel(channel=channel)
             except socket.error as error:
-                print('[NET] accept connection error: %s' % error)
-
-    # Override
-    def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
-        # create connection with channel
-        sock = self.create_channel(remote=remote, local=local)
-        conn = BaseConnection(remote=remote, local=local, channel=sock)
-        # set delegate
-        if conn.delegate is None:
-            conn.delegate = self.delegate
-        # start FSM
-        conn.start()
-        return conn
-
-    def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
-        sock = self.__slaves.get(remote)
-        if sock is not None:
-            return StreamChannel(sock=sock)
-        else:
-            raise LookupError('failed to get channel: %s -> %s' % (remote, local))
+                print('[TCP] accepting connection error: %s' % error)
 
 
-class ClientHub(BaseHub):
+class ClientHub(StreamHub):
     """ Stream Client Hub """
 
     # Override
-    def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
-        # create connection with addresses
-        conn = ActiveStreamConnection(remote=remote, local=local)
-        # set delegate
-        if conn.delegate is None:
-            conn.delegate = self.delegate
-        # start FSM
-        conn.start()
-        return conn
-
-
-class ActiveStreamConnection(ActiveConnection):
-    """ Active Stream Connection """
-
-    # Override
-    def connect(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
-        channel = StreamChannel(remote=remote, local=local)
-        channel.configure_blocking(False)
+    def open(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
+        channel = super().open(remote=remote, local=local)
+        if channel is None:
+            channel = create_channel(remote=remote, local=local)
+            if channel is not None:
+                self.put_channel(channel=channel)
         return channel
+
+
+def create_channel(remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
+    try:
+        sock = create_socket(remote=remote, local=local)
+        if local is None:
+            local = sock.getsockname()
+        return StreamChannel(sock=sock, remote=remote, local=local)
+    except socket.error as error:
+        print('[TCP] creating connection error: %s' % error)
+
+
+def create_socket(remote: Optional[tuple], local: Optional[tuple]) -> Optional[socket.socket]:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
+    sock.setblocking(True)
+    if local is not None:
+        sock.bind(local)
+    if remote is not None:
+        sock.connect(remote)
+    sock.setblocking(False)
+    return sock

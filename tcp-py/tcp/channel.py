@@ -28,7 +28,6 @@
 # SOFTWARE.
 # ==============================================================================
 
-import socket
 from typing import Optional
 
 from startrek import BaseChannel
@@ -36,16 +35,6 @@ from startrek import BaseChannel
 
 class StreamChannel(BaseChannel):
     """ Stream Channel """
-
-    # Override
-    def _setup_socket(self) -> socket.socket:
-        sock = self._sock
-        if sock is None:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, self._reuse)
-            sock.setblocking(self._blocking)
-            self._sock = sock
-        return sock
 
     # Override
     def receive(self, max_len: int) -> (Optional[bytes], Optional[tuple]):

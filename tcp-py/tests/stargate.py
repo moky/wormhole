@@ -55,16 +55,16 @@ class TCPGate(StarGate, Runnable, Generic[H]):
         hub = self.hub
         # from tcp import Hub
         # assert isinstance(hub, Hub)
-        activated = hub.process()
-        busy = super().process()
-        return activated or busy
+        incoming = hub.process()
+        outgoing = super().process()
+        return incoming or outgoing
 
     # Override
     def get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         hub = self.hub
         # from tcp import Hub
         # assert isinstance(hub, Hub)
-        return hub.get_connection(remote=remote, local=local)
+        return hub.connect(remote=remote, local=local)
 
     # Override
     def create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
@@ -85,14 +85,16 @@ class TCPGate(StarGate, Runnable, Generic[H]):
         # TODO: remove advance party for this connection
         pass
 
-    def send_payload(self, payload: bytes, source: Optional[tuple], destination: tuple):
+    def send_data(self, payload: bytes, source: Optional[tuple], destination: tuple):
         worker = self.get_docker(remote=destination, local=source, advance_party=[])
         if isinstance(worker, PlainDocker):
             worker.send_data(payload=payload)
 
     @classmethod
     def info(cls, msg: str):
-        print('> ', msg)
+        now = time.time()
+        prefix = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now))
+        print('[%s] > %s' % (prefix, msg))
 
     @classmethod
     def error(cls, msg: str):

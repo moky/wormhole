@@ -31,8 +31,9 @@
 import weakref
 from typing import List, Optional
 
+from startrek import Connection
 from startrek import Arrival, ArrivalShip, Departure, DepartureShip, DeparturePriority
-from startrek import GateDelegate
+from startrek import ShipDelegate, GateDelegate
 from startrek import StarDocker, StarGate
 
 
@@ -48,17 +49,19 @@ class PlainArrival(ArrivalShip):
 
     @property  # Override
     def sn(self):
+        # plain ship has no SN
         return None
 
     # Override
     def assemble(self, ship):
+        assert self is ship, 'plain arrival error: %s, %s' % (ship, self)
+        # plain arrival needs no assembling
         return ship
 
 
 class PlainDeparture(DepartureShip):
-
-    def __init__(self, priority: int, data: bytes):
-        super().__init__(priority=priority)
+    def __init__(self, data: bytes, delegate: Optional[ShipDelegate] = None, priority: int = 0):
+        super().__init__(delegate=delegate, priority=priority)
         self.__data = data
         self.__fragments = [data]
 
@@ -68,6 +71,7 @@ class PlainDeparture(DepartureShip):
 
     @property  # Override
     def sn(self):
+        # plain ship has no SN
         return None
 
     @property  # Override
@@ -76,6 +80,7 @@ class PlainDeparture(DepartureShip):
 
     # Override
     def check_response(self, ship: Arrival) -> bool:
+        # plain departure needs no response
         return False
 
 
@@ -85,28 +90,36 @@ class PlainDocker(StarDocker):
         super().__init__(remote=remote, local=local)
         self.__gate = weakref.ref(gate)
 
-    @property  # Override
+    @property
     def gate(self) -> StarGate:
         return self.__gate()
 
     @property  # Override
+    def connection(self) -> Optional[Connection]:
+        gate = self.gate
+        if gate is not None:
+            return gate.get_connection(remote=self.remote_address, local=self.local_address)
+
+    @property  # Override
     def delegate(self) -> GateDelegate:
-        return self.gate.delegate
+        gate = self.gate
+        if gate is not None:
+            return gate.delegate
 
     # Override
-    def get_income_ship(self, data: bytes) -> Optional[Arrival]:
+    def get_arrival(self, data: bytes) -> Optional[Arrival]:
         if data is not None and len(data) > 0:
             return PlainArrival(data=data)
 
     # Override
-    def check_income_ship(self, ship: Arrival) -> Optional[Arrival]:
+    def check_arrival(self, ship: Arrival) -> Optional[Arrival]:
         assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
         data = ship.package
         if len(data) == 4:
             if data == PING:
                 # PING -> PONG
                 outgo = self.pack(payload=PONG, priority=DeparturePriority.SLOWER)
-                self.dock.append_departure(ship=outgo)
+                self.append_departure(ship=outgo)
                 return None
             if data == PONG or data == NOOP:
                 # ignore
@@ -114,17 +127,20 @@ class PlainDocker(StarDocker):
         return ship
 
     # Override
-    def pack(self, payload: bytes, priority: int = 0) -> Departure:
+    def pack(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> Departure:
         return PlainDeparture(priority=priority, data=payload)
 
     # Override
     def heartbeat(self):
         outgo = self.pack(payload=PING, priority=DeparturePriority.SLOWER)
-        self.dock.append_departure(ship=outgo)
+        self.append_departure(ship=outgo)
 
-    def send_data(self, payload: bytes, priority: int = 0):
-        ship = self.pack(payload=payload, priority=priority)
-        self.dock.append_departure(ship=ship)
+    def send_ship(self, ship: Departure):
+        self.append_departure(ship=ship)
+
+    def send_data(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None):
+        ship = self.pack(payload=payload, priority=priority, delegate=delegate)
+        self.append_departure(ship=ship)
 
 
 PING = b'PING'
