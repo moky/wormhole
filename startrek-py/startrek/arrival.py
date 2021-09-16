@@ -47,7 +47,7 @@ class ArrivalShip(Arrival, ABC):
 
     # Override
     def is_failed(self, now: int) -> bool:
-        return now > self.__expired
+        return 0 < self.__expired < now
 
     # Override
     def update(self, now: int) -> bool:
@@ -94,7 +94,6 @@ class ArrivalHall:
             else:
                 # it's a completed package
                 return task
-        # assert isinstance(task, Arrival), 'arrival ship error: %s' % task
         # insert as fragment
         completed = task.assemble(ship=ship)
         if completed is not None:

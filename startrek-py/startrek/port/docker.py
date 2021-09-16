@@ -33,7 +33,7 @@ from typing import Optional
 
 from ..fsm import Processor
 
-from .ship import Departure
+from .ship import Departure, ShipDelegate
 
 
 class Docker(Processor):
@@ -55,12 +55,13 @@ class Docker(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def pack(self, payload: bytes, priority: int = 0) -> Departure:
+    def pack(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> Departure:
         """
         Pack the payload to an outgo Ship
 
         :param payload:  request data
         :param priority: smaller is faster (-1 is the most fast)
+        :param delegate: callback handler for the departure ship
         :return: Departure ship carrying package with payload
         """
         raise NotImplemented
@@ -79,4 +80,9 @@ class Docker(Processor):
         """
         Send 'PING' for keeping connection alive
         """
+        raise NotImplemented
+
+    @abstractmethod
+    def purge(self):
+        """ Clear all expired tasks """
         raise NotImplemented

@@ -30,7 +30,7 @@
 
 import weakref
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Optional, Set, Dict, Any
+from typing import TypeVar, Generic, Optional, Union, Set, Dict, Any
 
 K = TypeVar('K')
 V = TypeVar('V')
@@ -64,7 +64,7 @@ class WeakKeyPairMap(KeyPairMap[K, V], ABC):
     def __init__(self, default: K):
         super().__init__()
         self.__default = default
-        self.__map: Dict[K, Optional[Dict[K, V], Any]] = {}
+        self.__map: Dict[K, Union[Dict[K, V], Any]] = {}
 
     # Override
     def get(self, remote: Optional[K], local: Optional[K]) -> Optional[V]:

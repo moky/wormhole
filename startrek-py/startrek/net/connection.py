@@ -31,10 +31,10 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from ..fsm import Processor
+from ..fsm import Ticker
 
 
-class Connection(Processor, ABC):
+class Connection(Ticker, ABC):
 
     #
     #   Flags
@@ -80,9 +80,20 @@ class Connection(Processor, ABC):
         raise NotImplemented
 
     @abstractmethod
+    def received(self, data: bytes):
+        """
+        Process received data
+
+        :param data: received data
+        """
+        raise NotImplemented
+
+    @abstractmethod
     def close(self):
+        """ Close the connection """
         raise NotImplemented
 
     @property
     def state(self):  # -> ConnectionState:
+        """ Get connection state """
         raise NotImplemented

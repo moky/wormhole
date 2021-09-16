@@ -33,7 +33,7 @@ import weakref
 from abc import ABC
 from typing import List, Dict, Set, Any, Optional
 
-from .port import Arrival, Departure
+from .port import Arrival, Departure, ShipDelegate
 
 
 class DepartureShip(Departure, ABC):
@@ -44,11 +44,25 @@ class DepartureShip(Departure, ABC):
     # Departure task will be retried 2 times if timeout
     MAX_RETRIES = 2
 
-    def __init__(self, priority: int):
+    def __init__(self, delegate: Optional[ShipDelegate] = None, priority: int = 0):
         super().__init__()
-        self.__last_time = 0  # last tried time (timestamp in seconds)
-        self.__retries = -1
+        # specific delegate for this ship
+        if delegate is None:
+            self.__delegate = None
+        else:
+            self.__delegate = weakref.ref(delegate)
+        # ship priority
         self.__priority = priority
+        # last tried time (timestamp in seconds)
+        self.__last_time = 0
+        # totally 3 times to be sent at the most
+        self.__retries = -1
+
+    @property
+    def delegate(self) -> Optional[ShipDelegate]:
+        ref = self.__delegate
+        if ref is not None:
+            return ref()
 
     @property
     def priority(self) -> int:
@@ -60,11 +74,13 @@ class DepartureShip(Departure, ABC):
 
     # Override
     def is_timeout(self, now: int) -> bool:
-        return self.__retries < self.MAX_RETRIES and now > self.__last_time + self.EXPIRES
+        expired = self.__last_time + self.EXPIRES
+        return self.__retries < self.MAX_RETRIES and expired < now
 
     # Override
     def is_failed(self, now: int) -> bool:
-        return now > self.__last_time + self.EXPIRES * (self.MAX_RETRIES - self.__retries + 2)
+        expired = self.__last_time + self.EXPIRES * (self.MAX_RETRIES - self.__retries + 2)
+        return 0 < self.__last_time and expired < now
 
     # Override
     def update(self, now: int) -> bool:
@@ -201,11 +217,11 @@ class DepartureHall:
     def __next_timeout_departure(self, now: int) -> Optional[Departure]:
         failed_tasks: Set[Departure] = set()
         for priority in self.__priorities:
-            # 0. get tasks with priority
+            # 1. get tasks with priority
             fleet = self.__fleets.get(priority)
             if fleet is None:
                 continue
-            # 1. seeking timeout task in this priority
+            # 2. seeking timeout task in this priority
             for ship in fleet:
                 if ship.is_timeout(now=now) and ship.update(now=now):
                     # first time to try, update and remove from the queue

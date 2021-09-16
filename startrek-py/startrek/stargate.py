@@ -30,7 +30,8 @@
 
 import socket
 import weakref
-from typing import Optional, List
+from abc import abstractmethod
+from typing import Optional, List, Set
 
 from .types import AddressPairMap
 from .net import Connection, ConnectionDelegate, ConnectionState
@@ -53,13 +54,13 @@ class StarGate(Gate, ConnectionDelegate):
     def __init__(self, delegate: GateDelegate):
         super().__init__()
         self.__delegate = weakref.ref(delegate)
-        self.__docker_pool = AddressPairMap()
+        self.__docker_pool: AddressPairMap[Docker] = AddressPairMap()
 
     @property
     def delegate(self) -> Optional[GateDelegate]:
         return self.__delegate()
 
-    # protected
+    @abstractmethod  # protected
     def get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         """
         Get exists connection from hub
@@ -70,7 +71,7 @@ class StarGate(Gate, ConnectionDelegate):
         """
         raise NotImplemented
 
-    # protected
+    @abstractmethod  # protected
     def create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
         """
         Create new docker for received data
@@ -81,6 +82,10 @@ class StarGate(Gate, ConnectionDelegate):
         :return docker
         """
         raise NotImplemented
+
+    # protected
+    def remove_docker(self, remote: tuple, local: Optional[tuple], docker: Optional[Docker]):
+        self.__docker_pool.remove(remote=remote, local=local, value=docker)
 
     # protected
     def get_docker(self, remote: tuple, local: Optional[tuple], advance_party: Optional[List[bytes]] = None):
@@ -100,34 +105,46 @@ class StarGate(Gate, ConnectionDelegate):
         else:
             return status_from_state(state=conn.state)
 
-    # Override
-    def send_data(self, data: bytes, source: Optional[tuple], destination: tuple) -> bool:
-        conn = self.get_connection(remote=destination, local=source)
-        if conn is not None:
-            status = status_from_state(state=conn.state)
-            if status == GateStatus.READY:
-                return conn.send(data=data, target=destination) != -1
-
     #
     #   Processor
     #
 
     # Override
     def process(self):
-        counter = 0
         dockers = self.__docker_pool.values
+        # 1. drive all dockers to process
+        count = self.drive(dockers=dockers)
+        # 2. remove retired dockers
+        self.cleanup(dockers=dockers)
+        return count > 0
+
+    # protected
+    # noinspection PyMethodMayBeStatic
+    def drive(self, dockers: Set[Docker]) -> int:
+        count = 0
         for worker in dockers:
-            assert isinstance(worker, Docker), 'docker error: %s' % worker
+            if worker.process():
+                # it's busy
+                count += 1
+        return count > 0
+
+    # protected
+    def cleanup(self, dockers: Set[Docker]):
+        for worker in dockers:
             remote = worker.remote_address
             local = worker.local_address
-            # check connection
-            if self.get_connection(remote=remote, local=local) is None:
-                # connection lost, remove docker
-                self.__docker_pool.remove(remote=remote, local=local, value=worker)
-            elif worker.process():
-                # it's busy
-                counter += 1
-        return counter > 0
+            # check connection state
+            conn = self.get_connection(remote=remote, local=local)
+            if conn is None:
+                state = None
+            else:
+                state = conn.state
+            if state is None or state == ConnectionState.ERROR:
+                # connection lost, remove worker
+                self.remove_docker(remote=remote, local=local, docker=worker)
+            else:
+                # clear expired tasks
+                worker.purge()
 
     # protected
     def heartbeat(self, connection: Connection):
@@ -142,27 +159,28 @@ class StarGate(Gate, ConnectionDelegate):
     #
 
     # Override
-    def connection_state_changed(self, connection: Connection,
-                                 previous: ConnectionState, current: ConnectionState):
+    def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
+        remote = connection.remote_address
+        local = connection.local_address
         # heartbeat when connection expired
-        if current == ConnectionState.EXPIRED:
+        if current is None or current == ConnectionState.ERROR:
+            # connection lost, remove the docker for it
+            self.remove_docker(remote=remote, local=local, docker=None)
+        elif current == ConnectionState.EXPIRED:
+            # heartbeat when connection expired
             try:
                 self.heartbeat(connection=connection)
             except socket.error as error:
                 print('[NET] heartbeat error: %s' % error)
         # callback when status changed
         delegate = self.delegate
-        if delegate is not None:
-            s1 = status_from_state(state=previous)
-            s2 = status_from_state(state=current)
-            if s1 != s2:
-                remote = connection.remote_address
-                local = connection.local_address
-                delegate.gate_status_changed(gate=self, remote=remote, local=local, previous=s1, current=s2)
+        s1 = status_from_state(state=previous)
+        s2 = status_from_state(state=current)
+        if s1 != s2 and delegate is not None:
+            delegate.gate_status_changed(previous=s1, current=s2, remote=remote, local=local, gate=self)
 
     # Override
-    def connection_received(self, connection: Connection,
-                            source: tuple, destination: Optional[tuple], data: bytes):
+    def connection_received(self, data: bytes, source: tuple, destination: Optional[tuple], connection: Connection):
         # get docker by (remote, local)
         worker = self.get_docker(remote=source, local=destination)
         if worker is not None:
@@ -181,7 +199,7 @@ class StarGate(Gate, ConnectionDelegate):
             # remove advance party
             self.clear_advance_party(source=source, destination=destination, connection=connection)
 
-    # protected
+    @abstractmethod  # protected
     def cache_advance_party(self, data: bytes, source: tuple, destination: Optional[tuple],
                             connection: Connection) -> List[bytes]:
         """
@@ -195,7 +213,7 @@ class StarGate(Gate, ConnectionDelegate):
         """
         raise NotImplemented
 
-    # protected
+    @abstractmethod  # protected
     def clear_advance_party(self, source: tuple, destination: Optional[tuple], connection: Connection):
         """
         Clear all advance parties after docker created
@@ -207,14 +225,13 @@ class StarGate(Gate, ConnectionDelegate):
         raise NotImplemented
 
     # Override
-    def connection_sent(self, connection: Connection,
-                        source: Optional[tuple], destination: tuple, data: bytes):
+    def connection_sent(self, data: bytes, source: Optional[tuple], destination: tuple, connection: Connection):
         # ignore this event
         pass
 
     # Override
-    def connection_error(self, connection: Connection,
-                         source: Optional[tuple], destination: Optional[tuple], data: Optional[bytes],
-                         error):
-        # ignore this event
-        pass
+    def connection_error(self, error, data: Optional[bytes],
+                         source: Optional[tuple], destination: Optional[tuple], connection: Connection):
+        # failed to send data
+        if error is not None and destination is not None:
+            self.remove_docker(remote=destination, local=source, docker=None)

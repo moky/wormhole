@@ -33,8 +33,9 @@ import time
 from abc import abstractmethod
 from typing import Optional
 
-from .port import Arrival, Departure
-from .port import Docker, Gate, GateStatus, GateDelegate
+from .net import Connection
+from .port import Arrival, Departure, ShipDelegate
+from .port import Docker
 
 from .dock import Dock, LockedDock
 
@@ -63,11 +64,8 @@ class StarDocker(Docker):
 
     # noinspection PyMethodMayBeStatic
     def _create_dock(self) -> Dock:
+        """ Override for user-customized dock """
         return LockedDock()
-
-    @property
-    def dock(self) -> Dock:
-        return self.__dock
 
     @property
     def remote_address(self) -> tuple:
@@ -78,64 +76,83 @@ class StarDocker(Docker):
         return self.__local
 
     @property
-    def gate(self) -> Gate:
+    def connection(self) -> Optional[Connection]:
+        """ Get related connection with status is 'ready' """
         raise NotImplemented
 
     @property
-    def delegate(self) -> GateDelegate:
+    def delegate(self) -> ShipDelegate:
+        """ Get delegate for handling events """
         raise NotImplemented
 
-    @property
-    def __is_ready(self) -> bool:
-        status = self.gate.gate_status(remote=self.__remote, local=self.__local)
-        return status == GateStatus.READY
+    # @property
+    # def gate(self) -> Gate:
+    #     raise NotImplemented
+    #
+    # @property
+    # def delegate(self) -> GateDelegate:
+    #     raise NotImplemented
+    #
+    # @property
+    # def __is_ready(self) -> bool:
+    #     status = self.gate.gate_status(remote=self.__remote, local=self.__local)
+    #     return status == GateStatus.READY
 
     # Override
     def process(self) -> bool:
-        # 1. check gate status
-        if not self.__is_ready:
-            # not ready yet
+        # 1. get connection with is ready for sending data
+        conn = self.connection
+        if conn is None:
+            # connection not ready now
             return False
         now = int(time.time())
         # 2. get outgo task
-        outgo = self.get_outgo_ship(now=now)
+        outgo = self.next_departure(now=now)
         if outgo is None:
             # nothing to do now
             return False
-        # 3. process outgo
+        # 3. process outgo task
+        error = None
         if outgo.is_failed(now=now):
             # outgo ship expired, callback
-            self.__outgo_error(msg='Request timeout', ship=outgo)
+            error = ConnectionError('Request timeout')
         else:
             try:
-                if not self.send_outgo_ship(ship=outgo):
+                if not self.send_departure(ship=outgo):
                     # failed to send outgo package, callback
-                    self.__outgo_error(msg='Connection error', ship=outgo)
-            except socket.error as error:
-                self.__outgo_error(msg=str(error), ship=outgo)
-        return True
-
-    def __outgo_error(self, msg: str, ship: Departure):
+                    error = ConnectionError('Connection error')
+            except socket.error as e:
+                error = e
+        # callback
         delegate = self.delegate
-        if delegate is not None:
-            local = self.__local
+        if error is not None and delegate is not None:
             remote = self.__remote
-            error = ConnectionError(msg)
-            delegate.gate_error(gate=self.gate, source=local, destination=remote, ship=ship, error=error)
+            local = self.__local
+            delegate.gate_error(error=error, ship=outgo, source=local, destination=remote, connection=conn)
+        return True
 
     # Override
     def process_received(self, data: bytes):
         # 1. get income ship from received data
-        income = self.get_income_ship(data=data)
-        if income is not None:
-            # 2. check income ship for response
-            income = self.check_income_ship(ship=income)
-            if income is not None:
-                # 3. process income ship with completed data package
-                self.process_income_ship(ship=income)
+        income = self.get_arrival(data=data)
+        if income is None:
+            return None
+        # 2. check income ship for response
+        income = self.check_arrival(ship=income)
+        if income is None:
+            return None
+        # 3. process income ship with completed data package
+        delegate = self.delegate
+        if delegate is None:
+            return None
+        # callback
+        remote = self.__remote
+        local = self.__local
+        conn = self.connection
+        delegate.gate_received(ship=income, source=remote, destination=local, connection=conn)
 
     @abstractmethod
-    def get_income_ship(self, data: bytes) -> Optional[Arrival]:
+    def get_arrival(self, data: bytes) -> Optional[Arrival]:
         """
         Get income ship from received data
 
@@ -145,7 +162,7 @@ class StarDocker(Docker):
         raise NotImplemented
 
     @abstractmethod
-    def check_income_ship(self, ship: Arrival) -> Optional[Arrival]:
+    def check_arrival(self, ship: Arrival) -> Optional[Arrival]:
         """
         Check income ship for responding
 
@@ -155,47 +172,57 @@ class StarDocker(Docker):
         raise NotImplemented
 
     # protected
-    def check_response(self, ship: Arrival):
+    def check_response(self, ship: Arrival) -> Optional[Departure]:
+        """ Check and remove linked departure ship with same SN (and page index for fragment) """
         # check response for linked departure ship (same SN)
         linked = self.__dock.check_response(ship=ship)
-        if linked is not None:
-            # all fragments responded, task finished
-            delegate = self.delegate
-            if delegate is not None:
-                local = self.__local
-                remote = self.__remote
-                delegate.gate_sent(gate=self.gate, source=local, destination=remote, ship=linked)
-
-    # protected
-    def process_income_ship(self, ship: Arrival):
-        local = self.__local
-        remote = self.__remote
+        if linked is None:
+            # linked departure task not found, or not finished yet
+            return None
+        # all fragments responded, task finished
         delegate = self.delegate
-        assert delegate is not None, 'gate delegate should not empty'
-        delegate.gate_received(gate=self.gate, source=remote, destination=local, ship=ship)
+        if delegate is not None:
+            remote = self.__remote
+            local = self.__local
+            conn = self.connection
+            delegate.gate_sent(ship=linked, source=local, destination=remote, connection=conn)
+        return linked
 
     # protected
-    def get_outgo_ship(self, now: int) -> Optional[Departure]:
-        """
-        Get outgo ship from waiting queue
+    def assemble_arrival(self, ship: Arrival) -> Optional[Arrival]:
+        """ Check received ship for completed package """
+        return self.__dock.assemble_arrival(ship=ship)
 
-        :param now: current timestamp
-        :return next new/timeout task
-        """
+    # protected
+    def append_departure(self, ship: Departure) -> bool:
+        """ Append outgo Ship to the waiting queue """
+        return self.__dock.append_departure(ship=ship)
+
+    # protected
+    def next_departure(self, now: int) -> Optional[Departure]:
+        """ Get outgo ship from waiting queue """
         # this will be remove from the queue,
         # if needs retry, the caller should append it back
         return self.__dock.next_departure(now=now)
 
     # protected
-    def send_outgo_ship(self, ship: Departure) -> bool:
+    def send_departure(self, ship: Departure) -> bool:
+        """ Sending all fragments in the ship """
         fragments = ship.fragments
         if fragments is None or len(fragments) == 0:
+            # all fragments sent
             return True
-        gate = self.gate
-        local = self.__local
+        conn = self.connection
+        if conn is None:
+            # connection not ready now
+            return False
         remote = self.__remote
         success = 0
-        for pack in fragments:
-            if gate.send_data(data=pack, source=local, destination=remote):
+        for pkg in fragments:
+            if conn.send(data=pkg, target=remote) != -1:
                 success += 1
         return success == len(fragments)
+
+    # Override
+    def purge(self):
+        self.__dock.purge()

@@ -80,8 +80,9 @@ class BaseMachine(Machine[C, T, S]):
 
     @property
     def delegate(self) -> Delegate[C, T, S]:
-        if self.__delegate is not None:
-            return self.__delegate()
+        ref = self.__delegate
+        if ref is not None:
+            return ref()
 
     @delegate.setter
     def delegate(self, handler: Delegate[C, T, S]):

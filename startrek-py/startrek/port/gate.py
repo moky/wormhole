@@ -35,7 +35,7 @@ from typing import Optional
 from ..fsm import Processor
 from ..net import ConnectionState
 
-from .ship import Arrival, Departure
+from .ship import ShipDelegate
 
 
 class Status(IntEnum):
@@ -65,18 +65,6 @@ class Gate(Processor):
     """
 
     @abstractmethod
-    def send_data(self, data: bytes, source: Optional[tuple], destination: tuple) -> bool:
-        """
-        Send data to the remote peer
-
-        :param data:        outgoing data package
-        :param source:      local address
-        :param destination: remote address
-        :return False on error
-        """
-        raise NotImplemented
-
-    @abstractmethod
     def gate_status(self, remote: tuple, local: Optional[tuple]) -> Status:
         """
         Get gate status with direction
@@ -88,55 +76,18 @@ class Gate(Processor):
         raise NotImplemented
 
 
-class Delegate(ABC):
+class GateDelegate(ShipDelegate, ABC):
 
     @abstractmethod
-    def gate_status_changed(self, gate: Gate, remote: tuple, local: Optional[tuple],
-                            previous: Status, current: Status):
+    def gate_status_changed(self, previous: Status, current: Status,
+                            remote: tuple, local: Optional[tuple], gate: Gate):
         """
         Callback when connection status changed
 
-        :param gate:     current gate
-        :param remote:   remote address
-        :param local:    local address
         :param previous: old status
         :param current:  new status
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def gate_received(self, gate: Gate, source: tuple, destination: Optional[tuple], ship: Arrival):
-        """
-        Callback when new package received
-
-        :param gate:        current gate
-        :param source:      remote address
-        :param destination: local address
-        :param ship:        data package container
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def gate_sent(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure):
-        """
-        Callback when package sent
-
-        :param gate:        current gate
-        :param source:      local address
-        :param destination: remote address
-        :param ship:        data package container
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def gate_error(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure, error):
-        """
-        Callback when package sent
-
-        :param gate:        current gate
-        :param source:      local address
-        :param destination: remote address
-        :param ship:        data package container
-        :param error:       error message
+        :param remote:   remote address
+        :param local:    local address
+        :param gate:     current gate
         """
         raise NotImplemented

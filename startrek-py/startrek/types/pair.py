@@ -50,10 +50,10 @@ class Pair(Generic[K, V]):
     def value(self) -> V:
         return self.__value
 
-    def __str__(self):
+    def __str__(self) -> str:
         return '%s=%s' % (self.__key, self.__value)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '%s=%s' % (self.__key, self.__value)
 
     def __hash__(self):

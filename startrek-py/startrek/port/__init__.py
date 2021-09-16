@@ -28,12 +28,50 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .ship import Ship, Arrival, Departure, Priority as DeparturePriority
+
+"""
+    Architecture
+    ~~~~~~~~~~~~
+
+                   Gate (Ship)       Gate (Ship)     Gate (Ship)
+                   Delegate          Delegate        Delegate
+                       ^                 ^               ^
+                       :                 :               :
+          ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~
+                       :                 :               :
+            +==========V=================V===============V==========+
+            ||         :                 :               :         ||
+            ||         :      Gate       :               :         ||
+            ||         :                 :               :         ||
+            ||  +------------+    +------------+   +------------+  ||
+            ||  |   docker   |    |   docker   |   |   docker   |  ||
+            +===+------------+====+------------+===+------------+===+
+            ||  | connection |    | connection |   | connection |  ||
+            ||  +------------+    +------------+   +------------+  ||
+            ||          :                :               :         ||
+            ||          :      HUB       :...............:         ||
+            ||          :                        :                 ||
+            ||     +-----------+           +-----------+           ||
+            ||     |  channel  |           |  channel  |           ||
+            +======+-----------+===========+-----------+============+
+                   |  socket   |           |  socket   |
+                   +-----^-----+           +-----^-----+
+                         : (TCP)                 : (UDP)
+                         :               ........:........
+                         :               :               :
+          ~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~
+                         :               :               :
+                         V               V               V
+                    Remote Peer     Remote Peer     Remote Peer
+"""
+
+from .ship import Ship, ShipDelegate, Arrival, Departure, Priority as DeparturePriority
 from .docker import Docker
-from .gate import Gate, Status as GateStatus, Delegate as GateDelegate
+from .gate import Gate, Status as GateStatus, GateDelegate
 
 __all__ = [
-    'Ship', 'Arrival', 'Departure', 'DeparturePriority',
+    'Ship', 'ShipDelegate',
+    'Arrival', 'Departure', 'DeparturePriority',
     'Docker',
     'Gate', 'GateStatus', 'GateDelegate',
 ]

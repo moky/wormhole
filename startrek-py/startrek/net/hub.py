@@ -34,78 +34,51 @@ from typing import Optional, Set
 
 from ..fsm import Processor
 
+from .channel import Channel
 from .connection import Connection
 
 
-"""
-    Topology
-    ~~~~~~~~
-
-                            +---------------+
-                            |      APP      |
-                            +---------------+
-                                |       A
-                                |       |  (filter)
-                                V       |
-            +-----------------------------------------------+
-            |                                               |
-            |     +----------+     HUB     +----------+     |
-            |     |  socket  |             |  socket  |     |
-            +-----+----------+-------------+----------+-----+
-                     |    A                   |  |  A
-                     |    |   (connections)   |  |  |
-                     |    |    (+channels)    |  |  |
-                     |    |                   |  |  |
-            ~~~~~~~~~|~~~~|~~~~~~~~~~~~~~~~~~~|~~|~~|~~~~~~~~
-            ~~~~~~~~~|~~~~|~~~~~~~~~~~~~~~~~~~|~~|~~|~~~~~~~~
-                     |    |                   |  |  |
-                     V    |                   V  V  |
-"""
-
-
 class Hub(Processor, ABC):
+    """ Connections & Channels Container """
 
     @abstractmethod
-    def send_data(self, data: bytes, source: Optional[tuple], destination: tuple) -> bool:
+    def open(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
         """
-        Send data from source to destination
+        Open a channel with direction (remote, local)
 
-        :param data:        payload
-        :param source:      local address; None for any connection (connected to destination)
-        :param destination: remote address
-        :return: False on error
+        :param remote: remote address to connected
+        :param local:  local address to bound
+        :return: None on socket error
         """
         raise NotImplemented
 
     @abstractmethod
-    def get_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Connection]:
+    def close(self, channel: Channel):
         """
-        Get connection if already exists
+        Close socket channel
+
+        :param channel: socket channel
+        :return:
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def connect(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
+        """
+        Get connection with direction (remote, local)
 
         :param remote: remote address
         :param local:  local address
-        :return: None on connection not found
+        :return: None on channel not opened
         """
         raise NotImplemented
 
     @abstractmethod
-    def connect(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Connection]:
-        """
-        Get/create connection
-
-        :param remote: remote address
-        :param local:  local address
-        :return: None on error
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def disconnect(self, remote: Optional[tuple], local: Optional[tuple]):
+    def disconnect(self, connection: Connection):
         """
         Close connection
 
-        :param remote: remote address
-        :param local:  local address
+        :param connection: closing connection
         """
         raise NotImplemented
 

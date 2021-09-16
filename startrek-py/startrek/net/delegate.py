@@ -35,58 +35,54 @@ from .connection import Connection
 from .state import ConnectionState
 
 
-class Delegate(ABC):
+class ConnectionDelegate(ABC):
     """ Connection Delegate """
 
     @abstractmethod
-    def connection_state_changed(self, connection: Connection,
-                                 previous: ConnectionState, current: ConnectionState):
+    def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
         """
-        Called when connection status is going to change
+        Called when connection status is changed
 
-        :param connection: current connection
         :param previous:   old state
         :param current:    new state
+        :param connection: current connection
         """
         raise NotImplemented
 
     @abstractmethod
-    def connection_received(self, connection: Connection,
-                            source: tuple, destination: Optional[tuple], data: bytes):
+    def connection_received(self, data: bytes, source: tuple, destination: Optional[tuple], connection: Connection):
         """
         Called when connection received data
 
-        :param connection:  current connection
+        :param data:        received data package
         :param source:      remote address
         :param destination: local address
-        :param data:        received data package
+        :param connection:  current connection
         """
         raise NotImplemented
 
     @abstractmethod
-    def connection_sent(self, connection: Connection,
-                        source: Optional[tuple], destination: tuple, data: bytes):
+    def connection_sent(self, data: bytes, source: Optional[tuple], destination: tuple, connection: Connection):
         """
         Called after data sent
 
-        :param connection:  current connection
+        :param data:        sent data package
         :param source:      local address
         :param destination: remote address
-        :param data:        sent data package
+        :param connection:  current connection
         """
         raise NotImplemented
 
     @abstractmethod
-    def connection_error(self, connection: Connection,
-                         source: Optional[tuple], destination: Optional[tuple], data: Optional[bytes],
-                         error):
+    def connection_error(self, error, data: Optional[bytes],
+                         source: Optional[tuple], destination: Optional[tuple], connection: Connection):
         """
         Called when connection error
 
-        :param connection:  current connection
+        :param error:       error message
+        :param data:        outgoing data package
         :param source:      local address
         :param destination: remote address
-        :param data:        sent data package
-        :param error:       error message
+        :param connection:  current connection
         """
         raise NotImplemented

@@ -30,7 +30,9 @@
 
 from abc import ABC, abstractmethod
 from enum import IntEnum
-from typing import List
+from typing import List, Optional
+
+from ..net import Connection
 
 
 class Ship(ABC):
@@ -76,7 +78,7 @@ class Arrival(Ship):
 
 
 class Departure(Ship):
-    """ Departure Ship """
+    """ Outgoing Ship """
 
     @property
     def priority(self) -> int:
@@ -124,3 +126,47 @@ class Priority(IntEnum):
     URGENT = -1
     NORMAL = 0
     SLOWER = 1
+
+
+class ShipDelegate(ABC):
+    """ Ship Delegate """
+
+    @abstractmethod
+    def gate_received(self, ship: Arrival,
+                      source: tuple, destination: Optional[tuple], connection: Connection):
+        """
+        Callback when new package received
+
+        :param ship:        income data package container
+        :param source:      remote address
+        :param destination: local address
+        :param connection:  current connection
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def gate_sent(self, ship: Departure,
+                  source: Optional[tuple], destination: tuple, connection: Connection):
+        """
+        Callback when package sent
+
+        :param ship:        outgo data package container
+        :param source:      local address
+        :param destination: remote address
+        :param connection:  current connection
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def gate_error(self, error, ship: Departure,
+                   source: Optional[tuple], destination: tuple, connection: Connection):
+        """
+        Callback when package sent
+
+        :param error:       error message
+        :param ship:        outgo data package container
+        :param source:      local address
+        :param destination: remote address
+        :param connection:  current connection
+        """
+        raise NotImplemented

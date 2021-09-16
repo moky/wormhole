@@ -29,7 +29,7 @@
 # ==============================================================================
 
 import socket
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Optional
 
 from .channel import Channel
@@ -37,55 +37,39 @@ from .channel import Channel
 
 class BaseChannel(Channel, ABC):
 
-    def __init__(self, sock: Optional[socket.socket] = None,
-                 remote: Optional[tuple] = None, local: Optional[tuple] = None,
-                 blocking: bool = True, reuse: bool = True):
+    def __init__(self, sock: socket.socket, remote: Optional[tuple], local: Optional[tuple]):
         super().__init__()
-        if sock is None:
-            # BaseChannel(remote=remote, local=local, blocking=blocking, reuse=reuse),
-            self._blocking = blocking
-            self._reuse = reuse
-            # setup inner socket
-            self._sock = None
-            sock = self._setup_socket()
-            # bind to local address
-            if local is not None:
-                sock.bind(local)
-            # connect to remote address
-            if remote is not None:
-                sock.connect(remote)
-        else:
-            # BaseChannel(sock=sock)
-            self._blocking = sock.getblocking()
-            self._reuse = getattr(sock, 'SO_REUSEPORT', 0)
-            self._sock = sock
+        self.__sock = sock
+        self.__remote = remote
+        self.__local = local
 
-    @abstractmethod
-    def _setup_socket(self) -> socket.socket:
-        """ create socket (blocking, reuse) """
-        raise NotImplemented
+    @property  # protected
+    def sock(self) -> Optional[socket.socket]:
+        return self.__sock
+
+    def __str__(self) -> str:
+        return '<%s: remote=%s, local=%s />' % (self.__class__, self.__remote, self.__local)
+
+    def __repr__(self) -> str:
+        return '<%s: remote=%s, local=%s />' % (self.__class__, self.__remote, self.__local)
 
     # Override
     def configure_blocking(self, blocking: bool):
-        self._blocking = blocking
-        sock = self._sock
+        sock = self.sock
         if sock is None:
-            sock = self._setup_socket()
+            raise socket.error('socket closed')
         else:
             sock.setblocking(blocking)
         return sock
 
     @property  # Override
     def blocking(self) -> bool:
-        sock = self._sock
-        if sock is None:
-            return self._blocking
-        else:
-            return sock.getblocking()
+        sock = self.sock
+        return sock is not None and sock.getblocking()
 
     @property  # Override
     def opened(self) -> bool:
-        sock = self._sock
+        sock = self.sock
         return sock is not None and not getattr(sock, '_closed', False)
 
     @property  # Override
@@ -104,56 +88,47 @@ class BaseChannel(Channel, ABC):
 
     @property  # Override
     def local_address(self) -> Optional[tuple]:
-        sock = self._sock
-        if sock is None:
-            return None
-        else:
-            # assert isinstance(sock, socket.socket)
-            return sock.getsockname()
+        return self.__local
 
     @property  # Override
     def remote_address(self) -> Optional[tuple]:
-        sock = self._sock
-        if sock is None:
-            return None
-        try:
-            # assert isinstance(sock, socket.socket)
-            return sock.getpeername()
-        except socket.error as error:
-            if error.strerror == 'Socket is not connected':
-                return None
-            else:
-                raise error
+        return self.__remote
 
     # Override
     def bind(self, address: Optional[tuple] = None, host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
         if address is None:
             address = (host, port)
-        sock = self._setup_socket()
-        # assert isinstance(sock, socket.socket)
+        sock = self.sock
+        if sock is None:
+            raise socket.error('socket closed')
         sock.bind(address)
+        self.__local = address
+        return sock
 
     # Override
     def connect(self, address: Optional[tuple] = None, host: Optional[str] = '127.0.0.1', port: Optional[int] = 0):
         if address is None:
             address = (host, port)
-        sock = self._setup_socket()
-        # assert isinstance(sock, socket.socket)
+        sock = self.sock
+        if sock is None:
+            raise socket.error('socket closed')
         sock.connect(address)
+        self.__remote = address
+        return sock
 
     # Override
     def disconnect(self):
-        sock = self._sock
+        sock = self.sock
         self.close()
         return sock
 
     # Override
     def close(self):
-        sock = self._sock
+        sock = self.sock
         if sock is not None and not getattr(sock, '_closed', False):
             # sock.shutdown(socket.SHUT_RDWR)
             sock.close()
-        self._sock = None
+        self.__sock = None
 
     #
     #   Input/Output
@@ -162,7 +137,7 @@ class BaseChannel(Channel, ABC):
     # Override
     def read(self, max_len: int) -> Optional[bytes]:
         # check socket
-        sock = self._sock
+        sock = self.sock
         if sock is None:
             raise socket.error('socket lost, cannot read data')
         # try to receive data
@@ -172,7 +147,7 @@ class BaseChannel(Channel, ABC):
             # the socket will raise 'Resource temporarily unavailable'
             # when received nothing in non-blocking mode,
             # here we should ignore this exception.
-            if not self._blocking:
+            if not self.blocking:
                 if error.strerror == 'Resource temporarily unavailable':
                     # received nothing
                     return None
@@ -188,7 +163,7 @@ class BaseChannel(Channel, ABC):
 
     # Override
     def write(self, data: bytes) -> int:
-        sock = self._sock
+        sock = self.sock
         if sock is None:
             raise socket.error('socket lost, cannot write data: %d byte(s)' % len(data))
         # sock.sendall(data)

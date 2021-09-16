@@ -28,116 +28,125 @@
 # SOFTWARE.
 # ==============================================================================
 
-import time
+import socket
 import weakref
 from abc import ABC, abstractmethod
-from typing import Optional, Dict
+from typing import Optional, Set
 
 from ..types import AddressPairMap
 
-from .connection import Connection
-from .delegate import Delegate as ConnectionDelegate
 from .hub import Hub
+from .channel import Channel
+from .connection import Connection
+from .delegate import ConnectionDelegate
+from .state import ConnectionState
+from .base_conn import BaseConnection
 
 
 class BaseHub(Hub, ABC):
 
-    DYING_EXPIRES = 120  # kill connection after 2 minutes
+    """
+        Maximum Segment Size
+        ~~~~~~~~~~~~~~~~~~~~
+        Buffer size for receiving package
+
+        MTU        : 1500 bytes (excludes 14 bytes ethernet header & 4 bytes FCS)
+        IP header  :   20 bytes
+        TCP header :   20 bytes
+        UDP header :    8 bytes
+    """
+    MSS = 1472  # 1500 - 20 - 8
 
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__()
         self.__delegate = weakref.ref(delegate)
-        self.__connection_pool = AddressPairMap()
-        self.__dying_times: Dict[tuple, int] = {}  # (remote, local) => timestamp
+        self.__connection_pool: AddressPairMap[Connection] = AddressPairMap()
 
     @property
     def delegate(self) -> ConnectionDelegate:
         return self.__delegate()
 
-    # Override
-    def send_data(self, data: bytes, source: Optional[tuple], destination: tuple) -> bool:
-        conn = self.__connection_pool.get(remote=destination, local=source)
-        if conn is None:
-            # connection lost
-            return False
-        # assert isinstance(conn, Connection), 'connection error: %s' % conn
-        if not conn.alive:
-            # connection not ready
-            return False
-        return conn.send(data=data, target=destination) != -1
+    @abstractmethod
+    def channels(self) -> Set[Channel]:
+        """ Get all channels """
+        raise NotImplemented
+
+    # protected
+    def create_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+        sock = self.open(remote=remote, local=local)
+        if sock is None:  # or not sock.opened:
+            return None
+        if local is None:
+            local = sock.local_address
+        conn = BaseConnection(channel=sock, remote=remote, local=local)
+        conn.delegate = self.delegate
+        conn.hub = self
+        conn.start()  # start FSM
+        return conn
 
     # Override
-    def get_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Connection]:
-        return self.__connection_pool.get(remote=remote, local=local)
-
-    # Override
-    def connect(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Connection]:
+    def connect(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
         conn = self.__connection_pool.get(remote=remote, local=local)
         if conn is None:
             conn = self.create_connection(remote=remote, local=local)
             if conn is not None:
+                if local is None:
+                    local = conn.local_address
                 self.__connection_pool.put(remote=remote, local=local, value=conn)
         return conn
 
-    @abstractmethod
-    def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
-        """
-        Create connection with direction (remote, local)
-
-        :param remote: remote address
-        :param local:  local address
-        :return new connection
-        """
-        raise NotImplemented
-
     # Override
-    def disconnect(self, remote: Optional[tuple], local: Optional[tuple]):
+    def disconnect(self, connection: Connection):
+        remote = connection.remote_address
+        local = connection.local_address
         conn = self.__connection_pool.remove(remote=remote, local=local, value=None)
-        if isinstance(conn, Connection):
+        if conn is not None:
             conn.close()
+
+    def __close_connection(self, remote: tuple, local: Optional[tuple]):
+        conn = self.__connection_pool.get(remote=remote, local=local)
+        if conn is not None:
+            self.__connection_pool.remove(remote=remote, local=local, value=conn)
+            conn.close()
+
+    def __drive(self, sock: Channel) -> bool:
+        # try to receive
+        try:
+            data, remote = sock.receive(max_len=self.MSS)
+        except socket.error:
+            # socket error, remove the channel
+            self.close(channel=sock)
+            # remove connected connection
+            remote = sock.remote_address
+            if remote is not None:
+                self.__close_connection(remote=remote, local=sock.local_address)
+            return False
+        if remote is None:
+            # received nothing
+            return False
+        # get connection for processing received data
+        conn = self.connect(remote=remote, local=sock.local_address)
+        if conn is not None:
+            conn.received(data=data)
+        return True
 
     # Override
     def process(self) -> bool:
-        activated_count = 0
+        count = 0
+        # 1. drive all channels to receive data
+        channels = self.channels()
+        for sock in channels:
+            if sock.opened and self.__drive(sock=sock):
+                # received data from this socket channel
+                count += 1
+        # 2. drive all connections to move on
         connections = self.__connection_pool.values
-        now = int(time.time())
         for conn in connections:
-            assert isinstance(conn, Connection), 'connection error: %s' % conn
-            # 1. drive all connections to process
-            if conn.process():
-                activated_count += 1
-            remote = conn.remote_address
-            local = conn.local_address
-            pair = build_pair(remote=remote, local=local)
-            # 2. check closed connections
-            if conn.opened:
-                # connection still alive, revive it
-                self.__dying_times.pop(pair, None)
-            else:
-                # connection is closed, check dying time
-                expired = self.__dying_times.get(pair)
-                if expired is None or expired == 0:
-                    # set death clock
-                    self.__dying_times[pair] = now + self.DYING_EXPIRES
-                elif expired < now:
-                    # times up, kill it
-                    self.__connection_pool.remove(remote=remote, local=local, value=conn)
-                    # clear the death clock for it
-                    self.__dying_times.pop(pair, None)
-        return activated_count > 0
-
-
-def build_pair(remote: Optional[tuple], local: Optional[tuple]) -> Optional[tuple]:
-    if remote is None:
-        if local is None:
-            # raise ValueError('both local & remote addresses are empty')
-            return None
-        return ANY_REMOTE_ADDRESS, local
-    elif local is None:
-        return remote, ANY_LOCAL_ADDRESS
-    else:
-        return remote, local
-
-
-ANY_LOCAL_ADDRESS = ('0.0.0.0', 0)
-ANY_REMOTE_ADDRESS = ('0.0.0.0', 0)
+            # drive connection to go on
+            conn.tick()
+            # check connection state
+            state = conn.state
+            if state is None or state == ConnectionState.ERROR:
+                # connection lost
+                self.disconnect(connection=conn)
+        return count

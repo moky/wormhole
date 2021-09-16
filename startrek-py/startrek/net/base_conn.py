@@ -35,38 +35,28 @@ from typing import Optional
 
 from ..fsm import StateDelegate
 
+from .hub import Hub
 from .channel import Channel
 from .connection import Connection
-from .delegate import Delegate as ConnectionDelegate
-from .state import ConnectionState, StateMachine
+from .delegate import ConnectionDelegate
+from .state import ConnectionState, StateMachine, TimedConnection
 
 
-class BaseConnection(Connection, StateDelegate):
-
-    """
-        Maximum Segment Size
-        ~~~~~~~~~~~~~~~~~~~~
-        Buffer size for receiving package
-
-        MTU        : 1500 bytes (excludes 14 bytes ethernet header & 4 bytes FCS)
-        IP header  :   20 bytes
-        TCP header :   20 bytes
-        UDP header :    8 bytes
-    """
-    MSS = 1472  # 1500 - 20 - 8
+class BaseConnection(Connection, TimedConnection, StateDelegate):
 
     EXPIRES = 16  # seconds
 
-    def __init__(self, remote: Optional[tuple], local: Optional[tuple], channel: Optional[Channel]):
+    def __init__(self, channel: Channel, remote: tuple, local: Optional[tuple]):
         super().__init__()
-        self._channel = channel
-        self._remote_address = remote
-        self._local_address = local
+        self.__channel = channel
+        self.__remote = remote
+        self.__local = local
         # active times
         self.__last_sent_time = 0
         self.__last_received_time = 0
         # Connection Delegate
         self.__delegate: Optional[weakref.ReferenceType] = None
+        self.__hub: Optional[weakref.ReferenceType] = None
         # Finite State Machine
         self.__fsm = self._create_state_machine()
 
@@ -77,8 +67,9 @@ class BaseConnection(Connection, StateDelegate):
 
     @property
     def delegate(self) -> ConnectionDelegate:
-        if self.__delegate is not None:
-            return self.__delegate()
+        ref = self.__delegate
+        if ref is not None:
+            return ref()
 
     @delegate.setter
     def delegate(self, handler: ConnectionDelegate):
@@ -86,6 +77,29 @@ class BaseConnection(Connection, StateDelegate):
             self.__delegate = None
         else:
             self.__delegate = weakref.ref(handler)
+
+    @property
+    def hub(self) -> Hub:
+        ref = self.__hub
+        if ref is not None:
+            return ref()
+
+    @hub.setter
+    def hub(self, h: Hub):
+        if h is None:
+            self.__hub = None
+        else:
+            self.__hub = weakref.ref(h)
+
+    @property
+    def channel(self) -> Optional[Channel]:
+        return self.__channel
+
+    def __str__(self) -> str:
+        return '<%s: remote=%s, local=%s />' % (self.__class__, self.__remote, self.__local)
+
+    def __repr__(self) -> str:
+        return '<%s: remote=%s, local=%s />' % (self.__class__, self.__remote, self.__local)
 
     def __eq__(self, other) -> bool:
         if self is other:
@@ -121,34 +135,11 @@ class BaseConnection(Connection, StateDelegate):
 
     @property  # Override
     def local_address(self) -> Optional[tuple]:  # (str, int)
-        sock = self._channel
-        if sock is not None and sock.bound:
-            return sock.local_address
-        else:
-            return self._local_address
+        return self.__local
 
     @property  # Override
     def remote_address(self) -> Optional[tuple]:  # (str, int)
-        sock = self._channel
-        if sock is not None and sock.connected:
-            return sock.remote_address
-        else:
-            return self._remote_address
-
-    @property
-    def sent_recently(self) -> bool:
-        now = time.time()
-        return now < self.__last_sent_time + self.EXPIRES
-
-    @property
-    def received_recently(self) -> bool:
-        now = time.time()
-        return now < self.__last_received_time + self.EXPIRES
-
-    @property
-    def long_time_not_received(self) -> bool:
-        now = time.time()
-        return now > self.__last_received_time + (self.EXPIRES << 4)
+        return self.__remote
 
     @property  # Override
     def opened(self) -> bool:
@@ -172,112 +163,76 @@ class BaseConnection(Connection, StateDelegate):
     # Override
     def close(self):
         self.__close_channel()
-        self.change_state(name=ConnectionState.DEFAULT)
+        self.__fsm.stop()
 
     def __close_channel(self):
-        try:
-            sock = self._channel
-            if sock is not None and sock.opened:
-                sock.close()
-        except socket.error as error:
-            print('[NET] failed to close socket: %s' % error)
-        finally:
-            self._channel = None
+        if self.__channel is not None:
+            hub = self.hub
+            if hub is not None:
+                hub.close(channel=self.__channel)
+            self.__channel = None
 
-    @property
-    def channel(self) -> Channel:
-        return self._channel
+    # Override
+    def is_sent_recently(self, now: int) -> bool:
+        return now < self.__last_sent_time + self.EXPIRES
 
-    def _receive(self, max_len: int) -> (bytes, tuple):
+    # Override
+    def is_received_recently(self, now: int) -> bool:
+        return now < self.__last_received_time + self.EXPIRES
+
+    # Override
+    def is_long_time_not_received(self, now: int) -> bool:
+        return now > self.__last_received_time + (self.EXPIRES << 4)
+
+    # Override
+    def received(self, data: bytes):
+        self.__last_received_time = int(time.time())
+        delegate = self.delegate
+        if delegate is not None:
+            delegate.connection_received(data=data, source=self.__remote, destination=self.__local, connection=self)
+
+    def _send(self, data: bytes, target: Optional[tuple]) -> int:
         sock = self.channel
         if sock is None or not sock.opened:
-            raise socket.error('connection lost: %s' % sock)
-        try:
-            data, remote = sock.receive(max_len=max_len)
-            if data is not None and len(data) > 0:
-                self.__last_received_time = time.time()
-            return data, remote
-        except socket.error as error:
-            print('[NET] failed to receive data: %s' % error)
-            self.__close_channel()
-            self.change_state(name=ConnectionState.ERROR)
-            raise error
-
-    def _send(self, data: bytes, target: Optional[tuple] = None) -> int:
-        sock = self.channel
-        if sock is None or not sock.opened:
-            raise socket.error('connection lost: %s' % sock)
-        try:
-            sent = sock.send(data=data, target=target)
-            if sent != -1:
-                self.__last_sent_time = time.time()
-            return sent
-        except socket.error as error:
-            print('[NET] failed to send data: %s' % error)
-            self.__close_channel()
-            self.change_state(name=ConnectionState.ERROR)
-            raise error
+            raise socket.error('socket channel lost: %s' % sock)
+        sent = sock.send(data=data, target=target)
+        if sent != -1:
+            self.__last_sent_time = int(time.time())
+        return sent
 
     # Override
     def send(self, data: bytes, target: Optional[tuple] = None) -> int:
+        # try to send data
         error = None
+        sent = -1
         try:
             sent = self._send(data=data, target=target)
             if sent == -1:
                 error = socket.error('failed to send data: %d byte(s) to %s' % (len(data), target))
         except socket.error as e:
             error = e
-            sent = -1
+            self.close()
         # callback
         delegate = self.delegate
         if delegate is not None:
-            # assert isinstance(delegate, ConnectionDelegate)
             local = self.local_address
-            if sent == -1:
-                delegate.connection_error(connection=self, source=local, destination=target, data=data, error=error)
+            if error is None:
+                delegate.connection_sent(data=data, source=local, destination=target, connection=self)
             else:
-                delegate.connection_sent(connection=self, source=local, destination=target, data=data)
+                delegate.connection_error(error=error, data=data, source=local, destination=target, connection=self)
         return sent
 
     #
     #   States
     #
 
-    def change_state(self, name: str):
-        state = self.__fsm.get_state(name=name)
-        if state != self.__fsm.current_state:
-            self.__fsm.change_state(state=state)
-
     @property  # Override
     def state(self) -> ConnectionState:
         return self.__fsm.current_state
 
-    #
-    #   Processor
-    #
-
     # Override
-    def process(self) -> bool:
+    def tick(self):
         self.__fsm.tick()
-        if not self.opened:
-            return False
-        delegate = self.delegate
-        if delegate is None:
-            return False
-        local = self.local_address
-        # receiving
-        try:
-            data, remote = self._receive(max_len=self.MSS)
-        except socket.error as error:
-            print('[NET] failed to receive data: %s' % error)
-            delegate.connection_error(connection=self, source=None, destination=local, data=None, error=error)
-            return False
-        if data is None or len(data) == 0:  # or remote is None
-            # received nothing
-            return False
-        # callback
-        delegate.connection_received(connection=self, source=remote, destination=local, data=data)
-        return True
 
     def start(self):
         self.__fsm.start()
@@ -300,13 +255,13 @@ class BaseConnection(Connection, StateDelegate):
         if current == ConnectionState.READY:
             if state != ConnectionState.MAINTAINING:
                 # change state to 'connected', reset times to just expired
-                timestamp = time.time() - self.EXPIRES - 1
+                timestamp = int(time.time()) - self.EXPIRES - 1
                 self.__last_sent_time = timestamp
                 self.__last_received_time = timestamp
         # callback
         delegate = self.delegate
         if delegate is not None:
-            delegate.connection_state_changed(connection=self, previous=state, current=current)
+            delegate.connection_state_changed(previous=state, current=current, connection=self)
 
     # Override
     def pause_state(self, state: ConnectionState, ctx: StateMachine):
