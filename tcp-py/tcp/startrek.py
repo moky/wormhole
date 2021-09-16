@@ -90,7 +90,7 @@ class PlainDocker(StarDocker):
         super().__init__(remote=remote, local=local)
         self.__gate = weakref.ref(gate)
 
-    @property
+    @property  # private
     def gate(self) -> StarGate:
         return self.__gate()
 

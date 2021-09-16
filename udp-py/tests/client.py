@@ -13,7 +13,7 @@ rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
 from udp import Gate, GateDelegate, GateStatus
-from udp import Hub, ClientHub
+from udp import Connection, Hub, PackageHub
 from udp import Arrival, PackageArrival, Departure, PackageDeparture
 
 from tests.stargate import UDPGate
@@ -26,7 +26,7 @@ class Client(GateDelegate):
         self.__local_address = local
         self.__remote_address = remote
         gate = UDPGate(delegate=self)
-        gate.hub = ClientHub(delegate=gate)
+        gate.hub = PackageHub(delegate=gate)
         self.__gate = gate
 
     @property
@@ -42,12 +42,11 @@ class Client(GateDelegate):
         return self.__gate
 
     @property
-    def hub(self) -> ClientHub:
+    def hub(self) -> PackageHub:
         return self.gate.hub
 
     def start(self):
         self.hub.bind(address=self.local_address)
-        self.hub.connect(remote=self.remote_address, local=self.local_address)
         self.gate.start()
 
     def stop(self):
@@ -62,12 +61,13 @@ class Client(GateDelegate):
     #
 
     # Override
-    def gate_status_changed(self, gate: Gate, remote: tuple, local: Optional[tuple],
-                            previous: GateStatus, current: GateStatus):
-        UDPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (local, remote, previous, current))
+    def gate_status_changed(self, previous: GateStatus, current: GateStatus,
+                            remote: tuple, local: Optional[tuple], gate: Gate):
+        UDPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
 
     # Override
-    def gate_received(self, gate: Gate, source: tuple, destination: Optional[tuple], ship: Arrival):
+    def gate_received(self, ship: Arrival,
+                      source: tuple, destination: Optional[tuple], connection: Connection):
         assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
         pack = ship.package
         data = pack.body.get_bytes()
@@ -75,7 +75,8 @@ class Client(GateDelegate):
         UDPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
 
     # Override
-    def gate_sent(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure):
+    def gate_sent(self, ship: Departure,
+                  source: Optional[tuple], destination: tuple, connection: Connection):
         assert isinstance(ship, PackageDeparture), 'departure ship error: %s' % ship
         pack = ship.package
         data = pack.body.get_bytes()
@@ -83,7 +84,8 @@ class Client(GateDelegate):
         UDPGate.info('message sent: %d byte(s) to %s' % (size, destination))
 
     # Override
-    def gate_error(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure, error):
+    def gate_error(self, error, ship: Departure,
+                   source: Optional[tuple], destination: tuple, connection: Connection):
         UDPGate.error('gate error (%s, %s): %s' % (source, destination, error))
 
     def test(self):
@@ -111,7 +113,7 @@ if __name__ == '__main__':
 
     local_address = (CLIENT_HOST, CLIENT_PORT)
     server_address = (SERVER_HOST, SERVER_PORT)
-    print('Connecting UDP server (%s->%s) ...' % (local_address, server_address))
+    print('Connecting UDP server (%s -> %s) ...' % (local_address, server_address))
 
     g_client = Client(local=local_address, remote=server_address)
 

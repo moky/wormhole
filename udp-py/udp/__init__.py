@@ -30,20 +30,17 @@
 
 from startrek import Hub, Channel, Connection, ConnectionDelegate
 from startrek import ConnectionState, ConnectionStateMachine
-from startrek import BaseHub, BaseChannel, BaseConnection, ActiveConnection
+from startrek import BaseHub, BaseChannel, BaseConnection
 
-from startrek import Ship, Arrival, Departure, DeparturePriority
+from startrek import Ship, ShipDelegate, Arrival, Departure, DeparturePriority
 from startrek import Docker, Gate, GateStatus, GateDelegate
 
-from startrek import ArrivalShip, ArrivalHall
-from startrek import DepartureShip, DepartureHall
-from startrek import Dock, LockedDock
-from startrek import StarDocker
-from startrek import StarGate
+from startrek import ArrivalShip, ArrivalHall, DepartureShip, DepartureHall
+from startrek import Dock, LockedDock, StarDocker, StarGate
 
 from .startrek import PackageArrival, PackageDeparture, PackageDocker
 from .channel import PackageChannel
-from .hub import PackageHub, ServerHub, ClientHub
+from .hub import PackageHub
 
 name = "UDP"
 
@@ -53,16 +50,13 @@ __all__ = [
 
     'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
     'ConnectionState', 'ConnectionStateMachine',
-    'BaseHub', 'BaseChannel', 'BaseConnection', 'ActiveConnection',
-    'Ship', 'Arrival', 'Departure', 'DeparturePriority', 'Docker',
-    'Gate', 'GateStatus', 'GateDelegate',
+    'BaseHub', 'BaseChannel', 'BaseConnection',
+    'Ship', 'ShipDelegate', 'Arrival', 'Departure', 'DeparturePriority',
+    'Docker', 'Gate', 'GateStatus', 'GateDelegate',
     'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
-    'Dock', 'LockedDock',
-    'StarDocker', 'StarGate',
+    'Dock', 'LockedDock', 'StarDocker', 'StarGate',
 
     'PackageArrival', 'PackageDeparture', 'PackageDocker',
 
-    'PackageChannel',
-    'PackageHub',
-    'ServerHub', 'ClientHub',
+    'PackageChannel', 'PackageHub',
 ]

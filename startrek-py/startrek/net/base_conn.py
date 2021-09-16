@@ -96,10 +96,12 @@ class BaseConnection(Connection, TimedConnection, StateDelegate):
         return self.__channel
 
     def __str__(self) -> str:
-        return '<%s: remote=%s, local=%s />' % (self.__class__, self.__remote, self.__local)
+        clazz = self.__class__.__name__
+        return '<%s: remote=%s, local=%s />' % (clazz, self.__remote, self.__local)
 
     def __repr__(self) -> str:
-        return '<%s: remote=%s, local=%s />' % (self.__class__, self.__remote, self.__local)
+        clazz = self.__class__.__name__
+        return '<%s: remote=%s, local=%s />' % (clazz, self.__remote, self.__local)
 
     def __eq__(self, other) -> bool:
         if self is other:

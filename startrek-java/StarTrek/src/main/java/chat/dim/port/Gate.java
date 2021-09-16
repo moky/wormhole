@@ -100,7 +100,7 @@ public interface Gate extends Processor {
 
         public static Status getStatus(ConnectionState state) {
             if (state == null) {
-                return INIT;
+                return ERROR;
             } else if (state.equals(ConnectionState.READY)
                     || state.equals(ConnectionState.EXPIRED)
                     || state.equals(ConnectionState.MAINTAINING)) {

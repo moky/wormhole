@@ -122,9 +122,10 @@ public class PackageDocker extends StarDocker {
                 // PING -> PONG
                 respondCommand(head.sn, PONG);
                 return null;
+            } else {
+                // respond for Command
+                respondCommand(head.sn, OK);
             }
-            // respond for Command
-            respondCommand(head.sn, OK);
             // Unknown Command?
             // let the caller to process it
         } else if (type.isMessageResponse()) {

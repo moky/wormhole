@@ -7,7 +7,7 @@ from typing import Generic, TypeVar, Optional, List
 from startrek.fsm import Runnable
 from udp.ba import Data
 from udp.mtp import DataType, Package
-from udp import Connection
+from udp import Connection, ConnectionState
 from udp import GateDelegate, Docker
 from udp import StarGate
 from udp import PackageDocker
@@ -55,18 +55,18 @@ class UDPGate(StarGate, Runnable, Generic[H]):
     # Override
     def process(self):
         hub = self.hub
-        # from tcp import Hub
+        # from udp import Hub
         # assert isinstance(hub, Hub)
-        activated = hub.process()
-        busy = super().process()
-        return activated or busy
+        incoming = hub.process()
+        outgoing = super().process()
+        return incoming or outgoing
 
     # Override
     def get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         hub = self.hub
-        # from tcp import Hub
+        # from udp import Hub
         # assert isinstance(hub, Hub)
-        return hub.get_connection(remote=remote, local=local)
+        return hub.connect(remote=remote, local=local)
 
     # Override
     def create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
@@ -87,22 +87,30 @@ class UDPGate(StarGate, Runnable, Generic[H]):
         # TODO: remove advance party for this connection
         pass
 
+    # Override
+    def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
+        super().connection_state_changed(previous=previous, current=current, connection=connection)
+        self.info('connection state changed: %s -> %s, %s' % (previous, current, connection))
+
     def send_command(self, body: bytes, source: Optional[tuple], destination: tuple):
         pack = Package.new(data_type=DataType.COMMAND, body=Data(buffer=body))
-        worker = self.get_docker(remote=destination, local=source, advance_party=[])
-        if isinstance(worker, PackageDocker):
-            worker.send_package(pack=pack)
+        self.send_package(pack=pack, source=source, destination=destination)
 
     def send_message(self, body: bytes, source: Optional[tuple], destination: tuple):
         pack = Package.new(data_type=DataType.MESSAGE, body=Data(buffer=body))
+        self.send_package(pack=pack, source=source, destination=destination)
+
+    def send_package(self, pack: Package, source: Optional[tuple], destination: tuple):
         worker = self.get_docker(remote=destination, local=source, advance_party=[])
-        if isinstance(worker, PackageDocker):
-            worker.send_package(pack=pack)
+        assert isinstance(worker, PackageDocker), 'package docker error: %s' % worker
+        worker.send_package(pack=pack)
 
     @classmethod
     def info(cls, msg: str):
-        print('> ', msg)
+        now = time.time()
+        prefix = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now))
+        print('[%s] %s' % (prefix, msg))
 
     @classmethod
     def error(cls, msg: str):
-        print('ERROR> ', msg)
+        print('[ERROR] ', msg)

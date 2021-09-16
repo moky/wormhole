@@ -29,86 +29,68 @@
 # ==============================================================================
 
 import socket
-import weakref
-from abc import ABC
-from typing import Optional, Dict
+from typing import Optional, Dict, Set
 
-from startrek import Channel, Connection, ConnectionDelegate
-from startrek import BaseHub, BaseConnection, ActiveConnection
+from startrek import Channel, ConnectionDelegate
+from startrek import BaseHub
 
 from .channel import PackageChannel
 
 
-class PackageHub(BaseHub, ABC):
+class PackageHub(BaseHub):
     """ Base Package Hub """
 
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__(delegate=delegate)
-        self.__channels: Dict[tuple, socket.socket] = {}  # address => socket
+        self.__channels: Dict[tuple, Channel] = {}  # address => socket
 
     def bind(self, address: Optional[tuple] = None, host: Optional[str] = None, port: Optional[int] = 0):
         if address is None:
             address = (host, port)
-        sock = self.__channels.get(address)
-        if sock is None:
+        channel = self.__channels.get(address)
+        if channel is None:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
             sock.setblocking(True)
             sock.bind(address)
             sock.setblocking(False)
-            self.__channels[address] = sock
-        return self.connect(remote=None, local=address)
+            channel = PackageChannel(sock=sock, remote=None, local=address)
+            self.put_channel(channel=channel)
 
-    def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
-        sock = self.__channels.get(local)
-        if sock is not None:
-            return PackageChannel(sock=sock)
+    # protected
+    def put_channel(self, channel: Channel):
+        local = channel.local_address
+        self.__channels[local] = channel
+
+    # Override
+    def channels(self) -> Set[Channel]:
+        return set(self.__channels.values())
+
+    # Override
+    def open(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
+        return self.__channels.get(local)
+
+    # Override
+    def close(self, channel: Channel):
+        if channel is None or not channel.connected:
+            # DON'T close bound socket channel
+            return False
         else:
-            raise LookupError('failed to get channel: %s -> %s' % (remote, local))
+            self.__remove(channel=channel)
+        try:
+            if channel.opened:
+                channel.close()
+            return True
+        except socket.error:
+            return False
 
-
-class ServerHub(PackageHub):
-    """ Package Server Hub """
-
-    # Override
-    def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
-        # create connection with channel
-        sock = self.create_channel(remote=remote, local=local)
-        conn = BaseConnection(remote=remote, local=local, channel=sock)
-        # set delegate
-        if conn.delegate is None:
-            conn.delegate = self.delegate
-        # start FSM
-        conn.start()
-        return conn
-
-
-class ClientHub(PackageHub):
-    """ Package Client Hub """
-
-    # Override
-    def create_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Connection:
-        # create connection with addresses
-        conn = ActivePackageConnection(remote=remote, local=local, hub=self)
-        # set delegate
-        if conn.delegate is None:
-            conn.delegate = self.delegate
-        # start FSM
-        conn.start()
-        return conn
-
-
-class ActivePackageConnection(ActiveConnection):
-    """ Active Package Connection """
-
-    def __init__(self, remote: tuple, local: Optional[tuple], hub: PackageHub):
-        super().__init__(remote=remote, local=local)
-        self.__hub = weakref.ref(hub)
-
-    @property
-    def hub(self) -> PackageHub:
-        return self.__hub()
-
-    # Override
-    def connect(self, remote: tuple, local: Optional[tuple] = None) -> Channel:
-        return self.hub.create_channel(remote=remote, local=local)
+    def __remove(self, channel: Channel):
+        local = channel.local_address
+        if self.__channels.pop(local, None) == channel:
+            # removed by key
+            return True
+        # remove by value
+        for key in self.__channels:
+            if self.__channels.get(key) == channel:
+                self.__channels.pop(key, None)
+                return True

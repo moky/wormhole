@@ -85,19 +85,6 @@ class StarDocker(Docker):
         """ Get delegate for handling events """
         raise NotImplemented
 
-    # @property
-    # def gate(self) -> Gate:
-    #     raise NotImplemented
-    #
-    # @property
-    # def delegate(self) -> GateDelegate:
-    #     raise NotImplemented
-    #
-    # @property
-    # def __is_ready(self) -> bool:
-    #     status = self.gate.gate_status(remote=self.__remote, local=self.__local)
-    #     return status == GateStatus.READY
-
     # Override
     def process(self) -> bool:
         # 1. get connection with is ready for sending data

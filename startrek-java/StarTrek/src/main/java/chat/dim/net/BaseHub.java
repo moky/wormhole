@@ -109,6 +109,9 @@ public abstract class BaseHub implements Hub {
         if (conn != null) {
             conn.close();
         }
+        if (connection != conn) {
+            connection.close();
+        }
     }
 
     private void closeConnection(SocketAddress remote, SocketAddress local) {
@@ -156,7 +159,7 @@ public abstract class BaseHub implements Hub {
             //e.printStackTrace();
             // socket error, remove the channel
             closeChannel(sock);
-            // remove connected connection
+            // remove closed connection
             remote = sock.getRemoteAddress();
             if (remote != null) {
                 closeConnection(remote, sock.getLocalAddress());

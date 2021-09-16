@@ -40,7 +40,7 @@ public class Server implements Gate.Delegate {
         getGate().start();
     }
 
-    private void send(byte[] data, SocketAddress destination) throws IOException {
+    private void send(byte[] data, SocketAddress destination) {
         getGate().sendCommand(data, localAddress, destination);
     }
 
@@ -66,11 +66,7 @@ public class Server implements Gate.Delegate {
         text = (counter++) + "# " + payload.length + " byte(s) received";
         byte[] data = text.getBytes(StandardCharsets.UTF_8);
         UDPGate.info(">>> responding: " + text);
-        try {
-            send(data, source);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        send(data, source);
     }
     static int counter = 0;
 

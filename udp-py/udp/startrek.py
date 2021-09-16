@@ -31,8 +31,9 @@
 import weakref
 from typing import List, Optional
 
+from startrek import Connection
 from startrek import Arrival, ArrivalShip, Departure, DepartureShip, DeparturePriority
-from startrek import GateDelegate
+from startrek import ShipDelegate, GateDelegate
 from startrek import StarDocker, StarGate
 
 from .ba import Data
@@ -69,7 +70,7 @@ class PackageArrival(ArrivalShip):
 
     # Override
     def assemble(self, ship):  # -> Optional[PackageArrival]:
-        if self.__completed is None:
+        if self.__completed is None and ship is not self:
             packer = self.__packer
             assert isinstance(packer, Packer), 'packer error: %s' % packer
             assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
@@ -78,13 +79,13 @@ class PackageArrival(ArrivalShip):
             for item in fragments:
                 self.__completed = packer.insert(fragment=item)
         if self.__completed is not None:
-            return PackageArrival(pack=self.__completed)
+            return self
 
 
 class PackageDeparture(DepartureShip):
 
-    def __init__(self, priority: int, pack: Package):
-        super().__init__(priority=priority)
+    def __init__(self, pack: Package, delegate: Optional[ShipDelegate] = None, priority: int = 0):
+        super().__init__(delegate=delegate, priority=priority)
         self.__completed = pack
         if pack.head.data_type.is_message:
             self.__packages = Packer.split(package=pack)
@@ -139,31 +140,30 @@ class PackageDocker(StarDocker):
         super().__init__(remote=remote, local=local)
         self.__gate = weakref.ref(gate)
 
-    @property  # Override
+    @property  # private
     def gate(self) -> StarGate:
         return self.__gate()
 
     @property  # Override
+    def connection(self) -> Optional[Connection]:
+        gate = self.gate
+        if gate is not None:
+            return gate.get_connection(remote=self.remote_address, local=self.local_address)
+
+    @property  # Override
     def delegate(self) -> GateDelegate:
-        return self.gate.delegate
+        gate = self.gate
+        if gate is not None:
+            return gate.delegate
 
     # Override
-    def get_income_ship(self, data: bytes) -> Optional[Arrival]:
-        if data is None or len(data) == 0:
-            # should not happen
-            return None
+    def get_arrival(self, data: bytes) -> Optional[Arrival]:
         pack = Package.parse(data=Data(buffer=data))
-        if pack is None:
-            # data error
-            return None
-        body = pack.body
-        if body is None or body.size == 0:
-            # body should not be empty
-            return None
-        return PackageArrival(pack=pack)
+        if pack is not None and pack.body.size > 0:
+            return PackageArrival(pack=pack)
 
     # Override
-    def check_income_ship(self, ship: Arrival) -> Optional[Arrival]:
+    def check_arrival(self, ship: Arrival) -> Optional[Arrival]:
         assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
         pack = ship.package
         if pack is None:
@@ -194,8 +194,9 @@ class PackageDocker(StarDocker):
                 # PING -> PONG
                 self.__respond_command(sn=head.sn, body=PONG)
                 return None
-            # respond for Command
-            self.__respond_command(sn=head.sn, body=OK)
+            else:
+                # respond for Command
+                self.__respond_command(sn=head.sn, body=OK)
             # Unknown Command?
             # let the caller to process it
         elif data_type.is_message_response:
@@ -213,8 +214,8 @@ class PackageDocker(StarDocker):
             # let the caller to process it
         elif data_type.is_message_fragment:
             # assemble MessageFragment with cached fragments to completed Message
-            ship = self.dock.assemble_arrival(ship=ship)
             # let the caller to process the completed message
+            return self.assemble_arrival(ship=ship)
         elif data_type.is_message:
             # respond for Message
             self.__respond_message(sn=head.sn, pages=head.pages, index=head.index)
@@ -230,6 +231,14 @@ class PackageDocker(StarDocker):
                 return None
         return ship
 
+    # Override
+    def next_departure(self, now: int) -> Optional[Departure]:
+        outgo = super().next_departure(now=now)
+        if outgo is not None and outgo.retries < DepartureShip.MAX_RETRIES:
+            # put back for next retry
+            self.append_departure(ship=outgo)
+        return outgo
+
     def __respond_command(self, sn: TransactionID, body: bytes):
         pack = Package.new(data_type=DataType.COMMAND_RESPONSE, sn=sn, body=Data(buffer=body))
         self.send_package(pack=pack)
@@ -238,30 +247,20 @@ class PackageDocker(StarDocker):
         pack = Package.new(data_type=DataType.MESSAGE_RESPONSE, sn=sn, pages=pages, index=index, body=Data(buffer=OK))
         self.send_package(pack=pack)
 
-    # Override
-    def send_outgo_ship(self, ship: Departure) -> bool:
-        fragments = ship.fragments
-        if fragments is None or len(fragments) == 0:
-            return True
-        assert isinstance(ship, PackageDeparture), 'departure ship error: %s' % ship
-        if ship.retries < ship.MAX_RETRIES:
-            # put back for next retry
-            self.dock.append_departure(ship=ship)
-        return super().send_outgo_ship(ship=ship)
+    def send_package(self, pack: Package, priority: Optional[int] = 0, delegate: Optional[ShipDelegate] = None):
+        ship = PackageDeparture(pack=pack, delegate=delegate, priority=priority)
+        self.append_departure(ship=ship)
 
     # Override
-    def pack(self, payload: bytes, priority: int = 0) -> Departure:
-        pack = Package.new(data_type=DataType.MESSAGE, body=Data(buffer=payload))
-        return PackageDeparture(priority=priority, pack=pack)
+    def pack(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> Departure:
+        pkg = Package.new(data_type=DataType.MESSAGE, body=Data(buffer=payload))
+        return PackageDeparture(pack=pkg, delegate=delegate, priority=priority)
 
     # Override
     def heartbeat(self):
-        pack = Package.new(data_type=DataType.COMMAND, body=Data(buffer=PING))
-        self.send_package(pack=pack, priority=DeparturePriority.SLOWER)
-
-    def send_package(self, pack: Package, priority: Optional[int] = 0):
-        ship = PackageDeparture(priority=priority, pack=pack)
-        self.dock.append_departure(ship=ship)
+        pkg = Package.new(data_type=DataType.COMMAND, body=Data(buffer=PING))
+        outgo = PackageDeparture(pack=pkg, priority=DeparturePriority.SLOWER)
+        self.append_departure(ship=outgo)
 
 
 PING = b'PING'

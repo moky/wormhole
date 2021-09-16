@@ -48,10 +48,12 @@ class BaseChannel(Channel, ABC):
         return self.__sock
 
     def __str__(self) -> str:
-        return '<%s: remote=%s, local=%s />' % (self.__class__, self.__remote, self.__local)
+        clazz = self.__class__.__name__
+        return '<%s: remote=%s, local=%s />' % (clazz, self.__remote, self.__local)
 
     def __repr__(self) -> str:
-        return '<%s: remote=%s, local=%s />' % (self.__class__, self.__remote, self.__local)
+        clazz = self.__class__.__name__
+        return '<%s: remote=%s, local=%s />' % (clazz, self.__remote, self.__local)
 
     # Override
     def configure_blocking(self, blocking: bool):
@@ -166,13 +168,17 @@ class BaseChannel(Channel, ABC):
         sock = self.sock
         if sock is None:
             raise socket.error('socket lost, cannot write data: %d byte(s)' % len(data))
-        # sock.sendall(data)
-        sent = 0
-        rest = len(data)
-        while rest > 0:  # and not getattr(sock, '_closed', False):
-            cnt = sock.send(data)
-            if cnt > 0:
-                sent += cnt
-                rest -= cnt
-                data = data[cnt:]
-        return sent
+        # return sock.sendall(data)
+        return sendall(data=data, sock=sock)
+
+
+def sendall(data: bytes, sock: socket.socket) -> int:
+    sent = 0
+    rest = len(data)
+    while rest > 0:  # and not getattr(sock, '_closed', False):
+        cnt = sock.send(data)
+        if cnt > 0:
+            sent += cnt
+            rest -= cnt
+            data = data[cnt:]
+    return sent

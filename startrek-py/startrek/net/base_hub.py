@@ -102,6 +102,8 @@ class BaseHub(Hub, ABC):
         conn = self.__connection_pool.remove(remote=remote, local=local, value=None)
         if conn is not None:
             conn.close()
+        if connection is not conn:
+            connection.close()
 
     def __close_connection(self, remote: tuple, local: Optional[tuple]):
         conn = self.__connection_pool.get(remote=remote, local=local)
@@ -149,4 +151,4 @@ class BaseHub(Hub, ABC):
             if state is None or state == ConnectionState.ERROR:
                 # connection lost
                 self.disconnect(connection=conn)
-        return count
+        return count > 0

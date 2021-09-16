@@ -30,6 +30,7 @@
 
 import socket
 
+from startrek.net.base_channel import sendall
 from startrek import BaseChannel
 
 
@@ -37,21 +38,10 @@ class PackageChannel(BaseChannel):
     """ Discrete Package Channel """
 
     # Override
-    def _setup_socket(self) -> socket.socket:
-        sock = self._sock
-        if sock is None:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, self._reuse)
-            sock.setblocking(self._blocking)
-            self._sock = sock
-        return sock
-
-    # Override
     def receive(self, max_len: int) -> (bytes, tuple):
-        # check socket
-        sock = self._sock
+        sock = self.sock
         if sock is None:
-            raise socket.error('socket lost, cannot receive data')
+            raise socket.error('socket lost, cannot read data')
         remote = self.remote_address
         # try to receive data
         try:
@@ -65,7 +55,7 @@ class PackageChannel(BaseChannel):
             # the socket will raise 'Resource temporarily unavailable'
             # when received nothing in non-blocking mode,
             # here we should ignore this exception.
-            if not self._blocking:
+            if not self.blocking:
                 if error.strerror == 'Resource temporarily unavailable':
                     # received nothing
                     return None, None
@@ -81,8 +71,7 @@ class PackageChannel(BaseChannel):
 
     # Override
     def send(self, data: bytes, target: tuple) -> int:
-        # check socket
-        sock = self._sock
+        sock = self.sock
         if sock is None:
             raise socket.error('socket lost, cannot send data: %d byte(s)' % len(data))
         remote = self.remote_address
@@ -90,5 +79,8 @@ class PackageChannel(BaseChannel):
             # UDP sending
             return sock.sendto(data, target)
         else:
-            # connected (TCP/UDP), the target must equal to remote address
-            return self.write(data=data)
+            # connected (TCP/UDP)
+            assert target is None or target == remote,\
+                'the target must equal to remote address: %s, %s' % (target, remote)
+            # return sock.sendall(data)
+            return sendall(data=data, sock=sock)

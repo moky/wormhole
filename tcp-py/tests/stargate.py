@@ -5,7 +5,7 @@ import time
 from typing import Generic, TypeVar, Optional, List
 
 from startrek.fsm import Runnable
-from tcp import Connection
+from tcp import Connection, ConnectionState
 from tcp import GateDelegate, Docker
 from tcp import StarGate
 from tcp import PlainDocker
@@ -85,6 +85,11 @@ class TCPGate(StarGate, Runnable, Generic[H]):
         # TODO: remove advance party for this connection
         pass
 
+    # Override
+    def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
+        super().connection_state_changed(previous=previous, current=current, connection=connection)
+        self.info('connection state changed: %s -> %s, %s' % (previous, current, connection))
+
     def send_data(self, payload: bytes, source: Optional[tuple], destination: tuple):
         worker = self.get_docker(remote=destination, local=source, advance_party=[])
         if isinstance(worker, PlainDocker):
@@ -94,8 +99,8 @@ class TCPGate(StarGate, Runnable, Generic[H]):
     def info(cls, msg: str):
         now = time.time()
         prefix = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now))
-        print('[%s] > %s' % (prefix, msg))
+        print('[%s] %s' % (prefix, msg))
 
     @classmethod
     def error(cls, msg: str):
-        print('ERROR> ', msg)
+        print('[ERROR] ', msg)

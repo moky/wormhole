@@ -46,18 +46,21 @@ class StreamHub(BaseHub):
         super().__init__(delegate=delegate)
         self.__channels: Dict[Pair[tuple, tuple], Channel] = {}
 
-    def channels(self) -> Set[Channel]:
-        return set(self.__channels.values())
-
     # protected
     def put_channel(self, channel: Channel):
         remote = channel.remote_address
         local = channel.local_address
         self.__channels[Pair(remote, local)] = channel
 
+    # Override
+    def channels(self) -> Set[Channel]:
+        return set(self.__channels.values())
+
+    # Override
     def open(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
         return self.__channels.get(Pair(remote, local))
 
+    # Override
     def close(self, channel: Channel):
         if channel is None:
             return False

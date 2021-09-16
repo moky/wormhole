@@ -7,6 +7,7 @@ import java.util.Date;
 import java.util.List;
 
 import chat.dim.net.Connection;
+import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
 import chat.dim.port.Docker;
 import chat.dim.skywalker.Runner;
@@ -70,12 +71,6 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
     @Override
     protected Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
         // TODO: check data format before creating docker
-        Connection conn = getConnection(remote, local);
-        if (conn == null) {
-            error("connection not found: " + remote + ", " + local);
-        } else {
-            info("creating docker: " + remote + ", " + local);
-        }
         return new PlainDocker(remote, local, this);
     }
 
@@ -92,6 +87,12 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
     @Override
     protected void clearAdvanceParty(SocketAddress source, SocketAddress destination, Connection connection) {
         // TODO: remove advance party for this connection
+    }
+
+    @Override
+    public void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
+        super.onStateChanged(previous, current, connection);
+        info("connection state changed: " + previous + " -> " + current + ", " + connection);
     }
 
     public void send(byte[] payload, SocketAddress source, SocketAddress destination) {
