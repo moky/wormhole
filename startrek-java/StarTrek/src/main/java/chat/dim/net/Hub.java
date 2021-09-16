@@ -73,8 +73,8 @@ import java.util.Set;
 import chat.dim.skywalker.Processor;
 
 /**
- *  Channels Container
- *  ~~~~~~~~~~~~~~~~~~
+ *  Connections & Channels Container
+ *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 public interface Hub extends Processor {
 

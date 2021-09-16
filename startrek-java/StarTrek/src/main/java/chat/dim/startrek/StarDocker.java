@@ -170,7 +170,7 @@ public abstract class StarDocker implements Docker {
         // check response for linked departure ship (same SN)
         Departure linked = dock.checkResponse(income);
         if (linked == null) {
-            // linked departure task not found
+            // linked departure task not found, or not finished yet
             return null;
         }
         // all fragments responded, task finished

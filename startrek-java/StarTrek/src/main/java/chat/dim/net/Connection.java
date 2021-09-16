@@ -83,7 +83,7 @@ public interface Connection extends Ticker {
     interface Delegate {
 
         /**
-         *  Called when connection state is going to change
+         *  Called when connection state is changed
          *
          * @param previous   - old state
          * @param current    - new state

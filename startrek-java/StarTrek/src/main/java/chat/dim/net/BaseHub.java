@@ -76,9 +76,6 @@ public abstract class BaseHub implements Hub {
         if (sock == null/* || !sock.isOpen()*/) {
             return null;
         }
-        if (remote == null) {
-            remote = sock.getRemoteAddress();
-        }
         if (local == null) {
             local = sock.getLocalAddress();
         }
@@ -95,9 +92,6 @@ public abstract class BaseHub implements Hub {
         if (conn == null) {
             conn = createConnection(remote, local);
             if (conn != null) {
-                if (remote == null) {
-                    remote = conn.getRemoteAddress();
-                }
                 if (local == null) {
                     local = conn.getLocalAddress();
                 }
@@ -154,7 +148,7 @@ public abstract class BaseHub implements Hub {
 
     protected boolean drive(Channel sock) {
         // try to receive
-        buffer.clear();
+        final ByteBuffer buffer = ByteBuffer.allocate(MSS);
         SocketAddress remote;
         try {
             remote = sock.receive(buffer);
@@ -163,7 +157,10 @@ public abstract class BaseHub implements Hub {
             // socket error, remove the channel
             closeChannel(sock);
             // remove connected connection
-            closeConnection(sock.getRemoteAddress(), sock.getLocalAddress());
+            remote = sock.getRemoteAddress();
+            if (remote != null) {
+                closeConnection(remote, sock.getLocalAddress());
+            }
             return false;
         }
         if (remote == null) {
@@ -180,5 +177,4 @@ public abstract class BaseHub implements Hub {
         }
         return true;
     }
-    private final ByteBuffer buffer = ByteBuffer.allocate(MSS);
 }

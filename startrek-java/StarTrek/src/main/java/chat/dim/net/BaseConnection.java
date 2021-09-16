@@ -221,7 +221,7 @@ public class BaseConnection implements Connection, TimedConnection, StateDelegat
 
     protected int send(ByteBuffer src, SocketAddress destination) throws IOException {
         Channel sock = getChannel();
-        if (sock == null) {
+        if (sock == null || !sock.isOpen()) {
             throw new SocketException("socket channel lost");
         }
         int sent = sock.send(src, destination);
