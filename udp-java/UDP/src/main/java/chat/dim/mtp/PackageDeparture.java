@@ -44,16 +44,21 @@ public class PackageDeparture extends DepartureShip {
     private final List<Package> packages;
     private final List<byte[]> fragments;
 
-    public PackageDeparture(Delegate delegate, int prior, Package pack) {
-        super(delegate, prior);
+    public PackageDeparture(Package pack, int prior, Delegate delegate) {
+        super(prior, delegate);
         completed = pack;
-        if (pack.isMessage()) {
-            packages = Packer.split(pack);
-        } else {
-            packages = new ArrayList<>();
-            packages.add(pack);
-        }
+        packages = split(pack);
         fragments = new ArrayList<>();
+    }
+
+    protected List<Package> split(Package pack) {
+        if (pack.isMessage()) {
+            return Packer.split(pack);
+        } else {
+            List<Package> array = new ArrayList<>();
+            array.add(pack);
+            return array;
+        }
     }
 
     public Package getPackage() {

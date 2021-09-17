@@ -60,8 +60,9 @@ class PlainArrival(ArrivalShip):
 
 
 class PlainDeparture(DepartureShip):
-    def __init__(self, data: bytes, delegate: Optional[ShipDelegate] = None, priority: int = 0):
-        super().__init__(delegate=delegate, priority=priority)
+
+    def __init__(self, data: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None):
+        super().__init__(priority=priority, delegate=delegate)
         self.__data = data
         self.__fragments = [data]
 
@@ -128,7 +129,7 @@ class PlainDocker(StarDocker):
 
     # Override
     def pack(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> Departure:
-        return PlainDeparture(priority=priority, data=payload)
+        return PlainDeparture(data=payload, priority=priority)
 
     # Override
     def heartbeat(self):

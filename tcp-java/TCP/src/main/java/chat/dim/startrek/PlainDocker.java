@@ -106,7 +106,7 @@ public class PlainDocker extends StarDocker {
 
     @Override
     public PlainDeparture pack(byte[] payload, int priority, Ship.Delegate delegate) {
-        return new PlainDeparture(delegate, priority, payload);
+        return new PlainDeparture(payload, priority, delegate);
     }
 
     @Override

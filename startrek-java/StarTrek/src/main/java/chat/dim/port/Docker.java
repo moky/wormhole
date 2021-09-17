@@ -56,6 +56,14 @@ public interface Docker extends Processor {
     Departure pack(byte[] payload, int priority, Ship.Delegate delegate);
 
     /**
+     *  Append outgo ship to a queue for sending out
+     *
+     * @param outgo - outgo ship carrying data package/fragment
+     * @return false on duplicated
+     */
+    boolean appendDeparture(Departure outgo);
+
+    /**
      *  Called when received data
      *
      * @param data   - received data package

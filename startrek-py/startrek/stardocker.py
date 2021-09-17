@@ -46,12 +46,12 @@ class StarDocker(Docker):
         ~~~~~~~~~~~
 
         @abstract properties:
-            gate()
+            connection()
             delegate()
 
         @abstract methods:
-            - get_income_ship(data)
-            - check_income_ship(ship)
+            - get_arrival(data)
+            - check_arrival(ship)
             - pack(payload, priority)
             - heartbeat()
     """
@@ -105,10 +105,11 @@ class StarDocker(Docker):
             error = ConnectionError('Request timeout')
         else:
             try:
-                if not self.send_departure(ship=outgo):
+                if not self.__send_departure(ship=outgo):
                     # failed to send outgo package, callback
                     error = ConnectionError('Connection error')
             except socket.error as e:
+                # socket error, callback
                 error = e
         # callback
         delegate = self.delegate
@@ -117,6 +118,23 @@ class StarDocker(Docker):
             local = self.__local
             delegate.gate_error(error=error, ship=outgo, source=local, destination=remote, connection=conn)
         return True
+
+    def __send_departure(self, ship: Departure) -> bool:
+        """ Sending all fragments in the ship """
+        fragments = ship.fragments
+        if fragments is None or len(fragments) == 0:
+            # all fragments sent
+            return True
+        conn = self.connection
+        if conn is None:
+            # connection not ready now
+            return False
+        remote = self.__remote
+        success = 0
+        for pkg in fragments:
+            if conn.send(data=pkg, target=remote) != -1:
+                success += 1
+        return success == len(fragments)
 
     # Override
     def process_received(self, data: bytes):
@@ -181,35 +199,18 @@ class StarDocker(Docker):
         return self.__dock.assemble_arrival(ship=ship)
 
     # protected
-    def append_departure(self, ship: Departure) -> bool:
-        """ Append outgo Ship to the waiting queue """
-        return self.__dock.append_departure(ship=ship)
-
-    # protected
     def next_departure(self, now: int) -> Optional[Departure]:
         """ Get outgo ship from waiting queue """
         # this will be remove from the queue,
         # if needs retry, the caller should append it back
         return self.__dock.next_departure(now=now)
 
-    # protected
-    def send_departure(self, ship: Departure) -> bool:
-        """ Sending all fragments in the ship """
-        fragments = ship.fragments
-        if fragments is None or len(fragments) == 0:
-            # all fragments sent
-            return True
-        conn = self.connection
-        if conn is None:
-            # connection not ready now
-            return False
-        remote = self.__remote
-        success = 0
-        for pkg in fragments:
-            if conn.send(data=pkg, target=remote) != -1:
-                success += 1
-        return success == len(fragments)
+    # Override
+    def append_departure(self, ship: Departure) -> bool:
+        """ Append outgo Ship to the waiting queue """
+        return self.__dock.append_departure(ship=ship)
 
     # Override
     def purge(self):
+        """ Clear expired tasks """
         self.__dock.purge()

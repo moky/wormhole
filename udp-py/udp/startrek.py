@@ -33,7 +33,7 @@ from typing import List, Optional
 
 from startrek import Connection
 from startrek import Arrival, ArrivalShip, Departure, DepartureShip, DeparturePriority
-from startrek import ShipDelegate, GateDelegate
+from startrek import ShipDelegate
 from startrek import StarDocker, StarGate
 
 from .ba import Data
@@ -65,7 +65,7 @@ class PackageArrival(ArrivalShip):
             return packer.fragments
 
     @property  # Override
-    def sn(self):
+    def sn(self) -> TransactionID:
         return self.__sn
 
     # Override
@@ -84,21 +84,25 @@ class PackageArrival(ArrivalShip):
 
 class PackageDeparture(DepartureShip):
 
-    def __init__(self, pack: Package, delegate: Optional[ShipDelegate] = None, priority: int = 0):
-        super().__init__(delegate=delegate, priority=priority)
+    def __init__(self, pack: Package, priority: int = 0, delegate: Optional[ShipDelegate] = None):
+        super().__init__(priority=priority, delegate=delegate)
         self.__completed = pack
-        if pack.head.data_type.is_message:
-            self.__packages = Packer.split(package=pack)
-        else:
-            self.__packages = [pack]
+        self.__packages = self._split_package(pack=pack)
         self.__fragments: List[bytes] = []
+
+    # noinspection PyMethodMayBeStatic
+    def _split_package(self, pack: Package) -> List[Package]:
+        if pack.head.data_type.is_message:
+            return Packer.split(package=pack)
+        else:
+            return [pack]
 
     @property
     def package(self) -> Package:
         return self.__completed
 
     @property  # Override
-    def sn(self):
+    def sn(self) -> TransactionID:
         return self.__completed.head.sn
 
     @property  # Override
@@ -151,16 +155,29 @@ class PackageDocker(StarDocker):
             return gate.get_connection(remote=self.remote_address, local=self.local_address)
 
     @property  # Override
-    def delegate(self) -> GateDelegate:
+    def delegate(self) -> ShipDelegate:
         gate = self.gate
         if gate is not None:
             return gate.delegate
 
+    # noinspection PyMethodMayBeStatic
+    def _parse_package(self, data: Optional[bytes]) -> Optional[Package]:
+        if data is not None and len(data) > 0:
+            return Package.parse(data=Data(buffer=data))
+
+    # noinspection PyMethodMayBeStatic
+    def _create_arrival(self, pack: Package) -> Arrival:
+        return PackageArrival(pack=pack)
+
+    # noinspection PyMethodMayBeStatic
+    def _create_departure(self, pack: Package, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> Departure:
+        return PackageDeparture(pack=pack, priority=priority, delegate=delegate)
+
     # Override
     def get_arrival(self, data: bytes) -> Optional[Arrival]:
-        pack = Package.parse(data=Data(buffer=data))
+        pack = self._parse_package(data=data)
         if pack is not None and pack.body.size > 0:
-            return PackageArrival(pack=pack)
+            return self._create_arrival(pack=pack)
 
     # Override
     def check_arrival(self, ship: Arrival) -> Optional[Arrival]:
@@ -192,11 +209,11 @@ class PackageDocker(StarDocker):
             #       '...'
             if body == PING:
                 # PING -> PONG
-                self.__respond_command(sn=head.sn, body=PONG)
+                self._respond_command(sn=head.sn, body=PONG)
                 return None
             else:
                 # respond for Command
-                self.__respond_command(sn=head.sn, body=OK)
+                self._respond_command(sn=head.sn, body=OK)
             # Unknown Command?
             # let the caller to process it
         elif data_type.is_message_response:
@@ -218,7 +235,7 @@ class PackageDocker(StarDocker):
             return self.assemble_arrival(ship=ship)
         elif data_type.is_message:
             # respond for Message
-            self.__respond_message(sn=head.sn, pages=head.pages, index=head.index)
+            self._respond_message(sn=head.sn, pages=head.pages, index=head.index)
             # let the caller to process the message
 
         if body.size == 4:
@@ -239,27 +256,29 @@ class PackageDocker(StarDocker):
             self.append_departure(ship=outgo)
         return outgo
 
-    def __respond_command(self, sn: TransactionID, body: bytes):
+    # protected
+    def _respond_command(self, sn: TransactionID, body: bytes):
         pack = Package.new(data_type=DataType.COMMAND_RESPONSE, sn=sn, body=Data(buffer=body))
         self.send_package(pack=pack)
 
-    def __respond_message(self, sn: TransactionID, pages: int, index: int):
+    # protected
+    def _respond_message(self, sn: TransactionID, pages: int, index: int):
         pack = Package.new(data_type=DataType.MESSAGE_RESPONSE, sn=sn, pages=pages, index=index, body=Data(buffer=OK))
         self.send_package(pack=pack)
 
     def send_package(self, pack: Package, priority: Optional[int] = 0, delegate: Optional[ShipDelegate] = None):
-        ship = PackageDeparture(pack=pack, delegate=delegate, priority=priority)
+        ship = self._create_departure(pack=pack, priority=priority, delegate=delegate)
         self.append_departure(ship=ship)
 
     # Override
     def pack(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> Departure:
         pkg = Package.new(data_type=DataType.MESSAGE, body=Data(buffer=payload))
-        return PackageDeparture(pack=pkg, delegate=delegate, priority=priority)
+        return self._create_departure(pack=pkg, priority=priority, delegate=delegate)
 
     # Override
     def heartbeat(self):
         pkg = Package.new(data_type=DataType.COMMAND, body=Data(buffer=PING))
-        outgo = PackageDeparture(pack=pkg, priority=DeparturePriority.SLOWER)
+        outgo = self._create_departure(pack=pkg, priority=DeparturePriority.SLOWER)
         self.append_departure(ship=outgo)
 
 

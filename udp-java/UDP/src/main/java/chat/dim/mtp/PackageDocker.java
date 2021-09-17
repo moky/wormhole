@@ -71,9 +71,21 @@ public class PackageDocker extends StarDocker {
         return gate.getDelegate();
     }
 
+    protected Package parsePackage(final byte[] data) {
+        return Package.parse(new Data(data));
+    }
+
+    protected Arrival createArrival(final Package pkg) {
+        return new PackageArrival(pkg);
+    }
+
+    protected Departure createDeparture(Package pkg, int priority, Ship.Delegate delegate) {
+        return new PackageDeparture(pkg, priority, delegate);
+    }
+
     @Override
     protected Arrival getArrival(final byte[] data) {
-        final Package pkg = Package.parse(new Data(data));
+        final Package pkg = parsePackage(data);
         if (pkg == null) {
             return null;
         }
@@ -82,7 +94,7 @@ public class PackageDocker extends StarDocker {
             // should not happen
             return null;
         }
-        return new PackageArrival(pkg);
+        return createArrival(pkg);
     }
 
     @Override
@@ -177,10 +189,10 @@ public class PackageDocker extends StarDocker {
         return outgo;
     }
 
-    private void respondCommand(TransactionID sn, byte[] body) {
+    protected void respondCommand(TransactionID sn, byte[] body) {
         send(Package.create(DataType.COMMAND_RESPONSE, sn, new Data(body)));
     }
-    private void respondMessage(TransactionID sn, int pages, int index) {
+    protected void respondMessage(TransactionID sn, int pages, int index) {
         send(Package.create(DataType.MESSAGE_RESPONSE, sn, pages, index, new Data(OK)));
     }
 
@@ -189,8 +201,7 @@ public class PackageDocker extends StarDocker {
     }
 
     public void send(Package pkg, int priority, Ship.Delegate delegate) {
-        Departure ship = new PackageDeparture(delegate, priority, pkg);
-        appendDeparture(ship);
+        appendDeparture(createDeparture(pkg, priority, delegate));
     }
     public void send(Departure ship) {
         appendDeparture(ship);
@@ -199,19 +210,18 @@ public class PackageDocker extends StarDocker {
     @Override
     public Departure pack(byte[] payload, int priority, Ship.Delegate delegate) {
         Package pkg = Package.create(DataType.MESSAGE, new Data(payload));
-        return new PackageDeparture(delegate, priority, pkg);
+        return createDeparture(pkg, priority, delegate);
     }
 
     @Override
     public void heartbeat() {
         Package pkg = Package.create(DataType.COMMAND, new Data(PING));
-        Departure ship = new PackageDeparture(null, Departure.Priority.SLOWER.value, pkg);
-        appendDeparture(ship);
+        appendDeparture(createDeparture(pkg, Departure.Priority.SLOWER.value, null));
     }
 
-    static final byte[] PING = {'P', 'I', 'N', 'G'};
-    static final byte[] PONG = {'P', 'O', 'N', 'G'};
-    static final byte[] NOOP = {'N', 'O', 'O', 'P'};
-    static final byte[] OK = {'O', 'K'};
-    static final byte[] AGAIN = {'A', 'G', 'A', 'I', 'N'};
+    protected static final byte[] PING = {'P', 'I', 'N', 'G'};
+    protected static final byte[] PONG = {'P', 'O', 'N', 'G'};
+    protected static final byte[] NOOP = {'N', 'O', 'O', 'P'};
+    protected static final byte[] OK = {'O', 'K'};
+    protected static final byte[] AGAIN = {'A', 'G', 'A', 'I', 'N'};
 }

@@ -53,16 +53,17 @@ public abstract class DepartureShip implements Departure {
 
     private final WeakReference<Delegate> delegateRef;
 
-    protected DepartureShip(Delegate delegate, int prior) {
+    protected DepartureShip(int prior, Delegate delegate) {
         super();
+        // ship priority
+        priority = prior;
+
         // specific delegate for this ship
         if (delegate == null) {
             delegateRef = null;
         } else {
             delegateRef = new WeakReference<>(delegate);
         }
-        // ship priority
-        priority = prior;
 
         lastTime = 0;  // last tried time (timestamp in milliseconds)
         retries = -1;  // totally 3 times to be sent at the most

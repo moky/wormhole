@@ -123,6 +123,26 @@ public abstract class StarDocker implements Docker {
         return true;
     }
 
+    private boolean sendDeparture(final Departure outgo) throws IOException {
+        List<byte[]> fragments = outgo.getFragments();
+        if (fragments == null || fragments.size() == 0) {
+            // all fragments sent
+            return true;
+        }
+        Connection conn = getConnection();
+        if (conn == null) {
+            // connection not ready now
+            return false;
+        }
+        int success = 0;
+        for (byte[] pkg : fragments) {
+            if (conn.send(pkg, remoteAddress) != -1) {
+                success += 1;
+            }
+        }
+        return success == fragments.size();
+    }
+
     @Override
     public void processReceived(final byte[] data) {
         // 1. get income ship from received data
@@ -192,16 +212,6 @@ public abstract class StarDocker implements Docker {
     }
 
     /**
-     *  Append outgo Ship to the waiting queue
-     *
-     * @param outgo - departure task
-     * @return false on duplicated
-     */
-    protected boolean appendDeparture(final Departure outgo) {
-        return dock.appendDeparture(outgo);
-    }
-
-    /**
      *  Get outgo Ship from waiting queue
      *
      * @param now - current time
@@ -213,30 +223,9 @@ public abstract class StarDocker implements Docker {
         return dock.getNextDeparture(now);
     }
 
-    /**
-     *  Sending all fragments in the ship
-     *
-     * @param outgo - outgo ship carried package/fragments
-     * @return true on sent
-     */
-    private boolean sendDeparture(final Departure outgo) throws IOException {
-        List<byte[]> fragments = outgo.getFragments();
-        if (fragments == null || fragments.size() == 0) {
-            // all fragments sent
-            return true;
-        }
-        Connection conn = getConnection();
-        if (conn == null) {
-            // connection not ready now
-            return false;
-        }
-        int success = 0;
-        for (byte[] pkg : fragments) {
-            if (conn.send(pkg, remoteAddress) != -1) {
-                success += 1;
-            }
-        }
-        return success == fragments.size();
+    @Override
+    public boolean appendDeparture(final Departure outgo) {
+        return dock.appendDeparture(outgo);
     }
 
     @Override

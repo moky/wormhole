@@ -67,6 +67,16 @@ class Docker(Processor):
         raise NotImplemented
 
     @abstractmethod
+    def append_departure(self, ship: Departure) -> bool:
+        """
+        Append outgo ship to a queue for sending out
+
+        :param ship: outgo ship carrying data package/fragment
+        :return: False on duplicated
+        """
+        raise NotImplemented
+
+    @abstractmethod
     def process_received(self, data: bytes):
         """
         Called when received data

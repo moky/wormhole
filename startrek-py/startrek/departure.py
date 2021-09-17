@@ -44,15 +44,15 @@ class DepartureShip(Departure, ABC):
     # Departure task will be retried 2 times if timeout
     MAX_RETRIES = 2
 
-    def __init__(self, delegate: Optional[ShipDelegate] = None, priority: int = 0):
+    def __init__(self, priority: int = 0, delegate: Optional[ShipDelegate] = None):
         super().__init__()
+        # ship priority
+        self.__priority = priority
         # specific delegate for this ship
         if delegate is None:
             self.__delegate = None
         else:
             self.__delegate = weakref.ref(delegate)
-        # ship priority
-        self.__priority = priority
         # last tried time (timestamp in seconds)
         self.__last_time = 0
         # totally 3 times to be sent at the most
