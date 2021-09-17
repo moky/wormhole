@@ -6,23 +6,22 @@ import random
 import socket
 import sys
 import os
-import threading
 import time
 import traceback
 from typing import Optional
 
-from udp.ba import ByteArray, Data
-from udp.mtp import Header
-from udp import Hub
-from udp import Channel, Connection, ConnectionDelegate, ConnectionState
-from udp import DiscreteChannel, ActivePackageHub
+from udp import Hub, PackageHub, Gate, GateStatus, GateDelegate
+from udp import Connection, ConnectionState
+from udp import Arrival, Departure, PackageArrival, PackageDeparture
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-import dmtp
+from dmtp import Client, Command, Message, LocationValue
+
 from tests.manager import ContactManager, FieldValueEncoder, Session
+from tests.stargate import UDPGate
 
 
 SERVER_GZ1 = '134.175.87.98'
@@ -36,41 +35,32 @@ CLIENT_HOST = Hub.inet_address()
 CLIENT_PORT = random.choice(range(9900, 9999))
 
 
-class ClientHub(ActivePackageHub):
-
-    def __init__(self, delegate: ConnectionDelegate):
-        super().__init__(delegate=delegate)
-        self.__running = False
-
-    @property
-    def running(self) -> bool:
-        return self.__running
-
-    def start(self):
-        self.__running = True
-
-    def stop(self):
-        self.__running = False
-
-    # Override
-    def create_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Channel:
-        channel = DiscreteChannel(remote=remote, local=local)
-        channel.configure_blocking(False)
-        return channel
-
-
-class Client(dmtp.Client, ConnectionDelegate):
+class DmtpClient(Client, GateDelegate):
 
     def __init__(self, local: tuple, remote: tuple):
         super().__init__()
         self.__local_address = local
         self.__remote_address = remote
-        self.__hub = ClientHub(delegate=self)
+        gate = UDPGate(delegate=self)
+        gate.hub = PackageHub(delegate=gate)
+        self.__gate = gate
         self.__db: Optional[ContactManager] = None
 
     @property
-    def hub(self) -> ClientHub:
-        return self.__hub
+    def local_address(self) -> tuple:
+        return self.__local_address
+
+    @property
+    def remote_address(self) -> tuple:
+        return self.__remote_address
+
+    @property
+    def gate(self) -> UDPGate:
+        return self.__gate
+
+    @property
+    def hub(self) -> PackageHub:
+        return self.gate.hub
 
     @property
     def database(self) -> ContactManager:
@@ -88,71 +78,78 @@ class Client(dmtp.Client, ConnectionDelegate):
     def identifier(self, uid: str):
         self.__db.identifier = uid
 
-    # noinspection PyMethodMayBeStatic
-    def info(self, msg: str):
-        print('> ', msg)
+    def start(self):
+        self.hub.bind(address=self.local_address)
+        self.gate.start()
 
-    # noinspection PyMethodMayBeStatic
-    def error(self, msg: str):
-        print('ERROR> ', msg)
+    def stop(self):
+        self.gate.stop()
 
     # Override
     def _connect(self, remote: tuple):
         try:
-            self.__hub.connect(remote=remote, local=self.__local_address)
+            self.hub.connect(remote=remote, local=self.__local_address)
         except socket.error as error:
-            self.error('failed to connect to %s: %s' % (remote, error))
+            UDPGate.error('failed to connect to %s: %s' % (remote, error))
+
+    #
+    #   Gate Delegate
+    #
 
     # Override
-    def connection_state_changed(self, connection: Connection, previous, current):
-        self.info('!!! connection (%s, %s) state changed: %s -> %s'
-                  % (connection.local_address, connection.remote_address, previous, current))
+    def gate_status_changed(self, previous: GateStatus, current: GateStatus,
+                            remote: tuple, local: Optional[tuple], gate: Gate):
+        UDPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
 
     # Override
-    def connection_data_received(self, connection: Connection, remote: tuple, wrapper, payload: bytes):
-        assert isinstance(wrapper, Header), 'Header error: %s' % wrapper
-        if not isinstance(payload, ByteArray):
-            payload = Data(buffer=payload)
-        self._received(head=wrapper, body=payload, source=remote)
+    def gate_received(self, ship: Arrival,
+                      source: tuple, destination: Optional[tuple], connection: Connection):
+        assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
+        pack = ship.package
+        self._received(head=pack.head, body=pack.body, source=source)
 
     # Override
-    def _process_command(self, cmd: dmtp.Command, source: tuple) -> bool:
-        self.info('received cmd from %s:\n\t%s' % (source, cmd))
+    def gate_sent(self, ship: Departure,
+                  source: Optional[tuple], destination: tuple, connection: Connection):
+        assert isinstance(ship, PackageDeparture), 'departure ship error: %s' % ship
+        pack = ship.package
+        data = pack.body.get_bytes()
+        size = len(data)
+        UDPGate.info('message sent: %d byte(s) to %s' % (size, destination))
+
+    # Override
+    def gate_error(self, error, ship: Departure,
+                   source: Optional[tuple], destination: tuple, connection: Connection):
+        UDPGate.error('gate error (%s, %s): %s' % (source, destination, error))
+
+    # Override
+    def _process_command(self, cmd: Command, source: tuple) -> bool:
+        UDPGate.info('received cmd from %s:\n\t%s' % (source, cmd))
         # noinspection PyBroadException
         try:
             return super()._process_command(cmd=cmd, source=source)
         except Exception as error:
-            self.error('failed to process cmd: %s, %s' % (cmd, error))
+            UDPGate.error('failed to process cmd: %s, %s' % (cmd, error))
             traceback.print_exc()
             return False
 
     # Override
-    def _process_message(self, msg: dmtp.Message, source: tuple) -> bool:
-        self.info('received msg from %s:\n\t%s' % (source, json.dumps(msg, cls=FieldValueEncoder)))
+    def _process_message(self, msg: Message, source: tuple) -> bool:
+        UDPGate.info('received msg from %s:\n\t%s' % (source, json.dumps(msg, cls=FieldValueEncoder)))
         # return super()._process_message(msg=msg, source=source)
         return True
 
     # Override
-    def send_command(self, cmd: dmtp.Command, destination: tuple) -> bool:
-        self.info('sending cmd to %s:\n\t%s' % (destination, cmd))
-        try:
-            body = cmd.get_bytes()
-            source = self.__local_address
-            self.__hub.send_command(body=body, source=source, destination=destination)
-            return True
-        except socket.error as error:
-            self.error('failed to send cmd: %s' % error)
+    def send_command(self, cmd: Command, destination: tuple) -> bool:
+        UDPGate.info('sending cmd to %s:\n\t%s' % (destination, cmd))
+        self.gate.send_command(body=cmd.get_bytes(), source=self.local_address, destination=destination)
+        return True
 
     # Override
-    def send_message(self, msg: dmtp.Message, destination: tuple) -> bool:
-        self.info('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=FieldValueEncoder)))
-        try:
-            body = msg.get_bytes()
-            source = self.__local_address
-            self.__hub.send_message(body=body, source=source, destination=destination)
-            return True
-        except socket.error as error:
-            self.error('failed to send msg: %s' % error)
+    def send_message(self, msg: Message, destination: tuple) -> bool:
+        UDPGate.info('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=FieldValueEncoder)))
+        self.gate.send_message(body=msg.get_bytes(), source=self.local_address, destination=destination)
+        return True
 
     #
     #   Client actions
@@ -162,13 +159,13 @@ class Client(dmtp.Client, ConnectionDelegate):
     def say_hello(self, destination: tuple) -> bool:
         if super().say_hello(destination=destination):
             return True
-        cmd = dmtp.Command.hello_command(identifier=self.identifier)
-        self.info('send cmd: %s' % cmd)
+        cmd = Command.hello_command(identifier=self.identifier)
+        UDPGate.info('send cmd: %s' % cmd)
         return self.send_command(cmd=cmd, destination=destination)
 
     def call(self, identifier: str) -> bool:
-        cmd = dmtp.Command.call_command(identifier=identifier)
-        self.info('send cmd: %s' % cmd)
+        cmd = Command.call_command(identifier=identifier)
+        UDPGate.info('send cmd: %s' % cmd)
         return self.send_command(cmd=cmd, destination=self.__remote_address)
 
     def login(self, identifier: str):
@@ -188,32 +185,32 @@ class Client(dmtp.Client, ConnectionDelegate):
         assert delegate is not None, 'location delegate not set'
         locations = delegate.get_locations(identifier=identifier)
         for loc in locations:
-            assert isinstance(loc, dmtp.LocationValue), 'location error: %s' % loc
+            assert isinstance(loc, LocationValue), 'location error: %s' % loc
             source_address = loc.source_address
             if source_address is not None:
-                conn = self.__hub.connect(remote=source_address, local=None)
+                conn = self.hub.connect(remote=source_address, local=None)
                 if conn is not None:
-                    if conn.state in [ConnectionState.CONNECTED, ConnectionState.MAINTAINING, ConnectionState.EXPIRED]:
+                    if conn.state in [ConnectionState.READY, ConnectionState.MAINTAINING, ConnectionState.EXPIRED]:
                         sessions.append(Session(location=loc, address=source_address))
                         continue
             mapped_address = loc.mapped_address
             if mapped_address is not None:
-                conn = self.__hub.connect(remote=mapped_address, local=None)
+                conn = self.hub.connect(remote=mapped_address, local=None)
                 if conn is not None:
-                    if conn.state in [ConnectionState.CONNECTED, ConnectionState.MAINTAINING, ConnectionState.EXPIRED]:
+                    if conn.state in [ConnectionState.READY, ConnectionState.MAINTAINING, ConnectionState.EXPIRED]:
                         sessions.append(Session(location=loc, address=mapped_address))
                         continue
         return sessions
 
-    def send_text(self, receiver: str, msg: str) -> Optional[dmtp.Message]:
+    def send_text(self, receiver: str, msg: str) -> Optional[Message]:
         sessions = self.get_sessions(identifier=receiver)
         if len(sessions) == 0:
-            self.info('user (%s) not login ...' % receiver)
+            UDPGate.info('user (%s) not login ...' % receiver)
             # ask the server to help building a connection
             self.call(identifier=receiver)
             return None
         content = msg.encode('utf-8')
-        msg = dmtp.Message.new(info={
+        msg = Message.new(info={
             'sender': self.identifier,
             'receiver': receiver,
             'time': int(time.time()),
@@ -221,29 +218,17 @@ class Client(dmtp.Client, ConnectionDelegate):
         })
         for item in sessions:
             assert isinstance(item, Session), 'session error: %s' % item
-            self.info('send msg to %s:\n\t%s' % (item.address, msg))
+            UDPGate.info('send msg to %s:\n\t%s' % (item.address, msg))
             self.send_message(msg=msg, destination=item.address)
         return msg
 
-    def start(self):
-        self.__hub.connect(remote=self.__remote_address, local=self.__local_address)
-        self.__hub.start()
-        threading.Thread(target=self.run).start()
-
-    def stop(self):
-        self.__hub.stop()
-
-    def run(self):
-        while self.__hub.running:
-            self.__hub.tick()
-            time.sleep(0.0078125)
-
     def test(self):
+        time.sleep(2)
         self.login(identifier=user)
         # test send
         text = '你好 %s！' % friend
         index = 0
-        while self.__hub.running:
+        while self.gate.running:
             time.sleep(5)
             print('---- [%d] ----: %s' % (index, text))
             self.send_text(receiver=friend, msg='%s (%d)' % (text, index))
@@ -263,7 +248,7 @@ if __name__ == '__main__':
     local_address = (CLIENT_HOST, CLIENT_PORT)
     remote_address = (SERVER_HOST, SERVER_PORT)
     print('UDP client %s -> %s starting ...' % (local_address, remote_address))
-    g_client = Client(local=local_address, remote=remote_address)
+    g_client = DmtpClient(local=local_address, remote=remote_address)
 
     # database for location of contacts
     g_client.database = ContactManager(hub=g_client.hub, local=local_address)
