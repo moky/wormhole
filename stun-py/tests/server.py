@@ -6,8 +6,9 @@ import sys
 import os
 from typing import Optional, Union
 
+from udp import Connection
 from udp import Gate, GateDelegate, GateStatus
-from udp import Hub, ServerHub, Arrival, Departure
+from udp import Hub, PackageHub, Arrival, Departure
 
 from tcp import PlainArrival, PlainDeparture
 
@@ -26,7 +27,7 @@ class StunServer(Server, GateDelegate):
     def __init__(self, host: str = '0.0.0.0', port: int = 3478, change_port: int = 3479):
         super().__init__(host=host, port=port, change_port=change_port)
         gate = UDPGate(delegate=self)
-        gate.hub = ServerHub(delegate=gate)
+        gate.hub = PackageHub(delegate=gate)
         self.__gate = gate
 
     @property
@@ -34,7 +35,7 @@ class StunServer(Server, GateDelegate):
         return self.__gate
 
     @property
-    def hub(self) -> ServerHub:
+    def hub(self) -> PackageHub:
         return self.gate.hub
 
     def start(self):
@@ -52,16 +53,13 @@ class StunServer(Server, GateDelegate):
     #
 
     # Override
-    def gate_status_changed(self, gate: Gate, remote: tuple, local: Optional[tuple],
-                            previous: GateStatus, current: GateStatus):
-        UDPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (local, remote, previous, current))
-        if current is None or current == GateStatus.ERROR:
-            conn = self.hub.get_connection(remote=remote, local=local)
-            if conn is not None:
-                conn.close()
+    def gate_status_changed(self, previous: GateStatus, current: GateStatus,
+                            remote: tuple, local: Optional[tuple], gate: Gate):
+        UDPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
 
     # Override
-    def gate_received(self, gate: Gate, source: tuple, destination: Optional[tuple], ship: Arrival):
+    def gate_received(self, ship: Arrival,
+                      source: tuple, destination: Optional[tuple], connection: Connection):
         assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
         data = ship.package
         if not isinstance(data, bytes) or len(data) == 0:
@@ -70,14 +68,16 @@ class StunServer(Server, GateDelegate):
         self.handle(data=data, remote_ip=source[0], remote_port=source[1])
 
     # Override
-    def gate_sent(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure):
+    def gate_sent(self, ship: Departure,
+                  source: Optional[tuple], destination: tuple, connection: Connection):
         assert isinstance(ship, PlainDeparture), 'departure ship error: %s' % ship
         data = ship.package
         size = len(data)
         UDPGate.info('message sent: %d byte(s) to %s' % (size, destination))
 
     # Override
-    def gate_error(self, gate: Gate, source: Optional[tuple], destination: tuple, ship: Departure, error):
+    def gate_error(self, error, ship: Departure,
+                   source: Optional[tuple], destination: tuple, connection: Connection):
         UDPGate.error('gate error (%s, %s): %s' % (source, destination, error))
 
     # Override
@@ -87,8 +87,7 @@ class StunServer(Server, GateDelegate):
         elif isinstance(source, int):
             source = (self.source_address[0], source)
         try:
-            self.hub.connect(remote=destination, local=source)
-            self.gate.send_payload(payload=data, source=source, destination=destination)
+            self.gate.send_data(payload=data, source=source, destination=destination)
             return True
         except socket.error:
             return False

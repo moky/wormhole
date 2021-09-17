@@ -122,7 +122,7 @@ class Node(ABC):
         # 1. parse STUN package
         pack = Package.parse(data=data)
         if pack is None:
-            self.info('failed to parse package data: %d' % data.size)
+            self.info('failed to parse package data (%d bytes): %s' % (len(data), data))
             return False
         # 2. parse attributes
         attributes = Attribute.parse_attributes(data=pack.body)

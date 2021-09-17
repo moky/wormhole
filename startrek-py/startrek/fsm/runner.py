@@ -122,4 +122,4 @@ class Runner(Runnable, Handler, Processor, ABC):
 
     # noinspection PyMethodMayBeStatic
     def _idle(self):
-        time.sleep(0.0078125)
+        time.sleep(0.125)

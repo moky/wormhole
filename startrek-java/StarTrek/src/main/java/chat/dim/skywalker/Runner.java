@@ -76,7 +76,7 @@ public abstract class Runner implements Runnable, Handler, Processor {
     }
 
     protected void idle() {
-        idle(8);
+        idle(128);
     }
 
     public static void idle(long millis) {

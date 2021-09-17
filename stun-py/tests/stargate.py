@@ -8,7 +8,6 @@ from startrek.fsm import Runnable
 from udp import Connection
 from udp import GateDelegate, Docker
 from udp import StarGate
-
 from tcp import PlainDocker
 
 
@@ -49,23 +48,23 @@ class UDPGate(StarGate, Runnable, Generic[H]):
 
     # noinspection PyMethodMayBeStatic
     def _idle(self):
-        time.sleep(0.078125)
+        time.sleep(0.125)
 
     # Override
     def process(self):
         hub = self.hub
         # from tcp import Hub
         # assert isinstance(hub, Hub)
-        activated = hub.process()
-        busy = super().process()
-        return activated or busy
+        incoming = hub.process()
+        outgoing = super().process()
+        return incoming or outgoing
 
     # Override
     def get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         hub = self.hub
         # from tcp import Hub
         # assert isinstance(hub, Hub)
-        return hub.get_connection(remote=remote, local=local)
+        return hub.connect(remote=remote, local=local)
 
     # Override
     def create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
@@ -86,19 +85,17 @@ class UDPGate(StarGate, Runnable, Generic[H]):
         # TODO: remove advance party for this connection
         pass
 
-    def send_payload(self, payload: bytes, source: Optional[tuple], destination: tuple):
+    def send_data(self, payload: bytes, source: Optional[tuple], destination: tuple):
         worker = self.get_docker(remote=destination, local=source, advance_party=[])
         assert isinstance(worker, PlainDocker), 'docker error: %s' % worker
         worker.send_data(payload=payload)
 
     @classmethod
     def info(cls, msg: str):
-        time_array = time.localtime(int(time.time()))
-        time_string = time.strftime('%y-%m-%d %H:%M:%S', time_array)
-        print('[%s] %s' % (time_string, msg))
+        now = time.time()
+        prefix = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now))
+        print('[%s] %s' % (prefix, msg))
 
     @classmethod
     def error(cls, msg: str):
-        time_array = time.localtime(int(time.time()))
-        time_string = time.strftime('%y-%m-%d %H:%M:%S', time_array)
-        print('[%s] ERROR> %s' % (time_string, msg))
+        print('[ERROR] ', msg)

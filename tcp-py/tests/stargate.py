@@ -48,7 +48,7 @@ class TCPGate(StarGate, Runnable, Generic[H]):
 
     # noinspection PyMethodMayBeStatic
     def _idle(self):
-        time.sleep(0.078125)
+        time.sleep(0.125)
 
     # Override
     def process(self):
