@@ -159,7 +159,7 @@ class BaseChannel(Channel, ABC):
             # in blocking mode, the socket will wait until received something,
             # but if timeout was set, it will return None too, it's normal;
             # otherwise, we know the connection was lost.
-            if sock.gettimeout() is None:  # and self._blocking
+            if sock.gettimeout() is None:  # and self.blocking:
                 raise socket.error('remote peer reset socket')
         return data
 

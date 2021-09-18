@@ -30,6 +30,7 @@ class TCPGate(StarGate, Runnable, Generic[H]):
         self.__hub = h
 
     def start(self):
+        self.__running = True
         threading.Thread(target=self.run).start()
 
     def stop(self):

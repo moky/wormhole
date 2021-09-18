@@ -111,6 +111,7 @@ class ServerHub(StreamHub, Runnable):
         self.__local_address = address
 
     def start(self):
+        self.__running = True
         threading.Thread(target=self.run).start()
 
     def stop(self):
@@ -120,6 +121,7 @@ class ServerHub(StreamHub, Runnable):
     def running(self) -> bool:
         return self.__running
 
+    # Override
     def run(self):
         self.__running = True
         while self.running:
