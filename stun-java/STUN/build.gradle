@@ -16,7 +16,7 @@ plugins {
 
 group 'chat.dim'
 //version '1.0-SNAPSHOT'
-version '0.1.3'
+version '0.1.4'
 
 def mod = 'STUN'
 def desc = 'Session Traversal Utilities for NAT'
