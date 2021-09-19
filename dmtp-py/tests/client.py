@@ -247,7 +247,7 @@ if __name__ == '__main__':
     # create client
     local_address = (CLIENT_HOST, CLIENT_PORT)
     remote_address = (SERVER_HOST, SERVER_PORT)
-    print('UDP client %s -> %s starting ...' % (local_address, remote_address))
+    print('DMTP client %s -> %s starting ...' % (local_address, remote_address))
     g_client = DmtpClient(local=local_address, remote=remote_address)
 
     # database for location of contacts

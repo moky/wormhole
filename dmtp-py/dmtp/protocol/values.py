@@ -137,19 +137,19 @@ class LocationValue(CommandValue):
         # append SOURCE-ADDRESS
         if source_address is not None:
             if isinstance(source_address, tuple):
-                source_address = SourceAddressValue.new(ip=source_address[0], port=source_address[1])
+                source_address = SourceAddressValue.new_ipv4(ip=source_address[0], port=source_address[1])
             f_address = Field.new(tag=Field.SOURCE_ADDRESS, value=source_address)
             fields.append(f_address)
         # append MAPPED-ADDRESS
         if mapped_address is not None:
             if isinstance(mapped_address, tuple):
-                mapped_address = MappedAddressValue.new(ip=mapped_address[0], port=mapped_address[1])
+                mapped_address = MappedAddressValue.new_ipv4(ip=mapped_address[0], port=mapped_address[1])
             f_address = Field.new(tag=Field.MAPPED_ADDRESS, value=mapped_address)
             fields.append(f_address)
         # append RELAYED-ADDRESS
         if relayed_address is not None:
             if isinstance(relayed_address, tuple):
-                relayed_address = RelayedAddressValue.new(ip=relayed_address[0], port=relayed_address[1])
+                relayed_address = RelayedAddressValue.new_ipv4(ip=relayed_address[0], port=relayed_address[1])
             f_address = Field.new(tag=Field.RELAYED_ADDRESS, value=relayed_address)
             fields.append(f_address)
         # append sign time

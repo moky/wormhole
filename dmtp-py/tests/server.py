@@ -148,7 +148,7 @@ SERVER_PORT = 9395
 
 if __name__ == '__main__':
 
-    print('UDP server (%s:%d) starting ...' % (SERVER_HOST, SERVER_PORT))
+    print('DMTP server (%s:%d) starting ...' % (SERVER_HOST, SERVER_PORT))
 
     g_server = DmtpServer(host=SERVER_HOST, port=SERVER_PORT)
 

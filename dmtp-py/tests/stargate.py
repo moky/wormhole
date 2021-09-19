@@ -4,7 +4,6 @@ import threading
 import time
 from typing import Generic, TypeVar, Optional, List
 
-from startrek.fsm import Runnable
 from udp.ba import Data
 from udp.mtp import DataType, Package
 from udp import Connection, ConnectionState
@@ -16,7 +15,7 @@ from udp import PackageDocker
 H = TypeVar('H')
 
 
-class UDPGate(StarGate, Runnable, Generic[H]):
+class UDPGate(StarGate, Generic[H]):
 
     def __init__(self, delegate: GateDelegate):
         super().__init__(delegate=delegate)
@@ -42,7 +41,6 @@ class UDPGate(StarGate, Runnable, Generic[H]):
     def running(self) -> bool:
         return self.__running
 
-    # Override
     def run(self):
         self.__running = True
         while self.running:
