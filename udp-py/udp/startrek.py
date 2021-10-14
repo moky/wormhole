@@ -229,13 +229,14 @@ class PackageDocker(StarDocker):
                 return None
             # extra data in MessageResponse?
             # let the caller to process it
-        elif data_type.is_message_fragment:
-            # assemble MessageFragment with cached fragments to completed Message
-            # let the caller to process the completed message
-            return self.assemble_arrival(ship=ship)
-        elif data_type.is_message:
-            # respond for Message
+        else:
+            # respond for Message/Fragment
             self._respond_message(sn=head.sn, pages=head.pages, index=head.index)
+            if data_type.is_message_fragment:
+                # assemble MessageFragment with cached fragments to completed Message
+                # let the caller to process the completed message
+                return self.assemble_arrival(ship=ship)
+            assert data_type.is_message, 'unknown data type: %s' % data_type
             # let the caller to process the message
 
         if body.size == 4:

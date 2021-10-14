@@ -155,13 +155,15 @@ public class PackageDocker extends StarDocker {
             }
             // extra data in MessageResponse?
             // let the caller to process it
-        } else if (type.isMessageFragment()) {
-            // assemble MessageFragment with cached fragments to completed Message
-            // let the caller to process the completed message
-            return assembleArrival(income);
-        } else if (type.isMessage()) {
-            // respond for Message
+        } else {
+            // respond for Message/Fragment
             respondMessage(head.sn, head.pages, head.index);
+            if (type.isMessageFragment()) {
+                // assemble MessageFragment with cached fragments to completed Message
+                // let the caller to process the completed message
+                return assembleArrival(income);
+            }
+            assert type.isMessage() : "unknown data type: " + type;
             // let the caller to process the message
         }
 

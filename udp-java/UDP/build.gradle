@@ -16,7 +16,7 @@ plugins {
 
 group 'chat.dim'
 //version '1.0-SNAPSHOT'
-version '0.2.0'
+version '0.2.1'
 
 def mod = 'UDP'
 def desc = 'User Datagram Protocol'
