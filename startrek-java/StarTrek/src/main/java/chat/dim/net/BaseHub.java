@@ -71,7 +71,17 @@ public abstract class BaseHub implements Hub {
      */
     protected abstract Set<Channel> allChannels();
 
-    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
+    /**
+     *  Create connection with sock channel & addresses
+     *
+     * @param sock   - socket channel
+     * @param remote - remote address
+     * @param local  - local address
+     * @return null on channel not exists
+     */
+    protected abstract Connection createConnection(Channel sock, SocketAddress remote, SocketAddress local);
+
+    private Connection createConnection(SocketAddress remote, SocketAddress local) {
         Channel sock = getChannel(remote, local);
         if (sock == null/* || !sock.isOpen()*/) {
             return null;
@@ -79,11 +89,7 @@ public abstract class BaseHub implements Hub {
         if (local == null) {
             local = sock.getLocalAddress();
         }
-        BaseConnection conn = new BaseConnection(sock, remote, local);
-        conn.setDelegate(getDelegate());
-        conn.setHub(this);
-        conn.start();  // start FSM
-        return conn;
+        return createConnection(sock, remote, local);
     }
 
     @Override

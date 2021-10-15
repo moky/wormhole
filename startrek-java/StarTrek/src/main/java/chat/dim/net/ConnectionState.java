@@ -59,6 +59,8 @@ package chat.dim.net;
  *             \\===============//       (Received)          \\=============//
  */
 
+import java.util.Date;
+
 import chat.dim.fsm.BaseState;
 
 /**
@@ -84,10 +86,12 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
     public static final String ERROR       = "error";
 
     public final String name;
+    private long enterTime;
 
-    ConnectionState(String name) {
+    ConnectionState(String stateName) {
         super();
-        this.name = name;
+        name = stateName;
+        enterTime = 0;
     }
 
     @Override
@@ -107,14 +111,18 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
         return name;
     }
 
+    public long getEnterTime() {
+        return enterTime;
+    }
+
     @Override
     public void onEnter(StateMachine ctx) {
-
+        enterTime = new Date().getTime();
     }
 
     @Override
     public void onExit(StateMachine ctx) {
-
+        enterTime = 0;
     }
 
     @Override

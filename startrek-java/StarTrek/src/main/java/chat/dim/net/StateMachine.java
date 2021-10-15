@@ -152,7 +152,10 @@ class StateBuilder {
 
     // Connection lost
     ConnectionState getErrorState() {
-        return getNamedState(ConnectionState.ERROR);
+        ConnectionState state = getNamedState(ConnectionState.ERROR);
+        // Error -> Default
+        state.addTransition(builder.getErrorDefaultTransition());
+        return state;
     }
 }
 
@@ -284,6 +287,26 @@ class TransitionBuilder {
                 // connection lost, or
                 // long long time no response, change state to 'error
                 return conn == null || !conn.isOpen() || timed.isNotReceivedLongTimeAgo((new Date()).getTime());
+            }
+        };
+    }
+
+    // Error -> Default
+    StateTransition getErrorDefaultTransition() {
+        return new StateTransition(ConnectionState.DEFAULT) {
+            @Override
+            public boolean evaluate(StateMachine ctx) {
+                Connection conn = ctx.getConnection();
+                TimedConnection timed = (TimedConnection) conn;
+                // connection still alive, and
+                // can send/receive data during this state
+                if (conn == null || !conn.isAlive()) {
+                    return false;
+                }
+                // check with enter time
+                ConnectionState current = ctx.getCurrentState();
+                long enter = current.getEnterTime();
+                return enter > 0 && (timed.getLastSentTime() > enter || timed.getLastReceivedTime() > enter);
             }
         };
     }

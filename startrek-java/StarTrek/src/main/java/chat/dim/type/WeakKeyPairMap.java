@@ -46,7 +46,7 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
     //    mapping: (local, null) => Connection
     private final Map<K, Map<K, V>> map = new HashMap<>();
 
-    public WeakKeyPairMap(K any) {
+    protected WeakKeyPairMap(K any) {
         super();
         defaultKey = any;
     }

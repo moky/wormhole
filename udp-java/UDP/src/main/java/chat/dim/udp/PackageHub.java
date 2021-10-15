@@ -43,12 +43,12 @@ import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 
-public class PackageHub extends BaseHub {
+public abstract class PackageHub extends BaseHub {
 
     // local => channel
     protected final Map<SocketAddress, Channel> channels = new HashMap<>();
 
-    public PackageHub(Connection.Delegate delegate) {
+    protected PackageHub(Connection.Delegate delegate) {
         super(delegate);
     }
 

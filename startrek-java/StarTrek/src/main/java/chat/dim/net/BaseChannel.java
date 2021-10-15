@@ -55,7 +55,7 @@ public abstract class BaseChannel<C extends SelectableChannel> implements Channe
      * @param remote      - remote address
      * @param local       - local address
      */
-    public BaseChannel(C sock, SocketAddress remote, SocketAddress local) {
+    protected BaseChannel(C sock, SocketAddress remote, SocketAddress local) {
         super();
         channel = sock;
         remoteAddress = remote;

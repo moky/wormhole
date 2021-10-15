@@ -15,27 +15,27 @@ import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Gate;
 import chat.dim.skywalker.Runner;
-import chat.dim.udp.PackageHub;
+import chat.dim.udp.ClientHub;
 
 public class Client implements Gate.Delegate {
 
     private final SocketAddress localAddress;
     private final SocketAddress remoteAddress;
 
-    private final UDPGate<PackageHub> gate;
+    private final UDPGate<ClientHub> gate;
 
     Client(SocketAddress local, SocketAddress remote) {
         super();
         localAddress = local;
         remoteAddress = remote;
         gate = new UDPGate<>(this);
-        gate.setHub(new PackageHub(gate));
+        gate.setHub(new ClientHub(gate));
     }
 
-    private UDPGate<PackageHub> getGate() {
+    private UDPGate<ClientHub> getGate() {
         return gate;
     }
-    private PackageHub getHub() {
+    private ClientHub getHub() {
         return gate.getHub();
     }
 

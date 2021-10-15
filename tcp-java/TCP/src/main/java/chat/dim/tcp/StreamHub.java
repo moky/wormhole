@@ -43,12 +43,12 @@ import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.type.Pair;
 
-public class StreamHub extends BaseHub {
+public abstract class StreamHub extends BaseHub {
 
     // (remote, local) => channel
     private final Map<Pair<SocketAddress, SocketAddress>, Channel> channels = new HashMap<>();
 
-    public StreamHub(Connection.Delegate delegate) {
+    protected StreamHub(Connection.Delegate delegate) {
         super(delegate);
     }
 

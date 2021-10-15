@@ -39,6 +39,10 @@ import java.util.Date;
 
 interface TimedConnection {
 
+    long getLastSentTime();
+
+    long getLastReceivedTime();
+
     boolean isSentRecently(long now);
 
     boolean isReceivedRecently(long now);
@@ -50,7 +54,7 @@ public class BaseConnection implements Connection, TimedConnection, StateDelegat
 
     public static long EXPIRES = 16 * 1000;  // 16 seconds
 
-    private Channel channel;
+    protected Channel channel;
     protected final SocketAddress localAddress;
     protected final SocketAddress remoteAddress;
 
@@ -187,14 +191,26 @@ public class BaseConnection implements Connection, TimedConnection, StateDelegat
     }
 
     private void closeChannel() {
-        if (channel == null) {
+        Channel sock = channel;
+        if (sock == null) {
             return;
+        } else {
+            channel = null;
         }
         Hub hub = getHub();
         if (hub != null) {
-            hub.closeChannel(channel);
+            hub.closeChannel(sock);
         }
-        channel = null;
+    }
+
+    @Override
+    public long getLastSentTime() {
+        return lastSentTime;
+    }
+
+    @Override
+    public long getLastReceivedTime() {
+        return lastReceivedTime;
     }
 
     @Override
@@ -247,7 +263,7 @@ public class BaseConnection implements Connection, TimedConnection, StateDelegat
         } catch (IOException e) {
             //e.printStackTrace();
             error = e;
-            close();
+            closeChannel();
         }
         Delegate delegate = getDelegate();
         if (delegate != null) {

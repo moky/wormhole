@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  TCP: Transmission Control Protocol
+ *  UDP: User Datagram Protocol
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,75 +28,26 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.tcp;
+package chat.dim.udp;
 
-import java.io.IOException;
 import java.net.SocketAddress;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
 
-import chat.dim.net.BaseConnection;
+import chat.dim.net.ActiveConnection;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 
-public class ServerHub extends StreamHub implements Runnable {
+public class ClientHub extends PackageHub {
 
-    private SocketAddress localAddress = null;
-    private ServerSocketChannel master = null;
-    private boolean running = false;
-
-    public ServerHub(Connection.Delegate delegate) {
+    public ClientHub(Connection.Delegate delegate) {
         super(delegate);
     }
 
     @Override
     protected Connection createConnection(Channel sock, SocketAddress remote, SocketAddress local) {
-        BaseConnection conn = new BaseConnection(sock, remote, local);
+        ActiveConnection conn = new ActiveConnection(sock, remote, local);
         conn.setDelegate(getDelegate());
         conn.setHub(this);
         conn.start();  // start FSM
         return conn;
-    }
-
-    public void bind(SocketAddress local) throws IOException {
-        ServerSocketChannel sock = master;
-        if (sock != null && sock.isOpen()) {
-            sock.close();
-        }
-        sock = ServerSocketChannel.open();
-        sock.socket().bind(local);
-        //sock.configureBlocking(false);
-        master = sock;
-        localAddress = local;
-    }
-
-    public void start() {
-        new Thread(this).start();
-    }
-
-    public void stop() {
-        running = false;
-    }
-
-    public boolean isRunning() {
-        return running;
-    }
-
-    @Override
-    public void run() {
-        SocketChannel sock;
-        SocketAddress remote;
-        running = true;
-        while (isRunning()) {
-            try {
-                sock = master.accept();
-                if (sock != null) {
-                    remote = sock.getRemoteAddress();
-                    putChannel(new StreamChannel(sock, remote, localAddress));
-                }
-            } catch (IOException e) {
-                //e.printStackTrace();
-            }
-        }
     }
 }
