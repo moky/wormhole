@@ -99,11 +99,10 @@ public class PackageDeparture extends DepartureShip {
                 }
             }
         }
-        if (count == 0) {
-            return false;
+        if (count > 0) {
+            fragments.clear();
         }
-        fragments.clear();
-        return true;
+        return packages.size() == 0;
     }
     private boolean removePage(int index) {
         Iterator<Package> iterator = packages.iterator();

@@ -128,7 +128,7 @@ class PackageDeparture(DepartureShip):
                     count += 1
         if count > 0:
             self.__fragments.clear()
-            return True
+        return len(self.__packages) == 0
 
     def __remove_page(self, index: int) -> bool:
         for pack in self.__packages:
