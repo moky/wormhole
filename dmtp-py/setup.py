@@ -34,7 +34,7 @@ setup(
         'Operating System :: OS Independent',
     ],
     install_requires=[
-        'udp>=0.4.9',
+        'udp>=0.4.10',
         'stun>=0.2.3',
     ]
 )

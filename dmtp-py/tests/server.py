@@ -9,7 +9,7 @@ import traceback
 from typing import Optional
 
 from udp import Connection, Gate, GateDelegate, GateStatus
-from udp import Hub, PackageHub
+from udp import Hub, ServerHub
 from udp import Arrival, Departure, PackageArrival, PackageDeparture
 
 curPath = os.path.abspath(os.path.dirname(__file__))
@@ -28,7 +28,7 @@ class DmtpServer(Server, GateDelegate):
         super().__init__()
         self.__local_address = (host, port)
         gate = UDPGate(delegate=self)
-        gate.hub = PackageHub(delegate=gate)
+        gate.hub = ServerHub(delegate=gate)
         self.__gate = gate
         self.__db: Optional[ContactManager] = None
 
@@ -41,7 +41,7 @@ class DmtpServer(Server, GateDelegate):
         return self.__gate
 
     @property
-    def hub(self) -> PackageHub:
+    def hub(self) -> ServerHub:
         return self.gate.hub
 
     @property

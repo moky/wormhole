@@ -48,9 +48,9 @@ class BaseConnection(Connection, TimedConnection, StateDelegate):
 
     def __init__(self, channel: Channel, remote: tuple, local: Optional[tuple]):
         super().__init__()
-        self.__channel = channel
-        self.__remote = remote
-        self.__local = local
+        self._channel = channel
+        self._remote = remote
+        self._local = local
         # active times
         self.__last_sent_time = 0
         self.__last_received_time = 0
@@ -93,15 +93,15 @@ class BaseConnection(Connection, TimedConnection, StateDelegate):
 
     @property
     def channel(self) -> Optional[Channel]:
-        return self.__channel
+        return self._channel
 
     def __str__(self) -> str:
         clazz = self.__class__.__name__
-        return '<%s: remote=%s, local=%s />' % (clazz, self.__remote, self.__local)
+        return '<%s: remote=%s, local=%s />' % (clazz, self._remote, self._local)
 
     def __repr__(self) -> str:
         clazz = self.__class__.__name__
-        return '<%s: remote=%s, local=%s />' % (clazz, self.__remote, self.__local)
+        return '<%s: remote=%s, local=%s />' % (clazz, self._remote, self._local)
 
     def __eq__(self, other) -> bool:
         if self is other:
@@ -137,11 +137,11 @@ class BaseConnection(Connection, TimedConnection, StateDelegate):
 
     @property  # Override
     def local_address(self) -> Optional[tuple]:  # (str, int)
-        return self.__local
+        return self._local
 
     @property  # Override
     def remote_address(self) -> Optional[tuple]:  # (str, int)
-        return self.__remote
+        return self._remote
 
     @property  # Override
     def opened(self) -> bool:
@@ -168,11 +168,20 @@ class BaseConnection(Connection, TimedConnection, StateDelegate):
         self.__fsm.stop()
 
     def __close_channel(self):
-        if self.__channel is not None:
+        sock = self._channel
+        if sock is not None:
+            self._channel = None
             hub = self.hub
             if hub is not None:
-                hub.close(channel=self.__channel)
-            self.__channel = None
+                hub.close(channel=sock)
+
+    @property  # Override
+    def last_sent_time(self) -> int:
+        return self.__last_sent_time
+
+    @property  # Override
+    def last_received_time(self) -> int:
+        return self.__last_received_time
 
     # Override
     def is_sent_recently(self, now: int) -> bool:
@@ -191,7 +200,7 @@ class BaseConnection(Connection, TimedConnection, StateDelegate):
         self.__last_received_time = int(time.time())
         delegate = self.delegate
         if delegate is not None:
-            delegate.connection_received(data=data, source=self.__remote, destination=self.__local, connection=self)
+            delegate.connection_received(data=data, source=self._remote, destination=self._local, connection=self)
 
     def _send(self, data: bytes, target: Optional[tuple]) -> int:
         sock = self.channel
@@ -213,7 +222,7 @@ class BaseConnection(Connection, TimedConnection, StateDelegate):
                 error = socket.error('failed to send data: %d byte(s) to %s' % (len(data), target))
         except socket.error as e:
             error = e
-            self.close()
+            self.__close_channel()
         # callback
         delegate = self.delegate
         if delegate is not None:

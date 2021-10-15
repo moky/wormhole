@@ -29,15 +29,18 @@
 # ==============================================================================
 
 import socket
+from abc import ABC
 from typing import Optional, Dict, Set
 
-from startrek import Channel, ConnectionDelegate
+from startrek import Channel
+from startrek import Connection, ConnectionDelegate
+from startrek import BaseConnection, ActiveConnection
 from startrek import BaseHub
 
 from .channel import PackageChannel
 
 
-class PackageHub(BaseHub):
+class PackageHub(BaseHub, ABC):
     """ Base Package Hub """
 
     def __init__(self, delegate: ConnectionDelegate):
@@ -94,3 +97,27 @@ class PackageHub(BaseHub):
             if self.__channels.get(key) == channel:
                 self.__channels.pop(key, None)
                 return True
+
+
+class ServerHub(PackageHub):
+    """ Package Server Hub """
+
+    # Override
+    def create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+        conn = BaseConnection(channel=sock, remote=remote, local=local)
+        conn.delegate = self.delegate
+        conn.hub = self
+        conn.start()  # start FSM
+        return conn
+
+
+class ClientHub(PackageHub):
+    """ Package Client Hub """
+
+    # Override
+    def create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+        conn = ActiveConnection(channel=sock, remote=remote, local=local)
+        conn.delegate = self.delegate
+        conn.hub = self
+        conn.start()  # start FSM
+        return conn

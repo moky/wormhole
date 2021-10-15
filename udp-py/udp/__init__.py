@@ -40,7 +40,7 @@ from startrek import Dock, LockedDock, StarDocker, StarGate
 
 from .startrek import PackageArrival, PackageDeparture, PackageDocker
 from .channel import PackageChannel
-from .hub import PackageHub
+from .hub import PackageHub, ServerHub, ClientHub
 
 name = "UDP"
 
@@ -58,5 +58,5 @@ __all__ = [
 
     'PackageArrival', 'PackageDeparture', 'PackageDocker',
 
-    'PackageChannel', 'PackageHub',
+    'PackageChannel', 'PackageHub', 'ServerHub', 'ClientHub',
 ]

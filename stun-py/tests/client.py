@@ -9,7 +9,8 @@ from typing import Optional, Union
 
 from udp import Connection
 from udp import Gate, GateDelegate, GateStatus
-from udp import Hub, PackageHub, Arrival, Departure
+from udp import Hub, ClientHub
+from udp import Arrival, Departure
 
 from tcp import PlainArrival, PlainDeparture
 
@@ -28,7 +29,7 @@ class StunClient(Client, GateDelegate):
         super().__init__(host=host, port=port)
         self.__cargoes = []
         gate = UDPGate(delegate=self)
-        gate.hub = PackageHub(delegate=gate)
+        gate.hub = ClientHub(delegate=gate)
         self.__gate = gate
 
     @property
@@ -36,7 +37,7 @@ class StunClient(Client, GateDelegate):
         return self.__gate
 
     @property
-    def hub(self) -> PackageHub:
+    def hub(self) -> ClientHub:
         return self.gate.hub
 
     def start(self):

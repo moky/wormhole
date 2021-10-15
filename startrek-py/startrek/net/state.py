@@ -126,10 +126,15 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
     def __init__(self, name: str):
         super(ConnectionState, self).__init__()
         self.__name = name
+        self.__time = 0  # enter time
 
     @property
     def name(self) -> str:
         return self.__name
+
+    @property
+    def enter_time(self) -> int:
+        return self.__time
 
     def __str__(self) -> str:
         return self.__name
@@ -158,10 +163,10 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
             return True
 
     def on_enter(self, ctx: StateMachine):
-        pass
+        self.__time = int(time.time())
 
     def on_exit(self, ctx: StateMachine):
-        pass
+        self.__time = 0
 
     def on_pause(self, ctx: StateMachine):
         pass
@@ -171,6 +176,14 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
 
 
 class TimedConnection(ABC):
+
+    @property
+    def last_sent_time(self) -> int:
+        raise NotImplemented
+
+    @property
+    def last_received_time(self) -> int:
+        raise NotImplemented
 
     @abstractmethod
     def is_sent_recently(self, now: int) -> bool:
@@ -256,7 +269,12 @@ class StateBuilder:
 
     # Connection lost
     def get_error_state(self) -> ConnectionState:
-        return self.get_named_state(name=ConnectionState.ERROR)
+        builder = self.__builder
+        # assert isinstance(builder, TransitionBuilder)
+        state = self.get_named_state(name=ConnectionState.ERROR)
+        # Error -> Default
+        state.add_transition(transition=builder.get_error_default_transition())
+        return state
 
 
 class TransitionBuilder:
@@ -308,6 +326,10 @@ class TransitionBuilder:
     # noinspection PyMethodMayBeStatic
     def get_maintaining_error_transition(self):
         return MaintainingErrorTransition(target=ConnectionState.ERROR)
+
+    # noinspection PyMethodMayBeStatic
+    def get_error_default_transition(self):
+        return ErrorDefaultTransition(target=ConnectionState.DEFAULT)
 
 
 #
@@ -416,9 +438,26 @@ class MaintainingErrorTransition(StateTransition):
 
     def evaluate(self, ctx: StateMachine) -> bool:
         conn = ctx.connection
+        # connection lost, change state to 'error'
+        if conn is None or not conn.opened:
+            return True
+        assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
+        # long time no response, change state to 'error'
+        return conn.is_long_time_not_received(now=int(time.time()))
+
+
+class ErrorDefaultTransition(StateTransition):
+    """ Error -> Default """
+
+    def evaluate(self, ctx: StateMachine) -> bool:
+        conn = ctx.connection
         if conn is None or not conn.alive:
             return False
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
-        # connection lost, or
-        # long long time no response, change state to 'error'
-        return conn.is_long_time_not_received(now=int(time.time()))
+        # connection still alive, and
+        # can sent/receive data during this state
+        current = ctx.current_state
+        assert isinstance(current, ConnectionState), 'connection state error: %s' % current
+        enter = current.enter_time
+        if enter > 0:
+            return conn.last_sent_time > enter or conn.last_received_time > enter

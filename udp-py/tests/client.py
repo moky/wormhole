@@ -13,7 +13,7 @@ rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
 from udp import Gate, GateDelegate, GateStatus
-from udp import Connection, Hub, PackageHub
+from udp import Connection, Hub, ClientHub
 from udp import Arrival, PackageArrival, Departure, PackageDeparture
 
 from tests.stargate import UDPGate
@@ -26,7 +26,7 @@ class Client(GateDelegate):
         self.__local_address = local
         self.__remote_address = remote
         gate = UDPGate(delegate=self)
-        gate.hub = PackageHub(delegate=gate)
+        gate.hub = ClientHub(delegate=gate)
         self.__gate = gate
 
     @property
@@ -42,7 +42,7 @@ class Client(GateDelegate):
         return self.__gate
 
     @property
-    def hub(self) -> PackageHub:
+    def hub(self) -> ClientHub:
         return self.gate.hub
 
     def start(self):

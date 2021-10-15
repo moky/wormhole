@@ -30,17 +30,20 @@
 
 import socket
 import threading
+from abc import ABC
 from typing import Optional, Set, Dict
 
 from startrek.types import Pair
 from startrek.fsm import Runnable
-from startrek import Channel, ConnectionDelegate
+from startrek import Channel
+from startrek import Connection, ConnectionDelegate
+from startrek import BaseConnection, ActiveConnection
 from startrek import BaseHub
 
 from .channel import StreamChannel
 
 
-class StreamHub(BaseHub):
+class StreamHub(BaseHub, ABC):
 
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__(delegate=delegate)
@@ -95,6 +98,14 @@ class ServerHub(StreamHub, Runnable):
         self.__master: Optional[socket.socket] = None
         self.__running = False
 
+    # Override
+    def create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+        conn = BaseConnection(channel=sock, remote=remote, local=local)
+        conn.delegate = self.delegate
+        conn.hub = self
+        conn.start()  # start FSM
+        return conn
+
     def bind(self, address: Optional[tuple] = None, host: Optional[str] = None, port: Optional[int] = 0):
         if address is None:
             address = (host, port)
@@ -136,6 +147,14 @@ class ServerHub(StreamHub, Runnable):
 
 class ClientHub(StreamHub):
     """ Stream Client Hub """
+
+    # Override
+    def create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+        conn = ActiveConnection(channel=sock, remote=remote, local=local)
+        conn.delegate = self.delegate
+        conn.hub = self
+        conn.start()  # start FSM
+        return conn
 
     # Override
     def open(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:

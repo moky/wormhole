@@ -28,38 +28,21 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .net import Hub, Channel, Connection, ConnectionDelegate
-from .net import ConnectionState, ConnectionStateMachine
-from .net import BaseHub, BaseChannel, BaseConnection, ActiveConnection
+from typing import Optional
 
-from .port import Ship, ShipDelegate, Arrival, Departure, DeparturePriority
-from .port import Docker, Gate, GateStatus, GateDelegate
-
-from .arrival import ArrivalShip, ArrivalHall
-from .departure import DepartureShip, DepartureHall
-from .dock import Dock, LockedDock
-from .stardocker import StarDocker
-from .stargate import StarGate
+from .channel import Channel
+from .base_conn import BaseConnection
 
 
-"""
-    Star Trek
-    ~~~~~~~~~
-    
-    Interstellar Transport
-"""
+class ActiveConnection(BaseConnection):
 
-
-__all__ = [
-
-    'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
-    'ConnectionState', 'ConnectionStateMachine',
-    'BaseHub', 'BaseChannel', 'BaseConnection', 'ActiveConnection',
-
-    'Ship', 'ShipDelegate', 'Arrival', 'Departure', 'DeparturePriority',
-    'Docker', 'Gate', 'GateStatus', 'GateDelegate',
-
-    'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
-    'Dock', 'LockedDock',
-    'StarDocker', 'StarGate',
-]
+    @property  # Override
+    def channel(self) -> Optional[Channel]:
+        sock = self._channel
+        if sock is None:
+            # get new channel via hub
+            hub = self.hub
+            if hub is not None:
+                sock = hub.open(remote=self.remote_address, local=self.local_address)
+                self._channel = sock
+        return sock

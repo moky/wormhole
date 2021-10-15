@@ -40,7 +40,6 @@ from .channel import Channel
 from .connection import Connection
 from .delegate import ConnectionDelegate
 from .state import ConnectionState
-from .base_conn import BaseConnection
 
 
 class BaseHub(Hub, ABC):
@@ -71,24 +70,23 @@ class BaseHub(Hub, ABC):
         """ Get all channels """
         raise NotImplemented
 
-    # protected
-    def create_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+    @abstractmethod  # protected
+    def create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+        raise NotImplemented
+
+    def __create_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         sock = self.open(remote=remote, local=local)
         if sock is None:  # or not sock.opened:
             return None
         if local is None:
             local = sock.local_address
-        conn = BaseConnection(channel=sock, remote=remote, local=local)
-        conn.delegate = self.delegate
-        conn.hub = self
-        conn.start()  # start FSM
-        return conn
+        return self.create_connection(sock=sock, remote=remote, local=local)
 
     # Override
     def connect(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
         conn = self.__connection_pool.get(remote=remote, local=local)
         if conn is None:
-            conn = self.create_connection(remote=remote, local=local)
+            conn = self.__create_connection(remote=remote, local=local)
             if conn is not None:
                 if local is None:
                     local = conn.local_address
