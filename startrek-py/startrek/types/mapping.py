@@ -80,7 +80,11 @@ class WeakKeyPairMap(KeyPairMap[K, V], ABC):
             return None
         if key2 is not None:
             # mapping: (remote, local) => Connection
-            return table.get(key2)
+            value = table.get(key2)
+            if value is not None:
+                return value
+            # take any Connection connected to remote
+            return table.get(self.__default)
         # mapping: (remote, None) => Connection
         # mapping: (local, None) => Connection
         value = table.get(self.__default)

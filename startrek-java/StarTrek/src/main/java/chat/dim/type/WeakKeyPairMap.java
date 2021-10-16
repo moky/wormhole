@@ -66,13 +66,19 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
         if (table == null) {
             return null;
         }
+        V value;
         if (key2 != null) {
             // mapping: (remote, local) => Connection
-            return table.get(key2);
+            value = table.get(key2);
+            if (value != null) {
+                return value;
+            }
+            // take any Connection connected to remote
+            return table.get(defaultKey);
         }
         // mapping: (remote, null) => Connection
         // mapping: (local, null) => Connection
-        V value = table.get(defaultKey);
+        value = table.get(defaultKey);
         if (value == null) {
             // take the first value if exists
             Iterator<V> it = table.values().iterator();
