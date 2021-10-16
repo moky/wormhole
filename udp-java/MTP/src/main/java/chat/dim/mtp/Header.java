@@ -68,7 +68,7 @@ import chat.dim.type.MutableData;
  *            different messages.
  *
  *        ** Count & Index **:
- *            If data type is a fragment message (or its respond),
+ *            If data type is a message fragment (or its respond),
  *            there is a field 'count' following the transaction ID,
  *            which indicates the message was split to how many fragments;
  *            and there is another field 'index' following the 'count'.
@@ -321,7 +321,7 @@ public class Header extends Data {
             headLen += sn.getSize();  // 8 bytes
         }
         ByteArray options;
-        if (type.isFragment()) {
+        if (type.isFragment() || type.isMessageResponse()) {
             // message fragment (or its respond)
             assert pages > 1 : "fragment pages error: " + pages + ", " + index;
             ByteArray d1 = IntegerData.getUInt32Data(pages);

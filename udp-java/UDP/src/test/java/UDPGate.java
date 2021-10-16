@@ -8,12 +8,15 @@ import java.util.List;
 
 import chat.dim.mtp.DataType;
 import chat.dim.mtp.Package;
+import chat.dim.mtp.PackageDeparture;
 import chat.dim.mtp.PackageDocker;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
+import chat.dim.port.Departure;
 import chat.dim.port.Docker;
 import chat.dim.skywalker.Runner;
+import chat.dim.startrek.DepartureShip;
 import chat.dim.startrek.StarGate;
 import chat.dim.type.Data;
 
@@ -74,7 +77,27 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     @Override
     protected Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
         // TODO: check data format before creating docker
-        return new PackageDocker(remote, local, this);
+        return new PackageDocker(remote, local, this) {
+            @Override
+            protected Departure getNextDeparture(final long now) {
+                Departure outgo = super.getNextDeparture(now);
+                if (outgo == null) {
+                    return null;
+                }
+                if (outgo.getRetries() >= DepartureShip.MAX_RETRIES) {
+                    // last try
+                    return outgo;
+                }
+                if (outgo instanceof PackageDeparture) {
+                    Package pack = ((PackageDeparture) outgo).getPackage();
+                    if (!pack.isResponse()) {
+                        // put back for next retry
+                        appendDeparture(outgo);
+                    }
+                }
+                return outgo;
+            }
+        };
     }
 
     @Override

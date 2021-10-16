@@ -16,7 +16,7 @@ plugins {
 
 group 'chat.dim'
 //version '1.0-SNAPSHOT'
-version '0.1.4'
+version '0.1.5'
 
 def mod = 'MTP'
 def desc = 'Message Transfer Protocol'

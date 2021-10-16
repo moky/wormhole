@@ -38,7 +38,6 @@ import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Ship;
-import chat.dim.startrek.DepartureShip;
 import chat.dim.startrek.StarDocker;
 import chat.dim.startrek.StarGate;
 import chat.dim.type.ByteArray;
@@ -179,16 +178,6 @@ public class PackageDocker extends StarDocker {
         }
 
         return income;
-    }
-
-    @Override
-    protected Departure getNextDeparture(final long now) {
-        Departure outgo = super.getNextDeparture(now);
-        if (outgo != null && outgo.getRetries() < DepartureShip.MAX_RETRIES) {
-            // put back for next retry
-            appendDeparture(outgo);
-        }
-        return outgo;
     }
 
     protected void respondCommand(TransactionID sn, byte[] body) {
