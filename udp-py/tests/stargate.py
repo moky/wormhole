@@ -9,8 +9,26 @@ from udp.ba import Data
 from udp.mtp import DataType, Package
 from udp import Connection, ConnectionState
 from udp import GateDelegate, Docker
-from udp import StarGate
-from udp import PackageDocker
+from udp import StarGate, Departure, DepartureShip
+from udp import PackageDeparture, PackageDocker
+
+
+class MTPPackageDocker(PackageDocker):
+
+    # Override
+    def next_departure(self, now: int) -> Optional[Departure]:
+        outgo = super().next_departure(now=now)
+        if outgo is None:
+            return None
+        if outgo.retries >= DepartureShip.MAX_RETRIES:
+            # last try
+            return outgo
+        if isinstance(outgo, PackageDeparture):
+            pack = outgo.package
+            if not pack.head.data_type.is_response:
+                # put back for next retry
+                self.append_departure(ship=outgo)
+        return outgo
 
 
 H = TypeVar('H')
@@ -72,7 +90,7 @@ class UDPGate(StarGate, Runnable, Generic[H]):
     # Override
     def create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
         # TODO: check data format before creating docker
-        return PackageDocker(remote=remote, local=local, gate=self)
+        return MTPPackageDocker(remote=remote, local=local, gate=self)
 
     # Override
     def cache_advance_party(self, data: bytes, source: tuple, destination: Optional[tuple],

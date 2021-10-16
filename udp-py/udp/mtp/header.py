@@ -75,7 +75,7 @@ from .protocol import DataType, TransactionID
             different messages.
 
         ** Count & Index **:
-            If data type is a fragment message (or its respond),
+            If data type is a message fragment (or its respond),
             there is a field 'count' following the transaction ID,
             which indicates the message was split to how many fragments;
             and there is another field 'index' following the 'count'.
@@ -279,7 +279,7 @@ class Header(Data):
         elif sn != TransactionID.ZERO:
             head_len += 8
         # pages & index
-        if data_type.is_message_fragment or data_type.is_message_response:
+        if data_type.is_fragment or data_type.is_message_response:
             # message fragment (or its respond)
             assert pages > index, 'pages error: %d, %d' % (pages, index)
             d1 = Convert.uint32data_from_value(value=pages)

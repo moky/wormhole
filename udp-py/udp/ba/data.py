@@ -114,6 +114,10 @@ class Data(ByteArray):
         # return data.decode('utf-8')
         return str(data)
 
+    def __add__(self, other):
+        """ self + other """
+        return concat(left=self, right=other)
+
     @property  # Override
     def hex_string(self) -> str:
         data = self.get_bytes()
@@ -151,16 +155,7 @@ class Data(ByteArray):
 
     # Override
     def concat(self, other: Union[bytes, bytearray, ByteArray]) -> ByteArray:
-        if other is None:
-            # other data is empty, take this data
-            return self
-        if not isinstance(other, ByteArray):
-            other = Data(buffer=other)
-        if self._size > 0:
-            return get_data_helper().concat(left=self, right=other)
-        else:
-            # this data is empty, take the other one
-            return other
+        return concat(left=self, right=other)
 
     # Override
     def find(self, sub: Union[bytes, bytearray, ByteArray], start: int = 0, end: int = None) -> int:
@@ -177,6 +172,26 @@ class Data(ByteArray):
     @classmethod
     def random(cls, size: int) -> ByteArray:
         return cls(buffer=random_bytes(size=size))
+
+
+def convert(data: Union[bytes, bytearray, ByteArray]) -> ByteArray:
+    if data is None:
+        return Data.ZERO
+    elif isinstance(data, ByteArray):
+        return data
+    else:
+        return Data(buffer=data)
+
+
+def concat(left: Union[bytes, bytearray, ByteArray], right: Union[bytes, bytearray, ByteArray]) -> ByteArray:
+    left = convert(data=left)
+    right = convert(data=right)
+    if left.size == 0:
+        return right
+    elif right.size == 0:
+        return left
+    else:
+        return get_data_helper().concat(left=left, right=right)
 
 
 # get slice with range [start, end)

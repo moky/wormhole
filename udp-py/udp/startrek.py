@@ -249,14 +249,6 @@ class PackageDocker(StarDocker):
                 return None
         return ship
 
-    # Override
-    def next_departure(self, now: int) -> Optional[Departure]:
-        outgo = super().next_departure(now=now)
-        if outgo is not None and outgo.retries < DepartureShip.MAX_RETRIES:
-            # put back for next retry
-            self.append_departure(ship=outgo)
-        return outgo
-
     # protected
     def _respond_command(self, sn: TransactionID, body: bytes):
         pack = Package.new(data_type=DataType.COMMAND_RESPONSE, sn=sn, body=Data(buffer=body))
