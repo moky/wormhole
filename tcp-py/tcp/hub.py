@@ -99,7 +99,7 @@ class ServerHub(StreamHub, Runnable):
         self.__running = False
 
     # Override
-    def create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+    def _create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         conn = BaseConnection(channel=sock, remote=remote, local=local)
         conn.delegate = self.delegate
         conn.hub = self
@@ -149,7 +149,7 @@ class ClientHub(StreamHub):
     """ Stream Client Hub """
 
     # Override
-    def create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+    def _create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         conn = ActiveConnection(channel=sock, remote=remote, local=local)
         conn.delegate = self.delegate
         conn.hub = self

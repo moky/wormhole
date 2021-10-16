@@ -50,10 +50,10 @@ class StarDocker(Docker):
             delegate()
 
         @abstract methods:
-            - get_arrival(data)
-            - check_arrival(ship)
             - pack(payload, priority)
             - heartbeat()
+            - _get_arrival(data)
+            - _check_arrival(ship)
     """
 
     def __init__(self, remote: tuple, local: Optional[tuple]):
@@ -67,11 +67,11 @@ class StarDocker(Docker):
         """ Override for user-customized dock """
         return LockedDock()
 
-    @property
+    @property  # Override
     def remote_address(self) -> tuple:
         return self.__remote
 
-    @property
+    @property  # Override
     def local_address(self) -> Optional[tuple]:
         return self.__local
 
@@ -94,7 +94,7 @@ class StarDocker(Docker):
             return False
         now = int(time.time())
         # 2. get outgo task
-        outgo = self.next_departure(now=now)
+        outgo = self._next_departure(now=now)
         if outgo is None:
             # nothing to do now
             return False
@@ -139,11 +139,11 @@ class StarDocker(Docker):
     # Override
     def process_received(self, data: bytes):
         # 1. get income ship from received data
-        income = self.get_arrival(data=data)
+        income = self._get_arrival(data=data)
         if income is None:
             return None
         # 2. check income ship for response
-        income = self.check_arrival(ship=income)
+        income = self._check_arrival(ship=income)
         if income is None:
             return None
         # 3. process income ship with completed data package
@@ -157,7 +157,7 @@ class StarDocker(Docker):
         delegate.gate_received(ship=income, source=remote, destination=local, connection=conn)
 
     @abstractmethod
-    def get_arrival(self, data: bytes) -> Optional[Arrival]:
+    def _get_arrival(self, data: bytes) -> Optional[Arrival]:
         """
         Get income ship from received data
 
@@ -167,7 +167,7 @@ class StarDocker(Docker):
         raise NotImplemented
 
     @abstractmethod
-    def check_arrival(self, ship: Arrival) -> Optional[Arrival]:
+    def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:
         """
         Check income ship for responding
 
@@ -177,7 +177,7 @@ class StarDocker(Docker):
         raise NotImplemented
 
     # protected
-    def check_response(self, ship: Arrival) -> Optional[Departure]:
+    def _check_response(self, ship: Arrival) -> Optional[Departure]:
         """ Check and remove linked departure ship with same SN (and page index for fragment) """
         # check response for linked departure ship (same SN)
         linked = self.__dock.check_response(ship=ship)
@@ -194,12 +194,12 @@ class StarDocker(Docker):
         return linked
 
     # protected
-    def assemble_arrival(self, ship: Arrival) -> Optional[Arrival]:
+    def _assemble_arrival(self, ship: Arrival) -> Optional[Arrival]:
         """ Check received ship for completed package """
         return self.__dock.assemble_arrival(ship=ship)
 
     # protected
-    def next_departure(self, now: int) -> Optional[Departure]:
+    def _next_departure(self, now: int) -> Optional[Departure]:
         """ Get outgo ship from waiting queue """
         # this will be remove from the queue,
         # if needs retry, the caller should append it back

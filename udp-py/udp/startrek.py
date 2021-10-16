@@ -128,7 +128,7 @@ class PackageDeparture(DepartureShip):
                     count += 1
         if count > 0:
             self.__fragments.clear()
-        return len(self.__packages) == 0
+            return len(self.__packages) == 0
 
     def __remove_page(self, index: int) -> bool:
         for pack in self.__packages:
@@ -174,13 +174,13 @@ class PackageDocker(StarDocker):
         return PackageDeparture(pack=pack, priority=priority, delegate=delegate)
 
     # Override
-    def get_arrival(self, data: bytes) -> Optional[Arrival]:
+    def _get_arrival(self, data: bytes) -> Optional[Arrival]:
         pack = self._parse_package(data=data)
         if pack is not None and pack.body.size > 0:
             return self._create_arrival(pack=pack)
 
     # Override
-    def check_arrival(self, ship: Arrival) -> Optional[Arrival]:
+    def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:
         assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
         pack = ship.package
         if pack is None:
@@ -197,7 +197,7 @@ class PackageDocker(StarDocker):
             # process CommandResponse
             #       'PONG'
             #       'OK'
-            self.check_response(ship=ship)
+            self._check_response(ship=ship)
             if body == PONG or body == OK:
                 # command responded
                 return None
@@ -223,7 +223,7 @@ class PackageDocker(StarDocker):
             if body == AGAIN:
                 # TODO: reset retries?
                 return None
-            self.check_response(ship=ship)
+            self._check_response(ship=ship)
             if body == OK:
                 # message responded
                 return None
@@ -235,7 +235,7 @@ class PackageDocker(StarDocker):
             if data_type.is_message_fragment:
                 # assemble MessageFragment with cached fragments to completed Message
                 # let the caller to process the completed message
-                return self.assemble_arrival(ship=ship)
+                return self._assemble_arrival(ship=ship)
             assert data_type.is_message, 'unknown data type: %s' % data_type
             # let the caller to process the message
 

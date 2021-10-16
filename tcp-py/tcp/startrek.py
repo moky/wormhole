@@ -108,12 +108,12 @@ class PlainDocker(StarDocker):
             return gate.delegate
 
     # Override
-    def get_arrival(self, data: bytes) -> Optional[Arrival]:
+    def _get_arrival(self, data: bytes) -> Optional[Arrival]:
         if data is not None and len(data) > 0:
             return PlainArrival(data=data)
 
     # Override
-    def check_arrival(self, ship: Arrival) -> Optional[Arrival]:
+    def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:
         assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
         data = ship.package
         if len(data) == 4:

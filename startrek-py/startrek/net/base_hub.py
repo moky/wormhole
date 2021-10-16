@@ -65,13 +65,13 @@ class BaseHub(Hub, ABC):
     def delegate(self) -> ConnectionDelegate:
         return self.__delegate()
 
-    @abstractmethod
+    @abstractmethod  # protected
     def channels(self) -> Set[Channel]:
         """ Get all channels """
         raise NotImplemented
 
     @abstractmethod  # protected
-    def create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+    def _create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         raise NotImplemented
 
     def __create_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
@@ -80,7 +80,7 @@ class BaseHub(Hub, ABC):
             return None
         if local is None:
             local = sock.local_address
-        return self.create_connection(sock=sock, remote=remote, local=local)
+        return self._create_connection(sock=sock, remote=remote, local=local)
 
     # Override
     def connect(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
@@ -109,7 +109,7 @@ class BaseHub(Hub, ABC):
             self.__connection_pool.remove(remote=remote, local=local, value=conn)
             conn.close()
 
-    def __drive(self, sock: Channel) -> bool:
+    def _drive_channel(self, sock: Channel) -> bool:
         # try to receive
         try:
             data, remote = sock.receive(max_len=self.MSS)
@@ -136,7 +136,7 @@ class BaseHub(Hub, ABC):
         # 1. drive all channels to receive data
         channels = self.channels()
         for sock in channels:
-            if sock.opened and self.__drive(sock=sock):
+            if sock.opened and self._drive_channel(sock=sock):
                 # received data from this socket channel
                 count += 1
         # 2. drive all connections to move on

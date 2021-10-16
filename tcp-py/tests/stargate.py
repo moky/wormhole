@@ -68,13 +68,13 @@ class TCPGate(StarGate, Runnable, Generic[H]):
         return hub.connect(remote=remote, local=local)
 
     # Override
-    def create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
+    def _create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
         # TODO: check data format before creating docker
         return PlainDocker(remote=remote, local=local, gate=self)
 
     # Override
-    def cache_advance_party(self, data: bytes, source: tuple, destination: Optional[tuple],
-                            connection: Connection) -> List[bytes]:
+    def _cache_advance_party(self, data: bytes, source: tuple, destination: Optional[tuple],
+                             connection: Connection) -> List[bytes]:
         # TODO: cache the advance party before decide which docker to use
         if data is None:
             return []
@@ -82,7 +82,7 @@ class TCPGate(StarGate, Runnable, Generic[H]):
             return [data]
 
     # Override
-    def clear_advance_party(self, source: tuple, destination: Optional[tuple], connection: Connection):
+    def _clear_advance_party(self, source: tuple, destination: Optional[tuple], connection: Connection):
         # TODO: remove advance party for this connection
         pass
 

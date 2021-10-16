@@ -60,6 +60,7 @@ class BaseConnection(Connection, TimedConnection, StateDelegate):
         # Finite State Machine
         self.__fsm = self._create_state_machine()
 
+    # protected
     def _create_state_machine(self) -> StateMachine:
         fsm = StateMachine(connection=self)
         fsm.delegate = self
@@ -91,7 +92,7 @@ class BaseConnection(Connection, TimedConnection, StateDelegate):
         else:
             self.__hub = weakref.ref(h)
 
-    @property
+    @property  # protected
     def channel(self) -> Optional[Channel]:
         return self._channel
 
@@ -202,6 +203,7 @@ class BaseConnection(Connection, TimedConnection, StateDelegate):
         if delegate is not None:
             delegate.connection_received(data=data, source=self._remote, destination=self._local, connection=self)
 
+    # protected
     def _send(self, data: bytes, target: Optional[tuple]) -> int:
         sock = self.channel
         if sock is None or not sock.opened:
