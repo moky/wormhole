@@ -16,25 +16,25 @@ import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Gate;
-import chat.dim.udp.PackageHub;
+import chat.dim.udp.ServerHub;
 
 public class DmtpServer extends Server implements Gate.Delegate {
 
     private final SocketAddress localAddress;
 
-    private final UDPGate<PackageHub> gate;
+    private final UDPGate<ServerHub> gate;
 
     public DmtpServer(SocketAddress local) {
         super();
         localAddress = local;
         gate = new UDPGate<>(this);
-        gate.setHub(new PackageHub(gate));
+        gate.setHub(new ServerHub(gate));
     }
 
-    private UDPGate<PackageHub> getGate() {
+    private UDPGate<ServerHub> getGate() {
         return gate;
     }
-    private PackageHub getHub() {
+    private ServerHub getHub() {
         return gate.getHub();
     }
 
@@ -67,12 +67,12 @@ public class DmtpServer extends Server implements Gate.Delegate {
     @Override
     public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         assert outgo instanceof PackageDeparture : "departure ship error: " + outgo;
-        //Package pack = ((PackageDeparture) outgo).getPackage();
-        //int bodyLen = pack.head.bodyLength;
-        //if (bodyLen == -1) {
-        //    bodyLen = pack.body.getSize();
-        //}
-        //UDPGate.info("message sent: " + bodyLen + " byte(s) to " + destination);
+        Package pack = ((PackageDeparture) outgo).getPackage();
+        int bodyLen = pack.head.bodyLength;
+        if (bodyLen == -1) {
+            bodyLen = pack.body.getSize();
+        }
+        UDPGate.info("message sent: " + bodyLen + " byte(s) to " + destination);
     }
 
     @Override

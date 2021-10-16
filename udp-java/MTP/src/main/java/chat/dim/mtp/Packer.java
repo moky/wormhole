@@ -30,12 +30,12 @@
  */
 package chat.dim.mtp;
 
-import chat.dim.type.ByteArray;
-import chat.dim.type.MutableData;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+
+import chat.dim.type.ByteArray;
+import chat.dim.type.MutableData;
 
 public class Packer {
 

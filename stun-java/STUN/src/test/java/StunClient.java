@@ -18,22 +18,22 @@ import chat.dim.skywalker.Runner;
 import chat.dim.startrek.PlainArrival;
 import chat.dim.startrek.PlainDeparture;
 import chat.dim.stun.Client;
-import chat.dim.udp.PackageHub;
+import chat.dim.udp.ClientHub;
 
 public class StunClient extends Client implements Gate.Delegate {
 
-    private final UDPGate<PackageHub> gate;
+    private final UDPGate<ClientHub> gate;
 
     StunClient(InetSocketAddress local) {
         super(local);
         gate = new UDPGate<>(this);
-        gate.setHub(new PackageHub(gate));
+        gate.setHub(new ClientHub(gate));
     }
 
-    private UDPGate<PackageHub> getGate() {
+    private UDPGate<ClientHub> getGate() {
         return gate;
     }
-    private PackageHub getHub() {
+    private ClientHub getHub() {
         return gate.getHub();
     }
 

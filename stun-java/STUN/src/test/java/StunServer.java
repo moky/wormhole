@@ -13,23 +13,23 @@ import chat.dim.startrek.PlainArrival;
 import chat.dim.startrek.PlainDeparture;
 import chat.dim.stun.Server;
 import chat.dim.type.Data;
-import chat.dim.udp.PackageHub;
+import chat.dim.udp.ServerHub;
 
 public class StunServer extends Server implements Gate.Delegate {
 
-    private final UDPGate<PackageHub> gate;
+    private final UDPGate<ServerHub> gate;
 
     public StunServer(InetSocketAddress sourceAddress, int changePort,
                   InetSocketAddress changedAddress, InetSocketAddress neighbour) {
         super(sourceAddress, changePort, changedAddress, neighbour);
         gate = new UDPGate<>(this);
-        gate.setHub(new PackageHub(gate));
+        gate.setHub(new ServerHub(gate));
     }
 
-    private UDPGate<PackageHub> getGate() {
+    private UDPGate<ServerHub> getGate() {
         return gate;
     }
-    private PackageHub getHub() {
+    private ServerHub getHub() {
         return gate.getHub();
     }
 

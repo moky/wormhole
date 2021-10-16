@@ -30,7 +30,6 @@
  */
 package chat.dim.startrek;
 
-import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.Date;
 import java.util.List;
@@ -110,7 +109,7 @@ public abstract class StarDocker implements Docker {
                     // failed to send outgo package, callback
                     error = new Error("Connection error");
                 }
-            } catch (IOException e) {
+            } catch (Exception e) {
                 //e.printStackTrace();
                 error = e;
             }
@@ -123,7 +122,7 @@ public abstract class StarDocker implements Docker {
         return true;
     }
 
-    private boolean sendDeparture(final Departure outgo) throws IOException {
+    private boolean sendDeparture(final Departure outgo) {
         List<byte[]> fragments = outgo.getFragments();
         if (fragments == null || fragments.size() == 0) {
             // all fragments sent

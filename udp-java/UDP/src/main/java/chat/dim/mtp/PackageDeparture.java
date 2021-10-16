@@ -99,9 +99,10 @@ public class PackageDeparture extends DepartureShip {
                 }
             }
         }
-        if (count > 0) {
-            fragments.clear();
+        if (count == 0) {
+            return false;
         }
+        fragments.clear();
         return packages.size() == 0;
     }
     private boolean removePage(int index) {
