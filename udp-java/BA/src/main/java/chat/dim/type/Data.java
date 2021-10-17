@@ -145,13 +145,13 @@ public class Data implements ByteArray, Cloneable {
     }
 
     @Override
-    public String toString() {
-        return new String(getBytes(), Charset.forName("UTF-8"));
+    public java.lang.String toString() {
+        return new java.lang.String(getBytes());
         //return toHexString();
     }
 
     @Override
-    public String toHexString() {
+    public java.lang.String toHexString() {
         return ByteArray.hexEncode(buffer, offset, size);
     }
 

@@ -39,7 +39,7 @@ public interface ByteArray {
     // get view size
     int getSize();
 
-    String toHexString();
+    java.lang.String toHexString();
 
     boolean equals(ByteArray other);
     boolean equals(byte[] other);
@@ -104,7 +104,7 @@ public interface ByteArray {
     //  helper
     //
 
-    static String hexEncode(byte[] buffer, int offset, int size) {
+    static java.lang.String hexEncode(byte[] buffer, int offset, int size) {
         return helper.hexEncode(buffer, offset, size);
     }
 
@@ -149,7 +149,7 @@ public interface ByteArray {
         };
 
         @Override
-        public String hexEncode(byte[] buffer, int offset, int size) {
+        public java.lang.String hexEncode(byte[] buffer, int offset, int size) {
             if (size < 1) {
                 return "";
             }
@@ -309,7 +309,7 @@ public interface ByteArray {
     // data helper
     interface Helper {
 
-        String hexEncode(byte[] buffer, int offset, int size);
+        java.lang.String hexEncode(byte[] buffer, int offset, int size);
 
         int adjust(int pos, int len);
         int adjustE(int pos, int len);

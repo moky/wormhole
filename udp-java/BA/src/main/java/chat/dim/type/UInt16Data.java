@@ -69,7 +69,7 @@ public class UInt16Data extends Data implements IntegerData {
     }
 
     @Override
-    public String toString() {
+    public java.lang.String toString() {
         return Integer.toString(value);
     }
 

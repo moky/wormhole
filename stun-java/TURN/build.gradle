@@ -16,7 +16,7 @@ plugins {
 
 group 'chat.dim'
 //version '1.0-SNAPSHOT'
-version '0.1.4'
+version '0.1.5'
 
 def mod = 'TURN'
 def desc = 'Traversal Using Relays around NAT'
@@ -33,7 +33,7 @@ repositories {
 }
 
 dependencies {
-    compile group: 'chat.dim', name: 'STUN', version: '0.1.4'
+    compile group: 'chat.dim', name: 'STUN', version: '0.1.5'
 
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }

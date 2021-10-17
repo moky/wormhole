@@ -44,7 +44,7 @@ public class Pair<K, V> implements Serializable {
     }
 
     @Override
-    public String toString() {
+    public java.lang.String toString() {
         return key + "=" + value;
     }
 

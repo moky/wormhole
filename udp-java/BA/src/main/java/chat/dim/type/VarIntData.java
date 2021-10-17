@@ -64,7 +64,7 @@ public class VarIntData extends Data implements IntegerData {
     }
 
     @Override
-    public String toString() {
+    public java.lang.String toString() {
         return Long.toString(value);
     }
 
