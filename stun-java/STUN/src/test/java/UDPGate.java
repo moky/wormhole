@@ -88,7 +88,12 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     }
 
     void sendData(byte[] payload, SocketAddress source, SocketAddress destination) {
-        Docker worker = getDocker(destination, source, null);
+        Docker worker = getDocker(destination, source);
+        if (worker == null) {
+            worker = createDocker(destination, source, null);
+            assert worker != null : "failed to create docker: " + destination + ", " + source;
+            putDocker(worker);
+        }
         ((PlainDocker) worker).send(payload);
     }
 

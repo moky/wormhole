@@ -80,19 +80,12 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         dockerPool.remove(remote, local, docker);
     }
 
-    // if docker not exists, create after checking data format
-    protected Docker getDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
-        Docker worker = dockerPool.get(remote, local);
-        if (worker == null) {
-            worker = createDocker(remote, local, data);
-            if (worker != null) {
-                dockerPool.put(remote, local, worker);
-            }
-        }
-        return worker;
+    protected void putDocker(Docker docker) {
+        SocketAddress remote = docker.getRemoteAddress();
+        SocketAddress local = docker.getLocalAddress();
+        dockerPool.put(remote, local, docker);
     }
 
-    // get exists docker
     protected Docker getDocker(SocketAddress remote, SocketAddress local) {
         return dockerPool.get(remote, local);
     }
@@ -205,8 +198,10 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         assert advanceParty != null && advanceParty.size() > 0 : "advance party error";
 
         // docker not exists, check the data to decide which docker should be created
-        worker = getDocker(source, destination, advanceParty);
+        worker = createDocker(source, destination, advanceParty);
         if (worker != null) {
+            // cache docker for (remote, local)
+            putDocker(worker);
             // process advance parties one by one
             for (byte[] part : advanceParty) {
                 worker.processReceived(part);
