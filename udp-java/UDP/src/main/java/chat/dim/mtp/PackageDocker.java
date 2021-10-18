@@ -192,7 +192,7 @@ public class PackageDocker extends StarDocker {
     }
 
     public void send(Package pkg, int priority, Ship.Delegate delegate) {
-        appendDeparture(createDeparture(pkg, priority, delegate));
+        send(createDeparture(pkg, priority, delegate));
     }
     public void send(Departure ship) {
         appendDeparture(ship);

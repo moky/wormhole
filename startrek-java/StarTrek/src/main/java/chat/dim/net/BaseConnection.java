@@ -57,25 +57,29 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
     public static long EXPIRES = 16 * 1000;  // 16 seconds
 
     protected Channel channel;
+    protected final boolean isActivated;
 
     private long lastSentTime;
     private long lastReceivedTime;
 
-    private WeakReference<Delegate> delegateRef;
-    private WeakReference<Hub> hubRef;
+    private final WeakReference<Delegate> delegateRef;
+    private final WeakReference<Hub> hubRef;
 
     private final StateMachine fsm;
 
-    public BaseConnection(Channel sock, SocketAddress remote, SocketAddress local) {
+    public BaseConnection(SocketAddress remote, SocketAddress local,
+                          Channel sock, boolean activated, Delegate delegate, Hub hub) {
         super(remote, local);
 
         channel = sock;
+        isActivated = activated;
 
         lastSentTime = 0;
         lastReceivedTime = 0;
 
-        delegateRef = null;
-        hubRef = null;
+        delegateRef = new WeakReference<>(delegate);
+        hubRef = new WeakReference<>(hub);
+
         // Finite State Machine
         fsm = createStateMachine();
     }
@@ -89,19 +93,21 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
     public Delegate getDelegate() {
         return delegateRef.get();
     }
-    public void setDelegate(Delegate delegate) {
-        delegateRef = new WeakReference<>(delegate);
-    }
 
     public Hub getHub() {
         return hubRef.get();
     }
-    public void setHub(Hub hub) {
-        hubRef = new WeakReference<>(hub);
-    }
 
     protected Channel getChannel() {
-        return channel;
+        Channel sock = channel;
+        if (sock == null && isActivated) {
+            // get new channel via hub
+            Hub hub = getHub();
+            if (hub != null) {
+                channel = sock = hub.getChannel(remoteAddress, localAddress);
+            }
+        }
+        return sock;
     }
 
     @Override

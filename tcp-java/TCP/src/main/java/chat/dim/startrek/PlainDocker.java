@@ -98,7 +98,7 @@ public class PlainDocker extends StarDocker {
 
     public void send(byte[] payload, int priority, Ship.Delegate delegate) {
         Departure ship = pack(payload, priority, delegate);
-        appendDeparture(ship);
+        send(ship);
     }
     public void send(Departure ship) {
         appendDeparture(ship);
