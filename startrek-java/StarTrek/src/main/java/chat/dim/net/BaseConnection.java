@@ -176,7 +176,7 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
     }
     @Override
     public boolean isNotReceivedLongTimeAgo(long now) {
-        return now > lastReceivedTime + (EXPIRES << 4);
+        return now > lastReceivedTime + (EXPIRES << 3);
     }
 
     @Override

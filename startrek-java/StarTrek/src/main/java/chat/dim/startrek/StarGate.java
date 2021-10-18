@@ -30,7 +30,6 @@
  */
 package chat.dim.startrek;
 
-import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.util.List;
@@ -146,7 +145,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     /**
      *  Send a heartbeat package('PING') to remote address
      */
-    protected void heartbeat(Connection connection) throws IOException {
+    protected void heartbeat(Connection connection) {
         SocketAddress remote = connection.getRemoteAddress();
         SocketAddress local = connection.getLocalAddress();
         Docker worker = getDocker(remote, local);
@@ -168,11 +167,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
             removeDocker(remote, local, null);
         } else if (current.equals(ConnectionState.EXPIRED)) {
             // heartbeat when connection expired
-            try {
-                heartbeat(connection);
-            } catch (IOException e) {
-                //e.printStackTrace();
-            }
+            heartbeat(connection);
         }
         // callback when status changed
         Delegate delegate = getDelegate();

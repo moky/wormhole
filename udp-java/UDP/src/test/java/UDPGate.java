@@ -116,6 +116,12 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     }
 
     @Override
+    protected void heartbeat(Connection connection) {
+        //super.heartbeat(connection);
+        // TODO: let the client to do the job
+    }
+
+    @Override
     public void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
         super.onStateChanged(previous, current, connection);
         info("connection state changed: " + previous + " -> " + current + ", " + connection);

@@ -218,7 +218,7 @@ class TransitionBuilder {
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
                 // connection lost, change state to 'error'
-                return conn == null || !conn.isOpen();
+                return conn == null || !conn.isAlive();
             }
         };
     }
@@ -243,8 +243,10 @@ class TransitionBuilder {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
-                // connection lost, change state to 'error'
-                return conn == null || !conn.isOpen();
+                TimedConnection timed = (TimedConnection) conn;
+                // connection lost, or
+                // long long time no response, change state to 'error'
+                return conn == null || !conn.isAlive() || timed.isNotReceivedLongTimeAgo((new Date()).getTime());
             }
         };
     }
@@ -285,8 +287,8 @@ class TransitionBuilder {
                 Connection conn = ctx.getConnection();
                 TimedConnection timed = (TimedConnection) conn;
                 // connection lost, or
-                // long long time no response, change state to 'error
-                return conn == null || !conn.isOpen() || timed.isNotReceivedLongTimeAgo((new Date()).getTime());
+                // long long time no response, change state to 'error'
+                return conn == null || !conn.isAlive() || timed.isNotReceivedLongTimeAgo((new Date()).getTime());
             }
         };
     }
