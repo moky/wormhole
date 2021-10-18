@@ -57,7 +57,8 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
     public static long EXPIRES = 16 * 1000;  // 16 seconds
 
     protected Channel channel;
-    protected final boolean isActivated;
+
+    public final boolean isActivated;
 
     private long lastSentTime;
     private long lastReceivedTime;
@@ -90,11 +91,11 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
         return machine;
     }
 
-    public Delegate getDelegate() {
+    protected Delegate getDelegate() {
         return delegateRef.get();
     }
 
-    public Hub getHub() {
+    protected Hub getHub() {
         return hubRef.get();
     }
 
@@ -112,12 +113,26 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
 
     @Override
     public SocketAddress getLocalAddress() {
-        return localAddress;
+        SocketAddress address = localAddress;
+        if (address == null) {
+            Channel sock = getChannel();
+            if (sock != null) {
+                address = sock.getLocalAddress();
+            }
+        }
+        return address;
     }
 
     @Override
     public SocketAddress getRemoteAddress() {
-        return remoteAddress;
+        SocketAddress address = remoteAddress;
+        if (address == null) {
+            Channel sock = getChannel();
+            if (sock != null) {
+                address = sock.getRemoteAddress();
+            }
+        }
+        return address;
     }
 
     @Override
@@ -190,7 +205,7 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
         lastReceivedTime = (new Date()).getTime();  // update received time
         Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onReceived(data, remoteAddress, localAddress, this);
+            delegate.onReceived(data, getRemoteAddress(), getLocalAddress(), this);
         }
     }
 

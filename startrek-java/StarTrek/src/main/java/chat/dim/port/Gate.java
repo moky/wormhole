@@ -67,6 +67,7 @@ package chat.dim.port;
 
 import java.net.SocketAddress;
 
+import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.skywalker.Processor;
 
@@ -75,6 +76,15 @@ import chat.dim.skywalker.Processor;
  *  ~~~~~~~~~
  */
 public interface Gate extends Processor {
+
+    /**
+     *  Get connection with direction
+     *
+     * @param remote - remote address
+     * @param local  - local address
+     * @return connection
+     */
+    Connection getConnection(SocketAddress remote, SocketAddress local);
 
     /**
      *  Get gate status with direction
@@ -114,6 +124,8 @@ public interface Gate extends Processor {
             }
         }
     }
+
+    Delegate getDelegate();
 
     /**
      *  Gate Delegate

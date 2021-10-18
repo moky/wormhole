@@ -5,7 +5,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import chat.dim.net.BaseConnection;
 import chat.dim.net.Connection;
+import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
 import chat.dim.port.Docker;
 import chat.dim.skywalker.Runner;
@@ -85,6 +87,22 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     @Override
     protected void clearAdvanceParty(SocketAddress source, SocketAddress destination, Connection connection) {
         // TODO: remove advance party for this connection
+    }
+
+    @Override
+    protected void heartbeat(Connection connection) {
+        // let the client to do the job
+        if (connection instanceof BaseConnection) {
+            if (((BaseConnection) connection).isActivated) {
+                super.heartbeat(connection);
+            }
+        }
+    }
+
+    @Override
+    public void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
+        super.onStateChanged(previous, current, connection);
+        info("connection state changed: " + previous + " -> " + current + ", " + connection);
     }
 
     void sendData(byte[] payload, SocketAddress source, SocketAddress destination) {

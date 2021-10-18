@@ -30,11 +30,9 @@
  */
 package chat.dim.mtp;
 
-import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.util.List;
 
-import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Ship;
@@ -45,29 +43,8 @@ import chat.dim.type.Data;
 
 public class PackageDocker extends StarDocker {
 
-    private final WeakReference<StarGate> gateRef;
-
     public PackageDocker(SocketAddress remote, SocketAddress local, StarGate gate) {
-        super(remote, local);
-        gateRef = new WeakReference<>(gate);
-    }
-
-    @Override
-    protected Connection getConnection() {
-        StarGate gate = gateRef.get();
-        if (gate == null) {
-            return null;
-        }
-        return gate.getConnection(getRemoteAddress(), getLocalAddress());
-    }
-
-    @Override
-    protected Ship.Delegate getDelegate() {
-        StarGate gate = gateRef.get();
-        if (gate == null) {
-            return null;
-        }
-        return gate.getDelegate();
+        super(remote, local, gate);
     }
 
     protected Package parsePackage(final byte[] data) {

@@ -30,6 +30,7 @@
  */
 package chat.dim.startrek;
 
+import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.util.Date;
 import java.util.List;
@@ -38,26 +39,19 @@ import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Docker;
+import chat.dim.port.Gate;
 import chat.dim.port.Ship;
 import chat.dim.type.AddressPairObject;
 
 public abstract class StarDocker extends AddressPairObject implements Docker {
 
+    private final WeakReference<Gate> gateRef;
     private final Dock dock;
 
-    protected StarDocker(SocketAddress remote, SocketAddress local) {
+    protected StarDocker(SocketAddress remote, SocketAddress local, Gate gate) {
         super(remote, local);
+        gateRef = new WeakReference<>(gate);
         dock = createDock();
-    }
-
-    @Override
-    public SocketAddress getRemoteAddress() {
-        return remoteAddress;
-    }
-
-    @Override
-    public SocketAddress getLocalAddress() {
-        return localAddress;
     }
 
     // override for user-customized dock
@@ -65,19 +59,59 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         return new LockedDock();
     }
 
+    protected Gate getGate() {
+        return gateRef.get();
+    }
+
+    @Override
+    public SocketAddress getLocalAddress() {
+        SocketAddress address = localAddress;
+        if (address == null) {
+            Connection conn = getConnection();
+            if (conn != null) {
+                address = conn.getLocalAddress();
+            }
+        }
+        return address;
+    }
+
+    @Override
+    public SocketAddress getRemoteAddress() {
+        SocketAddress address = remoteAddress;
+        if (address == null) {
+            Connection conn = getConnection();
+            if (conn != null) {
+                address = conn.getRemoteAddress();
+            }
+        }
+        return address;
+    }
+
     /**
      *  Get related connection which status is 'ready'
      *
      * @return related connection
      */
-    protected abstract Connection getConnection();
+    protected Connection getConnection() {
+        Gate gate = getGate();
+        if (gate == null) {
+            return null;
+        }
+        return gate.getConnection(remoteAddress, localAddress);
+    }
 
     /**
      *  Get delegate for handling events
      *
      * @return gate delegate
      */
-    protected abstract Ship.Delegate getDelegate();
+    protected Ship.Delegate getDelegate() {
+        Gate gate = getGate();
+        if (gate == null) {
+            return null;
+        }
+        return gate.getDelegate();
+    }
 
     @Override
     public boolean process() {
@@ -113,7 +147,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         // callback
         Ship.Delegate delegate = getDelegate();
         if (error != null && delegate != null) {
-            delegate.onError(error, outgo, localAddress, remoteAddress, conn);
+            delegate.onError(error, outgo, getLocalAddress(), getRemoteAddress(), conn);
         }
         return true;
     }
@@ -130,8 +164,9 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             return false;
         }
         int success = 0;
+        SocketAddress remote = getRemoteAddress();
         for (byte[] pkg : fragments) {
-            if (conn.send(pkg, remoteAddress) != -1) {
+            if (conn.send(pkg, remote) != -1) {
                 success += 1;
             }
         }
@@ -155,7 +190,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         // 3. process income ship with completed data package
         Ship.Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onReceived(income, remoteAddress, localAddress, getConnection());
+            delegate.onReceived(income, getRemoteAddress(), getLocalAddress(), getConnection());
         }
     }
 
@@ -191,7 +226,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         // all fragments responded, task finished
         Ship.Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onSent(linked, localAddress, remoteAddress, getConnection());
+            delegate.onSent(linked, getLocalAddress(), getRemoteAddress(), getConnection());
         }
         return linked;
     }

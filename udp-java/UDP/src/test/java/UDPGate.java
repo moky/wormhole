@@ -10,6 +10,7 @@ import chat.dim.mtp.DataType;
 import chat.dim.mtp.Package;
 import chat.dim.mtp.PackageDeparture;
 import chat.dim.mtp.PackageDocker;
+import chat.dim.net.BaseConnection;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
@@ -117,8 +118,12 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
 
     @Override
     protected void heartbeat(Connection connection) {
-        //super.heartbeat(connection);
-        // TODO: let the client to do the job
+        // let the client to do the job
+        if (connection instanceof BaseConnection) {
+            if (((BaseConnection) connection).isActivated) {
+                super.heartbeat(connection);
+            }
+        }
     }
 
     @Override

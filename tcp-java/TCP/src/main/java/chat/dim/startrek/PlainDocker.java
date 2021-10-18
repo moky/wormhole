@@ -30,40 +30,17 @@
  */
 package chat.dim.startrek;
 
-import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.util.Arrays;
 
-import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Ship;
 
 public class PlainDocker extends StarDocker {
 
-    private final WeakReference<StarGate> gateRef;
-
     public PlainDocker(SocketAddress remote, SocketAddress local, StarGate gate) {
-        super(remote, local);
-        gateRef = new WeakReference<>(gate);
-    }
-
-    @Override
-    protected Connection getConnection() {
-        StarGate gate = gateRef.get();
-        if (gate == null) {
-            return null;
-        }
-        return gate.getConnection(getRemoteAddress(), getLocalAddress());
-    }
-
-    @Override
-    protected Ship.Delegate getDelegate() {
-        StarGate gate = gateRef.get();
-        if (gate == null) {
-            return null;
-        }
-        return gate.getDelegate();
+        super(remote, local, gate);
     }
 
     @Override

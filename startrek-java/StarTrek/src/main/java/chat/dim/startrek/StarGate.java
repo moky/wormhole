@@ -52,18 +52,10 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         delegateRef = new WeakReference<>(delegate);
     }
 
+    @Override
     public Delegate getDelegate() {
         return delegateRef.get();
     }
-
-    /**
-     *  Get exists connection from hub
-     *
-     * @param remote - remote address
-     * @param local  - local address
-     * @return exists connection
-     */
-    public abstract Connection getConnection(SocketAddress remote, SocketAddress local);
 
     /**
      *  Create new docker for received data

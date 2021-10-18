@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import chat.dim.net.BaseConnection;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
@@ -87,6 +88,16 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
     @Override
     protected void clearAdvanceParty(SocketAddress source, SocketAddress destination, Connection connection) {
         // TODO: remove advance party for this connection
+    }
+
+    @Override
+    protected void heartbeat(Connection connection) {
+        // let the client to do the job
+        if (connection instanceof BaseConnection) {
+            if (((BaseConnection) connection).isActivated) {
+                super.heartbeat(connection);
+            }
+        }
     }
 
     @Override
