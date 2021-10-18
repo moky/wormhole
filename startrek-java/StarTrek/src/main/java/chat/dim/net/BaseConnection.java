@@ -37,6 +37,8 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.Date;
 
+import chat.dim.type.AddressPairObject;
+
 interface TimedConnection {
 
     long getLastSentTime();
@@ -50,13 +52,11 @@ interface TimedConnection {
     boolean isNotReceivedLongTimeAgo(long now);
 }
 
-public class BaseConnection implements Connection, TimedConnection, StateDelegate {
+public class BaseConnection extends AddressPairObject implements Connection, TimedConnection, StateDelegate {
 
     public static long EXPIRES = 16 * 1000;  // 16 seconds
 
     protected Channel channel;
-    protected final SocketAddress localAddress;
-    protected final SocketAddress remoteAddress;
 
     private long lastSentTime;
     private long lastReceivedTime;
@@ -67,10 +67,9 @@ public class BaseConnection implements Connection, TimedConnection, StateDelegat
     private final StateMachine fsm;
 
     public BaseConnection(Channel sock, SocketAddress remote, SocketAddress local) {
-        super();
+        super(remote, local);
+
         channel = sock;
-        remoteAddress = remote;
-        localAddress = local;
 
         lastSentTime = 0;
         lastReceivedTime = 0;
@@ -103,52 +102,6 @@ public class BaseConnection implements Connection, TimedConnection, StateDelegat
 
     protected Channel getChannel() {
         return channel;
-    }
-
-    @Override
-    public String toString() {
-        return "<" + getClass().getName() + ": remote=" + remoteAddress + ", local=" + localAddress + " />";
-    }
-
-    @Override
-    public boolean equals(Object other) {
-        if (this == other) {
-            return true;
-        } else if (other instanceof Connection) {
-            Connection conn = (Connection) other;
-            return addressEqual(getRemoteAddress(), conn.getRemoteAddress()) &&
-                    addressEqual(getLocalAddress(), conn.getLocalAddress());
-        } else {
-            return false;
-        }
-    }
-    private static boolean addressEqual(SocketAddress address1, SocketAddress address2) {
-        if (address1 == null) {
-            return address2 == null;
-        } else if (address2 == null) {
-            return false;
-        } else {
-            return address1.equals(address2);
-        }
-    }
-
-    @Override
-    public int hashCode() {
-        SocketAddress local = getLocalAddress();
-        SocketAddress remote = getRemoteAddress();
-        if (remote == null) {
-            assert local != null : "both local & remote addresses are empty";
-            return local.hashCode();
-        } else {
-            //  same algorithm as Pair::hashCode()
-            //  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            //  remote's hashCode is multiplied by an arbitrary prime number (13)
-            //  in order to make sure there is a difference in the hashCode between
-            //  these two parameters:
-            //      remote: a  local: aa
-            //      local: aa  remote: a
-            return remote.hashCode() * 13 + (local == null ? 0 : local.hashCode());
-        }
     }
 
     @Override

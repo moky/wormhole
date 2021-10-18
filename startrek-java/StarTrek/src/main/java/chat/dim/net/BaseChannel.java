@@ -42,11 +42,11 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
 
-public abstract class BaseChannel<C extends SelectableChannel> implements Channel {
+import chat.dim.type.AddressPairObject;
+
+public abstract class BaseChannel<C extends SelectableChannel> extends AddressPairObject implements Channel {
 
     private C channel;
-    private SocketAddress remoteAddress;
-    private SocketAddress localAddress;
 
     /**
      *  Create stream channel
@@ -56,10 +56,8 @@ public abstract class BaseChannel<C extends SelectableChannel> implements Channe
      * @param local       - local address
      */
     protected BaseChannel(C sock, SocketAddress remote, SocketAddress local) {
-        super();
+        super(remote, local);
         channel = sock;
-        remoteAddress = remote;
-        localAddress = local;
     }
 
     protected C getChannel() {

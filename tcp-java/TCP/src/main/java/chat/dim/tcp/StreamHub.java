@@ -41,12 +41,11 @@ import java.util.Set;
 import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
-import chat.dim.type.Pair;
 
 public abstract class StreamHub extends BaseHub {
 
-    // (remote, local) => channel
-    private final Map<Pair<SocketAddress, SocketAddress>, Channel> channels = new HashMap<>();
+    // remote => channel
+    private final Map<SocketAddress, Channel> channels = new HashMap<>();
 
     protected StreamHub(Connection.Delegate delegate) {
         super(delegate);
@@ -59,13 +58,12 @@ public abstract class StreamHub extends BaseHub {
 
     protected void putChannel(Channel channel) {
         SocketAddress remote = channel.getRemoteAddress();
-        SocketAddress local = channel.getLocalAddress();
-        channels.put(new Pair<>(remote, local), channel);
+        channels.put(remote, channel);
     }
 
     @Override
     public Channel getChannel(SocketAddress remote, SocketAddress local) {
-        return channels.get(new Pair<>(remote, local));
+        return channels.get(remote);
     }
 
     @Override
@@ -86,13 +84,12 @@ public abstract class StreamHub extends BaseHub {
 
     private void removeChannel(Channel channel) {
         SocketAddress remote = channel.getRemoteAddress();
-        SocketAddress local = channel.getLocalAddress();
-        if (channels.remove(new Pair<>(remote, local)) == channel) {
+        if (channels.remove(remote) == channel) {
             // removed by key
             return;
         }
         // remove by value
-        Iterator<Map.Entry<Pair<SocketAddress, SocketAddress>, Channel>> it;
+        Iterator<Map.Entry<SocketAddress, Channel>> it;
         it = channels.entrySet().iterator();
         while (it.hasNext()) {
             if (it.next().getValue() == channel) {

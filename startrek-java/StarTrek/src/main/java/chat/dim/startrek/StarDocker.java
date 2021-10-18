@@ -39,18 +39,14 @@ import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Docker;
 import chat.dim.port.Ship;
+import chat.dim.type.AddressPairObject;
 
-public abstract class StarDocker implements Docker {
-
-    private final SocketAddress remoteAddress;
-    private final SocketAddress localAddress;
+public abstract class StarDocker extends AddressPairObject implements Docker {
 
     private final Dock dock;
 
     protected StarDocker(SocketAddress remote, SocketAddress local) {
-        super();
-        remoteAddress = remote;
-        localAddress = local;
+        super(remote, local);
         dock = createDock();
     }
 
