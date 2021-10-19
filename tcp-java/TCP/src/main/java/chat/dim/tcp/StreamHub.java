@@ -62,7 +62,7 @@ public abstract class StreamHub extends BaseHub {
     }
 
     @Override
-    public Channel getChannel(SocketAddress remote, SocketAddress local) {
+    public Channel openChannel(SocketAddress remote, SocketAddress local) {
         return channels.get(remote);
     }
 

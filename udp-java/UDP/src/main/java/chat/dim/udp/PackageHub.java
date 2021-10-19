@@ -46,19 +46,20 @@ import chat.dim.net.Connection;
 public abstract class PackageHub extends BaseHub {
 
     // local => channel
-    protected final Map<SocketAddress, Channel> channels = new HashMap<>();
+    private final Map<SocketAddress, Channel> channels = new HashMap<>();
 
     protected PackageHub(Connection.Delegate delegate) {
         super(delegate);
     }
 
     public void bind(SocketAddress local) throws IOException {
-        Channel sock = getChannel(null, local);
+        Channel sock = channels.get(local);
         if (sock == null) {
             DatagramChannel udp = DatagramChannel.open();
             udp.socket().bind(local);
             udp.configureBlocking(false);
-            putChannel(new PackageChannel(udp, null, local));
+            Channel channel = new PackageChannel(udp, null, local);
+            channels.put(local, channel);
         }
     }
 
@@ -67,13 +68,8 @@ public abstract class PackageHub extends BaseHub {
         return new HashSet<>(channels.values());
     }
 
-    protected void putChannel(Channel channel) {
-        SocketAddress local = channel.getLocalAddress();
-        channels.put(local, channel);
-    }
-
     @Override
-    public Channel getChannel(SocketAddress remote, SocketAddress local) {
+    public Channel openChannel(SocketAddress remote, SocketAddress local) {
         return channels.get(local);
     }
 

@@ -72,7 +72,7 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
 
     @Override
     public Connection getConnection(SocketAddress remote, SocketAddress local) {
-        return getHub().getConnection(remote, local);
+        return getHub().connect(remote, local);
     }
 
     @Override

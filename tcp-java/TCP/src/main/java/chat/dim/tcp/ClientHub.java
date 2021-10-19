@@ -46,14 +46,14 @@ public class ClientHub extends StreamHub {
 
     @Override
     protected Connection createConnection(Channel sock, SocketAddress remote, SocketAddress local) {
-        BaseConnection conn = new BaseConnection(remote, local, sock, true, getDelegate(), this);
+        BaseConnection conn = new BaseConnection(remote, null, sock, true, getDelegate(), this);
         conn.start();  // start FSM
         return conn;
     }
 
     @Override
-    public Channel getChannel(SocketAddress remote, SocketAddress local) {
-        Channel channel = super.getChannel(remote, local);
+    public Channel openChannel(SocketAddress remote, SocketAddress local) {
+        Channel channel = super.openChannel(remote, local);
         if (channel == null) {
             channel = createChannel(remote, local);
             if (channel != null) {
