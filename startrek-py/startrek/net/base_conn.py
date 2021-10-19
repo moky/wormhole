@@ -34,6 +34,7 @@ import weakref
 from typing import Optional
 
 from ..fsm import StateDelegate
+from ..types import AddressPairObject
 
 from .hub import Hub
 from .channel import Channel
@@ -42,21 +43,22 @@ from .delegate import ConnectionDelegate
 from .state import ConnectionState, StateMachine, TimedConnection
 
 
-class BaseConnection(Connection, TimedConnection, StateDelegate):
+class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelegate):
 
     EXPIRES = 16  # seconds
 
-    def __init__(self, channel: Channel, remote: tuple, local: Optional[tuple]):
-        super().__init__()
-        self._channel = channel
-        self._remote = remote
-        self._local = local
+    def __init__(self, remote: tuple, local: Optional[tuple],
+                 channel: Channel, activated: bool, delegate: ConnectionDelegate, hub: Hub):
+        super().__init__(remote=remote, local=local)
+        self.__channel = channel
+        # activated connection will reconnect automatically
+        self.__activated = activated
         # active times
         self.__last_sent_time = 0
         self.__last_received_time = 0
-        # Connection Delegate
-        self.__delegate: Optional[weakref.ReferenceType] = None
-        self.__hub: Optional[weakref.ReferenceType] = None
+        # handlers
+        self.__delegate = weakref.ref(delegate)
+        self.__hub = weakref.ref(hub)
         # Finite State Machine
         self.__fsm = self._create_state_machine()
 
@@ -67,74 +69,28 @@ class BaseConnection(Connection, TimedConnection, StateDelegate):
         return fsm
 
     @property
-    def delegate(self) -> ConnectionDelegate:
-        ref = self.__delegate
-        if ref is not None:
-            return ref()
+    def is_activated(self) -> bool:
+        return self.__activated
 
-    @delegate.setter
-    def delegate(self, handler: ConnectionDelegate):
-        if handler is None:
-            self.__delegate = None
-        else:
-            self.__delegate = weakref.ref(handler)
+    @property
+    def delegate(self) -> ConnectionDelegate:
+        return self.__delegate()
 
     @property
     def hub(self) -> Hub:
-        ref = self.__hub
-        if ref is not None:
-            return ref()
-
-    @hub.setter
-    def hub(self, h: Hub):
-        if h is None:
-            self.__hub = None
-        else:
-            self.__hub = weakref.ref(h)
+        return self.__hub()
 
     @property  # protected
     def channel(self) -> Optional[Channel]:
-        return self._channel
-
-    def __str__(self) -> str:
-        clazz = self.__class__.__name__
-        return '<%s: remote=%s, local=%s />' % (clazz, self._remote, self._local)
-
-    def __repr__(self) -> str:
-        clazz = self.__class__.__name__
-        return '<%s: remote=%s, local=%s />' % (clazz, self._remote, self._local)
-
-    def __eq__(self, other) -> bool:
-        if self is other:
-            return True
-        elif isinstance(other, Connection):
-            return self.remote_address == other.remote_address and self.local_address == other.local_address
-
-    def __ne__(self, other) -> bool:
-        if self is other:
-            return False
-        elif isinstance(other, Connection):
-            return self.remote_address != other.remote_address or self.local_address != other.local_address
-        else:
-            return True
-
-    def __hash__(self) -> int:
-        local = self.local_address
-        remote = self.remote_address
-        if remote is None:
-            assert local is not None, 'both local & remote addresses are empty'
-            return hash(local)
-        # same algorithm as Pair::hashCode()
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        # remote's hashCode is multiplied by an arbitrary prime number (13)
-        # in order to make sure there is a difference in the hashCode between
-        # these two parameters:
-        #     remote: a  local: aa
-        #     local: aa  remote: a
-        if local is None:
-            return hash(remote) * 13
-        else:
-            return hash(remote) * 13 + hash(local)
+        sock = self.__channel
+        if sock is None and self.is_activated:
+            # get new channel via hub
+            hub = self.hub
+            if hub is not None:
+                sock = hub.open_channel(remote=self._remote, local=self._local)
+                if sock is not None:
+                    self.__channel = sock
+        return sock
 
     @property  # Override
     def local_address(self) -> Optional[tuple]:  # (str, int)
@@ -169,12 +125,12 @@ class BaseConnection(Connection, TimedConnection, StateDelegate):
         self.__fsm.stop()
 
     def __close_channel(self):
-        sock = self._channel
+        sock = self.__channel
         if sock is not None:
-            self._channel = None
+            self.__channel = None
             hub = self.hub
             if hub is not None:
-                hub.close(channel=sock)
+                hub.close_channel(channel=sock)
 
     @property  # Override
     def last_sent_time(self) -> int:
@@ -194,14 +150,14 @@ class BaseConnection(Connection, TimedConnection, StateDelegate):
 
     # Override
     def is_long_time_not_received(self, now: int) -> bool:
-        return now > self.__last_received_time + (self.EXPIRES << 4)
+        return now > self.__last_received_time + (self.EXPIRES << 3)
 
     # Override
-    def received(self, data: bytes):
+    def received(self, data: bytes, remote: Optional[tuple], local: Optional[tuple]):
         self.__last_received_time = int(time.time())
         delegate = self.delegate
         if delegate is not None:
-            delegate.connection_received(data=data, source=self._remote, destination=self._local, connection=self)
+            delegate.connection_received(data=data, source=remote, destination=local, connection=self)
 
     # protected
     def _send(self, data: bytes, target: Optional[tuple]) -> int:
@@ -228,11 +184,17 @@ class BaseConnection(Connection, TimedConnection, StateDelegate):
         # callback
         delegate = self.delegate
         if delegate is not None:
-            local = self.local_address
+            # get local address as source
+            source = self._local
+            if source is None:
+                sock = self.__channel
+                if sock is not None:
+                    source = sock.local_address
+            # callback
             if error is None:
-                delegate.connection_sent(data=data, source=local, destination=target, connection=self)
+                delegate.connection_sent(data=data, source=source, destination=target, connection=self)
             else:
-                delegate.connection_error(error=error, data=data, source=local, destination=target, connection=self)
+                delegate.connection_error(error=error, data=data, source=source, destination=target, connection=self)
         return sent
 
     #

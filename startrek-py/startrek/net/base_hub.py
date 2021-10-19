@@ -39,7 +39,6 @@ from .hub import Hub
 from .channel import Channel
 from .connection import Connection
 from .delegate import ConnectionDelegate
-from .state import ConnectionState
 
 
 class BaseHub(Hub, ABC):
@@ -66,38 +65,55 @@ class BaseHub(Hub, ABC):
         return self.__delegate()
 
     @abstractmethod  # protected
-    def channels(self) -> Set[Channel]:
-        """ Get all channels """
+    def _all_channels(self) -> Set[Channel]:
+        """
+        Get all channels
+
+        :return: copy of channels
+        """
         raise NotImplemented
 
     @abstractmethod  # protected
     def _create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
-        raise NotImplemented
+        """
+        Create connection with sock channel & addresses
 
-    def __create_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
-        sock = self.open(remote=remote, local=local)
-        if sock is None:  # or not sock.opened:
-            return None
-        if local is None:
-            local = sock.local_address
-        return self._create_connection(sock=sock, remote=remote, local=local)
+        :param sock:   sock channel
+        :param remote: remote address
+        :param local:  local address
+        :return: None on channel not exists
+        """
+        raise NotImplemented
 
     # Override
     def connect(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
         conn = self.__connection_pool.get(remote=remote, local=local)
-        if conn is None:
-            conn = self.__create_connection(remote=remote, local=local)
-            if conn is not None:
-                if local is None:
-                    local = conn.local_address
-                self.__connection_pool.put(remote=remote, local=local, value=conn)
-        return conn
+        if conn is not None:
+            # check local address
+            if local is None:
+                return conn
+            address = conn.local_address
+            if address is None or address == local:
+                return conn
+            # local address not matched? ignore this connection
+        # try to open channel with direction (remote, local)
+        sock = self.open_channel(remote=remote, local=local)
+        if sock is None:  # or not sock.opened:
+            return None
+        # create with channel
+        conn = self._create_connection(sock=sock, remote=remote, local=local)
+        if conn is not None:
+            # NOTICE: local address in the connection may be set to None
+            local = conn.local_address
+            remote = conn.remote_address
+            self.__connection_pool.put(remote=remote, local=local, value=conn)
+            return conn
 
     # Override
     def disconnect(self, connection: Connection):
         remote = connection.remote_address
         local = connection.local_address
-        conn = self.__connection_pool.remove(remote=remote, local=local, value=None)
+        conn = self.__connection_pool.remove(remote=remote, local=local, value=connection)
         if conn is not None:
             conn.close()
         if connection is not conn:
@@ -105,9 +121,18 @@ class BaseHub(Hub, ABC):
 
     def __close_connection(self, remote: tuple, local: Optional[tuple]):
         conn = self.__connection_pool.get(remote=remote, local=local)
-        if conn is not None:
-            self.__connection_pool.remove(remote=remote, local=local, value=conn)
+        if conn is None:
+            return False
+        # check local address
+        if local is None:
+            self.__connection_pool.remove(remote=conn.remote_address, local=conn.local_address, value=conn)
             conn.close()
+            return True
+        address = conn.local_address
+        if address is None or address == local:
+            self.__connection_pool.remove(remote=conn.remote_address, local=conn.local_address, value=conn)
+            conn.close()
+            return True
 
     def _drive_channel(self, sock: Channel) -> bool:
         # try to receive
@@ -115,7 +140,7 @@ class BaseHub(Hub, ABC):
             data, remote = sock.receive(max_len=self.MSS)
         except socket.error:
             # socket error, remove the channel
-            self.close(channel=sock)
+            self.close_channel(channel=sock)
             # remove connected connection
             remote = sock.remote_address
             if remote is not None:
@@ -124,19 +149,20 @@ class BaseHub(Hub, ABC):
         if remote is None:
             # received nothing
             return False
+        local = sock.local_address
         # get connection for processing received data
-        conn = self.connect(remote=remote, local=sock.local_address)
+        conn = self.connect(remote=remote, local=local)
         if conn is not None:
-            conn.received(data=data)
+            conn.received(data=data, remote=remote, local=local)
         return True
 
     # Override
     def process(self) -> bool:
         count = 0
         # 1. drive all channels to receive data
-        channels = self.channels()
+        channels = self._all_channels()
         for sock in channels:
-            if sock.opened and self._drive_channel(sock=sock):
+            if sock.alive and self._drive_channel(sock=sock):
                 # received data from this socket channel
                 count += 1
         # 2. drive all connections to move on
@@ -144,9 +170,6 @@ class BaseHub(Hub, ABC):
         for conn in connections:
             # drive connection to go on
             conn.tick()
-            # check connection state
-            state = conn.state
-            if state is None or state == ConnectionState.ERROR:
-                # connection lost
-                self.disconnect(connection=conn)
+            # NOTICE: let the delegate to decide whether close an error connection
+            #         or just remove it.
         return count > 0

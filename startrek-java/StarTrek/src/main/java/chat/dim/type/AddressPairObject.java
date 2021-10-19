@@ -44,9 +44,17 @@ public class AddressPairObject implements Serializable {
         localAddress = local;
     }
 
+    public SocketAddress getLocalAddress() {
+        return localAddress;
+    }
+
+    public SocketAddress getRemoteAddress() {
+        return remoteAddress;
+    }
+
     @Override
     public java.lang.String toString() {
-        return "<" + getClass().getName() + ": remote=" + remoteAddress + ", local=" + localAddress + " />";
+        return "<" + getClass().getName() + ": remote=" + getRemoteAddress() + ", local=" + getLocalAddress() + " />";
     }
 
     @Override

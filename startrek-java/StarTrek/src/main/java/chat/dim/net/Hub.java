@@ -85,7 +85,7 @@ public interface Hub extends Processor {
      * @param local  - local address
      * @return null on socket closed
      */
-    Channel getChannel(SocketAddress remote, SocketAddress local);
+    Channel openChannel(SocketAddress remote, SocketAddress local);
 
     /**
      *  Close socket channel
@@ -101,14 +101,14 @@ public interface Hub extends Processor {
      * @param local  - local address
      * @return null on connection not found
      */
-    Connection getConnection(SocketAddress remote, SocketAddress local);
+    Connection connect(SocketAddress remote, SocketAddress local);
 
     /**
      *  Close connection
      *
      * @param connection - closing connection
      */
-    void closeConnection(Connection connection);
+    void disconnect(Connection connection);
 
     //
     //  Local Address

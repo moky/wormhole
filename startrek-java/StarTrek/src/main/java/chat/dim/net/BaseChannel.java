@@ -65,11 +65,6 @@ public abstract class BaseChannel<C extends SelectableChannel> extends AddressPa
     }
 
     @Override
-    public String toString() {
-        return "<" + getClass().getName() + ": remote=" + remoteAddress + ", local=" + localAddress + " />";
-    }
-
-    @Override
     public SelectableChannel configureBlocking(boolean block) throws IOException {
         C impl = getChannel();
         if (impl == null) {
@@ -94,7 +89,9 @@ public abstract class BaseChannel<C extends SelectableChannel> extends AddressPa
     @Override
     public boolean isConnected() {
         C impl = channel;
-        if (impl instanceof SocketChannel) {
+        if (impl == null) {
+            return false;
+        } else if (impl instanceof SocketChannel) {
             return ((SocketChannel) impl).isConnected();
         } else if (impl instanceof DatagramChannel) {
             return ((DatagramChannel) impl).isConnected();
@@ -106,13 +103,20 @@ public abstract class BaseChannel<C extends SelectableChannel> extends AddressPa
     @Override
     public boolean isBound() {
         C impl = channel;
-        if (impl instanceof SocketChannel) {
+        if (impl == null) {
+            return false;
+        } else if (impl instanceof SocketChannel) {
             return ((SocketChannel) impl).socket().isBound();
         } else if (impl instanceof DatagramChannel) {
             return ((DatagramChannel) impl).socket().isBound();
         } else {
             return false;
         }
+    }
+
+    @Override
+    public boolean isAlive() {
+        return isOpen() && (isConnected() || isBound());
     }
 
     @Override

@@ -60,9 +60,11 @@ public interface Connection extends Ticker {
     /**
      *  Process received data
      *
-     * @param data - received data
+     * @param data   - received data
+     * @param remote - remote address
+     * @param local  - local address
      */
-    void received(byte[] data);
+    void received(byte[] data, SocketAddress remote, SocketAddress local);
 
     /**
      *  Close the connection

@@ -67,7 +67,7 @@ public abstract class BaseHub implements Hub {
     /**
      *  Get all channels
      *
-     * @return all channels
+     * @return copy of channels
      */
     protected abstract Set<Channel> allChannels();
 
@@ -81,34 +81,38 @@ public abstract class BaseHub implements Hub {
      */
     protected abstract Connection createConnection(Channel sock, SocketAddress remote, SocketAddress local);
 
-    private Connection createConnection(SocketAddress remote, SocketAddress local) {
-        Channel sock = getChannel(remote, local);
+    @Override
+    public Connection connect(SocketAddress remote, SocketAddress local) {
+        Connection conn = connectionPool.get(remote, local);
+        if (conn != null) {
+            // check local address
+            if (local == null) {
+                return conn;
+            }
+            SocketAddress address = conn.getLocalAddress();
+            if (address == null || address.equals(local)) {
+                return conn;
+            }
+            // local address not matched? ignore this connection
+        }
+        // try to open channel with direction (remote, local)
+        Channel sock = openChannel(remote, local);
         if (sock == null/* || !sock.isOpen()*/) {
             return null;
         }
-        if (local == null) {
-            local = sock.getLocalAddress();
-        }
-        return createConnection(sock, remote, local);
-    }
-
-    @Override
-    public Connection getConnection(SocketAddress remote, SocketAddress local) {
-        Connection conn = connectionPool.get(remote, local);
-        if (conn == null) {
-            conn = createConnection(remote, local);
-            if (conn != null) {
-                if (local == null) {
-                    local = conn.getLocalAddress();
-                }
-                connectionPool.put(remote, local, conn);
-            }
+        // create with channel
+        conn = createConnection(sock, remote, local);
+        if (conn != null) {
+            // NOTICE: local address in the connection may be set to None
+            local = conn.getLocalAddress();
+            remote = conn.getRemoteAddress();
+            connectionPool.put(remote, local, conn);
         }
         return conn;
     }
 
     @Override
-    public void closeConnection(Connection connection) {
+    public void disconnect(Connection connection) {
         SocketAddress remote = connection.getRemoteAddress();
         SocketAddress local = connection.getLocalAddress();
         Connection conn = connectionPool.remove(remote, local, connection);
@@ -122,8 +126,18 @@ public abstract class BaseHub implements Hub {
 
     private void closeConnection(SocketAddress remote, SocketAddress local) {
         Connection conn = connectionPool.get(remote, local);
-        if (conn != null) {
-            connectionPool.remove(remote, local, conn);
+        if (conn == null) {
+            return;
+        }
+        // check local address
+        if (local == null) {
+            connectionPool.remove(conn.getRemoteAddress(), conn.getLocalAddress(), conn);
+            conn.close();
+            return;
+        }
+        SocketAddress address = conn.getLocalAddress();
+        if (address == null || address.equals(local)) {
+            connectionPool.remove(conn.getRemoteAddress(), conn.getLocalAddress(), conn);
             conn.close();
         }
     }
@@ -134,7 +148,7 @@ public abstract class BaseHub implements Hub {
         // 1. drive all channels to receive data
         Set<Channel> channels = allChannels();
         for (Channel sock : channels) {
-            if (sock.isOpen() && drive(sock)) {
+            if (sock.isAlive() && drive(sock)) {
                 // received data from this socket channel
                 count += 1;
             }
@@ -145,12 +159,8 @@ public abstract class BaseHub implements Hub {
         for (Connection conn : connections) {
             // drive connection to go on
             conn.tick();
-            // check connection state
-            state = conn.getState();
-            if (state == null || state.equals(ConnectionState.ERROR)) {
-                // connection lost
-                closeConnection(conn);
-            }
+            // NOTICE: let the delegate to decide whether close an error connection
+            //         or just remove it.
         }
         return count > 0;
     }
@@ -176,13 +186,14 @@ public abstract class BaseHub implements Hub {
             // received nothing
             return false;
         }
+        SocketAddress local = sock.getLocalAddress();
         // get connection for processing received data
-        Connection conn = getConnection(remote, sock.getLocalAddress());
+        Connection conn = connect(remote, local);
         if (conn != null) {
             byte[] data = new byte[buffer.position()];
             buffer.flip();
             buffer.get(data);
-            conn.received(data);
+            conn.received(data, remote, local);
         }
         return true;
     }

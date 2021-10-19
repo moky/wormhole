@@ -42,7 +42,7 @@ class Hub(Processor, ABC):
     """ Connections & Channels Container """
 
     @abstractmethod
-    def open(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
+    def open_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
         """
         Open a channel with direction (remote, local)
 
@@ -53,7 +53,7 @@ class Hub(Processor, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def close(self, channel: Channel):
+    def close_channel(self, channel: Channel):
         """
         Close socket channel
 

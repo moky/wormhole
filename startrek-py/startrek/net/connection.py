@@ -80,11 +80,13 @@ class Connection(Ticker, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def received(self, data: bytes):
+    def received(self, data: bytes, remote: Optional[tuple], local: Optional[tuple]):
         """
         Process received data
 
-        :param data: received data
+        :param data:   received data
+        :param remote: remote address
+        :param local:  local address
         """
         raise NotImplemented
 

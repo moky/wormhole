@@ -30,7 +30,7 @@
 
 from .net import Hub, Channel, Connection, ConnectionDelegate
 from .net import ConnectionState, ConnectionStateMachine
-from .net import BaseHub, BaseChannel, BaseConnection, ActiveConnection
+from .net import BaseHub, BaseChannel, BaseConnection
 
 from .port import Ship, ShipDelegate, Arrival, Departure, DeparturePriority
 from .port import Docker, Gate, GateStatus, GateDelegate
@@ -54,7 +54,7 @@ __all__ = [
 
     'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
     'ConnectionState', 'ConnectionStateMachine',
-    'BaseHub', 'BaseChannel', 'BaseConnection', 'ActiveConnection',
+    'BaseHub', 'BaseChannel', 'BaseConnection',
 
     'Ship', 'ShipDelegate', 'Arrival', 'Departure', 'DeparturePriority',
     'Docker', 'Gate', 'GateStatus', 'GateDelegate',

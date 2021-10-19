@@ -28,55 +28,63 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import TypeVar, Generic
+from typing import Optional
 
 
-K = TypeVar('K')
-V = TypeVar('V')
+class AddressPairObject:
 
-
-class Pair(Generic[K, V]):
-
-    def __init__(self, key: K, value: V):
+    def __init__(self, remote: Optional[tuple], local: Optional[tuple]):
         super().__init__()
-        self.__key = key
-        self.__value = value
+        self._remote = remote
+        self._local = local
 
     @property
-    def key(self) -> K:
-        return self.__key
+    def remote_address(self) -> Optional[tuple]:
+        return self._remote
 
     @property
-    def value(self) -> V:
-        return self.__value
+    def local_address(self) -> Optional[tuple]:
+        return self._local
 
     def __str__(self) -> str:
-        return '%s=%s' % (self.__key, self.__value)
+        clazz = self.__class__.__name__
+        return '<%s: remote=%s, local=%s />' % (clazz, self.remote_address, self.local_address)
 
     def __repr__(self) -> str:
-        return '%s=%s' % (self.__key, self.__value)
+        clazz = self.__class__.__name__
+        return '<%s: remote=%s, local=%s />' % (clazz, self.remote_address, self.local_address)
 
     def __hash__(self):
-        # name's hashCode is multiplied by an arbitrary prime number (13)
+        # same algorithm as Pair::hashCode()
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # remote's hashCode is multiplied by an arbitrary prime number (13)
         # in order to make sure there is a difference in the hashCode between
         # these two parameters:
-        #  name: a  value: aa
-        #  name: aa value: a
-        if self.__value is None:
-            return hash(self.__key) * 13
+        #     remote: a  local: aa
+        #     local: aa  remote: a
+        remote = self._remote
+        local = self._local
+        if remote is None:
+            return hash(local)
+        elif local is None:
+            return hash(remote) * 13
         else:
-            return hash(self.__key) * 13 + hash(self.__value)
+            return hash(remote) * 13 + hash(local)
 
     def __eq__(self, other):
-        if self is other:
+        if other is None:
+            return self._remote is None and self._local is None
+        elif other is self:
             return True
-        elif isinstance(other, Pair):
-            return self.__key == other.__key and self.__value == other.__value
+        elif isinstance(other, AddressPairObject):
+            return self._remote == other._remote and self._local == other._local
 
     def __ne__(self, other):
-        if self is other:
+        if other is None:
+            return self._remote is not None or self._local is not None
+        elif other is self:
             return False
-        elif isinstance(other, Pair):
-            return self.__key != other.__key or self.__value != other.__value
+        elif isinstance(other, AddressPairObject):
+            return self._remote != other._remote or self._local != other._local
         else:
             return True

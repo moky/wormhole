@@ -30,17 +30,19 @@
 
 import socket
 import time
+import weakref
 from abc import abstractmethod
 from typing import Optional
 
+from .types import AddressPairObject
 from .net import Connection
-from .port import Arrival, Departure, ShipDelegate
-from .port import Docker
+from .port import Arrival, Departure
+from .port import Docker, Gate, GateDelegate
 
 from .dock import Dock, LockedDock
 
 
-class StarDocker(Docker):
+class StarDocker(AddressPairObject, Docker):
     """
         Star Docker
         ~~~~~~~~~~~
@@ -56,10 +58,9 @@ class StarDocker(Docker):
             - _check_arrival(ship)
     """
 
-    def __init__(self, remote: tuple, local: Optional[tuple]):
-        super().__init__()
-        self.__remote = remote
-        self.__local = local
+    def __init__(self, remote: tuple, local: Optional[tuple], gate: Gate):
+        super().__init__(remote=remote, local=local)
+        self.__gate = weakref.ref(gate)
         self.__dock = self._create_dock()
 
     # noinspection PyMethodMayBeStatic
@@ -67,23 +68,29 @@ class StarDocker(Docker):
         """ Override for user-customized dock """
         return LockedDock()
 
-    @property  # Override
-    def remote_address(self) -> tuple:
-        return self.__remote
-
-    @property  # Override
-    def local_address(self) -> Optional[tuple]:
-        return self.__local
-
     @property
+    def gate(self) -> Gate:
+        return self.__gate()
+
+    @property  # Override
+    def remote_address(self) -> tuple:  # (str, int)
+        return self._remote
+
+    @property  # Override
+    def local_address(self) -> Optional[tuple]:  # (str, int)
+        return self._local
+
+    @property  # Override
     def connection(self) -> Optional[Connection]:
-        """ Get related connection with status is 'ready' """
-        raise NotImplemented
+        gate = self.gate
+        if gate is not None:
+            return gate.get_connection(remote=self._remote, local=self._local)
 
-    @property
-    def delegate(self) -> ShipDelegate:
-        """ Get delegate for handling events """
-        raise NotImplemented
+    @property  # Override
+    def delegate(self) -> Optional[GateDelegate]:
+        gate = self.gate
+        if gate is not None:
+            return gate.delegate
 
     # Override
     def process(self) -> bool:
@@ -114,8 +121,8 @@ class StarDocker(Docker):
         # callback
         delegate = self.delegate
         if error is not None and delegate is not None:
-            remote = self.__remote
-            local = self.__local
+            remote = self.remote_address
+            local = self.local_address
             delegate.gate_error(error=error, ship=outgo, source=local, destination=remote, connection=conn)
         return True
 
@@ -129,7 +136,7 @@ class StarDocker(Docker):
         if conn is None:
             # connection not ready now
             return False
-        remote = self.__remote
+        remote = self.remote_address
         success = 0
         for pkg in fragments:
             if conn.send(data=pkg, target=remote) != -1:
@@ -151,8 +158,8 @@ class StarDocker(Docker):
         if delegate is None:
             return None
         # callback
-        remote = self.__remote
-        local = self.__local
+        remote = self.remote_address
+        local = self.local_address
         conn = self.connection
         delegate.gate_received(ship=income, source=remote, destination=local, connection=conn)
 
@@ -187,8 +194,8 @@ class StarDocker(Docker):
         # all fragments responded, task finished
         delegate = self.delegate
         if delegate is not None:
-            remote = self.__remote
-            local = self.__local
+            remote = self.remote_address
+            local = self.local_address
             conn = self.connection
             delegate.gate_sent(ship=linked, source=local, destination=remote, connection=conn)
         return linked

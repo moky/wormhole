@@ -33,7 +33,7 @@ from enum import IntEnum
 from typing import Optional
 
 from ..fsm import Processor
-from ..net import ConnectionState
+from ..net import Connection, ConnectionState
 
 from .ship import ShipDelegate
 
@@ -58,11 +58,38 @@ def status_from_state(state: ConnectionState) -> Status:
     return Status.INIT
 
 
+class GateDelegate(ShipDelegate, ABC):
+
+    @abstractmethod
+    def gate_status_changed(self, previous: Status, current: Status, remote: tuple, local: Optional[tuple], gate):
+        """
+        Callback when connection status changed
+
+        :param previous: old status
+        :param current:  new status
+        :param remote:   remote address
+        :param local:    local address
+        :param gate:     current gate
+        """
+        raise NotImplemented
+
+
 class Gate(Processor):
     """
         Star Gate
-        ~~~~~~~~~~~
+        ~~~~~~~~~
     """
+
+    @abstractmethod
+    def get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+        """
+        Get connection with direction
+
+        :param remote: remote address
+        :param local:  local address
+        :return: None on failed
+        """
+        raise NotImplemented
 
     @abstractmethod
     def gate_status(self, remote: tuple, local: Optional[tuple]) -> Status:
@@ -75,19 +102,7 @@ class Gate(Processor):
         """
         raise NotImplemented
 
-
-class GateDelegate(ShipDelegate, ABC):
-
-    @abstractmethod
-    def gate_status_changed(self, previous: Status, current: Status,
-                            remote: tuple, local: Optional[tuple], gate: Gate):
-        """
-        Callback when connection status changed
-
-        :param previous: old status
-        :param current:  new status
-        :param remote:   remote address
-        :param local:    local address
-        :param gate:     current gate
-        """
+    @property
+    def delegate(self) -> Optional[GateDelegate]:
+        """ Get delegate for handling events """
         raise NotImplemented

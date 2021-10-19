@@ -96,7 +96,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         Set<Docker> dockers = dockerPool.allValues();
         // 1. drive all dockers to process
         int count = drive(dockers);
-        // 2 remove retired dockers
+        // 2. cleanup for dockers
         cleanup(dockers);
         return count > 0;
     }
@@ -111,26 +111,9 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         return count;
     }
     protected void cleanup(Set<Docker> dockers) {
-        SocketAddress remote, local;
-        Connection conn;
-        ConnectionState state;
         for (Docker worker : dockers) {
-            remote = worker.getRemoteAddress();
-            local = worker.getLocalAddress();
-            // check connection state
-            conn = getConnection(remote, local);
-            if (conn == null) {
-                state = null;
-            } else {
-                state = conn.getState();
-            }
-            if (state == null || state.equals(ConnectionState.ERROR)) {
-                // connection lost, remove worker
-                removeDocker(remote, local, worker);
-            } else {
-                // clear expired tasks
-                worker.purge();
-            }
+            // clear expired tasks
+            worker.purge();
         }
     }
 
@@ -152,20 +135,17 @@ public abstract class StarGate implements Gate, Connection.Delegate {
 
     @Override
     public void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
-        SocketAddress remote = connection.getRemoteAddress();
-        SocketAddress local = connection.getLocalAddress();
-        if (current == null || current.equals(ConnectionState.ERROR)) {
-            // connection lost, remove the docker for it
-            removeDocker(remote, local, null);
-        } else if (current.equals(ConnectionState.EXPIRED)) {
-            // heartbeat when connection expired
+        // 1. heartbeat when connection expired
+        if (current != null && current.equals(ConnectionState.EXPIRED)) {
             heartbeat(connection);
         }
-        // callback when status changed
+        // 2. callback when status changed
         Delegate delegate = getDelegate();
         Status s1 = Status.getStatus(previous);
         Status s2 = Status.getStatus(current);
         if (!s1.equals(s2) && delegate != null) {
+            SocketAddress remote = connection.getRemoteAddress();
+            SocketAddress local = connection.getLocalAddress();
             delegate.onStatusChanged(s1, s2, remote, local, this);
         }
     }

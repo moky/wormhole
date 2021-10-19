@@ -32,28 +32,20 @@ import socket
 from abc import ABC
 from typing import Optional
 
+from ..types import AddressPairObject
 from .channel import Channel
+from .channel import get_local_address, get_remote_address
 
 
-class BaseChannel(Channel, ABC):
+class BaseChannel(AddressPairObject, Channel, ABC):
 
-    def __init__(self, sock: socket.socket, remote: Optional[tuple], local: Optional[tuple]):
-        super().__init__()
+    def __init__(self, remote: Optional[tuple], local: Optional[tuple], sock: socket.socket):
+        super().__init__(remote=remote, local=local)
         self.__sock = sock
-        self.__remote = remote
-        self.__local = local
 
     @property  # protected
     def sock(self) -> Optional[socket.socket]:
         return self.__sock
-
-    def __str__(self) -> str:
-        clazz = self.__class__.__name__
-        return '<%s: remote=%s, local=%s />' % (clazz, self.__remote, self.__local)
-
-    def __repr__(self) -> str:
-        clazz = self.__class__.__name__
-        return '<%s: remote=%s, local=%s />' % (clazz, self.__remote, self.__local)
 
     # Override
     def configure_blocking(self, blocking: bool):
@@ -66,35 +58,33 @@ class BaseChannel(Channel, ABC):
 
     @property  # Override
     def blocking(self) -> bool:
-        sock = self.sock
+        sock = self.__sock
         return sock is not None and sock.getblocking()
 
     @property  # Override
     def opened(self) -> bool:
-        sock = self.sock
+        sock = self.__sock
         return sock is not None and not getattr(sock, '_closed', False)
 
     @property  # Override
     def connected(self) -> bool:
-        try:
-            return self.remote_address is not None
-        except socket.error:
-            return False
+        return get_remote_address(sock=self.__sock) is not None
 
     @property  # Override
     def bound(self) -> bool:
-        try:
-            return self.local_address is not None
-        except socket.error:
-            return False
+        return get_local_address(sock=self.__sock) is not None
 
     @property  # Override
-    def local_address(self) -> Optional[tuple]:
-        return self.__local
+    def alive(self) -> bool:
+        return self.opened and (self.connected or self.bound)
 
-    @property  # Override
-    def remote_address(self) -> Optional[tuple]:
-        return self.__remote
+    @property
+    def local_address(self) -> Optional[tuple]:  # (str, int)
+        return self._local
+
+    @property
+    def remote_address(self) -> Optional[tuple]:  # (str, int)
+        return self._remote
 
     # Override
     def bind(self, address: Optional[tuple] = None, host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
@@ -104,7 +94,7 @@ class BaseChannel(Channel, ABC):
         if sock is None:
             raise socket.error('socket closed')
         sock.bind(address)
-        self.__local = address
+        self._local = address
         return sock
 
     # Override
@@ -115,18 +105,18 @@ class BaseChannel(Channel, ABC):
         if sock is None:
             raise socket.error('socket closed')
         sock.connect(address)
-        self.__remote = address
+        self._remote = address
         return sock
 
     # Override
     def disconnect(self):
-        sock = self.sock
+        sock = self.__sock
         self.close()
         return sock
 
     # Override
     def close(self):
-        sock = self.sock
+        sock = self.__sock
         if sock is not None and not getattr(sock, '_closed', False):
             # sock.shutdown(socket.SHUT_RDWR)
             sock.close()

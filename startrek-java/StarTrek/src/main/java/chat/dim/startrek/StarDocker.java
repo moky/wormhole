@@ -65,26 +65,12 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
 
     @Override
     public SocketAddress getLocalAddress() {
-        SocketAddress address = localAddress;
-        if (address == null) {
-            Connection conn = getConnection();
-            if (conn != null) {
-                address = conn.getLocalAddress();
-            }
-        }
-        return address;
+        return localAddress;
     }
 
     @Override
     public SocketAddress getRemoteAddress() {
-        SocketAddress address = remoteAddress;
-        if (address == null) {
-            Connection conn = getConnection();
-            if (conn != null) {
-                address = conn.getRemoteAddress();
-            }
-        }
-        return address;
+        return remoteAddress;
     }
 
     /**
@@ -163,8 +149,8 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             // connection not ready now
             return false;
         }
-        int success = 0;
         SocketAddress remote = getRemoteAddress();
+        int success = 0;
         for (byte[] pkg : fragments) {
             if (conn.send(pkg, remote) != -1) {
                 success += 1;

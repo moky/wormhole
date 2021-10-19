@@ -82,7 +82,7 @@ public interface Gate extends Processor {
      *
      * @param remote - remote address
      * @param local  - local address
-     * @return connection
+     * @return null on failed
      */
     Connection getConnection(SocketAddress remote, SocketAddress local);
 

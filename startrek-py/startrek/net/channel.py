@@ -28,6 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
+import socket
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -44,8 +45,14 @@ class Channel(ABC):
         """ is_bound() """
         raise NotImplemented
 
+    @property
+    def alive(self) -> bool:
+        """ is_opened() and (is_connected() or is_bound()) """
+        raise NotImplemented
+
     @abstractmethod
     def close(self):
+        """ Close the channel """
         raise NotImplemented
 
     #
@@ -193,3 +200,21 @@ class Channel(ABC):
         :raise: socket.error
         """
         raise NotImplemented
+
+
+def get_local_address(sock: socket.socket) -> Optional[tuple]:
+    if sock is None:
+        return None
+    try:
+        return sock.getsockname()
+    except socket.error as error:
+        print('[NET] failed to get local address: %s' % error)
+
+
+def get_remote_address(sock: socket.socket) -> Optional[tuple]:
+    if sock is None:
+        return None
+    try:
+        return sock.getpeername()
+    except socket.error as error:
+        print('[NET] failed to get local address: %s' % error)

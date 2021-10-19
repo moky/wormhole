@@ -69,7 +69,6 @@ from .state import ConnectionState, StateMachine as ConnectionStateMachine
 from .base_hub import BaseHub
 from .base_channel import BaseChannel
 from .base_conn import BaseConnection
-from .active_conn import ActiveConnection
 
 __all__ = [
 
@@ -91,5 +90,4 @@ __all__ = [
     'BaseHub',
     'BaseChannel',
     'BaseConnection',
-    'ActiveConnection',
 ]

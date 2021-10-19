@@ -382,7 +382,7 @@ class ReadyErrorTransition(StateTransition):
     def evaluate(self, ctx: StateMachine) -> bool:
         conn = ctx.connection
         # connection lost, change state to 'error
-        return conn is None or not conn.opened
+        return conn is None or not conn.alive
 
 
 class ExpiredMaintainingTransition(StateTransition):
@@ -403,8 +403,12 @@ class ExpiredErrorTransition(StateTransition):
 
     def evaluate(self, ctx: StateMachine) -> bool:
         conn = ctx.connection
-        # connection lost, change state to 'error
-        return conn is None or not conn.opened
+        if conn is None or not conn.alive:
+            return True
+        assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
+        # connection lost, or
+        # long time no response, change state to 'error'
+        return conn.is_long_time_not_received(now=int(time.time()))
 
 
 class MaintainingReadyTransition(StateTransition):
@@ -416,7 +420,7 @@ class MaintainingReadyTransition(StateTransition):
             return False
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
         # connection still alive, and
-        # received recently, change state to 'connected
+        # received recently, change state to 'ready'
         return conn.is_received_recently(now=int(time.time()))
 
 
@@ -439,9 +443,10 @@ class MaintainingErrorTransition(StateTransition):
     def evaluate(self, ctx: StateMachine) -> bool:
         conn = ctx.connection
         # connection lost, change state to 'error'
-        if conn is None or not conn.opened:
+        if conn is None or not conn.alive:
             return True
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
+        # connection lost, or
         # long time no response, change state to 'error'
         return conn.is_long_time_not_received(now=int(time.time()))
 

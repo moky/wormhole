@@ -56,7 +56,7 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
 
     public static long EXPIRES = 16 * 1000;  // 16 seconds
 
-    protected Channel channel;
+    private Channel channel;
 
     public final boolean isActivated;
 
@@ -105,7 +105,7 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
             // get new channel via hub
             Hub hub = getHub();
             if (hub != null) {
-                channel = sock = hub.getChannel(remoteAddress, localAddress);
+                channel = sock = hub.openChannel(remoteAddress, localAddress);
             }
         }
         return sock;
@@ -113,26 +113,12 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
 
     @Override
     public SocketAddress getLocalAddress() {
-        SocketAddress address = localAddress;
-        if (address == null) {
-            Channel sock = getChannel();
-            if (sock != null) {
-                address = sock.getLocalAddress();
-            }
-        }
-        return address;
+        return localAddress;
     }
 
     @Override
     public SocketAddress getRemoteAddress() {
-        SocketAddress address = remoteAddress;
-        if (address == null) {
-            Channel sock = getChannel();
-            if (sock != null) {
-                address = sock.getRemoteAddress();
-            }
-        }
-        return address;
+        return remoteAddress;
     }
 
     @Override
@@ -201,11 +187,11 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
     }
 
     @Override
-    public void received(byte[] data) {
+    public void received(byte[] data, SocketAddress remote, SocketAddress local) {
         lastReceivedTime = (new Date()).getTime();  // update received time
         Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onReceived(data, getRemoteAddress(), getLocalAddress(), this);
+            delegate.onReceived(data, remote, local, this);
         }
     }
 
@@ -241,10 +227,19 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
         }
         Delegate delegate = getDelegate();
         if (delegate != null) {
+            // get local address as source
+            SocketAddress source = localAddress;
+            if (source == null) {
+                Channel sock = channel;
+                if (sock != null) {
+                    source = sock.getLocalAddress();
+                }
+            }
+            // callback
             if (error == null) {
-                delegate.onSent(pack, getLocalAddress(), destination, this);
+                delegate.onSent(pack, source, destination, this);
             } else {
-                delegate.onError(error, pack, getLocalAddress(), destination, this);
+                delegate.onError(error, pack, source, destination, this);
             }
         }
         return sent;
