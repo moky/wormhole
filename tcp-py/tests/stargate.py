@@ -5,10 +5,9 @@ import time
 from typing import Generic, TypeVar, Optional, List
 
 from startrek.fsm import Runnable
-from tcp import Connection, ConnectionState
+from tcp import Connection, ConnectionState, BaseConnection
 from tcp import GateDelegate, Docker
-from tcp import StarGate
-from tcp import PlainDocker
+from tcp import StarGate, PlainDocker
 
 
 H = TypeVar('H')
@@ -30,7 +29,6 @@ class TCPGate(StarGate, Runnable, Generic[H]):
         self.__hub = h
 
     def start(self):
-        self.__running = True
         threading.Thread(target=self.run).start()
 
     def stop(self):
@@ -70,7 +68,7 @@ class TCPGate(StarGate, Runnable, Generic[H]):
     # Override
     def _create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
         # TODO: check data format before creating docker
-        return PlainDocker(remote=remote, local=local, gate=self)
+        return PlainDocker(remote=remote, local=None, gate=self)
 
     # Override
     def _cache_advance_party(self, data: bytes, source: tuple, destination: Optional[tuple],
@@ -87,14 +85,39 @@ class TCPGate(StarGate, Runnable, Generic[H]):
         pass
 
     # Override
+    def _heartbeat(self, connection: Connection):
+        # let the client to do the job
+        if isinstance(connection, BaseConnection) and connection.is_activated:
+            super()._heartbeat(connection=connection)
+
+    def __disconnect(self, connection: Connection):
+        # close connection for server
+        if isinstance(connection, BaseConnection) and not connection.is_activated:
+            # 1. remove docker
+            remote = connection.remote_address
+            local = connection.local_address
+            self._remove_docker(remote=remote, local=local, docker=None)
+            # 2. remove connection
+            hub = self.hub
+            # assert isinstance(hub, Hub), 'hub error: %s' % hub
+            hub.disconnect(connection=connection)
+
+    # Override
     def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
         super().connection_state_changed(previous=previous, current=current, connection=connection)
         self.info('connection state changed: %s -> %s, %s' % (previous, current, connection))
+        if current == ConnectionState.ERROR:
+            self.error('remove error connection: %s' % connection)
+            self.__disconnect(connection=connection)
 
     def send_data(self, payload: bytes, source: Optional[tuple], destination: tuple):
-        worker = self.get_docker(remote=destination, local=source, advance_party=[])
-        if isinstance(worker, PlainDocker):
-            worker.send_data(payload=payload)
+        worker = self._get_docker(remote=destination, local=source)
+        if worker is None:
+            worker = self._create_docker(remote=destination, local=source, advance_party=[])
+            # assert worker is not None, 'failed to create docker: %s, %s' % (destination, source)
+            self._put_docker(docker=worker)
+        # assert isinstance(worker, PlainDocker), 'failed to create docker: %s, %s' % (destination, source)
+        worker.send_data(payload=payload)
 
     @classmethod
     def info(cls, msg: str):

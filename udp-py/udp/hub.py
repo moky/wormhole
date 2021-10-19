@@ -34,7 +34,7 @@ from typing import Optional, Dict, Set
 
 from startrek import Channel
 from startrek import Connection, ConnectionDelegate
-from startrek import BaseConnection, ActiveConnection
+from startrek import BaseConnection
 from startrek import BaseHub
 
 from .channel import PackageChannel
@@ -45,7 +45,8 @@ class PackageHub(BaseHub, ABC):
 
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__(delegate=delegate)
-        self.__channels: Dict[tuple, Channel] = {}  # address => socket
+        # local => channel
+        self.__channels: Dict[tuple, Channel] = {}
 
     def bind(self, address: Optional[tuple] = None, host: Optional[str] = None, port: Optional[int] = 0):
         if address is None:
@@ -58,28 +59,27 @@ class PackageHub(BaseHub, ABC):
             sock.bind(address)
             sock.setblocking(False)
             channel = PackageChannel(sock=sock, remote=None, local=address)
-            self.put_channel(channel=channel)
-
-    # protected
-    def put_channel(self, channel: Channel):
-        local = channel.local_address
-        self.__channels[local] = channel
+            self.__channels[address] = channel
 
     # Override
-    def channels(self) -> Set[Channel]:
+    def _all_channels(self) -> Set[Channel]:
         return set(self.__channels.values())
 
     # Override
-    def open(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
-        return self.__channels.get(local)
+    def open_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
+        if local is None:
+            for channel in self.__channels.values():
+                return channel
+        else:
+            return self.__channels.get(local)
 
     # Override
-    def close(self, channel: Channel):
+    def close_channel(self, channel: Channel):
         if channel is None or not channel.connected:
             # DON'T close bound socket channel
             return False
         else:
-            self.__remove(channel=channel)
+            self.__remove_channel(channel=channel)
         try:
             if channel.opened:
                 channel.close()
@@ -87,7 +87,7 @@ class PackageHub(BaseHub, ABC):
         except socket.error:
             return False
 
-    def __remove(self, channel: Channel):
+    def __remove_channel(self, channel: Channel):
         local = channel.local_address
         if self.__channels.pop(local, None) == channel:
             # removed by key
@@ -104,9 +104,8 @@ class ServerHub(PackageHub):
 
     # Override
     def _create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
-        conn = BaseConnection(channel=sock, remote=remote, local=local)
-        conn.delegate = self.delegate
-        conn.hub = self
+        gate = self.delegate
+        conn = BaseConnection(remote=remote, local=None, channel=sock, activated=False, delegate=gate, hub=self)
         conn.start()  # start FSM
         return conn
 
@@ -116,8 +115,7 @@ class ClientHub(PackageHub):
 
     # Override
     def _create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
-        conn = ActiveConnection(channel=sock, remote=remote, local=local)
-        conn.delegate = self.delegate
-        conn.hub = self
+        gate = self.delegate
+        conn = BaseConnection(remote=remote, local=None, channel=sock, activated=True, delegate=gate, hub=self)
         conn.start()  # start FSM
         return conn

@@ -8,16 +8,13 @@ import java.util.List;
 
 import chat.dim.mtp.DataType;
 import chat.dim.mtp.Package;
-import chat.dim.mtp.PackageDeparture;
 import chat.dim.mtp.PackageDocker;
 import chat.dim.net.BaseConnection;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
-import chat.dim.port.Departure;
 import chat.dim.port.Docker;
 import chat.dim.skywalker.Runner;
-import chat.dim.startrek.DepartureShip;
 import chat.dim.startrek.StarGate;
 import chat.dim.type.Data;
 
@@ -78,27 +75,7 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     @Override
     protected Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
         // TODO: check data format before creating docker
-        return new PackageDocker(remote, local, this) {
-            @Override
-            protected Departure getNextDeparture(final long now) {
-                Departure outgo = super.getNextDeparture(now);
-                if (outgo == null) {
-                    return null;
-                }
-                if (outgo.getRetries() >= DepartureShip.MAX_RETRIES) {
-                    // last try
-                    return outgo;
-                }
-                if (outgo instanceof PackageDeparture) {
-                    Package pack = ((PackageDeparture) outgo).getPackage();
-                    if (!pack.isResponse()) {
-                        // put back for next retry
-                        appendDeparture(outgo);
-                    }
-                }
-                return outgo;
-            }
-        };
+        return new PackageDocker(remote, null, this);
     }
 
     @Override
@@ -126,10 +103,28 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
         }
     }
 
+    private void disconnect(Connection conn) {
+        // close connection for server
+        if (conn instanceof BaseConnection) {
+            if (((BaseConnection) conn).isActivated) {
+                // client
+                return;
+            }
+            // 1. remove docker
+            removeDocker(conn.getRemoteAddress(), conn.getLocalAddress(), null);
+            // 2. remove connection
+            getHub().disconnect(conn);
+        }
+    }
+
     @Override
     public void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
         super.onStateChanged(previous, current, connection);
         info("connection state changed: " + previous + " -> " + current + ", " + connection);
+        if (current != null && current.equals(ConnectionState.ERROR)) {
+            error("remove error connection: " + connection);
+            disconnect(connection);
+        }
     }
 
     public void sendCommand(byte[] body, SocketAddress source, SocketAddress destination) {

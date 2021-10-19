@@ -36,6 +36,7 @@ import java.util.List;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Ship;
+import chat.dim.startrek.DepartureShip;
 import chat.dim.startrek.StarDocker;
 import chat.dim.startrek.StarGate;
 import chat.dim.type.ByteArray;
@@ -48,7 +49,7 @@ public class PackageDocker extends StarDocker {
     }
 
     protected Package parsePackage(final byte[] data) {
-        return Package.parse(new Data(data));
+        return data == null ? null : Package.parse(new Data(data));
     }
 
     protected Arrival createArrival(final Package pkg) {
@@ -60,16 +61,41 @@ public class PackageDocker extends StarDocker {
     }
 
     @Override
+    protected Departure getNextDeparture(final long now) {
+        Departure outgo = super.getNextDeparture(now);
+        if (outgo != null) {
+            retryDeparture(outgo);
+        }
+        return outgo;
+    }
+
+    protected void retryDeparture(Departure outgo) {
+        if (outgo.getRetries() >= DepartureShip.MAX_RETRIES) {
+            // last try
+            return;
+        }
+        if (outgo instanceof PackageDeparture) {
+            Package pack = ((PackageDeparture) outgo).getPackage();
+            if (!pack.isResponse()) {
+                // put back for next retry
+                appendDeparture(outgo);
+            }
+        }
+    }
+
+    @Override
     protected Arrival getArrival(final byte[] data) {
         final Package pkg = parsePackage(data);
         if (pkg == null) {
             return null;
         }
+        /* check body length?
         final ByteArray body = pkg.body;
         if (body == null || body.getSize() == 0) {
             // should not happen
             return null;
         }
+         */
         return createArrival(pkg);
     }
 

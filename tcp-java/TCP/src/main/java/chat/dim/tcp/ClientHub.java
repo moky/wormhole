@@ -54,7 +54,7 @@ public class ClientHub extends StreamHub {
     @Override
     public Channel openChannel(SocketAddress remote, SocketAddress local) {
         Channel channel = super.openChannel(remote, local);
-        if (channel == null) {
+        if (channel == null/* && remote != null*/) {
             channel = createChannel(remote, local);
             if (channel != null) {
                 putChannel(channel);
@@ -70,11 +70,11 @@ public class ClientHub extends StreamHub {
             if (local == null) {
                 local = sock.getLocalAddress();
             }
+            return new StreamChannel(sock, remote, local);
         } catch (IOException e) {
-            //e.printStackTrace();
-            return null;
+            e.printStackTrace();
         }
-        return new StreamChannel(sock, remote, local);
+        return null;
     }
 
     private static SocketChannel createSocket(SocketAddress remote, SocketAddress local) throws IOException {
@@ -84,6 +84,7 @@ public class ClientHub extends StreamHub {
         if (local != null) {
             sock.bind(local);
         }
+        assert remote != null : "remote address empty";
         sock.connect(remote);
         sock.configureBlocking(false);
         return sock;

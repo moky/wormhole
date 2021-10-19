@@ -99,7 +99,7 @@ class Client(GateDelegate):
             UDPGate.info('>>> sending (%d bytes): %s' % (len(data), data))
             self.send(data=data)
             time.sleep(2)
-        time.sleep(16)
+        time.sleep(20)
 
 
 SERVER_HOST = Hub.inet_address()

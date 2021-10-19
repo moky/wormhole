@@ -28,12 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
-import weakref
 from typing import List, Optional
 
-from startrek import Connection
 from startrek import Arrival, ArrivalShip, Departure, DepartureShip, DeparturePriority
-from startrek import ShipDelegate, GateDelegate
+from startrek import ShipDelegate
 from startrek import StarDocker, StarGate
 
 
@@ -56,7 +54,7 @@ class PlainArrival(ArrivalShip):
     def assemble(self, ship):
         assert self is ship, 'plain arrival error: %s, %s' % (ship, self)
         # plain arrival needs no assembling
-        return ship
+        return self
 
 
 class PlainDeparture(DepartureShip):
@@ -88,24 +86,7 @@ class PlainDeparture(DepartureShip):
 class PlainDocker(StarDocker):
 
     def __init__(self, remote: tuple, local: Optional[tuple], gate: StarGate):
-        super().__init__(remote=remote, local=local)
-        self.__gate = weakref.ref(gate)
-
-    @property  # private
-    def gate(self) -> StarGate:
-        return self.__gate()
-
-    @property  # Override
-    def connection(self) -> Optional[Connection]:
-        gate = self.gate
-        if gate is not None:
-            return gate.get_connection(remote=self.remote_address, local=self.local_address)
-
-    @property  # Override
-    def delegate(self) -> GateDelegate:
-        gate = self.gate
-        if gate is not None:
-            return gate.delegate
+        super().__init__(remote=remote, local=local, gate=gate)
 
     # Override
     def _get_arrival(self, data: bytes) -> Optional[Arrival]:
@@ -140,6 +121,8 @@ class PlainDocker(StarDocker):
         self.append_departure(ship=ship)
 
     def send_data(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None):
+        if delegate is None:
+            delegate = self.delegate
         ship = self.pack(payload=payload, priority=priority, delegate=delegate)
         self.append_departure(ship=ship)
 

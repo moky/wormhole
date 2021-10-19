@@ -28,11 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
-import weakref
 from typing import List, Optional
 
-from startrek import Connection
-from startrek import Arrival, ArrivalShip, Departure, DepartureShip, DeparturePriority
+from startrek import Arrival, ArrivalShip
+from startrek import Departure, DepartureShip, DeparturePriority
 from startrek import ShipDelegate
 from startrek import StarDocker, StarGate
 
@@ -72,10 +71,10 @@ class PackageArrival(ArrivalShip):
     def assemble(self, ship):  # -> Optional[PackageArrival]:
         if self.__completed is None and ship is not self:
             packer = self.__packer
-            assert isinstance(packer, Packer), 'packer error: %s' % packer
-            assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
+            # assert isinstance(packer, Packer), 'packer error: %s' % packer
+            # assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
             fragments = ship.fragments
-            assert fragments is not None and len(fragments) > 0, 'fragments error: %s' % ship
+            # assert fragments is not None and len(fragments) > 0, 'fragments error: %s' % ship
             for item in fragments:
                 self.__completed = packer.insert(fragment=item)
         if self.__completed is not None:
@@ -141,28 +140,11 @@ class PackageDeparture(DepartureShip):
 class PackageDocker(StarDocker):
 
     def __init__(self, remote: tuple, local: Optional[tuple], gate: StarGate):
-        super().__init__(remote=remote, local=local)
-        self.__gate = weakref.ref(gate)
-
-    @property  # private
-    def gate(self) -> StarGate:
-        return self.__gate()
-
-    @property  # Override
-    def connection(self) -> Optional[Connection]:
-        gate = self.gate
-        if gate is not None:
-            return gate.get_connection(remote=self.remote_address, local=self.local_address)
-
-    @property  # Override
-    def delegate(self) -> ShipDelegate:
-        gate = self.gate
-        if gate is not None:
-            return gate.delegate
+        super().__init__(remote=remote, local=local, gate=gate)
 
     # noinspection PyMethodMayBeStatic
     def _parse_package(self, data: Optional[bytes]) -> Optional[Package]:
-        if data is not None and len(data) > 0:
+        if data is not None:  # and len(data) > 0:
             return Package.parse(data=Data(buffer=data))
 
     # noinspection PyMethodMayBeStatic
@@ -174,9 +156,28 @@ class PackageDocker(StarDocker):
         return PackageDeparture(pack=pack, priority=priority, delegate=delegate)
 
     # Override
+    def _next_departure(self, now: int) -> Optional[Departure]:
+        outgo = super()._next_departure(now=now)
+        if outgo is not None:
+            self._retry_departure(ship=outgo)
+        return outgo
+
+    def _retry_departure(self, ship: Departure):
+        if ship.retries >= DepartureShip.MAX_RETRIES:
+            # last try
+            return False
+        if isinstance(ship, PackageDeparture):
+            pack = ship.package
+            data_type = pack.head.data_type
+            if not data_type.is_response:
+                # put back for next retry
+                self.append_departure(ship=ship)
+                return True
+
+    # Override
     def _get_arrival(self, data: bytes) -> Optional[Arrival]:
         pack = self._parse_package(data=data)
-        if pack is not None and pack.body.size > 0:
+        if pack is not None:  # and pack.body.size > 0:
             return self._create_arrival(pack=pack)
 
     # Override
@@ -260,7 +261,12 @@ class PackageDocker(StarDocker):
         self.send_package(pack=pack)
 
     def send_package(self, pack: Package, priority: Optional[int] = 0, delegate: Optional[ShipDelegate] = None):
+        if delegate is None:
+            delegate = self.delegate
         ship = self._create_departure(pack=pack, priority=priority, delegate=delegate)
+        self.append_departure(ship=ship)
+
+    def send_ship(self, ship: Departure):
         self.append_departure(ship=ship)
 
     # Override

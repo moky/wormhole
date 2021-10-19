@@ -70,7 +70,15 @@ public abstract class PackageHub extends BaseHub {
 
     @Override
     public Channel openChannel(SocketAddress remote, SocketAddress local) {
-        return channels.get(local);
+        if (local == null) {
+            for (Channel channel : channels.values()) {
+                return channel;
+            }
+            // channel not found
+            return null;
+        } else {
+            return channels.get(local);
+        }
     }
 
     @Override

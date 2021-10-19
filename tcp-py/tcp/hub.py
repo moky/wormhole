@@ -33,11 +33,10 @@ import threading
 from abc import ABC
 from typing import Optional, Set, Dict
 
-from startrek.types import Pair
 from startrek.fsm import Runnable
 from startrek import Channel
 from startrek import Connection, ConnectionDelegate
-from startrek import BaseConnection, ActiveConnection
+from startrek import BaseConnection
 from startrek import BaseHub
 
 from .channel import StreamChannel
@@ -47,24 +46,25 @@ class StreamHub(BaseHub, ABC):
 
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__(delegate=delegate)
-        self.__channels: Dict[Pair[tuple, tuple], Channel] = {}
+        # remote => channel
+        self.__channels: Dict[tuple, Channel] = {}
 
     # protected
     def put_channel(self, channel: Channel):
         remote = channel.remote_address
-        local = channel.local_address
-        self.__channels[Pair(remote, local)] = channel
+        self.__channels[remote] = channel
 
     # Override
-    def channels(self) -> Set[Channel]:
+    def _all_channels(self) -> Set[Channel]:
         return set(self.__channels.values())
 
     # Override
-    def open(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
-        return self.__channels.get(Pair(remote, local))
+    def open_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
+        assert remote is not None, 'remote address empty'
+        return self.__channels.get(remote)
 
     # Override
-    def close(self, channel: Channel):
+    def close_channel(self, channel: Channel):
         if channel is None:
             return False
         else:
@@ -78,8 +78,7 @@ class StreamHub(BaseHub, ABC):
 
     def __remove(self, channel: Channel):
         remote = channel.remote_address
-        local = channel.local_address
-        if self.__channels.pop(Pair(remote, local), None) == channel:
+        if self.__channels.pop(remote, None) == channel:
             # removed by key
             return True
         # remove by value
@@ -100,9 +99,8 @@ class ServerHub(StreamHub, Runnable):
 
     # Override
     def _create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
-        conn = BaseConnection(channel=sock, remote=remote, local=local)
-        conn.delegate = self.delegate
-        conn.hub = self
+        gate = self.delegate
+        conn = BaseConnection(remote=remote, local=None, channel=sock, activated=False, delegate=gate, hub=self)
         conn.start()  # start FSM
         return conn
 
@@ -122,7 +120,6 @@ class ServerHub(StreamHub, Runnable):
         self.__local_address = address
 
     def start(self):
-        self.__running = True
         threading.Thread(target=self.run).start()
 
     def stop(self):
@@ -150,23 +147,22 @@ class ClientHub(StreamHub):
 
     # Override
     def _create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
-        conn = ActiveConnection(channel=sock, remote=remote, local=local)
-        conn.delegate = self.delegate
-        conn.hub = self
+        gate = self.delegate
+        conn = BaseConnection(remote=remote, local=None, channel=sock, activated=True, delegate=gate, hub=self)
         conn.start()  # start FSM
         return conn
 
     # Override
-    def open(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
-        channel = super().open(remote=remote, local=local)
-        if channel is None:
+    def open_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
+        channel = super().open_channel(remote=remote, local=local)
+        if channel is None:  # and remote is not None:
             channel = create_channel(remote=remote, local=local)
             if channel is not None:
                 self.put_channel(channel=channel)
         return channel
 
 
-def create_channel(remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
+def create_channel(remote: tuple, local: Optional[tuple]) -> Optional[Channel]:
     try:
         sock = create_socket(remote=remote, local=local)
         if local is None:
@@ -176,13 +172,13 @@ def create_channel(remote: Optional[tuple], local: Optional[tuple]) -> Optional[
         print('[TCP] creating connection error: %s' % error)
 
 
-def create_socket(remote: Optional[tuple], local: Optional[tuple]) -> Optional[socket.socket]:
+def create_socket(remote: tuple, local: Optional[tuple]) -> Optional[socket.socket]:
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
     sock.setblocking(True)
     if local is not None:
         sock.bind(local)
-    if remote is not None:
-        sock.connect(remote)
+    # assert remote is not None
+    sock.connect(remote)
     sock.setblocking(False)
     return sock

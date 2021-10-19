@@ -207,8 +207,9 @@ def get_local_address(sock: socket.socket) -> Optional[tuple]:
         return None
     try:
         return sock.getsockname()
-    except socket.error as error:
-        print('[NET] failed to get local address: %s' % error)
+    except socket.error:
+        # print('[NET] failed to get local address: %s' % error)
+        return None
 
 
 def get_remote_address(sock: socket.socket) -> Optional[tuple]:
@@ -216,5 +217,6 @@ def get_remote_address(sock: socket.socket) -> Optional[tuple]:
         return None
     try:
         return sock.getpeername()
-    except socket.error as error:
-        print('[NET] failed to get local address: %s' % error)
+    except socket.error:
+        # print('[NET] failed to get remote address: %s' % error)
+        return None

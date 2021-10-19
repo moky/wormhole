@@ -63,6 +63,7 @@ public abstract class StreamHub extends BaseHub {
 
     @Override
     public Channel openChannel(SocketAddress remote, SocketAddress local) {
+        assert remote != null : "remote address empty";
         return channels.get(remote);
     }
 
