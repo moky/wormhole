@@ -6,7 +6,7 @@ from typing import Generic, TypeVar, Optional, List
 
 from udp.ba import Data
 from udp.mtp import DataType, Package
-from udp import Connection, ConnectionState
+from udp import Connection, ConnectionState, BaseConnection
 from udp import GateDelegate, Docker
 from udp import StarGate
 from udp import PackageDocker
@@ -70,7 +70,7 @@ class UDPGate(StarGate, Generic[H]):
     # Override
     def _create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
         # TODO: check data format before creating docker
-        return PackageDocker(remote=remote, local=local, gate=self)
+        return PackageDocker(remote=remote, local=None, gate=self)
 
     # Override
     def _cache_advance_party(self, data: bytes, source: tuple, destination: Optional[tuple],
@@ -87,9 +87,30 @@ class UDPGate(StarGate, Generic[H]):
         pass
 
     # Override
+    def _heartbeat(self, connection: Connection):
+        # let the client to do the job
+        if isinstance(connection, BaseConnection) and connection.is_activated:
+            super()._heartbeat(connection=connection)
+
+    def __disconnect(self, connection: Connection):
+        # close connection for server
+        if isinstance(connection, BaseConnection) and not connection.is_activated:
+            # 1. remove docker
+            remote = connection.remote_address
+            local = connection.local_address
+            self._remove_docker(remote=remote, local=local, docker=None)
+        # 2. remove connection
+        hub = self.hub
+        # assert isinstance(hub, Hub), 'hub error: %s' % hub
+        hub.disconnect(connection=connection)
+
+    # Override
     def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
         super().connection_state_changed(previous=previous, current=current, connection=connection)
         self.info('connection state changed: %s -> %s, %s' % (previous, current, connection))
+        if current == ConnectionState.ERROR:
+            self.error('remove error connection: %s' % connection)
+            self.__disconnect(connection=connection)
 
     def send_command(self, body: bytes, source: Optional[tuple], destination: tuple):
         pack = Package.new(data_type=DataType.COMMAND, body=Data(buffer=body))
@@ -100,8 +121,12 @@ class UDPGate(StarGate, Generic[H]):
         self.send_package(pack=pack, source=source, destination=destination)
 
     def send_package(self, pack: Package, source: Optional[tuple], destination: tuple):
-        worker = self.get_docker(remote=destination, local=source, advance_party=[])
-        assert isinstance(worker, PackageDocker), 'package docker error: %s' % worker
+        worker = self._get_docker(remote=destination, local=source)
+        if worker is None:
+            worker = self._create_docker(remote=destination, local=source, advance_party=[])
+            # assert worker is not None, 'failed to create docker: %s, %s' % (destination, source)
+            self._put_docker(docker=worker)
+        # assert isinstance(worker, PackageDocker), 'docker error: %s' % worker
         worker.send_package(pack=pack)
 
     @classmethod

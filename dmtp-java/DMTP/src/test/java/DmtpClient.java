@@ -54,14 +54,21 @@ public class DmtpClient extends Client implements Gate.Delegate {
         return database.identifier;
     }
 
+    private void bind(SocketAddress local) throws IOException {
+        getHub().bind(local);
+    }
+    private Connection connect(SocketAddress remote, SocketAddress local) {
+        return getHub().connect(remote, local);
+    }
+
     @Override
     public void connect(SocketAddress remote) {
-        getHub().getConnection(remote, localAddress);
+        connect(remote, localAddress);
     }
 
     public void start() throws IOException {
-        getHub().bind(localAddress);
-        getHub().getConnection(remoteAddress, localAddress);
+        bind(localAddress);
+        connect(remoteAddress, localAddress);
         getGate().start();
     }
 
@@ -147,7 +154,7 @@ public class DmtpClient extends Client implements Gate.Delegate {
 
     public void login(String identifier) {
         database.identifier = identifier;
-        getHub().getConnection(remoteAddress, localAddress);
+        connect(remoteAddress, localAddress);
         sayHello(remoteAddress);
     }
 
@@ -164,7 +171,7 @@ public class DmtpClient extends Client implements Gate.Delegate {
             // source address
             sourceAddress = item.getSourceAddress();
             if (sourceAddress != null) {
-                conn = getHub().getConnection(sourceAddress, localAddress);
+                conn = connect(sourceAddress, localAddress);
                 if (conn != null) {
                     state = conn.getState();
                     if (state != null && (state.equals(ConnectionState.READY) ||
@@ -178,7 +185,7 @@ public class DmtpClient extends Client implements Gate.Delegate {
             // mapped address
             mappedAddress = item.getMappedAddress();
             if (mappedAddress != null) {
-                conn = getHub().getConnection(mappedAddress, localAddress);
+                conn = connect(mappedAddress, localAddress);
                 if (conn != null) {
                     state = conn.getState();
                     if (state != null && (state.equals(ConnectionState.READY) ||

@@ -92,7 +92,7 @@ class Client(GateDelegate):
             TCPGate.info('>>> sending (%d bytes): %s' % (len(data), data))
             self.send(data=data)
             time.sleep(2)
-        time.sleep(20)
+        time.sleep(60)
 
 
 SERVER_HOST = Hub.inet_address()

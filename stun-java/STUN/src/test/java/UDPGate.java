@@ -65,13 +65,13 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
 
     @Override
     public Connection getConnection(SocketAddress remote, SocketAddress local) {
-        return getHub().getConnection(remote, local);
+        return getHub().connect(remote, local);
     }
 
     @Override
     protected Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
         // STUN package has no wrapper, so we use plain docker here
-        return new PlainDocker(remote, local, this);
+        return new PlainDocker(remote, null, this);
     }
 
     @Override
@@ -99,10 +99,24 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
         }
     }
 
+    private void disconnect(Connection conn) {
+        // close connection for server
+        if (conn instanceof BaseConnection && !((BaseConnection) conn).isActivated) {
+            // 1. remove docker
+            removeDocker(conn.getRemoteAddress(), conn.getLocalAddress(), null);
+        }
+        // 2. remove connection
+        getHub().disconnect(conn);
+    }
+
     @Override
     public void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
         super.onStateChanged(previous, current, connection);
         info("connection state changed: " + previous + " -> " + current + ", " + connection);
+        if (current != null && current.equals(ConnectionState.ERROR)) {
+            error("remove error connection: " + connection);
+            disconnect(connection);
+        }
     }
 
     void sendData(byte[] payload, SocketAddress source, SocketAddress destination) {

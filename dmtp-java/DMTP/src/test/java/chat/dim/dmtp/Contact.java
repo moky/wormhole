@@ -309,7 +309,7 @@ public class Contact {
         if (address == null) {
             return true;
         }
-        Connection conn = peer.getConnection(address, null);
+        Connection conn = peer.connect(address, null);
         if (conn == null) {
             return true;
         }

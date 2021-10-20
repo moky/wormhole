@@ -102,16 +102,12 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
 
     private void disconnect(Connection conn) {
         // close connection for server
-        if (conn instanceof BaseConnection) {
-            if (((BaseConnection) conn).isActivated) {
-                // client
-                return;
-            }
+        if (conn instanceof BaseConnection && !((BaseConnection) conn).isActivated) {
             // 1. remove docker
             removeDocker(conn.getRemoteAddress(), conn.getLocalAddress(), null);
-            // 2. remove connection
-            getHub().disconnect(conn);
         }
+        // 2. remove connection
+        getHub().disconnect(conn);
     }
 
     @Override

@@ -90,7 +90,7 @@ public class Client implements Gate.Delegate {
             Runner.idle(2000);
         }
 
-        Runner.idle(20000);
+        Runner.idle(60000);
     }
 
     static String HOST;

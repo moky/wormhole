@@ -97,10 +97,10 @@ class TCPGate(StarGate, Runnable, Generic[H]):
             remote = connection.remote_address
             local = connection.local_address
             self._remove_docker(remote=remote, local=local, docker=None)
-            # 2. remove connection
-            hub = self.hub
-            # assert isinstance(hub, Hub), 'hub error: %s' % hub
-            hub.disconnect(connection=connection)
+        # 2. remove connection
+        hub = self.hub
+        # assert isinstance(hub, Hub), 'hub error: %s' % hub
+        hub.disconnect(connection=connection)
 
     # Override
     def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
@@ -116,7 +116,7 @@ class TCPGate(StarGate, Runnable, Generic[H]):
             worker = self._create_docker(remote=destination, local=source, advance_party=[])
             # assert worker is not None, 'failed to create docker: %s, %s' % (destination, source)
             self._put_docker(docker=worker)
-        # assert isinstance(worker, PlainDocker), 'failed to create docker: %s, %s' % (destination, source)
+        # assert isinstance(worker, PlainDocker), 'docker error: %s, %s' % (destination, source)
         worker.send_data(payload=payload)
 
     @classmethod

@@ -38,14 +38,21 @@ public class DmtpServer extends Server implements Gate.Delegate {
         return gate.getHub();
     }
 
-    public void start() throws IOException {
-        getHub().bind(localAddress);
-        getGate().start();
+    private void bind(SocketAddress local) throws IOException {
+        getHub().bind(local);
+    }
+    private Connection connect(SocketAddress remote, SocketAddress local) {
+        return getHub().connect(remote, local);
     }
 
     @Override
     protected void connect(SocketAddress remote) {
-        getHub().getConnection(remote, localAddress);
+        connect(remote, localAddress);
+    }
+
+    public void start() throws IOException {
+        bind(localAddress);
+        getGate().start();
     }
 
     //
