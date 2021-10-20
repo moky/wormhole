@@ -96,3 +96,8 @@ class Docker(Processor):
     def purge(self):
         """ Clear all expired tasks """
         raise NotImplemented
+
+    @abstractmethod
+    def close(self):
+        """ Close connection for this docker """
+        raise NotImplemented

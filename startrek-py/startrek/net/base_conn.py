@@ -171,6 +171,12 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     # Override
     def send(self, data: bytes, target: Optional[tuple] = None) -> int:
+        # get local address as source
+        source = self._local
+        if source is None:
+            sock = self.__channel
+            if sock is not None:
+                source = sock.local_address
         # try to send data
         error = None
         sent = -1
@@ -178,19 +184,13 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             sent = self._send(data=data, target=target)
             if sent == -1:
                 error = socket.error('failed to send data: %d byte(s) to %s' % (len(data), target))
+                self.__close_channel()
         except socket.error as e:
             error = e
             self.__close_channel()
         # callback
         delegate = self.delegate
         if delegate is not None:
-            # get local address as source
-            source = self._local
-            if source is None:
-                sock = self.__channel
-                if sock is not None:
-                    source = sock.local_address
-            # callback
             if error is None:
                 delegate.connection_sent(data=data, source=source, destination=target, connection=self)
             else:

@@ -35,7 +35,7 @@ from abc import abstractmethod
 from typing import Optional
 
 from .types import AddressPairObject
-from .net import Connection
+from .net import Connection, Hub
 from .port import Arrival, Departure
 from .port import Docker, Gate, GateDelegate
 
@@ -68,9 +68,13 @@ class StarDocker(AddressPairObject, Docker):
         """ Override for user-customized dock """
         return LockedDock()
 
-    @property
+    @property  # protected
     def gate(self) -> Gate:
         return self.__gate()
+
+    @property  # protected
+    def hub(self) -> Optional[Hub]:
+        raise NotImplemented
 
     @property  # Override
     def remote_address(self) -> tuple:  # (str, int)
@@ -94,7 +98,7 @@ class StarDocker(AddressPairObject, Docker):
 
     # Override
     def process(self) -> bool:
-        # 1. get connection with is ready for sending data
+        # 1. get connection which is ready for sending data
         conn = self.connection
         if conn is None:
             # connection not ready now
@@ -153,15 +157,13 @@ class StarDocker(AddressPairObject, Docker):
         income = self._check_arrival(ship=income)
         if income is None:
             return None
-        # 3. process income ship with completed data package
+        # 3. callback for processing income ship with completed data package
         delegate = self.delegate
-        if delegate is None:
-            return None
-        # callback
-        remote = self.remote_address
-        local = self.local_address
-        conn = self.connection
-        delegate.gate_received(ship=income, source=remote, destination=local, connection=conn)
+        if delegate is not None:
+            remote = self.remote_address
+            local = self.local_address
+            conn = self.connection
+            delegate.gate_received(ship=income, source=remote, destination=local, connection=conn)
 
     @abstractmethod
     def _get_arrival(self, data: bytes) -> Optional[Arrival]:
@@ -221,3 +223,11 @@ class StarDocker(AddressPairObject, Docker):
     def purge(self):
         """ Clear expired tasks """
         self.__dock.purge()
+
+    # Override
+    def close(self):
+        hub = self.hub
+        if hub is not None:
+            remote = self.remote_address
+            local = self.local_address
+            hub.disconnect(remote=remote, local=local)

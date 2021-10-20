@@ -112,34 +112,34 @@ public abstract class BaseHub implements Hub {
     }
 
     @Override
-    public void disconnect(Connection connection) {
-        SocketAddress remote = connection.getRemoteAddress();
-        SocketAddress local = connection.getLocalAddress();
-        Connection conn = connectionPool.remove(remote, local, connection);
+    public void disconnect(SocketAddress remote, SocketAddress local, Connection connection) {
+        Connection conn = removeConnection(remote, local, connection);
         if (conn != null) {
             conn.close();
         }
-        if (connection != conn) {
+        if (connection != null && connection != conn) {
             connection.close();
         }
     }
 
-    private void closeConnection(SocketAddress remote, SocketAddress local) {
-        Connection conn = connectionPool.get(remote, local);
+    private Connection removeConnection(SocketAddress remote, SocketAddress local, Connection conn) {
         if (conn == null) {
-            return;
+            conn = connectionPool.get(remote, local);
+            if (conn == null) {
+                return null;
+            }
         }
         // check local address
-        if (local == null) {
-            connectionPool.remove(conn.getRemoteAddress(), conn.getLocalAddress(), conn);
-            conn.close();
-            return;
+        if (local != null) {
+            SocketAddress address = conn.getLocalAddress();
+            if (address != null && !address.equals(local)) {
+                // local address not matched
+                return null;
+            }
         }
-        SocketAddress address = conn.getLocalAddress();
-        if (address == null || address.equals(local)) {
-            connectionPool.remove(conn.getRemoteAddress(), conn.getLocalAddress(), conn);
-            conn.close();
-        }
+        remote = conn.getRemoteAddress();
+        local = conn.getLocalAddress();
+        return connectionPool.remove(remote, local, conn);
     }
 
     @Override
@@ -155,7 +155,6 @@ public abstract class BaseHub implements Hub {
         }
         // 2. drive all connections to move on
         Set<Connection> connections = connectionPool.allValues();
-        ConnectionState state;
         for (Connection conn : connections) {
             // drive connection to go on
             conn.tick();
@@ -166,19 +165,21 @@ public abstract class BaseHub implements Hub {
     }
 
     protected boolean drive(Channel sock) {
-        // try to receive
-        final ByteBuffer buffer = ByteBuffer.allocate(MSS);
+        SocketAddress local = sock.getLocalAddress();
         SocketAddress remote;
+        final ByteBuffer buffer = ByteBuffer.allocate(MSS);
+        // try to receive
         try {
             remote = sock.receive(buffer);
         } catch (IOException e) {
             //e.printStackTrace();
+            remote = sock.getRemoteAddress();
             // socket error, remove the channel
             closeChannel(sock);
-            // remove closed connection
-            remote = sock.getRemoteAddress();
-            if (remote != null) {
-                closeConnection(remote, sock.getLocalAddress());
+            // callback
+            Connection.Delegate delegate = getDelegate();
+            if (delegate != null) {
+                delegate.onError(e, null, remote, local, null);
             }
             return false;
         }
@@ -186,7 +187,6 @@ public abstract class BaseHub implements Hub {
             // received nothing
             return false;
         }
-        SocketAddress local = sock.getLocalAddress();
         // get connection for processing received data
         Connection conn = connect(remote, local);
         if (conn != null) {

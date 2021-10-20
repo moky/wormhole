@@ -36,6 +36,7 @@ import java.util.Date;
 import java.util.List;
 
 import chat.dim.net.Connection;
+import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Docker;
@@ -62,6 +63,8 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     protected Gate getGate() {
         return gateRef.get();
     }
+
+    protected abstract Hub getHub();
 
     @Override
     public SocketAddress getLocalAddress() {
@@ -173,7 +176,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             // waiting for more fragment
             return;
         }
-        // 3. process income ship with completed data package
+        // 3. callback for processing income ship with completed data package
         Ship.Delegate delegate = getDelegate();
         if (delegate != null) {
             delegate.onReceived(income, getRemoteAddress(), getLocalAddress(), getConnection());
@@ -247,5 +250,13 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     @Override
     public void purge() {
         dock.purge();
+    }
+
+    @Override
+    public void close() {
+        Hub hub = getHub();
+        if (hub != null) {
+            hub.disconnect(getRemoteAddress(), getLocalAddress(), null);
+        }
     }
 }

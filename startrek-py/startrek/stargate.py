@@ -45,6 +45,7 @@ class StarGate(Gate, ConnectionDelegate):
 
         @abstract methods:
             - get_connection(remote, local)
+            - connection_error(error, data, source, destination, connection)
             - _create_docker(remote, local, advance_party)
             - _cache_advance_party(data, source, destination, connection)
             - _clear_advance_party(source, destination, connection)
@@ -73,7 +74,9 @@ class StarGate(Gate, ConnectionDelegate):
 
     # protected
     def _remove_docker(self, remote: tuple, local: Optional[tuple], docker: Optional[Docker]):
-        self.__docker_pool.remove(remote=remote, local=local, value=docker)
+        docker = self.__docker_pool.remove(remote=remote, local=local, value=docker)
+        if docker is not None:
+            docker.close()
 
     def _put_docker(self, docker: Docker):
         remote = docker.remote_address
@@ -96,7 +99,7 @@ class StarGate(Gate, ConnectionDelegate):
     #
 
     # Override
-    def process(self):
+    def process(self) -> bool:
         dockers = self.__docker_pool.values
         # 1. drive all dockers to process
         count = self._drive_dockers(dockers=dockers)
@@ -112,7 +115,7 @@ class StarGate(Gate, ConnectionDelegate):
             if worker.process():
                 # it's busy
                 count += 1
-        return count > 0
+        return count
 
     # protected
     # noinspection PyMethodMayBeStatic
@@ -135,10 +138,7 @@ class StarGate(Gate, ConnectionDelegate):
 
     # Override
     def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
-        # 1. heartbeat when connection expired
-        if current == ConnectionState.EXPIRED:
-            self._heartbeat(connection=connection)
-        # 2. callback when status changed
+        # 1. callback when status changed
         delegate = self.delegate
         s1 = status_from_state(state=previous)
         s2 = status_from_state(state=current)
@@ -146,6 +146,9 @@ class StarGate(Gate, ConnectionDelegate):
             remote = connection.remote_address
             local = connection.local_address
             delegate.gate_status_changed(previous=s1, current=s2, remote=remote, local=local, gate=self)
+        # 2. heartbeat when connection expired
+        if current == ConnectionState.EXPIRED:
+            self._heartbeat(connection=connection)
 
     # Override
     def connection_received(self, data: bytes, source: tuple, destination: Optional[tuple], connection: Connection):
@@ -198,10 +201,3 @@ class StarGate(Gate, ConnectionDelegate):
     def connection_sent(self, data: bytes, source: Optional[tuple], destination: tuple, connection: Connection):
         # ignore this event
         pass
-
-    # Override
-    def connection_error(self, error, data: Optional[bytes],
-                         source: Optional[tuple], destination: Optional[tuple], connection: Connection):
-        # failed to send data
-        if error is not None and destination is not None:
-            self._remove_docker(remote=destination, local=source, docker=None)

@@ -110,46 +110,47 @@ class BaseHub(Hub, ABC):
             return conn
 
     # Override
-    def disconnect(self, connection: Connection):
-        remote = connection.remote_address
-        local = connection.local_address
-        conn = self.__connection_pool.remove(remote=remote, local=local, value=connection)
+    def disconnect(self, remote: tuple = None, local: Optional[tuple] = None, connection: Connection = None):
+        conn = self.__remove_connection(remote=remote, local=local, connection=connection)
         if conn is not None:
             conn.close()
-        if connection is not conn:
+        if connection is not None and connection is not conn:
             connection.close()
 
-    def __close_connection(self, remote: tuple, local: Optional[tuple]):
-        conn = self.__connection_pool.get(remote=remote, local=local)
-        if conn is None:
-            return False
+    def __remove_connection(self, remote: tuple = None, local: Optional[tuple] = None,
+                            connection: Connection = None) -> Optional[Connection]:
+        if connection is None:
+            connection = self.__connection_pool.get(remote=remote, local=local)
+            if connection is None:
+                return None
         # check local address
-        if local is None:
-            self.__connection_pool.remove(remote=conn.remote_address, local=conn.local_address, value=conn)
-            conn.close()
-            return True
-        address = conn.local_address
-        if address is None or address == local:
-            self.__connection_pool.remove(remote=conn.remote_address, local=conn.local_address, value=conn)
-            conn.close()
-            return True
+        if local is not None:
+            address = connection.local_address
+            if address is not None and address != local:
+                # local address not matched
+                return None
+        remote = connection.remote_address
+        local = connection.local_address
+        return self.__connection_pool.remove(remote=remote, local=local, value=connection)
 
     def _drive_channel(self, sock: Channel) -> bool:
+        local = sock.local_address
         # try to receive
         try:
             data, remote = sock.receive(max_len=self.MSS)
-        except socket.error:
+        except socket.error as error:
+            # print('[NET] failed to receive data: %s' % error)
+            remote = sock.remote_address
             # socket error, remove the channel
             self.close_channel(channel=sock)
-            # remove connected connection
-            remote = sock.remote_address
-            if remote is not None:
-                self.__close_connection(remote=remote, local=sock.local_address)
+            # callback
+            delegate = self.delegate
+            if delegate is not None:
+                delegate.connection_error(error=error, data=None, source=remote, destination=local, connection=None)
             return False
         if remote is None:
             # received nothing
             return False
-        local = sock.local_address
         # get connection for processing received data
         conn = self.connect(remote=remote, local=local)
         if conn is not None:

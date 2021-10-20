@@ -209,6 +209,15 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
 
     @Override
     public int send(byte[] pack, SocketAddress destination) {
+        // get local address as source
+        SocketAddress source = localAddress;
+        if (source == null) {
+            Channel sock = channel;
+            if (sock != null) {
+                source = sock.getLocalAddress();
+            }
+        }
+        // prepare buffer
         ByteBuffer buffer = ByteBuffer.allocate(pack.length);
         buffer.put(pack);
         buffer.flip();
@@ -219,23 +228,16 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
             sent = send(buffer, destination);
             if (sent == -1) {
                 error = new Error("failed to send data: " + pack.length + " byte(s) to " + destination);
+                closeChannel();
             }
         } catch (IOException e) {
             //e.printStackTrace();
             error = e;
             closeChannel();
         }
+        // callback
         Delegate delegate = getDelegate();
         if (delegate != null) {
-            // get local address as source
-            SocketAddress source = localAddress;
-            if (source == null) {
-                Channel sock = channel;
-                if (sock != null) {
-                    source = sock.getLocalAddress();
-                }
-            }
-            // callback
             if (error == null) {
                 delegate.onSent(pack, source, destination, this);
             } else {

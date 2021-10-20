@@ -68,7 +68,10 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     protected abstract Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data);
 
     protected void removeDocker(SocketAddress remote, SocketAddress local, Docker docker) {
-        dockerPool.remove(remote, local, docker);
+        docker = dockerPool.remove(remote, local, docker);
+        if (docker != null) {
+            docker.close();
+        }
     }
 
     protected void putDocker(Docker docker) {
@@ -135,11 +138,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
 
     @Override
     public void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
-        // 1. heartbeat when connection expired
-        if (current != null && current.equals(ConnectionState.EXPIRED)) {
-            heartbeat(connection);
-        }
-        // 2. callback when status changed
+        // 1. callback when status changed
         Delegate delegate = getDelegate();
         Status s1 = Status.getStatus(previous);
         Status s2 = Status.getStatus(current);
@@ -147,6 +146,10 @@ public abstract class StarGate implements Gate, Connection.Delegate {
             SocketAddress remote = connection.getRemoteAddress();
             SocketAddress local = connection.getLocalAddress();
             delegate.onStatusChanged(s1, s2, remote, local, this);
+        }
+        // 2. heartbeat when connection expired
+        if (current != null && current.equals(ConnectionState.EXPIRED)) {
+            heartbeat(connection);
         }
     }
 
@@ -185,13 +188,5 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     @Override
     public void onSent(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
         // ignore this event
-    }
-
-    @Override
-    public void onError(Throwable error, byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
-        // failed to send data
-        if (error != null && destination != null) {
-            removeDocker(destination, source, null);
-        }
     }
 }

@@ -106,9 +106,11 @@ public interface Hub extends Processor {
     /**
      *  Close connection
      *
+     * @param remote - remote address
+     * @param local  - local address
      * @param connection - closing connection
      */
-    void disconnect(Connection connection);
+    void disconnect(SocketAddress remote, SocketAddress local, Connection connection);
 
     //
     //  Local Address

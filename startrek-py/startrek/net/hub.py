@@ -74,10 +74,12 @@ class Hub(Processor, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def disconnect(self, connection: Connection):
+    def disconnect(self, remote: tuple = None, local: Optional[tuple] = None, connection: Connection = None):
         """
         Close connection
 
+        :param remote: remote address
+        :param local:  local address
         :param connection: closing connection
         """
         raise NotImplemented
