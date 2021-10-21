@@ -4,17 +4,26 @@ import threading
 import time
 from typing import Generic, TypeVar, Optional, List
 
-from startrek.fsm import Runnable
 from udp import Connection, ConnectionState, BaseConnection
+from udp import Hub
 from udp import GateDelegate, Docker
 from udp import StarGate
 from tcp import PlainDocker
 
 
+class StunDocker(PlainDocker):
+
+    @property  # Override
+    def hub(self) -> Optional[Hub]:
+        gate = self.gate
+        if isinstance(gate, UDPGate):
+            return gate.hub
+
+
 H = TypeVar('H')
 
 
-class UDPGate(StarGate, Runnable, Generic[H]):
+class UDPGate(StarGate, Generic[H]):
 
     def __init__(self, delegate: GateDelegate):
         super().__init__(delegate=delegate)
@@ -39,7 +48,6 @@ class UDPGate(StarGate, Runnable, Generic[H]):
     def running(self) -> bool:
         return self.__running
 
-    # Override
     def run(self):
         self.__running = True
         while self.running:
@@ -51,10 +59,10 @@ class UDPGate(StarGate, Runnable, Generic[H]):
         time.sleep(0.125)
 
     # Override
-    def process(self):
+    def process(self) -> bool:
         hub = self.hub
-        # from tcp import Hub
-        # assert isinstance(hub, Hub)
+        from udp import Hub
+        assert isinstance(hub, Hub)
         incoming = hub.process()
         outgoing = super().process()
         return incoming or outgoing
@@ -62,14 +70,14 @@ class UDPGate(StarGate, Runnable, Generic[H]):
     # Override
     def get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         hub = self.hub
-        # from tcp import Hub
-        # assert isinstance(hub, Hub)
+        from udp import Hub
+        assert isinstance(hub, Hub)
         return hub.connect(remote=remote, local=local)
 
     # Override
     def _create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
         # TODO: check data format before creating docker
-        return PlainDocker(remote=remote, local=None, gate=self)
+        return StunDocker(remote=remote, local=None, gate=self)
 
     # Override
     def _cache_advance_party(self, data: bytes, source: tuple, destination: Optional[tuple],
@@ -91,17 +99,20 @@ class UDPGate(StarGate, Runnable, Generic[H]):
         if isinstance(connection, BaseConnection) and connection.is_activated:
             super()._heartbeat(connection=connection)
 
-    def __disconnect(self, connection: Connection):
-        # close connection for server
-        if isinstance(connection, BaseConnection) and not connection.is_activated:
-            # 1. remove docker
-            remote = connection.remote_address
-            local = connection.local_address
-            self._remove_docker(remote=remote, local=local, docker=None)
-        # 2. remove connection
+    def __kill(self, remote: tuple = None, local: Optional[tuple] = None, connection: Connection = None):
+        # if conn is null, disconnect with (remote, local);
+        # else, disconnect with connection when local address matched.
         hub = self.hub
-        # assert isinstance(hub, Hub), 'hub error: %s' % hub
-        hub.disconnect(connection=connection)
+        assert isinstance(hub, Hub), 'hub error: %s' % hub
+        connection = hub.disconnect(remote=remote, local=local, connection=connection)
+        # if connection is not activated, means it's a server connection,
+        # remove the docker too.
+        if isinstance(connection, BaseConnection):
+            if not connection.is_activated:
+                # remove docker for server connection
+                remote = connection.remote_address
+                local = connection.local_address
+                self._remove_docker(remote=remote, local=local, docker=None)
 
     # Override
     def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
@@ -109,16 +120,30 @@ class UDPGate(StarGate, Runnable, Generic[H]):
         self.info('connection state changed: %s -> %s, %s' % (previous, current, connection))
         if current == ConnectionState.ERROR:
             self.error('remove error connection: %s' % connection)
-            self.__disconnect(connection=connection)
+            self.__kill(connection=connection)
+
+    # Override
+    def connection_error(self, error, data: Optional[bytes],
+                         source: Optional[tuple], destination: Optional[tuple], connection: Optional[Connection]):
+        if connection is None:
+            # failed to receive data
+            self.__kill(remote=source, local=destination)
+        else:
+            # failed to send data
+            self.__kill(remote=destination, local=source, connection=connection)
+
+    def get_docker(self, remote: tuple, local: Optional[tuple]) -> Optional[PlainDocker]:
+        worker = self._get_docker(remote=remote, local=local)
+        if worker is None:
+            worker = self._create_docker(remote=remote, local=local, advance_party=[])
+            assert worker is not None, 'failed to create docker: %s, %s' % (remote, local)
+            self._put_docker(docker=worker)
+        return worker
 
     def send_data(self, payload: bytes, source: Optional[tuple], destination: tuple):
-        worker = self._get_docker(remote=destination, local=source)
-        if worker is None:
-            worker = self._create_docker(remote=destination, local=source, advance_party=[])
-            # assert worker is not None, 'failed to create docker: %s, %s' % (destination, source)
-            self._put_docker(docker=worker)
-        # assert isinstance(worker, PlainDocker), 'docker error: %s' % worker
-        worker.send_data(payload=payload)
+        worker = self.get_docker(remote=destination, local=source)
+        if worker is not None:
+            worker.send_data(payload=payload)
 
     @classmethod
     def info(cls, msg: str):

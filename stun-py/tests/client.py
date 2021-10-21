@@ -128,6 +128,12 @@ class StunClient(Client, GateDelegate):
 SERVER_TEST = Hub.inet_address()
 
 STUN_SERVERS = [
+
+    (SERVER_TEST, 3478),
+    # (SERVER_GZ1, 3478),
+    # (SERVER_GZ2, 3478),
+    # (SERVER_HK2, 3478),
+
     # ("stun.xten.com", 3478),
     ("stun.voipbuster.com", 3478),
     # ("stun.sipgate.net", 3478),
@@ -140,11 +146,6 @@ STUN_SERVERS = [
     # ("stun.callwithus.com", 3478),
     # ("stun.counterpath.net", 3478),
     # ("stun.internetcalls.com", 3478),
-
-    (SERVER_TEST, 3478),
-    # (SERVER_GZ1, 3478),
-    # (SERVER_GZ2, 3478),
-    # (SERVER_HK2, 3478),
 ]
 
 LOCAL_IP = Hub.inet_address()
