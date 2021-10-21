@@ -110,42 +110,43 @@ class StarDocker(AddressPairObject, Docker):
             # nothing to do now
             return False
         # 3. process outgo task
-        error = None
-        if outgo.is_failed(now=now):
-            # outgo ship expired, callback
-            error = ConnectionError('Request timeout')
-        else:
-            try:
-                if not self.__send_departure(ship=outgo):
-                    # failed to send outgo package, callback
-                    error = ConnectionError('Connection error')
-            except socket.error as e:
-                # socket error, callback
-                error = e
-        # callback
+        try:
+            error = self.__send_departure(ship=outgo, now=now)
+            if error is None:
+                # task done
+                return True
+        except socket.error as e:
+            # socket error, callback
+            error = e
+        # callback for error
         delegate = self.delegate
-        if error is not None and delegate is not None:
+        if delegate is not None:
             remote = self.remote_address
             local = self.local_address
             delegate.gate_error(error=error, ship=outgo, source=local, destination=remote, connection=conn)
-        return True
 
-    def __send_departure(self, ship: Departure) -> bool:
+    def __send_departure(self, ship: Departure, now: int) -> Optional[IOError]:
         """ Sending all fragments in the ship """
+        # check task
+        if ship.is_failed(now=now):
+            return IOError('Request timeout')
         fragments = ship.fragments
         if fragments is None or len(fragments) == 0:
-            # all fragments sent
-            return True
+            # all fragments have been sent already
+            return None
+        # check connection
         conn = self.connection
         if conn is None:
-            # connection not ready now
-            return False
+            return ConnectionError('connection not ready now')
         remote = self.remote_address
+        # send all fragments
+        total = len(fragments)
         success = 0
         for pkg in fragments:
             if conn.send(data=pkg, target=remote) != -1:
                 success += 1
-        return success == len(fragments)
+        if success != total:
+            return IOError('only %d/%d fragments sent' % (success, total))
 
     # Override
     def process_received(self, data: bytes):

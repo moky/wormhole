@@ -171,8 +171,7 @@ class PackageDocker(StarDocker):
             data_type = pack.head.data_type
             if not data_type.is_response:
                 # put back for next retry
-                self.append_departure(ship=ship)
-                return True
+                return self.append_departure(ship=ship)
 
     # Override
     def _get_arrival(self, data: bytes) -> Optional[Arrival]:

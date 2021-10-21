@@ -31,6 +31,7 @@
 package chat.dim.startrek;
 
 import java.lang.ref.WeakReference;
+import java.net.ConnectException;
 import java.net.SocketAddress;
 import java.util.Date;
 import java.util.List;
@@ -118,48 +119,50 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             return false;
         }
         // 3. process outgo task
-        Throwable error = null;
-        if (outgo.isFailed(now)) {
-            // outgo task expired, callback
-            error = new Error("Response timeout");
-        } else {
-            try {
-                if (!sendDeparture(outgo)) {
-                    // failed to send outgo package, callback
-                    error = new Error("Connection error");
-                }
-            } catch (Exception e) {
-                //e.printStackTrace();
-                error = e;
+        Throwable error;
+        try {
+            error = sendDeparture(outgo, now);
+            if (error == null) {
+                // task done
+                return true;
             }
+        } catch (Exception e) {
+            //e.printStackTrace();
+            error = e;
         }
-        // callback
+        // callback for error
         Ship.Delegate delegate = getDelegate();
-        if (error != null && delegate != null) {
+        if (delegate != null) {
             delegate.onError(error, outgo, getLocalAddress(), getRemoteAddress(), conn);
         }
-        return true;
+        return false;
     }
 
-    private boolean sendDeparture(final Departure outgo) {
-        List<byte[]> fragments = outgo.getFragments();
+    private Throwable sendDeparture(final Departure outgo, final long now) {
+        // check task
+        if (outgo.isFailed(now)) {
+            return new IllegalStateException("Response timeout");
+        }
+        final List<byte[]> fragments = outgo.getFragments();
         if (fragments == null || fragments.size() == 0) {
-            // all fragments sent
-            return true;
+            // all fragments have been sent already
+            return null;
         }
-        Connection conn = getConnection();
+        // check connection
+        final Connection conn = getConnection();
         if (conn == null) {
-            // connection not ready now
-            return false;
+            return new ConnectException("connection not ready now");
         }
-        SocketAddress remote = getRemoteAddress();
+        final SocketAddress remote = getRemoteAddress();
+        // send all fragments
+        final int total = fragments.size();
         int success = 0;
         for (byte[] pkg : fragments) {
             if (conn.send(pkg, remote) != -1) {
                 success += 1;
             }
         }
-        return success == fragments.size();
+        return success == total ? null : new ConnectException("only " + success + "/" + total + " fragments sent");
     }
 
     @Override
