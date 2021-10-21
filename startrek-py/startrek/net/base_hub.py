@@ -110,12 +110,17 @@ class BaseHub(Hub, ABC):
             return conn
 
     # Override
-    def disconnect(self, remote: tuple = None, local: Optional[tuple] = None, connection: Connection = None):
+    def disconnect(self, remote: Optional[tuple], local: Optional[tuple] = None,
+                   connection: Optional[Connection] = None) -> Optional[Connection]:
         conn = self.__remove_connection(remote=remote, local=local, connection=connection)
         if conn is not None:
             conn.close()
         if connection is not None and connection is not conn:
             connection.close()
+        if conn is None:
+            return connection
+        else:
+            return conn
 
     def __remove_connection(self, remote: tuple = None, local: Optional[tuple] = None,
                             connection: Connection = None) -> Optional[Connection]:

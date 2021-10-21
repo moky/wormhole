@@ -134,5 +134,7 @@ public class Client implements Gate.Delegate {
         client.start();
         client.test();
         client.stop();
+
+        UDPGate.info("Terminated.");
     }
 }

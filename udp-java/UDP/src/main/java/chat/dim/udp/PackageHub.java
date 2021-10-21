@@ -63,6 +63,11 @@ public abstract class PackageHub extends BaseHub {
         }
     }
 
+    public void putChannel(Channel channel) {
+        SocketAddress local = channel.getLocalAddress();
+        channels.put(local, channel);
+    }
+
     @Override
     protected Set<Channel> allChannels() {
         return new HashSet<>(channels.values());
@@ -72,6 +77,7 @@ public abstract class PackageHub extends BaseHub {
     public Channel openChannel(SocketAddress remote, SocketAddress local) {
         if (local == null) {
             for (Channel channel : channels.values()) {
+                // any channel
                 return channel;
             }
             // channel not found
@@ -110,6 +116,7 @@ public abstract class PackageHub extends BaseHub {
         while (it.hasNext()) {
             if (it.next().getValue() == channel) {
                 it.remove();
+                //break;
             }
         }
     }

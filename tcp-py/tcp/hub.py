@@ -49,7 +49,6 @@ class StreamHub(BaseHub, ABC):
         # remote => channel
         self.__channels: Dict[tuple, Channel] = {}
 
-    # protected
     def put_channel(self, channel: Channel):
         remote = channel.remote_address
         self.__channels[remote] = channel

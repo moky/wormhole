@@ -90,7 +90,7 @@ SERVER_PORT = 9394
 
 if __name__ == '__main__':
 
-    print('TCP server (%s:%d) starting ...' % (SERVER_HOST, SERVER_PORT))
+    TCPGate.info('TCP server (%s:%d) starting ...' % (SERVER_HOST, SERVER_PORT))
 
     g_server = Server(host=SERVER_HOST, port=SERVER_PORT)
 

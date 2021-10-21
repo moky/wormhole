@@ -106,10 +106,12 @@ if __name__ == '__main__':
 
     local_address = (CLIENT_HOST, CLIENT_PORT)
     server_address = (SERVER_HOST, SERVER_PORT)
-    print('Connecting TCP server (%s -> %s) ...' % (local_address, server_address))
+    TCPGate.info('Connecting TCP server (%s -> %s) ...' % (local_address, server_address))
 
     g_client = Client(local=local_address, remote=server_address)
 
     g_client.start()
     g_client.test()
     g_client.stop()
+
+    TCPGate.info('Terminated.')

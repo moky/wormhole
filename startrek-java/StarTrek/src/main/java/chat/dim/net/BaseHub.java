@@ -112,7 +112,7 @@ public abstract class BaseHub implements Hub {
     }
 
     @Override
-    public void disconnect(SocketAddress remote, SocketAddress local, Connection connection) {
+    public Connection disconnect(SocketAddress remote, SocketAddress local, Connection connection) {
         Connection conn = removeConnection(remote, local, connection);
         if (conn != null) {
             conn.close();
@@ -120,6 +120,7 @@ public abstract class BaseHub implements Hub {
         if (connection != null && connection != conn) {
             connection.close();
         }
+        return conn == null ? connection : conn;
     }
 
     private Connection removeConnection(SocketAddress remote, SocketAddress local, Connection conn) {

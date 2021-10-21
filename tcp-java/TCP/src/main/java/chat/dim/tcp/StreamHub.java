@@ -51,14 +51,14 @@ public abstract class StreamHub extends BaseHub {
         super(delegate);
     }
 
+    public void putChannel(Channel channel) {
+        SocketAddress remote = channel.getRemoteAddress();
+        channels.put(remote, channel);
+    }
+
     @Override
     protected Set<Channel> allChannels() {
         return new HashSet<>(channels.values());
-    }
-
-    protected void putChannel(Channel channel) {
-        SocketAddress remote = channel.getRemoteAddress();
-        channels.put(remote, channel);
     }
 
     @Override
@@ -95,6 +95,7 @@ public abstract class StreamHub extends BaseHub {
         while (it.hasNext()) {
             if (it.next().getValue() == channel) {
                 it.remove();
+                //break;
             }
         }
     }

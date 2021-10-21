@@ -165,11 +165,11 @@ class Channel(ABC):
     #
 
     @abstractmethod
-    def disconnect(self):
+    def disconnect(self) -> Optional[socket.socket]:
         """
         Disconnects this channel's socket.
 
-        :return: this socket
+        :return: inner socket
         :raise: socket.error
         """
         raise NotImplemented

@@ -42,7 +42,7 @@ import chat.dim.startrek.StarGate;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 
-public class PackageDocker extends StarDocker {
+public abstract class PackageDocker extends StarDocker {
 
     public PackageDocker(SocketAddress remote, SocketAddress local, StarGate gate) {
         super(remote, local, gate);

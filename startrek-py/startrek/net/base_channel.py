@@ -109,7 +109,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         return sock
 
     # Override
-    def disconnect(self):
+    def disconnect(self) -> Optional[socket.socket]:
         sock = self.__sock
         self.close()
         return sock

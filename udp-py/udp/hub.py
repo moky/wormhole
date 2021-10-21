@@ -61,6 +61,10 @@ class PackageHub(BaseHub, ABC):
             channel = PackageChannel(sock=sock, remote=None, local=address)
             self.__channels[address] = channel
 
+    def put_channel(self, channel: Channel):
+        local = channel.local_address
+        self.__channels[local] = channel
+
     # Override
     def _all_channels(self) -> Set[Channel]:
         return set(self.__channels.values())
@@ -70,6 +74,7 @@ class PackageHub(BaseHub, ABC):
         if local is None:
             for channel in self.__channels.values():
                 return channel
+            # channel not found
         else:
             return self.__channels.get(local)
 

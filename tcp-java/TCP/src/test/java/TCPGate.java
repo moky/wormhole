@@ -11,9 +11,28 @@ import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
 import chat.dim.port.Docker;
+import chat.dim.port.Gate;
 import chat.dim.skywalker.Runner;
 import chat.dim.startrek.PlainDocker;
 import chat.dim.startrek.StarGate;
+
+
+class TCPDocker extends PlainDocker {
+
+    TCPDocker(SocketAddress remote, SocketAddress local, StarGate gate) {
+        super(remote, local, gate);
+    }
+
+    @Override
+    protected Hub getHub() {
+        Gate gate = getGate();
+        if (gate instanceof TCPGate) {
+            //noinspection rawtypes
+            return ((TCPGate) gate).getHub();
+        }
+        return null;
+    }
+}
 
 public class TCPGate<H extends Hub> extends StarGate implements Runnable {
 
@@ -72,7 +91,7 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
     @Override
     protected Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
         // TODO: check data format before creating docker
-        return new PlainDocker(remote, null, this);
+        return new TCPDocker(remote, null, this);
     }
 
     @Override
@@ -100,14 +119,20 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
         }
     }
 
-    private void disconnect(Connection conn) {
-        // close connection for server
-        if (conn instanceof BaseConnection && !((BaseConnection) conn).isActivated) {
-            // 1. remove docker
-            removeDocker(conn.getRemoteAddress(), conn.getLocalAddress(), null);
+    private void kill(SocketAddress remote, SocketAddress local, Connection connection) {
+        // if conn is null, disconnect with (remote, local);
+        // else, disconnect with connection when local address matched.
+        connection = getHub().disconnect(remote, local, connection);
+        // if connection is not activated, means it's a server connection,
+        // remove the docker too.
+        if (connection instanceof BaseConnection) {
+            if (!((BaseConnection) connection).isActivated) {
+                // remove docker for server connection
+                remote = connection.getRemoteAddress();
+                local = connection.getLocalAddress();
+                removeDocker(remote, local, null);
+            }
         }
-        // 2. remove connection
-        getHub().disconnect(conn);
     }
 
     @Override
@@ -116,7 +141,18 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
         info("connection state changed: " + previous + " -> " + current + ", " + connection);
         if (current != null && current.equals(ConnectionState.ERROR)) {
             error("remove error connection: " + connection);
-            disconnect(connection);
+            kill(null, null, connection);
+        }
+    }
+
+    @Override
+    public void onError(Throwable error, byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
+        if (connection == null) {
+            // failed to receive data
+            kill(source, destination, null);
+        } else {
+            // failed to send data
+            kill(destination, source, connection);
         }
     }
 
