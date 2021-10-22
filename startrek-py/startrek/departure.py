@@ -215,7 +215,6 @@ class DepartureHall:
                     return ship
 
     def __next_timeout_departure(self, now: int) -> Optional[Departure]:
-        failed_tasks: Set[Departure] = set()
         for priority in self.__priorities:
             # 1. get tasks with priority
             fleet = self.__fleets.get(priority)
@@ -224,19 +223,19 @@ class DepartureHall:
             # 2. seeking timeout task in this priority
             for ship in fleet:
                 if ship.is_timeout(now=now) and ship.update(now=now):
-                    # first time to try, update and remove from the queue
+                    # respond time out, update and remove from the queue
                     fleet.remove(ship)
                     sn = ship.sn
                     if sn is not None:
                         self.__map.pop(sn, None)
-                    self.__clear(fleet=fleet, failed_tasks=failed_tasks, priority=priority)
                     return ship
                 elif ship.is_failed(now=now):
                     # task expired, remove this ship
-                    failed_tasks.add(ship)
-            # 2. clear failed tasks in this fleet and go on
-            self.__clear(fleet=fleet, failed_tasks=failed_tasks, priority=priority)
-            failed_tasks.clear()
+                    fleet.remove(ship)
+                    sn = ship.sn
+                    if sn is not None:
+                        self.__map.pop(sn, None)
+                    return ship
 
     def __clear(self, fleet: List[Departure], failed_tasks: Set[Departure], priority: int):
         # remove expired tasks

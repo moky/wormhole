@@ -135,7 +135,9 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         if (delegate != null) {
             delegate.onError(error, outgo, getLocalAddress(), getRemoteAddress(), conn);
         }
-        return false;
+        // return false here will cause thread idling
+        // if this task is failed, return true to process next one
+        return error instanceof IllegalStateException;
     }
 
     private Throwable sendDeparture(final Departure outgo, final long now) {

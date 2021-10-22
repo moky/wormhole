@@ -124,12 +124,15 @@ class StarDocker(AddressPairObject, Docker):
             remote = self.remote_address
             local = self.local_address
             delegate.gate_error(error=error, ship=outgo, source=local, destination=remote, connection=conn)
+        # return False here will cause thread idling
+        # if this task is failed, return True to process next one
+        return isinstance(error, TimeoutError)
 
-    def __send_departure(self, ship: Departure, now: int) -> Optional[IOError]:
+    def __send_departure(self, ship: Departure, now: int) -> Optional[OSError]:
         """ Sending all fragments in the ship """
         # check task
         if ship.is_failed(now=now):
-            return IOError('Request timeout')
+            return TimeoutError('Request timeout')
         fragments = ship.fragments
         if fragments is None or len(fragments) == 0:
             # all fragments have been sent already
@@ -146,7 +149,7 @@ class StarDocker(AddressPairObject, Docker):
             if conn.send(data=pkg, target=remote) != -1:
                 success += 1
         if success != total:
-            return IOError('only %d/%d fragments sent' % (success, total))
+            return ConnectionError('only %d/%d fragments sent' % (success, total))
 
     # Override
     def process_received(self, data: bytes):

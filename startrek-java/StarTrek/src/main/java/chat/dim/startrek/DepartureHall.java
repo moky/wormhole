@@ -219,6 +219,7 @@ public class DepartureHall {
                     if (sn != null) {
                         departureMap.remove(sn);
                     }
+                    return ship;
                 }
             }
         }
@@ -233,23 +234,21 @@ public class DepartureHall {
         final long now = (new Date()).getTime();
         List<Departure> fleet;
         for (int priority : priorities) {
-            // 1. get tasks with priority
+            // 0. get tasks with priority
             fleet = departureFleets.get(priority);
             if (fleet == null) {
                 continue;
             }
-            failedTasks.clear();
-            // 2. seeking expired tasks in this priority
+            // 1. seeking expired tasks in this priority
             for (Departure ship : fleet) {
                 if (ship.isFailed(now)) {
                     // task expired
                     failedTasks.add(ship);
                 }
             }
-            // 3. clear expired tasks
-            if (failedTasks.size() > 0) {
-                clear(fleet, failedTasks, priority);
-            }
+            // 2. clear expired tasks
+            clear(fleet, failedTasks, priority);
+            failedTasks.clear();
         }
     }
     private void clear(List<Departure> fleet, final Set<Departure> failedTasks, final int priority) {
