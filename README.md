@@ -4,17 +4,17 @@ Network Modules
 
 ## Modules
 
-|   Module   | Version |
-|------------|---------|
-| ByteArray  | 0.1.1   |
-| TLV        | 0.1.3   |
-| STUN       | 0.1.3   |
-| TURN       | 0.1.3   |
-| MTP        | 0.1.4   |
-| StarTrek   | 0.2.0   |
-| UDP        | 0.2.0   |
-| TCP        | 0.2.0   |
-| DMTP       | 0.2.0   |
+|   Module   | Java SDK | Python SDK |
+|------------|----------|------------|
+| StarTrek   | 0.2.2    | 0.2.6      |
+| TCP        | 0.2.2    | 0.2.11     |
+| ByteArray  | 0.1.2    |            |
+| MTP        | 0.1.6    |            |
+| UDP        | 0.2.2    | 0.4.15     |
+| TLV        | 0.1.4    |            |
+| STUN       | 0.1.5    | 0.2.3      |
+| TURN       | 0.1.5    |            |
+| DMTP       | 0.2.2    | 0.3.4      |
 
 
 ## Dependencies

@@ -30,7 +30,6 @@
  */
 package chat.dim.type;
 
-import java.nio.charset.Charset;
 import java.util.Random;
 
 /**
