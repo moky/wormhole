@@ -200,10 +200,9 @@ def get_slice(data: ByteArray, start: int, end: int) -> Union[bytes, bytearray]:
         return b''
     start += data.offset
     end += data.offset
-    if start == 0 and end == len(data.buffer):
-        return data.buffer
-    else:
-        return data.buffer[start:end]
+    if start < 0 or end > (data.offset + data.size):
+        raise IndexError('range error: [%d, %d), offset=%d, size=%d' % (start, end, data.offset, data.size))
+    return data.buffer[start:end]
 
 
 def adjust_positions(size: int, start: int, end: Optional[int]) -> (int, int):
