@@ -53,7 +53,7 @@ from .protocol import DataType, TransactionID
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                              Transaction ID (64 bits)                   |
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        |               Fragment Count (32 bits) OPTIONAL               |
+        |               Fragment Pages (32 bits) OPTIONAL               |
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         |               Fragment Index (32 bits) OPTIONAL               |
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -74,11 +74,11 @@ from .protocol import DataType, TransactionID
             64 bits transaction ID is a random number for distinguishing
             different messages.
 
-        ** Count & Index **:
+        ** Pages & Index **:
             If data type is a message fragment (or its respond),
-            there is a field 'count' following the transaction ID,
+            there is a field 'pages' following the transaction ID,
             which indicates the message was split to how many fragments;
-            and there is another field 'index' following the 'count'.
+            and there is another field 'index' following the 'pages'.
 
         ** Body Length **:
             Defined only for TCP stream.
@@ -136,6 +136,34 @@ class Header(Data):
     @property
     def data_type(self) -> DataType:
         return self.__type
+
+    @property
+    def is_response(self) -> bool:
+        return self.__type.is_response
+
+    @property
+    def is_fragment(self) -> bool:
+        return self.__type.is_fragment
+
+    @property
+    def is_command(self) -> bool:
+        return self.__type.is_command
+
+    @property
+    def is_command_response(self) -> bool:
+        return self.__type.is_command_response
+
+    @property
+    def is_message(self) -> bool:
+        return self.__type.is_message
+
+    @property
+    def is_message_response(self) -> bool:
+        return self.__type.is_message_response
+
+    @property
+    def is_message_fragment(self) -> bool:
+        return self.__type.is_message_fragment
 
     @property
     def sn(self) -> TransactionID:
@@ -220,7 +248,7 @@ class Header(Data):
                 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                                      Transaction ID (64 bits)                   |
                 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-                |               Fragment Count (32 bits) OPTIONAL               |
+                |               Fragment Pages (32 bits) OPTIONAL               |
                 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                 |               Fragment Index (32 bits) OPTIONAL               |
                 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -237,7 +265,7 @@ class Header(Data):
                 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                                      Transaction ID (64 bits)                   |
                 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-                |               Fragment Count (32 bits) OPTIONAL               |
+                |               Fragment Pages (32 bits) OPTIONAL               |
                 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                 |               Fragment Index (32 bits) OPTIONAL               |
                 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -251,9 +279,7 @@ class Header(Data):
         else:
             # raise ValueError('header length error: %d' % head_len)
             return None
-        # if sn is None:
-        #     # raise ValueError('header length error: %d' % head_len)
-        #     return None
+        # assert sn is not None, 'Transaction ID error: %s' % data
         if pages < 1 or pages > cls.MAX_PAGES:
             # raise ValueError('pages error: %d' % pages)
             return None
@@ -268,42 +294,44 @@ class Header(Data):
                    data_type=data_type, sn=sn, pages=pages, index=index, body_length=body_len)
 
     @classmethod
-    def new(cls, data_type: DataType,
-            sn: Optional[TransactionID] = None, pages: int = 1, index: int = 0, body_length: int = -1):
+    def new(cls, data_type: DataType, sn: TransactionID = None, pages: int = 1, index: int = 0, body_length: int = -1):
+        assert data_type is not None, 'data type should not be None'
+        assert 0 <= index < pages, 'pages error: %d, index: %d' % (pages, index)
+        assert -1 <= body_length < cls.MAX_BODY_LENGTH, 'body length error: %d' % body_length
         head_len = 4  # in bytes
-        # transaction ID
+        # 1. transaction ID
         if sn is None:
             # generate transaction ID
             sn = TransactionID.generate()
             head_len += 8
-        elif sn != TransactionID.ZERO:
-            head_len += 8
-        # pages & index
-        if data_type.is_fragment or data_type.is_message_response:
+        elif sn == TransactionID.ZERO:
+            # simple header
+            sn = None
+        else:
+            head_len += sn.size  # 8 bytes
+        options = None
+        # 2. pages & index
+        if pages > 1:
             # message fragment (or its respond)
-            assert pages > index, 'pages error: %d, %d' % (pages, index)
             d1 = Convert.uint32data_from_value(value=pages)
             d2 = Convert.uint32data_from_value(value=index)
             options = d1.concat(d2)
-            head_len += 8
-        else:
-            # command/message (or its respond)
-            assert pages == 1 and index == 0, 'pages error: %d, %d' % (pages, index)
-            options = None
-        # body length
+            head_len += d1.size + d2.size  # 8 bytes
+        # 3. body length
         if body_length >= 0:
+            # for TCP
             d3 = Convert.uint32data_from_value(value=body_length)
             if options is None:
                 options = d3
             else:
                 options = options.concat(d3)
-            head_len += 4
+            head_len += d3.size  # 4 bytes
         # generate header data
         hl_ty = (head_len << 2) | (data_type.value & 0x0F)
         data = MutableData(capacity=head_len)
         data.append(source=cls.MAGIC_CODE)  # 'DIM'
         data.push(element=hl_ty)
-        if sn != TransactionID.ZERO:
+        if sn is not None:
             data.append(source=sn)
         if options is not None:
             data.append(source=options)

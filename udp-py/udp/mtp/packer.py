@@ -70,7 +70,7 @@ class Packer:
             return self.__complete
         head = fragment.head
         assert head.sn == self.__sn, 'SN not match: %s, %s' % (head.sn, self.__sn)
-        assert head.data_type.is_fragment, 'Package only for fragments: %s' % head.data_type
+        assert head.is_fragment, 'Package only for fragments: %s' % head.data_type
         assert head.pages == self.__pages, 'pages error: %d, %d' % (head.pages, self.__pages)
         assert head.index < self.__pages, 'index error: %d, %d' % (head.index, self.__pages)
         count = len(self.__assembling)
@@ -120,7 +120,7 @@ class Packer:
         length = 0
         for index in range(count):
             item = fragments[index]
-            assert item.head.data_type.is_fragment, 'data type should be fragment: %s' % item
+            assert item.head.is_fragment, 'data type should be fragment: %s' % item
             assert item.head.sn == sn, 'transaction ID not match: %s' % item
             assert item.head.pages == pages, 'pages error: %s' % item
             assert item.head.index == index, 'fragment missed: %d' % index
@@ -148,7 +148,7 @@ class Packer:
         head = package.head
         body = package.body
         # check data type
-        assert head.data_type.is_message, 'cannot split this type: %s' % head.data_type
+        assert head.is_message, 'cannot split this type: %s' % head.data_type
         # split body
         fragments: List[ByteArray] = []
         pages = 1

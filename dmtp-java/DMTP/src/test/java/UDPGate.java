@@ -160,12 +160,12 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     }
 
     void sendCommand(byte[] body, SocketAddress source, SocketAddress destination) {
-        Package pack = Package.create(DataType.COMMAND, new Data(body));
+        Package pack = Package.create(DataType.COMMAND, null, 1, 0, -1, new Data(body));
         send(pack/*, Departure.Priority.SLOWER.value*/, source, destination);
     }
 
     void sendMessage(byte[] body, SocketAddress source, SocketAddress destination) {
-        Package pack = Package.create(DataType.MESSAGE, new Data(body));
+        Package pack = Package.create(DataType.MESSAGE, null, 1, 0, -1, new Data(body));
         send(pack, source, destination);
     }
 

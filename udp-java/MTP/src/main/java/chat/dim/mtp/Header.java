@@ -46,7 +46,7 @@ import chat.dim.type.MutableData;
  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *                             Transaction ID (64 bits)                   |
  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *        |               Fragment Count (32 bits) OPTIONAL               |
+ *        |               Fragment Pages (32 bits) OPTIONAL               |
  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *        |               Fragment Index (32 bits) OPTIONAL               |
  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -67,11 +67,11 @@ import chat.dim.type.MutableData;
  *            64 bits transaction ID is a random number for distinguishing
  *            different messages.
  *
- *        ** Count & Index **:
+ *        ** Pages & Index **:
  *            If data type is a message fragment (or its respond),
- *            there is a field 'count' following the transaction ID,
+ *            there is a field 'pages' following the transaction ID,
  *            which indicates the message was split to how many fragments;
- *            and there is another field 'index' following the 'count'.
+ *            and there is another field 'index' following the 'pages'.
  *
  *        ** Body Length **:
  *            Defined only for TCP stream.
@@ -247,7 +247,7 @@ public class Header extends Data {
                  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                  *                             Transaction ID (64 bits)                   |
                  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-                 *        |               Fragment Count (32 bits) OPTIONAL               |
+                 *        |               Fragment Pages (32 bits) OPTIONAL               |
                  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                  *        |               Fragment Index (32 bits) OPTIONAL               |
                  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -267,7 +267,7 @@ public class Header extends Data {
                  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                  *                             Transaction ID (64 bits)                   |
                  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-                 *        |               Fragment Count (32 bits) OPTIONAL               |
+                 *        |               Fragment Pages (32 bits) OPTIONAL               |
                  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                  *        |               Fragment Index (32 bits) OPTIONAL               |
                  *        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -285,10 +285,7 @@ public class Header extends Data {
                 return null;
             }
         }
-        if (sn == null) {
-            //throw new NullPointerException("head length error: " + headLen);
-            return null;
-        }
+        assert sn != null : "Transaction ID error: " + data.toHexString();
         if (pages < 1 || pages > MAX_PAGES) {
             //throw new IllegalArgumentException("pages error: " + pages);
             return null;
@@ -305,38 +302,44 @@ public class Header extends Data {
     }
 
     //
-    //  Factories
+    //  Factory
     //
 
     public static Header create(DataType type, TransactionID sn, int pages, int index, int bodyLen) {
         assert type != null : "data type should not be null";
-        assert sn != null : "transaction ID should not be null, use TransactionID.ZERO instead";
-        assert 0 <= index && index < pages : "pages error: " + pages + ", " + index;
+        assert 0 <= index && index < pages : "pages error: " + pages + ", index:" + index;
         assert -1 <= bodyLen && bodyLen <= MAX_BODY_LENGTH : "body length error: " + bodyLen;
         int headLen = 4;  // in bytes
-        if (TransactionID.ZERO.equals(sn)) {
+        // 1. transaction ID
+        if (sn == null) {
+            // generate transaction ID
+            sn = TransactionID.generate();
+            headLen += sn.getSize();  // 8 bytes
+        } else if (TransactionID.ZERO.equals(sn)) {
             // simple header
             sn = null;
         } else {
             headLen += sn.getSize();  // 8 bytes
         }
-        ByteArray options;
-        if (type.isFragment() || type.isMessageResponse()) {
-            // message fragment (or its respond)
-            assert pages > 1 : "fragment pages error: " + pages + ", " + index;
+        ByteArray options = null;
+        // 2. pages & index
+        if (pages > 1) {
+            // message fragment (or its response)
             ByteArray d1 = IntegerData.getUInt32Data(pages);
             ByteArray d2 = IntegerData.getUInt32Data(index);
-            ByteArray d3 = bodyLen < 0 ? null : IntegerData.getUInt32Data(bodyLen);
-            options = d1.concat(d2).concat(d3);
-            headLen += options.getSize();  // 8 or 12 bytes
-        } else if (bodyLen < 0) {
-            // command/message (or its response, UDP only)
-            options = null;
-        } else {
-            // command/message (or its respond)
-            assert pages == 1 : "pages error: " + pages + ", " + index;
-            options = IntegerData.getUInt32Data(bodyLen);
-            headLen += options.getSize();  // 4 bytes
+            options = d1.concat(d2);
+            headLen += d1.getSize() + d2.getSize();  // 8 bytes
+        }
+        // 3. body length
+        if (bodyLen >= 0) {
+            // for TCP
+            ByteArray d3 = IntegerData.getUInt32Data(bodyLen);
+            if (options == null) {
+                options = d3;
+            } else {
+                options = options.concat(d3);
+            }
+            headLen += d3.getSize(); // 4 bytes
         }
         // generate header data
         MutableData data = new MutableData(headLen);
@@ -349,37 +352,5 @@ public class Header extends Data {
             data.append(options);
         }
         return new Header(data, type, sn, pages, index, bodyLen);
-    }
-
-    //
-    //  UDP
-    //
-
-    public static Header create(DataType type, TransactionID sn, int pages, int index) {
-        return create(type, sn, pages, index, -1);
-    }
-
-    public static Header create(DataType type, int pages, int index) {
-        return create(type, TransactionID.generate(), pages, index, -1);
-    }
-
-    public static Header create(DataType type, TransactionID sn) {
-        return create(type, sn, 1, 0, -1);
-    }
-
-    public static Header create(DataType type) {
-        return create(type, TransactionID.generate(), 1, 0, -1);
-    }
-
-    //
-    //  TCP
-    //
-
-    public static Header create(DataType type, TransactionID sn, int bodyLen) {
-        return create(type, sn, 1, 0, bodyLen);
-    }
-
-    public static Header create(DataType type, int bodyLen) {
-        return create(type, TransactionID.generate(), 1, 0, bodyLen);
     }
 }

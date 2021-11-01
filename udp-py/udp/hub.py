@@ -48,7 +48,7 @@ class PackageHub(BaseHub, ABC):
         # local => channel
         self.__channels: Dict[tuple, Channel] = {}
 
-    def bind(self, address: Optional[tuple] = None, host: Optional[str] = None, port: Optional[int] = 0):
+    def bind(self, address: tuple = None, host: str = None, port: int = 0):
         if address is None:
             address = (host, port)
         channel = self.__channels.get(address)

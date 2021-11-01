@@ -38,10 +38,10 @@ public class Package extends Data {
     public final Header head;
     public final ByteArray body;
 
-    public Package(ByteArray data, Header head, ByteArray body) {
+    public Package(ByteArray data, Header wrapper, ByteArray payload) {
         super(data);
-        this.head = head;
-        this.body = body;
+        head = wrapper;
+        body = payload;
     }
 
     public boolean isResponse() {
@@ -98,13 +98,13 @@ public class Package extends Data {
     }
 
     //
-    //  Factories
+    //  Factory
     //
 
-    public static Package create(DataType type, TransactionID sn, int pages, int index, int bodySize, ByteArray body) {
+    public static Package create(DataType type, TransactionID sn, int pages, int index, int bodyLen, ByteArray body) {
         assert body != null : "package body should not be null";
         // create package with header
-        Header head = Header.create(type, sn, pages, index, bodySize);
+        Header head = Header.create(type, sn, pages, index, bodyLen);
         ByteArray data;
         if (body.getSize() > 0) {
             data = head.concat(body);
@@ -112,39 +112,5 @@ public class Package extends Data {
             data = head;
         }
         return new Package(data, head, body);
-    }
-
-    //
-    //  UDP
-    //
-
-    public static Package create(DataType type, TransactionID sn, int pages, int index, ByteArray body) {
-        return create(type, sn, pages, index, -1, body);
-    }
-
-    public static Package create(DataType type, int pages, int index, ByteArray body) {
-        return create(type, TransactionID.generate(), pages, index, -1, body);
-    }
-
-    public static Package create(DataType type, TransactionID sn, ByteArray body) {
-        return create(type, sn, 1, 0, -1, body);
-    }
-
-    public static Package create(DataType type, ByteArray body) {
-        return create(type, TransactionID.generate(), 1, 0, -1, body);
-    }
-
-    //
-    //  TCP
-    //
-
-    public static Package create(DataType type, TransactionID sn, int bodySize , ByteArray body) {
-        assert bodySize == body.getSize() : "body size error: " + bodySize + ", " + body.getSize();
-        return create(type, sn, 1, 0, bodySize, body);
-    }
-
-    public static Package create(DataType type, int bodySize, ByteArray body) {
-        assert bodySize == body.getSize() : "body size error: " + bodySize + ", " + body.getSize();
-        return create(type, TransactionID.generate(), 1, 0, bodySize, body);
     }
 }

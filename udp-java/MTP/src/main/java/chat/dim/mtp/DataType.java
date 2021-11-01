@@ -55,9 +55,9 @@ public final class DataType extends UInt8Data {
 
     private final String name;
 
-    private DataType(ByteArray data, String name) {
+    private DataType(ByteArray data, String alias) {
         super(data);
-        this.name = name;
+        name = alias;
     }
 
     public boolean isResponse() {

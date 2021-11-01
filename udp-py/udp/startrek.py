@@ -45,7 +45,7 @@ class PackageArrival(ArrivalShip):
         super().__init__()
         head = pack.head
         self.__sn = head.sn
-        if head.data_type.is_fragment:
+        if head.is_fragment:
             self.__packer = Packer(sn=head.sn, pages=head.pages)
             self.__completed = self.__packer.insert(fragment=pack)
         else:
@@ -83,7 +83,7 @@ class PackageArrival(ArrivalShip):
 
 class PackageDeparture(DepartureShip):
 
-    def __init__(self, pack: Package, priority: int = 0, delegate: Optional[ShipDelegate] = None):
+    def __init__(self, pack: Package, priority: int = 0, delegate: ShipDelegate = None):
         super().__init__(priority=priority, delegate=delegate)
         self.__completed = pack
         self.__packages = self._split_package(pack=pack)
@@ -91,7 +91,7 @@ class PackageDeparture(DepartureShip):
 
     # noinspection PyMethodMayBeStatic
     def _split_package(self, pack: Package) -> List[Package]:
-        if pack.head.data_type.is_message:
+        if pack.is_message:
             return Packer.split(package=pack)
         else:
             return [pack]
@@ -152,7 +152,7 @@ class PackageDocker(StarDocker):
         return PackageArrival(pack=pack)
 
     # noinspection PyMethodMayBeStatic
-    def _create_departure(self, pack: Package, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> Departure:
+    def _create_departure(self, pack: Package, priority: int = 0, delegate: ShipDelegate = None) -> Departure:
         return PackageDeparture(pack=pack, priority=priority, delegate=delegate)
 
     # Override
@@ -168,8 +168,7 @@ class PackageDocker(StarDocker):
             return False
         if isinstance(ship, PackageDeparture):
             pack = ship.package
-            data_type = pack.head.data_type
-            if not data_type.is_response:
+            if not pack.is_response:
                 # put back for next retry
                 return self.append_departure(ship=ship)
 
@@ -259,7 +258,7 @@ class PackageDocker(StarDocker):
         pack = Package.new(data_type=DataType.MESSAGE_RESPONSE, sn=sn, pages=pages, index=index, body=Data(buffer=OK))
         self.send_package(pack=pack)
 
-    def send_package(self, pack: Package, priority: Optional[int] = 0, delegate: Optional[ShipDelegate] = None):
+    def send_package(self, pack: Package, priority: int = 0, delegate: ShipDelegate = None):
         if delegate is None:
             delegate = self.delegate
         ship = self._create_departure(pack=pack, priority=priority, delegate=delegate)
@@ -269,7 +268,7 @@ class PackageDocker(StarDocker):
         self.append_departure(ship=ship)
 
     # Override
-    def pack(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> Departure:
+    def pack(self, payload: bytes, priority: int = 0, delegate: ShipDelegate = None) -> Departure:
         pkg = Package.new(data_type=DataType.MESSAGE, body=Data(buffer=payload))
         return self._create_departure(pack=pkg, priority=priority, delegate=delegate)
 

@@ -45,11 +45,10 @@ public class Packer {
 
     private Package complete = null;
 
-    public Packer(TransactionID sn, int pages) {
+    public Packer(TransactionID id, int count) {
         super();
-        this.sn = sn;
-        this.pages = pages;
-        assert pages > 1 : "pages error: " + pages;
+        sn = id;
+        pages = count;
     }
 
     public boolean isCompleted() {
@@ -87,7 +86,7 @@ public class Packer {
                 break;
             } else if (item.head.index == head.index) {
                 //throw new IllegalArgumentException("duplicated: " + item.head);
-                return null;
+                return complete;
             }
         }
         // insert after the position
@@ -113,8 +112,13 @@ public class Packer {
      */
     public static Package join(final List<Package> packages) {
         int count = packages.size();
-        assert count > 1 : "packages count error: " + count;
+        assert count > 0 : "packages count error: " + count;
         Package first = packages.get(0);
+        if (!first.isFragment()) {
+            // not fragments
+            assert count == 1 : "packages error: " + first.head.type + ", count=" + count;
+            return first;
+        }
         TransactionID sn = first.head.sn;
         // get fragments count
         int pages = first.head.pages;

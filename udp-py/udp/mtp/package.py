@@ -62,6 +62,34 @@ class Package(Data):
     def body(self) -> ByteArray:
         return self.__body
 
+    @property
+    def is_response(self) -> bool:
+        return self.__head.data_type.is_response
+
+    @property
+    def is_fragment(self) -> bool:
+        return self.__head.data_type.is_fragment
+
+    @property
+    def is_command(self) -> bool:
+        return self.__head.data_type.is_command
+
+    @property
+    def is_command_response(self) -> bool:
+        return self.__head.data_type.is_command_response
+
+    @property
+    def is_message(self) -> bool:
+        return self.__head.data_type.is_message
+
+    @property
+    def is_message_response(self) -> bool:
+        return self.__head.data_type.is_message_response
+
+    @property
+    def is_message_fragment(self) -> bool:
+        return self.__head.data_type.is_message_fragment
+
     @classmethod
     def parse(cls, data: ByteArray):  # -> Package
         # get package head

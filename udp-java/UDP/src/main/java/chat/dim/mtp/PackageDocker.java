@@ -184,10 +184,10 @@ public abstract class PackageDocker extends StarDocker {
     }
 
     protected void respondCommand(TransactionID sn, byte[] body) {
-        send(Package.create(DataType.COMMAND_RESPONSE, sn, new Data(body)));
+        send(Package.create(DataType.COMMAND_RESPONSE, sn, 1, 0, -1, new Data(body)));
     }
     protected void respondMessage(TransactionID sn, int pages, int index) {
-        send(Package.create(DataType.MESSAGE_RESPONSE, sn, pages, index, new Data(OK)));
+        send(Package.create(DataType.MESSAGE_RESPONSE, sn, pages, index, -1, new Data(OK)));
     }
 
     public void send(Package pkg) {
@@ -203,13 +203,13 @@ public abstract class PackageDocker extends StarDocker {
 
     @Override
     public Departure pack(byte[] payload, int priority, Ship.Delegate delegate) {
-        Package pkg = Package.create(DataType.MESSAGE, new Data(payload));
+        Package pkg = Package.create(DataType.MESSAGE, null, 1, 0, -1, new Data(payload));
         return createDeparture(pkg, priority, delegate);
     }
 
     @Override
     public void heartbeat() {
-        Package pkg = Package.create(DataType.COMMAND, new Data(PING));
+        Package pkg = Package.create(DataType.COMMAND, null, 1, 0, -1, new Data(PING));
         appendDeparture(createDeparture(pkg, Departure.Priority.SLOWER.value, null));
     }
 
