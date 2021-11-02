@@ -279,7 +279,7 @@ class Header(Data):
         else:
             # raise ValueError('header length error: %d' % head_len)
             return None
-        # assert sn is not None, 'Transaction ID error: %s' % data
+        assert sn is not None, 'Transaction ID error: %s' % data
         if pages < 1 or pages > cls.MAX_PAGES:
             # raise ValueError('pages error: %d' % pages)
             return None
@@ -303,7 +303,7 @@ class Header(Data):
         if sn is None:
             # generate transaction ID
             sn = TransactionID.generate()
-            head_len += 8
+            head_len += sn.size  # 8 bytes
         elif sn == TransactionID.ZERO:
             # simple header
             sn = None

@@ -82,7 +82,7 @@ class Packer:
                 break
             elif item.head.index == head.index:
                 # raise IndexError('duplicated: %s' % item.head)
-                return None
+                return self.__complete
             else:
                 index -= 1
         # insert after the position
@@ -109,8 +109,12 @@ class Packer:
         :return: original message package
         """
         count = len(fragments)
-        assert count > 1, 'fragments count error: %d' % count
+        assert count > 0, 'fragments count error: %d' % count
         first = fragments[0]
+        if not first.is_fragment:
+            # not fragments
+            assert count == 1, 'packages error: %s, count=%d' % (first.head.data_type, count)
+            return first
         sn = first.head.sn
         # get fragments count
         pages = first.head.pages
