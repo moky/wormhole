@@ -29,58 +29,75 @@
 # ==============================================================================
 
 import socket
+from typing import Optional
 
-from startrek.net.base_channel import sendall
 from startrek import BaseChannel
 
 
 class PackageChannel(BaseChannel):
     """ Discrete Package Channel """
 
-    # Override
-    def receive(self, max_len: int) -> (bytes, tuple):
+    def _receive_from(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
+        # check socket first
         sock = self.sock
         if sock is None:
             raise socket.error('socket lost, cannot read data')
-        remote = self.remote_address
         # try to receive data
         try:
-            if remote is None:
-                # UDP receiving
-                data, remote = sock.recvfrom(max_len)
-            else:
-                # connected (TCP/UDP)
-                data = sock.recv(max_len)
+            data, remote = sock.recvfrom(max_len)
         except socket.error as error:
-            # the socket will raise 'Resource temporarily unavailable'
-            # when received nothing in non-blocking mode,
-            # here we should ignore this exception.
-            if not self.blocking:
-                if error.strerror == 'Resource temporarily unavailable':
-                    # received nothing
-                    return None, None
-            raise error
+            error = self._check_socket_error(error=error)
+            if error is not None:
+                # connection lost?
+                raise error
+            # received nothing
+            return None, None
         # check data
-        if data is None or len(data) == 0:
-            # in blocking mode, the socket will wait until received something,
-            # but if timeout was set, it will return None too, it's normal;
-            # otherwise, we know the connection was lost.
-            if sock.gettimeout() is None:  # and self.blocking:
-                raise socket.error('remote peer reset socket')
+        error = self._check_received_data(data=data)
+        if error is not None:
+            # connection lost!
+            raise error
+        # OK
         return data, remote
 
-    # Override
-    def send(self, data: bytes, target: tuple) -> int:
+    def _sent_to(self, data: bytes, target: tuple) -> int:
+        # check socket first
         sock = self.sock
         if sock is None:
             raise socket.error('socket lost, cannot send data: %d byte(s)' % len(data))
+        # try to send data
+        sent = 0
+        try:
+            sent = sock.sendto(data, target)
+        except socket.error as error:
+            error = self._check_socket_error(error=error)
+            if error is not None:
+                # connection lost?
+                raise error
+            # buffer overflow!
+            if sent == 0:
+                return -1
+        return sent
+
+    # Override
+    def receive(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
         remote = self.remote_address
         if remote is None:
-            # UDP sending
-            return sock.sendto(data, target)
+            # not connect (UDP)
+            return self._receive_from(max_len=max_len)
         else:
             # connected (TCP/UDP)
-            assert target is None or target == remote,\
-                'the target must equal to remote address: %s, %s' % (target, remote)
+            data = self.read(max_len=max_len)
+            return data, remote
+
+    # Override
+    def send(self, data: bytes, target: tuple) -> int:
+        remote = self.remote_address
+        if remote is None:
+            # not connect (UDP)
+            return self._sent_to(data=data, target=target)
+        else:
+            # connected (TCP/UDP)
+            assert target is None or target == remote, 'target address error: %s, %s' % (target, remote)
             # return sock.sendall(data)
-            return sendall(data=data, sock=sock)
+            return self.write(data=data)

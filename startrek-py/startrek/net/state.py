@@ -124,7 +124,7 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
     ERROR = 'error'
 
     def __init__(self, name: str):
-        super(ConnectionState, self).__init__()
+        super().__init__()
         self.__name = name
         self.__time = 0  # enter time
 

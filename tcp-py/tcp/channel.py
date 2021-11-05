@@ -48,6 +48,6 @@ class StreamChannel(BaseChannel):
     def send(self, data: bytes, target: tuple) -> int:
         # TCP channel will be always connected
         # so the target address must be the remote address
-        assert target is None or target == self.remote_address,\
-            'target address error: %s, %s' % (target, self.remote_address)
+        remote = self.remote_address
+        assert target is None or target == remote, 'target address error: %s, %s' % (target, remote)
         return self.write(data=data)

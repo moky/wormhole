@@ -128,7 +128,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     # Override
     def read(self, max_len: int) -> Optional[bytes]:
-        # check socket
+        # check socket first
         sock = self.sock
         if sock is None:
             raise socket.error('socket lost, cannot read data')
@@ -136,39 +136,68 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         try:
             data = sock.recv(max_len)
         except socket.error as error:
-            # the socket will raise 'Resource temporarily unavailable'
-            # when received nothing in non-blocking mode,
-            # here we should ignore this exception.
-            if not self.blocking:
-                if error.strerror == 'Resource temporarily unavailable':
-                    # received nothing
-                    return None
-            raise error
+            error = self._check_socket_error(error=error)
+            if error is not None:
+                # connection lost?
+                raise error
+            # received nothing
+            return None
         # check data
-        if data is None or len(data) == 0:
-            # in blocking mode, the socket will wait until received something,
-            # but if timeout was set, it will return None too, it's normal;
-            # otherwise, we know the connection was lost.
-            if sock.gettimeout() is None:  # and self.blocking:
-                raise socket.error('remote peer reset socket')
+        error = self._check_received_data(data=data)
+        if error is not None:
+            # connection lost!
+            raise error
+        # OK
         return data
 
     # Override
     def write(self, data: bytes) -> int:
+        # check socket first
         sock = self.sock
         if sock is None:
             raise socket.error('socket lost, cannot write data: %d byte(s)' % len(data))
-        # return sock.sendall(data)
-        return sendall(data=data, sock=sock)
+        # try to send data
+        sent = 0
+        try:
+            # sent = sock.sendall(data)
+            rest = len(data)
+            while rest > 0:  # and not getattr(sock, '_closed', False):
+                cnt = sock.send(data)
+                if cnt > 0:
+                    sent += cnt
+                    rest -= cnt
+                    data = data[cnt:]
+        except socket.error as error:
+            error = self._check_socket_error(error=error)
+            if error is not None:
+                # connection lost?
+                raise error
+            # buffer overflow!
+            if sent == 0:
+                return -1
+        return sent
 
+    #
+    #   Check for socket errors
+    #
+    ResourceTemporarilyUnavailable = 'Resource temporarily unavailable'
 
-def sendall(data: bytes, sock: socket.socket) -> int:
-    sent = 0
-    rest = len(data)
-    while rest > 0:  # and not getattr(sock, '_closed', False):
-        cnt = sock.send(data)
-        if cnt > 0:
-            sent += cnt
-            rest -= cnt
-            data = data[cnt:]
-    return sent
+    def _check_socket_error(self, error: socket.error) -> Optional[socket.error]:
+        # the socket will raise 'Resource temporarily unavailable'
+        # when received nothing in non-blocking mode,
+        # or buffer overflow while sending too many bytes,
+        # here we should ignore this exception.
+        if not self.blocking:
+            if error.strerror == self.ResourceTemporarilyUnavailable:
+                return None
+        # print('[NET] socket error: %s' % error)
+        return error
+
+    def _check_received_data(self, data: Optional[bytes]) -> Optional[socket.error]:
+        # in blocking mode, the socket will wait until received something,
+        # but if timeout was set, it will return None too, it's normal;
+        # otherwise, we know the connection was lost.
+        if data is None or len(data) == 0:
+            if self.sock.gettimeout() is None:  # and self.blocking:
+                # print('[NET] socket error: remote peer reset socket')
+                return socket.error('remote peer reset socket')
