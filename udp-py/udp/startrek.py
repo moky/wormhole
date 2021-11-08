@@ -258,15 +258,6 @@ class PackageDocker(StarDocker):
         pack = Package.new(data_type=DataType.MESSAGE_RESPONSE, sn=sn, pages=pages, index=index, body=Data(buffer=OK))
         self.send_package(pack=pack)
 
-    def send_package(self, pack: Package, priority: int = 0, delegate: ShipDelegate = None):
-        if delegate is None:
-            delegate = self.delegate
-        ship = self._create_departure(pack=pack, priority=priority, delegate=delegate)
-        self.append_departure(ship=ship)
-
-    def send_ship(self, ship: Departure):
-        self.append_departure(ship=ship)
-
     # Override
     def pack(self, payload: bytes, priority: int = 0, delegate: ShipDelegate = None) -> Departure:
         pkg = Package.new(data_type=DataType.MESSAGE, body=Data(buffer=payload))
@@ -276,7 +267,26 @@ class PackageDocker(StarDocker):
     def heartbeat(self):
         pkg = Package.new(data_type=DataType.COMMAND, body=Data(buffer=PING))
         outgo = self._create_departure(pack=pkg, priority=DeparturePriority.SLOWER)
-        self.append_departure(ship=outgo)
+        self.send_ship(ship=outgo)
+
+    #
+    #   Send
+    #
+
+    def send_ship(self, ship: Departure) -> bool:
+        return self.append_departure(ship=ship)
+
+    # def send_data(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> bool:
+    #     if delegate is None:
+    #         delegate = self.delegate
+    #     ship = self.pack(payload=payload, priority=priority, delegate=delegate)
+    #     return self.send_ship(ship=ship)
+
+    def send_package(self, pack: Package, priority: int = 0, delegate: ShipDelegate = None) -> bool:
+        if delegate is None:
+            delegate = self.delegate
+        ship = self._create_departure(pack=pack, priority=priority, delegate=delegate)
+        return self.send_ship(ship=ship)
 
 
 PING = b'PING'

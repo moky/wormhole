@@ -141,10 +141,10 @@ class TCPGate(StarGate, Runnable, Generic[H]):
             self._put_docker(docker=worker)
         return worker
 
-    def send_data(self, payload: bytes, source: Optional[tuple], destination: tuple):
+    def send_data(self, payload: bytes, source: Optional[tuple], destination: tuple) -> bool:
         worker = self.get_docker(remote=destination, local=source)
         if worker is not None:
-            worker.send_data(payload=payload)
+            return worker.send_data(payload=payload)
 
     @classmethod
     def info(cls, msg: str):
