@@ -119,3 +119,15 @@ class ArrivalHall:
             # remove mapping with SN
             self.__map.pop(ship.sn, None)
             # TODO: callback?
+        # 3. seeking neglected finished times
+        neglected_times = set()
+        ago = now - 3600
+        for sn in self.__finished_times:
+            when = self.__finished_times.get(sn)
+            if when is None or when < ago:
+                # long time ago
+                neglected_times.add(sn)
+        # 4. clear neglected times
+        for sn in neglected_times:
+            self.__finished_times.pop(sn, None)
+            self.__map.pop(sn, None)

@@ -44,7 +44,7 @@ class PackageArrival(ArrivalShip):
     def __init__(self, pack: Package):
         super().__init__()
         head = pack.head
-        self.__sn = head.sn
+        self.__sn = head.sn.get_bytes()
         if head.is_fragment:
             self.__packer = Packer(sn=head.sn, pages=head.pages)
             self.__completed = self.__packer.insert(fragment=pack)
@@ -64,7 +64,7 @@ class PackageArrival(ArrivalShip):
             return packer.fragments
 
     @property  # Override
-    def sn(self) -> TransactionID:
+    def sn(self) -> bytes:
         return self.__sn
 
     # Override
@@ -85,6 +85,7 @@ class PackageDeparture(DepartureShip):
 
     def __init__(self, pack: Package, priority: int = 0, delegate: ShipDelegate = None):
         super().__init__(priority=priority, delegate=delegate)
+        self.__sn = pack.head.sn.get_bytes()
         self.__completed = pack
         self.__packages = self._split_package(pack=pack)
         self.__fragments: List[bytes] = []
@@ -101,8 +102,8 @@ class PackageDeparture(DepartureShip):
         return self.__completed
 
     @property  # Override
-    def sn(self) -> TransactionID:
-        return self.__completed.head.sn
+    def sn(self) -> bytes:
+        return self.__sn
 
     @property  # Override
     def fragments(self) -> List[bytes]:

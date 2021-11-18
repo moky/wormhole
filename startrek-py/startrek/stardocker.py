@@ -28,7 +28,6 @@
 # SOFTWARE.
 # ==============================================================================
 
-import socket
 import time
 import weakref
 from abc import abstractmethod
@@ -100,7 +99,7 @@ class StarDocker(AddressPairObject, Docker):
     def process(self) -> bool:
         # 1. get connection which is ready for sending data
         conn = self.connection
-        if conn is None:
+        if conn is None or not conn.alive:
             # connection not ready now
             return False
         now = int(time.time())
@@ -115,7 +114,7 @@ class StarDocker(AddressPairObject, Docker):
             if error is None:
                 # task done
                 return True
-        except socket.error as e:
+        except Exception as e:
             # socket error, callback
             error = e
         # callback for error
@@ -139,8 +138,7 @@ class StarDocker(AddressPairObject, Docker):
             return None
         # check connection
         conn = self.connection
-        if conn is None:
-            return ConnectionError('connection not ready now')
+        assert conn is not None and conn.alive, 'connection not ready now'
         remote = self.remote_address
         # send all fragments
         total = len(fragments)
@@ -148,7 +146,10 @@ class StarDocker(AddressPairObject, Docker):
         for pkg in fragments:
             if conn.send(data=pkg, target=remote) != -1:
                 success += 1
-        if success != total:
+        if success == total:
+            # all fragments sent successfully
+            return None
+        else:
             return ConnectionError('only %d/%d fragments sent' % (success, total))
 
     # Override

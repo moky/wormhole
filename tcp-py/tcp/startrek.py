@@ -88,10 +88,14 @@ class PlainDocker(StarDocker):
     def __init__(self, remote: tuple, local: Optional[tuple], gate: StarGate):
         super().__init__(remote=remote, local=local, gate=gate)
 
+    # noinspection PyMethodMayBeStatic
+    def _create_arrival(self, data: bytes) -> Arrival:
+        return PlainArrival(data=data)
+
     # Override
     def _get_arrival(self, data: bytes) -> Optional[Arrival]:
         if data is not None and len(data) > 0:
-            return PlainArrival(data=data)
+            return self._create_arrival(data=data)
 
     # Override
     def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:
