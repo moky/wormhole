@@ -101,7 +101,7 @@ class BaseHub(Hub, ABC):
             # local address not matched? ignore this connection
         # try to open channel with direction (remote, local)
         sock = self.open_channel(remote=remote, local=local)
-        if sock is None:  # or not sock.opened:
+        if sock is None or not sock.opened:
             return None
         # create with channel
         conn = self._create_connection(sock=sock, remote=remote, local=local)
@@ -113,23 +113,26 @@ class BaseHub(Hub, ABC):
             return conn
 
     # Override
-    def disconnect(self, remote: Optional[tuple], local: Optional[tuple] = None,
-                   connection: Optional[Connection] = None) -> Optional[Connection]:
+    def disconnect(self, remote: tuple = None, local: Optional[tuple] = None,
+                   connection: Connection = None) -> Optional[Connection]:
         conn = self.__remove_connection(remote=remote, local=local, connection=connection)
         if conn is not None:
             conn.close()
         if connection is not None and connection is not conn:
             connection.close()
-        if conn is None:
-            return connection
-        else:
-            return conn
+        # if conn is None:
+        #     return connection
+        # else:
+        #     return conn
+        return connection if conn is None else conn
 
     def __remove_connection(self, remote: tuple = None, local: Optional[tuple] = None,
                             connection: Connection = None) -> Optional[Connection]:
         if connection is None:
+            assert remote is not None, 'remote address should not be empty'
             connection = self.__connection_pool.get(remote=remote, local=local)
             if connection is None:
+                # connection not exists
                 return None
         # check local address
         if local is not None:

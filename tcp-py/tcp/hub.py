@@ -67,7 +67,7 @@ class StreamHub(BaseHub, ABC):
         if channel is None:
             return False
         else:
-            self.__remove(channel=channel)
+            self.__remove_channel(channel=channel)
         try:
             if channel.opened:
                 channel.close()
@@ -75,7 +75,7 @@ class StreamHub(BaseHub, ABC):
         except socket.error:
             return False
 
-    def __remove(self, channel: Channel):
+    def __remove_channel(self, channel: Channel):
         remote = channel.remote_address
         if self.__channels.pop(remote, None) == channel:
             # removed by key

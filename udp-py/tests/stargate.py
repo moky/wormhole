@@ -102,7 +102,7 @@ class UDPGate(StarGate, Runnable, Generic[H]):
         if isinstance(connection, BaseConnection) and connection.is_activated:
             super()._heartbeat(connection=connection)
 
-    def __kill(self, remote: tuple = None, local: tuple = None, connection: Connection = None):
+    def __kill(self, remote: tuple = None, local: Optional[tuple] = None, connection: Connection = None):
         # if conn is null, disconnect with (remote, local);
         # else, disconnect with connection when local address matched.
         hub = self.hub

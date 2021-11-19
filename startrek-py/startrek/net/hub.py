@@ -74,8 +74,8 @@ class Hub(Processor, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def disconnect(self, remote: Optional[tuple], local: Optional[tuple] = None,
-                   connection: Optional[Connection] = None) -> Optional[Connection]:
+    def disconnect(self, remote: tuple = None, local: Optional[tuple] = None,
+                   connection: Connection = None) -> Optional[Connection]:
         """
         Close connection
 

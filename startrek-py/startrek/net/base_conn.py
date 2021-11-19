@@ -162,7 +162,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     # protected
     def _send(self, data: bytes, target: Optional[tuple]) -> int:
         sock = self.channel
-        if sock is None or not sock.opened:
+        if sock is None or not sock.alive:
             raise socket.error('socket channel lost: %s' % sock)
         sent = sock.send(data=data, target=target)
         if sent != -1:
