@@ -85,6 +85,9 @@ class BaseHub(Hub, ABC):
         """
         raise NotImplemented
 
+    def _all_connections(self) -> Set[Connection]:
+        return self.__connection_pool.values
+
     # Override
     def connect(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
         conn = self.__connection_pool.get(remote=remote, local=local)
@@ -138,16 +141,16 @@ class BaseHub(Hub, ABC):
         local = connection.local_address
         return self.__connection_pool.remove(remote=remote, local=local, value=connection)
 
-    def _drive_channel(self, sock: Channel) -> bool:
-        local = sock.local_address
+    def _drive_channel(self, channel: Channel) -> bool:
+        local = channel.local_address
         # try to receive
         try:
-            data, remote = sock.receive(max_len=self.MSS)
+            data, remote = channel.receive(max_len=self.MSS)
         except socket.error as error:
             # print('[NET] failed to receive data: %s' % error)
-            remote = sock.remote_address
+            remote = channel.remote_address
             # socket error, remove the channel
-            self.close_channel(channel=sock)
+            self.close_channel(channel=channel)
             # callback
             delegate = self.delegate
             if delegate is not None:
@@ -162,20 +165,36 @@ class BaseHub(Hub, ABC):
             conn.received(data=data, remote=remote, local=local)
         return True
 
-    # Override
-    def process(self) -> bool:
+    def _drive_channels(self, channels: Set[Channel]) -> int:
         count = 0
-        # 1. drive all channels to receive data
-        channels = self._all_channels()
         for sock in channels:
-            if sock.alive and self._drive_channel(sock=sock):
+            if sock.alive and self._drive_channel(channel=sock):
                 # received data from this socket channel
                 count += 1
-        # 2. drive all connections to move on
-        connections = self.__connection_pool.values
+        return count
+
+    # noinspection PyMethodMayBeStatic
+    def _drive_connections(self, connections: Set[Connection]):
         for conn in connections:
             # drive connection to go on
             conn.tick()
             # NOTICE: let the delegate to decide whether close an error connection
             #         or just remove it.
+
+    def _cleanup_channels(self, channels: Set[Channel]):
+        pass
+
+    def _cleanup_connections(self, connections: Set[Connection]):
+        pass
+
+    # Override
+    def process(self) -> bool:
+        # 1. drive all channels to receive data
+        channels = self._all_channels()
+        count = self._drive_channels(channels=channels)
+        self._cleanup_channels(channels=channels)
+        # 2. drive all connections to move on
+        connections = self._all_connections()
+        self._drive_connections(connections=connections)
+        self._cleanup_connections(connections=connections)
         return count > 0
