@@ -34,7 +34,7 @@ from typing import Optional
 
 from ..types import AddressPairObject
 from .channel import Channel
-from .channel import get_local_address, get_remote_address
+from .channel import get_local_address, get_remote_address, is_blocking, is_closed
 
 
 class BaseChannel(AddressPairObject, Channel, ABC):
@@ -42,6 +42,26 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     def __init__(self, remote: Optional[tuple], local: Optional[tuple], sock: socket.socket):
         super().__init__(remote=remote, local=local)
         self.__sock = sock
+        # flags
+        self.__blocking = False
+        self.__opened = False
+        self.__connected = False
+        self.__bound = False
+
+    # Override
+    def tick(self):
+        """ update channel status """
+        sock = self.sock
+        if sock is None:
+            self.__blocking = False
+            self.__opened = False
+            self.__connected = False
+            self.__bound = False
+        else:
+            self.__blocking = is_blocking(sock=sock)
+            self.__opened = not is_closed(sock=sock)
+            self.__connected = get_remote_address(sock=sock) is not None
+            self.__bound = get_local_address(sock=sock) is not None
 
     @property  # protected
     def sock(self) -> Optional[socket.socket]:
@@ -54,37 +74,28 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             raise socket.error('socket closed')
         else:
             sock.setblocking(blocking)
+        self.__blocking = blocking
         return sock
 
     @property  # Override
     def blocking(self) -> bool:
-        sock = self.__sock
-        return sock is not None and sock.getblocking()
+        return self.__blocking
 
     @property  # Override
     def opened(self) -> bool:
-        sock = self.__sock
-        return sock is not None and not getattr(sock, '_closed', False)
+        return self.__opened
 
     @property  # Override
     def connected(self) -> bool:
-        return get_remote_address(sock=self.__sock) is not None
+        return self.__connected
 
     @property  # Override
     def bound(self) -> bool:
-        return get_local_address(sock=self.__sock) is not None
+        return self.__bound
 
     @property  # Override
     def alive(self) -> bool:
         return self.opened and (self.connected or self.bound)
-
-    @property
-    def local_address(self) -> Optional[tuple]:  # (str, int)
-        return self._local
-
-    @property
-    def remote_address(self) -> Optional[tuple]:  # (str, int)
-        return self._remote
 
     # Override
     def bind(self, address: Optional[tuple] = None, host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
@@ -95,6 +106,9 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             raise socket.error('socket closed')
         sock.bind(address)
         self._local = address
+        self.__bound = True
+        self.__opened = True
+        self.__blocking = is_blocking(sock=sock)
         return sock
 
     # Override
@@ -106,6 +120,9 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             raise socket.error('socket closed')
         sock.connect(address)
         self._remote = address
+        self.__connected = True
+        self.__opened = True
+        self.__blocking = is_blocking(sock=sock)
         return sock
 
     # Override
@@ -117,10 +134,15 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     # Override
     def close(self):
         sock = self.__sock
-        if sock is not None and not getattr(sock, '_closed', False):
+        if sock is not None and not is_closed(sock=sock):
             # sock.shutdown(socket.SHUT_RDWR)
             sock.close()
         self.__sock = None
+        # update flags
+        self.__blocking = False
+        self.__opened = False
+        self.__connected = False
+        self.__bound = False
 
     #
     #   Input/Output
@@ -161,7 +183,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         try:
             # sent = sock.sendall(data)
             rest = len(data)
-            while rest > 0:  # and not getattr(sock, '_closed', False):
+            while rest > 0:  # and not is_closed(sock=sock):
                 cnt = sock.send(data)
                 if cnt > 0:
                     sent += cnt

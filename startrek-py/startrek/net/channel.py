@@ -32,8 +32,10 @@ import socket
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from ..fsm import Ticker
 
-class Channel(ABC):
+
+class Channel(Ticker, ABC):
 
     @property
     def opened(self) -> bool:
@@ -220,3 +222,20 @@ def get_remote_address(sock: socket.socket) -> Optional[tuple]:
     except socket.error:
         # print('[NET] failed to get remote address: %s' % error)
         return None
+
+
+def is_blocking(sock: socket.socket) -> bool:
+    if sock is None:
+        return False
+    try:
+        return sock.getblocking()
+    except socket.error:
+        # print('[NET] failed to get blocking: %s' % error)
+        return False
+
+
+def is_closed(sock: socket.socket) -> bool:
+    if sock is None:
+        return True
+    else:
+        return getattr(sock, '_closed', False)

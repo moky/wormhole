@@ -93,14 +93,6 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         return sock
 
     @property  # Override
-    def local_address(self) -> Optional[tuple]:  # (str, int)
-        return self._local
-
-    @property  # Override
-    def remote_address(self) -> Optional[tuple]:  # (str, int)
-        return self._remote
-
-    @property  # Override
     def opened(self) -> bool:
         sock = self.channel
         return sock is not None and sock.opened
@@ -207,6 +199,11 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     # Override
     def tick(self):
+        sock = self.channel
+        if sock is not None:
+            # update channel status
+            sock.tick()
+        # drive state machine forward
         self.__fsm.tick()
 
     def start(self):
