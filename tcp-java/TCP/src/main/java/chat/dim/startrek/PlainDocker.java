@@ -43,12 +43,16 @@ public abstract class PlainDocker extends StarDocker {
         super(remote, local, gate);
     }
 
+    protected Arrival createArrival(byte[] data) {
+        return new PlainArrival(data);
+    }
+
     @Override
     protected Arrival getArrival(byte[] data) {
         if (data == null || data.length == 0) {
             return null;
         }
-        return new PlainArrival(data);
+        return createArrival(data);
     }
 
     @Override
@@ -69,16 +73,16 @@ public abstract class PlainDocker extends StarDocker {
         return income;
     }
 
-    public void send(byte[] payload) {
-        send(payload, Departure.Priority.NORMAL.value, getDelegate());
+    public boolean send(byte[] payload) {
+        return send(payload, Departure.Priority.NORMAL.value, getDelegate());
     }
 
-    public void send(byte[] payload, int priority, Ship.Delegate delegate) {
+    public boolean send(byte[] payload, int priority, Ship.Delegate delegate) {
         Departure ship = pack(payload, priority, delegate);
-        send(ship);
+        return send(ship);
     }
-    public void send(Departure ship) {
-        appendDeparture(ship);
+    public boolean send(Departure ship) {
+        return appendDeparture(ship);
     }
 
     @Override
@@ -89,7 +93,7 @@ public abstract class PlainDocker extends StarDocker {
     @Override
     public void heartbeat() {
         Departure ship = pack(PING, Departure.Priority.SLOWER.value, null);
-        appendDeparture(ship);
+        send(ship);
     }
 
     static final byte[] PING = {'P', 'I', 'N', 'G'};

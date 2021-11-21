@@ -43,6 +43,8 @@ public class ServerHub extends StreamHub implements Runnable {
 
     private SocketAddress localAddress = null;
     private ServerSocketChannel master = null;
+    // running thread
+    private Thread thread = null;
     private boolean running = false;
 
     public ServerHub(Connection.Delegate delegate) {
@@ -69,11 +71,22 @@ public class ServerHub extends StreamHub implements Runnable {
     }
 
     public void start() {
-        new Thread(this).start();
+        forceStop();
+        running = true;
+        thread = new Thread(this);
+        thread.start();
+    }
+
+    private void forceStop() {
+        running = false;
+        if (thread != null && thread.isAlive()) {
+            thread.interrupt();
+        }
+        thread = null;
     }
 
     public void stop() {
-        running = false;
+        forceStop();
     }
 
     public boolean isRunning() {

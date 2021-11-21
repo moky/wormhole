@@ -36,8 +36,11 @@ class TCPDocker extends PlainDocker {
 
 public class TCPGate<H extends Hub> extends StarGate implements Runnable {
 
-    private boolean running = false;
     private H hub = null;
+
+    // running thread
+    private Thread thread = null;
+    private boolean running = false;
 
     public TCPGate(Delegate delegate) {
         super(delegate);
@@ -51,11 +54,22 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
     }
 
     public void start() {
-        new Thread(this).start();
+        forceStop();
+        running = true;
+        thread = new Thread(this);
+        thread.start();
+    }
+
+    private void forceStop() {
+        running = false;
+        if (thread != null && thread.isAlive()) {
+            thread.interrupt();
+        }
+        thread = null;
     }
 
     public void stop() {
-        running = false;
+        forceStop();
     }
 
     public boolean isRunning() {
@@ -156,14 +170,14 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
         }
     }
 
-    public void send(byte[] payload, SocketAddress source, SocketAddress destination) {
+    public boolean send(byte[] payload, SocketAddress source, SocketAddress destination) {
         Docker worker = getDocker(destination, source);
         if (worker == null) {
             worker = createDocker(destination, source, null);
             assert worker != null : "failed to create docker: " + destination + ", " + source;
             putDocker(worker);
         }
-        ((PlainDocker) worker).send(payload);
+        return ((PlainDocker) worker).send(payload);
     }
 
     static void info(byte[] data) {

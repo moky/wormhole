@@ -50,6 +50,8 @@ public class StreamChannel extends BaseChannel<SocketChannel> {
 
     @Override
     public int send(ByteBuffer src, SocketAddress target) throws IOException {
+        // TCP channel will be always connected
+        // so the target address must be the remote address
         assert target == null || target.equals(getRemoteAddress()) :
                 "target address error: " + target + ", " + getRemoteAddress();
         return write(src);
