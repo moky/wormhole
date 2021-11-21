@@ -67,16 +67,6 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
 
     protected abstract Hub getHub();
 
-    @Override
-    public SocketAddress getLocalAddress() {
-        return localAddress;
-    }
-
-    @Override
-    public SocketAddress getRemoteAddress() {
-        return remoteAddress;
-    }
-
     /**
      *  Get related connection which status is 'ready'
      *

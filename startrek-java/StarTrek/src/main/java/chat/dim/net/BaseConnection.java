@@ -111,16 +111,6 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
         return sock;
     }
 
-//    @Override
-//    public SocketAddress getLocalAddress() {
-//        return localAddress;
-//    }
-//
-//    @Override
-//    public SocketAddress getRemoteAddress() {
-//        return remoteAddress;
-//    }
-
     @Override
     public boolean isOpen() {
         Channel sock = getChannel();

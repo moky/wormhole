@@ -142,16 +142,6 @@ public abstract class BaseChannel<C extends SelectableChannel> extends AddressPa
         return isOpen() && (isConnected() || isBound());
     }
 
-//    @Override
-//    public SocketAddress getLocalAddress() {
-//        return localAddress;
-//    }
-//
-//    @Override
-//    public SocketAddress getRemoteAddress() {
-//        return remoteAddress;
-//    }
-
     @Override
     public NetworkChannel bind(SocketAddress local) throws IOException {
         C impl = getChannel();
