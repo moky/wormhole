@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import threading
 import time
+from threading import Thread
 from typing import Generic, TypeVar, Optional, List
 
 from udp import Connection, ConnectionState, BaseConnection
@@ -27,8 +27,10 @@ class UDPGate(StarGate, Generic[H]):
 
     def __init__(self, delegate: GateDelegate):
         super().__init__(delegate=delegate)
-        self.__running = False
         self.__hub: H = None
+        # running thread
+        self.__thread: Optional[Thread] = None
+        self.__running = False
 
     @property
     def hub(self) -> H:
@@ -38,15 +40,27 @@ class UDPGate(StarGate, Generic[H]):
     def hub(self, h: H):
         self.__hub = h
 
-    def start(self):
-        threading.Thread(target=self.run).start()
-
-    def stop(self):
-        self.__running = False
-
     @property
     def running(self) -> bool:
         return self.__running
+
+    def start(self):
+        self.__force_stop()
+        self.__running = True
+        t = Thread(target=self.run)
+        self.__thread = t
+        t.start()
+
+    def __force_stop(self):
+        self.__running = False
+        t: Thread = self.__thread
+        if t is not None:
+            # waiting 2 seconds for stopping the thread
+            self.__thread = None
+            t.join(timeout=2.0)
+
+    def stop(self):
+        self.__force_stop()
 
     def run(self):
         self.__running = True

@@ -41,20 +41,33 @@ class AutoMachine(BaseMachine[C, T, S], Runnable, Handler):
 
     def __init__(self, default: str):
         super().__init__(default=default)
+        # running thread
         self.__thread: Optional[Thread] = None
+        self.__running = False
+
+    @property
+    def running(self) -> bool:
+        return self.__running
 
     # Override
     def start(self):
+        self.__restart()
         super().start()
+
+    def __restart(self):
         self.__force_stop()
-        self.__thread = Thread(target=self.run)
-        self.__thread.start()
+        self.__running = True
+        t = Thread(target=self.run)
+        self.__thread = t
+        t.start()
 
     def __force_stop(self):
+        self.__running = False
         t: Thread = self.__thread
         if t is not None:
-            t.join()
+            # waiting 2 seconds for stopping the thread
             self.__thread = None
+            t.join(timeout=2.0)
 
     # Override
     def stop(self):
@@ -81,7 +94,7 @@ class AutoMachine(BaseMachine[C, T, S], Runnable, Handler):
 
     # Override
     def handle(self):
-        while self.current_state is not None:
+        while self.running:
             self.tick()
             self._idle()
 
