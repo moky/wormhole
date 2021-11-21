@@ -250,6 +250,18 @@ public class DepartureHall {
             clear(fleet, failedTasks, priority);
             failedTasks.clear();
         }
+        // 3. seeking neglected finished times
+        Iterator<Map.Entry<Object, Long>> it;
+        it = departureFinished.entrySet().iterator();
+        long ago = (new Date()).getTime() - 3600;
+        Long when;
+        while (it.hasNext()) {
+            when = it.next().getValue();
+            if (when == null || when < ago) {
+                // long time ago
+                it.remove();
+            }
+        }
     }
     private void clear(List<Departure> fleet, final Set<Departure> failedTasks, final int priority) {
         Object sn;

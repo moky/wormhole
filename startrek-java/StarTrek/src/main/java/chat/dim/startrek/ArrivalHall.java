@@ -33,6 +33,7 @@ package chat.dim.startrek;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -122,6 +123,18 @@ public class ArrivalHall {
                 assert sn != null : "SN empty: " + ship;
                 arrivalMap.remove(sn);
                 // TODO: callback?
+            }
+        }
+        // 3. seeking neglected finished times
+        Iterator<Map.Entry<Object, Long>> it;
+        it = arrivalFinished.entrySet().iterator();
+        long ago = (new Date()).getTime() - 3600;
+        Long when;
+        while (it.hasNext()) {
+            when = it.next().getValue();
+            if (when == null || when < ago) {
+                // long time ago
+                it.remove();
             }
         }
     }

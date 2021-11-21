@@ -81,6 +81,10 @@ public abstract class BaseHub implements Hub {
      */
     protected abstract Connection createConnection(Channel sock, SocketAddress remote, SocketAddress local);
 
+    protected Set<Connection> allConnections() {
+        return connectionPool.allValues();
+    }
+
     @Override
     public Connection connect(SocketAddress remote, SocketAddress local) {
         Connection conn = connectionPool.get(remote, local);
@@ -97,7 +101,7 @@ public abstract class BaseHub implements Hub {
         }
         // try to open channel with direction (remote, local)
         Channel sock = openChannel(remote, local);
-        if (sock == null/* || !sock.isOpen()*/) {
+        if (sock == null || !sock.isOpen()) {
             return null;
         }
         // create with channel
@@ -125,8 +129,10 @@ public abstract class BaseHub implements Hub {
 
     private Connection removeConnection(SocketAddress remote, SocketAddress local, Connection conn) {
         if (conn == null) {
+            assert remote != null : "remote address should not be empty";
             conn = connectionPool.get(remote, local);
             if (conn == null) {
+                // connection not exists
                 return null;
             }
         }
@@ -145,26 +151,32 @@ public abstract class BaseHub implements Hub {
 
     @Override
     public boolean process() {
-        int count = 0;
         // 1. drive all channels to receive data
         Set<Channel> channels = allChannels();
+        int count = driveChannels(channels);
+        cleanupChannels(channels);
+        // 2. drive all connections to move on
+        Set<Connection> connections = allConnections();
+        driveConnections(connections);
+        cleanupConnections(connections);
+        return count > 0;
+    }
+
+    protected int driveChannels(Set<Channel> channels) {
+        int count = 0;
         for (Channel sock : channels) {
-            if (sock.isAlive() && drive(sock)) {
+            // update channel status
+            sock.tick();
+            if (!sock.isAlive()) {
+                continue;
+            }
+            if (drive(sock)) {
                 // received data from this socket channel
                 count += 1;
             }
         }
-        // 2. drive all connections to move on
-        Set<Connection> connections = connectionPool.allValues();
-        for (Connection conn : connections) {
-            // drive connection to go on
-            conn.tick();
-            // NOTICE: let the delegate to decide whether close an error connection
-            //         or just remove it.
-        }
-        return count > 0;
+        return count;
     }
-
     protected boolean drive(Channel sock) {
         SocketAddress local = sock.getLocalAddress();
         SocketAddress remote;
@@ -197,5 +209,20 @@ public abstract class BaseHub implements Hub {
             conn.received(data, remote, local);
         }
         return true;
+    }
+    protected void cleanupChannels(Set<Channel> channels) {
+        // TODO: remove closed channel
+    }
+
+    protected void driveConnections(Set<Connection> connections) {
+        for (Connection conn : connections) {
+            // drive connection to go on
+            conn.tick();
+            // NOTICE: let the delegate to decide whether close an error connection
+            //         or just remove it.
+        }
+    }
+    protected void cleanupConnections(Set<Connection> connections) {
+        // TODO: remove closed connection
     }
 }

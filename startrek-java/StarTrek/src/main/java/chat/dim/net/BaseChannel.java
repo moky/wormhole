@@ -48,6 +48,12 @@ public abstract class BaseChannel<C extends SelectableChannel> extends AddressPa
 
     private C channel;
 
+    // flags
+    private boolean blocking = false;
+    private boolean opened = false;
+    private boolean connected = false;
+    private boolean bound = false;
+
     /**
      *  Create stream channel
      *
@@ -58,6 +64,42 @@ public abstract class BaseChannel<C extends SelectableChannel> extends AddressPa
     protected BaseChannel(C sock, SocketAddress remote, SocketAddress local) {
         super(remote, local);
         channel = sock;
+    }
+
+    @Override
+    public void tick() {
+        // update channel status
+        C impl = getChannel();
+        if (impl == null) {
+            blocking = false;
+            opened = false;
+            connected = false;
+            bound = false;
+        } else {
+            blocking = impl.isBlocking();
+            opened = impl.isOpen();
+            connected = isConnected(impl);
+            bound = isBound(impl);
+        }
+    }
+
+    private static boolean isConnected(SelectableChannel channel) {
+        if (channel instanceof SocketChannel) {
+            return ((SocketChannel) channel).isConnected();
+        } else if (channel instanceof DatagramChannel) {
+            return ((DatagramChannel) channel).isConnected();
+        } else {
+            return false;
+        }
+    }
+    private static boolean isBound(SelectableChannel channel) {
+        if (channel instanceof SocketChannel) {
+            return ((SocketChannel) channel).socket().isBound();
+        } else if (channel instanceof DatagramChannel) {
+            return ((DatagramChannel) channel).socket().isBound();
+        } else {
+            return false;
+        }
     }
 
     protected C getChannel() {
@@ -71,47 +113,28 @@ public abstract class BaseChannel<C extends SelectableChannel> extends AddressPa
             throw new SocketException("socket closed");
         }
         impl.configureBlocking(block);
+        blocking = block;
         return impl;
     }
 
     @Override
     public boolean isBlocking() {
-        C impl = channel;
-        return impl != null && impl.isBlocking();
+        return blocking;
     }
 
     @Override
     public boolean isOpen() {
-        C impl = channel;
-        return impl != null && impl.isOpen();
+        return opened;
     }
 
     @Override
     public boolean isConnected() {
-        C impl = channel;
-        if (impl == null) {
-            return false;
-        } else if (impl instanceof SocketChannel) {
-            return ((SocketChannel) impl).isConnected();
-        } else if (impl instanceof DatagramChannel) {
-            return ((DatagramChannel) impl).isConnected();
-        } else {
-            return false;
-        }
+        return connected;
     }
 
     @Override
     public boolean isBound() {
-        C impl = channel;
-        if (impl == null) {
-            return false;
-        } else if (impl instanceof SocketChannel) {
-            return ((SocketChannel) impl).socket().isBound();
-        } else if (impl instanceof DatagramChannel) {
-            return ((DatagramChannel) impl).socket().isBound();
-        } else {
-            return false;
-        }
+        return bound;
     }
 
     @Override
@@ -119,15 +142,15 @@ public abstract class BaseChannel<C extends SelectableChannel> extends AddressPa
         return isOpen() && (isConnected() || isBound());
     }
 
-    @Override
-    public SocketAddress getLocalAddress() {
-        return localAddress;
-    }
-
-    @Override
-    public SocketAddress getRemoteAddress() {
-        return remoteAddress;
-    }
+//    @Override
+//    public SocketAddress getLocalAddress() {
+//        return localAddress;
+//    }
+//
+//    @Override
+//    public SocketAddress getRemoteAddress() {
+//        return remoteAddress;
+//    }
 
     @Override
     public NetworkChannel bind(SocketAddress local) throws IOException {
@@ -135,9 +158,12 @@ public abstract class BaseChannel<C extends SelectableChannel> extends AddressPa
         if (impl == null) {
             throw new SocketException("socket closed");
         }
-        NetworkChannel bound = ((NetworkChannel) impl).bind(local);
+        NetworkChannel nc = ((NetworkChannel) impl).bind(local);
         localAddress = local;
-        return bound;
+        bound = true;
+        opened = true;
+        blocking = impl.isBlocking();
+        return nc;
     }
 
     @Override
@@ -154,6 +180,9 @@ public abstract class BaseChannel<C extends SelectableChannel> extends AddressPa
             throw new SocketException("unknown datagram channel: " + impl);
         }
         remoteAddress = remote;
+        connected = true;
+        opened = true;
+        blocking = impl.isBlocking();
         return (NetworkChannel) impl;
     }
 
@@ -171,6 +200,11 @@ public abstract class BaseChannel<C extends SelectableChannel> extends AddressPa
             impl.close();
         }
         channel = null;
+        // update flags
+        blocking = false;
+        opened = false;
+        connected = false;
+        bound = false;
     }
 
     //

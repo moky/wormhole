@@ -111,15 +111,15 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
         return sock;
     }
 
-    @Override
-    public SocketAddress getLocalAddress() {
-        return localAddress;
-    }
-
-    @Override
-    public SocketAddress getRemoteAddress() {
-        return remoteAddress;
-    }
+//    @Override
+//    public SocketAddress getLocalAddress() {
+//        return localAddress;
+//    }
+//
+//    @Override
+//    public SocketAddress getRemoteAddress() {
+//        return remoteAddress;
+//    }
 
     @Override
     public boolean isOpen() {
@@ -197,7 +197,7 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
 
     protected int send(ByteBuffer src, SocketAddress destination) throws IOException {
         Channel sock = getChannel();
-        if (sock == null || !sock.isOpen()) {
+        if (sock == null || !sock.isAlive()) {
             throw new SocketException("socket channel lost");
         }
         int sent = sock.send(src, destination);
@@ -258,6 +258,12 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
 
     @Override
     public void tick() {
+        Channel sock = getChannel();
+        if (sock != null) {
+            // update channel status
+            sock.tick();
+        }
+        // drive state machine forward
         fsm.tick();
     }
 

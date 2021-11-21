@@ -107,7 +107,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     public boolean process() {
         // 1. get connection which is ready for sending data
         Connection conn = getConnection();
-        if (conn == null) {
+        if (conn == null || !conn.isAlive()) {
             // connection not ready now
             return false;
         }
