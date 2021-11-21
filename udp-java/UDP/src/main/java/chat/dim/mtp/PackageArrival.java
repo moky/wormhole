@@ -37,16 +37,17 @@ import chat.dim.startrek.ArrivalShip;
 
 public class PackageArrival extends ArrivalShip {
 
-    private final TransactionID sn;
+    private final byte[] sn;
 
     private final Packer packer;
     private Package completed;
 
     public PackageArrival(Package pack) {
         super();
-        sn = pack.head.sn;
+        final Header head = pack.head;
+        sn = head.sn.getBytes();
         if (pack.isFragment()) {
-            packer = new Packer(pack.head.sn, pack.head.pages);
+            packer = new Packer(head.sn, head.pages);
             completed = packer.insert(pack);
         } else {
             packer = null;
@@ -59,7 +60,7 @@ public class PackageArrival extends ArrivalShip {
     }
 
     @Override
-    public TransactionID getSN() {
+    public byte[] getSN() {
         return sn;
     }
 

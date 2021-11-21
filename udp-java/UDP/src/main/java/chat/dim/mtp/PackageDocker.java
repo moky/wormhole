@@ -190,15 +190,15 @@ public abstract class PackageDocker extends StarDocker {
         send(Package.create(DataType.MESSAGE_RESPONSE, sn, pages, index, -1, new Data(OK)));
     }
 
-    public void send(Package pkg) {
-        send(pkg, Departure.Priority.NORMAL.value, getDelegate());
+    public boolean send(Package pkg) {
+        return send(pkg, Departure.Priority.NORMAL.value, getDelegate());
     }
 
-    public void send(Package pkg, int priority, Ship.Delegate delegate) {
-        send(createDeparture(pkg, priority, delegate));
+    public boolean send(Package pkg, int priority, Ship.Delegate delegate) {
+        return send(createDeparture(pkg, priority, delegate));
     }
-    public void send(Departure ship) {
-        appendDeparture(ship);
+    public boolean send(Departure ship) {
+        return appendDeparture(ship);
     }
 
     @Override
@@ -210,7 +210,7 @@ public abstract class PackageDocker extends StarDocker {
     @Override
     public void heartbeat() {
         Package pkg = Package.create(DataType.COMMAND, null, 1, 0, -1, new Data(PING));
-        appendDeparture(createDeparture(pkg, Departure.Priority.SLOWER.value, null));
+        send(createDeparture(pkg, Departure.Priority.SLOWER.value, null));
     }
 
     protected static final byte[] PING = {'P', 'I', 'N', 'G'};

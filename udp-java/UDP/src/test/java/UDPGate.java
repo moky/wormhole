@@ -39,8 +39,11 @@ class UDPDocker extends PackageDocker {
 
 public class UDPGate<H extends Hub> extends StarGate implements Runnable {
 
-    private boolean running = false;
     private H hub = null;
+
+    // running thread
+    private Thread thread = null;
+    private boolean running = false;
 
     public UDPGate(Delegate delegate) {
         super(delegate);
@@ -54,11 +57,22 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     }
 
     public void start() {
-        new Thread(this).start();
+        forceStop();
+        running = true;
+        thread = new Thread(this);
+        thread.start();
+    }
+
+    private void forceStop() {
+        running = false;
+        if (thread != null && thread.isAlive()) {
+            thread.interrupt();
+        }
+        thread = null;
     }
 
     public void stop() {
-        running = false;
+        forceStop();
     }
 
     public boolean isRunning() {
@@ -159,24 +173,24 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
         }
     }
 
-    public void sendCommand(byte[] body, SocketAddress source, SocketAddress destination) {
+    public boolean sendCommand(byte[] body, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.COMMAND, null, 1, 0, -1, new Data(body));
-        send(pack/*, Departure.Priority.SLOWER.value*/, source, destination);
+        return send(pack/*, Departure.Priority.SLOWER.value*/, source, destination);
     }
 
-    public void sendMessage(byte[] body, SocketAddress source, SocketAddress destination) {
+    public boolean sendMessage(byte[] body, SocketAddress source, SocketAddress destination) {
         Package pack = Package.create(DataType.MESSAGE, null, 1, 0, -1, new Data(body));
-        send(pack, source, destination);
+        return send(pack, source, destination);
     }
 
-    public void send(Package pack, SocketAddress source, SocketAddress destination) {
+    public boolean send(Package pack, SocketAddress source, SocketAddress destination) {
         Docker worker = getDocker(destination, source);
         if (worker == null) {
             worker = createDocker(destination, source, null);
             assert worker != null : "failed to create docker: " + destination + ", " + source;
             putDocker(worker);
         }
-        ((PackageDocker) worker).send(pack);
+        return ((PackageDocker) worker).send(pack);
     }
 
     static void info(byte[] data) {

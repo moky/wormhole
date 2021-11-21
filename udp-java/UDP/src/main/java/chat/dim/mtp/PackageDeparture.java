@@ -39,6 +39,8 @@ import chat.dim.startrek.DepartureShip;
 
 public class PackageDeparture extends DepartureShip {
 
+    private final byte[] sn;
+
     private final Package completed;
 
     private final List<Package> packages;
@@ -46,6 +48,8 @@ public class PackageDeparture extends DepartureShip {
 
     public PackageDeparture(Package pack, int prior, Delegate delegate) {
         super(prior, delegate);
+        final Header head = pack.head;
+        sn = head.sn.getBytes();
         completed = pack;
         packages = split(pack);
         fragments = new ArrayList<>();
@@ -66,8 +70,8 @@ public class PackageDeparture extends DepartureShip {
     }
 
     @Override
-    public TransactionID getSN() {
-        return completed.head.sn;
+    public byte[] getSN() {
+        return sn;
     }
 
     @Override

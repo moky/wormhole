@@ -64,10 +64,12 @@ public class PackageChannel extends BaseChannel<DatagramChannel> {
             throw new SocketException("socket channel lost");
         }
         if (impl.isConnected()) {
+            // connected (TCP/UDP)
             assert target == null || target.equals(getRemoteAddress()) :
                     "target address error: " + target + ", " + getRemoteAddress();
             return impl.write(src);
         } else {
+            // not connect (UDP)
             assert target != null : "target address missed for unbound channel";
             return impl.send(src, target);
         }
