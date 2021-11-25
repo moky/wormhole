@@ -32,10 +32,8 @@ import socket
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from ..fsm import Ticker
 
-
-class Channel(Ticker, ABC):
+class Channel(ABC):
 
     @property
     def opened(self) -> bool:

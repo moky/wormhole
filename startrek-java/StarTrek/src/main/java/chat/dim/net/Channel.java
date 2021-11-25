@@ -48,9 +48,7 @@ import java.nio.channels.UnresolvedAddressException;
 import java.nio.channels.UnsupportedAddressTypeException;
 import java.nio.channels.WritableByteChannel;
 
-import chat.dim.threading.Ticker;
-
-public interface Channel extends ByteChannel, Ticker {
+public interface Channel extends ByteChannel {
 
     //boolean isOpen();
     boolean isBound();

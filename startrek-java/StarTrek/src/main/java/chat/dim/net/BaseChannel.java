@@ -64,10 +64,10 @@ public abstract class BaseChannel<C extends SelectableChannel> extends AddressPa
     protected BaseChannel(C sock, SocketAddress remote, SocketAddress local) {
         super(remote, local);
         channel = sock;
+        refreshFlags();
     }
 
-    @Override
-    public void tick() {
+    protected void refreshFlags() {
         // update channel status
         C impl = getChannel();
         if (impl == null) {

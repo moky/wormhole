@@ -171,11 +171,7 @@ class BaseHub(Hub, ABC):
     def _drive_channels(self, channels: Set[Channel]) -> int:
         count = 0
         for sock in channels:
-            # update channel status
-            sock.tick()
-            if not sock.alive:
-                continue
-            if self._drive_channel(channel=sock):
+            if sock.alive and self._drive_channel(channel=sock):
                 # received data from this socket channel
                 count += 1
         return count

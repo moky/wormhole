@@ -165,12 +165,7 @@ public abstract class BaseHub implements Hub {
     protected int driveChannels(Set<Channel> channels) {
         int count = 0;
         for (Channel sock : channels) {
-            // update channel status
-            sock.tick();
-            if (!sock.isAlive()) {
-                continue;
-            }
-            if (drive(sock)) {
+            if (sock.isAlive() && drive(sock)) {
                 // received data from this socket channel
                 count += 1;
             }

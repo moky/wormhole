@@ -248,11 +248,6 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
 
     @Override
     public void tick() {
-        Channel sock = getChannel();
-        if (sock != null) {
-            // update channel status
-            sock.tick();
-        }
         // drive state machine forward
         fsm.tick();
     }

@@ -47,10 +47,9 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         self.__opened = False
         self.__connected = False
         self.__bound = False
+        self._refresh_flags()
 
-    # Override
-    def tick(self):
-        """ update channel status """
+    def _refresh_flags(self):
         sock = self.sock
         if sock is None:
             self.__blocking = False

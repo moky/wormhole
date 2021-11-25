@@ -199,10 +199,6 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     # Override
     def tick(self):
-        sock = self.channel
-        if sock is not None:
-            # update channel status
-            sock.tick()
         # drive state machine forward
         self.__fsm.tick()
 
