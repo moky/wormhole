@@ -47,12 +47,9 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     EXPIRES = 16  # seconds
 
-    def __init__(self, remote: tuple, local: Optional[tuple],
-                 channel: Channel, activated: bool, delegate: ConnectionDelegate, hub: Hub):
+    def __init__(self, remote: tuple, local: Optional[tuple], channel: Channel, delegate: ConnectionDelegate, hub: Hub):
         super().__init__(remote=remote, local=local)
         self.__channel = channel
-        # activated connection will reconnect automatically
-        self.__activated = activated
         # active times
         self.__last_sent_time = 0
         self.__last_received_time = 0
@@ -69,10 +66,6 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         return fsm
 
     @property
-    def is_activated(self) -> bool:
-        return self.__activated
-
-    @property
     def delegate(self) -> ConnectionDelegate:
         return self.__delegate()
 
@@ -82,15 +75,10 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property  # protected
     def channel(self) -> Optional[Channel]:
-        sock = self.__channel
-        if sock is None and self.is_activated:
-            # get new channel via hub
-            hub = self.hub
-            if hub is not None:
-                sock = hub.open_channel(remote=self._remote, local=self._local)
-                if sock is not None:
-                    self.__channel = sock
-        return sock
+        return self.__channel
+
+    def _set_channel(self, channel: Channel):
+        self.__channel = channel
 
     @property  # Override
     def opened(self) -> bool:

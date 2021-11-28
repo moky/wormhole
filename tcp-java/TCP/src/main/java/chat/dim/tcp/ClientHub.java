@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 
+import chat.dim.net.ActiveConnection;
 import chat.dim.net.BaseConnection;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
@@ -46,7 +47,7 @@ public class ClientHub extends StreamHub {
 
     @Override
     protected Connection createConnection(Channel sock, SocketAddress remote, SocketAddress local) {
-        BaseConnection conn = new BaseConnection(remote, null, sock, true, getDelegate(), this);
+        BaseConnection conn = new ActiveConnection(remote, null, sock, getDelegate(), this);
         conn.start();  // start FSM
         return conn;
     }

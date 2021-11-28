@@ -36,7 +36,7 @@ from typing import Optional, Set, Dict
 from startrek.fsm import Runnable
 from startrek import Channel
 from startrek import Connection, ConnectionDelegate
-from startrek import BaseConnection
+from startrek import BaseConnection, ActiveConnection
 from startrek import BaseHub
 
 from .channel import StreamChannel
@@ -105,7 +105,7 @@ class ServerHub(StreamHub, Runnable):
     # Override
     def _create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         gate = self.delegate
-        conn = BaseConnection(remote=remote, local=None, channel=sock, activated=False, delegate=gate, hub=self)
+        conn = BaseConnection(remote=remote, local=None, channel=sock, delegate=gate, hub=self)
         conn.start()  # start FSM
         return conn
 
@@ -161,7 +161,7 @@ class ClientHub(StreamHub):
     # Override
     def _create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         gate = self.delegate
-        conn = BaseConnection(remote=remote, local=None, channel=sock, activated=True, delegate=gate, hub=self)
+        conn = ActiveConnection(remote=remote, local=None, channel=sock, delegate=gate, hub=self)
         conn.start()  # start FSM
         return conn
 

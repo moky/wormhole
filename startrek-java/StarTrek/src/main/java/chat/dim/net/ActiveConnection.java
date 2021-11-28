@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  UDP: User Datagram Protocol
+ *  Star Trek: Interstellar Transport
  *
  *                                Written in 2021 by Moky <albert.moky@gmail.com>
  *
@@ -28,25 +28,32 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.udp;
+package chat.dim.net;
 
 import java.net.SocketAddress;
 
-import chat.dim.net.ActiveConnection;
-import chat.dim.net.BaseConnection;
-import chat.dim.net.Channel;
-import chat.dim.net.Connection;
+/**
+ * Active connection for client
+ */
+public class ActiveConnection extends BaseConnection {
 
-public class ClientHub extends PackageHub {
-
-    public ClientHub(Connection.Delegate delegate) {
-        super(delegate);
+    public ActiveConnection(SocketAddress remote, SocketAddress local, Channel sock, Delegate delegate, Hub hub) {
+        super(remote, local, sock, delegate, hub);
     }
 
     @Override
-    protected Connection createConnection(Channel sock, SocketAddress remote, SocketAddress local) {
-        BaseConnection conn = new ActiveConnection(remote, null, sock, getDelegate(), this);
-        conn.start();  // start FSM
-        return conn;
+    protected Channel getChannel() {
+        Channel sock = super.getChannel();
+        if (sock == null) {
+            // get new channel via hub
+            Hub hub = getHub();
+            if (hub != null) {
+                sock = hub.openChannel(remoteAddress, localAddress);
+                if (sock != null) {
+                    setChannel(sock);
+                }
+            }
+        }
+        return sock;
     }
 }

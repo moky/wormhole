@@ -31,7 +31,7 @@
 
 from startrek import Hub, Channel, Connection, ConnectionDelegate
 from startrek import ConnectionState, ConnectionStateMachine
-from startrek import BaseHub, BaseChannel, BaseConnection
+from startrek import BaseHub, BaseChannel, BaseConnection, ActiveConnection
 
 from startrek import Ship, ShipDelegate, Arrival, Departure, DeparturePriority
 from startrek import Docker, Gate, GateStatus, GateDelegate
@@ -51,7 +51,7 @@ __all__ = [
 
     'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
     'ConnectionState', 'ConnectionStateMachine',
-    'BaseHub', 'BaseChannel', 'BaseConnection',
+    'BaseHub', 'BaseChannel', 'BaseConnection', 'ActiveConnection',
     'Ship', 'ShipDelegate', 'Arrival', 'Departure', 'DeparturePriority',
     'Docker', 'Gate', 'GateStatus', 'GateDelegate',
     'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
@@ -59,6 +59,7 @@ __all__ = [
 
     'PlainArrival', 'PlainDeparture', 'PlainDocker',
 
-    'StreamChannel', 'StreamHub',
+    'StreamChannel',
+    'StreamHub',
     'ServerHub', 'ClientHub',
 ]

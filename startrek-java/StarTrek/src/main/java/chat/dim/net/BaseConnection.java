@@ -58,8 +58,6 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
 
     private Channel channel;
 
-    public final boolean isActivated;
-
     private long lastSentTime;
     private long lastReceivedTime;
 
@@ -68,12 +66,10 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
 
     private final StateMachine fsm;
 
-    public BaseConnection(SocketAddress remote, SocketAddress local,
-                          Channel sock, boolean activated, Delegate delegate, Hub hub) {
+    public BaseConnection(SocketAddress remote, SocketAddress local, Channel sock, Delegate delegate, Hub hub) {
         super(remote, local);
 
         channel = sock;
-        isActivated = activated;
 
         lastSentTime = 0;
         lastReceivedTime = 0;
@@ -100,15 +96,10 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
     }
 
     protected Channel getChannel() {
-        Channel sock = channel;
-        if (sock == null && isActivated) {
-            // get new channel via hub
-            Hub hub = getHub();
-            if (hub != null) {
-                channel = sock = hub.openChannel(remoteAddress, localAddress);
-            }
-        }
-        return sock;
+        return channel;
+    }
+    protected void setChannel(Channel sock) {
+        channel = sock;
     }
 
     @Override

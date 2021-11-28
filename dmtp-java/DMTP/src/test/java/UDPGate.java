@@ -8,7 +8,7 @@ import java.util.List;
 import chat.dim.mtp.DataType;
 import chat.dim.mtp.Package;
 import chat.dim.mtp.PackageDocker;
-import chat.dim.net.BaseConnection;
+import chat.dim.net.ActiveConnection;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
@@ -115,26 +115,22 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     @Override
     protected void heartbeat(Connection connection) {
         // let the client to do the job
-        if (connection instanceof BaseConnection) {
-            if (((BaseConnection) connection).isActivated) {
-                super.heartbeat(connection);
-            }
+        if (connection instanceof ActiveConnection) {
+            super.heartbeat(connection);
         }
     }
 
     private void kill(SocketAddress remote, SocketAddress local, Connection connection) {
         // if conn is null, disconnect with (remote, local);
         // else, disconnect with connection when local address matched.
-        connection = getHub().disconnect(remote, local, connection);
+        Connection conn = getHub().disconnect(remote, local, connection);
         // if connection is not activated, means it's a server connection,
         // remove the docker too.
-        if (connection instanceof BaseConnection) {
-            if (!((BaseConnection) connection).isActivated) {
-                // remove docker for server connection
-                remote = connection.getRemoteAddress();
-                local = connection.getLocalAddress();
-                removeDocker(remote, local, null);
-            }
+        if (conn != null && !(conn instanceof ActiveConnection)) {
+            // remove docker for server connection
+            remote = conn.getRemoteAddress();
+            local = conn.getLocalAddress();
+            removeDocker(remote, local, null);
         }
     }
 
