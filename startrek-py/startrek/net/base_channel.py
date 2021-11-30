@@ -210,6 +210,14 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         # here we should ignore this exception.
         if not self.blocking:
             if error.strerror == self.ResourceTemporarilyUnavailable:
+                # ignore it
+                return None
+        # in blocking mode, the socket wil wait until sent/received data,
+        # but if timeout was set, it will raise 'timeout' error on timeout,
+        # here we should ignore this exception.
+        if isinstance(error, socket.timeout):
+            if self.sock.gettimeout() is not None:  # or not self.blocking:
+                # ignore it
                 return None
         # print('[NET] socket error: %s' % error)
         return error
