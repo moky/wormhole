@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   Star Trek: Interstellar Transport
+#   IPX: Inter-Process eXchange
 #
 #                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
@@ -28,33 +28,20 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .net import Hub, Channel, Connection, ConnectionDelegate
-from .net import ConnectionState, ConnectionStateMachine
-from .net import BaseHub, BaseChannel, BaseConnection, ActiveConnection
 
-from .port import Ship, ShipDelegate, Arrival, Departure, DeparturePriority
-from .port import Docker, Gate, GateStatus, GateDelegate
+from .singleton import Singleton
 
-from .arrival import ArrivalShip, ArrivalHall
-from .departure import DepartureShip, DepartureHall
-from .dock import Dock, LockedDock
-from .stardocker import StarDocker
-from .stargate import StarGate
+from .lnc import Notification, NotificationObserver, NotificationCenter
 
-name = "StarTrek"
+
+name = "IPX"
 
 __author__ = 'Albert Moky'
 
 __all__ = [
 
-    'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
-    'ConnectionState', 'ConnectionStateMachine',
-    'BaseHub', 'BaseChannel', 'BaseConnection', 'ActiveConnection',
+    'Singleton',
 
-    'Ship', 'ShipDelegate', 'Arrival', 'Departure', 'DeparturePriority',
-    'Docker', 'Gate', 'GateStatus', 'GateDelegate',
+    'Notification', 'NotificationObserver', 'NotificationCenter',
 
-    'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
-    'Dock', 'LockedDock',
-    'StarDocker', 'StarGate',
 ]

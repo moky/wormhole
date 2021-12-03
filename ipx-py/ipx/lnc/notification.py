@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 #
-#   Star Trek: Interstellar Transport
+#   LNC: Local Notification Center
 #
-#                                Written in 2021 by Moky <albert.moky@gmail.com>
+#                                Written in 2019 by Moky <albert.moky@gmail.com>
 #
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2021 Albert Moky
+# Copyright (c) 2019 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,33 +28,38 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .net import Hub, Channel, Connection, ConnectionDelegate
-from .net import ConnectionState, ConnectionStateMachine
-from .net import BaseHub, BaseChannel, BaseConnection, ActiveConnection
+from typing import Optional, Any
 
-from .port import Ship, ShipDelegate, Arrival, Departure, DeparturePriority
-from .port import Docker, Gate, GateStatus, GateDelegate
 
-from .arrival import ArrivalShip, ArrivalHall
-from .departure import DepartureShip, DepartureHall
-from .dock import Dock, LockedDock
-from .stardocker import StarDocker
-from .stargate import StarGate
+class Notification:
+    """ Notification object with name, sender and extra info """
 
-name = "StarTrek"
+    def __init__(self, name: str, sender: Any, info: dict = None):
+        super().__init__()
+        self.__name = name
+        self.__sender = sender
+        self.__info = info
 
-__author__ = 'Albert Moky'
+    def __str__(self) -> str:
+        clazz = self.__class__.__name__
+        return '<%s:%s| sender=%s, extra info=%s />' % (clazz, self.name, self.sender, self.info)
 
-__all__ = [
+    def __repr__(self) -> str:
+        clazz = self.__class__.__name__
+        return '<%s:%s| sender=%s, extra info=%s />' % (clazz, self.name, self.sender, self.info)
 
-    'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
-    'ConnectionState', 'ConnectionStateMachine',
-    'BaseHub', 'BaseChannel', 'BaseConnection', 'ActiveConnection',
+    @property
+    def name(self) -> str:
+        return self.__name
 
-    'Ship', 'ShipDelegate', 'Arrival', 'Departure', 'DeparturePriority',
-    'Docker', 'Gate', 'GateStatus', 'GateDelegate',
+    @property
+    def sender(self) -> Any:
+        return self.__sender
 
-    'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
-    'Dock', 'LockedDock',
-    'StarDocker', 'StarGate',
-]
+    @property
+    def info(self) -> Optional[dict]:
+        return self.__info
+
+    @info.setter
+    def info(self, value: dict):
+        self.__info = value

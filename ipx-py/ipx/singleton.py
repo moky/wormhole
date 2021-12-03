@@ -1,13 +1,8 @@
 # -*- coding: utf-8 -*-
-#
-#   Star Trek: Interstellar Transport
-#
-#                                Written in 2021 by Moky <albert.moky@gmail.com>
-#
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2021 Albert Moky
+# Copyright (c) 2019 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,33 +23,21 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .net import Hub, Channel, Connection, ConnectionDelegate
-from .net import ConnectionState, ConnectionStateMachine
-from .net import BaseHub, BaseChannel, BaseConnection, ActiveConnection
 
-from .port import Ship, ShipDelegate, Arrival, Departure, DeparturePriority
-from .port import Docker, Gate, GateStatus, GateDelegate
+class Singleton(object):
 
-from .arrival import ArrivalShip, ArrivalHall
-from .departure import DepartureShip, DepartureHall
-from .dock import Dock, LockedDock
-from .stardocker import StarDocker
-from .stargate import StarGate
+    __instances = {}
 
-name = "StarTrek"
+    def __init__(self, cls):
+        self.__cls = cls
 
-__author__ = 'Albert Moky'
+    def __call__(self, *args, **kwargs):
+        cls = self.__cls
+        instance = self.__instances.get(cls, None)
+        if instance is None:
+            instance = cls(*args, **kwargs)
+            self.__instances[cls] = instance
+        return instance
 
-__all__ = [
-
-    'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
-    'ConnectionState', 'ConnectionStateMachine',
-    'BaseHub', 'BaseChannel', 'BaseConnection', 'ActiveConnection',
-
-    'Ship', 'ShipDelegate', 'Arrival', 'Departure', 'DeparturePriority',
-    'Docker', 'Gate', 'GateStatus', 'GateDelegate',
-
-    'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
-    'Dock', 'LockedDock',
-    'StarDocker', 'StarGate',
-]
+    def __getattr__(self, key):
+        return getattr(self.__cls, key, None)

@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 #
-#   Star Trek: Interstellar Transport
+#   LNC: Local Notification Center
 #
-#                                Written in 2021 by Moky <albert.moky@gmail.com>
+#                                Written in 2019 by Moky <albert.moky@gmail.com>
 #
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2021 Albert Moky
+# Copyright (c) 2019 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,33 +28,18 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .net import Hub, Channel, Connection, ConnectionDelegate
-from .net import ConnectionState, ConnectionStateMachine
-from .net import BaseHub, BaseChannel, BaseConnection, ActiveConnection
 
-from .port import Ship, ShipDelegate, Arrival, Departure, DeparturePriority
-from .port import Docker, Gate, GateStatus, GateDelegate
+from .notification import Notification
+from .observer import NotificationObserver
+from .center import NotificationCenter
 
-from .arrival import ArrivalShip, ArrivalHall
-from .departure import DepartureShip, DepartureHall
-from .dock import Dock, LockedDock
-from .stardocker import StarDocker
-from .stargate import StarGate
-
-name = "StarTrek"
+name = "LNC"
 
 __author__ = 'Albert Moky'
 
 __all__ = [
 
-    'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
-    'ConnectionState', 'ConnectionStateMachine',
-    'BaseHub', 'BaseChannel', 'BaseConnection', 'ActiveConnection',
-
-    'Ship', 'ShipDelegate', 'Arrival', 'Departure', 'DeparturePriority',
-    'Docker', 'Gate', 'GateStatus', 'GateDelegate',
-
-    'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
-    'Dock', 'LockedDock',
-    'StarDocker', 'StarGate',
+    'Notification',
+    'NotificationObserver',
+    'NotificationCenter',
 ]
