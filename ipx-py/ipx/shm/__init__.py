@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   IPX: Inter-Process eXchange
+#   SHM: Shared Memory
 #
 #                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
@@ -29,22 +29,14 @@
 # ==============================================================================
 
 
-from .singleton import Singleton
-
-from .lnc import Notification, NotificationObserver, NotificationCenter
-
-from .shm import CycledBuffer
+from .buffer import CycledBuffer
 
 
-name = "IPX"
+name = "SHM"
 
 __author__ = 'Albert Moky'
 
 __all__ = [
-
-    'Singleton',
-
-    'Notification', 'NotificationObserver', 'NotificationCenter',
 
     'CycledBuffer',
 ]
