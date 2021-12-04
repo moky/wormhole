@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   IPX: Inter-Process eXchange
+#   SHM: Shared Memory
 #
 #                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
@@ -28,23 +28,21 @@
 # SOFTWARE.
 # ==============================================================================
 
+import mmap
 
-from .singleton import Singleton
-
-from .lnc import Notification, NotificationObserver, NotificationCenter
-
-from .shm import CycledBuffer, SharedBuffer
+from .buffer import CycledBuffer
 
 
-name = "IPX"
+class SharedBuffer(CycledBuffer):
 
-__author__ = 'Albert Moky'
+    def __init__(self, size: int):
+        shm = mmap.mmap(fileno=-1, length=size, flags=mmap.MAP_SHARED, prot=(mmap.PROT_READ | mmap.PROT_WRITE))
+        super().__init__(buffer=shm)
+        self.__shm = shm
 
-__all__ = [
+    @property
+    def shm(self) -> mmap.mmap:
+        return self.__shm
 
-    'Singleton',
-
-    'Notification', 'NotificationObserver', 'NotificationCenter',
-
-    'CycledBuffer', 'SharedBuffer',
-]
+    def close(self):
+        self.__shm.close()

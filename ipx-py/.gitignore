@@ -2,5 +2,5 @@
 /.idea
 /build
 /dist
-/tcp.egg-info
+/ipx.egg-info
 *.pyc

@@ -28,20 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional
-
-
-def int_from_buffer(buffer, offset: int = 0, length: int = 4) -> int:
-    if 0 < offset or length < len(buffer):
-        buffer = buffer[offset:(offset + length)]
-    return int.from_bytes(bytes=buffer, byteorder='big', signed=False)
-
-
-def int_to_buffer(value: int, buffer=None, offset: int = 0, length: int = 4) -> Optional[bytes]:
-    data = value.to_bytes(length=length, byteorder='big', signed=False)
-    if buffer is None:
-        return data
-    buffer[offset:(offset + length)] = data
+from typing import Optional, Union
 
 
 class CycledBuffer:
@@ -84,13 +71,13 @@ class CycledBuffer:
             # init with magic code
             buffer[:pos] = self.MAGIC_CODE
             # init pos of read/write pos
-            pos1 = pos + 2
-            pos2 = pos1 + (self.__int_len << 1)
+            pos1 = pos + 2  # 16
+            pos2 = pos1 + (self.__int_len << 1)  # 20/24/32
             buffer[self.__pos1] = pos1
             buffer[self.__pos2] = pos2
             # clear 4 integers for offsets
-            pos2 += self.__int_len << 1
-            buffer[pos1:pos2] = 0
+            pos2 += self.__int_len << 1  # 24/32/48
+            buffer[pos1:pos2] = bytearray(pos2 - pos1)
             pos = pos2
         # data zone: [start, end)
         self.__start = pos
@@ -184,7 +171,7 @@ class CycledBuffer:
             spaces = part1 + part2
         return spaces - 1  # leave 1 space not used forever
 
-    def read(self) -> Optional[bytearray]:
+    def read(self) -> Optional[bytes]:
         """ get one data, measured with size (as leading 4 bytes) """
         available = self.available
         if available < 4:
@@ -223,16 +210,18 @@ class CycledBuffer:
         self.read_offset = p1
         return data
 
-    def write(self, data: bytearray) -> bool:
-        """ set data with size (as leading 4 bytes) into buffer """
-        spaces = self.spaces
+    def write(self, data: Union[bytes, bytearray]) -> bool:
+        """ append data with size (as leading 4 bytes) into buffer """
         size = len(data)
         item_size = 4 + size
-        if spaces < item_size:
+        if self.spaces < item_size:
             # not enough space
             return False
         head = int_to_buffer(value=size)
-        item = bytearray(head) + data
+        if isinstance(data, bytearray):
+            item = bytearray(head) + data
+        else:
+            item = bytearray(head + data)
         buffer = self.__buffer
         start = self.__start
         end = self.__end
@@ -253,3 +242,16 @@ class CycledBuffer:
         # update the pointer after data wrote
         self.write_offset = p2
         return True
+
+
+def int_from_buffer(buffer, offset: int = 0, length: int = 4) -> int:
+    if 0 < offset or length < len(buffer):
+        buffer = buffer[offset:(offset + length)]
+    return int.from_bytes(bytes=buffer, byteorder='big', signed=False)
+
+
+def int_to_buffer(value: int, buffer=None, offset: int = 0, length: int = 4) -> Optional[bytes]:
+    data = value.to_bytes(length=length, byteorder='big', signed=False)
+    if buffer is None:
+        return data
+    buffer[offset:(offset + length)] = data
