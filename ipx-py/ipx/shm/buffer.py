@@ -50,13 +50,15 @@ class CycledBuffer:
         ~~~~~~~~~~~~~
 
         Header:
-            magic code   - 14 bytes
-            version      - 1 byte (always be 0)
-            int length   - 1 byte (always be 4)
-            read offset  - 4 bytes
-            write offset - 4 bytes
+            magic code             - 14 bytes
+            offset of read offset  - 1 byte  # the highest bit is for alternate
+            offset of write offset - 1 byte  # the highest bit is for alternate
+            read offset            - 2/4/8 bytes
+            alternate read offset  - 2/4/8 bytes
+            write offset           - 2/4/8 bytes
+            alternate write offset - 2/4/8 bytes
         Body:
-            data item(s) - data size (4 bytes) + data (variable length)
+            data item(s)           - data size (4 bytes) + data (variable length)
     """
 
     MAGIC_CODE = b'CYCLED BUFFER\0'
@@ -64,28 +66,35 @@ class CycledBuffer:
     def __init__(self, buffer):
         super().__init__()
         self.__buffer = buffer
+        buf_len = len(buffer)
+        if buf_len <= 0xFFFF:
+            self.__int_len = 2
+        elif buffer <= 0xFFFFFFFF:
+            self.__int_len = 4
+        else:
+            self.__int_len = 8
         # check header
         pos = len(self.MAGIC_CODE)  # 14
+        self.__pos1 = pos
+        self.__pos2 = pos + 1  # 15
         if buffer[:pos] == self.MAGIC_CODE:
             # already initialized
-            assert buffer[pos] == 0, 'version error: %d' % buffer[pos]
-            pos += 1  # 15
-            self.__int_len = buffer[pos]  # 4
+            pos += 2 + (self.__int_len << 2)  # 24/32/48
         else:
-            # memset
-            buffer[:] = 0
+            # init with magic code
             buffer[:pos] = self.MAGIC_CODE
-            pos += 1  # 15
-            buffer[pos] = 4
-            self.__int_len = 4
-        pos += 1  # 16
-        self.__read_pos = pos
-        pos += self.__int_len  # 20
-        self.__write_pos = pos
-        pos += self.__int_len  # 24
+            # init pos of read/write pos
+            pos1 = pos + 2
+            pos2 = pos1 + (self.__int_len << 1)
+            buffer[self.__pos1] = pos1
+            buffer[self.__pos2] = pos2
+            # clear 4 integers for offsets
+            pos2 += self.__int_len << 1
+            buffer[pos1:pos2] = 0
+            pos = pos2
         # data zone: [start, end)
-        self.__start = pos  # 24
-        self.__end = len(buffer)
+        self.__start = pos
+        self.__end = buf_len
 
     @property
     def capacity(self) -> int:
@@ -107,24 +116,40 @@ class CycledBuffer:
     @property
     def read_offset(self) -> int:
         """ pointer for reading """
-        value = int_from_buffer(buffer=self.__buffer, offset=self.__read_pos, length=self.__int_len)
-        return value + self.__start
+        return self.__fetch_offset(self.__pos1)
 
     @read_offset.setter
     def read_offset(self, value: int):
-        value -= self.__start
-        int_to_buffer(value=value, buffer=self.__buffer, offset=self.__read_pos, length=self.__int_len)
+        self.__update_offset(self.__pos1, value=value)
 
     @property
     def write_offset(self) -> int:
         """ pointer for writing """
-        value = int_from_buffer(buffer=self.__buffer, offset=self.__write_pos, length=self.__int_len)
-        return value + self.__start
+        return self.__fetch_offset(self.__pos2)
 
     @write_offset.setter
     def write_offset(self, value: int):
+        self.__update_offset(self.__pos2, value=value)
+
+    def __fetch_offset(self, pos_x: int) -> int:
+        offset = self.__buffer[pos_x] & 0x7F  # clear alternate flag
+        value = int_from_buffer(buffer=self.__buffer, offset=offset, length=self.__int_len)
+        return value + self.__start
+
+    def __update_offset(self, pos_x: int, value: int):
+        """ update pointer with alternate spaces """
+        pos = self.__buffer[pos_x]
+        if pos & 0x80 == 0:
+            offset = pos + self.__int_len
+            pos = offset | 0x80  # set alternate flag
+        else:
+            offset = (pos & 0x7F) - self.__int_len
+            pos = offset
+        # update on alternate spaces
         value -= self.__start
-        int_to_buffer(value=value, buffer=self.__buffer, offset=self.__write_pos, length=self.__int_len)
+        int_to_buffer(value=value, buffer=self.__buffer, offset=offset, length=self.__int_len)
+        # switch after spaces updated
+        self.__buffer[pos_x] = pos
 
     @property
     def available(self) -> int:
