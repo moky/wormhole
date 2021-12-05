@@ -34,5 +34,6 @@ setup(
         'Operating System :: OS Independent',
     ],
     install_requires=[
+        'sysv-ipc',  # 1.1.0
     ]
 )

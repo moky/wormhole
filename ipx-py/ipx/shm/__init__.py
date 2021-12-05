@@ -31,8 +31,9 @@
 
 from .buffer import CycledBuffer
 from .cache import CycledCache
+from .shared import SharedMemory
 
-from .mmap import SharedMemoryCache
+from .sysv import SharedMemoryCache
 
 
 name = "SHM"
@@ -41,7 +42,9 @@ __author__ = 'Albert Moky'
 
 __all__ = [
 
-    'CycledBuffer', 'CycledCache',
+    'CycledBuffer',
+    'CycledCache',
+    'SharedMemory',
 
     'SharedMemoryCache',
 ]

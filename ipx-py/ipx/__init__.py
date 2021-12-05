@@ -33,7 +33,8 @@ from .singleton import Singleton
 
 from .lnc import Notification, NotificationObserver, NotificationCenter
 
-from .shm import CycledBuffer, CycledCache, SharedMemoryCache
+from .shm import CycledBuffer, CycledCache
+from .shm import SharedMemory, SharedMemoryCache
 
 
 name = "IPX"
@@ -44,7 +45,10 @@ __all__ = [
 
     'Singleton',
 
+    # Local Notification
     'Notification', 'NotificationObserver', 'NotificationCenter',
 
-    'CycledBuffer', 'CycledCache', 'SharedMemoryCache',
+    # Shared Memory
+    'CycledBuffer', 'CycledCache',
+    'SharedMemory', 'SharedMemoryCache',
 ]

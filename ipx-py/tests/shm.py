@@ -9,33 +9,36 @@ from ipx import SharedMemoryCache
 g_shared = SharedMemoryCache(size=64, name='ABCDEF')
 
 
-def test_write(shared: SharedMemoryCache, data: List[Any]):
+def test_write(data: List[Any], shm: SharedMemoryCache = None):
+    if shm is None:
+        shm = SharedMemoryCache(size=64, name='ABCDEF')
     print('======== start writing')
-    print('==== shm: %s' % shared)
+    print('==== shm: %s' % shm)
     for item in data:
         print('==== write: %s' % item)
-        shared.put(item)
-        print('==== shm: %s' % shared)
+        shm.append(item)
+        print('==== shm: %s' % shm)
     print('======== stop writing')
 
 
-def test_read(shared: SharedMemoryCache):
-    if shared is None:
-        shared = g_shared
+def test_read(shm: SharedMemoryCache = None):
+    if shm is None:
+        shm = SharedMemoryCache(size=64, name='ABCDEF')
     print('-------- start reading')
-    print('---- shm: %s' % shared)
-    data = shared.get()
+    print('---- shm: %s' % shm)
+    data = shm.shift()
     while data is not None:
         print('---- read: %s' % data)
-        print('---- shm: %s' % shared)
-        data = shared.get()
+        print('---- shm: %s' % shm)
+        data = shm.shift()
     print('-------- stop reading')
 
 
 def test_process():
-    son = multiprocessing.Process(target=test_read, args=(g_shared,))
+    print('******** test multiprocessing...')
+    son = multiprocessing.Process(target=test_read)
     son.start()
-    test_write(shared=g_shared, data=['Hello', 'world', 123])
+    test_write(data=['Hello', 'world', 123])
 
 
 def test_fork():
@@ -43,10 +46,10 @@ def test_fork():
     pid = os.fork()
     if pid == 0:
         print('---- Child process %d, parent=%d' % (os.getpid(), os.getppid()))
-        test_read(g_shared)
+        test_read(shm=g_shared)
     else:
         print('==== Parent process %d, child=%d' % (os.getpid(), pid))
-        test_write(shared=g_shared, data=['Hello', 'world', 123])
+        test_write(data=['Hello', 'world', 123], shm=g_shared)
 
 
 if __name__ == '__main__':

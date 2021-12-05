@@ -53,10 +53,10 @@ class CycledBuffer:
     def __init__(self, buffer):
         super().__init__()
         self.__buffer = buffer
-        buf_len = len(buffer)
-        if buf_len <= 0xFFFF:
+        bounds = self.bounds
+        if bounds <= 0xFFFF:
             self.__int_len = 2
-        elif buf_len <= 0xFFFFFFFF:
+        elif bounds <= 0xFFFFFFFF:
             self.__int_len = 4
         else:
             self.__int_len = 8
@@ -64,24 +64,42 @@ class CycledBuffer:
         pos = len(self.MAGIC_CODE)  # 14
         self.__pos1 = pos
         self.__pos2 = pos + 1  # 15
-        if buffer[:pos] == self.MAGIC_CODE:
+        if self._slice(start=0, end=pos) == self.MAGIC_CODE:
             # already initialized
             pos += 2 + (self.__int_len << 2)  # 24/32/48
         else:
             # init with magic code
-            buffer[:pos] = self.MAGIC_CODE
+            self._update(start=0, end=pos, data=self.MAGIC_CODE)
             # init pos of read/write pos
             pos1 = pos + 2  # 16
             pos2 = pos1 + (self.__int_len << 1)  # 20/24/32
-            buffer[self.__pos1] = pos1
-            buffer[self.__pos2] = pos2
+            self._set(pos=self.__pos1, value=pos1)
+            self._set(pos=self.__pos2, value=pos2)
             # clear 4 integers for offsets
             pos2 += self.__int_len << 1  # 24/32/48
-            buffer[pos1:pos2] = bytearray(pos2 - pos1)
+            self._update(start=pos1, end=pos2, data=bytearray(pos2 - pos1))
             pos = pos2
         # data zone: [start, end)
         self.__start = pos
-        self.__end = buf_len
+        self.__end = bounds
+
+    @property
+    def bounds(self) -> int:
+        """ get buffer length """
+        return len(self.__buffer)
+
+    def _set(self, pos: int, value: int):
+        self.__buffer[pos] = value
+
+    def _get(self, pos: int) -> int:
+        return self.__buffer[pos]
+
+    def _update(self, start: int, end: int, data: Union[bytes, bytearray]):
+        assert start + len(data) == end, '%d + %d != %d' % (start, len(data), end)
+        self.__buffer[start:end] = data
+
+    def _slice(self, start: int, end: int) -> Union[bytes, bytearray]:
+        return self.__buffer[start:end]
 
     @property
     def capacity(self) -> int:
@@ -119,13 +137,14 @@ class CycledBuffer:
         self.__update_offset(self.__pos2, value=value)
 
     def __fetch_offset(self, pos_x: int) -> int:
-        offset = self.__buffer[pos_x] & 0x7F  # clear alternate flag
-        value = int_from_buffer(buffer=self.__buffer, offset=offset, length=self.__int_len)
+        offset = self._get(pos=pos_x) & 0x7F  # clear alternate flag
+        data = self._slice(start=offset, end=(offset + self.__int_len))
+        value = int_from_buffer(buffer=data)
         return value + self.__start
 
     def __update_offset(self, pos_x: int, value: int):
         """ update pointer with alternate spaces """
-        pos = self.__buffer[pos_x]
+        pos = self._get(pos=pos_x)
         if pos & 0x80 == 0:
             offset = pos + self.__int_len
             pos = offset | 0x80  # set alternate flag
@@ -134,9 +153,10 @@ class CycledBuffer:
             pos = offset
         # update on alternate spaces
         value -= self.__start
-        int_to_buffer(value=value, buffer=self.__buffer, offset=offset, length=self.__int_len)
+        data = int_to_buffer(value=value, length=self.__int_len)
+        self._update(start=offset, end=(offset + self.__int_len), data=data)
         # switch after spaces updated
-        self.__buffer[pos_x] = pos
+        self._set(pos=pos_x, value=pos)
 
     @property
     def available(self) -> int:
@@ -176,21 +196,22 @@ class CycledBuffer:
         available = self.available
         if available < length:
             return None, -1
-        buffer = self.__buffer
         start = self.__start
         end = self.__end
         p1 = self.read_offset
         p2 = p1 + length
         if p2 < end:
-            data = buffer[p1:p2]
+            data = self._slice(start=p1, end=p2)
         elif p2 == end:
             # data on the tail
-            data = buffer[p1:p2]
+            data = self._slice(start=p1, end=p2)
             p2 = start
         else:
             # join data as two parts
             p2 = start + p2 - end
-            data = buffer[p1:end] + buffer[start:p2]
+            part1 = self._slice(start=p1, end=end)
+            part2 = self._slice(start=start, end=p2)
+            data = part1 + part2
         return data, p2
 
     def read(self, length: int) -> Union[bytes, bytearray, None]:
@@ -206,36 +227,30 @@ class CycledBuffer:
         size = len(data)
         if self.spaces < size:
             return False
-        buffer = self.__buffer
         start = self.__start
         end = self.__end
         p1 = self.write_offset
         p2 = p1 + size
         if p2 < end:
-            buffer[p1:p2] = data
+            self._update(start=p1, end=p2, data=data)
         elif p2 == end:
             # data on the tail
-            buffer[p1:p2] = data
+            self._update(start=p1, end=p2, data=data)
             p2 = start
         else:
             # separate data to two parts
             m = end - p1
             p2 = start + p2 - end
-            buffer[p1:end] = data[:m]
-            buffer[start:p2] = data[m:]
+            self._update(start=p1, end=end, data=data[:m])
+            self._update(start=start, end=p2, data=data[m:])
         # update the pointer after data wrote
         self.write_offset = p2
         return True
 
 
-def int_from_buffer(buffer, offset: int = 0, length: int = 4) -> int:
-    if 0 < offset or length < len(buffer):
-        buffer = buffer[offset:(offset + length)]
+def int_from_buffer(buffer: Union[bytes, bytearray]) -> int:
     return int.from_bytes(bytes=buffer, byteorder='big', signed=False)
 
 
-def int_to_buffer(value: int, buffer=None, offset: int = 0, length: int = 4) -> Optional[bytes]:
-    data = value.to_bytes(length=length, byteorder='big', signed=False)
-    if buffer is None:
-        return data
-    buffer[offset:(offset + length)] = data
+def int_to_buffer(value: int, length: int = 4) -> Optional[bytes]:
+    return value.to_bytes(length=length, byteorder='big', signed=False)

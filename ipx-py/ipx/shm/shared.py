@@ -36,9 +36,12 @@ from .cache import CycledCache
 
 class SharedMemory:
 
-    def __init__(self, buffer):
+    def __init__(self, cache=None, buffer=None):
         super().__init__()
-        self._cache = CycledCache(buffer=buffer, head_length=4)
+        if cache is None:
+            assert buffer is not None, 'cache buffer empty'
+            cache = CycledCache(buffer=buffer, head_length=4)
+        self._cache = cache
 
     @property
     def buffer(self) -> bytes:
@@ -46,25 +49,35 @@ class SharedMemory:
 
     @property
     def size(self) -> int:
-        return len(self.buffer)
+        return self._cache.bounds
+
+    @property
+    def capacity(self) -> int:
+        return self._cache.capacity
+
+    @property
+    def available(self) -> int:
+        return self._cache.available
 
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s.%s| size=%d buffer=%s />' % (mod, cname, self.size, self.buffer)
+        return '<%s | size=%d capacity=%d available=%d>\n%s\n</%s module="%s">'\
+               % (cname, self.size, self.capacity, self.available, self.buffer, cname, mod)
 
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s.%s| size=%d buffer=%s />' % (mod, cname, self.size, self.buffer)
+        return '<%s | size=%d capacity=%d available=%d>\n%s\n</%s module="%s">'\
+               % (cname, self.size, self.capacity, self.available, self.buffer, cname, mod)
 
-    def get(self) -> Union[str, dict, list, None]:
-        data = self._cache.get()
+    def shift(self) -> Union[str, dict, list, None]:
+        data = self._cache.shift()
         if data is not None:
             data = data.decode('utf-8')
             return json.loads(data)
 
-    def put(self, o: Union[str, dict, list]) -> bool:
+    def append(self, o: Union[str, dict, list]) -> bool:
         data = json.dumps(o)
         data = data.encode('utf-8')
-        return self._cache.put(data=data)
+        return self._cache.append(data=data)

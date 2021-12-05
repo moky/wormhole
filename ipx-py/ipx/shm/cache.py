@@ -54,8 +54,8 @@ class CycledCache(CycledBuffer):
         super().__init__(buffer=buffer)
         self.__head_length = head_length
 
-    def get(self) -> Union[bytes, bytearray, None]:
-        """ get one data, measured with size (as leading 4 bytes) """
+    def shift(self) -> Union[bytes, bytearray, None]:
+        """ shift one data, measured with size (as leading 4 bytes) """
         # get data head as size
         head_size = self.__head_length
         head, _ = self._try_read(length=head_size)
@@ -74,7 +74,7 @@ class CycledCache(CycledBuffer):
             raise BufferError('failed to read item: %d' % item_size)
         return item[head_size:]
 
-    def put(self, data: Union[bytes, bytearray]) -> bool:
+    def append(self, data: Union[bytes, bytearray]) -> bool:
         """ append data with size (as leading 4 bytes) into buffer """
         head_size = self.__head_length
         body_size = len(data)

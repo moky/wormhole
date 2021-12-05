@@ -54,8 +54,8 @@ class SharedMemoryCache(SharedMemory):
         return self.__shm.buf.tobytes()
 
     # Override
-    def get(self) -> Union[str, dict, list, None]:
-        data = self._cache.get()
+    def shift(self) -> Union[str, dict, list, None]:
+        data = self._cache.shift()
         if data is None:
             return None
         elif isinstance(data, memoryview):
