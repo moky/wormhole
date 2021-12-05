@@ -33,8 +33,8 @@ from typing import Optional, Union
 
 class CycledBuffer:
     """
-        Cycled Buffer
-        ~~~~~~~~~~~~~
+        Cycled Memory Buffer
+        ~~~~~~~~~~~~~~~~~~~~
 
         Header:
             magic code             - 14 bytes
@@ -48,7 +48,7 @@ class CycledBuffer:
             data zone
     """
 
-    MAGIC_CODE = b'CYCLED BUFFER\0'
+    MAGIC_CODE = b'CYCLED MEMORY\0'
 
     def __init__(self, buffer):
         super().__init__()
@@ -171,11 +171,11 @@ class CycledBuffer:
             spaces = part1 + part2
         return spaces - 1  # leave 1 space not used forever
 
-    def read(self, length: int) -> Optional[bytes]:
-        """ get one data, measured with size (as leading 4 bytes) """
+    def _try_read(self, length: int) -> (Union[bytes, bytearray, None], int):
+        """ read data with length, do not move reading pointer """
         available = self.available
         if available < length:
-            return None
+            return None, -1
         buffer = self.__buffer
         start = self.__start
         end = self.__end
@@ -191,17 +191,26 @@ class CycledBuffer:
             # join data as two parts
             p2 = start + p2 - end
             data = buffer[p1:end] + buffer[start:p2]
-        # update the pointer after data read
-        self.read_offset = p2
+        return data, p2
+
+    def read(self, length: int) -> Union[bytes, bytearray, None]:
+        """ get one data, measured with size (as leading 4 bytes) """
+        data, offset = self._try_read(length=length)
+        if data is not None:
+            # update the pointer after data read
+            self.read_offset = offset
         return data
 
     def write(self, data: Union[bytes, bytearray]) -> bool:
         """ append data with size (as leading 4 bytes) into buffer """
+        size = len(data)
+        if self.spaces < size:
+            return False
         buffer = self.__buffer
         start = self.__start
         end = self.__end
         p1 = self.write_offset
-        p2 = p1 + len(data)
+        p2 = p1 + size
         if p2 < end:
             buffer[p1:p2] = data
         elif p2 == end:

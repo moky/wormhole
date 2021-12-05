@@ -28,16 +28,19 @@
 # SOFTWARE.
 # ==============================================================================
 
+import json
 import mmap
+from typing import Union
 
 from .cache import CycledCache
 
 
-class SharedMemoryCache(CycledCache):
+class SharedMemoryCache:
 
     def __init__(self, size: int):
+        super().__init__()
         shm = mmap.mmap(fileno=-1, length=size, flags=mmap.MAP_SHARED, prot=(mmap.PROT_READ | mmap.PROT_WRITE))
-        super().__init__(buffer=shm, head_length=4)
+        self.__cache = CycledCache(buffer=shm, head_length=4)
         self.__shm = shm
 
     @property
@@ -46,3 +49,14 @@ class SharedMemoryCache(CycledCache):
 
     def close(self):
         self.__shm.close()
+
+    def get(self) -> Union[str, dict, list, None]:
+        data = self.__cache.get()
+        if data is not None:
+            data = data.decode('utf-8')
+            return json.loads(data)
+
+    def put(self, o: Union[str, dict, list]) -> bool:
+        data = json.dumps(o)
+        data = data.encode('utf-8')
+        return self.__cache.put(data=data)

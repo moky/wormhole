@@ -28,7 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Union
+from typing import Union
 
 from .buffer import CycledBuffer, int_from_buffer, int_to_buffer
 
@@ -54,29 +54,35 @@ class CycledCache(CycledBuffer):
         super().__init__(buffer=buffer)
         self.__head_length = head_length
 
-    def get(self) -> Optional[bytes]:
+    def get(self) -> Union[bytes, bytearray, None]:
         """ get one data, measured with size (as leading 4 bytes) """
         # get data head as size
-        head = self.read(length=self.__head_length)
+        head_size = self.__head_length
+        head, _ = self._try_read(length=head_size)
         if head is None:
             return None
-        size = int_from_buffer(buffer=head)
+        body_size = int_from_buffer(buffer=head)
+        item_size = head_size + body_size
         available = self.available
-        if available < size:
-            # data error, clear buffer
-            self.read(length=available)
-            raise BufferError('buffer error: %d < %d' % (available, size))
+        if available < item_size:
+            # data error
+            self.read(length=available)  # clear buffer
+            raise BufferError('buffer error: %d < %d + %d' % (available, head_size, body_size))
         # get data body with size
-        return self.read(length=size)
+        item = self.read(length=item_size)
+        if item is None:
+            raise BufferError('failed to read item: %d' % item_size)
+        return item[head_size:]
 
     def put(self, data: Union[bytes, bytearray]) -> bool:
         """ append data with size (as leading 4 bytes) into buffer """
-        size = len(data)
-        item_size = self.__head_length + size
+        head_size = self.__head_length
+        body_size = len(data)
+        item_size = head_size + body_size
         if self.spaces < item_size:
             # not enough spaces
             return False
-        head = int_to_buffer(value=size, length=self.__head_length)
+        head = int_to_buffer(value=body_size, length=head_size)
         if isinstance(data, bytearray):
             item = bytearray(head) + data
         else:
