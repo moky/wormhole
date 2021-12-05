@@ -56,7 +56,7 @@ class CycledBuffer:
         buf_len = len(buffer)
         if buf_len <= 0xFFFF:
             self.__int_len = 2
-        elif buffer <= 0xFFFFFFFF:
+        elif buf_len <= 0xFFFFFFFF:
             self.__int_len = 4
         else:
             self.__int_len = 8

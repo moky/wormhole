@@ -28,43 +28,35 @@
 # SOFTWARE.
 # ==============================================================================
 
-import json
-from typing import Union
+import mmap
+import os
 
-from .cache import CycledCache
+from .shared import SharedMemory
 
 
-class SharedMemory:
+class SharedMemoryCache(SharedMemory):
 
-    def __init__(self, buffer):
-        super().__init__()
-        self._cache = CycledCache(buffer=buffer, head_length=4)
+    def __init__(self, size: int, name: str = None):
+        if os.name == 'nt':
+            # Windows
+            access = mmap.ACCESS_DEFAULT
+            shm = mmap.mmap(fileno=-1, length=size, tagname=name, access=access, offset=0)
+        else:
+            # Unix
+            flags = mmap.MAP_SHARED
+            prot = mmap.PROT_READ | mmap.PROT_WRITE
+            access = mmap.ACCESS_DEFAULT
+            shm = mmap.mmap(fileno=-1, length=size, flags=flags, prot=prot, access=access, offset=0)
+        super().__init__(buffer=shm)
+        self.__shm = shm
 
     @property
+    def shm(self) -> mmap.mmap:
+        return self.__shm
+
+    def close(self):
+        self.__shm.close()
+
+    @property  # Override
     def buffer(self) -> bytes:
-        raise NotImplemented
-
-    @property
-    def size(self) -> int:
-        return len(self.buffer)
-
-    def __str__(self) -> str:
-        mod = self.__module__
-        cname = self.__class__.__name__
-        return '<%s.%s| size=%d buffer=%s />' % (mod, cname, self.size, self.buffer)
-
-    def __repr__(self) -> str:
-        mod = self.__module__
-        cname = self.__class__.__name__
-        return '<%s.%s| size=%d buffer=%s />' % (mod, cname, self.size, self.buffer)
-
-    def get(self) -> Union[str, dict, list, None]:
-        data = self._cache.get()
-        if data is not None:
-            data = data.decode('utf-8')
-            return json.loads(data)
-
-    def put(self, o: Union[str, dict, list]) -> bool:
-        data = json.dumps(o)
-        data = data.encode('utf-8')
-        return self._cache.put(data=data)
+        return bytes(self.__shm)

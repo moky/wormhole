@@ -6,16 +6,16 @@ from typing import List, Any
 from ipx import SharedMemoryCache
 
 
-g_shared = SharedMemoryCache(size=1024)
+g_shared = SharedMemoryCache(size=64, name='ABCDEF')
 
 
 def test_write(shared: SharedMemoryCache, data: List[Any]):
     print('======== start writing')
-    print('==== shm: %s' % shared.shm[:])
+    print('==== shm: %s' % shared)
     for item in data:
         print('==== write: %s' % item)
         shared.put(item)
-        print('==== shm: %s' % shared.shm[:])
+        print('==== shm: %s' % shared)
     print('======== stop writing')
 
 
@@ -23,11 +23,11 @@ def test_read(shared: SharedMemoryCache):
     if shared is None:
         shared = g_shared
     print('-------- start reading')
-    print('---- shm: %s' % shared.shm[:])
+    print('---- shm: %s' % shared)
     data = shared.get()
     while data is not None:
         print('---- read: %s' % data)
-        print('---- shm: %s' % shared.shm[:])
+        print('---- shm: %s' % shared)
         data = shared.get()
     print('-------- stop reading')
 

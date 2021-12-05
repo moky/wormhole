@@ -29,42 +29,38 @@
 # ==============================================================================
 
 import json
+from multiprocessing import shared_memory
 from typing import Union
 
-from .cache import CycledCache
+from .shared import SharedMemory
 
 
-class SharedMemory:
+class SharedMemoryCache(SharedMemory):
 
-    def __init__(self, buffer):
-        super().__init__()
-        self._cache = CycledCache(buffer=buffer, head_length=4)
+    def __init__(self, size: int, name: str = None, create: bool = True):
+        shm = shared_memory.SharedMemory(name=name, create=create, size=size)
+        super().__init__(buffer=shm.buf)
+        self.__shm = shm
 
     @property
+    def shm(self) -> shared_memory.SharedMemory:
+        return self.__shm
+
+    def close(self):
+        self.__shm.close()
+
+    @property  # Override
     def buffer(self) -> bytes:
-        raise NotImplemented
+        return self.__shm.buf.tobytes()
 
-    @property
-    def size(self) -> int:
-        return len(self.buffer)
-
-    def __str__(self) -> str:
-        mod = self.__module__
-        cname = self.__class__.__name__
-        return '<%s.%s| size=%d buffer=%s />' % (mod, cname, self.size, self.buffer)
-
-    def __repr__(self) -> str:
-        mod = self.__module__
-        cname = self.__class__.__name__
-        return '<%s.%s| size=%d buffer=%s />' % (mod, cname, self.size, self.buffer)
-
+    # Override
     def get(self) -> Union[str, dict, list, None]:
         data = self._cache.get()
-        if data is not None:
+        if data is None:
+            return None
+        elif isinstance(data, memoryview):
+            data = data.tobytes()
+            return json.loads(data)
+        else:
             data = data.decode('utf-8')
             return json.loads(data)
-
-    def put(self, o: Union[str, dict, list]) -> bool:
-        data = json.dumps(o)
-        data = data.encode('utf-8')
-        return self._cache.put(data=data)
