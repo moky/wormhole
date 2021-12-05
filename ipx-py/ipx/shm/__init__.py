@@ -30,7 +30,8 @@
 
 
 from .buffer import CycledBuffer
-from .shared import SharedBuffer
+from .cache import CycledCache
+from .shared import SharedMemoryCache
 
 
 name = "SHM"
@@ -39,6 +40,6 @@ __author__ = 'Albert Moky'
 
 __all__ = [
 
-    'CycledBuffer',
-    'SharedBuffer',
+    'CycledBuffer', 'CycledCache',
+    'SharedMemoryCache',
 ]

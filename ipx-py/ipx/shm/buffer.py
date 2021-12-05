@@ -45,7 +45,7 @@ class CycledBuffer:
             write offset           - 2/4/8 bytes
             alternate write offset - 2/4/8 bytes
         Body:
-            data item(s)           - data size (4 bytes) + data (variable length)
+            data zone
     """
 
     MAGIC_CODE = b'CYCLED BUFFER\0'
@@ -171,74 +171,49 @@ class CycledBuffer:
             spaces = part1 + part2
         return spaces - 1  # leave 1 space not used forever
 
-    def read(self) -> Optional[bytes]:
+    def read(self, length: int) -> Optional[bytes]:
         """ get one data, measured with size (as leading 4 bytes) """
         available = self.available
-        if available < 4:
-            assert available == 0, 'available error: %d' % available
+        if available < length:
             return None
         buffer = self.__buffer
         start = self.__start
         end = self.__end
         p1 = self.read_offset
-        p2 = p1 + 4
+        p2 = p1 + length
         if p2 < end:
-            head = buffer[p1:p2]
+            data = buffer[p1:p2]
         elif p2 == end:
             # data on the tail
-            head = buffer[p1:p2]
+            data = buffer[p1:p2]
             p2 = start
         else:
             # join data as two parts
             p2 = start + p2 - end
-            head = buffer[p1:end] + buffer[start:p2]
-        size = int_from_buffer(buffer=head)
-        if available < (size + 4):
-            raise BufferError('data size error: %d, %d' % (size, available))
-        p1 = p2 + size
-        if p1 < end:
-            data = buffer[p2:p1]
-        elif p1 == end:
-            # data on the tail
-            data = buffer[p2:p1]
-            p1 = start
-        else:
-            # join data as two parts
-            p1 = start + p1 - end
-            data = buffer[p2:end] + buffer[start:p1]
+            data = buffer[p1:end] + buffer[start:p2]
         # update the pointer after data read
-        self.read_offset = p1
+        self.read_offset = p2
         return data
 
     def write(self, data: Union[bytes, bytearray]) -> bool:
         """ append data with size (as leading 4 bytes) into buffer """
-        size = len(data)
-        item_size = 4 + size
-        if self.spaces < item_size:
-            # not enough space
-            return False
-        head = int_to_buffer(value=size)
-        if isinstance(data, bytearray):
-            item = bytearray(head) + data
-        else:
-            item = bytearray(head + data)
         buffer = self.__buffer
         start = self.__start
         end = self.__end
         p1 = self.write_offset
-        p2 = p1 + item_size
+        p2 = p1 + len(data)
         if p2 < end:
-            buffer[p1:p2] = item
+            buffer[p1:p2] = data
         elif p2 == end:
             # data on the tail
-            buffer[p1:p2] = item
+            buffer[p1:p2] = data
             p2 = start
         else:
             # separate data to two parts
             m = end - p1
             p2 = start + p2 - end
-            buffer[p1:end] = item[:m]
-            buffer[start:p2] = item[m:]
+            buffer[p1:end] = data[:m]
+            buffer[start:p2] = data[m:]
         # update the pointer after data wrote
         self.write_offset = p2
         return True

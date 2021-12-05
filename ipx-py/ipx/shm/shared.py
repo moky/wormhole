@@ -30,14 +30,14 @@
 
 import mmap
 
-from .buffer import CycledBuffer
+from .cache import CycledCache
 
 
-class SharedBuffer(CycledBuffer):
+class SharedMemoryCache(CycledCache):
 
     def __init__(self, size: int):
         shm = mmap.mmap(fileno=-1, length=size, flags=mmap.MAP_SHARED, prot=(mmap.PROT_READ | mmap.PROT_WRITE))
-        super().__init__(buffer=shm)
+        super().__init__(buffer=shm, head_length=4)
         self.__shm = shm
 
     @property
