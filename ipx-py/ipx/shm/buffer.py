@@ -45,7 +45,7 @@ class CycledBuffer:
             write offset           - 2/4/8 bytes
             alternate write offset - 2/4/8 bytes
         Body:
-            data zone
+            data zone              - starts from 24/32/48
     """
 
     MAGIC_CODE = b'CYCLED MEMORY\0'
@@ -54,11 +54,14 @@ class CycledBuffer:
         super().__init__()
         self.__buffer = buffer
         bounds = self.bounds
-        if bounds <= 0xFFFF:
+        if bounds <= 0x10018:
+            # len(header) == 24 bytes
             self.__int_len = 2
-        elif bounds <= 0xFFFFFFFF:
+        elif bounds <= 0x100000020:
+            # len(header) == 32 bytes
             self.__int_len = 4
         else:
+            # len(header) == 48 bytes
             self.__int_len = 8
         # check header
         pos = len(self.MAGIC_CODE)  # 14
@@ -138,8 +141,10 @@ class CycledBuffer:
 
     def __fetch_offset(self, pos_x: int) -> int:
         offset = self._get(pos=pos_x) & 0x7F  # clear alternate flag
+        assert 16 <= offset <= (self.__start - self.__int_len), 'pos of offset error: %d' % offset
         data = self._slice(start=offset, end=(offset + self.__int_len))
         value = int_from_buffer(buffer=data)
+        assert 0 <= value < (self.__end - self.__start), 'offset error: %d' % value
         return value + self.__start
 
     def __update_offset(self, pos_x: int, value: int):
@@ -190,6 +195,21 @@ class CycledBuffer:
             part2 = p1 - self.__start
             spaces = part1 + part2
         return spaces - 1  # leave 1 space not used forever
+
+    def _check_error(self, error: AssertionError) -> bool:
+        msg = str(error)
+        if msg.startswith('pos of offset error:'):
+            # header error, destroy it
+            self._set(pos=len(self.MAGIC_CODE), value=13)
+            return True
+        elif msg.startswith('offset error:'):
+            # offset(s) error, reset all of them
+            p1 = len(self.MAGIC_CODE) + 2
+            p2 = self.__start
+            size = self.__int_len << 2
+            assert size == (p2 - p1), 'header error: %s' % self
+            self._update(start=p1, end=p2, data=bytearray(size))
+            return True
 
     def _try_read(self, length: int) -> (Union[bytes, bytearray, None], int):
         """ read data with length, do not move reading pointer """

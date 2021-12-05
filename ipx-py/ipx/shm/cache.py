@@ -54,6 +54,14 @@ class CycledCache(CycledBuffer):
         super().__init__(buffer=buffer)
         self.__head_length = head_length
 
+    # Override
+    def _try_read(self, length: int) -> (Union[bytes, bytearray, None], int):
+        try:
+            return super()._try_read(length=length)
+        except AssertionError as error:
+            self._check_error(error=error)
+            raise error
+
     def shift(self) -> Union[bytes, bytearray, None]:
         """ shift one data, measured with size (as leading 4 bytes) """
         # get data head as size
