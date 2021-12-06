@@ -200,7 +200,7 @@ class CycledBuffer:
         msg = str(error)
         if msg.startswith('pos of offset error:'):
             # header error, destroy it
-            self._set(pos=len(self.MAGIC_CODE), value=13)
+            self._update(start=0, end=6, data=b'BROKEN')
             return True
         elif msg.startswith('offset error:'):
             # offset(s) error, reset all of them

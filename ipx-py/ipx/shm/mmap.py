@@ -54,9 +54,14 @@ class SharedMemoryCache(SharedMemory):
     def shm(self) -> mmap.mmap:
         return self.__shm
 
-    def close(self):
-        self.__shm.close()
-
     @property  # Override
     def buffer(self) -> bytes:
         return bytes(self.__shm)
+
+    # Override
+    def detach(self):
+        self.__shm.close()
+
+    # Override
+    def remove(self):
+        self.__shm.close()

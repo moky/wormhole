@@ -36,6 +36,8 @@ from .lnc import Notification, NotificationObserver, NotificationCenter
 from .shm import CycledBuffer, CycledCache
 from .shm import SharedMemory, SharedMemoryCache
 
+from .arrow import Arrow, SharedMemoryArrow
+
 
 name = "IPX"
 
@@ -51,4 +53,7 @@ __all__ = [
     # Shared Memory
     'CycledBuffer', 'CycledCache',
     'SharedMemory', 'SharedMemoryCache',
+
+    # Half-duplex Pipe
+    'Arrow', 'SharedMemoryArrow',
 ]

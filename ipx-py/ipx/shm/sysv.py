@@ -88,16 +88,17 @@ class SharedMemoryCache(SharedMemory):
     def shm(self) -> sysv_ipc.SharedMemory:
         return self.__shm
 
-    def close(self):
-        self.__shm.detach()
-
     @property  # Override
     def buffer(self) -> bytes:
         return self.__shm.read()
 
-    @property  # Override
-    def bou(self) -> int:
-        return self.__shm.size
+    # Override
+    def detach(self):
+        self.__shm.detach()
+
+    # Override
+    def remove(self):
+        self.__shm.remove()
 
     @property
     def id(self) -> int:

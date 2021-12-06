@@ -3,42 +3,48 @@ import multiprocessing
 import os
 from typing import List, Any
 
-from ipx import SharedMemoryCache
+from ipx import Arrow, SharedMemoryArrow
 
 
-g_shared = SharedMemoryCache(size=64, name='ABCDEF')
+def new_arrow() -> SharedMemoryArrow:
+    return SharedMemoryArrow.new(size=64, name='ABCDEF')
 
 
-def test_write(data: List[Any], shm: SharedMemoryCache = None):
-    if shm is None:
-        shm = SharedMemoryCache(size=64, name='ABCDEF')
+g_shared = new_arrow()
+
+
+def test_write(data: List[Any], arrow: Arrow = None):
+    if arrow is None:
+        arrow = new_arrow()
     print('======== start writing')
-    print('==== shm: %s' % shm)
+    print('==== arrow: %s' % arrow)
     for item in data:
         print('==== write: %s' % item)
-        shm.append(item)
-        print('==== shm: %s' % shm)
+        arrow.send(item)
+        print('==== arrow: %s' % arrow)
     print('======== stop writing')
 
 
-def test_read(shm: SharedMemoryCache = None):
-    if shm is None:
-        shm = SharedMemoryCache(size=64, name='ABCDEF')
+def test_read(arrow: Arrow = None):
+    if arrow is None:
+        arrow = new_arrow()
     print('-------- start reading')
-    print('---- shm: %s' % shm)
-    data = shm.shift()
+    print('---- arrow: %s' % arrow)
+    data = arrow.receive()
     while data is not None:
         print('---- read: %s' % data)
-        print('---- shm: %s' % shm)
-        data = shm.shift()
+        print('---- arrow: %s' % arrow)
+        data = arrow.receive()
     print('-------- stop reading')
 
 
 def test_process():
     print('******** test multiprocessing...')
-    son = multiprocessing.Process(target=test_read)
-    son.start()
+    child = multiprocessing.Process(target=test_read)
+    child.start()
     test_write(data=['Hello', 'world', 123])
+    child.join()
+    # g_shared.remove()
 
 
 def test_fork():
@@ -46,10 +52,10 @@ def test_fork():
     pid = os.fork()
     if pid == 0:
         print('---- Child process %d, parent=%d' % (os.getpid(), os.getppid()))
-        test_read(shm=g_shared)
+        test_read(arrow=g_shared)
     else:
         print('==== Parent process %d, child=%d' % (os.getpid(), pid))
-        test_write(data=['Hello', 'world', 123], shm=g_shared)
+        test_write(data=['Hello', 'world', 123], arrow=g_shared)
 
 
 if __name__ == '__main__':

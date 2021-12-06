@@ -30,7 +30,7 @@
 
 import json
 from multiprocessing import shared_memory
-from typing import Union
+from typing import Optional, Any
 
 from .shared import SharedMemory
 
@@ -46,15 +46,20 @@ class SharedMemoryCache(SharedMemory):
     def shm(self) -> shared_memory.SharedMemory:
         return self.__shm
 
-    def close(self):
-        self.__shm.close()
-
     @property  # Override
     def buffer(self) -> bytes:
         return self.__shm.buf.tobytes()
 
     # Override
-    def shift(self) -> Union[str, dict, list, None]:
+    def detach(self):
+        self.__shm.close()
+
+    # Override
+    def remove(self):
+        self.__shm.unlink()
+
+    # Override
+    def shift(self) -> Optional[Any]:
         data = self._cache.shift()
         if data is None:
             return None

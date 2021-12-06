@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   SHM: Shared Memory
+#   IPX: Inter-Process eXchange
 #
 #                                Written in 2021 by Moky <albert.moky@gmail.com>
 #
@@ -28,67 +28,67 @@
 # SOFTWARE.
 # ==============================================================================
 
-import json
 from abc import ABC, abstractmethod
-from typing import Optional, Any
+from typing import Any, Optional
 
-from .cache import CycledCache
+from .shm import SharedMemory, SharedMemoryCache
 
 
-class SharedMemory(ABC):
+class Arrow(ABC):
+    """ Half-duplex Pipe from A to B """
 
-    def __init__(self, cache=None, buffer=None):
+    @abstractmethod
+    def send(self, obj: Any) -> bool:
+        """
+        Called by A to send an object from A to B
+
+        :param obj: any object (dict, list, str, int, float, ...)
+        :return: False on error
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def receive(self) -> Optional[Any]:
+        """
+        Called by B to receive something from A to B
+
+        :return: None on received nothing
+        """
+        raise NotImplemented
+
+
+class SharedMemoryArrow(Arrow):
+    """ Arrow goes through Shared Memory """
+
+    def __init__(self, shm: SharedMemory):
         super().__init__()
-        if cache is None:
-            assert buffer is not None, 'cache buffer empty'
-            cache = CycledCache(buffer=buffer, head_length=4)
-        self._cache = cache
-
-    @property
-    def buffer(self) -> bytes:
-        raise NotImplemented
-
-    @abstractmethod
-    def detach(self):
-        """ Detaches the shared memory """
-        raise NotImplemented
-
-    @abstractmethod
-    def remove(self):
-        """ Removes (deletes) the shared memory from the system """
-        raise NotImplemented
-
-    @property
-    def size(self) -> int:
-        return self._cache.bounds
-
-    @property
-    def capacity(self) -> int:
-        return self._cache.capacity
-
-    @property
-    def available(self) -> int:
-        return self._cache.available
+        self.__shm = shm
 
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s | size=%d capacity=%d available=%d>\n%s\n</%s module="%s">'\
-               % (cname, self.size, self.capacity, self.available, self.buffer, cname, mod)
+        return '<%s module="%s">%s</%s>' % (cname, mod, self.__shm, cname)
 
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s | size=%d capacity=%d available=%d>\n%s\n</%s module="%s">'\
-               % (cname, self.size, self.capacity, self.available, self.buffer, cname, mod)
+        return '<%s module="%s">%s</%s>' % (cname, mod, self.__shm, cname)
 
-    def shift(self) -> Optional[Any]:
-        data = self._cache.shift()
-        if data is not None:
-            data = data.decode('utf-8')
-            return json.loads(data)
+    # Override
+    def send(self, obj: Any) -> bool:
+        return self.__shm.append(obj=obj)
 
-    def append(self, obj: Any) -> bool:
-        data = json.dumps(obj)
-        data = data.encode('utf-8')
-        return self._cache.append(data=data)
+    # Override
+    def receive(self) -> Optional[Any]:
+        return self.__shm.shift()
+
+    def detach(self):
+        self.__shm.detach()
+
+    def remove(self):
+        self.__shm.remove()
+
+    @classmethod
+    def new(cls, size: int, name: str):
+        shm = SharedMemoryCache(size=size, name=name)
+        return cls(shm=shm)
