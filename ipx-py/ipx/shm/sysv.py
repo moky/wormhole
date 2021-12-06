@@ -36,38 +36,49 @@ from .cache import CycledCache
 from .shared import SharedMemory
 
 
-class MemoryCache(CycledCache):
+class MemoryCache(CycledCache[sysv_ipc.SharedMemory]):
 
     def __init__(self, shm: sysv_ipc.SharedMemory):
-        self.__shm = shm
-        super().__init__(buffer=None, head_length=4)
+        super().__init__(shm=shm, head_length=4)
+
+    # Override
+    def detach(self):
+        self.shm.detach()
+
+    # Override
+    def remove(self):
+        self.shm.remove()
 
     @property  # Override
-    def bounds(self) -> int:
-        return self.__shm.size
+    def buffer(self) -> bytes:
+        return self.shm.read()
+
+    @property  # Override
+    def size(self) -> int:
+        return self.shm.size
 
     # Override
     def _set(self, pos: int, value: int):
         data = bytearray(1)
         data[0] = value
-        self.__shm.write(data, offset=pos)
+        self.shm.write(data, offset=pos)
 
     # Override
     def _get(self, pos: int) -> int:
-        data = self.__shm.read(1, offset=pos)
+        data = self.shm.read(1, offset=pos)
         return data[0]
 
     # Override
     def _update(self, start: int, end: int, data: Union[bytes, bytearray]):
         assert start + len(data) == end, '%d + %d != %d' % (start, len(data), end)
-        self.__shm.write(data, offset=start)
+        self.shm.write(data, offset=start)
 
     # Override
     def _slice(self, start: int, end: int) -> Union[bytes, bytearray]:
-        return self.__shm.read(end - start, offset=start)
+        return self.shm.read(end - start, offset=start)
 
 
-class SharedMemoryCache(SharedMemory):
+class SharedMemoryCache(SharedMemory[sysv_ipc.SharedMemory]):
 
     MODE = 0o644
 
@@ -82,44 +93,27 @@ class SharedMemoryCache(SharedMemory):
         shm = sysv_ipc.SharedMemory(key=key, flags=flags, mode=self.MODE, size=size)
         cache = MemoryCache(shm=shm)
         super().__init__(cache=cache)
-        self.__shm = shm
-
-    @property
-    def shm(self) -> sysv_ipc.SharedMemory:
-        return self.__shm
-
-    @property  # Override
-    def buffer(self) -> bytes:
-        return self.__shm.read()
-
-    # Override
-    def detach(self):
-        self.__shm.detach()
-
-    # Override
-    def remove(self):
-        self.__shm.remove()
 
     @property
     def id(self) -> int:
-        return self.__shm.id
+        return self.cache.shm.id
 
     @property
     def key(self) -> int:
-        return self.__shm.key
+        return self.cache.shm.key
 
     @property
     def mode(self) -> int:
-        return self.__shm.mode
+        return self.cache.shm.mode
 
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s %d|0x%08x mode=%o size=%d capacity=%d available=%d>\n%s\n</%s module="%s">' %\
-               (cname, self.id, self.key, self.mode, self.size, self.capacity, self.available, self.buffer, cname, mod)
+        cache = self.cache
+        return '<%s id=%d key=0x%08x mode=%o>%s</%s "%s">' % (cname, self.id, self.key, self.mode, cache, cname, mod)
 
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s %d|0x%08x mode=%o size=%d capacity=%d available=%d>\n%s\n</%s module="%s">' %\
-               (cname, self.id, self.key, self.mode, self.size, self.capacity, self.available, self.buffer, cname, mod)
+        cache = self.cache
+        return '<%s id=%d key=0x%08x mode=%o>%s</%s "%s">' % (cname, self.id, self.key, self.mode, cache, cname, mod)

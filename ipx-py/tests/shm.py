@@ -1,6 +1,8 @@
 
 import multiprocessing
 import os
+import time
+import traceback
 from typing import List, Any
 
 from ipx import Arrow, SharedMemoryArrow
@@ -8,6 +10,12 @@ from ipx import Arrow, SharedMemoryArrow
 
 def new_arrow() -> SharedMemoryArrow:
     return SharedMemoryArrow.new(size=64, name='ABCDEF')
+    # return SharedMemoryArrow.new(size=64, name='')
+
+
+def del_arrow(arrow: SharedMemoryArrow):
+    # arrow.remove()
+    pass
 
 
 g_shared = new_arrow()
@@ -56,8 +64,14 @@ def test_fork():
     else:
         print('==== Parent process %d, child=%d' % (os.getpid(), pid))
         test_write(data=['Hello', 'world', 123], arrow=g_shared)
+        time.sleep(0.5)
+        del_arrow(arrow=g_shared)
 
 
 if __name__ == '__main__':
-    # test_process()
-    test_fork()
+    try:
+        test_process()
+        # test_fork()
+    except Exception as error:
+        print('[TEST] error: %s' % error)
+        traceback.print_exc()

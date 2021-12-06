@@ -28,10 +28,14 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Union
+from abc import ABC, abstractmethod
+from typing import TypeVar, Generic, Optional, Union
 
 
-class CycledBuffer:
+M = TypeVar('M')  # Shared Memory
+
+
+class CycledBuffer(Generic[M], ABC):
     """
         Cycled Memory Buffer
         ~~~~~~~~~~~~~~~~~~~~
@@ -50,10 +54,10 @@ class CycledBuffer:
 
     MAGIC_CODE = b'CYCLED MEMORY\0'
 
-    def __init__(self, buffer):
+    def __init__(self, shm: M):
         super().__init__()
-        self.__buffer = buffer
-        bounds = self.bounds
+        self.__shm = shm
+        bounds = self.size
         if bounds <= 0x10018:
             # len(header) == 24 bytes
             self.__int_len = 2
@@ -87,22 +91,34 @@ class CycledBuffer:
         self.__end = bounds
 
     @property
-    def bounds(self) -> int:
-        """ get buffer length """
-        return len(self.__buffer)
+    def shm(self) -> M:
+        return self.__shm
 
+    @property
+    def size(self) -> int:
+        """ Gets buffer length """
+        raise NotImplemented
+
+    @abstractmethod
     def _set(self, pos: int, value: int):
-        self.__buffer[pos] = value
+        """ Sets value with index """
+        raise NotImplemented
 
+    @abstractmethod
     def _get(self, pos: int) -> int:
-        return self.__buffer[pos]
+        """ Gets value from index """
+        raise NotImplemented
 
+    @abstractmethod
     def _update(self, start: int, end: int, data: Union[bytes, bytearray]):
-        assert start + len(data) == end, '%d + %d != %d' % (start, len(data), end)
-        self.__buffer[start:end] = data
+        """ Updates slice [start, end) """
+        assert start + len(data) == end, 'range error: %d + %d != %d' % (start, len(data), end)
+        raise NotImplemented
 
+    @abstractmethod
     def _slice(self, start: int, end: int) -> Union[bytes, bytearray]:
-        return self.__buffer[start:end]
+        """ Gets slice [start, end) """
+        raise NotImplemented
 
     @property
     def capacity(self) -> int:

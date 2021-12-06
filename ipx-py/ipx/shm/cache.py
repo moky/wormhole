@@ -28,12 +28,15 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Union
+from abc import ABC, abstractmethod
+from typing import Generic, Union
 
-from .buffer import CycledBuffer, int_from_buffer, int_to_buffer
+from .buffer import M
+from .buffer import int_from_buffer, int_to_buffer
+from .buffer import CycledBuffer
 
 
-class CycledCache(CycledBuffer):
+class CycledCache(CycledBuffer, Generic[M], ABC):
     """
         Cycled Data Cache
         ~~~~~~~~~~~~~~~~~
@@ -50,9 +53,36 @@ class CycledCache(CycledBuffer):
             data item(s)           - data size (4 bytes) + data (variable length)
     """
 
-    def __init__(self, buffer, head_length: int = 4):
-        super().__init__(buffer=buffer)
+    def __init__(self, shm: M, head_length: int = 4):
+        super().__init__(shm=shm)
         self.__head_length = head_length
+
+    @abstractmethod
+    def detach(self):
+        """ Detaches the shared memory """
+        raise NotImplemented
+
+    @abstractmethod
+    def remove(self):
+        """ Removes (deletes) the shared memory from the system """
+        raise NotImplemented
+
+    @property
+    def buffer(self) -> bytes:
+        """ Gets the whole buffer """
+        raise NotImplemented
+
+    def __str__(self) -> str:
+        mod = self.__module__
+        cname = self.__class__.__name__
+        return '<%s size=%d capacity=%d available=%d>\n%s\n</%s module="%s">'\
+               % (cname, self.size, self.capacity, self.available, self.buffer, cname, mod)
+
+    def __repr__(self) -> str:
+        mod = self.__module__
+        cname = self.__class__.__name__
+        return '<%s size=%d capacity=%d available=%d>\n%s\n</%s module="%s">'\
+               % (cname, self.size, self.capacity, self.available, self.buffer, cname, mod)
 
     # Override
     def _try_read(self, length: int) -> (Union[bytes, bytearray, None], int):

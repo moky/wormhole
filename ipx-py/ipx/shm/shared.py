@@ -29,61 +29,42 @@
 # ==============================================================================
 
 import json
-from abc import ABC, abstractmethod
-from typing import Optional, Any
+from typing import Generic, Optional, Any
 
+from .buffer import M
 from .cache import CycledCache
 
 
-class SharedMemory(ABC):
+class SharedMemory(Generic[M]):
 
-    def __init__(self, cache=None, buffer=None):
+    def __init__(self, cache: CycledCache[M]):
         super().__init__()
-        if cache is None:
-            assert buffer is not None, 'cache buffer empty'
-            cache = CycledCache(buffer=buffer, head_length=4)
-        self._cache = cache
+        self.__cache = cache
 
     @property
-    def buffer(self) -> bytes:
-        raise NotImplemented
+    def cache(self) -> CycledCache[M]:
+        return self.__cache
 
-    @abstractmethod
     def detach(self):
         """ Detaches the shared memory """
-        raise NotImplemented
+        self.cache.detach()
 
-    @abstractmethod
     def remove(self):
         """ Removes (deletes) the shared memory from the system """
-        raise NotImplemented
-
-    @property
-    def size(self) -> int:
-        return self._cache.bounds
-
-    @property
-    def capacity(self) -> int:
-        return self._cache.capacity
-
-    @property
-    def available(self) -> int:
-        return self._cache.available
+        self.cache.remove()
 
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s | size=%d capacity=%d available=%d>\n%s\n</%s module="%s">'\
-               % (cname, self.size, self.capacity, self.available, self.buffer, cname, mod)
+        return '<%s>%s</%s module="%s">' % (cname, self.cache, cname, mod)
 
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s | size=%d capacity=%d available=%d>\n%s\n</%s module="%s">'\
-               % (cname, self.size, self.capacity, self.available, self.buffer, cname, mod)
+        return '<%s>%s</%s module="%s">' % (cname, self.cache, cname, mod)
 
     def shift(self) -> Optional[Any]:
-        data = self._cache.shift()
+        data = self.cache.shift()
         if data is not None:
             data = data.decode('utf-8')
             return json.loads(data)
@@ -91,4 +72,4 @@ class SharedMemory(ABC):
     def append(self, obj: Any) -> bool:
         data = json.dumps(obj)
         data = data.encode('utf-8')
-        return self._cache.append(data=data)
+        return self.cache.append(data=data)

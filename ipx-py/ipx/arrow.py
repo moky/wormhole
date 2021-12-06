@@ -67,12 +67,12 @@ class SharedMemoryArrow(Arrow):
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s module="%s">%s</%s>' % (cname, mod, self.__shm, cname)
+        return '<%s>%s</%s module="%s">' % (cname, self.__shm, cname, mod)
 
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s module="%s">%s</%s>' % (cname, mod, self.__shm, cname)
+        return '<%s>%s</%s module="%s">' % (cname, self.__shm, cname, mod)
 
     # Override
     def send(self, obj: Any) -> bool:

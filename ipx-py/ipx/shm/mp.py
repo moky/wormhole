@@ -30,37 +30,64 @@
 
 import json
 from multiprocessing import shared_memory
-from typing import Optional, Any
+from typing import Optional, Any, Union
 
+from .cache import CycledCache
 from .shared import SharedMemory
 
 
-class SharedMemoryCache(SharedMemory):
+class MemoryCache(CycledCache[shared_memory.SharedMemory]):
 
-    def __init__(self, size: int, name: str = None, create: bool = True):
-        shm = shared_memory.SharedMemory(name=name, create=create, size=size)
-        super().__init__(buffer=shm.buf)
-        self.__shm = shm
-
-    @property
-    def shm(self) -> shared_memory.SharedMemory:
-        return self.__shm
-
-    @property  # Override
-    def buffer(self) -> bytes:
-        return self.__shm.buf.tobytes()
+    def __init__(self, shm: shared_memory.SharedMemory):
+        super().__init__(shm=shm, head_length=4)
 
     # Override
     def detach(self):
-        self.__shm.close()
+        self.shm.close()
 
     # Override
     def remove(self):
-        self.__shm.unlink()
+        self.shm.unlink()
+
+    @property  # Override
+    def buffer(self) -> bytes:
+        return self.shm.buf.tobytes()
+
+    @property  # Override
+    def size(self) -> int:
+        return self.shm.size
+
+    # Override
+    def _set(self, pos: int, value: int):
+        # self.shm.buf[pos] = value
+        data = bytearray(1)
+        data[0] = value
+        self.shm.buf[pos:(pos + 1)] = memoryview(data)
+
+    # Override
+    def _get(self, pos: int) -> int:
+        return self.shm.buf[pos]
+
+    # Override
+    def _update(self, start: int, end: int, data: Union[bytes, bytearray]):
+        assert start + len(data) == end, 'range error: %d + %d != %d' % (start, len(data), end)
+        self.shm.buf[start:end] = data
+
+    # Override
+    def _slice(self, start: int, end: int) -> Union[bytes, bytearray]:
+        return bytes(self.shm.buf[start:end])
+
+
+class SharedMemoryCache(SharedMemory[shared_memory.SharedMemory]):
+
+    def __init__(self, size: int, name: str = None, create: bool = True):
+        shm = shared_memory.SharedMemory(name=name, create=create, size=size)
+        cache = MemoryCache(shm=shm)
+        super().__init__(cache=cache)
 
     # Override
     def shift(self) -> Optional[Any]:
-        data = self._cache.shift()
+        data = self.cache.shift()
         if data is None:
             return None
         elif isinstance(data, memoryview):
