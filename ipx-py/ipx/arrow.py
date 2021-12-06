@@ -38,12 +38,12 @@ class Arrow(ABC):
     """ Half-duplex Pipe from A to B """
 
     @abstractmethod
-    def send(self, obj: Any) -> bool:
+    def send(self, obj: Any) -> int:
         """
         Called by A to send an object from A to B
 
         :param obj: any object (dict, list, str, int, float, ...)
-        :return: False on error
+        :return: how many stranded passengers； 0 on all sent
         """
         raise NotImplemented
 
@@ -63,24 +63,56 @@ class SharedMemoryArrow(Arrow):
     def __init__(self, shm: SharedMemory):
         super().__init__()
         self.__shm = shm
+        # memory caches
+        self.__arrivals = []
+        self.__departures = []
 
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s>%s</%s module="%s">' % (cname, self.__shm, cname, mod)
+        shm = self.__shm
+        arrivals = len(self.__arrivals)
+        departures = len(self.__departures)
+        return '<%s arrivals=%d departures=%d>%s</%s module="%s">' % (cname, arrivals, departures, shm, cname, mod)
 
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s>%s</%s module="%s">' % (cname, self.__shm, cname, mod)
+        shm = self.__shm
+        arrivals = len(self.__arrivals)
+        departures = len(self.__departures)
+        return '<%s arrivals=%d departures=%d>%s</%s module="%s">' % (cname, arrivals, departures, shm, cname, mod)
 
     # Override
-    def send(self, obj: Any) -> bool:
-        return self.__shm.append(obj=obj)
+    def send(self, obj: Any) -> int:
+        # resent delay objects first
+        delays = self.__departures
+        for item in delays:
+            if self.__shm.append(obj=item):
+                # sent, remove from the queue
+                self.__departures.remove(item)
+            else:
+                # failed, put it into the queue
+                if obj is not None:
+                    self.__departures.append(obj)
+                return len(self.__departures)
+        # all delays sent, try this one
+        if obj is not None and not self.__shm.append(obj=obj):
+            # failed, put it into the queue
+            self.__departures.append(obj)
+        return len(self.__departures)
 
     # Override
     def receive(self) -> Optional[Any]:
-        return self.__shm.shift()
+        # receive all objects from the pool
+        obj = self.__shm.shift()
+        while obj is not None:
+            # pu it into the queue
+            self.__arrivals.append(obj)
+            obj = self.__shm.shift()
+        # return the first one
+        if len(self.__arrivals) > 0:
+            return self.__arrivals.pop(0)
 
     def detach(self):
         self.__shm.detach()

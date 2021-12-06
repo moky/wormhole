@@ -36,6 +36,11 @@ from .cache import CycledCache
 from .shared import SharedMemory
 
 
+def create_memory_cache(size: int, name: str = None):
+    shm = shared_memory.SharedMemory(name=name, create=True, size=size)
+    return MemoryCache(shm=shm)
+
+
 class MemoryCache(CycledCache[shared_memory.SharedMemory]):
 
     def __init__(self, shm: shared_memory.SharedMemory):
@@ -80,9 +85,8 @@ class MemoryCache(CycledCache[shared_memory.SharedMemory]):
 
 class SharedMemoryCache(SharedMemory[shared_memory.SharedMemory]):
 
-    def __init__(self, size: int, name: str = None, create: bool = True):
-        shm = shared_memory.SharedMemory(name=name, create=create, size=size)
-        cache = MemoryCache(shm=shm)
+    def __init__(self, size: int, name: str = None):
+        cache = create_memory_cache(size=size, name=name)
         super().__init__(cache=cache)
 
     # Override

@@ -36,6 +36,20 @@ from .cache import CycledCache
 from .shared import SharedMemory
 
 
+def create_memory_cache(size: int, name: str = None):
+    if os.name == 'nt':
+        # Windows
+        access = mmap.ACCESS_DEFAULT
+        shm = mmap.mmap(fileno=-1, length=size, tagname=name, access=access, offset=0)
+    else:
+        # Unix
+        flags = mmap.MAP_SHARED
+        prot = mmap.PROT_READ | mmap.PROT_WRITE
+        access = mmap.ACCESS_DEFAULT
+        shm = mmap.mmap(fileno=-1, length=size, flags=flags, prot=prot, access=access, offset=0)
+    return MemoryCache(shm=shm)
+
+
 class MemoryCache(CycledCache[mmap.mmap]):
 
     def __init__(self, shm: mmap.mmap):
@@ -79,15 +93,5 @@ class MemoryCache(CycledCache[mmap.mmap]):
 class SharedMemoryCache(SharedMemory[mmap.mmap]):
 
     def __init__(self, size: int, name: str = None):
-        if os.name == 'nt':
-            # Windows
-            access = mmap.ACCESS_DEFAULT
-            shm = mmap.mmap(fileno=-1, length=size, tagname=name, access=access, offset=0)
-        else:
-            # Unix
-            flags = mmap.MAP_SHARED
-            prot = mmap.PROT_READ | mmap.PROT_WRITE
-            access = mmap.ACCESS_DEFAULT
-            shm = mmap.mmap(fileno=-1, length=size, flags=flags, prot=prot, access=access, offset=0)
-        cache = MemoryCache(shm=shm)
+        cache = create_memory_cache(size=size, name=name)
         super().__init__(cache=cache)

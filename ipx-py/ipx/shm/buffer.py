@@ -172,8 +172,10 @@ class CycledBuffer(Generic[M], ABC):
         else:
             offset = (pos & 0x7F) - self.__int_len
             pos = offset
+        assert 16 <= offset <= (self.__start - self.__int_len), 'pos of offset error: %d' % pos
         # update on alternate spaces
         value -= self.__start
+        assert 0 <= value < (self.__end - self.__start), 'offset error: %d' % value
         data = int_to_buffer(value=value, length=self.__int_len)
         self._update(start=offset, end=(offset + self.__int_len), data=data)
         # switch after spaces updated
@@ -224,7 +226,7 @@ class CycledBuffer(Generic[M], ABC):
             p2 = self.__start
             size = self.__int_len << 2
             assert size == (p2 - p1), 'header error: %s' % self
-            self._update(start=p1, end=p2, data=bytearray(size))
+            self._update(start=p1, end=p2, data=bytes(size))
             return True
 
     def _try_read(self, length: int) -> (Union[bytes, bytearray, None], int):

@@ -36,7 +36,17 @@ from .cache import CycledCache
 from .shared import SharedMemory
 
 
+def create_memory_cache(size: int, name: str):
+    if name.startswith('0x'):
+        name = name[2:]
+    key = int(name, 16)
+    shm = sysv_ipc.SharedMemory(key=key, flags=sysv_ipc.IPC_CREAT, mode=MemoryCache.MODE, size=size)
+    return MemoryCache(shm=shm)
+
+
 class MemoryCache(CycledCache[sysv_ipc.SharedMemory]):
+
+    MODE = 0o644
 
     def __init__(self, shm: sysv_ipc.SharedMemory):
         super().__init__(shm=shm, head_length=4)
@@ -80,18 +90,8 @@ class MemoryCache(CycledCache[sysv_ipc.SharedMemory]):
 
 class SharedMemoryCache(SharedMemory[sysv_ipc.SharedMemory]):
 
-    MODE = 0o644
-
-    def __init__(self, size: int, name: str, create: bool = True):
-        if name.startswith('0x'):
-            name = name[2:]
-        key = int(name, 16)
-        if create:
-            flags = sysv_ipc.IPC_CREAT
-        else:
-            flags = sysv_ipc.IPC_PRIVATE
-        shm = sysv_ipc.SharedMemory(key=key, flags=flags, mode=self.MODE, size=size)
-        cache = MemoryCache(shm=shm)
+    def __init__(self, size: int, name: str):
+        cache = create_memory_cache(size=size, name=name)
         super().__init__(cache=cache)
 
     @property
