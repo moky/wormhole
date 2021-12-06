@@ -60,6 +60,9 @@ class Arrow(ABC):
 class SharedMemoryArrow(Arrow):
     """ Arrow goes through Shared Memory """
 
+    MAX_ARRIVALS = 65536
+    MAX_DEPARTURES = 65536
+
     def __init__(self, shm: SharedMemory):
         super().__init__()
         self.__shm = shm
@@ -100,19 +103,57 @@ class SharedMemoryArrow(Arrow):
         if obj is not None and not self.__shm.append(obj=obj):
             # failed, put it into the queue
             self.__departures.append(obj)
-        return len(self.__departures)
+        # check the departure hall
+        _, _, count = self._check_departures()
+        return count
 
     # Override
     def receive(self) -> Optional[Any]:
-        # receive all objects from the pool
+        # receive new objects from the pool
         obj = self.__shm.shift()
-        while obj is not None:
-            # pu it into the queue
-            self.__arrivals.append(obj)
+        while obj is not None and self.__receive_arrival(obj=obj):
             obj = self.__shm.shift()
-        # return the first one
-        if len(self.__arrivals) > 0:
-            return self.__arrivals.pop(0)
+        _, obj = self._push_arrival(obj=obj)
+        return obj
+
+    def _check_departures(self) -> (Optional[Any], Optional[Any], int):
+        """ Check the departure hall,
+            if it is full, remove two passengers from the front
+
+        :return: discard passengers and new queue length
+        """
+        count = len(self.__departures)
+        if count > self.MAX_DEPARTURES:
+            print('[IPX] pool control, departures: %d' % count)
+            first = self.__departures.pop(0)
+            second = self.__departures.pop(0)
+            return first, second, count - 2
+        else:
+            return None, None, count
+
+    def __receive_arrival(self, obj: Any) -> bool:
+        count = len(self.__arrivals)
+        if count < self.MAX_ARRIVALS:
+            self.__arrivals.append(obj)
+            return True
+
+    def _push_arrival(self, obj: Optional[Any]) -> (Optional[Any], Optional[Any]):
+        """ Check the arrival hall,
+            if it is full, remove two passengers from the front
+
+        :param obj: new passenger
+        :return: dequeue passenger(s)
+        """
+        if obj is not None:
+            self.__arrivals.append(obj)
+        count = len(self.__arrivals)
+        if count > self.MAX_ARRIVALS:
+            print('[IPX] pool control, arrivals: %d' % count)
+            return self.__arrivals.pop(0), self.__arrivals.pop(0)
+        elif count > 0:
+            return None, self.__arrivals.pop(0)
+        else:
+            return None, None
 
     def detach(self):
         self.__shm.detach()

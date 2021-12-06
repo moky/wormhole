@@ -72,17 +72,27 @@ class CycledCache(CycledBuffer, Generic[M], ABC):
         """ Gets the whole buffer """
         raise NotImplemented
 
+    def _buffer_to_string(self) -> str:
+        buffer = self.buffer
+        size = len(buffer)
+        if size < 128:
+            return str(buffer)
+        else:
+            return str(buffer[:125]) + '...'
+
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
+        buffer = self._buffer_to_string()
         return '<%s size=%d capacity=%d available=%d>\n%s\n</%s module="%s">'\
-               % (cname, self.size, self.capacity, self.available, self.buffer, cname, mod)
+               % (cname, self.size, self.capacity, self.available, buffer, cname, mod)
 
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
+        buffer = self._buffer_to_string()
         return '<%s size=%d capacity=%d available=%d>\n%s\n</%s module="%s">'\
-               % (cname, self.size, self.capacity, self.available, self.buffer, cname, mod)
+               % (cname, self.size, self.capacity, self.available, buffer, cname, mod)
 
     # Override
     def _try_read(self, length: int) -> (Union[bytes, bytearray, None], int):
