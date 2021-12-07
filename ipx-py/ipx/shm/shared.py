@@ -76,8 +76,10 @@ class SharedMemory(Generic[M]):
             return data
 
     # noinspection PyMethodMayBeStatic
-    def _encode(self, obj: Any) -> Union[bytes, bytearray]:
-        if isinstance(obj, bytes) or isinstance(obj, bytearray):
+    def _encode(self, obj: Optional[Any]) -> Union[bytes, bytearray, None]:
+        if obj is None:
+            return None
+        elif isinstance(obj, bytes) or isinstance(obj, bytearray):
             return obj
         else:
             data = json.dumps(obj)
@@ -88,6 +90,6 @@ class SharedMemory(Generic[M]):
         if data is not None:
             return self._decode(data=data)
 
-    def append(self, obj: Any) -> bool:
+    def append(self, obj: Optional[Any]) -> bool:
         data = self._encode(obj=obj)
         return self.cache.append(data=data)

@@ -88,6 +88,7 @@ class SharedMemoryArrow(Arrow):
 
     # Override
     def send(self, obj: Any) -> int:
+        empty = True
         # resent delay objects first
         delays = self.__departures.copy()
         for item in delays:
@@ -95,16 +96,14 @@ class SharedMemoryArrow(Arrow):
                 # sent, remove from the queue
                 self.__departures.remove(item)
             else:
-                # failed, put it into the queue
-                if obj is not None:
-                    self.__departures.append(obj)
-                return len(self.__departures)
-        # all delays sent, try this one
-        if obj is not None and not self.__shm.append(obj=obj):
-            # failed, put it into the queue
-            self.__departures.append(obj)
-        # check the departure hall
-        _, _, count = self._check_departures()
+                # shared memory is full, delay list not empty
+                empty = False
+                break
+        # send this obj when delay list empty
+        if empty and self.__shm.append(obj=obj):
+            return 0
+        # failed, put it into the queue
+        _, _, count = self._push_departure(obj=obj)
         return count
 
     # Override
@@ -116,18 +115,18 @@ class SharedMemoryArrow(Arrow):
         _, obj = self._push_arrival(obj=obj)
         return obj
 
-    def _check_departures(self) -> (Optional[Any], Optional[Any], int):
+    def _push_departure(self, obj: Optional[Any]) -> (Optional[Any], Optional[Any], int):
         """ Check the departure hall,
             if it is full, remove two passengers from the front
 
         :return: discard passengers and new queue length
         """
+        if obj is not None:
+            self.__departures.append(obj)
         count = len(self.__departures)
         if count > self.MAX_DEPARTURES:
             print('[IPC] pool control, departures: %d' % count)
-            first = self.__departures.pop(0)
-            second = self.__departures.pop(0)
-            return first, second, count - 2
+            return self.__departures.pop(0), self.__departures.pop(0), count - 2
         else:
             return None, None, count
 
