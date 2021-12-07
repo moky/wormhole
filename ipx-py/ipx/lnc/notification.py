@@ -42,11 +42,11 @@ class Notification:
 
     def __str__(self) -> str:
         clazz = self.__class__.__name__
-        return '<%s:%s| sender=%s, extra info=%s />' % (clazz, self.name, self.sender, self.info)
+        return '<%s:%s| sender=%s, info=%s />' % (clazz, self.name, self.sender, self.info)
 
     def __repr__(self) -> str:
         clazz = self.__class__.__name__
-        return '<%s:%s| sender=%s, extra info=%s />' % (clazz, self.name, self.sender, self.info)
+        return '<%s:%s| sender=%s, info=%s />' % (clazz, self.name, self.sender, self.info)
 
     @property
     def name(self) -> str:

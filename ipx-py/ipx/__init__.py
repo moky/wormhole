@@ -29,8 +29,6 @@
 # ==============================================================================
 
 
-from .singleton import Singleton
-
 from .lnc import Notification, NotificationObserver, NotificationCenter
 
 from .shm import CycledBuffer, CycledCache
@@ -44,8 +42,6 @@ name = "IPX"
 __author__ = 'Albert Moky'
 
 __all__ = [
-
-    'Singleton',
 
     # Local Notification
     'Notification', 'NotificationObserver', 'NotificationCenter',

@@ -89,7 +89,7 @@ class SharedMemoryArrow(Arrow):
     # Override
     def send(self, obj: Any) -> int:
         # resent delay objects first
-        delays = self.__departures
+        delays = self.__departures.copy()
         for item in delays:
             if self.__shm.append(obj=item):
                 # sent, remove from the queue
@@ -124,7 +124,7 @@ class SharedMemoryArrow(Arrow):
         """
         count = len(self.__departures)
         if count > self.MAX_DEPARTURES:
-            print('[IPX] pool control, departures: %d' % count)
+            print('[IPC] pool control, departures: %d' % count)
             first = self.__departures.pop(0)
             second = self.__departures.pop(0)
             return first, second, count - 2
@@ -148,7 +148,7 @@ class SharedMemoryArrow(Arrow):
             self.__arrivals.append(obj)
         count = len(self.__arrivals)
         if count > self.MAX_ARRIVALS:
-            print('[IPX] pool control, arrivals: %d' % count)
+            print('[IPC] pool control, arrivals: %d' % count)
             return self.__arrivals.pop(0), self.__arrivals.pop(0)
         elif count > 0:
             return None, self.__arrivals.pop(0)

@@ -32,13 +32,11 @@ import traceback
 from weakref import WeakSet
 from typing import Any, Dict
 
-from ..singleton import Singleton
-
 from .notification import Notification
 from .observer import NotificationObserver
 
 
-@Singleton
+# @Singleton
 class NotificationCenter:
     """ Notification dispatcher """
 

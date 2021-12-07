@@ -29,8 +29,7 @@
 # ==============================================================================
 
 import json
-import traceback
-from typing import Generic, Optional, Any
+from typing import Generic, Optional, Union, Any
 
 from .buffer import M
 from .cache import CycledCache
@@ -64,17 +63,31 @@ class SharedMemory(Generic[M]):
         cname = self.__class__.__name__
         return '<%s>%s</%s module="%s">' % (cname, self.cache, cname, mod)
 
+    # noinspection PyMethodMayBeStatic
+    def _decode(self, data: Any) -> Any:
+        # noinspection PyBroadException,PyUnusedLocal
+        try:
+            s = data.decode('utf-8')
+            return json.loads(s)
+        except Exception as error:
+            # print('[SHM] not json: %s, %s' % (error, data))
+            # import traceback
+            # traceback.print_exc()
+            return data
+
+    # noinspection PyMethodMayBeStatic
+    def _encode(self, obj: Any) -> Union[bytes, bytearray]:
+        if isinstance(obj, bytes) or isinstance(obj, bytearray):
+            return obj
+        else:
+            data = json.dumps(obj)
+            return data.encode('utf-8')
+
     def shift(self) -> Optional[Any]:
         data = self.cache.shift()
         if data is not None:
-            try:
-                data = data.decode('utf-8')
-                return json.loads(data)
-            except Exception as error:
-                print('[SHM] data error: %s, %s' % (error, data))
-                traceback.print_exc()
+            return self._decode(data=data)
 
     def append(self, obj: Any) -> bool:
-        data = json.dumps(obj)
-        data = data.encode('utf-8')
+        data = self._encode(obj=obj)
         return self.cache.append(data=data)

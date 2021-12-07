@@ -104,6 +104,9 @@ class CycledCache(CycledBuffer, Generic[M], ABC):
             return super()._try_read(length=length)
         except AssertionError as error:
             self._check_error(error=error)
+            # self.error(msg='failed to read data: %s' % error)
+            # import traceback
+            # traceback.print_exc()
             raise error
 
     def _shift_item(self) -> Union[bytes, bytearray, None]:
@@ -250,5 +253,9 @@ class CycledCache(CycledBuffer, Generic[M], ABC):
             # small data, send it directly
             return self._append_item(body=data)
         # 3. split giant, send as chunks
+        return self._append_giant(data=data)
+
+    def _append_giant(self, data: Union[bytes, bytearray]) -> bool:
         self.__outgoing_giant_chunks = self.__split_giant(data=data)
-        return self.__check_chunks()
+        self.__check_chunks()
+        return True
