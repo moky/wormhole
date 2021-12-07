@@ -32,6 +32,33 @@ from abc import ABC, abstractmethod
 from typing import TypeVar, Generic, Optional, Union
 
 
+"""
+    Protocol:
+    
+         0                   1                   2                   3
+         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |      'C'      |      'Y'      |      'C'      |      'L'      |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |      'E'      |      'D'      |      ' '      |      'M'      |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |      'E'      |      'M'      |      'O'      |      'R'      |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |      'Y'      |       0       | read ptr pos  | write ptr pos |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |          read offset          |     alternate read offset     |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |          write offset         |     alternate write offset    |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                           data zone                            
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+                                    data zone                           ~
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+        NOTICE: all integers are stored as NBO (Network Byte Order, big-endian)
+"""
+
+
 M = TypeVar('M')  # Shared Memory
 
 
@@ -50,6 +77,8 @@ class CycledBuffer(Generic[M], ABC):
             alternate write offset - 2/4/8 bytes
         Body:
             data zone              - starts from 24/32/48
+
+        NOTICE: all integers are stored as NBO (Network Byte Order, big-endian)
     """
 
     MAGIC_CODE = b'CYCLED MEMORY\0'

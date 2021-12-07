@@ -13,6 +13,7 @@ def new_arrow() -> SharedMemoryArrow:
     # return SharedMemoryArrow.new(size=64, name='')
 
 
+# noinspection PyUnusedLocal
 def del_arrow(arrow: SharedMemoryArrow):
     # arrow.remove()
     pass
@@ -31,11 +32,10 @@ def test_write(data: List[Any], arrow: Arrow = None):
         arrow.send(item)
         print('==== arrow: %s' % arrow)
     # delay
-    for i in range(10):
-        print('==== sleeping')
-        time.sleep(1.0)
-        print('==== again')
+    for i in range(20000):
+        time.sleep(0.001)
         arrow.send(None)
+    arrow.send(b'DONE!')
     print('======== stop writing')
 
 
@@ -44,15 +44,15 @@ def test_read(arrow: Arrow = None):
         arrow = new_arrow()
     print('-------- start reading')
     print('---- arrow: %s' % arrow)
-    for i in range(10):
+    for i in range(20000):
         data = arrow.receive()
         while data is not None:
+            if isinstance(data, bytes) and len(data) > 64:
+                data = data[:30] + b'...' + data[-30:]
             print('---- read: %s' % data)
             print('---- arrow: %s' % arrow)
             data = arrow.receive()
-        print('---- sleeping')
-        time.sleep(1.0)
-        print('---- again')
+        time.sleep(0.001)
     print('-------- stop reading')
 
 
@@ -60,7 +60,7 @@ def test_process():
     print('******** test multiprocessing...')
     child = multiprocessing.Process(target=test_read)
     child.start()
-    test_write(data=['Hello', 'world', 123, 'A' * 64])
+    test_write(data=['Hello', 'world', 123, b'AA' + b'B' * 65536 + b'CC'])
     child.join()
     # g_shared.remove()
 
