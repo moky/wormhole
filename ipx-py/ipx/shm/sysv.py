@@ -48,9 +48,6 @@ class MemoryCache(CycledCache[sysv_ipc.SharedMemory]):
 
     MODE = 0o644
 
-    def __init__(self, shm: sysv_ipc.SharedMemory):
-        super().__init__(shm=shm, head_length=4)
-
     # Override
     def detach(self):
         self.shm.detach()

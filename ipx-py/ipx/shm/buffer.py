@@ -218,16 +218,22 @@ class CycledBuffer(Generic[M], ABC):
         msg = str(error)
         if msg.startswith('pos of offset error:'):
             # header error, destroy it
-            self._update(start=0, end=6, data=b'BROKEN')
+            self._destroy_memory()
             return True
         elif msg.startswith('offset error:'):
             # offset(s) error, reset all of them
-            p1 = len(self.MAGIC_CODE) + 2
-            p2 = self.__start
-            size = self.__int_len << 2
-            assert size == (p2 - p1), 'header error: %s' % self
-            self._update(start=p1, end=p2, data=bytes(size))
+            self._clear_data_zone()
             return True
+
+    def _destroy_memory(self):
+        self._update(start=0, end=6, data=b'BROKEN')
+
+    def _clear_data_zone(self):
+        p1 = len(self.MAGIC_CODE) + 2
+        p2 = self.__start
+        size = self.__int_len << 2
+        assert size == (p2 - p1), 'header error: %s' % self
+        self._update(start=p1, end=p2, data=bytes(size))
 
     def _try_read(self, length: int) -> (Union[bytes, bytearray, None], int):
         """ read data with length, do not move reading pointer """

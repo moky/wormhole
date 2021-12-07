@@ -43,9 +43,6 @@ def create_memory_cache(size: int, name: str = None):
 
 class MemoryCache(CycledCache[shared_memory.SharedMemory]):
 
-    def __init__(self, shm: shared_memory.SharedMemory):
-        super().__init__(shm=shm, head_length=4)
-
     # Override
     def detach(self):
         self.shm.close()

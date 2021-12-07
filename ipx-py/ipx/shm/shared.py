@@ -29,6 +29,7 @@
 # ==============================================================================
 
 import json
+import traceback
 from typing import Generic, Optional, Any
 
 from .buffer import M
@@ -66,8 +67,12 @@ class SharedMemory(Generic[M]):
     def shift(self) -> Optional[Any]:
         data = self.cache.shift()
         if data is not None:
-            data = data.decode('utf-8')
-            return json.loads(data)
+            try:
+                data = data.decode('utf-8')
+                return json.loads(data)
+            except Exception as error:
+                print('[SHM] data error: %s, %s' % (error, data))
+                traceback.print_exc()
 
     def append(self, obj: Any) -> bool:
         data = json.dumps(obj)

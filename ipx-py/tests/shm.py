@@ -30,6 +30,12 @@ def test_write(data: List[Any], arrow: Arrow = None):
         print('==== write: %s' % item)
         arrow.send(item)
         print('==== arrow: %s' % arrow)
+    # delay
+    for i in range(10):
+        print('==== sleeping')
+        time.sleep(1.0)
+        print('==== again')
+        arrow.send(None)
     print('======== stop writing')
 
 
@@ -38,11 +44,15 @@ def test_read(arrow: Arrow = None):
         arrow = new_arrow()
     print('-------- start reading')
     print('---- arrow: %s' % arrow)
-    data = arrow.receive()
-    while data is not None:
-        print('---- read: %s' % data)
-        print('---- arrow: %s' % arrow)
+    for i in range(10):
         data = arrow.receive()
+        while data is not None:
+            print('---- read: %s' % data)
+            print('---- arrow: %s' % arrow)
+            data = arrow.receive()
+        print('---- sleeping')
+        time.sleep(1.0)
+        print('---- again')
     print('-------- stop reading')
 
 
@@ -50,7 +60,7 @@ def test_process():
     print('******** test multiprocessing...')
     child = multiprocessing.Process(target=test_read)
     child.start()
-    test_write(data=['Hello', 'world', 123])
+    test_write(data=['Hello', 'world', 123, 'A' * 64])
     child.join()
     # g_shared.remove()
 

@@ -52,9 +52,6 @@ def create_memory_cache(size: int, name: str = None):
 
 class MemoryCache(CycledCache[mmap.mmap]):
 
-    def __init__(self, shm: mmap.mmap):
-        super().__init__(shm=shm, head_length=4)
-
     # Override
     def detach(self):
         self.shm.close()
