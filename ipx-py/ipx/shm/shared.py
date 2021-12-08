@@ -29,29 +29,35 @@
 # ==============================================================================
 
 import json
-from typing import Generic, Optional, Union, Any
+from typing import Optional, Union, Any
 
-from .buffer import M
+from .memory import SharedMemory
 from .cache import CycledCache
 
 
-class SharedMemory(Generic[M]):
+class ObjectiveSharedMemory:
 
-    def __init__(self, cache: CycledCache[M]):
+    def __init__(self, cache: CycledCache):
         super().__init__()
         self.__cache = cache
 
     @property
-    def cache(self) -> CycledCache[M]:
+    def cache(self) -> CycledCache:
         return self.__cache
+
+    @property
+    def shm(self) -> SharedMemory:
+        memory = self.cache.memory
+        assert isinstance(memory, SharedMemory), 'shared memory error: %s' % memory
+        return memory
 
     def detach(self):
         """ Detaches the shared memory """
-        self.cache.detach()
+        self.shm.detach()
 
     def remove(self):
         """ Removes (deletes) the shared memory from the system """
-        self.cache.remove()
+        self.shm.remove()
 
     def __str__(self) -> str:
         mod = self.__module__

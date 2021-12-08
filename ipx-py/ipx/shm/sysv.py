@@ -28,33 +28,56 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Union
+from typing import Union, Optional
 
 import sysv_ipc
 
+from .memory import SharedMemory
 from .cache import CycledCache
-from .shared import SharedMemory
+from .shared import ObjectiveSharedMemory
 
 
-def create_memory_cache(size: int, name: str):
-    if name.startswith('0x'):
-        name = name[2:]
-    key = int(name, 16)
-    shm = sysv_ipc.SharedMemory(key=key, flags=sysv_ipc.IPC_CREAT, mode=MemoryCache.MODE, size=size)
-    return MemoryCache(shm=shm)
+def create_shared_memory(size: int, key: int) -> sysv_ipc.SharedMemory:
+    return sysv_ipc.SharedMemory(key=key, flags=sysv_ipc.IPC_CREAT, mode=SysvSharedMemory.MODE, size=size)
 
 
-class MemoryCache(CycledCache[sysv_ipc.SharedMemory]):
+class SysvSharedMemory(SharedMemory):
 
     MODE = 0o644
 
-    # Override
-    def detach(self):
-        self.shm.detach()
+    def __init__(self, size: int, key: int):
+        super().__init__()
+        self.__shm = create_shared_memory(size=size, key=key)
 
-    # Override
-    def remove(self):
-        self.shm.remove()
+    @property
+    def shm(self) -> sysv_ipc.SharedMemory:
+        return self.__shm
+
+    @property
+    def id(self) -> int:
+        return self.shm.id
+
+    @property
+    def key(self) -> int:
+        return self.shm.key
+
+    @property
+    def mode(self) -> int:
+        return self.shm.mode
+
+    def __str__(self) -> str:
+        mod = self.__module__
+        cname = self.__class__.__name__
+        buffer = self._buffer_to_string()
+        return '<%s id=%d key=0x%08x mode=%o size=%d>\n%s\n</%s "%s">'\
+               % (cname, self.id, self.key, self.mode, self.size, buffer, cname, mod)
+
+    def __repr__(self) -> str:
+        mod = self.__module__
+        cname = self.__class__.__name__
+        buffer = self._buffer_to_string()
+        return '<%s id=%d key=0x%08x mode=%o size=%d>\n%s\n</%s "%s">'\
+               % (cname, self.id, self.key, self.mode, self.size, buffer, cname, mod)
 
     @property  # Override
     def buffer(self) -> bytes:
@@ -65,52 +88,55 @@ class MemoryCache(CycledCache[sysv_ipc.SharedMemory]):
         return self.shm.size
 
     # Override
-    def _set(self, pos: int, value: int):
-        data = bytearray(1)
-        data[0] = value
-        self.shm.write(data, offset=pos)
+    def detach(self):
+        self.shm.detach()
 
     # Override
-    def _get(self, pos: int) -> int:
-        data = self.shm.read(1, offset=pos)
+    def remove(self):
+        self.shm.remove()
+
+    # Override
+    def get_byte(self, index: int) -> int:
+        data = self.shm.read(1, offset=index)
         return data[0]
 
     # Override
-    def _update(self, start: int, end: int, data: Union[bytes, bytearray]):
-        assert start + len(data) == end, '%d + %d != %d' % (start, len(data), end)
-        self.shm.write(data, offset=start)
+    def get_bytes(self, start: int = 0, end: int = None) -> Optional[bytes]:
+        if end is None:
+            end = self.size
+        if 0 <= start < end <= self.size:
+            return self.shm.read(end - start, offset=start)
 
     # Override
-    def _slice(self, start: int, end: int) -> Union[bytes, bytearray]:
-        return self.shm.read(end - start, offset=start)
+    def set_byte(self, index: int, value: int):
+        data = bytearray(1)
+        data[0] = value
+        self.shm.write(data, offset=index)
+
+    # Override
+    def update(self, index: int, source: Union[bytes, bytearray], start: int = 0, end: int = None):
+        src_len = len(source)
+        if end is None:
+            end = src_len
+        if start < end:
+            if 0 < start or end < src_len:
+                source = source[start:end]
+            self.shm.write(source, offset=index)
 
 
-class SharedMemoryCache(SharedMemory[sysv_ipc.SharedMemory]):
-
-    def __init__(self, size: int, name: str):
-        cache = create_memory_cache(size=size, name=name)
-        super().__init__(cache=cache)
+class SharedMemoryCache(ObjectiveSharedMemory):
 
     @property
-    def id(self) -> int:
-        return self.cache.shm.id
+    def shm(self) -> SysvSharedMemory:
+        memory = super().shm
+        assert isinstance(memory, SysvSharedMemory), 'shared memory error: %s' % memory
+        return memory
 
-    @property
-    def key(self) -> int:
-        return self.cache.shm.key
-
-    @property
-    def mode(self) -> int:
-        return self.cache.shm.mode
-
-    def __str__(self) -> str:
-        mod = self.__module__
-        cname = self.__class__.__name__
-        cache = self.cache
-        return '<%s id=%d key=0x%08x mode=%o>%s</%s "%s">' % (cname, self.id, self.key, self.mode, cache, cname, mod)
-
-    def __repr__(self) -> str:
-        mod = self.__module__
-        cname = self.__class__.__name__
-        cache = self.cache
-        return '<%s id=%d key=0x%08x mode=%o>%s</%s "%s">' % (cname, self.id, self.key, self.mode, cache, cname, mod)
+    @classmethod
+    def aim(cls, size: int, name: str = None, key: int = 0):
+        if key == 0:
+            pos = name.index('0x') + 2
+            key = int(name[pos:], 16)
+        shm = SysvSharedMemory(size=size, key=key)
+        cache = CycledCache(memory=shm)
+        return cls(cache=cache)

@@ -28,8 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Optional, Union
+from typing import Union
+
+from .memory import int_from_bytes, int_to_bytes
+from .memory import Memory, Buffer
 
 
 """
@@ -59,10 +61,7 @@ from typing import TypeVar, Generic, Optional, Union
 """
 
 
-M = TypeVar('M')  # Shared Memory
-
-
-class CycledBuffer(Generic[M], ABC):
+class CycledBuffer(Buffer):
     """
         Cycled Memory Buffer
         ~~~~~~~~~~~~~~~~~~~~
@@ -83,10 +82,10 @@ class CycledBuffer(Generic[M], ABC):
 
     MAGIC_CODE = b'CYCLED MEMORY\0'
 
-    def __init__(self, shm: M):
+    def __init__(self, memory: Memory):
         super().__init__()
-        self.__shm = shm
-        bounds = self.size
+        self.__mem = memory
+        bounds = memory.size
         if bounds <= 0x10018:
             # len(header) == 24 bytes
             self.__int_len = 2
@@ -100,67 +99,57 @@ class CycledBuffer(Generic[M], ABC):
         pos = len(self.MAGIC_CODE)  # 14
         self.__pos1 = pos
         self.__pos2 = pos + 1  # 15
-        if self._slice(start=0, end=pos) == self.MAGIC_CODE:
+        if memory.get_bytes(start=0, end=pos) == self.MAGIC_CODE:
             # already initialized
             pos += 2 + (self.__int_len << 2)  # 24/32/48
         else:
             # init with magic code
-            self._update(start=0, end=pos, data=self.MAGIC_CODE)
+            memory.update(index=0, source=self.MAGIC_CODE)
             # init pos of read/write pos
             pos1 = pos + 2  # 16
             pos2 = pos1 + (self.__int_len << 1)  # 20/24/32
-            self._set(pos=self.__pos1, value=pos1)
-            self._set(pos=self.__pos2, value=pos2)
+            memory.set_byte(index=self.__pos1, value=pos1)
+            memory.set_byte(index=self.__pos2, value=pos2)
             # clear 4 integers for offsets
             pos2 += self.__int_len << 1  # 24/32/48
-            self._update(start=pos1, end=pos2, data=bytearray(pos2 - pos1))
+            memory.update(index=pos1, source=bytes(pos2 - pos1))
             pos = pos2
         # data zone: [start, end)
         self.__start = pos
         self.__end = bounds
 
-    @property
-    def shm(self) -> M:
-        return self.__shm
+    @property  # Override
+    def memory(self) -> Memory:
+        return self.__mem
 
-    @property
-    def size(self) -> int:
-        """ Gets buffer length """
-        raise NotImplemented
-
-    @abstractmethod
-    def _set(self, pos: int, value: int):
-        """ Sets value with index """
-        raise NotImplemented
-
-    @abstractmethod
-    def _get(self, pos: int) -> int:
-        """ Gets value from index """
-        raise NotImplemented
-
-    @abstractmethod
-    def _update(self, start: int, end: int, data: Union[bytes, bytearray]):
-        """ Updates slice [start, end) """
-        assert start + len(data) == end, 'range error: %d + %d != %d' % (start, len(data), end)
-        raise NotImplemented
-
-    @abstractmethod
-    def _slice(self, start: int, end: int) -> Union[bytes, bytearray]:
-        """ Gets slice [start, end) """
-        raise NotImplemented
-
-    @property
+    @property  # Override
     def capacity(self) -> int:
         """ total spaces (leave 1 space not used forever) """
         return self.__end - self.__start - 1
 
-    @property
+    @property  # Override
+    def available(self) -> int:
+        """ data length """
+        p1 = self.read_offset
+        p2 = self.write_offset
+        if p1 == p2:
+            # empty
+            return 0
+        elif p1 < p2:
+            return p2 - p1
+        else:
+            # data separated to two parts
+            part1 = self.__end - p1
+            part2 = p2 - self.__start
+            return part1 + part2
+
+    @property  # Override
     def is_empty(self) -> bool:
         p1 = self.read_offset
         p2 = self.write_offset
         return p1 == p2
 
-    @property
+    @property  # Override
     def is_full(self) -> bool:
         p1 = self.read_offset
         p2 = self.write_offset + 1
@@ -185,16 +174,18 @@ class CycledBuffer(Generic[M], ABC):
         self.__update_offset(self.__pos2, value=value)
 
     def __fetch_offset(self, pos_x: int) -> int:
-        offset = self._get(pos=pos_x) & 0x7F  # clear alternate flag
+        memory = self.memory
+        offset = memory.get_byte(index=pos_x) & 0x7F  # clear alternate flag
         assert 16 <= offset <= (self.__start - self.__int_len), 'pos of offset error: %d' % offset
-        data = self._slice(start=offset, end=(offset + self.__int_len))
-        value = int_from_buffer(buffer=data)
+        data = memory.get_bytes(start=offset, end=(offset + self.__int_len))
+        value = int_from_bytes(data=data)
         assert 0 <= value < (self.__end - self.__start), 'offset error: %d' % value
         return value + self.__start
 
     def __update_offset(self, pos_x: int, value: int):
         """ update pointer with alternate spaces """
-        pos = self._get(pos=pos_x)
+        memory = self.memory
+        pos = memory.get_byte(index=pos_x)
         if pos & 0x80 == 0:
             offset = pos + self.__int_len
             pos = offset | 0x80  # set alternate flag
@@ -205,43 +196,10 @@ class CycledBuffer(Generic[M], ABC):
         # update on alternate spaces
         value -= self.__start
         assert 0 <= value < (self.__end - self.__start), 'offset error: %d' % value
-        data = int_to_buffer(value=value, length=self.__int_len)
-        self._update(start=offset, end=(offset + self.__int_len), data=data)
+        data = int_to_bytes(value=value, length=self.__int_len)
+        memory.update(index=offset, source=data)
         # switch after spaces updated
-        self._set(pos=pos_x, value=pos)
-
-    @property
-    def available(self) -> int:
-        """ data length """
-        p1 = self.read_offset
-        p2 = self.write_offset
-        if p1 == p2:
-            # empty
-            return 0
-        elif p1 < p2:
-            return p2 - p1
-        else:
-            # data separated to two parts
-            part1 = self.__end - p1
-            part2 = p2 - self.__start
-            return part1 + part2
-
-    @property
-    def spaces(self) -> int:
-        """ empty spaces """
-        p1 = self.read_offset
-        p2 = self.write_offset
-        if p1 == p2:
-            # empty
-            spaces = self.__end - self.__start
-        elif p1 > p2:
-            spaces = p1 - p2
-        else:
-            # space separated to two parts
-            part1 = self.__end - p2
-            part2 = p1 - self.__start
-            spaces = part1 + part2
-        return spaces - 1  # leave 1 space not used forever
+        memory.set_byte(index=pos_x, value=pos)
 
     def _check_error(self, error: AssertionError) -> bool:
         msg = str(error)
@@ -255,14 +213,13 @@ class CycledBuffer(Generic[M], ABC):
             return True
 
     def _destroy_memory(self):
-        self._update(start=0, end=6, data=b'BROKEN')
+        self.memory.update(index=0, source=b'BROKEN')
 
     def _clear_data_zone(self):
-        p1 = len(self.MAGIC_CODE) + 2
-        p2 = self.__start
-        size = self.__int_len << 2
-        assert size == (p2 - p1), 'header error: %s' % self
-        self._update(start=p1, end=p2, data=bytes(size))
+        pos = len(self.MAGIC_CODE) + 2
+        size = self.__int_len << 2  # 4 integers
+        assert size == (self.__start - pos), 'header error: %s' % self
+        self.memory.update(index=pos, source=bytes(size))
 
     def _try_read(self, length: int) -> (Union[bytes, bytearray, None], int):
         """ read data with length, do not move reading pointer """
@@ -273,20 +230,22 @@ class CycledBuffer(Generic[M], ABC):
         end = self.__end
         p1 = self.read_offset
         p2 = p1 + length
+        memory = self.memory
         if p2 < end:
-            data = self._slice(start=p1, end=p2)
+            data = memory.get_bytes(start=p1, end=p2)
         elif p2 == end:
             # data on the tail
-            data = self._slice(start=p1, end=p2)
+            data = memory.get_bytes(start=p1, end=p2)
             p2 = start
         else:
             # join data as two parts
             p2 = start + p2 - end
-            part1 = self._slice(start=p1, end=end)
-            part2 = self._slice(start=start, end=p2)
+            part1 = memory.get_bytes(start=p1, end=end)
+            part2 = memory.get_bytes(start=start, end=p2)
             data = part1 + part2
         return data, p2
 
+    # Override
     def read(self, length: int) -> Union[bytes, bytearray, None]:
         """ get one data, measured with size (as leading 4 bytes) """
         data, offset = self._try_read(length=length)
@@ -295,6 +254,7 @@ class CycledBuffer(Generic[M], ABC):
             self.read_offset = offset
         return data
 
+    # Override
     def write(self, data: Union[bytes, bytearray]) -> bool:
         """ append data with size (as leading 4 bytes) into buffer """
         size = len(data)
@@ -304,26 +264,19 @@ class CycledBuffer(Generic[M], ABC):
         end = self.__end
         p1 = self.write_offset
         p2 = p1 + size
+        memory = self.memory
         if p2 < end:
-            self._update(start=p1, end=p2, data=data)
+            memory.update(index=p1, source=data)
         elif p2 == end:
             # data on the tail
-            self._update(start=p1, end=p2, data=data)
+            memory.update(index=p1, source=data)
             p2 = start
         else:
             # separate data to two parts
             m = end - p1
             p2 = start + p2 - end
-            self._update(start=p1, end=end, data=data[:m])
-            self._update(start=start, end=p2, data=data[m:])
+            memory.update(index=p1, source=data[:m])
+            memory.update(index=start, source=data[m:])
         # update the pointer after data wrote
         self.write_offset = p2
         return True
-
-
-def int_from_buffer(buffer: Union[bytes, bytearray]) -> int:
-    return int.from_bytes(bytes=buffer, byteorder='big', signed=False)
-
-
-def int_to_buffer(value: int, length: int = 4) -> Optional[bytes]:
-    return value.to_bytes(length=length, byteorder='big', signed=False)

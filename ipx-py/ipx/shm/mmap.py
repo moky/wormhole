@@ -30,27 +30,43 @@
 
 import mmap
 import os
-from typing import Union
+from typing import Union, Optional
 
+from .memory import SharedMemory
 from .cache import CycledCache
-from .shared import SharedMemory
+from .shared import ObjectiveSharedMemory
 
 
-def create_memory_cache(size: int, name: str = None):
+def create_shared_memory(size: int, name: str = None) -> mmap.mmap:
     if os.name == 'nt':
         # Windows
         access = mmap.ACCESS_DEFAULT
-        shm = mmap.mmap(fileno=-1, length=size, tagname=name, access=access, offset=0)
+        return mmap.mmap(fileno=-1, length=size, tagname=name, access=access, offset=0)
     else:
         # Unix
         flags = mmap.MAP_SHARED
         prot = mmap.PROT_READ | mmap.PROT_WRITE
         access = mmap.ACCESS_DEFAULT
-        shm = mmap.mmap(fileno=-1, length=size, flags=flags, prot=prot, access=access, offset=0)
-    return MemoryCache(shm=shm)
+        return mmap.mmap(fileno=-1, length=size, flags=flags, prot=prot, access=access, offset=0)
 
 
-class MemoryCache(CycledCache[mmap.mmap]):
+class MmapSharedMemory(SharedMemory):
+
+    def __init__(self, size: int, name: str = None):
+        super().__init__()
+        self.__shm = create_shared_memory(size=size, name=name)
+
+    @property
+    def shm(self) -> mmap.mmap:
+        return self.__shm
+
+    @property  # Override
+    def buffer(self) -> bytes:
+        return bytes(self.shm)
+
+    @property  # Override
+    def size(self) -> int:
+        return len(self.shm)
 
     # Override
     def detach(self):
@@ -60,35 +76,38 @@ class MemoryCache(CycledCache[mmap.mmap]):
     def remove(self):
         self.shm.close()
 
-    @property  # Override
-    def buffer(self) -> bytes:
-        return bytes(self.shm)
-
-    @property  # Override
-    def size(self) -> int:
-        # return self.shm.size()
-        return len(self.shm)
+    # Override
+    def get_byte(self, index: int) -> int:
+        return self.shm[index]
 
     # Override
-    def _set(self, pos: int, value: int):
-        self.shm[pos] = value
+    def get_bytes(self, start: int = 0, end: int = None) -> Optional[bytes]:
+        if end is None:
+            end = self.size
+        if 0 <= start < end <= self.size:
+            return self.shm[start:end]
 
     # Override
-    def _get(self, pos: int) -> int:
-        return self.shm[pos]
+    def set_byte(self, index: int, value: int):
+        self.shm[index] = value
 
     # Override
-    def _update(self, start: int, end: int, data: Union[bytes, bytearray]):
-        assert start + len(data) == end, 'range error: %d + %d != %d' % (start, len(data), end)
-        self.shm[start:end] = data
+    def update(self, index: int, source: Union[bytes, bytearray], start: int = 0, end: int = None):
+        src_len = len(source)
+        if end is None:
+            end = src_len
+        if start < end:
+            if 0 < start or end < src_len:
+                source = source[start:end]
+            start += index
+            end += index
+            self.shm[start:end] = source
 
-    # Override
-    def _slice(self, start: int, end: int) -> Union[bytes, bytearray]:
-        return self.shm[start:end]
 
+class SharedMemoryCache(ObjectiveSharedMemory):
 
-class SharedMemoryCache(SharedMemory[mmap.mmap]):
-
-    def __init__(self, size: int, name: str = None):
-        cache = create_memory_cache(size=size, name=name)
-        super().__init__(cache=cache)
+    @classmethod
+    def aim(cls, size: int, name: str = None):
+        shm = MmapSharedMemory(size=size, name=name)
+        cache = CycledCache(memory=shm)
+        return cls(cache=cache)

@@ -28,10 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
-
+from .memory import Memory, SharedMemory, Buffer
 from .buffer import CycledBuffer
 from .cache import CycledCache
-from .shared import SharedMemory
+from .shared import ObjectiveSharedMemory
 
 from .sysv import SharedMemoryCache
 
@@ -42,9 +42,9 @@ __author__ = 'Albert Moky'
 
 __all__ = [
 
-    'CycledBuffer',
-    'CycledCache',
-    'SharedMemory',
+    'Memory', 'SharedMemory', 'Buffer',
+    'CycledBuffer', 'CycledCache',
+    'ObjectiveSharedMemory',
 
     'SharedMemoryCache',
 ]

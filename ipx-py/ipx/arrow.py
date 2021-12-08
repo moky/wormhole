@@ -31,7 +31,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-from .shm import SharedMemory, SharedMemoryCache
+from .shm import ObjectiveSharedMemory, SharedMemoryCache
 
 
 class Arrow(ABC):
@@ -63,7 +63,7 @@ class SharedMemoryArrow(Arrow):
     MAX_ARRIVALS = 65536
     MAX_DEPARTURES = 65536
 
-    def __init__(self, shm: SharedMemory):
+    def __init__(self, shm: ObjectiveSharedMemory):
         super().__init__()
         self.__shm = shm
         # memory caches
@@ -162,5 +162,5 @@ class SharedMemoryArrow(Arrow):
 
     @classmethod
     def new(cls, size: int, name: str):
-        shm = SharedMemoryCache(size=size, name=name)
+        shm = SharedMemoryCache.aim(size=size, name=name)
         return cls(shm=shm)

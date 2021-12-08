@@ -28,15 +28,13 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import ABC, abstractmethod
-from typing import Generic, Union, List
+from typing import Union, List
 
-from .buffer import M
-from .buffer import int_from_buffer, int_to_buffer
+from .memory import Memory, int_from_bytes, int_to_bytes
 from .buffer import CycledBuffer
 
 
-class CycledCache(CycledBuffer, Generic[M], ABC):
+class CycledCache(CycledBuffer):
     """
         Cycled Data Cache
         ~~~~~~~~~~~~~~~~~
@@ -67,50 +65,13 @@ class CycledCache(CycledBuffer, Generic[M], ABC):
         NOTICE: all integers are stored as NBO (Network Byte Order, big-endian)
     """
 
-    def __init__(self, shm: M):
-        super().__init__(shm=shm)
+    def __init__(self, memory: Memory):
+        super().__init__(memory=memory)
         # receiving big data
         self.__incoming_giant_size = 0
         self.__incoming_giant_fragment = None
         # sending big data (split to chunks)
         self.__outgoing_giant_chunks: List[Union[bytes, bytearray]] = []
-
-    @abstractmethod
-    def detach(self):
-        """ Detaches the shared memory """
-        raise NotImplemented
-
-    @abstractmethod
-    def remove(self):
-        """ Removes (deletes) the shared memory from the system """
-        raise NotImplemented
-
-    @property
-    def buffer(self) -> bytes:
-        """ Gets the whole buffer """
-        raise NotImplemented
-
-    def _buffer_to_string(self) -> str:
-        buffer = self.buffer
-        size = len(buffer)
-        if size < 128:
-            return str(buffer)
-        else:
-            return str(buffer[:125]) + '...'
-
-    def __str__(self) -> str:
-        mod = self.__module__
-        cname = self.__class__.__name__
-        buffer = self._buffer_to_string()
-        return '<%s size=%d capacity=%d available=%d>\n%s\n</%s module="%s">'\
-               % (cname, self.size, self.capacity, self.available, buffer, cname, mod)
-
-    def __repr__(self) -> str:
-        mod = self.__module__
-        cname = self.__class__.__name__
-        buffer = self._buffer_to_string()
-        return '<%s size=%d capacity=%d available=%d>\n%s\n</%s module="%s">'\
-               % (cname, self.size, self.capacity, self.available, buffer, cname, mod)
 
     # Override
     def _try_read(self, length: int) -> (Union[bytes, bytearray, None], int):
@@ -133,7 +94,7 @@ class CycledCache(CycledBuffer, Generic[M], ABC):
         head, _ = self._try_read(length=2)
         if head is None:
             return None
-        body_size = int_from_buffer(buffer=head)
+        body_size = int_from_bytes(data=head)
         pack_size = 2 + body_size
         available = self.available
         if available < pack_size:
@@ -157,7 +118,7 @@ class CycledCache(CycledBuffer, Generic[M], ABC):
         if self.spaces < pack_size:
             # not enough spaces
             return False
-        head = int_to_buffer(value=body_size, length=2)
+        head = int_to_bytes(value=body_size, length=2)
         if isinstance(body, bytearray):
             pack = bytearray(head) + body
         else:
@@ -208,8 +169,8 @@ class CycledCache(CycledBuffer, Generic[M], ABC):
         # body_size will not greater than 65535, and capacity - 2
         assert body_size > 10, 'package size error: %s' % body
         assert body[8:10] == self.SEPARATOR, 'package head error: %s' % body
-        giant_size = int_from_buffer(buffer=body[:4])
-        giant_offset = int_from_buffer(buffer=body[4:8])
+        giant_size = int_from_bytes(data=body[:4])
+        giant_offset = int_from_bytes(data=body[4:8])
         if self.__incoming_giant_fragment is None:
             # first chunk for giant
             assert giant_size > (body_size - 10), 'giant size error: %d, body size: %d' % (giant_size, body_size)
@@ -274,7 +235,7 @@ class CycledCache(CycledBuffer, Generic[M], ABC):
         if fra_size > 65525:
             fra_size = 65525
         assert fra_size < data_size, 'data size error: %d < %d' % (data_size, fra_size)
-        head_size = int_to_buffer(value=data_size, length=4)
+        head_size = int_to_bytes(value=data_size, length=4)
         chunks = []
         p1 = 0
         while p1 < data_size:
@@ -282,7 +243,7 @@ class CycledCache(CycledBuffer, Generic[M], ABC):
             if p2 > data_size:
                 p2 = data_size
             # size + offset + '\r\n' + body
-            head_offset = int_to_buffer(value=p1, length=4)
+            head_offset = int_to_bytes(value=p1, length=4)
             pack = head_size + head_offset + self.SEPARATOR + data[p1:p2]
             chunks.append(pack)
             # next chunk

@@ -28,28 +28,27 @@
 # SOFTWARE.
 # ==============================================================================
 
-import json
 from multiprocessing import shared_memory
 from typing import Optional, Any, Union
 
+from .memory import SharedMemory
 from .cache import CycledCache
-from .shared import SharedMemory
+from .shared import ObjectiveSharedMemory
 
 
-def create_memory_cache(size: int, name: str = None):
-    shm = shared_memory.SharedMemory(name=name, create=True, size=size)
-    return MemoryCache(shm=shm)
+def create_shared_memory(size: int, name: str = None):
+    return shared_memory.SharedMemory(name=name, create=True, size=size)
 
 
-class MemoryCache(CycledCache[shared_memory.SharedMemory]):
+class MPSharedMemory(SharedMemory):
 
-    # Override
-    def detach(self):
-        self.shm.close()
+    def __init__(self, size: int, name: str = None):
+        super().__init__()
+        self.__shm = create_shared_memory(size=size, name=name)
 
-    # Override
-    def remove(self):
-        self.shm.unlink()
+    @property
+    def shm(self) -> shared_memory.SharedMemory:
+        return self.__shm
 
     @property  # Override
     def buffer(self) -> bytes:
@@ -60,40 +59,56 @@ class MemoryCache(CycledCache[shared_memory.SharedMemory]):
         return self.shm.size
 
     # Override
-    def _set(self, pos: int, value: int):
+    def detach(self):
+        self.shm.close()
+
+    # Override
+    def remove(self):
+        self.shm.unlink()
+
+    # Override
+    def get_byte(self, index: int) -> int:
+        return self.shm.buf[index]
+
+    # Override
+    def get_bytes(self, start: int = 0, end: int = None) -> Optional[bytes]:
+        if end is None:
+            end = self.size
+        if 0 <= start < end <= self.size:
+            return bytes(self.shm.buf[start:end])
+
+    # Override
+    def set_byte(self, index: int, value: int):
         # self.shm.buf[pos] = value
         data = bytearray(1)
         data[0] = value
-        self.shm.buf[pos:(pos + 1)] = memoryview(data)
+        self.shm.buf[index:(index + 1)] = memoryview(data)
 
     # Override
-    def _get(self, pos: int) -> int:
-        return self.shm.buf[pos]
+    def update(self, index: int, source: Union[bytes, bytearray], start: int = 0, end: int = None):
+        src_len = len(source)
+        if end is None:
+            end = src_len
+        if start < end:
+            if 0 < start or end < src_len:
+                source = source[start:end]
+            start += index
+            end += index
+            self.shm.buf[start:end] = source
 
-    # Override
-    def _update(self, start: int, end: int, data: Union[bytes, bytearray]):
-        assert start + len(data) == end, 'range error: %d + %d != %d' % (start, len(data), end)
-        self.shm.buf[start:end] = data
 
-    # Override
-    def _slice(self, start: int, end: int) -> Union[bytes, bytearray]:
-        return bytes(self.shm.buf[start:end])
-
-
-class SharedMemoryCache(SharedMemory[shared_memory.SharedMemory]):
-
-    def __init__(self, size: int, name: str = None):
-        cache = create_memory_cache(size=size, name=name)
-        super().__init__(cache=cache)
+class SharedMemoryCache(ObjectiveSharedMemory):
 
     # Override
     def shift(self) -> Optional[Any]:
         data = self.cache.shift()
-        if data is None:
-            return None
-        elif isinstance(data, memoryview):
+        if isinstance(data, memoryview):
             data = data.tobytes()
-            return json.loads(data)
-        else:
-            data = data.decode('utf-8')
-            return json.loads(data)
+        if data is not None:
+            return self._decode(data=data)
+
+    @classmethod
+    def aim(cls, size: int, name: str = None):
+        shm = MPSharedMemory(size=size, name=name)
+        cache = CycledCache(memory=shm)
+        return cls(cache=cache)
