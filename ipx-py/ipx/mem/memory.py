@@ -97,19 +97,6 @@ class Memory(ABC):
         return '<%s size=%d>\n%s\n</%s module="%s">' % (cname, self.size, buffer, cname, mod)
 
 
-class SharedMemory(Memory, ABC):
-
-    @abstractmethod
-    def detach(self):
-        """ Detaches the shared memory """
-        raise NotImplemented
-
-    @abstractmethod
-    def remove(self):
-        """ Removes (deletes) the shared memory from the system """
-        raise NotImplemented
-
-
 class Buffer(ABC):
     """ FIFO Memory """
 

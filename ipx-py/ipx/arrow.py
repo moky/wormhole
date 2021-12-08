@@ -31,7 +31,8 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-from .shm import ObjectiveCacheController, SharedMemoryController
+from .shm import SharedMemoryController
+from .shm import DefaultSharedMemoryController
 
 
 class Arrow(ABC):
@@ -63,7 +64,7 @@ class SharedMemoryArrow(Arrow):
     MAX_ARRIVALS = 65536
     MAX_DEPARTURES = 65536
 
-    def __init__(self, controller: ObjectiveCacheController):
+    def __init__(self, controller: SharedMemoryController):
         super().__init__()
         self.__ctrl = controller
         # memory caches
@@ -71,7 +72,7 @@ class SharedMemoryArrow(Arrow):
         self.__departures = []
 
     @property
-    def controller(self) -> ObjectiveCacheController:
+    def controller(self) -> SharedMemoryController:
         return self.__ctrl
 
     def __str__(self) -> str:
@@ -166,5 +167,5 @@ class SharedMemoryArrow(Arrow):
 
     @classmethod
     def new(cls, size: int, name: str):
-        controller = SharedMemoryController.new(size=size, name=name)
+        controller = DefaultSharedMemoryController.new(size=size, name=name)
         return cls(controller=controller)

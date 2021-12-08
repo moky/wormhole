@@ -31,9 +31,9 @@
 from multiprocessing import shared_memory
 from typing import Optional, Any, Union
 
-from .memory import SharedMemory
-from .giant import GiantCache
-from .controller import ObjectiveCacheController
+from ..mem import GiantCache
+from .shared import SharedMemory
+from .shared import SharedMemoryController
 
 
 def create_shared_memory(size: int, name: str = None):
@@ -97,7 +97,7 @@ class MPSharedMemory(SharedMemory):
             self.shm.buf[start:end] = source
 
 
-class SharedMemoryController(ObjectiveCacheController):
+class MpSharedMemoryController(SharedMemoryController):
 
     # Override
     def shift(self) -> Optional[Any]:

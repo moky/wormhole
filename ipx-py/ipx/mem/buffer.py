@@ -33,10 +33,9 @@ from typing import Union
 from .memory import int_from_bytes, int_to_bytes
 from .memory import Memory, Buffer
 
-
 """
     Protocol:
-    
+
          0                   1                   2                   3
          0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+

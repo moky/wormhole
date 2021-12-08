@@ -31,10 +31,12 @@
 
 from .lnc import Notification, NotificationObserver, NotificationCenter
 
-from .shm import Memory, SharedMemory, Buffer
-from .shm import CycledBuffer, CycledCache, GiantCache
-from .shm import ObjectiveCacheController
-from .shm import SharedMemoryController
+from .mem import Memory, Buffer
+from .mem import CycledBuffer, CycledCache, GiantCache
+from .mem import CacheController
+
+from .shm import SharedMemory, SharedMemoryController
+from .shm import DefaultSharedMemoryController
 
 from .arrow import Arrow, SharedMemoryArrow
 
@@ -48,12 +50,14 @@ __all__ = [
     # Local Notification
     'Notification', 'NotificationObserver', 'NotificationCenter',
 
-    # Shared Memory
-
-    'Memory', 'SharedMemory', 'Buffer',
+    # Memory Buffer
+    'Memory', 'Buffer',
     'CycledBuffer', 'CycledCache', 'GiantCache',
-    'ObjectiveCacheController',
-    'SharedMemoryController',
+    'CacheController',
+
+    # Shared Memory
+    'SharedMemory', 'SharedMemoryController',
+    'DefaultSharedMemoryController',
 
     # Half-duplex Pipe
     'Arrow', 'SharedMemoryArrow',

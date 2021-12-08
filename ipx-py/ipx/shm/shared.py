@@ -28,22 +28,26 @@
 # SOFTWARE.
 # ==============================================================================
 
-import json
-from typing import Optional, Union, Any
+from abc import ABC, abstractmethod
 
-from .memory import SharedMemory
-from .cache import CycledCache
+from ..mem import Memory
+from ..mem import CacheController
 
 
-class ObjectiveCacheController:
+class SharedMemory(Memory, ABC):
 
-    def __init__(self, cache: CycledCache):
-        super().__init__()
-        self.__cache = cache
+    @abstractmethod
+    def detach(self):
+        """ Detaches the shared memory """
+        raise NotImplemented
 
-    @property
-    def cache(self) -> CycledCache:
-        return self.__cache
+    @abstractmethod
+    def remove(self):
+        """ Removes (deletes) the shared memory from the system """
+        raise NotImplemented
+
+
+class SharedMemoryController(CacheController):
 
     @property
     def shm(self) -> SharedMemory:
@@ -58,44 +62,3 @@ class ObjectiveCacheController:
     def remove(self):
         """ Removes (deletes) the shared memory from the system """
         self.shm.remove()
-
-    def __str__(self) -> str:
-        mod = self.__module__
-        cname = self.__class__.__name__
-        return '<%s>%s</%s module="%s">' % (cname, self.cache, cname, mod)
-
-    def __repr__(self) -> str:
-        mod = self.__module__
-        cname = self.__class__.__name__
-        return '<%s>%s</%s module="%s">' % (cname, self.cache, cname, mod)
-
-    # noinspection PyMethodMayBeStatic
-    def _decode(self, data: Any) -> Any:
-        # noinspection PyBroadException,PyUnusedLocal
-        try:
-            s = data.decode('utf-8')
-            return json.loads(s)
-        except Exception as error:
-            # print('[SHM] not json: %s, %s' % (error, data))
-            # import traceback
-            # traceback.print_exc()
-            return data
-
-    # noinspection PyMethodMayBeStatic
-    def _encode(self, obj: Optional[Any]) -> Union[bytes, bytearray, None]:
-        if obj is None:
-            return None
-        elif isinstance(obj, bytes) or isinstance(obj, bytearray):
-            return obj
-        else:
-            data = json.dumps(obj)
-            return data.encode('utf-8')
-
-    def shift(self) -> Optional[Any]:
-        data = self.cache.shift()
-        if data is not None:
-            return self._decode(data=data)
-
-    def append(self, obj: Optional[Any]) -> bool:
-        data = self._encode(obj=obj)
-        return self.cache.append(data=data)

@@ -28,17 +28,20 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .shared import SharedMemory, SharedMemoryController
+from .memory import Memory, Buffer
+from .buffer import CycledBuffer
+from .cache import CycledCache
+from .giant import GiantCache
+from .controller import CacheController
 
-from .sysv import SysvSharedMemoryController as DefaultSharedMemoryController
 
-
-name = "SHM"
+name = "MEM"
 
 __author__ = 'Albert Moky'
 
 __all__ = [
 
-    'SharedMemory', 'SharedMemoryController',
-    'DefaultSharedMemoryController',
+    'Memory', 'Buffer',
+    'CycledBuffer', 'CycledCache', 'GiantCache',
+    'CacheController',
 ]

@@ -32,9 +32,9 @@ import mmap
 import os
 from typing import Union, Optional
 
-from .memory import SharedMemory
-from .giant import GiantCache
-from .controller import ObjectiveCacheController
+from ..mem import GiantCache
+from .shared import SharedMemory
+from .shared import SharedMemoryController
 
 
 def create_shared_memory(size: int, name: str = None) -> mmap.mmap:
@@ -104,7 +104,7 @@ class MmapSharedMemory(SharedMemory):
             self.shm[start:end] = source
 
 
-class SharedMemoryController(ObjectiveCacheController):
+class MmapSharedMemoryController(SharedMemoryController):
 
     @classmethod
     def new(cls, size: int, name: str = None):

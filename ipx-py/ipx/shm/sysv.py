@@ -32,9 +32,9 @@ from typing import Union, Optional
 
 import sysv_ipc
 
-from .memory import SharedMemory
-from .giant import GiantCache
-from .controller import ObjectiveCacheController
+from ..mem import GiantCache
+from .shared import SharedMemory
+from .shared import SharedMemoryController
 
 
 def create_shared_memory(size: int, key: int) -> sysv_ipc.SharedMemory:
@@ -124,13 +124,7 @@ class SysvSharedMemory(SharedMemory):
             self.shm.write(source, offset=index)
 
 
-class SharedMemoryController(ObjectiveCacheController):
-
-    @property
-    def shm(self) -> SysvSharedMemory:
-        memory = super().shm
-        assert isinstance(memory, SysvSharedMemory), 'shared memory error: %s' % memory
-        return memory
+class SysvSharedMemoryController(SharedMemoryController):
 
     @classmethod
     def new(cls, size: int, name: str = None, key: int = 0):
