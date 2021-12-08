@@ -33,8 +33,8 @@ from .lnc import Notification, NotificationObserver, NotificationCenter
 
 from .shm import Memory, SharedMemory, Buffer
 from .shm import CycledBuffer, CycledCache
-from .shm import ObjectiveSharedMemory
-from .shm import SharedMemoryCache
+from .shm import ObjectiveCacheController
+from .shm import SharedMemoryController
 
 from .arrow import Arrow, SharedMemoryArrow
 
@@ -52,8 +52,8 @@ __all__ = [
 
     'Memory', 'SharedMemory', 'Buffer',
     'CycledBuffer', 'CycledCache',
-    'ObjectiveSharedMemory',
-    'SharedMemoryCache',
+    'ObjectiveCacheController',
+    'SharedMemoryController',
 
     # Half-duplex Pipe
     'Arrow', 'SharedMemoryArrow',

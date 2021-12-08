@@ -31,7 +31,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-from .shm import ObjectiveSharedMemory, SharedMemoryCache
+from .shm import ObjectiveCacheController, SharedMemoryController
 
 
 class Arrow(ABC):
@@ -63,28 +63,32 @@ class SharedMemoryArrow(Arrow):
     MAX_ARRIVALS = 65536
     MAX_DEPARTURES = 65536
 
-    def __init__(self, shm: ObjectiveSharedMemory):
+    def __init__(self, controller: ObjectiveCacheController):
         super().__init__()
-        self.__shm = shm
+        self.__ctrl = controller
         # memory caches
         self.__arrivals = []
         self.__departures = []
 
+    @property
+    def controller(self) -> ObjectiveCacheController:
+        return self.__ctrl
+
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        shm = self.__shm
+        ctrl = self.controller
         arrivals = len(self.__arrivals)
         departures = len(self.__departures)
-        return '<%s arrivals=%d departures=%d>%s</%s module="%s">' % (cname, arrivals, departures, shm, cname, mod)
+        return '<%s arrivals=%d departures=%d>%s</%s module="%s">' % (cname, arrivals, departures, ctrl, cname, mod)
 
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        shm = self.__shm
+        ctrl = self.controller
         arrivals = len(self.__arrivals)
         departures = len(self.__departures)
-        return '<%s arrivals=%d departures=%d>%s</%s module="%s">' % (cname, arrivals, departures, shm, cname, mod)
+        return '<%s arrivals=%d departures=%d>%s</%s module="%s">' % (cname, arrivals, departures, ctrl, cname, mod)
 
     # Override
     def send(self, obj: Any) -> int:
@@ -92,7 +96,7 @@ class SharedMemoryArrow(Arrow):
         # resent delay objects first
         delays = self.__departures.copy()
         for item in delays:
-            if self.__shm.append(obj=item):
+            if self.controller.append(obj=item):
                 # sent, remove from the queue
                 self.__departures.remove(item)
             else:
@@ -100,7 +104,7 @@ class SharedMemoryArrow(Arrow):
                 empty = False
                 break
         # send this obj when delay list empty
-        if empty and self.__shm.append(obj=obj):
+        if empty and self.controller.append(obj=obj):
             return 0
         # failed, put it into the queue
         _, _, count = self._push_departure(obj=obj)
@@ -109,9 +113,9 @@ class SharedMemoryArrow(Arrow):
     # Override
     def receive(self) -> Optional[Any]:
         # receive new objects from the pool
-        obj = self.__shm.shift()
+        obj = self.controller.shift()
         while obj is not None and self.__receive_arrival(obj=obj):
-            obj = self.__shm.shift()
+            obj = self.controller.shift()
         _, obj = self._push_arrival(obj=obj)
         return obj
 
@@ -155,12 +159,12 @@ class SharedMemoryArrow(Arrow):
             return None, None
 
     def detach(self):
-        self.__shm.detach()
+        self.controller.detach()
 
     def remove(self):
-        self.__shm.remove()
+        self.controller.remove()
 
     @classmethod
     def new(cls, size: int, name: str):
-        shm = SharedMemoryCache.aim(size=size, name=name)
-        return cls(shm=shm)
+        controller = SharedMemoryController.new(size=size, name=name)
+        return cls(controller=controller)

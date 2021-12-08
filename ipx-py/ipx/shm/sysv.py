@@ -34,7 +34,7 @@ import sysv_ipc
 
 from .memory import SharedMemory
 from .cache import CycledCache
-from .shared import ObjectiveSharedMemory
+from .controller import ObjectiveCacheController
 
 
 def create_shared_memory(size: int, key: int) -> sysv_ipc.SharedMemory:
@@ -124,7 +124,7 @@ class SysvSharedMemory(SharedMemory):
             self.shm.write(source, offset=index)
 
 
-class SharedMemoryCache(ObjectiveSharedMemory):
+class SharedMemoryController(ObjectiveCacheController):
 
     @property
     def shm(self) -> SysvSharedMemory:
@@ -133,7 +133,7 @@ class SharedMemoryCache(ObjectiveSharedMemory):
         return memory
 
     @classmethod
-    def aim(cls, size: int, name: str = None, key: int = 0):
+    def new(cls, size: int, name: str = None, key: int = 0):
         if key == 0:
             pos = name.index('0x') + 2
             key = int(name[pos:], 16)

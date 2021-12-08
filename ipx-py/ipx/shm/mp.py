@@ -33,7 +33,7 @@ from typing import Optional, Any, Union
 
 from .memory import SharedMemory
 from .cache import CycledCache
-from .shared import ObjectiveSharedMemory
+from .controller import ObjectiveCacheController
 
 
 def create_shared_memory(size: int, name: str = None):
@@ -97,7 +97,7 @@ class MPSharedMemory(SharedMemory):
             self.shm.buf[start:end] = source
 
 
-class SharedMemoryCache(ObjectiveSharedMemory):
+class SharedMemoryController(ObjectiveCacheController):
 
     # Override
     def shift(self) -> Optional[Any]:
@@ -108,7 +108,7 @@ class SharedMemoryCache(ObjectiveSharedMemory):
             return self._decode(data=data)
 
     @classmethod
-    def aim(cls, size: int, name: str = None):
+    def new(cls, size: int, name: str = None):
         shm = MPSharedMemory(size=size, name=name)
         cache = CycledCache(memory=shm)
         return cls(cache=cache)

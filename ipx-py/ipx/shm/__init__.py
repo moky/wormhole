@@ -31,9 +31,9 @@
 from .memory import Memory, SharedMemory, Buffer
 from .buffer import CycledBuffer
 from .cache import CycledCache
-from .shared import ObjectiveSharedMemory
+from .controller import ObjectiveCacheController
 
-from .sysv import SharedMemoryCache
+from .sysv import SharedMemoryController
 
 
 name = "SHM"
@@ -44,7 +44,7 @@ __all__ = [
 
     'Memory', 'SharedMemory', 'Buffer',
     'CycledBuffer', 'CycledCache',
-    'ObjectiveSharedMemory',
+    'ObjectiveCacheController',
 
-    'SharedMemoryCache',
+    'SharedMemoryController',
 ]

@@ -111,11 +111,11 @@ class SharedMemory(Memory, ABC):
 
 
 class Buffer(ABC):
-    """ Memory Controller """
+    """ FIFO Memory """
 
     @property
     def memory(self) -> Memory:
-        """ inner memory handler """
+        """ inner memory holder """
         raise NotImplemented
 
     @property
@@ -130,7 +130,7 @@ class Buffer(ABC):
 
     @property
     def spaces(self) -> int:
-        """ empty spaces """
+        """ empty spaces for incoming data """
         return self.capacity - self.available
 
     @property

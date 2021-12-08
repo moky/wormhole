@@ -34,7 +34,7 @@ from typing import Union, Optional
 
 from .memory import SharedMemory
 from .cache import CycledCache
-from .shared import ObjectiveSharedMemory
+from .controller import ObjectiveCacheController
 
 
 def create_shared_memory(size: int, name: str = None) -> mmap.mmap:
@@ -104,10 +104,10 @@ class MmapSharedMemory(SharedMemory):
             self.shm[start:end] = source
 
 
-class SharedMemoryCache(ObjectiveSharedMemory):
+class SharedMemoryController(ObjectiveCacheController):
 
     @classmethod
-    def aim(cls, size: int, name: str = None):
+    def new(cls, size: int, name: str = None):
         shm = MmapSharedMemory(size=size, name=name)
         cache = CycledCache(memory=shm)
         return cls(cache=cache)

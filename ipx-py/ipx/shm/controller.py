@@ -35,7 +35,7 @@ from .memory import SharedMemory
 from .cache import CycledCache
 
 
-class ObjectiveSharedMemory:
+class ObjectiveCacheController:
 
     def __init__(self, cache: CycledCache):
         super().__init__()
