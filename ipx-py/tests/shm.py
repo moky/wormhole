@@ -14,7 +14,7 @@ def new_arrow() -> SharedMemoryArrow:
 
 
 def del_arrow(arrow: SharedMemoryArrow):
-    arrow.remove()
+    arrow.destroy()
 
 
 g_shared = new_arrow()
@@ -69,7 +69,7 @@ def test_process():
     child.start()
     test_write(data=g_test_data)
     child.join()
-    # g_shared.remove()
+    # g_shared.destroy()
 
 
 def test_fork():

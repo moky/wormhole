@@ -30,8 +30,8 @@
 
 from abc import ABC, abstractmethod
 
-from ..mem import Memory
-from ..mem import CacheController
+from ..mem import Memory, MemoryPool
+from ..mem import QueueController
 
 
 class SharedMemory(Memory, ABC):
@@ -42,16 +42,18 @@ class SharedMemory(Memory, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def remove(self):
+    def destroy(self):
         """ Removes (deletes) the shared memory from the system """
         raise NotImplemented
 
 
-class SharedMemoryController(CacheController):
+class SharedMemoryController(QueueController):
 
     @property
     def shm(self) -> SharedMemory:
-        memory = self.cache.memory
+        queue = self.queue
+        assert isinstance(queue, MemoryPool), 'memory pool error: %s' % queue
+        memory = queue.memory
         assert isinstance(memory, SharedMemory), 'shared memory error: %s' % memory
         return memory
 
@@ -59,6 +61,6 @@ class SharedMemoryController(CacheController):
         """ Detaches the shared memory """
         self.shm.detach()
 
-    def remove(self):
+    def destroy(self):
         """ Removes (deletes) the shared memory from the system """
-        self.shm.remove()
+        self.shm.destroy()

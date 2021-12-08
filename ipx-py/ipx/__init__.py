@@ -31,9 +31,9 @@
 
 from .lnc import Notification, NotificationObserver, NotificationCenter
 
-from .mem import Memory, Buffer
-from .mem import CycledBuffer, CycledCache, GiantCache
-from .mem import CacheController
+from .mem import Memory, MemoryPool
+from .mem import Queue, QueueController
+from .mem import CycledBuffer, CycledQueue, GiantQueue
 
 from .shm import SharedMemory, SharedMemoryController
 from .shm import DefaultSharedMemoryController
@@ -50,10 +50,10 @@ __all__ = [
     # Local Notification
     'Notification', 'NotificationObserver', 'NotificationCenter',
 
-    # Memory Buffer
-    'Memory', 'Buffer',
-    'CycledBuffer', 'CycledCache', 'GiantCache',
-    'CacheController',
+    # Memory Access
+    'Memory', 'MemoryPool',
+    'Queue', 'QueueController',
+    'CycledBuffer', 'CycledQueue', 'GiantQueue',
 
     # Shared Memory
     'SharedMemory', 'SharedMemoryController',

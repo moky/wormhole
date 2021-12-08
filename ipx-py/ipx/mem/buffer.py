@@ -31,7 +31,7 @@
 from typing import Union
 
 from .memory import int_from_bytes, int_to_bytes
-from .memory import Memory, Buffer
+from .memory import Memory, MemoryPool
 
 """
     Protocol:
@@ -60,7 +60,7 @@ from .memory import Memory, Buffer
 """
 
 
-class CycledBuffer(Buffer):
+class CycledBuffer(MemoryPool):
     """
         Cycled Memory Buffer
         ~~~~~~~~~~~~~~~~~~~~
@@ -79,7 +79,7 @@ class CycledBuffer(Buffer):
         NOTICE: all integers are stored as NBO (Network Byte Order, big-endian)
     """
 
-    MAGIC_CODE = b'CYCLED MEMORY\0'
+    MAGIC_CODE = b'CYCLED BUFFER\0'
 
     def __init__(self, memory: Memory):
         super().__init__()
@@ -220,42 +220,49 @@ class CycledBuffer(Buffer):
         assert size == (self.__start - pos), 'header error: %s' % self
         self.memory.update(index=pos, source=bytes(size))
 
-    def _try_read(self, length: int) -> (Union[bytes, bytearray, None], int):
+    def _try_read(self, length: int) -> Union[bytes, bytearray, None]:
         """ read data with length, do not move reading pointer """
         available = self.available
         if available < length:
-            return None, -1
+            return None
         start = self.__start
         end = self.__end
         p1 = self.read_offset
         p2 = p1 + length
         memory = self.memory
-        if p2 < end:
-            data = memory.get_bytes(start=p1, end=p2)
-        elif p2 == end:
-            # data on the tail
-            data = memory.get_bytes(start=p1, end=p2)
-            p2 = start
+        if p2 <= end:
+            return memory.get_bytes(start=p1, end=p2)
         else:
             # join data as two parts
             p2 = start + p2 - end
             part1 = memory.get_bytes(start=p1, end=end)
             part2 = memory.get_bytes(start=start, end=p2)
-            data = part1 + part2
-        return data, p2
+            return part1 + part2
+
+    # Override
+    def peek(self, length: int) -> Union[bytes, bytearray, None]:
+        try:
+            return self._try_read(length=length)
+        except AssertionError as error:
+            self._check_error(error=error)
+            # self.error(msg='failed to read data: %s' % error)
+            # import traceback
+            # traceback.print_exc()
+            raise error
 
     # Override
     def read(self, length: int) -> Union[bytes, bytearray, None]:
-        """ get one data, measured with size (as leading 4 bytes) """
-        data, offset = self._try_read(length=length)
+        data = self.peek(length=length)
         if data is not None:
             # update the pointer after data read
+            offset = self.read_offset + len(data)
+            if offset >= self.__end:
+                offset = self.__start + offset - self.__end
             self.read_offset = offset
         return data
 
     # Override
     def write(self, data: Union[bytes, bytearray]) -> bool:
-        """ append data with size (as leading 4 bytes) into buffer """
         size = len(data)
         if self.spaces < size:
             return False

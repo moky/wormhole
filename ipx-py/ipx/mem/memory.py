@@ -33,45 +33,31 @@ from typing import Union, Optional
 
 
 class Memory(ABC):
-
-    @property
-    def buffer(self) -> Union[bytes, bytearray]:
-        """ get the whole memory (maybe larger than available zone) """
-        raise NotImplemented
-
-    @property
-    def offset(self) -> int:
-        """ get start position for available zone """
-        return 0
+    """ Memory Access """
 
     @property
     def size(self) -> int:
         """ get size for available zone """
         raise NotImplemented
 
-    @property
-    def hex_string(self) -> str:
-        """ hex encode the available zone """
-        raise NotImplemented
-
     @abstractmethod
     def get_byte(self, index: int) -> int:
-        """ get item value with position (offset + index) """
+        """ get item value with position """
         raise NotImplemented
 
     @abstractmethod
     def get_bytes(self, start: int = 0, end: int = None) -> Optional[bytes]:
-        """ get slice with range [offset + start, offset + end) """
+        """ get slice with range [start, end) """
         raise NotImplemented
 
     @abstractmethod
     def set_byte(self, index: int, value: int):
-        """ set item value with position (offset + index) """
+        """ set item value with position """
         raise NotImplemented
 
     @abstractmethod
     def update(self, index: int, source: Union[bytes, bytearray], start: int = 0, end: int = None):
-        """ update buffer with range [offset + index, offset + index + end - start)
+        """ update buffer with range [index, index + end - start)
             if end is None, end = len(source)
         """
         raise NotImplemented
@@ -97,12 +83,12 @@ class Memory(ABC):
         return '<%s size=%d>\n%s\n</%s module="%s">' % (cname, self.size, buffer, cname, mod)
 
 
-class Buffer(ABC):
-    """ FIFO Memory """
+class MemoryPool(ABC):
+    """ FIFO Memory Pool """
 
     @property
     def memory(self) -> Memory:
-        """ inner memory holder """
+        """ memory access """
         raise NotImplemented
 
     @property
@@ -143,8 +129,13 @@ class Buffer(ABC):
                % (cname, self.capacity, self.available, self.memory, cname, mod)
 
     @abstractmethod
+    def peek(self, length: int) -> Union[bytes, bytearray, None]:
+        """ get (not remove) data from buffer, None on empty """
+        raise NotImplemented
+
+    @abstractmethod
     def read(self, length: int) -> Union[bytes, bytearray, None]:
-        """ get (and remove) data from buffer, None on empty """
+        """ get (and remove) data with length from buffer, None on empty """
         raise NotImplemented
 
     @abstractmethod

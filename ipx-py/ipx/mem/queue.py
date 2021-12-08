@@ -29,30 +29,42 @@
 # ==============================================================================
 
 import json
+from abc import ABC, abstractmethod
 from typing import Optional, Union, Any
 
-from .cache import CycledCache
+
+class Queue(ABC):
+
+    @abstractmethod
+    def push(self, data: Union[bytes, bytearray]) -> bool:
+        """ inqueue """
+        raise NotImplemented
+
+    @abstractmethod
+    def shift(self) -> Union[bytes, bytearray, None]:
+        """ dequeue """
+        raise NotImplemented
 
 
-class CacheController:
+class QueueController:
 
-    def __init__(self, cache: CycledCache):
+    def __init__(self, queue: Queue):
         super().__init__()
-        self.__cache = cache
+        self.__queue = queue
 
     @property
-    def cache(self) -> CycledCache:
-        return self.__cache
+    def queue(self) -> Queue:
+        return self.__queue
 
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s>%s</%s module="%s">' % (cname, self.cache, cname, mod)
+        return '<%s>%s</%s module="%s">' % (cname, self.queue, cname, mod)
 
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s>%s</%s module="%s">' % (cname, self.cache, cname, mod)
+        return '<%s>%s</%s module="%s">' % (cname, self.queue, cname, mod)
 
     # noinspection PyMethodMayBeStatic
     def _decode(self, data: Any) -> Any:
@@ -77,10 +89,10 @@ class CacheController:
             return data.encode('utf-8')
 
     def shift(self) -> Optional[Any]:
-        data = self.cache.shift()
+        data = self.queue.shift()
         if data is not None:
             return self._decode(data=data)
 
-    def append(self, obj: Optional[Any]) -> bool:
+    def push(self, obj: Optional[Any]) -> bool:
         data = self._encode(obj=obj)
-        return self.cache.append(data=data)
+        return self.queue.push(data=data)

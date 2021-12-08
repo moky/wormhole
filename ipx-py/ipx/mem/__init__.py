@@ -28,11 +28,11 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .memory import Memory, Buffer
+from .memory import Memory, MemoryPool
+from .queue import Queue, QueueController
 from .buffer import CycledBuffer
-from .cache import CycledCache
-from .giant import GiantCache
-from .controller import CacheController
+from .cycle import CycledQueue
+from .giant import GiantQueue
 
 
 name = "MEM"
@@ -41,7 +41,7 @@ __author__ = 'Albert Moky'
 
 __all__ = [
 
-    'Memory', 'Buffer',
-    'CycledBuffer', 'CycledCache', 'GiantCache',
-    'CacheController',
+    'Memory', 'MemoryPool',
+    'Queue', 'QueueController',
+    'CycledBuffer', 'CycledQueue', 'GiantQueue',
 ]

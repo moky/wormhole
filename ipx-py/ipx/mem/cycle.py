@@ -31,12 +31,13 @@
 from typing import Union
 
 from .memory import int_from_bytes, int_to_bytes
+from .queue import Queue
 from .buffer import CycledBuffer
 
 
-class CycledCache(CycledBuffer):
+class CycledQueue(CycledBuffer, Queue):
     """
-        Cycled Data Cache
+        Cycled Data Queue
         ~~~~~~~~~~~~~~~~~
 
         Header:
@@ -66,16 +67,6 @@ class CycledCache(CycledBuffer):
     """
 
     # Override
-    def _try_read(self, length: int) -> (Union[bytes, bytearray, None], int):
-        try:
-            return super()._try_read(length=length)
-        except AssertionError as error:
-            self._check_error(error=error)
-            # self.error(msg='failed to read data: %s' % error)
-            # import traceback
-            # traceback.print_exc()
-            raise error
-
     def shift(self) -> Union[bytes, bytearray, None]:
         """
         Get one package, measured with size (as leading 2 bytes)
@@ -83,7 +74,7 @@ class CycledCache(CycledBuffer):
         :return: package body (without head)
         """
         # get data head as size
-        head, _ = self._try_read(length=2)
+        head = self.peek(length=2)
         if head is None:
             return None
         body_size = int_from_bytes(data=head)
@@ -98,9 +89,10 @@ class CycledCache(CycledBuffer):
         assert pack is not None and len(pack) == pack_size, 'package error: %d, %s' % (pack_size, pack)
         return pack[2:]
 
-    def append(self, data: Union[bytes, bytearray]) -> bool:
+    # Override
+    def push(self, data: Union[bytes, bytearray]) -> bool:
         """
-        Write package with body size (as leading 2 bytes) into buffer
+        Put package with body size (as leading 2 bytes) into buffer
 
         :param data: package body
         :return: False on shared memory full

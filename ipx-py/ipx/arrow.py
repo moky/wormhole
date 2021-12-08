@@ -97,7 +97,7 @@ class SharedMemoryArrow(Arrow):
         # resent delay objects first
         delays = self.__departures.copy()
         for item in delays:
-            if self.controller.append(obj=item):
+            if self.controller.push(obj=item):
                 # sent, remove from the queue
                 self.__departures.remove(item)
             else:
@@ -105,7 +105,7 @@ class SharedMemoryArrow(Arrow):
                 empty = False
                 break
         # send this obj when delay list empty
-        if empty and self.controller.append(obj=obj):
+        if empty and self.controller.push(obj=obj):
             return 0
         # failed, put it into the queue
         _, _, count = self._push_departure(obj=obj)
@@ -162,8 +162,8 @@ class SharedMemoryArrow(Arrow):
     def detach(self):
         self.controller.detach()
 
-    def remove(self):
-        self.controller.remove()
+    def destroy(self):
+        self.controller.destroy()
 
     @classmethod
     def new(cls, size: int, name: str):

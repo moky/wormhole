@@ -32,7 +32,7 @@ from typing import Union, Optional
 
 import sysv_ipc
 
-from ..mem import GiantCache
+from ..mem import GiantQueue
 from .shared import SharedMemory
 from .shared import SharedMemoryController
 
@@ -92,7 +92,7 @@ class SysvSharedMemory(SharedMemory):
         self.shm.detach()
 
     # Override
-    def remove(self):
+    def destroy(self):
         self.shm.remove()
 
     # Override
@@ -132,5 +132,5 @@ class SysvSharedMemoryController(SharedMemoryController):
             pos = name.index('0x') + 2
             key = int(name[pos:], 16)
         shm = SysvSharedMemory(size=size, key=key)
-        cache = GiantCache(memory=shm)
-        return cls(cache=cache)
+        queue = GiantQueue(memory=shm)
+        return cls(queue=queue)

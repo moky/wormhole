@@ -31,7 +31,7 @@
 from multiprocessing import shared_memory
 from typing import Optional, Any, Union
 
-from ..mem import GiantCache
+from ..mem import GiantQueue
 from .shared import SharedMemory
 from .shared import SharedMemoryController
 
@@ -63,7 +63,7 @@ class MPSharedMemory(SharedMemory):
         self.shm.close()
 
     # Override
-    def remove(self):
+    def destroy(self):
         self.shm.unlink()
 
     # Override
@@ -101,7 +101,7 @@ class MpSharedMemoryController(SharedMemoryController):
 
     # Override
     def shift(self) -> Optional[Any]:
-        data = self.cache.shift()
+        data = self.queue.shift()
         if isinstance(data, memoryview):
             data = data.tobytes()
         if data is not None:
@@ -110,5 +110,5 @@ class MpSharedMemoryController(SharedMemoryController):
     @classmethod
     def new(cls, size: int, name: str = None):
         shm = MPSharedMemory(size=size, name=name)
-        cache = GiantCache(memory=shm)
-        return cls(cache=cache)
+        queue = GiantQueue(memory=shm)
+        return cls(queue=queue)

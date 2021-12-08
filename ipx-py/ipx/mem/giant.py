@@ -31,12 +31,12 @@
 from typing import Union, List
 
 from .memory import Memory, int_from_bytes, int_to_bytes
-from .cache import CycledCache
+from .cycle import CycledQueue
 
 
-class GiantCache(CycledCache):
+class GiantQueue(CycledQueue):
     """
-        Giant Data Cache
+        Giant Data Queue
         ~~~~~~~~~~~~~~~~
 
         If data is too big (more than the whole buffer can load), it will be split to chunks,
@@ -113,6 +113,7 @@ class GiantCache(CycledCache):
                 self.__incoming_giant_size = 0
                 return giant
 
+    # Override
     def shift(self) -> Union[bytes, bytearray, None]:
         """ shift data """
         while True:
@@ -138,7 +139,7 @@ class GiantCache(CycledCache):
         chunks = self.__outgoing_giant_chunks.copy()
         for body in chunks:
             # send again
-            if super().append(data=body):
+            if super().push(data=body):
                 # package wrote
                 self.__outgoing_giant_chunks.pop(0)
             else:
@@ -168,7 +169,8 @@ class GiantCache(CycledCache):
             p1 = p2
         return chunks
 
-    def append(self, data: Union[bytes, bytearray, None]) -> bool:
+    # Override
+    def push(self, data: Union[bytes, bytearray, None]) -> bool:
         """ append data """
         # 1. check delay chunks for giant
         if not self.__check_chunks():
@@ -181,7 +183,7 @@ class GiantCache(CycledCache):
         data_size = len(data)
         if data_size < 65535 and data_size < (self.capacity - 2):
             # small data, send it directly
-            return super().append(data=data)
+            return super().push(data=data)
         # 3. split giant, send as chunks
         return self._append_giant(data=data)
 

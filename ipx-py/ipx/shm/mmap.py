@@ -32,7 +32,7 @@ import mmap
 import os
 from typing import Union, Optional
 
-from ..mem import GiantCache
+from ..mem import GiantQueue
 from .shared import SharedMemory
 from .shared import SharedMemoryController
 
@@ -73,7 +73,7 @@ class MmapSharedMemory(SharedMemory):
         self.shm.close()
 
     # Override
-    def remove(self):
+    def destroy(self):
         self.shm.close()
 
     # Override
@@ -109,5 +109,5 @@ class MmapSharedMemoryController(SharedMemoryController):
     @classmethod
     def new(cls, size: int, name: str = None):
         shm = MmapSharedMemory(size=size, name=name)
-        cache = GiantCache(memory=shm)
-        return cls(cache=cache)
+        queue = GiantQueue(memory=shm)
+        return cls(queue=queue)
