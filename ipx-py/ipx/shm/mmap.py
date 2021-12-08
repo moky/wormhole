@@ -33,7 +33,7 @@ import os
 from typing import Union, Optional
 
 from .memory import SharedMemory
-from .cache import CycledCache
+from .giant import GiantCache
 from .controller import ObjectiveCacheController
 
 
@@ -109,5 +109,5 @@ class SharedMemoryController(ObjectiveCacheController):
     @classmethod
     def new(cls, size: int, name: str = None):
         shm = MmapSharedMemory(size=size, name=name)
-        cache = CycledCache(memory=shm)
+        cache = GiantCache(memory=shm)
         return cls(cache=cache)

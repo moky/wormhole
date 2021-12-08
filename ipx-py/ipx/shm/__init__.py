@@ -31,6 +31,7 @@
 from .memory import Memory, SharedMemory, Buffer
 from .buffer import CycledBuffer
 from .cache import CycledCache
+from .giant import GiantCache
 from .controller import ObjectiveCacheController
 
 from .sysv import SharedMemoryController
@@ -43,7 +44,7 @@ __author__ = 'Albert Moky'
 __all__ = [
 
     'Memory', 'SharedMemory', 'Buffer',
-    'CycledBuffer', 'CycledCache',
+    'CycledBuffer', 'CycledCache', 'GiantCache',
     'ObjectiveCacheController',
 
     'SharedMemoryController',

@@ -33,7 +33,7 @@ from typing import Union, Optional
 import sysv_ipc
 
 from .memory import SharedMemory
-from .cache import CycledCache
+from .giant import GiantCache
 from .controller import ObjectiveCacheController
 
 
@@ -138,5 +138,5 @@ class SharedMemoryController(ObjectiveCacheController):
             pos = name.index('0x') + 2
             key = int(name[pos:], 16)
         shm = SysvSharedMemory(size=size, key=key)
-        cache = CycledCache(memory=shm)
+        cache = GiantCache(memory=shm)
         return cls(cache=cache)

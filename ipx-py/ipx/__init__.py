@@ -32,7 +32,7 @@
 from .lnc import Notification, NotificationObserver, NotificationCenter
 
 from .shm import Memory, SharedMemory, Buffer
-from .shm import CycledBuffer, CycledCache
+from .shm import CycledBuffer, CycledCache, GiantCache
 from .shm import ObjectiveCacheController
 from .shm import SharedMemoryController
 
@@ -51,7 +51,7 @@ __all__ = [
     # Shared Memory
 
     'Memory', 'SharedMemory', 'Buffer',
-    'CycledBuffer', 'CycledCache',
+    'CycledBuffer', 'CycledCache', 'GiantCache',
     'ObjectiveCacheController',
     'SharedMemoryController',
 

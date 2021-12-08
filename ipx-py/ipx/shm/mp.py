@@ -32,7 +32,7 @@ from multiprocessing import shared_memory
 from typing import Optional, Any, Union
 
 from .memory import SharedMemory
-from .cache import CycledCache
+from .giant import GiantCache
 from .controller import ObjectiveCacheController
 
 
@@ -110,5 +110,5 @@ class SharedMemoryController(ObjectiveCacheController):
     @classmethod
     def new(cls, size: int, name: str = None):
         shm = MPSharedMemory(size=size, name=name)
-        cache = CycledCache(memory=shm)
+        cache = GiantCache(memory=shm)
         return cls(cache=cache)
