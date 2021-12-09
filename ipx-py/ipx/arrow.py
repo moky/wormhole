@@ -39,7 +39,7 @@ class Arrow(ABC):
     """ Half-duplex Pipe from A to B """
 
     @abstractmethod
-    def send(self, obj: Any) -> int:
+    def send(self, obj: Optional[Any]) -> int:
         """
         Called by A to send an object from A to B
 
@@ -61,12 +61,11 @@ class Arrow(ABC):
 class SharedMemoryArrow(Arrow):
     """ Arrow goes through Shared Memory """
 
-    MAX_ARRIVALS = 65536
-    MAX_DEPARTURES = 65536
-
-    def __init__(self, controller: SharedMemoryController):
+    def __init__(self, controller: SharedMemoryController, max_arrivals: int = 65536, max_departures: int = 65536):
         super().__init__()
         self.__ctrl = controller
+        self.__max_arrivals = max_arrivals
+        self.__max_departures = max_departures
         # memory caches
         self.__arrivals = []
         self.__departures = []
@@ -92,7 +91,7 @@ class SharedMemoryArrow(Arrow):
         return '<%s arrivals=%d departures=%d>%s</%s module="%s">' % (cname, arrivals, departures, ctrl, cname, mod)
 
     # Override
-    def send(self, obj: Any) -> int:
+    def send(self, obj: Optional[Any]) -> int:
         empty = True
         # resent delay objects first
         delays = self.__departures.copy()
@@ -129,7 +128,7 @@ class SharedMemoryArrow(Arrow):
         if obj is not None:
             self.__departures.append(obj)
         count = len(self.__departures)
-        if count > self.MAX_DEPARTURES:
+        if count > self.__max_departures:
             print('[IPC] pool control, departures: %d' % count)
             return self.__departures.pop(0), self.__departures.pop(0), count - 2
         else:
@@ -137,7 +136,7 @@ class SharedMemoryArrow(Arrow):
 
     def __receive_arrival(self, obj: Any) -> bool:
         count = len(self.__arrivals)
-        if count < self.MAX_ARRIVALS:
+        if count < self.__max_arrivals:
             self.__arrivals.append(obj)
             return True
 
@@ -151,7 +150,7 @@ class SharedMemoryArrow(Arrow):
         if obj is not None:
             self.__arrivals.append(obj)
         count = len(self.__arrivals)
-        if count > self.MAX_ARRIVALS:
+        if count > self.__max_arrivals:
             print('[IPC] pool control, arrivals: %d' % count)
             return self.__arrivals.pop(0), self.__arrivals.pop(0)
         elif count > 0:

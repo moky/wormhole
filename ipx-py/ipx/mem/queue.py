@@ -36,7 +36,7 @@ from typing import Optional, Union, Any
 class Queue(ABC):
 
     @abstractmethod
-    def push(self, data: Union[bytes, bytearray]) -> bool:
+    def push(self, data: Union[bytes, bytearray, None]) -> bool:
         """ inqueue """
         raise NotImplemented
 
@@ -67,7 +67,7 @@ class QueueController:
         return '<%s>%s</%s module="%s">' % (cname, self.queue, cname, mod)
 
     # noinspection PyMethodMayBeStatic
-    def _decode(self, data: Any) -> Any:
+    def _decode(self, data: Union[bytes, bytearray]) -> Any:
         # noinspection PyBroadException,PyUnusedLocal
         try:
             s = data.decode('utf-8')
@@ -79,10 +79,8 @@ class QueueController:
             return data
 
     # noinspection PyMethodMayBeStatic
-    def _encode(self, obj: Optional[Any]) -> Union[bytes, bytearray, None]:
-        if obj is None:
-            return None
-        elif isinstance(obj, bytes) or isinstance(obj, bytearray):
+    def _encode(self, obj: Any) -> Union[bytes, bytearray]:
+        if isinstance(obj, bytes) or isinstance(obj, bytearray):
             return obj
         else:
             data = json.dumps(obj)
@@ -90,9 +88,18 @@ class QueueController:
 
     def shift(self) -> Optional[Any]:
         data = self.queue.shift()
-        if data is not None:
+        if data is None or len(data) == 0:
+            return data
+        else:
             return self._decode(data=data)
 
     def push(self, obj: Optional[Any]) -> bool:
-        data = self._encode(obj=obj)
+        if obj is None:
+            # if the queue support giant data, pushing None means to drive the queue to
+            #   send delayed chunks again (no more data will be sent);
+            # else,
+            #   do nothing.
+            data = None
+        else:
+            data = self._encode(obj=obj)
         return self.queue.push(data=data)

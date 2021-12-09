@@ -220,7 +220,7 @@ class CycledBuffer(MemoryPool):
         assert size == (self.__start - pos), 'header error: %s' % self
         self.memory.update(index=pos, source=bytes(size))
 
-    def _try_read(self, length: int) -> Union[bytes, bytearray, None]:
+    def __try_read(self, length: int) -> Union[bytes, bytearray, None]:
         """ read data with length, do not move reading pointer """
         available = self.available
         if available < length:
@@ -242,7 +242,7 @@ class CycledBuffer(MemoryPool):
     # Override
     def peek(self, length: int) -> Union[bytes, bytearray, None]:
         try:
-            return self._try_read(length=length)
+            return self.__try_read(length=length)
         except AssertionError as error:
             self._check_error(error=error)
             # self.error(msg='failed to read data: %s' % error)

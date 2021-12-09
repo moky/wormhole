@@ -90,13 +90,16 @@ class CycledQueue(CycledBuffer, Queue):
         return pack[2:]
 
     # Override
-    def push(self, data: Union[bytes, bytearray]) -> bool:
+    def push(self, data: Union[bytes, bytearray, None]) -> bool:
         """
         Put package with body size (as leading 2 bytes) into buffer
 
         :param data: package body
         :return: False on shared memory full
         """
+        if data is None:
+            # do nothing
+            return True
         body_size = len(data)
         pack_size = 2 + body_size
         if self.spaces < pack_size:

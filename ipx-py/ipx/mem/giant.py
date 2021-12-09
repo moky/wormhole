@@ -68,6 +68,12 @@ class GiantQueue(CycledQueue):
 
     def __init__(self, memory: Memory):
         super().__init__(memory=memory)
+        # limit max size for each chunk
+        max_size = self.capacity - 2  # deduct chunk size (2 bytes)
+        if max_size >= 65535:
+            self.__max_size = 65535
+        else:
+            self.__max_size = max_size
         # receiving big data
         self.__incoming_giant_size = 0
         self.__incoming_giant_fragment = None
@@ -77,20 +83,21 @@ class GiantQueue(CycledQueue):
     def __check_package(self, body: Union[bytes, bytearray]) -> Union[bytes, bytearray, None]:
         """ check received package body without leading 2 bytes """
         body_size = len(body)
-        if body_size < 65535 and body_size < (self.capacity - 2):
+        if body_size < self.__max_size:
             # small package
             if self.__incoming_giant_fragment is None:
                 # no previous chunks waiting to join,
                 # so it must be a normal data package.
                 return body
             # it's another chunk for giant
-        # body_size will not greater than 65535, and capacity - 2
+        # check chunk head, get giant size & offset
         assert body_size > 10, 'package size error: %s' % body
         assert body[8:10] == self.SEPARATOR, 'package head error: %s' % body
         giant_size = int_from_bytes(data=body[:4])
         giant_offset = int_from_bytes(data=body[4:8])
         if self.__incoming_giant_fragment is None:
             # first chunk for giant
+            assert body_size == self.__max_size, 'first chunk size error: %d, %d' % (body_size, self.capacity)
             assert giant_size > (body_size - 10), 'giant size error: %d, body size: %d' % (giant_size, body_size)
             assert giant_offset == 0, 'first offset error: %d, size: %d' % (giant_offset, giant_size)
             self.__incoming_giant_size = giant_size
@@ -98,12 +105,11 @@ class GiantQueue(CycledQueue):
         else:
             # another chunk for giant
             cache_size = len(self.__incoming_giant_fragment)
-            expected_giant_size = self.__incoming_giant_size
-            assert giant_size == expected_giant_size, 'giant size error: %d, %d' % (giant_size, expected_giant_size)
+            assert giant_size == self.__incoming_giant_size, 'error: %d, %d' % (giant_size, self.__incoming_giant_size)
             assert giant_offset == cache_size, 'offset error: %d, %d, size: %d' % (giant_offset, cache_size, giant_size)
             cache_size += body_size - 10
             # check whether completed
-            if cache_size < expected_giant_size:
+            if cache_size < self.__incoming_giant_size:
                 # not completed yet, cache this fragment
                 self.__incoming_giant_fragment += body[10:]
             else:
@@ -115,7 +121,7 @@ class GiantQueue(CycledQueue):
 
     # Override
     def shift(self) -> Union[bytes, bytearray, None]:
-        """ shift data """
+        """ remove data at front """
         while True:
             body = super().shift()
             if body is None:
@@ -135,6 +141,29 @@ class GiantQueue(CycledQueue):
                 # return current package to application
                 return body
 
+    # Override
+    def push(self, data: Union[bytes, bytearray, None]) -> bool:
+        """ append data to tail """
+        # 1. check delay chunks for giant
+        if not self.__check_chunks():
+            # traffic jams
+            return False
+        # 2. check giant data
+        if data is None:
+            # do nothing
+            return True
+        elif len(data) < self.__max_size:
+            # small data, send it directly
+            return super().push(data=data)
+        else:
+            # giant data, split and send as chunks
+            return self._push_giant(data=data)
+
+    def _push_giant(self, data: Union[bytes, bytearray]) -> bool:
+        self.__outgoing_giant_chunks = self.__split_giant(data=data)
+        self.__check_chunks()
+        return True
+
     def __check_chunks(self) -> bool:
         chunks = self.__outgoing_giant_chunks.copy()
         for body in chunks:
@@ -150,9 +179,7 @@ class GiantQueue(CycledQueue):
 
     def __split_giant(self, data: Union[bytes, bytearray]) -> List[Union[bytes, bytearray]]:
         data_size = len(data)
-        fra_size = self.capacity - 12  # deduct chunk size (2 bytes), giant size and offset (4 + 4 bytes), and '\r\n'
-        if fra_size > 65525:
-            fra_size = 65525
+        fra_size = self.__max_size - 10  # deduct giant size (4 bytes), offset (4 bytes), and separator ('\r\n')
         assert fra_size < data_size, 'data size error: %d < %d' % (data_size, fra_size)
         head_size = int_to_bytes(value=data_size, length=4)
         chunks = []
@@ -168,26 +195,3 @@ class GiantQueue(CycledQueue):
             # next chunk
             p1 = p2
         return chunks
-
-    # Override
-    def push(self, data: Union[bytes, bytearray, None]) -> bool:
-        """ append data """
-        # 1. check delay chunks for giant
-        if not self.__check_chunks():
-            # traffic jams
-            return False
-        elif data is None:
-            # do nothing
-            return True
-        # 2. check data
-        data_size = len(data)
-        if data_size < 65535 and data_size < (self.capacity - 2):
-            # small data, send it directly
-            return super().push(data=data)
-        # 3. split giant, send as chunks
-        return self._append_giant(data=data)
-
-    def _append_giant(self, data: Union[bytes, bytearray]) -> bool:
-        self.__outgoing_giant_chunks = self.__split_giant(data=data)
-        self.__check_chunks()
-        return True
