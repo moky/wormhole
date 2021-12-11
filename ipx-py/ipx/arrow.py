@@ -41,10 +41,10 @@ class Arrow(ABC):
     @abstractmethod
     def send(self, obj: Optional[Any]) -> int:
         """
-        Called by A to send an object from A to B
+        Called by A to send an object from A to B, -1 on failed
 
         :param obj: any object (dict, list, str, int, float, ...)
-        :return: how many stranded passengers； 0 on all sent
+        :return: how many stranded passengers; 0 on all sent; -1 on full (failed)
         """
         raise NotImplemented
 
@@ -93,7 +93,7 @@ class SharedMemoryArrow(Arrow):
     # Override
     def send(self, obj: Optional[Any]) -> int:
         empty = True
-        # resent delay objects first
+        # 1. resent delay objects first
         delays = self.__departures.copy()
         for item in delays:
             if self.controller.push(obj=item):
@@ -103,60 +103,36 @@ class SharedMemoryArrow(Arrow):
                 # shared memory is full, delay list not empty
                 empty = False
                 break
-        # send this obj when delay list empty
+        # 2. send this obj when delay list empty
         if empty and self.controller.push(obj=obj):
+            # success
             return 0
-        # failed, put it into the queue
-        _, _, count = self._push_departure(obj=obj)
-        return count
+        # 3. check and append to delay queue
+        count = len(self.__departures)
+        if obj is None:
+            return count
+        elif count < self.__max_departures:
+            # put it into the queue
+            self.__departures.append(obj)
+            return count + 1
+        else:
+            # the queue is full
+            return -1
 
     # Override
     def receive(self) -> Optional[Any]:
-        # receive new objects from the pool
-        obj = self.controller.shift()
-        while obj is not None and self.__receive_arrival(obj=obj):
+        count = len(self.__arrivals)
+        while count < self.__max_arrivals:
+            # receive new objects from the pool
             obj = self.controller.shift()
-        _, obj = self._push_arrival(obj=obj)
-        return obj
-
-    def _push_departure(self, obj: Optional[Any]) -> (Optional[Any], Optional[Any], int):
-        """ Check the departure hall,
-            if it is full, remove two passengers from the front
-
-        :return: discard passengers and new queue length
-        """
-        if obj is not None:
-            self.__departures.append(obj)
-        count = len(self.__departures)
-        if count > self.__max_departures:
-            print('[IPC] pool control, departures: %d' % count)
-            return self.__departures.pop(0), self.__departures.pop(0), count - 2
-        else:
-            return None, None, count
-
-    def __receive_arrival(self, obj: Any) -> bool:
-        count = len(self.__arrivals)
-        if count < self.__max_arrivals:
-            self.__arrivals.append(obj)
-            return True
-
-    def _push_arrival(self, obj: Optional[Any]) -> (Optional[Any], Optional[Any]):
-        """ Check the arrival hall,
-            if it is full, remove two passengers from the front
-
-        :param obj: new passenger
-        :return: dequeue passenger(s)
-        """
-        if obj is not None:
-            self.__arrivals.append(obj)
-        count = len(self.__arrivals)
-        if count > self.__max_arrivals:
-            print('[IPC] pool control, arrivals: %d' % count)
-            return self.__arrivals.pop(0), self.__arrivals.pop(0)
-        elif count > 0:
-            return None, self.__arrivals.pop(0)
-        else:
-            return None, None
+            if obj is None:
+                break
+            else:
+                # append to waiting queue
+                self.__arrivals.append(obj)
+                count += 1
+        if count > 0:
+            return self.__arrivals.pop(0)
 
     def detach(self):
         self.controller.detach()

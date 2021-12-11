@@ -51,10 +51,6 @@ class MPSharedMemory(SharedMemory):
         return self.__shm
 
     @property  # Override
-    def buffer(self) -> bytes:
-        return self.shm.buf.tobytes()
-
-    @property  # Override
     def size(self) -> int:
         return self.shm.size
 

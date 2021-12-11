@@ -30,7 +30,7 @@
 
 from abc import ABC, abstractmethod
 
-from ..mem import Memory, MemoryPool
+from ..mem import Memory, MemoryBuffer
 from ..mem import QueueController
 
 
@@ -52,7 +52,7 @@ class SharedMemoryController(QueueController):
     @property
     def shm(self) -> SharedMemory:
         queue = self.queue
-        assert isinstance(queue, MemoryPool), 'memory pool error: %s' % queue
+        assert isinstance(queue, MemoryBuffer), 'memory pool error: %s' % queue
         memory = queue.memory
         assert isinstance(memory, SharedMemory), 'shared memory error: %s' % memory
         return memory

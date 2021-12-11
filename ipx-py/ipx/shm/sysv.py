@@ -80,10 +80,6 @@ class SysvSharedMemory(SharedMemory):
                % (cname, self.id, self.key, self.mode, self.size, buffer, cname, mod)
 
     @property  # Override
-    def buffer(self) -> bytes:
-        return self.shm.read()
-
-    @property  # Override
     def size(self) -> int:
         return self.shm.size
 

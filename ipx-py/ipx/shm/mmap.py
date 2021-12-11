@@ -61,10 +61,6 @@ class MmapSharedMemory(SharedMemory):
         return self.__shm
 
     @property  # Override
-    def buffer(self) -> bytes:
-        return bytes(self.shm)
-
-    @property  # Override
     def size(self) -> int:
         return len(self.shm)
 

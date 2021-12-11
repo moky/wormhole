@@ -28,7 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .memory import Memory, MemoryPool
+from .memory import Memory, MemoryBuffer
 from .queue import Queue, QueueController
 from .buffer import CycledBuffer
 from .cycle import CycledQueue
@@ -41,7 +41,7 @@ __author__ = 'Albert Moky'
 
 __all__ = [
 
-    'Memory', 'MemoryPool',
+    'Memory', 'MemoryBuffer',
     'Queue', 'QueueController',
     'CycledBuffer', 'CycledQueue', 'GiantQueue',
 ]

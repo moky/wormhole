@@ -31,7 +31,7 @@
 
 from .lnc import Notification, NotificationObserver, NotificationCenter
 
-from .mem import Memory, MemoryPool
+from .mem import Memory, MemoryBuffer
 from .mem import Queue, QueueController
 from .mem import CycledBuffer, CycledQueue, GiantQueue
 
@@ -51,7 +51,7 @@ __all__ = [
     'Notification', 'NotificationObserver', 'NotificationCenter',
 
     # Memory Access
-    'Memory', 'MemoryPool',
+    'Memory', 'MemoryBuffer',
     'Queue', 'QueueController',
     'CycledBuffer', 'CycledQueue', 'GiantQueue',
 

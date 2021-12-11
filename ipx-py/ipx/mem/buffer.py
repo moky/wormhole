@@ -31,7 +31,7 @@
 from typing import Union
 
 from .memory import int_from_bytes, int_to_bytes
-from .memory import Memory, MemoryPool
+from .memory import Memory, MemoryBuffer
 
 """
     Protocol:
@@ -60,7 +60,7 @@ from .memory import Memory, MemoryPool
 """
 
 
-class CycledBuffer(MemoryPool):
+class CycledBuffer(MemoryBuffer):
     """
         Cycled Memory Buffer
         ~~~~~~~~~~~~~~~~~~~~

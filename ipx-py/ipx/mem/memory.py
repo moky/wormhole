@@ -83,7 +83,7 @@ class Memory(ABC):
         return '<%s size=%d>\n%s\n</%s module="%s">' % (cname, self.size, buffer, cname, mod)
 
 
-class MemoryPool(ABC):
+class MemoryBuffer(ABC):
     """ FIFO Memory Pool """
 
     @property
