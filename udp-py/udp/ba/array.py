@@ -28,7 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from enum import IntEnum
 from typing import Union
 
@@ -71,6 +71,7 @@ class ByteArray(ABC):
         """
         raise NotImplemented
 
+    @abstractmethod
     def get_byte(self, index: int) -> int:
         """
         Get item value with position
@@ -80,6 +81,7 @@ class ByteArray(ABC):
         """
         raise NotImplemented
 
+    @abstractmethod
     def get_bytes(self, start: int = 0, end: int = None) -> bytes:
         """
         Get bytes from inner buffer with range [offset, offset + length)
@@ -90,12 +92,15 @@ class ByteArray(ABC):
         """
         raise NotImplemented
 
+    @abstractmethod
     def slice(self, start: int, end: int = None):  # -> ByteArray:
         raise NotImplemented
 
+    @abstractmethod
     def concat(self, other):  # -> ByteArray:
         raise NotImplemented
 
+    @abstractmethod
     def find(self, sub, start: int = 0, end: int = None) -> int:
         """
         Search sub data/buffer within range [start, end)
@@ -108,8 +113,9 @@ class ByteArray(ABC):
         raise NotImplemented
 
 
-class MutableByteArray(ByteArray):
+class MutableByteArray(ByteArray, ABC):
 
+    @abstractmethod
     def set_byte(self, index: int, value: int):
         """
         Change byte value at this position
@@ -119,9 +125,11 @@ class MutableByteArray(ByteArray):
         """
         raise NotImplemented
 
+    @abstractmethod
     def set_char(self, index: int, value: str):
         raise NotImplemented
 
+    @abstractmethod
     def update(self, index: int, source: Union[bytes, bytearray, ByteArray], start: int = 0, end: int = None):
         """
         Update values from source data/buffer with range [start, end)
@@ -133,6 +141,7 @@ class MutableByteArray(ByteArray):
         """
         raise NotImplemented
 
+    @abstractmethod
     def append(self, source: Union[bytes, bytearray, ByteArray], start: int = 0, end: int = None):
         """
         Append values from source data/buffer/value with range [start, end)
@@ -143,6 +152,7 @@ class MutableByteArray(ByteArray):
         """
         raise NotImplemented
 
+    @abstractmethod
     def insert(self, index: int, source: Union[bytes, bytearray, ByteArray], start: int, end: int = None):
         """
         Append values from source data/buffer/value with range [start, end)
@@ -154,6 +164,7 @@ class MutableByteArray(ByteArray):
         """
         raise NotImplemented
 
+    @abstractmethod
     def remove(self, index: int) -> int:
         """
         Remove element at this position and return its value
@@ -163,6 +174,7 @@ class MutableByteArray(ByteArray):
         """
         raise NotImplemented
 
+    @abstractmethod
     def shift(self) -> int:
         """
         Remove element from the head position and return its value
@@ -171,6 +183,7 @@ class MutableByteArray(ByteArray):
         """
         raise NotImplemented
 
+    @abstractmethod
     def pop(self) -> int:
         """
         Remove element from the tail position and return its value
@@ -179,6 +192,7 @@ class MutableByteArray(ByteArray):
         """
         raise NotImplemented
 
+    @abstractmethod
     def push(self, element: int):
         """
         Append the element to the tail
@@ -200,7 +214,7 @@ class Endian(IntEnum):
     LITTLE_ENDIAN = 2  # Host Byte Order
 
 
-class IntegerData(ByteArray):
+class IntegerData(ByteArray, ABC):
 
     @property
     def endian(self) -> Endian:
