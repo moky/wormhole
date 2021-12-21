@@ -40,12 +40,11 @@ class GiantQueue(CycledQueue):
         ~~~~~~~~~~~~~~~~
 
         If data is too big (more than the whole buffer can load), it will be split to chunks,
-        each chunk contains giant size and current offset (two 4 bytes integers, big-endian),
-        and use '\r\n' to separate with the payload.
+        each chunk contains giant size, fragment offset & check (three 4 bytes integers, big-endian).
 
-        The size of first chunk must be capacity - 2 (chunk size takes 2 bytes),
+        The size of first chunk must be capacity - 4 (chunk size & its check took 4 bytes),
         and not greater than 65535, that will be the maximum size of each chunk too.
-        So it means each fragment size will not greater than capacity - 12, or 65525.
+        So it means each fragment size will not greater than capacity - 16, or 65523.
 
         Package body(chunk) format:
 
@@ -56,7 +55,9 @@ class GiantQueue(CycledQueue):
             +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             |                         giant offset                          |
             +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-            |      '\r'     |     '\n'      |    payload (giant fragment)
+            |                 check for giant size & offset                 |
+            +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+            |                   payload (giant fragment)
             +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                                 payload (giant fragment)                    ~
             +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -64,12 +65,10 @@ class GiantQueue(CycledQueue):
         NOTICE: all integers are stored as NBO (Network Byte Order, big-endian)
     """
 
-    SEPARATOR = b'\r\n'
-
     def __init__(self, memory: Memory):
         super().__init__(memory=memory)
         # limit max size for each chunk
-        max_size = self.capacity - 2  # deduct chunk size (2 bytes)
+        max_size = self.capacity - 4  # deduct chunk size & its check (2 + 2 bytes)
         if max_size >= 65535:
             self.__max_size = 65535
         else:
@@ -91,30 +90,33 @@ class GiantQueue(CycledQueue):
                 return body
             # it's another chunk for giant
         # check chunk head, get giant size & offset
-        assert body_size > 10, 'package size error: %s' % body
-        assert body[8:10] == self.SEPARATOR, 'package head error: %s' % body
+        assert body_size > 12, 'package size error: %s' % body
         giant_size = int_from_bytes(data=body[:4])
         giant_offset = int_from_bytes(data=body[4:8])
+        head_check = int_from_bytes(data=body[8:12])
+        assert giant_size ^ giant_offset ^ 0xFFFFFFFF == head_check,\
+            'xor check error: size=%d, offset=%d, %s, %s, %s' %\
+            (giant_size, giant_offset, bin(giant_size), bin(giant_offset), bin(head_check))
         if self.__incoming_giant_fragment is None:
             # first chunk for giant
             assert body_size == self.__max_size, 'first chunk size error: %d, %d' % (body_size, self.capacity)
-            assert giant_size > (body_size - 10), 'giant size error: %d, body size: %d' % (giant_size, body_size)
+            assert giant_size > (body_size - 12), 'giant size error: %d, body size: %d' % (giant_size, body_size)
             assert giant_offset == 0, 'first offset error: %d, size: %d' % (giant_offset, giant_size)
             self.__incoming_giant_size = giant_size
-            self.__incoming_giant_fragment = body[10:]
+            self.__incoming_giant_fragment = body[12:]
         else:
             # another chunk for giant
             cache_size = len(self.__incoming_giant_fragment)
             assert giant_size == self.__incoming_giant_size, 'error: %d, %d' % (giant_size, self.__incoming_giant_size)
             assert giant_offset == cache_size, 'offset error: %d, %d, size: %d' % (giant_offset, cache_size, giant_size)
-            cache_size += body_size - 10
+            cache_size += body_size - 12
             # check whether completed
             if cache_size < self.__incoming_giant_size:
                 # not completed yet, cache this fragment
-                self.__incoming_giant_fragment += body[10:]
+                self.__incoming_giant_fragment += body[12:]
             else:
                 # giant completed (the sizes must be equal)
-                giant = self.__incoming_giant_fragment + body[10:]
+                giant = self.__incoming_giant_fragment + body[12:]
                 self.__incoming_giant_fragment = None
                 self.__incoming_giant_size = 0
                 return giant
@@ -179,7 +181,7 @@ class GiantQueue(CycledQueue):
 
     def __split_giant(self, data: Union[bytes, bytearray]) -> List[Union[bytes, bytearray]]:
         data_size = len(data)
-        fra_size = self.__max_size - 10  # deduct giant size (4 bytes), offset (4 bytes), and separator ('\r\n')
+        fra_size = self.__max_size - 12  # deduct giant size (4 bytes), offset (4 bytes), and check (4 bytes)
         assert fra_size < data_size, 'data size error: %d < %d' % (data_size, fra_size)
         head_size = int_to_bytes(value=data_size, length=4)
         chunks = []
@@ -188,9 +190,11 @@ class GiantQueue(CycledQueue):
             p2 = p1 + fra_size
             if p2 > data_size:
                 p2 = data_size
-            # size + offset + '\r\n' + body
+            # size + offset + check + body
             head_offset = int_to_bytes(value=p1, length=4)
-            pack = head_size + head_offset + self.SEPARATOR + data[p1:p2]
+            xor = data_size ^ p1 ^ 0xFFFFFFFF
+            head_check = int_to_bytes(value=xor, length=4)
+            pack = head_size + head_offset + head_check + data[p1:p2]
             chunks.append(pack)
             # next chunk
             p1 = p2

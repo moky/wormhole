@@ -33,6 +33,7 @@ from typing import Union
 from .memory import int_from_bytes, int_to_bytes
 from .memory import Memory, MemoryBuffer
 
+
 """
     Protocol:
 
@@ -41,17 +42,31 @@ from .memory import Memory, MemoryBuffer
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         |      'C'      |      'Y'      |      'C'      |      'L'      |
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        |      'E'      |      'D'      |      ' '      |      'M'      |
+        |      'E'      |      'D'      |      ' '      |      'B'      |
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        |      'E'      |      'M'      |      'O'      |      'R'      |
+        |      'U'      |      'F'      |      'F'      |      'E'      |
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        |      'Y'      |       0       | read ptr pos  | write ptr pos |
+        |      'R'      |       0       | read ptr pos  | write ptr pos |
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        |          read offset          |     alternate read offset     |
+        |                           read offset                         |
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        |          write offset         |     alternate write offset    |
+        |                 alternate read offset                         |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                          write offset                         |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                alternate write offset                         |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                           read offset (xor)                   |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                 alternate read offset (xor)                   |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                          write offset (xor)                   |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                alternate write offset (xor)                   |
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         |                           data zone                            
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+                                    data zone                            
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                                     data zone                           ~
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -60,62 +75,79 @@ from .memory import Memory, MemoryBuffer
 """
 
 
+MAGIC_CODE = b'CYCLED BUFFER\0'
+
+HEAD_LEN = 48
+
+INT_LEN = 4
+XOR_OFFSET = 16  # 4 integers
+
+RP_POS = 14
+WP_POS = 15
+
+READ_OFFSETS = [16, 20]
+WRITE_OFFSETS = [24, 28]
+FIXED_OFFSETS = [16, 20, 24, 28]
+
+
+def check(memory: Memory) -> bool:
+    if memory.get_bytes(start=0, end=14) != MAGIC_CODE:
+        # magic code not match
+        return False
+    r_pos = memory.get_byte(index=RP_POS)  # from pos(14)
+    if r_pos not in READ_OFFSETS:
+        # read ptr pos error
+        return False
+    w_pos = memory.get_byte(index=WP_POS)  # from pos(15)
+    if w_pos not in WRITE_OFFSETS:
+        # write ptr pos error
+        return False
+    # OK
+    return True
+
+
+def clean(memory: Memory):
+    # reset magic code
+    memory.update(index=0, source=MAGIC_CODE)
+    # reset read/write pointers
+    memory.set_byte(index=RP_POS, value=16)
+    memory.set_byte(index=WP_POS, value=24)
+    # clean read/write offsets
+    memory.update(index=16, source=(b'\x00' * 16))
+    memory.update(index=32, source=(b'\xFF' * 16))
+
+
 class CycledBuffer(MemoryBuffer):
     """
         Cycled Memory Buffer
         ~~~~~~~~~~~~~~~~~~~~
 
         Header:
-            magic code             - 14 bytes
-            offset of read offset  - 1 byte  # the highest bit is for alternate
-            offset of write offset - 1 byte  # the highest bit is for alternate
-            read offset            - 2/4/8 bytes
-            alternate read offset  - 2/4/8 bytes
-            write offset           - 2/4/8 bytes
-            alternate write offset - 2/4/8 bytes
+            magic code                   - 14 bytes
+            offset of read offset        - 1 byte  # the highest bit is for alternate
+            offset of write offset       - 1 byte  # the highest bit is for alternate
+            read offset                  - 4 bytes
+            alternate read offset        - 4 bytes
+            write offset                 - 4 bytes
+            alternate write offset       - 4 bytes
+            check read offset            - 4 bytes (xor)
+            check alternate read offset  - 4 bytes (xor)
+            check write offset           - 4 bytes (xor)
+            check alternate write offset - 4 bytes (xor)
         Body:
-            data zone              - starts from 24/32/48
+            data zone                    - starts from pos(48)
 
         NOTICE: all integers are stored as NBO (Network Byte Order, big-endian)
     """
 
-    MAGIC_CODE = b'CYCLED BUFFER\0'
-
     def __init__(self, memory: Memory):
         super().__init__()
         self.__mem = memory
-        bounds = memory.size
-        if bounds <= 0x10018:
-            # len(header) == 24 bytes
-            self.__int_len = 2
-        elif bounds <= 0x100000020:
-            # len(header) == 32 bytes
-            self.__int_len = 4
-        else:
-            # len(header) == 48 bytes
-            self.__int_len = 8
-        # check header
-        pos = len(self.MAGIC_CODE)  # 14
-        self.__pos1 = pos
-        self.__pos2 = pos + 1  # 15
-        if memory.get_bytes(start=0, end=pos) == self.MAGIC_CODE:
-            # already initialized
-            pos += 2 + (self.__int_len << 2)  # 24/32/48
-        else:
-            # init with magic code
-            memory.update(index=0, source=self.MAGIC_CODE)
-            # init pos of read/write pos
-            pos1 = pos + 2  # 16
-            pos2 = pos1 + (self.__int_len << 1)  # 20/24/32
-            memory.set_byte(index=self.__pos1, value=pos1)
-            memory.set_byte(index=self.__pos2, value=pos2)
-            # clear 4 integers for offsets
-            pos2 += self.__int_len << 1  # 24/32/48
-            memory.update(index=pos1, source=bytes(pos2 - pos1))
-            pos = pos2
+        if not check(memory=memory):
+            clean(memory=memory)
         # data zone: [start, end)
-        self.__start = pos
-        self.__end = bounds
+        self.__start = HEAD_LEN
+        self.__end = memory.size
 
     @property  # Override
     def memory(self) -> Memory:
@@ -157,70 +189,105 @@ class CycledBuffer(MemoryBuffer):
     @property
     def read_offset(self) -> int:
         """ pointer for reading """
-        return self.__fetch_offset(self.__pos1)
+        try:
+            return self.__select_offset(RP_POS)
+        except AssertionError as error:
+            self._check_error(error=error)
+            # self.error(msg='failed to read data: %s' % error)
+            # import traceback
+            # traceback.print_exc()
+            raise error
 
-    @read_offset.setter
-    def read_offset(self, value: int):
-        self.__update_offset(self.__pos1, value=value)
+    def __update_read_offset(self, value: int):
+        try:
+            self.__update_offset(RP_POS, value=value)
+        except AssertionError as error:
+            self._check_error(error=error)
+            # self.error(msg='failed to read data: %s' % error)
+            # import traceback
+            # traceback.print_exc()
+            raise error
 
     @property
     def write_offset(self) -> int:
         """ pointer for writing """
-        return self.__fetch_offset(self.__pos2)
+        try:
+            return self.__select_offset(WP_POS)
+        except AssertionError as error:
+            self._check_error(error=error)
+            # self.error(msg='failed to read data: %s' % error)
+            # import traceback
+            # traceback.print_exc()
+            raise error
 
-    @write_offset.setter
-    def write_offset(self, value: int):
-        self.__update_offset(self.__pos2, value=value)
+    def __update_write_offset(self, value: int):
+        try:
+            self.__update_offset(WP_POS, value=value)
+        except AssertionError as error:
+            self._check_error(error=error)
+            # self.error(msg='failed to read data: %s' % error)
+            # import traceback
+            # traceback.print_exc()
+            raise error
 
-    def __fetch_offset(self, pos_x: int) -> int:
+    def _check_error(self, error: AssertionError) -> bool:
+        msg = str(error)
+        if msg.startswith('pos of offset error:'):
+            # header error, destroy it
+            clean(memory=self.memory)
+            return True
+        elif msg.startswith('offset error:'):
+            # offset(s) error, reset all of them
+            clean(memory=self.memory)
+            return True
+
+    def __select_offset(self, pos_x: int) -> int:
+        cnt = 8
+        while True:
+            offset, xor = self.__fetch_offsets(pos_x)
+            if (offset ^ 0xFFFFFFFF) == xor:
+                return offset + self.__start  # OK
+            if cnt < 0:
+                raise AssertionError('offset error: %d, %s, %s' % (offset, bin(offset), bin(xor)))
+            cnt -= 1  # try again
+
+    def __fetch_offsets(self, pos_x: int) -> (int, int):
         memory = self.memory
-        offset = memory.get_byte(index=pos_x) & 0x7F  # clear alternate flag
-        assert 16 <= offset <= (self.__start - self.__int_len), 'pos of offset error: %d' % offset
-        data = memory.get_bytes(start=offset, end=(offset + self.__int_len))
+        pos = memory.get_byte(index=pos_x) & 0x7F  # clear alternate flag
+        assert pos in FIXED_OFFSETS, 'pos of offset error: %d' % pos
+        # get pointer
+        data = memory.get_bytes(start=pos, end=(pos + INT_LEN))
         value = int_from_bytes(data=data)
         assert 0 <= value < (self.__end - self.__start), 'offset error: %d' % value
-        return value + self.__start
+        # get xor(offset)
+        pos += XOR_OFFSET
+        xor = memory.get_bytes(start=pos, end=(pos + INT_LEN))
+        return value, int_from_bytes(xor)
 
     def __update_offset(self, pos_x: int, value: int):
         """ update pointer with alternate spaces """
         memory = self.memory
         pos = memory.get_byte(index=pos_x)
         if pos & 0x80 == 0:
-            offset = pos + self.__int_len
+            offset = pos + INT_LEN  # forward
             pos = offset | 0x80  # set alternate flag
         else:
-            offset = (pos & 0x7F) - self.__int_len
+            offset = (pos & 0x7F) - INT_LEN  # backward
             pos = offset
-        assert 16 <= offset <= (self.__start - self.__int_len), 'pos of offset error: %d' % pos
+        assert offset in FIXED_OFFSETS, 'pos of offset error: %d' % pos
         # update on alternate spaces
         value -= self.__start
         assert 0 <= value < (self.__end - self.__start), 'offset error: %d' % value
-        data = int_to_bytes(value=value, length=self.__int_len)
-        memory.update(index=offset, source=data)
+        # update pointer
+        memory.update(index=offset, source=int_to_bytes(value=value, length=INT_LEN))
+        # update xor value
+        xor = value ^ 0xFFFFFFFF
+        memory.update(index=(offset + XOR_OFFSET), source=int_to_bytes(value=xor, length=INT_LEN))
         # switch after spaces updated
         memory.set_byte(index=pos_x, value=pos)
 
-    def _check_error(self, error: AssertionError) -> bool:
-        msg = str(error)
-        if msg.startswith('pos of offset error:'):
-            # header error, destroy it
-            self._destroy_memory()
-            return True
-        elif msg.startswith('offset error:'):
-            # offset(s) error, reset all of them
-            self._clear_data_zone()
-            return True
-
-    def _destroy_memory(self):
-        self.memory.update(index=0, source=b'BROKEN')
-
-    def _clear_data_zone(self):
-        pos = len(self.MAGIC_CODE) + 2
-        size = self.__int_len << 2  # 4 integers
-        assert size == (self.__start - pos), 'header error: %s' % self
-        self.memory.update(index=pos, source=bytes(size))
-
-    def __try_read(self, length: int) -> Union[bytes, bytearray, None]:
+    # Override
+    def peek(self, length: int) -> Union[bytes, bytearray, None]:
         """ read data with length, do not move reading pointer """
         available = self.available
         if available < length:
@@ -240,17 +307,6 @@ class CycledBuffer(MemoryBuffer):
             return part1 + part2
 
     # Override
-    def peek(self, length: int) -> Union[bytes, bytearray, None]:
-        try:
-            return self.__try_read(length=length)
-        except AssertionError as error:
-            self._check_error(error=error)
-            # self.error(msg='failed to read data: %s' % error)
-            # import traceback
-            # traceback.print_exc()
-            raise error
-
-    # Override
     def read(self, length: int) -> Union[bytes, bytearray, None]:
         data = self.peek(length=length)
         if data is not None:
@@ -258,7 +314,7 @@ class CycledBuffer(MemoryBuffer):
             offset = self.read_offset + len(data)
             if offset >= self.__end:
                 offset = self.__start + offset - self.__end
-            self.read_offset = offset
+            self.__update_read_offset(value=offset)
         return data
 
     # Override
@@ -284,5 +340,5 @@ class CycledBuffer(MemoryBuffer):
             memory.update(index=p1, source=data[:m])
             memory.update(index=start, source=data[m:])
         # update the pointer after data wrote
-        self.write_offset = p2
+        self.__update_write_offset(value=p2)
         return True
