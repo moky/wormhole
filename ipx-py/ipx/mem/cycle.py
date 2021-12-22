@@ -35,6 +35,39 @@ from .queue import Queue
 from .buffer import CycledBuffer
 
 
+"""
+    Data package format:
+
+         0                   1                   2                   3
+         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |   package head (body size)    |   head (check for body size)  |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                   package body (payload)
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+                            package body (payload)                      ~
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+        NOTICE: all integers are stored as NBO (Network Byte Order, big-endian)
+"""
+
+
+def parse_package_head(head: bytes) -> int:
+    """ get body size from head """
+    size = int_from_bytes(data=head[:2])
+    size_xor = int_from_bytes(data=head[2:4])
+    if (size ^ size_xor) == 0xFFFF:
+        return size
+    else:
+        return -1
+
+
+def create_package_head(body_size: int) -> bytes:
+    """ size + check """
+    size_xor = body_size ^ 0xFFFF
+    return int_to_bytes(value=body_size, length=2) + int_to_bytes(value=size_xor, length=2)
+
+
 class CycledQueue(CycledBuffer, Queue):
     """
         Cycled Data Queue
@@ -57,18 +90,6 @@ class CycledQueue(CycledBuffer, Queue):
                                   the max size of data cannot greater than 65535,
                                   so each package cannot greater than 65539.
 
-        Data package format:
-
-             0                   1                   2                   3
-             0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-            +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-            |   package head (body size)    |   head (check for body size)  |
-            +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-            |                   package body (payload)
-            +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-                                package body (payload)                      ~
-            +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
         NOTICE: all integers are stored as NBO (Network Byte Order, big-endian)
     """
 
@@ -83,11 +104,10 @@ class CycledQueue(CycledBuffer, Queue):
         head = self.peek(length=4)
         if head is None:
             return None
-        body_size = int_from_bytes(data=head[:2])
-        size_xor = int_from_bytes(data=head[2:4])
+        body_size = parse_package_head(head=head)
         pack_size = 4 + body_size
         available = self.available
-        if available < pack_size or (body_size ^ 0xFFFF) != size_xor:
+        if body_size < 0 or available < pack_size:
             # data error, clear the whole buffer
             self.read(length=available)
             raise BufferError('buffer error: %d < 4 + %d' % (available, body_size))
@@ -112,9 +132,8 @@ class CycledQueue(CycledBuffer, Queue):
         if self.spaces < pack_size:
             # not enough spaces
             return False
-        h1 = int_to_bytes(value=body_size, length=2)
-        h2 = int_to_bytes(value=(body_size ^ 0xFFFF), length=2)
-        head = h1 + h2
+        # size + check + data
+        head = create_package_head(body_size=body_size)
         if isinstance(data, bytearray):
             pack = bytearray(head) + data
         else:

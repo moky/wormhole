@@ -91,6 +91,7 @@ FIXED_OFFSETS = [16, 20, 24, 28]
 
 
 def check(memory: Memory) -> bool:
+    """ check whether memory initialized """
     if memory.get_bytes(start=0, end=14) != MAGIC_CODE:
         # magic code not match
         return False
@@ -107,6 +108,7 @@ def check(memory: Memory) -> bool:
 
 
 def clean(memory: Memory):
+    """ initialize memory """
     # reset magic code
     memory.update(index=0, source=MAGIC_CODE)
     # reset read/write pointers
@@ -114,7 +116,65 @@ def clean(memory: Memory):
     memory.set_byte(index=WP_POS, value=24)
     # clean read/write offsets
     memory.update(index=16, source=(b'\x00' * 16))
-    memory.update(index=32, source=(b'\xFF' * 16))
+    memory.update(index=32, source=(b'\xFF' * 16))  # xor
+
+
+def fetch_offsets(memory: Memory, ptr_pos: int) -> (int, int):
+    """ fetch offset, and its check value too """
+    pos = memory.get_byte(index=ptr_pos) & 0x7F  # clear alternate flag
+    assert pos in FIXED_OFFSETS, 'pos of offset error: %d' % pos
+    # get pointer
+    data = memory.get_bytes(start=pos, end=(pos + INT_LEN))
+    value = int_from_bytes(data=data)
+    # get xor(offset)
+    pos += XOR_OFFSET
+    xor = memory.get_bytes(start=pos, end=(pos + INT_LEN))
+    return value, int_from_bytes(xor)
+
+
+def select_offset(memory: Memory, ptr_pos: int, retries: int = 8) -> int:
+    """
+    Get offset from ptr_pos
+
+    :param memory:
+    :param ptr_pos: pos of the value pointer
+    :param retries:
+    :return: value = offset - start
+    """
+    while True:
+        offset, xor = fetch_offsets(memory=memory, ptr_pos=ptr_pos)
+        if (offset ^ xor) == 0xFFFFFFFF:
+            return offset  # OK
+        if retries <= 0:
+            # raise AssertionError('offset error: %d, %s, %s' % (offset, bin(offset), bin(xor)))
+            return -1
+        retries -= 1  # try again
+
+
+def update_offset(memory: Memory, ptr_pos: int, value: int):
+    """
+    Update pointer with alternate spaces
+
+    :param memory:
+    :param ptr_pos: pos of the value pointer
+    :param value: offset - start
+    """
+    pos = memory.get_byte(index=ptr_pos)
+    if pos & 0x80 == 0:
+        offset = pos + INT_LEN  # alter forward
+        pos = offset | 0x80     # set alternate flag
+    else:
+        pos &= 0x7F             # clear alternate flag
+        offset = pos - INT_LEN  # alter backward
+        pos = offset
+    assert offset in FIXED_OFFSETS, 'pos of offset error: %d' % pos
+    # update pointer on alternate spaces
+    memory.update(index=offset, source=int_to_bytes(value=value, length=INT_LEN))
+    # update xor value
+    xor = value ^ 0xFFFFFFFF
+    memory.update(index=(offset + XOR_OFFSET), source=int_to_bytes(value=xor, length=INT_LEN))
+    # switch after spaces updated
+    memory.set_byte(index=ptr_pos, value=pos)
 
 
 class CycledBuffer(MemoryBuffer):
@@ -190,7 +250,9 @@ class CycledBuffer(MemoryBuffer):
     def read_offset(self) -> int:
         """ pointer for reading """
         try:
-            return self.__select_offset(RP_POS)
+            value = select_offset(memory=self.memory, ptr_pos=RP_POS)
+            assert 0 <= value < (self.__end - self.__start), 'offset error: %d' % value
+            return value + self.__start
         except AssertionError as error:
             self._check_error(error=error)
             # self.error(msg='failed to read data: %s' % error)
@@ -198,9 +260,11 @@ class CycledBuffer(MemoryBuffer):
             # traceback.print_exc()
             raise error
 
-    def __update_read_offset(self, value: int):
+    def __update_read_offset(self, offset: int):
         try:
-            self.__update_offset(RP_POS, value=value)
+            value = offset - self.__start
+            assert 0 <= value < (self.__end - self.__start), 'offset error: %d' % offset
+            update_offset(memory=self.memory, ptr_pos=RP_POS, value=value)
         except AssertionError as error:
             self._check_error(error=error)
             # self.error(msg='failed to read data: %s' % error)
@@ -212,7 +276,9 @@ class CycledBuffer(MemoryBuffer):
     def write_offset(self) -> int:
         """ pointer for writing """
         try:
-            return self.__select_offset(WP_POS)
+            value = select_offset(memory=self.memory, ptr_pos=WP_POS)
+            assert 0 <= value < (self.__end - self.__start), 'offset error: %d' % value
+            return value + self.__start
         except AssertionError as error:
             self._check_error(error=error)
             # self.error(msg='failed to read data: %s' % error)
@@ -220,9 +286,11 @@ class CycledBuffer(MemoryBuffer):
             # traceback.print_exc()
             raise error
 
-    def __update_write_offset(self, value: int):
+    def __update_write_offset(self, offset: int):
         try:
-            self.__update_offset(WP_POS, value=value)
+            value = offset - self.__start
+            assert 0 <= value < (self.__end - self.__start), 'offset error: %d' % offset
+            update_offset(memory=self.memory, ptr_pos=WP_POS, value=value)
         except AssertionError as error:
             self._check_error(error=error)
             # self.error(msg='failed to read data: %s' % error)
@@ -240,51 +308,6 @@ class CycledBuffer(MemoryBuffer):
             # offset(s) error, reset all of them
             clean(memory=self.memory)
             return True
-
-    def __select_offset(self, pos_x: int) -> int:
-        cnt = 8
-        while True:
-            offset, xor = self.__fetch_offsets(pos_x)
-            if (offset ^ 0xFFFFFFFF) == xor:
-                return offset + self.__start  # OK
-            if cnt < 0:
-                raise AssertionError('offset error: %d, %s, %s' % (offset, bin(offset), bin(xor)))
-            cnt -= 1  # try again
-
-    def __fetch_offsets(self, pos_x: int) -> (int, int):
-        memory = self.memory
-        pos = memory.get_byte(index=pos_x) & 0x7F  # clear alternate flag
-        assert pos in FIXED_OFFSETS, 'pos of offset error: %d' % pos
-        # get pointer
-        data = memory.get_bytes(start=pos, end=(pos + INT_LEN))
-        value = int_from_bytes(data=data)
-        assert 0 <= value < (self.__end - self.__start), 'offset error: %d' % value
-        # get xor(offset)
-        pos += XOR_OFFSET
-        xor = memory.get_bytes(start=pos, end=(pos + INT_LEN))
-        return value, int_from_bytes(xor)
-
-    def __update_offset(self, pos_x: int, value: int):
-        """ update pointer with alternate spaces """
-        memory = self.memory
-        pos = memory.get_byte(index=pos_x)
-        if pos & 0x80 == 0:
-            offset = pos + INT_LEN  # forward
-            pos = offset | 0x80  # set alternate flag
-        else:
-            offset = (pos & 0x7F) - INT_LEN  # backward
-            pos = offset
-        assert offset in FIXED_OFFSETS, 'pos of offset error: %d' % pos
-        # update on alternate spaces
-        value -= self.__start
-        assert 0 <= value < (self.__end - self.__start), 'offset error: %d' % value
-        # update pointer
-        memory.update(index=offset, source=int_to_bytes(value=value, length=INT_LEN))
-        # update xor value
-        xor = value ^ 0xFFFFFFFF
-        memory.update(index=(offset + XOR_OFFSET), source=int_to_bytes(value=xor, length=INT_LEN))
-        # switch after spaces updated
-        memory.set_byte(index=pos_x, value=pos)
 
     # Override
     def peek(self, length: int) -> Union[bytes, bytearray, None]:
@@ -314,7 +337,7 @@ class CycledBuffer(MemoryBuffer):
             offset = self.read_offset + len(data)
             if offset >= self.__end:
                 offset = self.__start + offset - self.__end
-            self.__update_read_offset(value=offset)
+            self.__update_read_offset(offset=offset)
         return data
 
     # Override
@@ -340,5 +363,5 @@ class CycledBuffer(MemoryBuffer):
             memory.update(index=p1, source=data[:m])
             memory.update(index=start, source=data[m:])
         # update the pointer after data wrote
-        self.__update_write_offset(value=p2)
+        self.__update_write_offset(offset=p2)
         return True

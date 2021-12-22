@@ -34,6 +34,45 @@ from .memory import Memory, int_from_bytes, int_to_bytes
 from .cycle import CycledQueue
 
 
+"""
+    Package body(chunk) format:
+
+         0                   1                   2                   3
+         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                          giant size                           |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                         giant offset                          |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                 check for giant size & offset                 |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                   payload (giant fragment)
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+                            payload (giant fragment)                    ~
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+        NOTICE: all integers are stored as NBO (Network Byte Order, big-endian)
+"""
+
+
+def parse_giant_head(data: bytes) -> (int, int):
+    """ get giant size & offset """
+    size = int_from_bytes(data=data[0:4])
+    offset = int_from_bytes(data=data[4:8])
+    check = int_from_bytes(data=data[8:12])
+    assert size ^ offset ^ check == 0xFFFFFFFF, 'xor check error: size=%d, offset=%d, %s, %s, %s'\
+                                                % (size, offset, bin(size), bin(offset), bin(check))
+    return size, offset
+
+
+def create_giant_head(head_size: bytes, size: int, offset: int):
+    """ size + offset + check """
+    head_offset = int_to_bytes(value=offset, length=4)
+    xor = size ^ offset ^ 0xFFFFFFFF
+    head_check = int_to_bytes(value=xor, length=4)
+    return head_size + head_offset + head_check
+
+
 class GiantQueue(CycledQueue):
     """
         Giant Data Queue
@@ -45,22 +84,6 @@ class GiantQueue(CycledQueue):
         The size of first chunk must be capacity - 4 (chunk size & its check took 4 bytes),
         and not greater than 65535, that will be the maximum size of each chunk too.
         So it means each fragment size will not greater than capacity - 16, or 65523.
-
-        Package body(chunk) format:
-
-             0                   1                   2                   3
-             0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-            +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-            |                          giant size                           |
-            +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-            |                         giant offset                          |
-            +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-            |                 check for giant size & offset                 |
-            +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-            |                   payload (giant fragment)
-            +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-                                payload (giant fragment)                    ~
-            +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
         NOTICE: all integers are stored as NBO (Network Byte Order, big-endian)
     """
@@ -91,12 +114,7 @@ class GiantQueue(CycledQueue):
             # it's another chunk for giant
         # check chunk head, get giant size & offset
         assert body_size > 12, 'package size error: %s' % body
-        giant_size = int_from_bytes(data=body[:4])
-        giant_offset = int_from_bytes(data=body[4:8])
-        head_check = int_from_bytes(data=body[8:12])
-        assert giant_size ^ giant_offset ^ 0xFFFFFFFF == head_check,\
-            'xor check error: size=%d, offset=%d, %s, %s, %s' %\
-            (giant_size, giant_offset, bin(giant_size), bin(giant_offset), bin(head_check))
+        giant_size, giant_offset = parse_giant_head(data=body[:12])
         if self.__incoming_giant_fragment is None:
             # first chunk for giant
             assert body_size == self.__max_size, 'first chunk size error: %d, %d' % (body_size, self.capacity)
@@ -191,10 +209,8 @@ class GiantQueue(CycledQueue):
             if p2 > data_size:
                 p2 = data_size
             # size + offset + check + body
-            head_offset = int_to_bytes(value=p1, length=4)
-            xor = data_size ^ p1 ^ 0xFFFFFFFF
-            head_check = int_to_bytes(value=xor, length=4)
-            pack = head_size + head_offset + head_check + data[p1:p2]
+            head = create_giant_head(head_size=head_size, size=data_size, offset=p1)
+            pack = head + data[p1:p2]
             chunks.append(pack)
             # next chunk
             p1 = p2
