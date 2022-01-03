@@ -57,7 +57,7 @@ class AutoMachine(BaseMachine[C, T, S], Runnable, Handler):
     def __restart(self):
         self.__force_stop()
         self.__running = True
-        t = Thread(target=self.run)
+        t = Thread(target=self.run, daemon=True)
         self.__thread = t
         t.start()
 

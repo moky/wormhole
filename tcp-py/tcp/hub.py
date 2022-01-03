@@ -182,7 +182,7 @@ def create_channel(remote: tuple, local: Optional[tuple]) -> Optional[Channel]:
             local = sock.getsockname()
         return StreamChannel(sock=sock, remote=remote, local=local)
     except socket.error as error:
-        print('[TCP] creating connection error: %s' % error)
+        print('[TCP] creating connection %s -> %s error: %s' % (local, remote, error))
 
 
 def create_socket(remote: tuple, local: Optional[tuple]) -> Optional[socket.socket]:
