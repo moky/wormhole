@@ -156,8 +156,8 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         sent = -1
         try:
             sent = self._send(data=data, target=target)
-            if sent == -1:
-                error = IOError('failed to send: %d byte(s) to %s' % (len(data), target))
+            if sent < 0:  # == -1:
+                error = ConnectionError('failed to send: %d byte(s) to %s' % (len(data), target))
                 # self.__close_channel()
         except socket.error as e:
             error = e

@@ -27,12 +27,13 @@ H = TypeVar('H')
 
 class UDPGate(StarGate, Runnable, Generic[H]):
 
-    def __init__(self, delegate: GateDelegate):
+    def __init__(self, delegate: GateDelegate, daemon: bool = False):
         super().__init__(delegate=delegate)
         self.__hub: H = None
         # running thread
         self.__thread: Optional[Thread] = None
         self.__running = False
+        self.__daemon = daemon
 
     @property
     def hub(self) -> H:
@@ -49,7 +50,7 @@ class UDPGate(StarGate, Runnable, Generic[H]):
     def start(self):
         self.__force_stop()
         self.__running = True
-        t = Thread(target=self.run)
+        t = Thread(target=self.run, daemon=self.__daemon)
         self.__thread = t
         t.start()
 
@@ -139,7 +140,7 @@ class UDPGate(StarGate, Runnable, Generic[H]):
             self.__kill(connection=connection)
 
     # Override
-    def connection_error(self, error, data: Optional[bytes],
+    def connection_error(self, error: ConnectionError, data: Optional[bytes],
                          source: Optional[tuple], destination: Optional[tuple], connection: Optional[Connection]):
         if connection is None:
             # failed to receive data

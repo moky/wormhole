@@ -46,7 +46,7 @@ class PackageChannel(BaseChannel):
         try:
             data, remote = sock.recvfrom(max_len)
         except socket.error as error:
-            error = self._check_socket_error(error=error)
+            error = self._check_receiving_error(error=error)
             if error is not None:
                 # connection lost?
                 raise error
@@ -70,7 +70,7 @@ class PackageChannel(BaseChannel):
         try:
             sent = sock.sendto(data, target)
         except socket.error as error:
-            error = self._check_socket_error(error=error)
+            error = self._check_sending_error(error=error)
             if error is not None:
                 # connection lost?
                 raise error

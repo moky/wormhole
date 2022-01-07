@@ -79,7 +79,7 @@ class Server(GateDelegate):
         UDPGate.info('message sent: %d byte(s) to %s' % (size, destination))
 
     # Override
-    def gate_error(self, error, ship: Departure,
+    def gate_error(self, error: IOError, ship: Departure,
                    source: Optional[tuple], destination: tuple, connection: Connection):
         UDPGate.error('gate error (%s, %s): %s' % (source, destination, error))
 

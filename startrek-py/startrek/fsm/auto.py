@@ -39,11 +39,12 @@ from .base import BaseMachine
 
 class AutoMachine(BaseMachine[C, T, S], Runnable, Handler):
 
-    def __init__(self, default: str):
+    def __init__(self, default: str, daemon: bool = False):
         super().__init__(default=default)
         # running thread
         self.__thread: Optional[Thread] = None
         self.__running = False
+        self.__daemon = daemon
 
     @property
     def running(self) -> bool:
@@ -57,7 +58,7 @@ class AutoMachine(BaseMachine[C, T, S], Runnable, Handler):
     def __restart(self):
         self.__force_stop()
         self.__running = True
-        t = Thread(target=self.run, daemon=True)
+        t = Thread(target=self.run, daemon=self.__daemon)
         self.__thread = t
         t.start()
 

@@ -157,7 +157,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         try:
             data = sock.recv(max_len)
         except socket.error as error:
-            error = self._check_socket_error(error=error)
+            error = self._check_receiving_error(error=error)
             if error is not None:
                 # connection lost?
                 raise error
@@ -182,7 +182,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             # sent = sock.sendall(data)
             return sendall(data=data, sock=sock)
         except socket.error as error:
-            error = self._check_socket_error(error=error)
+            error = self._check_sending_error(error=error)
             if error is not None:
                 # connection lost?
                 raise error

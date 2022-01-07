@@ -74,7 +74,7 @@ class ConnectionDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connection_error(self, error, data: Optional[bytes],
+    def connection_error(self, error: ConnectionError, data: Optional[bytes],
                          source: Optional[tuple], destination: Optional[tuple], connection: Optional[Connection]):
         """
         Called when connection error

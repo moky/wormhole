@@ -158,7 +158,7 @@ class ShipDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def gate_error(self, error, ship: Departure,
+    def gate_error(self, error: IOError, ship: Departure,
                    source: Optional[tuple], destination: tuple, connection: Connection):
         """
         Callback when package sent

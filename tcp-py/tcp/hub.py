@@ -90,13 +90,14 @@ class StreamHub(BaseHub, ABC):
 class ServerHub(StreamHub, Runnable):
     """ Stream Server Hub """
 
-    def __init__(self, delegate: ConnectionDelegate):
+    def __init__(self, delegate: ConnectionDelegate, daemon: bool = False):
         super().__init__(delegate=delegate)
         self.__local_address: Optional[tuple] = None
         self.__master: Optional[socket.socket] = None
         # running thread
         self.__thread: Optional[Thread] = None
         self.__running = False
+        self.__daemon = daemon
 
     @property
     def running(self) -> bool:
@@ -127,7 +128,7 @@ class ServerHub(StreamHub, Runnable):
     def start(self):
         self.__force_stop()
         self.__running = True
-        t = Thread(target=self.run)
+        t = Thread(target=self.run, daemon=self.__daemon)
         self.__thread = t
         t.start()
 

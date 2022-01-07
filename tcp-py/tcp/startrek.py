@@ -114,7 +114,7 @@ class PlainDocker(StarDocker):
 
     # Override
     def pack(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> Departure:
-        return PlainDeparture(data=payload, priority=priority)
+        return PlainDeparture(data=payload, priority=priority, delegate=delegate)
 
     # Override
     def heartbeat(self):

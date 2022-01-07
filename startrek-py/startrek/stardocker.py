@@ -142,7 +142,9 @@ class StarDocker(AddressPairObject, Docker):
                     # buffer overflow?
                     break
                 else:
+                    # assert sent == len(fra)
                     index += 1
+                    sent = 0  # clear counter
             fra_cnt = len(fragments)
             if index < fra_cnt:
                 # task failed
@@ -167,7 +169,7 @@ class StarDocker(AddressPairObject, Docker):
         # callback for error
         self.__on_error(error=error, ship=outgo, connection=conn)
 
-    def __on_error(self, error, ship: Departure, connection: Connection):
+    def __on_error(self, error: IOError, ship: Departure, connection: Connection):
         # callback for error
         delegate = self.delegate
         if delegate is not None:
