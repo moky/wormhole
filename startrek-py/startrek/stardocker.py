@@ -31,7 +31,7 @@
 import time
 import weakref
 from abc import abstractmethod
-from typing import Optional
+from typing import Optional, List
 
 from .types import AddressPairObject
 from .net import Connection, Hub
@@ -61,6 +61,9 @@ class StarDocker(AddressPairObject, Docker):
         super().__init__(remote=remote, local=local)
         self.__gate = weakref.ref(gate)
         self.__dock = self._create_dock()
+        # remaining data to be sent
+        self.__last_outgo: Optional[Departure] = None
+        self.__last_fragments: List[bytes] = []
 
     # noinspection PyMethodMayBeStatic
     def _create_dock(self) -> Dock:
@@ -102,55 +105,75 @@ class StarDocker(AddressPairObject, Docker):
         if conn is None or not conn.alive:
             # connection not ready now
             return False
-        now = int(time.time())
-        # 2. get outgo task
-        outgo = self._next_departure(now=now)
-        if outgo is None:
-            # nothing to do now
-            return False
-        # 3. process outgo task
+        # 2. get data to be sent
+        if len(self.__last_fragments) > 0:
+            # get remaining fragments from last outgo task
+            outgo = self.__last_outgo
+            fragments = self.__last_fragments
+            self.__last_outgo = None
+            self.__last_fragments = []
+        else:
+            # get next outgo task
+            now = int(time.time())
+            outgo = self._next_departure(now=now)
+            if outgo is None:
+                # nothing to do now, return False to let the thread have a rest
+                return False
+            elif outgo.is_failed(now=now):
+                # task timeout, return True to process next one
+                error = TimeoutError('Request timeout')
+                self.__on_error(error=error, ship=outgo, connection=conn)
+                return True
+            else:
+                # get fragments from outgo task
+                fragments = outgo.fragments
+                if len(fragments) == 0:
+                    # all fragments of this task have been sent already
+                    # return True to process next one
+                    return True
+        # 3. process fragments of outgo task
+        index = 0
+        sent = 0
         try:
-            error = self.__send_departure(ship=outgo, now=now)
-            if error is None:
+            remote_address = self.remote_address
+            for fra in fragments:
+                sent = conn.send(data=fra, target=remote_address)
+                if sent < len(fra):
+                    # buffer overflow?
+                    break
+                else:
+                    index += 1
+            fra_cnt = len(fragments)
+            if index < fra_cnt:
+                # task failed
+                error = ConnectionError('only %d/%d fragments sent' % (index, fra_cnt))
+            else:
                 # task done
                 return True
         except Exception as e:
             # socket error, callback
             error = e
+        # remove sent fragments
+        while index > 0:
+            fragments.pop(0)
+            index -= 1
+        # remove partially sent data of next fragment
+        if sent > 0:
+            last = fragments.pop(0)
+            fragments.insert(0, last[sent:])
+        # store remaining data
+        self.__last_outgo = outgo
+        self.__last_fragments = fragments
+        # callback for error
+        self.__on_error(error=error, ship=outgo, connection=conn)
+
+    def __on_error(self, error, ship: Departure, connection: Connection):
         # callback for error
         delegate = self.delegate
         if delegate is not None:
             remote = self.remote_address
             local = self.local_address
-            delegate.gate_error(error=error, ship=outgo, source=local, destination=remote, connection=conn)
-        # return False here will cause thread idling
-        # if this task is failed, return True to process next one
-        return isinstance(error, TimeoutError)
-
-    def __send_departure(self, ship: Departure, now: int) -> Optional[OSError]:
-        """ Sending all fragments in the ship """
-        # check task
-        if ship.is_failed(now=now):
-            return TimeoutError('Request timeout')
-        fragments = ship.fragments
-        if fragments is None or len(fragments) == 0:
-            # all fragments have been sent already
-            return None
-        # check connection
-        conn = self.connection
-        assert conn is not None and conn.alive, 'connection not ready now'
-        remote = self.remote_address
-        # send all fragments
-        total = len(fragments)
-        success = 0
-        for pkg in fragments:
-            if conn.send(data=pkg, target=remote) != -1:
-                success += 1
-        if success == total:
-            # all fragments sent successfully
-            return None
-        else:
-            return ConnectionError('only %d/%d fragments sent' % (success, total))
+            delegate.gate_error(error=error, ship=ship, source=local, destination=remote, connection=connection)
 
     # Override
     def process_received(self, data: bytes):

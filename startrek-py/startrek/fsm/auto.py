@@ -71,8 +71,9 @@ class AutoMachine(BaseMachine[C, T, S], Runnable, Handler):
 
     # Override
     def stop(self):
-        super().stop()
-        self.__force_stop()
+        if self.__running:
+            super().stop()
+            self.__force_stop()
 
     # Override
     def run(self):

@@ -178,25 +178,16 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         if sock is None:
             raise socket.error('socket lost, cannot write data: %d byte(s)' % len(data))
         # try to send data
-        sent = 0
         try:
             # sent = sock.sendall(data)
-            rest = len(data)
-            while rest > 0:  # and not is_closed(sock=sock):
-                cnt = sock.send(data)
-                if cnt > 0:
-                    sent += cnt
-                    rest -= cnt
-                    data = data[cnt:]
+            return sendall(data=data, sock=sock)
         except socket.error as error:
             error = self._check_socket_error(error=error)
             if error is not None:
                 # connection lost?
                 raise error
             # buffer overflow!
-            if sent == 0:
-                return -1
-        return sent
+            return -1
 
     #
     #   Check for socket errors
@@ -209,6 +200,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         # or buffer overflow while sending too many bytes,
         # here we should ignore this exception.
         if not self.blocking:
+            # if error.errno == socket.EAGAIN:
             if error.strerror == self.ResourceTemporarilyUnavailable:
                 # ignore it
                 return None
@@ -222,6 +214,12 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         # print('[NET] socket error: %s' % error)
         return error
 
+    def _check_sending_error(self, error: socket.error) -> Optional[socket.error]:
+        return self._check_socket_error(error=error)
+
+    def _check_receiving_error(self, error: socket.error) -> Optional[socket.error]:
+        return self._check_socket_error(error=error)
+
     def _check_received_data(self, data: Optional[bytes]) -> Optional[socket.error]:
         # in blocking mode, the socket will wait until received something,
         # but if timeout was set, it will return None too, it's normal;
@@ -230,3 +228,30 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             if self.sock.gettimeout() is None:  # and self.blocking:
                 # print('[NET] socket error: remote peer reset socket')
                 return socket.error('remote peer reset socket')
+
+
+def sendall(data: bytes, sock: socket) -> int:
+    """ Return the number of bytes sent;
+        this may be less than len(data) if the network is busy. """
+    sent = 0
+    rest = len(data)
+    assert rest > 0, 'cannot send empty data'
+    while True:  # not is_closed(sock=sock):
+        cnt = sock.send(data)
+        if cnt == 0:
+            # buffer overflow?
+            break
+        elif cnt < 0:
+            # socket error?
+            if sent == 0:
+                return -1
+            break
+        # something sent, check remaining data
+        sent += cnt
+        rest -= cnt
+        if rest > 0:
+            data = data[cnt:]
+        else:
+            # done!
+            break
+    return sent
