@@ -58,7 +58,7 @@ class Soldier(Runner, GateDelegate):
         super().__init__()
         self.__remote_address = remote
         self.__local_address = local
-        self.__gate = TCPGate(delegate=self)
+        self.__gate = TCPGate(delegate=self, daemon=True)
         self.__time_to_retreat = time.time() + 32
 
     @property
@@ -140,7 +140,7 @@ class Soldier(Runner, GateDelegate):
     # Override
     def process(self) -> bool:
         data = b'Hello world!' * 100
-        TCPGate.info('>>> sending (%d bytes): %s' % (len(data), data))
+        TCPGate.info('>>> sending to %s: (%d bytes) %s...' % (self.remote_address, len(data), data[:32]))
         self.send(data=data)
         return False  # return False to have a rest
 
@@ -243,11 +243,12 @@ Colonel.TROOPS = 10
 all_stations = [
     (Hub.inet_address(), 9394),
     ('127.0.0.1', 9394),
+    ('149.129.234.145', 9394),
     ('', 0),
     ('', 0),
     ('', 0),
 ]
-test_station = all_stations[0]
+test_station = all_stations[2]
 
 
 if __name__ == '__main__':

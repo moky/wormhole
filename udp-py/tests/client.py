@@ -25,7 +25,7 @@ class Client(GateDelegate):
         super().__init__()
         self.__local_address = local
         self.__remote_address = remote
-        gate = UDPGate(delegate=self)
+        gate = UDPGate(delegate=self, daemon=True)
         gate.hub = ClientHub(delegate=gate)
         self.__gate = gate
 
