@@ -59,8 +59,9 @@ class StarDocker(AddressPairObject, Docker):
 
     def __init__(self, remote: tuple, local: Optional[tuple], gate: Gate):
         super().__init__(remote=remote, local=local)
-        self.__gate_ref = weakref.ref(gate)
         self.__dock = self._create_dock()
+        self.__gate_ref = weakref.ref(gate)
+        self.__conn_ref = None
         # remaining data to be sent
         self.__last_outgo: Optional[Departure] = None
         self.__last_fragments: List[bytes] = []
@@ -88,9 +89,24 @@ class StarDocker(AddressPairObject, Docker):
 
     @property  # Override
     def connection(self) -> Optional[Connection]:
-        gate = self.gate
-        if gate is not None:
-            return gate.get_connection(remote=self._remote, local=self._local)
+        conn = self._get_connection()
+        if conn is None:
+            gate = self.gate
+            if gate is not None:
+                conn = gate.get_connection(remote=self._remote, local=self._local)
+                self._set_connection(connection=conn)
+        return conn
+
+    def _get_connection(self) -> Optional[Connection]:
+        ref = self.__conn_ref
+        if ref is not None:
+            return ref()
+
+    def _set_connection(self, connection: Connection):
+        if connection is None:
+            self.__conn_ref = None
+        else:
+            self.__conn_ref = weakref.ref(connection)
 
     @property  # Override
     def delegate(self) -> Optional[GateDelegate]:
