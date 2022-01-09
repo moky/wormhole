@@ -65,7 +65,11 @@ class Client(GateDelegate):
                       source: tuple, destination: Optional[tuple], connection: Connection):
         assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
         data = ship.package
-        text = data.decode('utf-8')
+        try:
+            text = data.decode('utf-8')
+        except UnicodeDecodeError as error:
+            TCPGate.error(msg='failed to decode data: %s, %s' % (error, data))
+            text = str(data)
         TCPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
 
     # Override
@@ -87,8 +91,7 @@ class Client(GateDelegate):
             text += ' Hello!'
         # test send
         for i in range(16):
-            data = '%d sheep:%s' % (i, text)
-            data = data.encode('utf-8')
+            data = b'%d sheep:%s' % (i, text)
             TCPGate.info('>>> sending (%d bytes): %s' % (len(data), data))
             self.send(data=data)
             time.sleep(2)

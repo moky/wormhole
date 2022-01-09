@@ -86,6 +86,20 @@ class StreamHub(BaseHub, ABC):
                 self.__channels.pop(key, None)
                 return True
 
+    # Override
+    def _cleanup_connections(self, connections: Set[Connection]):
+        # super()._cleanup_connections(connections=connections)
+        closed_connections = set()
+        # 1. check closed connections
+        for conn in connections:
+            if not conn.opened:
+                closed_connections.add(conn)
+        # 2. remove closed connections
+        for conn in closed_connections:
+            remote = conn.remote_address
+            local = conn.local_address
+            self.disconnect(remote=remote, local=local, connection=conn)
+
 
 class ServerHub(StreamHub, Runnable):
     """ Stream Server Hub """

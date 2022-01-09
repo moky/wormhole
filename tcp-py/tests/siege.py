@@ -102,7 +102,11 @@ class Soldier(Runner, GateDelegate):
                       source: tuple, destination: Optional[tuple], connection: Connection):
         assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
         data = ship.package
-        text = data.decode('utf-8')
+        try:
+            text = data.decode('utf-8')
+        except UnicodeDecodeError as error:
+            TCPGate.error(msg='failed to decode data: %s, %s' % (error, data))
+            text = str(data)
         TCPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
 
     # Override
@@ -135,8 +139,7 @@ class Soldier(Runner, GateDelegate):
 
     # Override
     def process(self) -> bool:
-        data = 'Hello world!'
-        data = data.encode('utf-8')
+        data = b'Hello world!' * 100
         TCPGate.info('>>> sending (%d bytes): %s' % (len(data), data))
         self.send(data=data)
         return False  # return False to have a rest

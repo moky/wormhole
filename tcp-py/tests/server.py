@@ -60,7 +60,11 @@ class Server(GateDelegate):
                       source: tuple, destination: Optional[tuple], connection: Connection):
         assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
         data = ship.package
-        text = data.decode('utf-8')
+        try:
+            text = data.decode('utf-8')
+        except UnicodeDecodeError as error:
+            TCPGate.error(msg='failed to decode data: %s, %s' % (error, data))
+            text = str(data)
         TCPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
         text = '%d# %d byte(s) received' % (self.counter, len(data))
         self.counter += 1
