@@ -11,7 +11,7 @@ sys.path.append(rootPath)
 
 from tcp import Connection
 from tcp import Gate, GateDelegate, GateStatus
-from tcp import Hub, ServerHub
+from tcp import ServerHub
 from tcp import Arrival, PlainArrival, Departure, PlainDeparture
 
 from tests.stargate import TCPGate
@@ -22,7 +22,7 @@ class Server(GateDelegate):
     def __init__(self, host: str, port: int):
         super().__init__()
         self.__local_address = (host, port)
-        gate = TCPGate(delegate=self, daemon=True)
+        gate = TCPGate(delegate=self)
         gate.hub = ServerHub(delegate=gate)
         self.__gate = gate
 
@@ -88,7 +88,8 @@ class Server(GateDelegate):
         TCPGate.error('gate error (%s, %s): %s' % (source, destination, error))
 
 
-SERVER_HOST = Hub.inet_address()
+# SERVER_HOST = Hub.inet_address()
+SERVER_HOST = '0.0.0.0'
 SERVER_PORT = 9394
 
 

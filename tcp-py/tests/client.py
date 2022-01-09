@@ -26,7 +26,7 @@ class Client(GateDelegate):
         super().__init__()
         self.__local_address = local
         self.__remote_address = remote
-        gate = TCPGate(delegate=self, daemon=True)
+        gate = TCPGate(delegate=self)
         gate.hub = ClientHub(delegate=gate)
         self.__gate = gate
 

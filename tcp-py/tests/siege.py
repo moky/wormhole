@@ -74,16 +74,10 @@ class Soldier(Runner, GateDelegate):
         return self.__gate
 
     def start(self) -> threading.Thread:
-        gate = self.gate
-        gate.hub = ClientHub(delegate=gate)
-        gate.start()
-        thr = threading.Thread(target=self.run, daemon=True)
+        thr = threading.Thread(target=self.run)
+        # thr.daemon = True
         thr.start()
         return thr
-
-    def stop(self):
-        self.gate.stop()
-        super().stop()
 
     def send(self, data: bytes) -> bool:
         return self.gate.send_data(payload=data, source=self.local_address, destination=self.remote_address)
@@ -130,11 +124,14 @@ class Soldier(Runner, GateDelegate):
     # Override
     def setup(self):
         super().setup()
-        print('setup client: %s' % self)
+        gate = self.gate
+        gate.hub = ClientHub(delegate=gate)
+        gate.start()
 
     # Override
     def finish(self):
-        print('finish client: %s' % self)
+        gate = self.gate
+        gate.stop()
         super().finish()
 
     # Override
@@ -143,6 +140,10 @@ class Soldier(Runner, GateDelegate):
         TCPGate.info('>>> sending to %s: (%d bytes) %s...' % (self.remote_address, len(data), data[:32]))
         self.send(data=data)
         return False  # return False to have a rest
+
+    # Override
+    def _idle(self):
+        time.sleep(1)
 
 
 class Sergeant:
@@ -177,7 +178,7 @@ class Sergeant:
 
     def start(self) -> multiprocessing.Process:
         pro = multiprocessing.Process(target=self.run)
-        pro.daemon = True
+        # pro.daemon = True
         pro.start()
         return pro
 
