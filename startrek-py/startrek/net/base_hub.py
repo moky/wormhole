@@ -185,9 +185,18 @@ class BaseHub(Hub, ABC):
             #         or just remove it.
 
     def _cleanup_channels(self, channels: Set[Channel]):
-        pass
+        closed_channels = set()
+        # 1. check closed channels
+        for sock in channels:
+            if not sock.opened:
+                closed_channels.add(sock)
+        # 2. remove closed channels
+        for sock in closed_channels:
+            self.close_channel(channel=sock)
 
     def _cleanup_connections(self, connections: Set[Connection]):
+        # multi connections can share the same channel in UDP hub, so
+        # only remove closed connections by TCP hub (connected channel)
         pass
 
     # Override
