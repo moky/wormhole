@@ -49,13 +49,13 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     def __init__(self, remote: tuple, local: Optional[tuple], channel: Channel, delegate: ConnectionDelegate, hub: Hub):
         super().__init__(remote=remote, local=local)
-        self.__channel = channel
+        self.__channel_ref = weakref.ref(channel)
         # active times
         self.__last_sent_time = 0
         self.__last_received_time = 0
         # handlers
         self.__delegate = weakref.ref(delegate)
-        self.__hub = weakref.ref(hub)
+        self.__hub_ref = weakref.ref(hub)
         # Finite State Machine
         self.__fsm = self._create_state_machine()
 
@@ -71,14 +71,22 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property
     def hub(self) -> Hub:
-        return self.__hub()
+        return self.__hub_ref()
 
-    @property  # protected
+    @property
     def channel(self) -> Optional[Channel]:
-        return self.__channel
+        return self._get_channel()
+
+    def _get_channel(self) -> Optional[Channel]:
+        ref = self.__channel_ref
+        if ref is not None:
+            return ref()
 
     def _set_channel(self, channel: Channel):
-        self.__channel = channel
+        if channel is None:
+            self.__channel_ref = None
+        else:
+            self.__channel_ref = weakref.ref(channel)
 
     @property  # Override
     def opened(self) -> bool:
@@ -105,7 +113,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         self.__fsm.stop()
 
     def __close_channel(self):
-        sock = self.__channel
+        sock = self._get_channel()
         if sock is not None:
             self.__channel = None
             hub = self.hub
@@ -145,7 +153,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         if sock is None or not sock.alive:
             raise socket.error('socket channel lost: %s' % sock)
         sent = sock.send(data=data, target=target)
-        if sent != -1:
+        if sent > 0:
             self.__last_sent_time = int(time.time())
         return sent
 
@@ -156,7 +164,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         sent = -1
         try:
             sent = self._send(data=data, target=target)
-            if sent < 0:  # == -1:
+            if sent <= 0:  # == -1:
                 error = ConnectionError('failed to send: %d byte(s) to %s' % (len(data), target))
                 # self.__close_channel()
         except socket.error as e:
@@ -168,10 +176,12 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             # get local address as source
             source = self._local
             if source is None:
-                sock = self.__channel
+                sock = self._get_channel()
                 if sock is not None:
                     source = sock.local_address
             if error is None:
+                if sent < len(data):
+                    data = data[:sent]
                 delegate.connection_sent(data=data, source=source, destination=target, connection=self)
             else:
                 delegate.connection_error(error=error, data=data, source=source, destination=target, connection=self)

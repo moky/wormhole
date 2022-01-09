@@ -62,7 +62,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             self.__connected = get_remote_address(sock=sock) is not None
             self.__bound = get_local_address(sock=sock) is not None
 
-    @property  # protected
+    @property
     def sock(self) -> Optional[socket.socket]:
         return self.__sock
 

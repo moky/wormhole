@@ -145,10 +145,11 @@ def select_offset(memory: Memory, ptr_pos: int, retries: int = 8) -> int:
         offset, xor = fetch_offsets(memory=memory, ptr_pos=ptr_pos)
         if (offset ^ xor) == 0xFFFFFFFF:
             return offset  # OK
-        if retries <= 0:
+        elif retries > 0:
+            retries -= 1   # try again
+        else:
             # raise AssertionError('offset error: %d, %s, %s' % (offset, bin(offset), bin(xor)))
             return -1
-        retries -= 1  # try again
 
 
 def update_offset(memory: Memory, ptr_pos: int, value: int):

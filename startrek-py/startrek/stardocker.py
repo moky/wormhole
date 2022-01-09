@@ -59,7 +59,7 @@ class StarDocker(AddressPairObject, Docker):
 
     def __init__(self, remote: tuple, local: Optional[tuple], gate: Gate):
         super().__init__(remote=remote, local=local)
-        self.__gate = weakref.ref(gate)
+        self.__gate_ref = weakref.ref(gate)
         self.__dock = self._create_dock()
         # remaining data to be sent
         self.__last_outgo: Optional[Departure] = None
@@ -72,7 +72,7 @@ class StarDocker(AddressPairObject, Docker):
 
     @property  # protected
     def gate(self) -> Gate:
-        return self.__gate()
+        return self.__gate_ref()
 
     @property  # protected
     def hub(self) -> Optional[Hub]:

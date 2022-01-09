@@ -71,7 +71,7 @@ class StateMachine(BaseMachine, Context):
 
     def __init__(self, connection: Connection):
         super().__init__(default=ConnectionState.DEFAULT)
-        self.__connection = weakref.ref(connection)
+        self.__conn_ref = weakref.ref(connection)
         # init states
         builder = self._create_state_builder()
         self.__set_state(state=builder.get_default_state())
@@ -94,7 +94,7 @@ class StateMachine(BaseMachine, Context):
 
     @property
     def connection(self) -> Connection:
-        return self.__connection()
+        return self.__conn_ref()
 
 
 class StateTransition(BaseTransition[StateMachine], ABC):

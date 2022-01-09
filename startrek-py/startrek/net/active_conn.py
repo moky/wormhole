@@ -39,7 +39,7 @@ class ActiveConnection(BaseConnection):
 
     @property  # Override
     def channel(self) -> Optional[Channel]:
-        sock = super().channel
+        sock = self._get_channel()
         if sock is None:
             # get new channel via hub
             hub = self.hub
