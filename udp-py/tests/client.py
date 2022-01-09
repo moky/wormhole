@@ -71,7 +71,11 @@ class Client(GateDelegate):
         assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
         pack = ship.package
         data = pack.body.get_bytes()
-        text = data.decode('utf-8')
+        try:
+            text = data.decode('utf-8')
+        except UnicodeDecodeError as error:
+            UDPGate.error(msg='failed to decode data: %s, %s' % (error, data))
+            text = str(data)
         UDPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
 
     # Override
@@ -89,13 +93,10 @@ class Client(GateDelegate):
         UDPGate.error('gate error (%s, %s): %s' % (source, destination, error))
 
     def test(self):
-        text = ''
-        for _ in range(1024):
-            text += ' Hello!'
+        text = b'Hello world!' * 512
         # test send
         for i in range(16):
-            data = '%d sheep:%s' % (i, text)
-            data = data.encode('utf-8')
+            data = b'%d sheep:%s' % (i, text)
             UDPGate.info('>>> sending (%d bytes): %s' % (len(data), data))
             self.send(data=data)
             time.sleep(2)

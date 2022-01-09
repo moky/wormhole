@@ -59,7 +59,11 @@ class Server(GateDelegate):
         assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
         pack = ship.package
         data = pack.body.get_bytes()
-        text = data.decode('utf-8')
+        try:
+            text = data.decode('utf-8')
+        except UnicodeDecodeError as error:
+            UDPGate.error(msg='failed to decode data: %s, %s' % (error, data))
+            text = str(data)
         UDPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
         text = '%d# %d byte(s) received' % (self.counter, len(data))
         self.counter += 1

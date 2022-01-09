@@ -86,9 +86,7 @@ class Client(GateDelegate):
         TCPGate.error('gate error (%s, %s): %s' % (source, destination, error))
 
     def test(self):
-        text = ''
-        for _ in range(1024):
-            text += ' Hello!'
+        text = b'Hello world!' * 512
         # test send
         for i in range(16):
             data = b'%d sheep:%s' % (i, text)
