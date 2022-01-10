@@ -78,10 +78,13 @@ class TCPGate(StarGate, Runnable, Generic[H]):
     def process(self) -> bool:
         hub = self.hub
         from tcp import Hub
-        assert isinstance(hub, Hub)
-        incoming = hub.process()
-        outgoing = super().process()
-        return incoming or outgoing
+        assert isinstance(hub, Hub), 'hub error: %s' % hub
+        try:
+            incoming = hub.process()
+            outgoing = super().process()
+            return incoming or outgoing
+        except Exception as error:
+            print('[TCP] process error: %s' % error)
 
     # Override
     def get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:

@@ -153,7 +153,9 @@ class ServerHub(StreamHub, Runnable):
                     channel = StreamChannel(sock=sock, remote=address, local=self.__local_address)
                     self.put_channel(channel=channel)
             except socket.error as error:
-                print('[TCP] accepting connection error: %s' % error)
+                print('[TCP] socket error: %s' % error)
+            except Exception as error:
+                print('[TCP] accept error: %s' % error)
 
 
 class ClientHub(StreamHub):
