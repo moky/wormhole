@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import time
+import traceback
+import weakref
 from threading import Thread
 from typing import Generic, TypeVar, Optional, List
 
@@ -8,18 +10,26 @@ from startrek.fsm import Runnable
 from udp.ba import Data
 from udp.mtp import DataType, Package
 from udp import Connection, ConnectionState, ActiveConnection
-from udp import Hub
+from udp import Gate, Hub
 from udp import GateDelegate, Docker
 from udp import StarGate, PackageDocker
 
 
 class UDPDocker(PackageDocker):
 
+    def __init__(self, remote: tuple, local: Optional[tuple], gate: Gate):
+        super().__init__(remote=remote, local=local)
+        self.__gate_ref = weakref.ref(gate)
+
+    @property  # Override
+    def gate(self) -> Gate:
+        return self.__gate_ref()
+
     @property  # Override
     def hub(self) -> Optional[Hub]:
         gate = self.gate
-        if isinstance(gate, UDPGate):
-            return gate.hub
+        assert isinstance(gate, UDPGate), 'gate error: %s' % gate
+        return gate.hub
 
 
 H = TypeVar('H')
@@ -81,9 +91,13 @@ class UDPGate(StarGate, Runnable, Generic[H]):
         hub = self.hub
         from udp import Hub
         assert isinstance(hub, Hub)
-        incoming = hub.process()
-        outgoing = super().process()
-        return incoming or outgoing
+        try:
+            incoming = hub.process()
+            outgoing = super().process()
+            return incoming or outgoing
+        except Exception as error:
+            print('[UDP] process error: %s' % error)
+            traceback.print_exc()
 
     # Override
     def get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:

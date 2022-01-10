@@ -160,7 +160,7 @@ class BaseMachine(Machine[C, T, S]):
     # Override
     def stop(self):
         self.__status = Status.STOPPED
-        self.change_state(state=None)
+        self.change_state(state=None)  # force current state to None
 
     # Override
     def pause(self):

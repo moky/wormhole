@@ -81,10 +81,10 @@ class StreamHub(BaseHub, ABC):
             # removed by key
             return True
         # remove by value
-        addresses = set(self.__channels.keys())
-        for remote in addresses:
-            if self.__channels.get(remote) == channel:
-                self.__channels.pop(remote, None)
+        keys = set(self.__channels.keys())
+        for address in keys:
+            if self.__channels.get(address) == channel:
+                self.__channels.pop(address, None)
                 return True
 
 

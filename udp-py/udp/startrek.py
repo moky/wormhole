@@ -33,7 +33,7 @@ from typing import List, Optional
 from startrek import Arrival, ArrivalShip
 from startrek import Departure, DepartureShip, DeparturePriority
 from startrek import ShipDelegate
-from startrek import StarDocker, StarGate
+from startrek import StarDocker
 
 from .ba import Data
 from .mtp import DataType, TransactionID, Package, Packer
@@ -107,8 +107,9 @@ class PackageDeparture(DepartureShip):
 
     @property  # Override
     def fragments(self) -> List[bytes]:
-        if len(self.__fragments) == 0 and len(self.__packages) > 0:
-            for item in self.__packages:
+        if len(self.__fragments) == 0:
+            packages = list(self.__packages)
+            for item in packages:
                 self.__fragments.append(item.get_bytes())
         return self.__fragments
 
@@ -131,7 +132,8 @@ class PackageDeparture(DepartureShip):
             return len(self.__packages) == 0
 
     def __remove_page(self, index: int) -> bool:
-        for pack in self.__packages:
+        packages = list(self.__packages)
+        for pack in packages:
             if pack.head.index == index:
                 # got it
                 self.__packages.remove(pack)
@@ -139,9 +141,6 @@ class PackageDeparture(DepartureShip):
 
 
 class PackageDocker(StarDocker):
-
-    def __init__(self, remote: tuple, local: Optional[tuple], gate: StarGate):
-        super().__init__(remote=remote, local=local, gate=gate)
 
     # noinspection PyMethodMayBeStatic
     def _parse_package(self, data: Optional[bytes]) -> Optional[Package]:

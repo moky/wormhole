@@ -46,7 +46,7 @@ class PackageHub(BaseHub, ABC):
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__(delegate=delegate)
         # local => channel
-        self.__channels: Dict[tuple, Channel] = {}
+        self.__channels: Dict[tuple, Channel] = {}  # local -> Channel
 
     def bind(self, address: tuple = None, host: str = None, port: int = 0):
         if address is None:
@@ -72,8 +72,12 @@ class PackageHub(BaseHub, ABC):
     # Override
     def open_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
         if local is None:
-            for channel in self.__channels.values():
-                return channel
+            # get any channel
+            keys = set(self.__channels.keys())
+            for address in keys:
+                channel = self.__channels.get(address)
+                if channel is not None:
+                    return channel
             # channel not found
         else:
             return self.__channels.get(local)
@@ -98,9 +102,10 @@ class PackageHub(BaseHub, ABC):
             # removed by key
             return True
         # remove by value
-        for key in self.__channels:
-            if self.__channels.get(key) == channel:
-                self.__channels.pop(key, None)
+        keys = set(self.__channels.keys())
+        for address in keys:
+            if self.__channels.get(address) == channel:
+                self.__channels.pop(address, None)
                 return True
 
 
