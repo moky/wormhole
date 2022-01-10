@@ -32,7 +32,7 @@ from typing import List, Optional
 
 from startrek import Arrival, ArrivalShip, Departure, DepartureShip, DeparturePriority
 from startrek import ShipDelegate
-from startrek import StarDocker, StarGate
+from startrek import StarDocker
 
 
 class PlainArrival(ArrivalShip):
@@ -84,9 +84,6 @@ class PlainDeparture(DepartureShip):
 
 
 class PlainDocker(StarDocker):
-
-    def __init__(self, remote: tuple, local: Optional[tuple], gate: StarGate):
-        super().__init__(remote=remote, local=local, gate=gate)
 
     # noinspection PyMethodMayBeStatic
     def _create_arrival(self, data: bytes) -> Arrival:

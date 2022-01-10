@@ -1,23 +1,33 @@
 # -*- coding: utf-8 -*-
 
 import time
+import traceback
+import weakref
 from threading import Thread
 from typing import Generic, TypeVar, Optional, List
 
 from startrek.fsm import Runnable
 from tcp import Connection, ConnectionState, ActiveConnection
-from tcp import Hub
+from tcp import Gate, Hub
 from tcp import GateDelegate, Docker
 from tcp import StarGate, PlainDocker
 
 
 class TCPDocker(PlainDocker):
 
+    def __init__(self, remote: tuple, local: Optional[tuple], gate: Gate):
+        super().__init__(remote=remote, local=local)
+        self.__gate_ref = weakref.ref(gate)
+
+    @property  # Override
+    def gate(self) -> Gate:
+        return self.__gate_ref()
+
     @property  # Override
     def hub(self) -> Optional[Hub]:
         gate = self.gate
-        if isinstance(gate, TCPGate):
-            return gate.hub
+        assert isinstance(gate, TCPGate), 'gate error: %s' % gate
+        return gate.hub
 
 
 H = TypeVar('H')
@@ -85,6 +95,7 @@ class TCPGate(StarGate, Runnable, Generic[H]):
             return incoming or outgoing
         except Exception as error:
             print('[TCP] process error: %s' % error)
+            traceback.print_exc()
 
     # Override
     def get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
