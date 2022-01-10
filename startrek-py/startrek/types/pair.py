@@ -47,12 +47,12 @@ class AddressPairObject:
         return self._local
 
     def __str__(self) -> str:
-        clazz = self.__class__.__name__
-        return '<%s: remote=%s, local=%s />' % (clazz, self.remote_address, self.local_address)
+        cname = self.__class__.__name__
+        return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
 
     def __repr__(self) -> str:
-        clazz = self.__class__.__name__
-        return '<%s: remote=%s, local=%s />' % (clazz, self.remote_address, self.local_address)
+        cname = self.__class__.__name__
+        return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
 
     def __hash__(self):
         # same algorithm as Pair::hashCode()

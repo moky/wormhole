@@ -54,7 +54,7 @@ class DepartureShip(Departure, ABC):
         else:
             self.__delegate = weakref.ref(delegate)
         # last tried time (timestamp in seconds)
-        self.__last_time = 0
+        self.__expired = int(time.time()) + self.EXPIRES
         # totally 3 times to be sent at the most
         self.__retries = -1
 
@@ -74,19 +74,19 @@ class DepartureShip(Departure, ABC):
 
     # Override
     def is_timeout(self, now: int) -> bool:
-        expired = self.__last_time + self.EXPIRES
-        return self.__retries < self.MAX_RETRIES and expired < now
+        return self.__retries < self.MAX_RETRIES and self.__expired < now
 
     # Override
     def is_failed(self, now: int) -> bool:
-        expired = self.__last_time + self.EXPIRES * (self.MAX_RETRIES - self.__retries + 2)
-        return 0 < self.__last_time and expired < now
+        extra = self.EXPIRES * (self.MAX_RETRIES - self.__retries)
+        expired = self.__expired + extra
+        return expired < now
 
     # Override
     def update(self, now: int) -> bool:
         if self.__retries < self.MAX_RETRIES:
             # update retried time
-            self.__last_time = now
+            self.__expired = now + self.EXPIRES
             # increase counter
             self.__retries += 1
             return True

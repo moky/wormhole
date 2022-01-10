@@ -43,11 +43,11 @@ class ArrivalShip(Arrival, ABC):
 
     def __init__(self):
         super().__init__()
-        self.__expired = 0  # expired timestamp (in seconds)
+        self.__expired = int(time.time()) + self.EXPIRES
 
     # Override
     def is_failed(self, now: int) -> bool:
-        return 0 < self.__expired < now
+        return self.__expired < now
 
     # Override
     def update(self, now: int) -> bool:

@@ -70,7 +70,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     def configure_blocking(self, blocking: bool):
         sock = self.sock
         if sock is None:
-            raise socket.error('socket closed')
+            raise socket.error('socket closed: remote=%s, local=%s' % (self.remote_address, self.local_address))
         else:
             sock.setblocking(blocking)
         self.__blocking = blocking
@@ -102,7 +102,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             address = (host, port)
         sock = self.sock
         if sock is None:
-            raise socket.error('socket closed')
+            raise socket.error('cannot bind socket: local=(%s:%d)' % address)
         sock.bind(address)
         self._local = address
         self.__bound = True
@@ -116,7 +116,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             address = (host, port)
         sock = self.sock
         if sock is None:
-            raise socket.error('socket closed')
+            raise socket.error('cannot connect socket: remote=(%s:%d)' % address)
         sock.connect(address)
         self._remote = address
         self.__connected = True
@@ -152,7 +152,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         # check socket first
         sock = self.sock
         if sock is None:
-            raise socket.error('socket lost, cannot read data')
+            raise socket.error('socket lost, cannot read data: %s' % self)
         # try to receive data
         try:
             data = sock.recv(max_len)
@@ -176,7 +176,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         # check socket first
         sock = self.sock
         if sock is None:
-            raise socket.error('socket lost, cannot write data: %d byte(s)' % len(data))
+            raise socket.error('socket lost, cannot write data (%d bytes): %s' % (len(data), self))
         # try to send data
         try:
             # sent = sock.sendall(data)

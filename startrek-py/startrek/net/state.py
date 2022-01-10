@@ -86,7 +86,7 @@ class StateMachine(BaseMachine, Context):
         return StateBuilder(transition_builder=TransitionBuilder())
 
     def __set_state(self, state):
-        self.add_state(name=state.name, state=state)
+        self.set_state(name=state.name, state=state)
 
     @property
     def context(self) -> Context:

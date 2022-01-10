@@ -30,7 +30,7 @@
 
 import weakref
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Optional, Union, Set, Dict, Any
+from typing import TypeVar, Generic, Optional, Set, MutableMapping
 
 K = TypeVar('K')
 V = TypeVar('V')
@@ -63,8 +63,8 @@ class WeakKeyPairMap(KeyPairMap[K, V], ABC):
 
     def __init__(self, default: K):
         super().__init__()
-        self.__default = default
-        self.__map: Dict[K, Union[Dict[K, V], Any]] = {}
+        self.__default = default  # default key
+        self.__map: MutableMapping[K, MutableMapping[K, V]] = {}  # (K, K) => V
 
     # Override
     def get(self, remote: Optional[K], local: Optional[K]) -> Optional[V]:
@@ -85,16 +85,18 @@ class WeakKeyPairMap(KeyPairMap[K, V], ABC):
                 return value
             # take any Connection connected to remote
             return table.get(self.__default)
-        # mapping: (remote, None) => Connection
-        # mapping: (local, None) => Connection
-        value = table.get(self.__default)
-        if value is not None:
-            # take the value with empty key2
-            return value
         else:
-            # take the first value if exists
-            for item in table.values():
-                return item
+            # mapping: (remote, None) => Connection
+            # mapping: (local, None) => Connection
+            value = table.get(self.__default)
+            if value is not None:
+                # take the value with empty key2
+                return value
+            # take any Connection connected to remote / bound to local
+            for name in table:
+                value = table.get(name)
+                if value is not None:
+                    return value
 
     # Override
     def put(self, remote: Optional[K], local: Optional[K], value: Optional[V]):
@@ -135,7 +137,9 @@ class WeakKeyPairMap(KeyPairMap[K, V], ABC):
             key2 = local
         table = self.__map.get(key1)
         if table is not None:
-            # assert isinstance(table, dict)
+            # del (remote, local)
+            # del (remote, None)
+            # del (None, local)
             return table.pop(key2, None)
 
 

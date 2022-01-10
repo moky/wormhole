@@ -72,9 +72,9 @@ class BaseMachine(Machine[C, T, S]):
 
     def __init__(self, default: str):
         super().__init__()
-        self.__default = default
-        self.__current: Optional[S] = None
-        self.__states: Dict[str, S] = {}   # name(str) => State
+        self.__default = default           # default state name
+        self.__current = None              # ref(current_state)
+        self.__states: Dict[str, S] = {}   # str(name) => State
         self.__delegate: Optional[weakref.ReferenceType] = None
         self.__status: Status = Status.STOPPED
 
@@ -93,12 +93,13 @@ class BaseMachine(Machine[C, T, S]):
 
     @property
     def context(self) -> C:
+        """ machine itself """
         raise NotImplemented
 
     #
     #   States
     #
-    def add_state(self, name: str, state: S):
+    def set_state(self, name: str, state: S):
         self.__states[name] = state
 
     def get_state(self, name: str) -> S:
@@ -109,12 +110,17 @@ class BaseMachine(Machine[C, T, S]):
         return self.__states.get(self.__default)
 
     @property  # Override
-    def current_state(self) -> S:
-        return self.__current
+    def current_state(self) -> Optional[S]:
+        ref = self.__current
+        if ref is not None:
+            return ref()
 
     @current_state.setter  # Override
     def current_state(self, state: S):
-        self.__current = state
+        if state is None:
+            self.__current = None
+        else:
+            self.__current = weakref.ref(state)
 
     # Override
     def target_state(self, transition: BaseTransition[C]) -> S:
@@ -122,8 +128,11 @@ class BaseMachine(Machine[C, T, S]):
 
     # Override
     def change_state(self, state: Optional[S]):
-        machine = self.context
         old = self.current_state
+        if old == state:
+            print('[FSM] state not change: %s' % state)
+            return False
+        machine = self.context
         delegate = self.delegate
         # events before state changed
         if delegate is not None:
@@ -137,6 +146,7 @@ class BaseMachine(Machine[C, T, S]):
             delegate.exit_state(old, machine)
         if old is not None:
             old.on_exit(machine)
+        return True
 
     #
     #   Actions
@@ -168,7 +178,7 @@ class BaseMachine(Machine[C, T, S]):
     def resume(self):
         machine = self.context
         current = self.current_state
-        # reuse state
+        # resume state
         self.__status = Status.RUNNING
         # events after state resumed
         delegate = self.delegate

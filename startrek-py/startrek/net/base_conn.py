@@ -105,6 +105,8 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property  # Override
     def alive(self) -> bool:
+        # sock = self.channel
+        # return sock is not None and sock.alive
         return self.opened and (self.connected or self.bound)
 
     # Override
@@ -115,7 +117,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     def __close_channel(self):
         sock = self._get_channel()
         if sock is not None:
-            self.__channel = None
+            self.__channel_ref = None
             hub = self.hub
             if hub is not None:
                 hub.close_channel(channel=sock)
