@@ -109,7 +109,8 @@ class ArrivalHall:
         failed_tasks: Set[Arrival] = set()
         now = int(time.time())
         # 1. seeking expired tasks
-        for ship in self.__arrivals:
+        arrivals = set(self.__arrivals)
+        for ship in arrivals:
             if ship.is_failed(now=now):
                 # task expired
                 failed_tasks.add(ship)
@@ -122,7 +123,8 @@ class ArrivalHall:
         # 3. seeking neglected finished times
         neglected_times = set()
         ago = now - 3600
-        for sn in self.__finished_times:
+        keys = set(self.__finished_times.keys())
+        for sn in keys:
             when = self.__finished_times.get(sn)
             if when is None or when < ago:
                 # long time ago

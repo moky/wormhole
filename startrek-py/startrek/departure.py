@@ -199,13 +199,15 @@ class DepartureHall:
         return task
 
     def __next_new_departure(self, now: int) -> Optional[Departure]:
-        for priority in self.__priorities:
+        priorities = list(self.__priorities)
+        for prior in priorities:
             # 1. get tasks with priority
-            fleet = self.__fleets.get(priority)
+            fleet = self.__fleets.get(prior)
             if fleet is None:
                 continue
             # 2. seeking new task in this priority
-            for ship in fleet:
+            departures = list(fleet)
+            for ship in departures:
                 if ship.retries == -1 and ship.update(now=now):
                     # first time to try, update and remove from the queue
                     fleet.remove(ship)
@@ -215,13 +217,15 @@ class DepartureHall:
                     return ship
 
     def __next_timeout_departure(self, now: int) -> Optional[Departure]:
-        for priority in self.__priorities:
+        priorities = list(self.__priorities)
+        for prior in priorities:
             # 1. get tasks with priority
-            fleet = self.__fleets.get(priority)
+            fleet = self.__fleets.get(prior)
             if fleet is None:
                 continue
             # 2. seeking timeout task in this priority
-            for ship in fleet:
+            departures = list(fleet)
+            for ship in departures:
                 if ship.is_timeout(now=now) and ship.update(now=now):
                     # respond time out, update and remove from the queue
                     fleet.remove(ship)
@@ -254,23 +258,26 @@ class DepartureHall:
         """ Clear all expired tasks """
         failed_tasks: Set[Departure] = set()
         now = int(time.time())
-        for priority in self.__priorities:
+        priorities = list(self.__priorities)
+        for prior in priorities:
             # 0. get tasks with priority
-            fleet = self.__fleets.get(priority)
+            fleet = self.__fleets.get(prior)
             if fleet is None:
                 continue
             # 1. seeking expired task in this priority
-            for ship in fleet:
+            departures = list(fleet)
+            for ship in departures:
                 if ship.is_failed(now=now):
                     # task expired
                     failed_tasks.add(ship)
             # 2. clear expired tasks
-            self.__clear(fleet=fleet, failed_tasks=failed_tasks, priority=priority)
+            self.__clear(fleet=fleet, failed_tasks=failed_tasks, priority=prior)
             failed_tasks.clear()
         # 3. seeking neglected finished times
         neglected_times = set()
         ago = now - 3600
-        for sn in self.__finished_times:
+        keys = set(self.__finished_times.keys())
+        for sn in keys:
             when = self.__finished_times.get(sn)
             if when is None or when < ago:
                 # long time ago

@@ -29,6 +29,7 @@
 # ==============================================================================
 
 import socket
+import traceback
 import weakref
 from abc import ABC, abstractmethod
 from typing import Optional, Set
@@ -171,16 +172,22 @@ class BaseHub(Hub, ABC):
     def _drive_channels(self, channels: Set[Channel]) -> int:
         count = 0
         for sock in channels:
-            if sock.alive and self._drive_channel(channel=sock):
-                # received data from this socket channel
-                count += 1
+            try:
+                if sock.alive and self._drive_channel(channel=sock):
+                    count += 1  # received data from this socket channel
+            except Exception as error:
+                print('[NET] drive channel error: %s, %s' % (error, sock))
+                traceback.print_exc()
         return count
 
     # noinspection PyMethodMayBeStatic
     def _drive_connections(self, connections: Set[Connection]):
         for conn in connections:
-            # drive connection to go on
-            conn.tick()
+            try:
+                conn.tick()  # drive connection to go on
+            except Exception as error:
+                print('[NET] drive connection error: %s, %s' % (error, conn))
+                traceback.print_exc()
             # NOTICE: let the delegate to decide whether close an error connection
             #         or just remove it.
 
@@ -209,12 +216,16 @@ class BaseHub(Hub, ABC):
 
     # Override
     def process(self) -> bool:
-        # 1. drive all channels to receive data
-        channels = self._all_channels()
-        count = self._drive_channels(channels=channels)
-        self._cleanup_channels(channels=channels)
-        # 2. drive all connections to move on
-        connections = self._all_connections()
-        self._drive_connections(connections=connections)
-        self._cleanup_connections(connections=connections)
-        return count > 0
+        try:
+            # 1. drive all channels to receive data
+            channels = self._all_channels()
+            count = self._drive_channels(channels=channels)
+            self._cleanup_channels(channels=channels)
+            # 2. drive all connections to move on
+            connections = self._all_connections()
+            self._drive_connections(connections=connections)
+            self._cleanup_connections(connections=connections)
+            return count > 0
+        except Exception as error:
+            print('[NET] hub process error: %s' % error)
+            traceback.print_exc()

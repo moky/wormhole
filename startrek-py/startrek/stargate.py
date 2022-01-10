@@ -28,6 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
+import traceback
 import weakref
 from abc import abstractmethod
 from typing import Optional, List, Set
@@ -100,21 +101,28 @@ class StarGate(Gate, ConnectionDelegate):
 
     # Override
     def process(self) -> bool:
-        dockers = self.__docker_pool.values
-        # 1. drive all dockers to process
-        count = self._drive_dockers(dockers=dockers)
-        # 2. cleanup for dockers
-        self._cleanup_dockers(dockers=dockers)
-        return count > 0
+        try:
+            dockers = self.__docker_pool.values
+            # 1. drive all dockers to process
+            count = self._drive_dockers(dockers=dockers)
+            # 2. cleanup for dockers
+            self._cleanup_dockers(dockers=dockers)
+            return count > 0
+        except Exception as error:
+            print('[NET] gate process error: %s' % error)
+            traceback.print_exc()
 
     # protected
     # noinspection PyMethodMayBeStatic
     def _drive_dockers(self, dockers: Set[Docker]) -> int:
         count = 0
         for worker in dockers:
-            if worker.process():
-                # it's busy
-                count += 1
+            try:
+                if worker.process():
+                    count += 1  # it's busy
+            except Exception as error:
+                print('[NET] drive docker error: %s, %s' % (error, worker))
+                traceback.print_exc()
         return count
 
     # protected

@@ -57,10 +57,9 @@ class StarDocker(AddressPairObject, Docker):
             - _check_arrival(ship)
     """
 
-    def __init__(self, remote: tuple, local: Optional[tuple], gate: Gate):
+    def __init__(self, remote: tuple, local: Optional[tuple]):
         super().__init__(remote=remote, local=local)
         self.__dock = self._create_dock()
-        self.__gate_ref = weakref.ref(gate)
         self.__conn_ref = None
         # remaining data to be sent
         self.__last_outgo: Optional[Departure] = None
@@ -73,10 +72,10 @@ class StarDocker(AddressPairObject, Docker):
 
     @property  # protected
     def gate(self) -> Gate:
-        return self.__gate_ref()
+        raise NotImplemented
 
     @property  # protected
-    def hub(self) -> Optional[Hub]:
+    def hub(self) -> Hub:
         raise NotImplemented
 
     @property  # Override
@@ -91,10 +90,8 @@ class StarDocker(AddressPairObject, Docker):
     def connection(self) -> Optional[Connection]:
         conn = self._get_connection()
         if conn is None:
-            gate = self.gate
-            if gate is not None:
-                conn = gate.get_connection(remote=self._remote, local=self._local)
-                self._set_connection(connection=conn)
+            conn = self.gate.get_connection(remote=self._remote, local=self._local)
+            self._set_connection(connection=conn)
         return conn
 
     def _get_connection(self) -> Optional[Connection]:
@@ -110,9 +107,7 @@ class StarDocker(AddressPairObject, Docker):
 
     @property  # Override
     def delegate(self) -> Optional[GateDelegate]:
-        gate = self.gate
-        if gate is not None:
-            return gate.delegate
+        return self.gate.delegate
 
     # Override
     def process(self) -> bool:
@@ -272,8 +267,6 @@ class StarDocker(AddressPairObject, Docker):
 
     # Override
     def close(self):
-        hub = self.hub
-        if hub is not None:
-            remote = self.remote_address
-            local = self.local_address
-            hub.disconnect(remote=remote, local=local)
+        remote = self.remote_address
+        local = self.local_address
+        self.hub.disconnect(remote=remote, local=local)
