@@ -82,6 +82,12 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         self.__bound = False
         self._refresh_flags(sock=sock)
 
+    def __del__(self):
+        # make sure the relative socket is removed
+        self._set_socket(sock=None)
+        self.__reader = None
+        self.__writer = None
+
     @property  # protected
     def reader(self) -> Reader:
         return self.__reader

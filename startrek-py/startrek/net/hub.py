@@ -58,7 +58,6 @@ class Hub(Processor, ABC):
         Close socket channel
 
         :param channel: socket channel
-        :return:
         """
         raise NotImplemented
 

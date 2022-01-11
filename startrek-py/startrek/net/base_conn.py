@@ -59,6 +59,11 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         # Finite State Machine
         self.__fsm = self._create_state_machine()
 
+    def __del__(self):
+        # make sure the relative channel is closed
+        self._set_channel(channel=None)
+        self.__fsm = None
+
     # protected
     def _create_state_machine(self) -> StateMachine:
         fsm = StateMachine(connection=self)
@@ -86,7 +91,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         # close old channel if exists
         old = self._get_channel()
         if old is not None and old is not channel:
-            old.close()
+            self.hub.close_channel(channel=old)
         # set new channel
         if channel is None:
             self.__channel_ref = None

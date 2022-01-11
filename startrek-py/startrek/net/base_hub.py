@@ -90,6 +90,12 @@ class BaseHub(Hub, ABC):
         return self.__connection_pool.values
 
     # Override
+    def close_channel(self, channel: Channel):
+        if channel.opened:
+            channel.close()
+            return True
+
+    # Override
     def connect(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
         conn = self.__connection_pool.get(remote=remote, local=local)
         if conn is not None:
@@ -154,7 +160,7 @@ class BaseHub(Hub, ABC):
             # print('[NET] failed to receive data: %s' % error)
             remote = channel.remote_address
             # socket error, close the channel
-            channel.close()
+            self.close_channel(channel=channel)
             # callback
             delegate = self.delegate
             if delegate is not None:

@@ -65,6 +65,11 @@ class StarDocker(AddressPairObject, Docker):
         self.__last_outgo: Optional[Departure] = None
         self.__last_fragments: List[bytes] = []
 
+    def __del__(self):
+        # make sure the relative connection is closed
+        self._set_connection(connection=None)
+        self.__dock = None
+
     # noinspection PyMethodMayBeStatic
     def _create_dock(self) -> Dock:
         """ Override for user-customized dock """
