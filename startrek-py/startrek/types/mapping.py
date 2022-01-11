@@ -173,10 +173,11 @@ class HashKeyPairMap(WeakKeyPairMap[K, V]):
         # clear cached value
         if value is not None and value is not old:
             self.__values.discard(value)
-        if old is None:
-            return value
-        else:
-            return old
+        # if old is None:
+        #     return value
+        # else:
+        #     return old
+        return value if old is None else old
 
 
 class AddressPairMap(HashKeyPairMap[tuple, V]):

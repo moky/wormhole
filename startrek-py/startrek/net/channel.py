@@ -237,3 +237,29 @@ def is_closed(sock: socket.socket) -> bool:
         return True
     else:
         return getattr(sock, '_closed', False)
+
+
+def sendall(data: bytes, sock: socket) -> int:
+    """ Return the number of bytes sent;
+        this may be less than len(data) if the network is busy. """
+    sent = 0
+    rest = len(data)
+    # assert rest > 0, 'cannot send empty data'
+    while True:  # not is_closed(sock=sock):
+        cnt = sock.send(data)
+        if cnt == 0:
+            # buffer overflow?
+            break
+        elif cnt < 0:
+            # socket error?
+            if sent == 0:
+                return -1
+            break
+        # something sent, check remaining data
+        sent += cnt
+        rest -= cnt
+        if rest > 0:
+            data = data[cnt:]
+        else:
+            break  # done!
+    return sent

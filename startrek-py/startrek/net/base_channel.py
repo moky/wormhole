@@ -29,12 +29,42 @@
 # ==============================================================================
 
 import socket
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Optional
 
 from ..types import AddressPairObject
+
+from .channel import get_local_address, get_remote_address
+from .channel import is_blocking, is_closed
 from .channel import Channel
-from .channel import get_local_address, get_remote_address, is_blocking, is_closed
+
+
+class Reader(ABC):
+    """ socket reader """
+
+    @abstractmethod
+    def read(self, max_len: int) -> Optional[bytes]:
+        """ read data from socket """
+        raise NotImplemented
+
+    @abstractmethod
+    def receive(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
+        """ receive data via socket, and return it with remote address """
+        raise NotImplemented
+
+
+class Writer(ABC):
+    """ socket writer """
+
+    @abstractmethod
+    def write(self, data: bytes) -> int:
+        """ write data into socket """
+        raise NotImplemented
+
+    @abstractmethod
+    def send(self, data: bytes, target: tuple) -> int:
+        """ send data via socket with remote address """
+        raise NotImplemented
 
 
 class BaseChannel(AddressPairObject, Channel, ABC):
@@ -42,12 +72,30 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     def __init__(self, remote: Optional[tuple], local: Optional[tuple], sock: socket.socket):
         super().__init__(remote=remote, local=local)
         self.__sock = sock
+        self.__reader = self._create_reader()
+        self.__writer = self._create_writer()
         # flags
         self.__blocking = False
         self.__opened = False
         self.__connected = False
         self.__bound = False
         self._refresh_flags()
+
+    @property  # protected
+    def reader(self) -> Reader:
+        return self.__reader
+
+    @property  # protected
+    def writer(self) -> Writer:
+        return self.__writer
+
+    @abstractmethod
+    def _create_reader(self) -> Reader:
+        raise NotImplemented
+
+    @abstractmethod
+    def _create_writer(self) -> Writer:
+        raise NotImplemented
 
     def _refresh_flags(self):
         sock = self.sock
@@ -143,115 +191,18 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         self.__connected = False
         self.__bound = False
 
-    #
-    #   Input/Output
-    #
-
     # Override
     def read(self, max_len: int) -> Optional[bytes]:
-        # check socket first
-        sock = self.sock
-        if sock is None:
-            raise socket.error('socket lost, cannot read data: %s' % self)
-        # try to receive data
-        try:
-            data = sock.recv(max_len)
-        except socket.error as error:
-            error = self._check_receiving_error(error=error)
-            if error is not None:
-                # connection lost?
-                raise error
-            # received nothing
-            return None
-        # check data
-        error = self._check_received_data(data=data)
-        if error is not None:
-            # connection lost!
-            raise error
-        # OK
-        return data
+        return self.reader.read(max_len=max_len)
 
     # Override
     def write(self, data: bytes) -> int:
-        # check socket first
-        sock = self.sock
-        if sock is None:
-            raise socket.error('socket lost, cannot write data (%d bytes): %s' % (len(data), self))
-        # try to send data
-        try:
-            # sent = sock.sendall(data)
-            return sendall(data=data, sock=sock)
-        except socket.error as error:
-            error = self._check_sending_error(error=error)
-            if error is not None:
-                # connection lost?
-                raise error
-            # buffer overflow!
-            return -1
+        return self.writer.write(data=data)
 
-    #
-    #   Check for socket errors
-    #
-    ResourceTemporarilyUnavailable = 'Resource temporarily unavailable'
+    # Override
+    def receive(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
+        return self.receive(max_len=max_len)
 
-    def _check_socket_error(self, error: socket.error) -> Optional[socket.error]:
-        # the socket will raise 'Resource temporarily unavailable'
-        # when received nothing in non-blocking mode,
-        # or buffer overflow while sending too many bytes,
-        # here we should ignore this exception.
-        if not self.blocking:
-            # if error.errno == socket.EAGAIN:
-            if error.strerror == self.ResourceTemporarilyUnavailable:
-                # ignore it
-                return None
-        # in blocking mode, the socket wil wait until sent/received data,
-        # but if timeout was set, it will raise 'timeout' error on timeout,
-        # here we should ignore this exception.
-        if isinstance(error, socket.timeout):
-            if self.sock.gettimeout() is not None:  # or not self.blocking:
-                # ignore it
-                return None
-        # print('[NET] socket error: %s' % error)
-        return error
-
-    def _check_sending_error(self, error: socket.error) -> Optional[socket.error]:
-        return self._check_socket_error(error=error)
-
-    def _check_receiving_error(self, error: socket.error) -> Optional[socket.error]:
-        return self._check_socket_error(error=error)
-
-    def _check_received_data(self, data: Optional[bytes]) -> Optional[socket.error]:
-        # in blocking mode, the socket will wait until received something,
-        # but if timeout was set, it will return None too, it's normal;
-        # otherwise, we know the connection was lost.
-        if data is None or len(data) == 0:
-            if self.sock.gettimeout() is None:  # and self.blocking:
-                # print('[NET] socket error: remote peer reset socket')
-                return socket.error('remote peer reset socket')
-
-
-def sendall(data: bytes, sock: socket) -> int:
-    """ Return the number of bytes sent;
-        this may be less than len(data) if the network is busy. """
-    sent = 0
-    rest = len(data)
-    assert rest > 0, 'cannot send empty data'
-    while True:  # not is_closed(sock=sock):
-        cnt = sock.send(data)
-        if cnt == 0:
-            # buffer overflow?
-            break
-        elif cnt < 0:
-            # socket error?
-            if sent == 0:
-                return -1
-            break
-        # something sent, check remaining data
-        sent += cnt
-        rest -= cnt
-        if rest > 0:
-            data = data[cnt:]
-        else:
-            # done!
-            break
-    return sent
+    # Override
+    def send(self, data: bytes, target: tuple) -> int:
+        return self.writer.send(data=data, target=target)

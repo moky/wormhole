@@ -200,6 +200,7 @@ class BaseHub(Hub, ABC):
         # 2. remove closed channels
         for sock in closed_channels:
             self.close_channel(channel=sock)
+        return closed_channels
 
     def _cleanup_connections(self, connections: Set[Connection]):
         # NOTICE: multi connections may share same channel (UDP Hub)
@@ -213,6 +214,7 @@ class BaseHub(Hub, ABC):
             remote = conn.remote_address
             local = conn.local_address
             self.disconnect(remote=remote, local=local, connection=conn)
+        return closed_connections
 
     # Override
     def process(self) -> bool:

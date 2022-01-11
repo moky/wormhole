@@ -68,6 +68,7 @@ from .state import ConnectionState, StateMachine as ConnectionStateMachine
 
 from .base_hub import BaseHub
 from .base_channel import BaseChannel
+from .base_cc import ChannelReader, ChannelWriter
 from .base_conn import BaseConnection
 from .active_conn import ActiveConnection
 
@@ -89,7 +90,7 @@ __all__ = [
     #   Base
     #
     'BaseHub',
-    'BaseChannel',
+    'BaseChannel', 'ChannelReader', 'ChannelWriter',
     'BaseConnection',
     'ActiveConnection',
 ]
