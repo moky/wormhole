@@ -29,6 +29,7 @@
 # ==============================================================================
 
 import socket
+import weakref
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -71,7 +72,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     def __init__(self, remote: Optional[tuple], local: Optional[tuple], sock: socket.socket):
         super().__init__(remote=remote, local=local)
-        self.__sock = sock
+        self.__sock_ref = weakref.ref(sock)
         self.__reader = self._create_reader()
         self.__writer = self._create_writer()
         # flags
@@ -112,7 +113,18 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     @property
     def sock(self) -> Optional[socket.socket]:
-        return self.__sock
+        return self._get_socket()
+
+    def _get_socket(self) -> Optional[socket.socket]:
+        ref = self.__sock_ref
+        if ref is not None:
+            return ref()
+
+    def _set_socket(self, sock: Optional[socket.socket]):
+        if sock is None:
+            self.__sock_ref = None
+        else:
+            self.__sock_ref = weakref.ref(sock)
 
     # Override
     def configure_blocking(self, blocking: bool):
@@ -159,7 +171,8 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         return sock
 
     # Override
-    def connect(self, address: Optional[tuple] = None, host: Optional[str] = '127.0.0.1', port: Optional[int] = 0):
+    def connect(self, address: Optional[tuple] = None,
+                host: Optional[str] = '127.0.0.1', port: Optional[int] = 0) -> socket.socket:
         if address is None:
             address = (host, port)
         sock = self.sock
@@ -174,17 +187,17 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     # Override
     def disconnect(self) -> Optional[socket.socket]:
-        sock = self.__sock
+        sock = self._get_socket()
         self.close()
         return sock
 
     # Override
     def close(self):
-        sock = self.__sock
+        sock = self._get_socket()
+        self._set_socket(sock=None)
         if sock is not None and not is_closed(sock=sock):
             # sock.shutdown(socket.SHUT_RDWR)
             sock.close()
-        self.__sock = None
         # update flags
         self.__blocking = False
         self.__opened = False
@@ -201,7 +214,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     # Override
     def receive(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
-        return self.receive(max_len=max_len)
+        return self.reader.receive(max_len=max_len)
 
     # Override
     def send(self, data: bytes, target: tuple) -> int:

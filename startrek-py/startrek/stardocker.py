@@ -99,7 +99,7 @@ class StarDocker(AddressPairObject, Docker):
         if ref is not None:
             return ref()
 
-    def _set_connection(self, connection: Connection):
+    def _set_connection(self, connection: Optional[Connection]):
         if connection is None:
             self.__conn_ref = None
         else:
@@ -267,6 +267,7 @@ class StarDocker(AddressPairObject, Docker):
 
     # Override
     def close(self):
-        remote = self.remote_address
-        local = self.local_address
-        self.hub.disconnect(remote=remote, local=local)
+        connection = self._get_connection()
+        self._set_connection(connection=None)
+        if connection is not None:
+            self.hub.disconnect(remote=self.remote_address, local=self.local_address, connection=connection)

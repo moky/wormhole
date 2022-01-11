@@ -75,13 +75,13 @@ class BaseHub(Hub, ABC):
         raise NotImplemented
 
     @abstractmethod  # protected
-    def _create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+    def _create_connection(self, channel: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         """
-        Create connection with sock channel & addresses
+        Create connection with channel channel & addresses
 
-        :param sock:   sock channel
-        :param remote: remote address
-        :param local:  local address
+        :param channel: channel channel
+        :param remote:  remote address
+        :param local:   local address
         :return: None on channel not exists
         """
         raise NotImplemented
@@ -101,11 +101,11 @@ class BaseHub(Hub, ABC):
                 return conn
             # local address not matched? ignore this connection
         # try to open channel with direction (remote, local)
-        sock = self.open_channel(remote=remote, local=local)
-        if sock is None or not sock.opened:
+        channel = self.open_channel(remote=remote, local=local)
+        if channel is None or not channel.opened:
             return None
         # create with channel
-        conn = self._create_connection(sock=sock, remote=remote, local=local)
+        conn = self._create_connection(channel=channel, remote=remote, local=local)
         if conn is not None:
             # NOTICE: local address in the connection may be set to None
             local = conn.local_address

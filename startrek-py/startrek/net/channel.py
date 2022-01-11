@@ -139,7 +139,8 @@ class Channel(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connect(self, address: Optional[tuple] = None, host: Optional[str] = '127.0.0.1', port: Optional[int] = 0):
+    def connect(self, address: Optional[tuple] = None,
+                host: Optional[str] = '127.0.0.1', port: Optional[int] = 0) -> socket.socket:
         """
         Connects this channel's socket.
 

@@ -91,6 +91,5 @@ __all__ = [
     #
     'BaseHub',
     'BaseChannel', 'ChannelReader', 'ChannelWriter',
-    'BaseConnection',
-    'ActiveConnection',
+    'BaseConnection', 'ActiveConnection',
 ]

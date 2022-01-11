@@ -82,7 +82,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         if ref is not None:
             return ref()
 
-    def _set_channel(self, channel: Channel):
+    def _set_channel(self, channel: Optional[Channel]):
         if channel is None:
             self.__channel_ref = None
         else:
@@ -90,23 +90,23 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property  # Override
     def opened(self) -> bool:
-        sock = self.channel
-        return sock is not None and sock.opened
+        channel = self.channel
+        return channel is not None and channel.opened
 
     @property  # Override
     def bound(self) -> bool:
-        sock = self.channel
-        return sock is not None and sock.bound
+        channel = self.channel
+        return channel is not None and channel.bound
 
     @property  # Override
     def connected(self) -> bool:
-        sock = self.channel
-        return sock is not None and sock.connected
+        channel = self.channel
+        return channel is not None and channel.connected
 
     @property  # Override
     def alive(self) -> bool:
-        # sock = self.channel
-        # return sock is not None and sock.alive
+        # channel = self.channel
+        # return channel is not None and channel.alive
         return self.opened and (self.connected or self.bound)
 
     # Override
@@ -115,12 +115,10 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         self.__fsm.stop()
 
     def __close_channel(self):
-        sock = self._get_channel()
-        if sock is not None:
-            self.__channel_ref = None
-            hub = self.hub
-            if hub is not None:
-                hub.close_channel(channel=sock)
+        channel = self._get_channel()
+        self._set_channel(channel=None)
+        if channel is not None:
+            self.hub.close_channel(channel=channel)
 
     @property  # Override
     def last_sent_time(self) -> int:
@@ -151,10 +149,10 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     # protected
     def _send(self, data: bytes, target: Optional[tuple]) -> int:
-        sock = self.channel
-        if sock is None or not sock.alive:
-            raise socket.error('socket channel lost: %s' % sock)
-        sent = sock.send(data=data, target=target)
+        channel = self.channel
+        if channel is None or not channel.alive:
+            raise socket.error('socket channel lost: %s' % channel)
+        sent = channel.send(data=data, target=target)
         if sent > 0:
             self.__last_sent_time = int(time.time())
         return sent
@@ -178,9 +176,9 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             # get local address as source
             source = self._local
             if source is None:
-                sock = self._get_channel()
-                if sock is not None:
-                    source = sock.local_address
+                channel = self._get_channel()
+                if channel is not None:
+                    source = channel.local_address
             if error is None:
                 if sent < len(data):
                     data = data[:sent]

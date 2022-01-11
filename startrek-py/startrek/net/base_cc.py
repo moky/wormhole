@@ -66,7 +66,7 @@ class Controller:
     def _check_sending_error(self, error: socket.error) -> Optional[socket.error]:
         return check_socket_error(sock=self.sock, error=error)
 
-    def _check_received_error(self, error: socket.error) -> Optional[socket.error]:
+    def _check_receiving_error(self, error: socket.error) -> Optional[socket.error]:
         return check_socket_error(sock=self.sock, error=error)
 
     def _check_received_data(self, data: Optional[bytes]) -> Optional[socket.error]:
@@ -80,7 +80,7 @@ class ChannelReader(Controller, Reader, ABC):
         try:
             data = self.sock.recv(max_len)
         except socket.error as error:
-            error = self._check_received_error(error=error)
+            error = self._check_receiving_error(error=error)
             if error is not None:
                 # connection lost?
                 raise error
