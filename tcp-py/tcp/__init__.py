@@ -31,7 +31,8 @@
 
 from startrek import Hub, Channel, Connection, ConnectionDelegate
 from startrek import ConnectionState, ConnectionStateMachine
-from startrek import BaseHub, BaseChannel, BaseConnection, ActiveConnection
+from startrek import BaseChannel, ChannelReader, ChannelWriter
+from startrek import BaseHub, BaseConnection, ActiveConnection
 
 from startrek import Ship, ShipDelegate, Arrival, Departure, DeparturePriority
 from startrek import Docker, Gate, GateStatus, GateDelegate
@@ -40,7 +41,7 @@ from startrek import ArrivalShip, ArrivalHall, DepartureShip, DepartureHall
 from startrek import Dock, LockedDock, StarDocker, StarGate
 
 from .startrek import PlainArrival, PlainDeparture, PlainDocker
-from .channel import StreamChannel
+from .channel import StreamChannel, StreamChannelReader, StreamChannelWriter
 from .hub import StreamHub, ServerHub, ClientHub
 
 name = "TCP"
@@ -51,7 +52,8 @@ __all__ = [
 
     'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
     'ConnectionState', 'ConnectionStateMachine',
-    'BaseHub', 'BaseChannel', 'BaseConnection', 'ActiveConnection',
+    'BaseChannel', 'ChannelReader', 'ChannelWriter',
+    'BaseHub', 'BaseConnection', 'ActiveConnection',
     'Ship', 'ShipDelegate', 'Arrival', 'Departure', 'DeparturePriority',
     'Docker', 'Gate', 'GateStatus', 'GateDelegate',
     'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
@@ -59,7 +61,6 @@ __all__ = [
 
     'PlainArrival', 'PlainDeparture', 'PlainDocker',
 
-    'StreamChannel',
-    'StreamHub',
-    'ServerHub', 'ClientHub',
+    'StreamChannel', 'StreamChannelReader', 'StreamChannelWriter',
+    'StreamHub', 'ServerHub', 'ClientHub',
 ]

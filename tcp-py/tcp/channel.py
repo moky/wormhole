@@ -27,14 +27,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ==============================================================================
-
+import socket
 from typing import Optional
 
-from startrek import BaseChannel
+from startrek import BaseChannel, ChannelReader, ChannelWriter
+from startrek.net.base_channel import Writer, Reader
 
 
-class StreamChannel(BaseChannel):
-    """ Stream Channel """
+class StreamChannelReader(ChannelReader):
 
     # Override
     def receive(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
@@ -42,12 +42,36 @@ class StreamChannel(BaseChannel):
         if data is None or len(data) == 0:
             return None, None
         else:
-            return data, self.remote_address
+            return data, self.channel.remote_address
+
+
+class StreamChannelWriter(ChannelWriter):
 
     # Override
     def send(self, data: bytes, target: tuple) -> int:
         # TCP channel will be always connected
         # so the target address must be the remote address
-        remote = self.remote_address
+        remote = self.channel.remote_address
         assert target is None or target == remote, 'target address error: %s, %s' % (target, remote)
         return self.write(data=data)
+
+
+class StreamChannel(BaseChannel):
+    """ Stream Channel """
+
+    def __init__(self, remote: Optional[tuple], local: Optional[tuple], sock: socket.socket):
+        super().__init__(remote=remote, local=local, sock=sock)
+        self.__sock = sock
+
+    # Override
+    def _set_socket(self, sock: Optional[socket.socket]):
+        super()._set_socket(sock=sock)
+        self.__sock = sock
+
+    # Override
+    def _create_reader(self) -> Reader:
+        return StreamChannelReader(channel=self)
+
+    # Override
+    def _create_writer(self) -> Writer:
+        return StreamChannelWriter(channel=self)

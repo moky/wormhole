@@ -76,16 +76,21 @@ class StreamHub(BaseHub, ABC):
             return False
 
     def __remove_channel(self, channel: Channel):
+        # remove by key
         remote = channel.remote_address
-        if self.__channels.pop(remote, None) == channel:
-            # removed by key
+        if self.__channels.get(remote) is channel:
+            self.__channels.pop(remote)
+            if len(self.__channels) == 0:
+                self.__channels = {}
             return True
         # remove by value
         keys = set(self.__channels.keys())
         for address in keys:
-            if self.__channels.get(address) == channel:
-                self.__channels.pop(address, None)
-                return True
+            if self.__channels.get(address) is channel:
+                self.__channels.pop(address)
+                if len(self.__channels) == 0:
+                    self.__channels = {}
+        return True
 
 
 class ServerHub(StreamHub, Runnable):
@@ -105,9 +110,9 @@ class ServerHub(StreamHub, Runnable):
         return self.__running
 
     # Override
-    def _create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+    def _create_connection(self, channel: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         gate = self.delegate
-        conn = BaseConnection(remote=remote, local=None, channel=sock, delegate=gate, hub=self)
+        conn = BaseConnection(remote=remote, local=None, channel=channel, delegate=gate, hub=self)
         conn.start()  # start FSM
         return conn
 
@@ -150,22 +155,25 @@ class ServerHub(StreamHub, Runnable):
         while self.running:
             try:
                 sock, address = self.__master.accept()
-                if sock is not None:
-                    channel = StreamChannel(sock=sock, remote=address, local=self.__local_address)
-                    self.put_channel(channel=channel)
+                self.__create_channel(sock=sock, remote=address, local=self.__local_address)
             except socket.error as error:
                 print('[TCP] socket error: %s' % error)
             except Exception as error:
                 print('[TCP] accept error: %s' % error)
+
+    def __create_channel(self, sock: socket.socket, remote: tuple, local: tuple):
+        assert sock is not None, 'socket error: %s, %s' % (remote, local)
+        channel = StreamChannel(sock=sock, remote=remote, local=local)
+        self.put_channel(channel=channel)
 
 
 class ClientHub(StreamHub):
     """ Stream Client Hub """
 
     # Override
-    def _create_connection(self, sock: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+    def _create_connection(self, channel: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         gate = self.delegate
-        conn = ActiveConnection(remote=remote, local=None, channel=sock, delegate=gate, hub=self)
+        conn = ActiveConnection(remote=remote, local=None, channel=channel, delegate=gate, hub=self)
         conn.start()  # start FSM
         return conn
 
