@@ -34,7 +34,7 @@ from abc import abstractmethod
 from typing import Optional, List
 
 from .types import AddressPairObject
-from .net import Connection, Hub
+from .net import Connection
 from .port import Arrival, Departure
 from .port import Docker, Gate, GateDelegate
 
@@ -75,18 +75,10 @@ class StarDocker(AddressPairObject, Docker):
         raise NotImplemented
 
     @property  # protected
-    def hub(self) -> Hub:
-        raise NotImplemented
+    def delegate(self) -> Optional[GateDelegate]:
+        return self.gate.delegate
 
-    @property  # Override
-    def remote_address(self) -> tuple:  # (str, int)
-        return self._remote
-
-    @property  # Override
-    def local_address(self) -> Optional[tuple]:  # (str, int)
-        return self._local
-
-    @property  # Override
+    @property  # protected
     def connection(self) -> Optional[Connection]:
         conn = self._get_connection()
         if conn is None:
@@ -100,23 +92,32 @@ class StarDocker(AddressPairObject, Docker):
             return ref()
 
     def _set_connection(self, connection: Optional[Connection]):
+        # close old connection if exists
+        old = self._get_connection()
+        if old is not None and old is not connection:
+            old.close()
+        # set new connection
         if connection is None:
             self.__conn_ref = None
         else:
             self.__conn_ref = weakref.ref(connection)
 
     @property  # Override
-    def delegate(self) -> Optional[GateDelegate]:
-        return self.gate.delegate
+    def alive(self) -> bool:
+        conn = self.connection
+        return conn is not None and conn.alive
+
+    @property  # Override
+    def remote_address(self) -> tuple:  # (str, int)
+        return self._remote
+
+    @property  # Override
+    def local_address(self) -> Optional[tuple]:  # (str, int)
+        return self._local
 
     # Override
     def process(self) -> bool:
-        # 1. get connection which is ready for sending data
-        conn = self.connection
-        if conn is None or not conn.alive:
-            # connection not ready now
-            return False
-        # 2. get data to be sent
+        # get data to be sent
         if len(self.__last_fragments) > 0:
             # get remaining fragments from last outgo task
             outgo = self.__last_outgo
@@ -133,7 +134,7 @@ class StarDocker(AddressPairObject, Docker):
             elif outgo.is_failed(now=now):
                 # task timeout, return True to process next one
                 error = TimeoutError('Request timeout')
-                self.__on_error(error=error, ship=outgo, connection=conn)
+                self.__on_error(error=error, ship=outgo, connection=self.connection)
                 return True
             else:
                 # get fragments from outgo task
@@ -142,10 +143,12 @@ class StarDocker(AddressPairObject, Docker):
                     # all fragments of this task have been sent already
                     # return True to process next one
                     return True
-        # 3. process fragments of outgo task
+        # process fragments of outgo task
+        conn = None
         index = 0
         sent = 0
         try:
+            conn = self.connection
             remote_address = self.remote_address
             for fra in fragments:
                 sent = conn.send(data=fra, target=remote_address)
@@ -206,7 +209,7 @@ class StarDocker(AddressPairObject, Docker):
             conn = self.connection
             delegate.gate_received(ship=income, source=remote, destination=local, connection=conn)
 
-    @abstractmethod
+    @abstractmethod  # protected
     def _get_arrival(self, data: bytes) -> Optional[Arrival]:
         """
         Get income ship from received data
@@ -216,7 +219,7 @@ class StarDocker(AddressPairObject, Docker):
         """
         raise NotImplemented
 
-    @abstractmethod
+    @abstractmethod  # protected
     def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:
         """
         Check income ship for responding
@@ -267,7 +270,4 @@ class StarDocker(AddressPairObject, Docker):
 
     # Override
     def close(self):
-        connection = self._get_connection()
         self._set_connection(connection=None)
-        if connection is not None:
-            self.hub.disconnect(remote=self.remote_address, local=self.local_address, connection=connection)

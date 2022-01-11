@@ -28,8 +28,9 @@
 # SOFTWARE.
 # ==============================================================================
 
+import socket
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Union
 
 from .connection import Connection
 from .state import ConnectionState
@@ -74,12 +75,12 @@ class ConnectionDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connection_error(self, error: ConnectionError, data: Optional[bytes],
+    def connection_error(self, error: Union[IOError, socket.error], data: Optional[bytes],
                          source: Optional[tuple], destination: Optional[tuple], connection: Optional[Connection]):
         """
         Called when connection error
 
-        :param error:       error message
+        :param error:       connection error
         :param data:        outgoing data package
         :param source:      local address
         :param destination: remote address

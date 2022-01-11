@@ -80,7 +80,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         self.__opened = False
         self.__connected = False
         self.__bound = False
-        self._refresh_flags()
+        self._refresh_flags(sock=sock)
 
     @property  # protected
     def reader(self) -> Reader:
@@ -98,8 +98,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     def _create_writer(self) -> Writer:
         raise NotImplemented
 
-    def _refresh_flags(self):
-        sock = self.sock
+    def _refresh_flags(self, sock: Optional[socket.socket]):
         if sock is None:
             self.__blocking = False
             self.__opened = False
@@ -125,6 +124,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             self.__sock_ref = None
         else:
             self.__sock_ref = weakref.ref(sock)
+        self._refresh_flags(sock=sock)
 
     # Override
     def configure_blocking(self, blocking: bool):
@@ -188,21 +188,13 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     # Override
     def disconnect(self) -> Optional[socket.socket]:
         sock = self._get_socket()
-        self.close()
+        self._set_socket(sock=None)
         return sock
 
     # Override
     def close(self):
-        sock = self._get_socket()
+        # set socket to None will refresh flags
         self._set_socket(sock=None)
-        if sock is not None and not is_closed(sock=sock):
-            # sock.shutdown(socket.SHUT_RDWR)
-            sock.close()
-        # update flags
-        self.__blocking = False
-        self.__opened = False
-        self.__connected = False
-        self.__bound = False
 
     # Override
     def read(self, max_len: int) -> Optional[bytes]:

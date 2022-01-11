@@ -45,6 +45,11 @@ class Docker(Processor):
     """
 
     @property
+    def alive(self) -> bool:
+        """ Connection alive """
+        raise NotImplemented
+
+    @property
     def remote_address(self) -> tuple:
         """ Remote address of connection """
         raise NotImplemented
@@ -55,14 +60,11 @@ class Docker(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def pack(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> Departure:
+    def process_received(self, data: bytes):
         """
-        Pack the payload to an outgo Ship
+        Called when received data
 
-        :param payload:  request data
-        :param priority: smaller is faster (-1 is the most fast)
-        :param delegate: callback handler for the departure ship
-        :return: Departure ship carrying package with payload
+        :param data: received data package
         """
         raise NotImplemented
 
@@ -77,11 +79,14 @@ class Docker(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def process_received(self, data: bytes):
+    def pack(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> Departure:
         """
-        Called when received data
+        Pack the payload to an outgo Ship
 
-        :param data: received data package
+        :param payload:  request data
+        :param priority: smaller is faster (-1 is the most fast)
+        :param delegate: callback handler for the departure ship
+        :return: Departure ship carrying package with payload
         """
         raise NotImplemented
 

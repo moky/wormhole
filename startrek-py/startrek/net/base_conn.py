@@ -83,6 +83,11 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             return ref()
 
     def _set_channel(self, channel: Optional[Channel]):
+        # close old channel if exists
+        old = self._get_channel()
+        if old is not None and old is not channel:
+            old.close()
+        # set new channel
         if channel is None:
             self.__channel_ref = None
         else:
@@ -111,14 +116,8 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     # Override
     def close(self):
-        self.__close_channel()
-        self.__fsm.stop()
-
-    def __close_channel(self):
-        channel = self._get_channel()
         self._set_channel(channel=None)
-        if channel is not None:
-            self.hub.close_channel(channel=channel)
+        self.__fsm.stop()
 
     @property  # Override
     def last_sent_time(self) -> int:
@@ -166,10 +165,10 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             sent = self._send(data=data, target=target)
             if sent <= 0:  # == -1:
                 error = ConnectionError('failed to send: %d byte(s) to %s' % (len(data), target))
-                # self.__close_channel()
         except socket.error as e:
             error = e
-            self.__close_channel()
+            # socket error, close the channel
+            self._set_channel(channel=None)
         # callback
         delegate = self.delegate
         if delegate is not None:
@@ -204,7 +203,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         self.__fsm.start()
 
     def stop(self):
-        self.__close_channel()
+        self._set_channel(channel=None)
         self.__fsm.stop()
 
     #

@@ -153,8 +153,8 @@ class BaseHub(Hub, ABC):
         except socket.error as error:
             # print('[NET] failed to receive data: %s' % error)
             remote = channel.remote_address
-            # socket error, remove the channel
-            self.close_channel(channel=channel)
+            # socket error, close the channel
+            channel.close()
             # callback
             delegate = self.delegate
             if delegate is not None:
@@ -180,13 +180,12 @@ class BaseHub(Hub, ABC):
                 traceback.print_exc()
         return count
 
-    # noinspection PyMethodMayBeStatic
     def _drive_connections(self, connections: Set[Connection]):
         for conn in connections:
             try:
                 conn.tick()  # drive connection to go on
             except Exception as error:
-                print('[NET] drive connection error: %s, %s' % (error, conn))
+                print('[NET] drive connection error: %s, %s, %s' % (error, conn, self))
                 traceback.print_exc()
             # NOTICE: let the delegate to decide whether close an error connection
             #         or just remove it.
@@ -222,10 +221,11 @@ class BaseHub(Hub, ABC):
             # 1. drive all channels to receive data
             channels = self._all_channels()
             count = self._drive_channels(channels=channels)
-            self._cleanup_channels(channels=channels)
             # 2. drive all connections to move on
             connections = self._all_connections()
             self._drive_connections(connections=connections)
+            # 3. cleanup closed channels and connections
+            self._cleanup_channels(channels=channels)
             self._cleanup_connections(connections=connections)
             return count > 0
         except Exception as error:
