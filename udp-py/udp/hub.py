@@ -58,8 +58,13 @@ class PackageHub(BaseHub, ABC):
             sock.setblocking(True)
             sock.bind(address)
             sock.setblocking(False)
-            channel = PackageChannel(sock=sock, remote=None, local=address)
+            channel = self._create_channel(remote=None, local=address, sock=sock)
             self._set_channel(channel=channel)
+
+    # noinspection PyMethodMayBeStatic
+    def _create_channel(self, remote: Optional[tuple], local: Optional[tuple], sock: socket.socket) -> Channel:
+        # override for user-customized channel
+        return PackageChannel(remote=remote, local=local, sock=sock)
 
     def put_channel(self, channel: Channel):
         self._set_channel(channel=channel)

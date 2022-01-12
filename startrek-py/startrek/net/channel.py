@@ -204,8 +204,6 @@ class Channel(ABC):
 
 
 def get_local_address(sock: socket.socket) -> Optional[tuple]:
-    if sock is None:
-        return None
     try:
         return sock.getsockname()
     except socket.error:
@@ -214,8 +212,6 @@ def get_local_address(sock: socket.socket) -> Optional[tuple]:
 
 
 def get_remote_address(sock: socket.socket) -> Optional[tuple]:
-    if sock is None:
-        return None
     try:
         return sock.getpeername()
     except socket.error:
@@ -224,8 +220,6 @@ def get_remote_address(sock: socket.socket) -> Optional[tuple]:
 
 
 def is_blocking(sock: socket.socket) -> bool:
-    if sock is None:
-        return False
     try:
         return sock.getblocking()
     except socket.error:
@@ -234,15 +228,11 @@ def is_blocking(sock: socket.socket) -> bool:
 
 
 def is_closed(sock: socket.socket) -> bool:
-    if sock is None:
-        return True
-    else:
-        return getattr(sock, '_closed', False)
+    return getattr(sock, '_closed', False)
 
 
 def is_opened(sock: socket.socket) -> bool:
-    if sock is not None:
-        return not getattr(sock, '_closed', False)
+    return not getattr(sock, '_closed', False)
 
 
 def is_connected(sock: socket.socket) -> bool:
