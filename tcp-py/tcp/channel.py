@@ -27,11 +27,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ==============================================================================
+
 import socket
 from typing import Optional
 
+from startrek.net.channel import is_opened
 from startrek import BaseChannel, ChannelReader, ChannelWriter
-from startrek.net.base_channel import Writer, Reader
 
 
 class StreamChannelReader(ChannelReader):
@@ -69,9 +70,15 @@ class StreamChannel(BaseChannel):
         self.__sock = sock
 
     # Override
-    def _create_reader(self) -> Reader:
+    def _close_socket(self, sock: socket.socket):
+        if is_opened(sock=sock):
+            # sock.shutdown(socket.SHUT_RDWR)
+            sock.close()
+
+    # Override
+    def _create_reader(self):
         return StreamChannelReader(channel=self)
 
     # Override
-    def _create_writer(self) -> Writer:
+    def _create_writer(self):
         return StreamChannelWriter(channel=self)

@@ -35,8 +35,7 @@ from typing import Optional
 
 from ..types import AddressPairObject
 
-from .channel import get_local_address, get_remote_address
-from .channel import is_blocking, is_closed
+from .channel import is_blocking, is_opened, is_connected, is_bound
 from .channel import Channel
 
 
@@ -112,9 +111,9 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             self.__bound = False
         else:
             self.__blocking = is_blocking(sock=sock)
-            self.__opened = not is_closed(sock=sock)
-            self.__connected = get_remote_address(sock=sock) is not None
-            self.__bound = get_local_address(sock=sock) is not None
+            self.__opened = is_opened(sock=sock)
+            self.__connected = is_connected(sock=sock)
+            self.__bound = is_bound(sock=sock)
 
     @property
     def sock(self) -> Optional[socket.socket]:

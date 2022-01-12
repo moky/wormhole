@@ -240,13 +240,26 @@ def is_closed(sock: socket.socket) -> bool:
         return getattr(sock, '_closed', False)
 
 
+def is_opened(sock: socket.socket) -> bool:
+    if sock is not None:
+        return not getattr(sock, '_closed', False)
+
+
+def is_connected(sock: socket.socket) -> bool:
+    return get_remote_address(sock=sock) is not None
+
+
+def is_bound(sock: socket.socket) -> bool:
+    return get_local_address(sock=sock) is not None
+
+
 def sendall(data: bytes, sock: socket) -> int:
     """ Return the number of bytes sent;
         this may be less than len(data) if the network is busy. """
     sent = 0
     rest = len(data)
     # assert rest > 0, 'cannot send empty data'
-    while True:  # not is_closed(sock=sock):
+    while True:  # is_opened(sock=sock):
         cnt = sock.send(data)
         if cnt == 0:
             # buffer overflow?

@@ -122,7 +122,7 @@ class BaseHub(Hub, ABC):
 
     # noinspection PyMethodMayBeStatic
     def _close_connection(self, connection: Connection):
-        if not connection.opened:
+        if connection.opened:
             connection.close()
 
     # Override

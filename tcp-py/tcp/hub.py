@@ -31,9 +31,10 @@
 import socket
 from abc import ABC
 from threading import Thread
-from typing import Optional, Set, Dict
+from typing import Optional, Set
 
 from startrek.fsm import Runnable
+from startrek.types import AddressPairMap
 from startrek import Channel
 from startrek import Connection, ConnectionDelegate
 from startrek import BaseConnection, ActiveConnection
@@ -46,51 +47,44 @@ class StreamHub(BaseHub, ABC):
 
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__(delegate=delegate)
-        # remote => channel
-        self.__channels: Dict[tuple, Channel] = {}
+        self.__channel_pool: AddressPairMap[Channel] = AddressPairMap()
 
     def put_channel(self, channel: Channel):
-        remote = channel.remote_address
-        self.__channels[remote] = channel
+        self._set_channel(channel=channel)
 
     # Override
     def _all_channels(self) -> Set[Channel]:
-        return set(self.__channels.values())
+        return self.__channel_pool.items
 
-    # Override
-    def open_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
-        assert remote is not None, 'remote address empty'
-        return self.__channels.get(remote)
+    def _get_channel(self, remote: Optional[tuple]) -> Optional[Channel]:
+        return self.__channel_pool.get(remote=remote, local=None)
 
-    # Override
-    def close_channel(self, channel: Channel):
-        if channel is None:
-            return False
-        else:
-            self.__remove_channel(channel=channel)
-        try:
-            if channel.opened:
-                channel.close()
-            return True
-        except socket.error:
-            return False
-
-    def __remove_channel(self, channel: Channel):
-        # remove by key
+    def _set_channel(self, channel: Channel):
         remote = channel.remote_address
-        if self.__channels.get(remote) is channel:
-            self.__channels.pop(remote)
-            if len(self.__channels) == 0:
-                self.__channels = {}
-            return True
-        # remove by value
-        keys = set(self.__channels.keys())
-        for address in keys:
-            if self.__channels.get(address) is channel:
-                self.__channels.pop(address)
-                if len(self.__channels) == 0:
-                    self.__channels = {}
-        return True
+        # check old channel
+        old = self.__channel_pool.get(remote=remote, local=None)
+        if old is not None and old is not channel:
+            self._close_channel(channel=old)
+        # set new channel
+        self.__channel_pool.set(remote=remote, local=None, item=channel)
+
+    # Override
+    def _remove_channel(self, channel: Channel):
+        remote = channel.remote_address
+        old = self.__channel_pool.remove(remote=remote, local=None, item=channel)
+        if old is not None and old is not channel:
+            # should not happen
+            self._close_channel(channel=old)
+
+    # noinspection PyMethodMayBeStatic
+    def _close_channel(self, channel: Channel):
+        if channel.opened:
+            channel.close()
+
+    # Override
+    def open(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
+        assert remote is not None, 'remote address empty: %s, %s' % (remote, local)
+        return self._get_channel(remote=remote)
 
 
 class ServerHub(StreamHub, Runnable):
@@ -134,9 +128,10 @@ class ServerHub(StreamHub, Runnable):
     def start(self):
         self.__force_stop()
         self.__running = True
-        t = Thread(target=self.run, daemon=self.__daemon)
-        self.__thread = t
-        t.start()
+        thr = Thread(target=self.run, daemon=self.__daemon)
+        self.__thread = thr
+        thr.start()
+        return thr
 
     def __force_stop(self):
         self.__running = False
@@ -155,16 +150,17 @@ class ServerHub(StreamHub, Runnable):
         while self.running:
             try:
                 sock, address = self.__master.accept()
-                self.__create_channel(sock=sock, remote=address, local=self.__local_address)
+                self.__accept(sock=sock, remote=address, local=self.__local_address)
             except socket.error as error:
                 print('[TCP] socket error: %s' % error)
             except Exception as error:
                 print('[TCP] accept error: %s' % error)
 
-    def __create_channel(self, sock: socket.socket, remote: tuple, local: tuple):
+    def __accept(self, sock: socket.socket, remote: tuple, local: tuple):
         assert sock is not None, 'socket error: %s, %s' % (remote, local)
         channel = StreamChannel(sock=sock, remote=remote, local=local)
         self.put_channel(channel=channel)
+        # self.connect(remote=remote, local=local)
 
 
 class ClientHub(StreamHub):
@@ -178,8 +174,8 @@ class ClientHub(StreamHub):
         return conn
 
     # Override
-    def open_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
-        channel = super().open_channel(remote=remote, local=local)
+    def open(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
+        channel = super().open(remote=remote, local=local)
         if channel is None:  # and remote is not None:
             channel = create_channel(remote=remote, local=local)
             if channel is not None:

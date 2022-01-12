@@ -100,7 +100,7 @@ class StarGate(Gate, ConnectionDelegate):
 
     # noinspection PyMethodMayBeStatic
     def _close_docker(self, docker: Docker):
-        if not docker.alive:
+        if docker.alive:
             docker.close()
 
     # Override
