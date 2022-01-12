@@ -97,15 +97,20 @@ class StarDocker(AddressPairObject, Docker):
             return ref()
 
     def _set_connection(self, connection: Optional[Connection]):
-        # close old connection if exists
+        # check old connection
         old = self._get_connection()
         if old is not None and old is not connection:
-            old.close()
+            self._close_connection(connection=old)
         # set new connection
         if connection is None:
             self.__conn_ref = None
         else:
             self.__conn_ref = weakref.ref(connection)
+
+    # noinspection PyMethodMayBeStatic
+    def _close_connection(self, connection: Connection):
+        if connection.opened:
+            connection.close()
 
     @property  # Override
     def alive(self) -> bool:
@@ -214,7 +219,7 @@ class StarDocker(AddressPairObject, Docker):
             conn = self.connection
             delegate.gate_received(ship=income, source=remote, destination=local, connection=conn)
 
-    @abstractmethod  # protected
+    @abstractmethod
     def _get_arrival(self, data: bytes) -> Optional[Arrival]:
         """
         Get income ship from received data
@@ -224,7 +229,7 @@ class StarDocker(AddressPairObject, Docker):
         """
         raise NotImplemented
 
-    @abstractmethod  # protected
+    @abstractmethod
     def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:
         """
         Check income ship for responding
@@ -234,7 +239,6 @@ class StarDocker(AddressPairObject, Docker):
         """
         raise NotImplemented
 
-    # protected
     def _check_response(self, ship: Arrival) -> Optional[Departure]:
         """ Check and remove linked departure ship with same SN (and page index for fragment) """
         # check response for linked departure ship (same SN)
@@ -251,12 +255,10 @@ class StarDocker(AddressPairObject, Docker):
             delegate.gate_sent(ship=linked, source=local, destination=remote, connection=conn)
         return linked
 
-    # protected
     def _assemble_arrival(self, ship: Arrival) -> Optional[Arrival]:
         """ Check received ship for completed package """
         return self.__dock.assemble_arrival(ship=ship)
 
-    # protected
     def _next_departure(self, now: int) -> Optional[Departure]:
         """ Get outgo ship from waiting queue """
         # this will be remove from the queue,

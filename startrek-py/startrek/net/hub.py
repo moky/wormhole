@@ -42,22 +42,13 @@ class Hub(Processor, ABC):
     """ Connections & Channels Container """
 
     @abstractmethod
-    def open_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
+    def open(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
         """
         Open a channel with direction (remote, local)
 
         :param remote: remote address to connected
         :param local:  local address to bound
         :return: None on socket error
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def close_channel(self, channel: Channel):
-        """
-        Close socket channel
-
-        :param channel: socket channel
         """
         raise NotImplemented
 
@@ -69,19 +60,6 @@ class Hub(Processor, ABC):
         :param remote: remote address
         :param local:  local address
         :return: None on channel not opened
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def disconnect(self, remote: tuple = None, local: Optional[tuple] = None,
-                   connection: Connection = None) -> Optional[Connection]:
-        """
-        Close connection
-
-        :param remote: remote address
-        :param local:  local address
-        :param connection: closing connection
-        :return: closed connection
         """
         raise NotImplemented
 

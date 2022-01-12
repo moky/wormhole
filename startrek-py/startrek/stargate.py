@@ -61,7 +61,7 @@ class StarGate(Gate, ConnectionDelegate):
     def delegate(self) -> Optional[GateDelegate]:
         return self.__delegate()
 
-    @abstractmethod  # protected
+    @abstractmethod
     def _create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
         """
         Create new docker for received data
@@ -73,19 +73,35 @@ class StarGate(Gate, ConnectionDelegate):
         """
         raise NotImplemented
 
-    # protected
-    def _remove_docker(self, remote: tuple, local: Optional[tuple], docker: Optional[Docker]):
-        docker = self.__docker_pool.remove(remote=remote, local=local, value=docker)
-        if docker is not None:
-            docker.close()
-
-    def _put_docker(self, docker: Docker):
-        remote = docker.remote_address
-        local = docker.local_address
-        self.__docker_pool.put(remote=remote, local=local, value=docker)
+    def _all_dockers(self) -> Set[Docker]:
+        """ Get a copy of dockers """
+        return self.__docker_pool.items
 
     def _get_docker(self, remote: tuple, local: Optional[tuple]):
         return self.__docker_pool.get(remote=remote, local=local)
+
+    def _set_docker(self, docker: Docker):
+        remote = docker.remote_address
+        local = docker.local_address
+        # check old docker
+        old = self.__docker_pool.get(remote=remote, local=local)
+        if old is not None and old is not docker:
+            self._close_docker(docker=old)
+        # set new docker
+        self.__docker_pool.set(remote=remote, local=local, item=docker)
+
+    def _remove_docker(self, docker: Docker):
+        remote = docker.remote_address
+        local = docker.local_address
+        old = self.__docker_pool.remove(remote=remote, local=local, item=docker)
+        if old is not None and old is not docker:
+            # should not happen
+            self._close_docker(docker=old)
+
+    # noinspection PyMethodMayBeStatic
+    def _close_docker(self, docker: Docker):
+        if not docker.alive:
+            docker.close()
 
     # Override
     def gate_status(self, remote: tuple, local: Optional[tuple]) -> GateStatus:
@@ -102,7 +118,7 @@ class StarGate(Gate, ConnectionDelegate):
     # Override
     def process(self) -> bool:
         try:
-            dockers = self.__docker_pool.values
+            dockers = self._all_dockers()
             # 1. drive all dockers to process
             count = self._drive_dockers(dockers=dockers)
             # 2. cleanup for dockers
@@ -112,7 +128,6 @@ class StarGate(Gate, ConnectionDelegate):
             print('[NET] gate process error: %s' % error)
             traceback.print_exc()
 
-    # protected
     def _drive_dockers(self, dockers: Set[Docker]) -> int:
         count = 0
         for worker in dockers:
@@ -124,7 +139,6 @@ class StarGate(Gate, ConnectionDelegate):
                 traceback.print_exc()
         return count
 
-    # protected
     def _cleanup_dockers(self, dockers: Set[Docker]):
         retired_dockers = set()
         # 1. check docker which connection lost
@@ -136,12 +150,9 @@ class StarGate(Gate, ConnectionDelegate):
                 retired_dockers.add(worker)
         # 2. remove docker which connection lost
         for worker in retired_dockers:
-            remote = worker.remote_address
-            local = worker.local_address
-            self._remove_docker(remote=remote, local=local, docker=worker)
+            self._remove_docker(docker=worker)
         return retired_dockers
 
-    # protected
     def _heartbeat(self, connection: Connection):
         remote = connection.remote_address
         local = connection.local_address
@@ -182,14 +193,14 @@ class StarGate(Gate, ConnectionDelegate):
         worker = self._create_docker(remote=source, local=destination, advance_party=party)
         if worker is not None:
             # cache docker for (remote, local)
-            self._put_docker(docker=worker)
+            self._set_docker(docker=worker)
             # process advance parties one by one
             for item in party:
                 worker.process_received(data=item)
             # remove advance party
             self._clear_advance_party(source=source, destination=destination, connection=connection)
 
-    @abstractmethod  # protected
+    @abstractmethod
     def _cache_advance_party(self, data: bytes, source: tuple, destination: Optional[tuple],
                              connection: Connection) -> List[bytes]:
         """
@@ -203,7 +214,7 @@ class StarGate(Gate, ConnectionDelegate):
         """
         raise NotImplemented
 
-    @abstractmethod  # protected
+    @abstractmethod
     def _clear_advance_party(self, source: tuple, destination: Optional[tuple], connection: Connection):
         """
         Clear all advance parties after docker created

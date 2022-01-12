@@ -65,7 +65,7 @@ class BaseHub(Hub, ABC):
     def delegate(self) -> ConnectionDelegate:
         return self.__delegate()
 
-    @abstractmethod  # protected
+    @abstractmethod
     def _all_channels(self) -> Set[Channel]:
         """
         Get all channels
@@ -74,7 +74,16 @@ class BaseHub(Hub, ABC):
         """
         raise NotImplemented
 
-    @abstractmethod  # protected
+    @abstractmethod
+    def _remove_channel(self, channel: Channel):
+        """
+        Remove socket channel
+
+        :param channel: socket channel
+        """
+        raise NotImplemented
+
+    @abstractmethod
     def _create_connection(self, channel: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         """
         Create connection with channel channel & addresses
@@ -87,17 +96,38 @@ class BaseHub(Hub, ABC):
         raise NotImplemented
 
     def _all_connections(self) -> Set[Connection]:
-        return self.__connection_pool.values
+        """ Get a copy of connections """
+        return self.__connection_pool.items
 
-    # Override
-    def close_channel(self, channel: Channel):
-        if channel.opened:
-            channel.close()
-            return True
+    def _get_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Connection]:
+        return self.__connection_pool.get(remote=remote, local=local)
+
+    def _set_connection(self, connection: Connection):
+        remote = connection.remote_address
+        local = connection.local_address
+        # check old connection
+        old = self.__connection_pool.get(remote=remote, local=local)
+        if old is not None and old is not connection:
+            self._close_connection(connection=old)
+        # set new connection
+        self.__connection_pool.set(remote=remote, local=local, item=connection)
+
+    def _remove_connection(self, connection: Connection):
+        remote = connection.remote_address
+        local = connection.local_address
+        old = self.__connection_pool.remove(remote=remote, local=local, item=connection)
+        if old is not None and old is not connection:
+            # should not happen
+            self._close_connection(connection=old)
+
+    # noinspection PyMethodMayBeStatic
+    def _close_connection(self, connection: Connection):
+        if not connection.opened:
+            connection.close()
 
     # Override
     def connect(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
-        conn = self.__connection_pool.get(remote=remote, local=local)
+        conn = self._get_connection(remote=remote, local=local)
         if conn is not None:
             # check local address
             if local is None:
@@ -107,49 +137,15 @@ class BaseHub(Hub, ABC):
                 return conn
             # local address not matched? ignore this connection
         # try to open channel with direction (remote, local)
-        channel = self.open_channel(remote=remote, local=local)
+        channel = self.open(remote=remote, local=local)
         if channel is None or not channel.opened:
             return None
         # create with channel
         conn = self._create_connection(channel=channel, remote=remote, local=local)
         if conn is not None:
-            # NOTICE: local address in the connection may be set to None
-            local = conn.local_address
-            remote = conn.remote_address
-            self.__connection_pool.put(remote=remote, local=local, value=conn)
+            # cache connection for (remote, local)
+            self._set_connection(connection=conn)
             return conn
-
-    # Override
-    def disconnect(self, remote: tuple = None, local: Optional[tuple] = None,
-                   connection: Connection = None) -> Optional[Connection]:
-        conn = self.__remove_connection(remote=remote, local=local, connection=connection)
-        if conn is not None:
-            conn.close()
-        if connection is not None and connection is not conn:
-            connection.close()
-        # if conn is None:
-        #     return connection
-        # else:
-        #     return conn
-        return connection if conn is None else conn
-
-    def __remove_connection(self, remote: tuple = None, local: Optional[tuple] = None,
-                            connection: Connection = None) -> Optional[Connection]:
-        if connection is None:
-            assert remote is not None, 'remote address should not be empty'
-            connection = self.__connection_pool.get(remote=remote, local=local)
-            if connection is None:
-                # connection not exists
-                return None
-        # check local address
-        if local is not None:
-            address = connection.local_address
-            if address is not None and address != local:
-                # local address not matched
-                return None
-        remote = connection.remote_address
-        local = connection.local_address
-        return self.__connection_pool.remove(remote=remote, local=local, value=connection)
 
     def _drive_channel(self, channel: Channel) -> bool:
         local = channel.local_address
@@ -160,7 +156,7 @@ class BaseHub(Hub, ABC):
             # print('[NET] failed to receive data: %s' % error)
             remote = channel.remote_address
             # socket error, close the channel
-            self.close_channel(channel=channel)
+            channel.close()
             # callback
             delegate = self.delegate
             if delegate is not None:
@@ -197,29 +193,15 @@ class BaseHub(Hub, ABC):
             #         or just remove it.
 
     def _cleanup_channels(self, channels: Set[Channel]):
-        closed_channels = set()
-        # 1. check closed channels
         for sock in channels:
             if not sock.alive:
-                closed_channels.add(sock)
-        # 2. remove closed channels
-        for sock in closed_channels:
-            self.close_channel(channel=sock)
-        return closed_channels
+                self._remove_channel(channel=sock)
 
     def _cleanup_connections(self, connections: Set[Connection]):
         # NOTICE: multi connections may share same channel (UDP Hub)
-        closed_connections = set()
-        # 1. check closed connections
         for conn in connections:
-            if not conn.alive:
-                closed_connections.add(conn)
-        # 2. remove closed connections
-        for conn in closed_connections:
-            remote = conn.remote_address
-            local = conn.local_address
-            self.disconnect(remote=remote, local=local, connection=conn)
-        return closed_connections
+            if not conn.opened:
+                self._remove_connection(connection=conn)
 
     # Override
     def process(self) -> bool:

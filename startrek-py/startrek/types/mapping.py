@@ -39,23 +39,23 @@ V = TypeVar('V')
 class KeyPairMap(Generic[K, V], ABC):
 
     @property
-    def values(self) -> Set[V]:
-        """ Get all mapped values """
+    def items(self) -> Set[V]:
+        """ Get all mapped items """
         raise NotImplemented
 
     @abstractmethod
     def get(self, remote: Optional[K], local: Optional[K]) -> Optional[V]:
-        """ Get value by key pair (remote, local) """
+        """ Get item by key pair (remote, local) """
         raise NotImplemented
 
     @abstractmethod
-    def put(self, remote: Optional[K], local: Optional[K], value: Optional[V]):
-        """ Set value by key pair (remote, local) """
+    def set(self, remote: Optional[K], local: Optional[K], item: Optional[V]):
+        """ Set item by key pair (remote, local) """
         raise NotImplemented
 
     @abstractmethod
-    def remove(self, remote: Optional[K], local: Optional[K], value: Optional[V]) -> Optional[V]:
-        """ Remove mapping value by key pair (remote, local) """
+    def remove(self, remote: Optional[K], local: Optional[K], item: Optional[V]) -> Optional[V]:
+        """ Remove mapping item by key pair (remote, local) """
         raise NotImplemented
 
 
@@ -80,26 +80,26 @@ class WeakKeyPairMap(KeyPairMap[K, V], ABC):
             return None
         if key2 is not None:
             # mapping: (remote, local) => Connection
-            value = table.get(key2)
-            if value is not None:
-                return value
+            item = table.get(key2)
+            if item is not None:
+                return item
             # take any Connection connected to remote
             return table.get(self.__default)
         else:
             # mapping: (remote, None) => Connection
             # mapping: (local, None) => Connection
-            value = table.get(self.__default)
-            if value is not None:
-                # take the value with empty key2
-                return value
+            item = table.get(self.__default)
+            if item is not None:
+                # take the item with empty key2
+                return item
             # take any Connection connected to remote / bound to local
             for name in table:
-                value = table.get(name)
-                if value is not None:
-                    return value
+                item = table.get(name)
+                if item is not None:
+                    return item
 
     # Override
-    def put(self, remote: Optional[K], local: Optional[K], value: Optional[V]):
+    def set(self, remote: Optional[K], local: Optional[K], item: Optional[V]):
         # create indexes with key pair (remote, local)
         if remote is None:
             assert local is not None, 'local & remote addresses should not empty at the same time'
@@ -113,17 +113,17 @@ class WeakKeyPairMap(KeyPairMap[K, V], ABC):
             key2 = local
         table = self.__map.get(key1)
         if table is not None:
-            if value is not None:
-                table[key2] = value
+            if item is not None:
+                table[key2] = item
             else:
                 table.pop(key2, None)
-        elif value is not None:
+        elif item is not None:
             table = weakref.WeakValueDictionary()
-            table[key2] = value
+            table[key2] = item
             self.__map[key1] = table
 
     # Override
-    def remove(self, remote: Optional[K], local: Optional[K], value: Optional[V]) -> Optional[V]:
+    def remove(self, remote: Optional[K], local: Optional[K], item: Optional[V]) -> Optional[V]:
         # remove indexes with key pair (remote, local)
         if remote is None:
             assert local is not None, 'local & remote addresses should not empty at the same time'
@@ -147,37 +147,33 @@ class HashKeyPairMap(WeakKeyPairMap[K, V]):
 
     def __init__(self, default: K):
         super().__init__(default=default)
-        self.__values: Set[V] = set()
+        self.__items: Set[V] = set()
 
     @property
-    def values(self) -> Set[V]:
-        return set(self.__values)
+    def items(self) -> Set[V]:
+        return set(self.__items)
 
     # Override
-    def put(self, remote: Optional[K], local: Optional[K], value: Optional[V]):
-        if value is not None:
+    def set(self, remote: Optional[K], local: Optional[K], item: Optional[V]):
+        if item is not None:
             # the caller may create different values with same pair (remote, local)
             # so here we should try to remove it first to make sure it's clean
-            self.__values.discard(value)
+            self.__items.discard(item)
             # cache it
-            self.__values.add(value)
+            self.__items.add(item)
         # create indexes
-        super().put(remote=remote, local=local, value=value)
+        super().set(remote=remote, local=local, item=item)
 
     # Override
-    def remove(self, remote: Optional[K], local: Optional[K], value: Optional[V]) -> Optional[V]:
+    def remove(self, remote: Optional[K], local: Optional[K], item: Optional[V]) -> Optional[V]:
         # remove indexes
-        old = super().remove(remote=remote, local=local, value=value)
+        old = super().remove(remote=remote, local=local, item=item)
         if old is not None:
-            self.__values.discard(old)
-        # clear cached value
-        if value is not None and value is not old:
-            self.__values.discard(value)
-        # if old is None:
-        #     return value
-        # else:
-        #     return old
-        return value if old is None else old
+            self.__items.discard(old)
+        # clear cached item
+        if item is not None and item is not old:
+            self.__items.discard(item)
+        return item if old is None else old
 
 
 class AddressPairMap(HashKeyPairMap[tuple, V]):

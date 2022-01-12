@@ -126,11 +126,19 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             return ref()
 
     def _set_socket(self, sock: Optional[socket.socket]):
+        # check old socket
+        old = self._get_socket()
+        if old is not None and old is not sock:
+            self._close_socket(sock=old)
+        # set new socket
         if sock is None:
             self.__sock_ref = None
         else:
             self.__sock_ref = weakref.ref(sock)
         self._refresh_flags(sock=sock)
+
+    def _close_socket(self, sock: socket.socket):
+        pass
 
     # Override
     def configure_blocking(self, blocking: bool):

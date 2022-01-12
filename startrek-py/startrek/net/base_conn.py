@@ -64,7 +64,6 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         self._set_channel(channel=None)
         self.__fsm = None
 
-    # protected
     def _create_state_machine(self) -> StateMachine:
         fsm = StateMachine(connection=self)
         fsm.delegate = self
@@ -88,15 +87,20 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             return ref()
 
     def _set_channel(self, channel: Optional[Channel]):
-        # close old channel if exists
+        # check old channel
         old = self._get_channel()
         if old is not None and old is not channel:
-            self.hub.close_channel(channel=old)
+            self._close_channel(channel=old)
         # set new channel
         if channel is None:
             self.__channel_ref = None
         else:
             self.__channel_ref = weakref.ref(channel)
+
+    # noinspection PyMethodMayBeStatic
+    def _close_channel(self, channel: Channel):
+        if channel.opened:
+            channel.close()
 
     @property  # Override
     def opened(self) -> bool:
@@ -151,7 +155,6 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         if delegate is not None:
             delegate.connection_received(data=data, source=remote, destination=local, connection=self)
 
-    # protected
     def _send(self, data: bytes, target: Optional[tuple]) -> int:
         channel = self.channel
         if channel is None or not channel.alive:
