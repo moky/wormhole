@@ -77,7 +77,7 @@ class StarGate(Gate, ConnectionDelegate):
         """ Get a copy of dockers """
         return self.__docker_pool.items
 
-    def _get_docker(self, remote: tuple, local: Optional[tuple]):
+    def _get_docker(self, remote: tuple, local: Optional[tuple]) -> Optional[Docker]:
         return self.__docker_pool.get(remote=remote, local=local)
 
     def _set_docker(self, docker: Docker):
@@ -156,9 +156,9 @@ class StarGate(Gate, ConnectionDelegate):
     def _heartbeat(self, connection: Connection):
         remote = connection.remote_address
         local = connection.local_address
-        worker = self._get_docker(remote=remote, local=local)
-        if worker is not None:
-            worker.heartbeat()
+        docker = self._get_docker(remote=remote, local=local)
+        if docker is not None:
+            docker.heartbeat()
 
     #
     #   Connection Delegate
@@ -181,22 +181,22 @@ class StarGate(Gate, ConnectionDelegate):
     # Override
     def connection_received(self, data: bytes, source: tuple, destination: Optional[tuple], connection: Connection):
         # get docker by (remote, local)
-        worker = self._get_docker(remote=source, local=destination)
-        if worker is not None:
+        docker = self._get_docker(remote=source, local=destination)
+        if docker is not None:
             # docker exists, call docker.onReceived(data)
-            worker.process_received(data=data)
+            docker.process_received(data=data)
             return
         # save advance party from this source address
         party = self._cache_advance_party(data=data, source=source, destination=destination, connection=connection)
         assert party is not None and len(party) > 0, 'advance party error'
         # docker not exists, check the data to decide which docker should be created
-        worker = self._create_docker(remote=source, local=destination, advance_party=party)
-        if worker is not None:
+        docker = self._create_docker(remote=source, local=destination, advance_party=party)
+        if docker is not None:
             # cache docker for (remote, local)
-            self._set_docker(docker=worker)
+            self._set_docker(docker=docker)
             # process advance parties one by one
             for item in party:
-                worker.process_received(data=item)
+                docker.process_received(data=item)
             # remove advance party
             self._clear_advance_party(source=source, destination=destination, connection=connection)
 

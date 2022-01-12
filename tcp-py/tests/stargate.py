@@ -9,7 +9,7 @@ from typing import Generic, TypeVar, Optional, List
 from startrek.fsm import Runnable
 from tcp import Connection, ConnectionState, ActiveConnection
 from tcp import Gate, Hub
-from tcp import GateDelegate, Docker
+from tcp import GateDelegate
 from tcp import StarGate, PlainDocker
 
 
@@ -98,7 +98,8 @@ class TCPGate(StarGate, Runnable, Generic[H]):
         return hub.connect(remote=remote, local=local)
 
     # Override
-    def _create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
+    def _create_docker(self, remote: tuple, local: Optional[tuple],
+                       advance_party: List[bytes]) -> Optional[PlainDocker]:
         # TODO: check data format before creating docker
         return TCPDocker(remote=remote, local=None, gate=self)
 
@@ -127,7 +128,14 @@ class TCPGate(StarGate, Runnable, Generic[H]):
         super().connection_state_changed(previous=previous, current=current, connection=connection)
         self.info('connection state changed: %s -> %s, %s' % (previous, current, connection))
         if current == ConnectionState.ERROR:
-            connection.close()
+            docker = self._get_docker(remote=connection.remote_address, local=connection.local_address)
+            self.info(msg='closing docker: %s' % docker)
+            if docker is not None:
+                self._remove_docker(docker=docker)
+                docker.close()
+            self.info(msg='closing connection: %s' % connection)
+            if connection.opened:
+                connection.close()
 
     # Override
     def connection_error(self, error: ConnectionError, data: Optional[bytes],
@@ -135,17 +143,17 @@ class TCPGate(StarGate, Runnable, Generic[H]):
         self.error(msg='ignore socket error: %s, %s' % (error, connection))
 
     def get_docker(self, remote: tuple, local: Optional[tuple]) -> Optional[PlainDocker]:
-        worker = self._get_docker(remote=remote, local=local)
-        if worker is None:
-            worker = self._create_docker(remote=remote, local=local, advance_party=[])
-            assert worker is not None, 'failed to create docker: %s, %s' % (remote, local)
-            self._set_docker(docker=worker)
-        return worker
+        docker = self._get_docker(remote=remote, local=local)
+        if docker is None:
+            docker = self._create_docker(remote=remote, local=local, advance_party=[])
+            assert docker is not None, 'failed to create docker: %s, %s' % (remote, local)
+            self._set_docker(docker=docker)
+        return docker
 
     def send_data(self, payload: bytes, source: Optional[tuple], destination: tuple) -> bool:
-        worker = self.get_docker(remote=destination, local=source)
-        if worker is not None:
-            return worker.send_data(payload=payload)
+        docker = self.get_docker(remote=destination, local=source)
+        if docker is not None:
+            return docker.send_data(payload=payload)
 
     @classmethod
     def info(cls, msg: str):

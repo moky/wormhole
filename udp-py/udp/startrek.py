@@ -28,6 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
+import time
 from typing import List, Optional
 
 from startrek import Arrival, ArrivalShip
@@ -77,7 +78,12 @@ class PackageArrival(ArrivalShip):
             # assert fragments is not None and len(fragments) > 0, 'fragments error: %s' % ship
             for item in fragments:
                 self.__completed = packer.insert(fragment=item)
-        if self.__completed is not None:
+        if self.__completed is None:
+            # extend expired time, wait for more fragments
+            now = int(time.time())
+            self.update(now=now)
+        else:
+            # package completed
             return self
 
 
