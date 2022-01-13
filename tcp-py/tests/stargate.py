@@ -123,24 +123,49 @@ class TCPGate(StarGate, Runnable, Generic[H]):
         if isinstance(connection, ActiveConnection):
             super()._heartbeat(connection=connection)
 
+    def __kill(self, remote: tuple = None, local: Optional[tuple] = None, connection: Connection = None):
+        if connection is not None:
+            if remote is None:
+                remote = connection.remote_address
+            if local is None:
+                local = connection.local_address
+        # get docker ty (remote, local)
+        docker = self._get_docker(remote=remote, local=local)
+        if docker is None:
+            self.error(msg='failed to get docker: %s, %s' % (remote, local))
+            if connection is not None and connection.opened:
+                self.info(msg='close connection: %s' % connection)
+                connection.close()
+        else:
+            if connection is None:
+                assert isinstance(docker, PlainDocker), 'docker error: %s' % docker
+                connection = docker.connection
+            # if connection is not activated, means it's a server connection,
+            # remove the docker too.
+            if connection is None or not isinstance(connection, ActiveConnection):
+                self.info(msg='remove and close docker: %s' % docker)
+                self._remove_docker(docker=docker)
+                docker.close()
+
     # Override
     def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
         super().connection_state_changed(previous=previous, current=current, connection=connection)
         self.info('connection state changed: %s -> %s, %s' % (previous, current, connection))
         if current == ConnectionState.ERROR:
-            docker = self._get_docker(remote=connection.remote_address, local=connection.local_address)
-            self.info(msg='closing docker: %s' % docker)
-            if docker is not None:
-                self._remove_docker(docker=docker)
-                docker.close()
-            self.info(msg='closing connection: %s' % connection)
-            if connection.opened:
-                connection.close()
+            self.__kill(connection=connection)
 
     # Override
     def connection_error(self, error: ConnectionError, data: Optional[bytes],
                          source: Optional[tuple], destination: Optional[tuple], connection: Optional[Connection]):
-        self.error(msg='ignore socket error: %s, %s' % (error, connection))
+        if isinstance(error, IOError) and str(error).startswith('failed to send: '):
+            self.error(msg='ignore socket error: %s' % error)
+            time.sleep(0.1)
+        elif connection is None:
+            self.error(msg='receive from socket error: %s' % error)
+            self.__kill(remote=source, local=destination)
+        else:
+            self.error(msg='send to socket error: %s' % error)
+            self.__kill(remote=destination, local=source, connection=connection)
 
     def get_docker(self, remote: tuple, local: Optional[tuple]) -> Optional[PlainDocker]:
         docker = self._get_docker(remote=remote, local=local)
