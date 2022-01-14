@@ -37,27 +37,20 @@ from startrek import BaseChannel, ChannelReader, ChannelWriter
 
 class PackageChannelReader(ChannelReader):
 
-    @property
-    def remote_address(self) -> tuple:
-        return self.channel.remote_address
-
     def _receive_from(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
-        # check socket first
         sock = self.sock
-        if sock is None:
-            raise socket.error('socket lost, cannot read data')
-        # try to receive data
         try:
             data, remote = sock.recvfrom(max_len)
         except socket.error as error:
-            error = self._check_receiving_error(error=error)
+            error = self._check_error(error=error, sock=sock)
             if error is not None:
                 # connection lost?
                 raise error
             # received nothing
-            return None, None
+            data = None
+            remote = None
         # check data
-        error = self._check_received_data(data=data)
+        error = self._check_data(data=data)
         if error is not None:
             # connection lost!
             raise error
@@ -78,28 +71,18 @@ class PackageChannelReader(ChannelReader):
 
 class PackageChannelWriter(ChannelWriter):
 
-    @property
-    def remote_address(self) -> tuple:
-        return self.channel.remote_address
-
     def _sent_to(self, data: bytes, target: tuple) -> int:
-        # check socket first
         sock = self.sock
-        if sock is None:
-            raise socket.error('socket lost, cannot send data: %d byte(s)' % len(data))
-        # try to send data
-        sent = 0
         try:
-            sent = sock.sendto(data, target)
+            return sock.sendto(data, target)
         except socket.error as error:
-            error = self._check_sending_error(error=error)
-            if error is not None:
+            error = self._check_error(error=error)
+            if error is None:
+                # buffer overflow!
+                return -1
+            else:
                 # connection lost?
                 raise error
-            # buffer overflow!
-            if sent == 0:
-                return -1
-        return sent
 
     # Override
     def send(self, data: bytes, target: tuple) -> int:
@@ -110,8 +93,8 @@ class PackageChannelWriter(ChannelWriter):
         else:
             # connected (TCP/UDP)
             assert target is None or target == remote, 'target address error: %s, %s' % (target, remote)
-            # return sock.sendall(data)
-            return self.write(data=data)
+            # return sock.send(data)
+            return self._try_send(data=data, sock=self.sock)
 
 
 class PackageChannel(BaseChannel):

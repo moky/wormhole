@@ -43,7 +43,7 @@ class StreamChannelReader(ChannelReader):
         if data is None or len(data) == 0:
             return None, None
         else:
-            return data, self.channel.remote_address
+            return data, self.remote_address
 
 
 class StreamChannelWriter(ChannelWriter):
@@ -52,7 +52,7 @@ class StreamChannelWriter(ChannelWriter):
     def send(self, data: bytes, target: tuple) -> int:
         # TCP channel will be always connected
         # so the target address must be the remote address
-        remote = self.channel.remote_address
+        remote = self.remote_address
         assert target is None or target == remote, 'target address error: %s, %s' % (target, remote)
         return self.write(data=data)
 

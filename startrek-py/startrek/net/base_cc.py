@@ -34,7 +34,6 @@ from abc import ABC
 from typing import Optional
 
 from .channel import is_blocking
-from .channel import sendall
 from .base_channel import Reader, Writer, BaseChannel
 
 
@@ -57,37 +56,64 @@ class Controller:
         return self.__channel()
 
     @property
+    def remote_address(self) -> tuple:
+        return self.channel.remote_address
+
+    @property
     def sock(self) -> Optional[socket.socket]:
-        channel = self.channel
-        s = channel.sock
-        assert s is not None, 'socket lost: %s' % channel
+        s = self.channel.sock
+        assert s is not None, 'socket lost: %s' % self.channel
         return s
 
-    def _check_sending_error(self, error: socket.error) -> Optional[socket.error]:
-        return check_socket_error(sock=self.sock, error=error)
-
-    def _check_receiving_error(self, error: socket.error) -> Optional[socket.error]:
-        return check_socket_error(sock=self.sock, error=error)
-
-    def _check_received_data(self, data: Optional[bytes]) -> Optional[socket.error]:
-        return check_received_data(sock=self.sock, data=data)
+    def _check_error(self, error: socket.error, sock: socket.socket = None) -> Optional[socket.error]:
+        if sock is None:
+            sock = self.sock
+        # the socket will raise 'Resource temporarily unavailable'
+        # when received nothing in non-blocking mode,
+        # or buffer overflow while sending too many bytes,
+        # here we should ignore this exception.
+        if error.errno == socket.EAGAIN:  # error.strerror == 'Resource temporarily unavailable':
+            if not is_blocking(sock=sock):
+                # ignore it
+                return None
+        # in blocking mode, the socket wil wait until sent/received data,
+        # but if timeout was set, it will raise 'timeout' error on timeout,
+        # here we should ignore this exception.
+        if isinstance(error, socket.timeout):
+            if sock.gettimeout() is not None:  # or not self.blocking:
+                # ignore it
+                return None
+        # print('[NET] socket error: %s' % error)
+        return error
 
 
 class ChannelReader(Controller, Reader, ABC):
 
+    def _check_data(self, data: Optional[bytes], sock: socket.socket = None) -> Optional[socket.error]:
+        # in blocking mode, the socket will wait until received something,
+        # but if timeout was set, it will return None too, it's normal;
+        # otherwise, we know the connection was lost.
+        if data is None or len(data) == 0:
+            if sock is None:
+                sock = self.sock
+            if sock.gettimeout() is None:  # and self.blocking:
+                # print('[NET] socket error: remote peer reset socket %s' % sock)
+                return socket.error('remote peer reset socket %s' % sock)
+
     # Override
     def read(self, max_len: int) -> Optional[bytes]:
+        sock = self.sock
         try:
-            data = self.sock.recv(max_len)
+            data = sock.recv(max_len)
         except socket.error as error:
-            error = self._check_receiving_error(error=error)
+            error = self._check_error(error=error, sock=sock)
             if error is not None:
                 # connection lost?
                 raise error
             # received nothing
-            return None
+            data = None
         # check data
-        error = self._check_received_data(data=data)
+        error = self._check_data(data=data, sock=sock)
         if error is not None:
             # connection lost!
             raise error
@@ -97,51 +123,43 @@ class ChannelReader(Controller, Reader, ABC):
 
 class ChannelWriter(Controller, Writer, ABC):
 
-    # Override
-    def write(self, data: bytes) -> int:
+    def _try_send(self, data: bytes, sock: socket.socket) -> int:
         try:
-            # sent = sock.sendall(data)
-            return sendall(data=data, sock=self.sock)
+            return sock.send(data)
         except socket.error as error:
-            error = self._check_sending_error(error=error)
-            if error is not None:
+            error = self._check_error(error=error, sock=sock)
+            if error is None:
+                # buffer overflow!
+                return -1
+            else:
                 # connection lost?
                 raise error
-            # buffer overflow!
-            return -1
 
-
-#
-#   Check for socket errors
-#
-
-
-def check_socket_error(sock: socket.socket, error: socket.error) -> Optional[socket.error]:
-    # the socket will raise 'Resource temporarily unavailable'
-    # when received nothing in non-blocking mode,
-    # or buffer overflow while sending too many bytes,
-    # here we should ignore this exception.
-    if not is_blocking(sock=sock):
-        # if error.errno == socket.EAGAIN:
-        if error.strerror == 'Resource temporarily unavailable':
-            # ignore it
-            return None
-    # in blocking mode, the socket wil wait until sent/received data,
-    # but if timeout was set, it will raise 'timeout' error on timeout,
-    # here we should ignore this exception.
-    if isinstance(error, socket.timeout):
-        if sock.gettimeout() is not None:  # or not self.blocking:
-            # ignore it
-            return None
-    # print('[NET] socket error: %s' % error)
-    return error
-
-
-def check_received_data(sock: socket.socket, data: Optional[bytes]) -> Optional[socket.error]:
-    # in blocking mode, the socket will wait until received something,
-    # but if timeout was set, it will return None too, it's normal;
-    # otherwise, we know the connection was lost.
-    if data is None or len(data) == 0:
-        if sock.gettimeout() is None:  # and self.blocking:
-            # print('[NET] socket error: remote peer reset socket')
-            return socket.error('remote peer reset socket')
+    # Override
+    def write(self, data: bytes) -> int:
+        """ Return the number of bytes sent;
+            this may be less than len(data) if the network is busy. """
+        # sent = sock.sendall(data)
+        sock = self.sock
+        sent = 0
+        rest = len(data)
+        # assert rest > 0, 'cannot send empty data'
+        while rest > 0:  # and is_opened(sock=sock):
+            cnt = self._try_send(data=data, sock=sock)
+            # check send result
+            if cnt == 0:
+                # buffer overflow?
+                break
+            elif cnt < 0:
+                # socket error?
+                if sent == 0:
+                    return -1
+                break
+            # something sent, check remaining data
+            sent += cnt
+            rest -= cnt
+            if rest > 0:
+                data = data[cnt:]
+            else:
+                break  # done!
+        return sent
