@@ -32,7 +32,7 @@ import socket
 from abc import ABC
 from typing import Optional, Set
 
-from startrek.types import AddressPairMap
+from startrek.types import Address, AddressPairMap
 from startrek import Channel
 from startrek import Connection, ConnectionDelegate
 from startrek import BaseConnection, ActiveConnection
@@ -48,7 +48,7 @@ class PackageHub(BaseHub, ABC):
         super().__init__(delegate=delegate)
         self.__channel_pool: AddressPairMap[Channel] = AddressPairMap()
 
-    def bind(self, address: tuple = None, host: str = None, port: int = 0):
+    def bind(self, address: Address = None, host: str = None, port: int = 0):
         if address is None:
             address = (host, port)
         channel = self._get_channel(local=address)
@@ -62,7 +62,7 @@ class PackageHub(BaseHub, ABC):
             self._set_channel(channel=channel)
 
     # noinspection PyMethodMayBeStatic
-    def _create_channel(self, remote: Optional[tuple], local: Optional[tuple], sock: socket.socket) -> Channel:
+    def _create_channel(self, remote: Optional[Address], local: Optional[Address], sock: socket.socket) -> Channel:
         # override for user-customized channel
         return PackageChannel(remote=remote, local=local, sock=sock)
 
@@ -73,7 +73,7 @@ class PackageHub(BaseHub, ABC):
     def _all_channels(self) -> Set[Channel]:
         return self.__channel_pool.items
 
-    def _get_channel(self, local: Optional[tuple]) -> Optional[Channel]:
+    def _get_channel(self, local: Optional[Address]) -> Optional[Channel]:
         return self.__channel_pool.get(remote=None, local=local)
 
     def _set_channel(self, channel: Channel):
@@ -99,7 +99,7 @@ class PackageHub(BaseHub, ABC):
             channel.close()
 
     # Override
-    def open(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
+    def open(self, remote: Optional[Address], local: Optional[Address]) -> Optional[Channel]:
         if local is None:
             # get any channel
             items = self.__channel_pool.items
@@ -115,7 +115,7 @@ class ServerHub(PackageHub):
     """ Package Server Hub """
 
     # Override
-    def _create_connection(self, channel: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+    def _create_connection(self, channel: Channel, remote: Address, local: Optional[Address]) -> Optional[Connection]:
         gate = self.delegate
         conn = BaseConnection(remote=remote, local=None, channel=channel, delegate=gate, hub=self)
         conn.start()  # start FSM
@@ -126,7 +126,7 @@ class ClientHub(PackageHub):
     """ Package Client Hub """
 
     # Override
-    def _create_connection(self, channel: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+    def _create_connection(self, channel: Channel, remote: Address, local: Optional[Address]) -> Optional[Connection]:
         gate = self.delegate
         conn = ActiveConnection(remote=remote, local=None, channel=channel, delegate=gate, hub=self)
         conn.start()  # start FSM

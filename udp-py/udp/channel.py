@@ -31,13 +31,14 @@
 import socket
 from typing import Optional
 
+from startrek.types import Address
 from startrek.net.channel import is_opened, is_connected
 from startrek import BaseChannel, ChannelReader, ChannelWriter
 
 
 class PackageChannelReader(ChannelReader):
 
-    def _receive_from(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
+    def _receive_from(self, max_len: int) -> (Optional[bytes], Optional[Address]):
         sock = self.sock
         try:
             data, remote = sock.recvfrom(max_len)
@@ -58,7 +59,7 @@ class PackageChannelReader(ChannelReader):
         return data, remote
 
     # Override
-    def receive(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
+    def receive(self, max_len: int) -> (Optional[bytes], Optional[Address]):
         remote = self.remote_address
         if remote is None:
             # not connect (UDP)
@@ -71,7 +72,7 @@ class PackageChannelReader(ChannelReader):
 
 class PackageChannelWriter(ChannelWriter):
 
-    def _sent_to(self, data: bytes, target: tuple) -> int:
+    def _sent_to(self, data: bytes, target: Address) -> int:
         sock = self.sock
         try:
             return sock.sendto(data, target)
@@ -85,7 +86,7 @@ class PackageChannelWriter(ChannelWriter):
                 raise error
 
     # Override
-    def send(self, data: bytes, target: tuple) -> int:
+    def send(self, data: bytes, target: Address) -> int:
         remote = self.remote_address
         if remote is None:
             # not connect (UDP)
@@ -100,7 +101,7 @@ class PackageChannelWriter(ChannelWriter):
 class PackageChannel(BaseChannel):
     """ Discrete Package Channel """
 
-    def __init__(self, remote: Optional[tuple], local: Optional[tuple], sock: socket.socket):
+    def __init__(self, remote: Optional[Address], local: Optional[Address], sock: socket.socket):
         super().__init__(remote=remote, local=local, sock=sock)
         self.__sock = sock
 

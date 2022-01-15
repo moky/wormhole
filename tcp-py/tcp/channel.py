@@ -31,6 +31,7 @@
 import socket
 from typing import Optional
 
+from startrek.types import Address
 from startrek.net.channel import is_opened
 from startrek import BaseChannel, ChannelReader, ChannelWriter
 
@@ -38,7 +39,7 @@ from startrek import BaseChannel, ChannelReader, ChannelWriter
 class StreamChannelReader(ChannelReader):
 
     # Override
-    def receive(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
+    def receive(self, max_len: int) -> (Optional[bytes], Optional[Address]):
         data = self.read(max_len=max_len)
         if data is None or len(data) == 0:
             return None, None
@@ -49,7 +50,7 @@ class StreamChannelReader(ChannelReader):
 class StreamChannelWriter(ChannelWriter):
 
     # Override
-    def send(self, data: bytes, target: tuple) -> int:
+    def send(self, data: bytes, target: Address) -> int:
         # TCP channel will be always connected
         # so the target address must be the remote address
         remote = self.remote_address
@@ -60,7 +61,7 @@ class StreamChannelWriter(ChannelWriter):
 class StreamChannel(BaseChannel):
     """ Stream Channel """
 
-    def __init__(self, remote: Optional[tuple], local: Optional[tuple], sock: socket.socket):
+    def __init__(self, remote: Optional[Address], local: Optional[Address], sock: socket.socket):
         super().__init__(remote=remote, local=local, sock=sock)
         self.__sock = sock
 
