@@ -33,8 +33,8 @@ import time
 import weakref
 from typing import Optional
 
+from ..types import Address, AddressPairObject
 from ..fsm import StateDelegate
-from ..types import AddressPairObject
 
 from .hub import Hub
 from .channel import Channel
@@ -47,15 +47,15 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     EXPIRES = 16  # seconds
 
-    def __init__(self, remote: tuple, local: Optional[tuple], channel: Channel, delegate: ConnectionDelegate, hub: Hub):
+    def __init__(self, remote: Address, local: Optional[Address],
+                 channel: Channel, delegate: ConnectionDelegate, hub: Hub):
         super().__init__(remote=remote, local=local)
         self.__channel_ref = weakref.ref(channel)
+        self.__delegate = weakref.ref(delegate)
+        self.__hub_ref = weakref.ref(hub)
         # active times
         self.__last_sent_time = 0
         self.__last_received_time = 0
-        # handlers
-        self.__delegate = weakref.ref(delegate)
-        self.__hub_ref = weakref.ref(hub)
         # Finite State Machine
         self.__fsm = self._create_state_machine()
 
@@ -149,13 +149,13 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         return now > self.__last_received_time + (self.EXPIRES << 3)
 
     # Override
-    def received(self, data: bytes, remote: Optional[tuple], local: Optional[tuple]):
+    def received(self, data: bytes, remote: Optional[Address], local: Optional[Address]):
         self.__last_received_time = int(time.time())
         delegate = self.delegate
         if delegate is not None:
             delegate.connection_received(data=data, source=remote, destination=local, connection=self)
 
-    def _send(self, data: bytes, target: Optional[tuple]) -> int:
+    def _send(self, data: bytes, target: Optional[Address]) -> int:
         channel = self.channel
         if channel is None or not channel.alive:
             raise socket.error('socket channel lost: %s' % channel)
@@ -165,7 +165,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         return sent
 
     # Override
-    def send(self, data: bytes, target: Optional[tuple] = None) -> int:
+    def send(self, data: bytes, target: Optional[Address] = None) -> int:
         # try to send data
         error = None
         sent = -1

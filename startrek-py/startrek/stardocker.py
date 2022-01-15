@@ -33,7 +33,7 @@ import weakref
 from abc import abstractmethod
 from typing import Optional, List
 
-from .types import AddressPairObject
+from .types import Address, AddressPairObject
 from .net import Connection
 from .port import Arrival, Departure
 from .port import Docker, Gate, GateDelegate
@@ -57,7 +57,7 @@ class StarDocker(AddressPairObject, Docker):
             - _check_arrival(ship)
     """
 
-    def __init__(self, remote: tuple, local: Optional[tuple]):
+    def __init__(self, remote: Address, local: Optional[Address]):
         super().__init__(remote=remote, local=local)
         self.__dock = self._create_dock()
         self.__conn_ref = None
@@ -118,11 +118,11 @@ class StarDocker(AddressPairObject, Docker):
         return conn is not None and conn.alive
 
     @property  # Override
-    def remote_address(self) -> tuple:  # (str, int)
+    def remote_address(self) -> Address:  # (str, int)
         return self._remote
 
     @property  # Override
-    def local_address(self) -> Optional[tuple]:  # (str, int)
+    def local_address(self) -> Optional[Address]:  # (str, int)
         return self._local
 
     # Override

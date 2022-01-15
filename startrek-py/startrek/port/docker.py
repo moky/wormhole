@@ -31,6 +31,7 @@
 from abc import abstractmethod
 from typing import Optional
 
+from ..types import Address
 from ..fsm import Processor
 
 from .ship import Departure, ShipDelegate
@@ -50,12 +51,12 @@ class Docker(Processor):
         raise NotImplemented
 
     @property
-    def remote_address(self) -> tuple:
+    def remote_address(self) -> Address:
         """ Remote address of connection """
         raise NotImplemented
 
     @property
-    def local_address(self) -> Optional[tuple]:
+    def local_address(self) -> Optional[Address]:
         """ Local address of connection """
         raise NotImplemented
 

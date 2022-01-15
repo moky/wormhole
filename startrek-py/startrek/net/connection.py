@@ -31,6 +31,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from ..types import Address
 from ..fsm import Ticker
 
 
@@ -61,15 +62,15 @@ class Connection(Ticker, ABC):
         raise NotImplemented
 
     @property
-    def local_address(self) -> Optional[tuple]:  # (str, int)
+    def local_address(self) -> Optional[Address]:  # (str, int)
         raise NotImplemented
 
     @property
-    def remote_address(self) -> Optional[tuple]:  # (str, int)
+    def remote_address(self) -> Optional[Address]:  # (str, int)
         raise NotImplemented
 
     @abstractmethod
-    def send(self, data: bytes, target: Optional[tuple] = None) -> int:
+    def send(self, data: bytes, target: Optional[Address] = None) -> int:
         """
         Send data
 
@@ -80,7 +81,7 @@ class Connection(Ticker, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def received(self, data: bytes, remote: Optional[tuple], local: Optional[tuple]):
+    def received(self, data: bytes, remote: Optional[Address], local: Optional[Address]):
         """
         Process received data
 

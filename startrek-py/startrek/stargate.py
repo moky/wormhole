@@ -33,7 +33,7 @@ import weakref
 from abc import abstractmethod
 from typing import Optional, List, Set
 
-from .types import AddressPairMap
+from .types import Address, AddressPairMap
 from .net import Connection, ConnectionDelegate, ConnectionState
 from .port import Docker, Gate, GateDelegate, GateStatus
 from .port.gate import status_from_state
@@ -62,7 +62,7 @@ class StarGate(Gate, ConnectionDelegate):
         return self.__delegate()
 
     @abstractmethod
-    def _create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
+    def _create_docker(self, remote: Address, local: Optional[Address], advance_party: List[bytes]) -> Optional[Docker]:
         """
         Create new docker for received data
 
@@ -77,7 +77,7 @@ class StarGate(Gate, ConnectionDelegate):
         """ Get a copy of dockers """
         return self.__docker_pool.items
 
-    def _get_docker(self, remote: tuple, local: Optional[tuple]) -> Optional[Docker]:
+    def _get_docker(self, remote: Address, local: Optional[Address]) -> Optional[Docker]:
         return self.__docker_pool.get(remote=remote, local=local)
 
     def _set_docker(self, docker: Docker):
@@ -104,7 +104,7 @@ class StarGate(Gate, ConnectionDelegate):
             docker.close()
 
     # Override
-    def gate_status(self, remote: tuple, local: Optional[tuple]) -> GateStatus:
+    def gate_status(self, remote: Address, local: Optional[Address]) -> GateStatus:
         conn = self.get_connection(remote=remote, local=local)
         if conn is None:
             return GateStatus.ERROR
@@ -179,7 +179,7 @@ class StarGate(Gate, ConnectionDelegate):
             self._heartbeat(connection=connection)
 
     # Override
-    def connection_received(self, data: bytes, source: tuple, destination: Optional[tuple], connection: Connection):
+    def connection_received(self, data: bytes, source: Address, destination: Optional[Address], connection: Connection):
         # get docker by (remote, local)
         docker = self._get_docker(remote=source, local=destination)
         if docker is not None:
@@ -201,7 +201,7 @@ class StarGate(Gate, ConnectionDelegate):
             self._clear_advance_party(source=source, destination=destination, connection=connection)
 
     @abstractmethod
-    def _cache_advance_party(self, data: bytes, source: tuple, destination: Optional[tuple],
+    def _cache_advance_party(self, data: bytes, source: Address, destination: Optional[Address],
                              connection: Connection) -> List[bytes]:
         """
         Cache the advance party before decide which docker to use
@@ -215,7 +215,7 @@ class StarGate(Gate, ConnectionDelegate):
         raise NotImplemented
 
     @abstractmethod
-    def _clear_advance_party(self, source: tuple, destination: Optional[tuple], connection: Connection):
+    def _clear_advance_party(self, source: Address, destination: Optional[Address], connection: Connection):
         """
         Clear all advance parties after docker created
 
@@ -226,6 +226,6 @@ class StarGate(Gate, ConnectionDelegate):
         raise NotImplemented
 
     # Override
-    def connection_sent(self, data: bytes, source: Optional[tuple], destination: tuple, connection: Connection):
+    def connection_sent(self, data: bytes, source: Optional[Address], destination: Address, connection: Connection):
         # ignore this event
         pass

@@ -32,6 +32,8 @@ import socket
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from ..types import Address
+
 
 class Channel(ABC):
 
@@ -107,7 +109,7 @@ class Channel(ABC):
     #
 
     @abstractmethod
-    def bind(self, address: Optional[tuple] = None, host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
+    def bind(self, address: Optional[Address] = None, host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
         """
         Binds the channel's socket to a local address (host, port).
 
@@ -120,7 +122,7 @@ class Channel(ABC):
         raise NotImplemented
 
     @property
-    def local_address(self) -> Optional[tuple]:  # (str, int)
+    def local_address(self) -> Optional[Address]:  # (str, int)
         """
         Returns the socket address that this channel's socket is bound to.
 
@@ -139,7 +141,7 @@ class Channel(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connect(self, address: Optional[tuple] = None,
+    def connect(self, address: Optional[Address] = None,
                 host: Optional[str] = '127.0.0.1', port: Optional[int] = 0) -> socket.socket:
         """
         Connects this channel's socket.
@@ -153,7 +155,7 @@ class Channel(ABC):
         raise NotImplemented
 
     @property
-    def remote_address(self) -> Optional[tuple]:  # (str, int)
+    def remote_address(self) -> Optional[Address]:  # (str, int)
         """
         Returns the remote address to which this channel's socket is connected.
 
@@ -176,7 +178,7 @@ class Channel(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def receive(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
+    def receive(self, max_len: int) -> (Optional[bytes], Optional[Address]):
         """
         Receives a data package via this channel.
 
@@ -187,7 +189,7 @@ class Channel(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def send(self, data: bytes, target: tuple) -> int:
+    def send(self, data: bytes, target: Address) -> int:
         """
         Sends a data package via this channel.
 
@@ -203,7 +205,7 @@ class Channel(ABC):
         raise NotImplemented
 
 
-def get_local_address(sock: socket.socket) -> Optional[tuple]:
+def get_local_address(sock: socket.socket) -> Optional[Address]:
     try:
         return sock.getsockname()
     except socket.error:
@@ -211,7 +213,7 @@ def get_local_address(sock: socket.socket) -> Optional[tuple]:
         return None
 
 
-def get_remote_address(sock: socket.socket) -> Optional[tuple]:
+def get_remote_address(sock: socket.socket) -> Optional[Address]:
     try:
         return sock.getpeername()
     except socket.error:

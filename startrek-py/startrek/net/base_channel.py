@@ -33,7 +33,7 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from ..types import AddressPairObject
+from ..types import Address, AddressPairObject
 
 from .channel import is_blocking, is_opened, is_connected, is_bound
 from .channel import Channel
@@ -48,7 +48,7 @@ class Reader(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def receive(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
+    def receive(self, max_len: int) -> (Optional[bytes], Optional[Address]):
         """ receive data via socket, and return it with remote address """
         raise NotImplemented
 
@@ -62,14 +62,14 @@ class Writer(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def send(self, data: bytes, target: tuple) -> int:
+    def send(self, data: bytes, target: Address) -> int:
         """ send data via socket with remote address """
         raise NotImplemented
 
 
 class BaseChannel(AddressPairObject, Channel, ABC):
 
-    def __init__(self, remote: Optional[tuple], local: Optional[tuple], sock: socket.socket):
+    def __init__(self, remote: Optional[Address], local: Optional[Address], sock: socket.socket):
         super().__init__(remote=remote, local=local)
         self.__sock_ref = weakref.ref(sock)
         self.__reader = self._create_reader()
@@ -170,7 +170,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         return self.opened and (self.connected or self.bound)
 
     # Override
-    def bind(self, address: Optional[tuple] = None, host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
+    def bind(self, address: Optional[Address] = None, host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
         if address is None:
             address = (host, port)
         sock = self.sock
@@ -184,7 +184,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         return sock
 
     # Override
-    def connect(self, address: Optional[tuple] = None,
+    def connect(self, address: Optional[Address] = None,
                 host: Optional[str] = '127.0.0.1', port: Optional[int] = 0) -> socket.socket:
         if address is None:
             address = (host, port)
@@ -218,9 +218,9 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         return self.writer.write(data=data)
 
     # Override
-    def receive(self, max_len: int) -> (Optional[bytes], Optional[tuple]):
+    def receive(self, max_len: int) -> (Optional[bytes], Optional[Address]):
         return self.reader.receive(max_len=max_len)
 
     # Override
-    def send(self, data: bytes, target: tuple) -> int:
+    def send(self, data: bytes, target: Address) -> int:
         return self.writer.send(data=data, target=target)

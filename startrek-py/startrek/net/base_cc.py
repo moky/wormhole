@@ -33,6 +33,8 @@ import weakref
 from abc import ABC
 from typing import Optional
 
+from ..types import Address
+
 from .channel import is_blocking
 from .base_channel import Reader, Writer, BaseChannel
 
@@ -56,7 +58,7 @@ class Controller:
         return self.__channel()
 
     @property
-    def remote_address(self) -> tuple:
+    def remote_address(self) -> Optional[Address]:
         return self.channel.remote_address
 
     @property
@@ -144,7 +146,7 @@ class ChannelWriter(Controller, Writer, ABC):
         sent = 0
         rest = len(data)
         # assert rest > 0, 'cannot send empty data'
-        while rest > 0:  # and is_opened(sock=sock):
+        while True:  # is_opened(sock=sock):
             cnt = self._try_send(data=data, sock=sock)
             # check send result
             if cnt == 0:

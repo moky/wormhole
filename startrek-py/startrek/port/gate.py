@@ -32,6 +32,7 @@ from abc import ABC, abstractmethod
 from enum import IntEnum
 from typing import Optional
 
+from ..types import Address
 from ..fsm import Processor
 from ..net import Connection, ConnectionState
 
@@ -61,7 +62,7 @@ def status_from_state(state: ConnectionState) -> Status:
 class GateDelegate(ShipDelegate, ABC):
 
     @abstractmethod
-    def gate_status_changed(self, previous: Status, current: Status, remote: tuple, local: Optional[tuple], gate):
+    def gate_status_changed(self, previous: Status, current: Status, remote: Address, local: Optional[Address], gate):
         """
         Callback when connection status changed
 
@@ -81,7 +82,7 @@ class Gate(Processor):
     """
 
     @abstractmethod
-    def get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+    def get_connection(self, remote: Address, local: Optional[Address]) -> Optional[Connection]:
         """
         Get connection with direction
 
@@ -92,7 +93,7 @@ class Gate(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def gate_status(self, remote: tuple, local: Optional[tuple]) -> Status:
+    def gate_status(self, remote: Address, local: Optional[Address]) -> Status:
         """
         Get gate status with direction
 

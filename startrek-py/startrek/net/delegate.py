@@ -32,6 +32,8 @@ import socket
 from abc import ABC, abstractmethod
 from typing import Optional, Union
 
+from ..types import Address
+
 from .connection import Connection
 from .state import ConnectionState
 
@@ -51,7 +53,7 @@ class ConnectionDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connection_received(self, data: bytes, source: tuple, destination: Optional[tuple], connection: Connection):
+    def connection_received(self, data: bytes, source: Address, destination: Optional[Address], connection: Connection):
         """
         Called when connection received data
 
@@ -63,7 +65,7 @@ class ConnectionDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connection_sent(self, data: bytes, source: Optional[tuple], destination: tuple, connection: Connection):
+    def connection_sent(self, data: bytes, source: Optional[Address], destination: Address, connection: Connection):
         """
         Called after data sent
 
@@ -76,7 +78,7 @@ class ConnectionDelegate(ABC):
 
     @abstractmethod
     def connection_error(self, error: Union[IOError, socket.error], data: Optional[bytes],
-                         source: Optional[tuple], destination: Optional[tuple], connection: Optional[Connection]):
+                         source: Optional[Address], destination: Optional[Address], connection: Optional[Connection]):
         """
         Called when connection error
 

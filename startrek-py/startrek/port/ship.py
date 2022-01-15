@@ -32,6 +32,7 @@ from abc import ABC, abstractmethod
 from enum import IntEnum
 from typing import List, Optional
 
+from ..types import Address
 from ..net import Connection
 
 
@@ -133,7 +134,7 @@ class ShipDelegate(ABC):
 
     @abstractmethod
     def gate_received(self, ship: Arrival,
-                      source: tuple, destination: Optional[tuple], connection: Connection):
+                      source: Address, destination: Optional[Address], connection: Connection):
         """
         Callback when new package received
 
@@ -146,7 +147,7 @@ class ShipDelegate(ABC):
 
     @abstractmethod
     def gate_sent(self, ship: Departure,
-                  source: Optional[tuple], destination: tuple, connection: Connection):
+                  source: Optional[Address], destination: Address, connection: Connection):
         """
         Callback when package sent
 
@@ -159,7 +160,7 @@ class ShipDelegate(ABC):
 
     @abstractmethod
     def gate_error(self, error: IOError, ship: Departure,
-                   source: Optional[tuple], destination: tuple, connection: Connection):
+                   source: Optional[Address], destination: Address, connection: Connection):
         """
         Callback when package sent
 

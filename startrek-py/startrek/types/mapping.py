@@ -32,6 +32,9 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import TypeVar, Generic, Optional, Set, MutableMapping
 
+from .pair import Address
+
+
 K = TypeVar('K')
 V = TypeVar('V')
 
@@ -176,7 +179,7 @@ class HashKeyPairMap(WeakKeyPairMap[K, V]):
         return item if old is None else old
 
 
-class AddressPairMap(HashKeyPairMap[tuple, V]):
+class AddressPairMap(HashKeyPairMap[Address, V]):
 
     AnyAddress = ('0.0.0.0', 0)
 

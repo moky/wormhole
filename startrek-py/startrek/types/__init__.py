@@ -28,13 +28,14 @@
 # SOFTWARE.
 # ==============================================================================
 
+from .pair import Address, AddressPairObject
 from .mapping import KeyPairMap, WeakKeyPairMap, HashKeyPairMap, AddressPairMap
-from .pair import AddressPairObject
 
 
 __all__ = [
+    'Address',
+    'AddressPairObject',
+
     'KeyPairMap', 'WeakKeyPairMap', 'HashKeyPairMap',
     'AddressPairMap',
-
-    'AddressPairObject',
 ]

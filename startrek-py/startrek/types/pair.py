@@ -28,22 +28,28 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional
+from typing import Optional, Union
+
+
+# Addresses can be either tuples of varying lengths (AF_INET, AF_INET6,
+# AF_NETLINK, AF_TIPC) or strings (AF_UNIX).
+Address = Union[tuple, str]
+# TODO: Most methods allow bytes as address objects
 
 
 class AddressPairObject:
 
-    def __init__(self, remote: Optional[tuple], local: Optional[tuple]):
+    def __init__(self, remote: Optional[Address], local: Optional[Address]):
         super().__init__()
         self._remote = remote
         self._local = local
 
     @property
-    def remote_address(self) -> Optional[tuple]:
+    def remote_address(self) -> Optional[Address]:
         return self._remote
 
     @property
-    def local_address(self) -> Optional[tuple]:
+    def local_address(self) -> Optional[Address]:
         return self._local
 
     def __str__(self) -> str:

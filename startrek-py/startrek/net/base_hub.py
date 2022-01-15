@@ -34,7 +34,7 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional, Set
 
-from ..types import AddressPairMap
+from ..types import Address, AddressPairMap
 
 from .hub import Hub
 from .channel import Channel
@@ -84,7 +84,7 @@ class BaseHub(Hub, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def _create_connection(self, channel: Channel, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+    def _create_connection(self, channel: Channel, remote: Address, local: Optional[Address]) -> Optional[Connection]:
         """
         Create connection with channel channel & addresses
 
@@ -99,7 +99,7 @@ class BaseHub(Hub, ABC):
         """ Get a copy of connections """
         return self.__connection_pool.items
 
-    def _get_connection(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Connection]:
+    def _get_connection(self, remote: Optional[Address], local: Optional[Address]) -> Optional[Connection]:
         return self.__connection_pool.get(remote=remote, local=local)
 
     def _set_connection(self, connection: Connection):
@@ -126,7 +126,7 @@ class BaseHub(Hub, ABC):
             connection.close()
 
     # Override
-    def connect(self, remote: tuple, local: Optional[tuple] = None) -> Optional[Connection]:
+    def connect(self, remote: Address, local: Optional[Address] = None) -> Optional[Connection]:
         conn = self._get_connection(remote=remote, local=local)
         if conn is not None:
             # check local address
