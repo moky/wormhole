@@ -87,7 +87,8 @@ class StarDocker(AddressPairObject, Docker):
     @property  # protected
     def connection(self) -> Optional[Connection]:
         conn = self._get_connection()
-        if conn is None:
+        if conn is None and self.__dock is not None:
+            # docker not closed, get new connection from the gate
             conn = self.gate.get_connection(remote=self._remote, local=self._local)
             self._set_connection(connection=conn)
         return conn
@@ -116,9 +117,6 @@ class StarDocker(AddressPairObject, Docker):
 
     @property  # Override
     def alive(self) -> bool:
-        if self.__dock is None:
-            # closed
-            return False
         conn = self.connection
         return conn is not None and conn.alive
 

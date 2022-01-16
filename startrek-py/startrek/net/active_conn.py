@@ -28,19 +28,35 @@
 # SOFTWARE.
 # ==============================================================================
 
+import weakref
 from typing import Optional
 
+from ..types import Address
+
+from .hub import Hub
 from .channel import Channel
+from .delegate import ConnectionDelegate as Delegate
 from .base_conn import BaseConnection
 
 
 class ActiveConnection(BaseConnection):
     """ Active connection for client """
 
+    def __init__(self, remote: Address, local: Optional[Address], channel: Channel, delegate: Delegate, hub: Hub):
+        super().__init__(remote=remote, local=local, channel=channel, delegate=delegate)
+        self.__hub_ref = weakref.ref(hub)
+
+    @property
+    def hub(self) -> Hub:
+        return self.__hub_ref()
+
     @property  # Override
     def channel(self) -> Optional[Channel]:
         sock = self._get_channel()
         if sock is None or not sock.opened:
+            if self._get_state_machine() is None:
+                # closed (not start yet)
+                return None
             # get new channel via hub
             sock = self.hub.open(remote=self._remote, local=self._local)
             assert sock is not None, 'failed to open channel: local=%s, remote=%s' % (self._local, self._remote)

@@ -36,7 +36,6 @@ from typing import Optional
 from ..types import Address, AddressPairObject
 from ..fsm import StateDelegate
 
-from .hub import Hub
 from .channel import Channel
 from .connection import Connection
 from .delegate import ConnectionDelegate as Delegate
@@ -47,21 +46,29 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     EXPIRES = 16  # seconds
 
-    def __init__(self, remote: Address, local: Optional[Address], channel: Channel, delegate: Delegate, hub: Hub):
+    def __init__(self, remote: Address, local: Optional[Address], channel: Channel, delegate: Delegate):
         super().__init__(remote=remote, local=local)
         self.__channel_ref = weakref.ref(channel)
         self.__delegate = weakref.ref(delegate)
-        self.__hub_ref = weakref.ref(hub)
         # active times
         self.__last_sent_time = 0
         self.__last_received_time = 0
         # Finite State Machine
-        self.__fsm = self._create_state_machine()
+        self.__fsm: Optional[StateMachine] = None
 
     def __del__(self):
         # make sure the relative channel is closed
         self._set_channel(channel=None)
-        self.__fsm = None
+        self._set_state_machine(fsm=None)
+
+    def _get_state_machine(self) -> Optional[StateMachine]:
+        return self.__fsm
+
+    def _set_state_machine(self, fsm: Optional[StateMachine]):
+        old = self.__fsm
+        if old is not None and old is not fsm:
+            old.stop()
+        self.__fsm = fsm
 
     def _create_state_machine(self) -> StateMachine:
         fsm = StateMachine(connection=self)
@@ -71,10 +78,6 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     @property
     def delegate(self) -> Delegate:
         return self.__delegate()
-
-    @property
-    def hub(self) -> Hub:
-        return self.__hub_ref()
 
     @property
     def channel(self) -> Optional[Channel]:
@@ -104,7 +107,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property  # Override
     def opened(self) -> bool:
-        if self.__fsm is None:
+        if self._get_state_machine() is None:
             # closed
             return False
         channel = self.channel
@@ -129,8 +132,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     # Override
     def close(self):
         self._set_channel(channel=None)
-        self.__fsm.stop()
-        self.__fsm = None
+        self._set_state_machine(fsm=None)
 
     @property  # Override
     def last_sent_time(self) -> int:
@@ -184,18 +186,13 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         # callback
         delegate = self.delegate
         if delegate is not None:
-            # get local address as source
-            source = self._local
-            if source is None:
-                channel = self._get_channel()
-                if channel is not None:
-                    source = channel.local_address
+            local = self._local
             if error is None:
                 if sent < len(data):
                     data = data[:sent]
-                delegate.connection_sent(data=data, source=source, destination=target, connection=self)
+                delegate.connection_sent(data=data, source=local, destination=target, connection=self)
             else:
-                delegate.connection_error(error=error, data=data, source=source, destination=target, connection=self)
+                delegate.connection_error(error=error, data=data, source=local, destination=target, connection=self)
         return sent
 
     #
@@ -204,20 +201,27 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property  # Override
     def state(self) -> ConnectionState:
-        return self.__fsm.current_state
+        fsm = self._get_state_machine()
+        if fsm is None:
+            return ConnectionState.ERROR
+        else:
+            return fsm.current_state
 
     # Override
     def tick(self):
-        # drive state machine forward
-        self.__fsm.tick()
+        fsm = self._get_state_machine()
+        if fsm is not None:
+            # drive state machine forward
+            fsm.tick()
 
     def start(self):
-        self.__fsm.start()
+        fsm = self._create_state_machine()
+        fsm.start()
+        self._set_state_machine(fsm=fsm)
 
     def stop(self):
         self._set_channel(channel=None)
-        self.__fsm.stop()
-        self.__fsm = None
+        self._set_state_machine(fsm=None)
 
     #
     #   StateDelegate

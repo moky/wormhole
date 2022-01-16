@@ -174,7 +174,7 @@ class HashKeyPairMap(WeakKeyPairMap[K, V]):
         if old is not None:
             self.__items.discard(old)
             return old
-        elif item is not None:
+        elif item is not None and item in self.__items:
             self.__items.discard(item)
             return item
 

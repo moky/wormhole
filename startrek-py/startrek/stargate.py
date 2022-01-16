@@ -96,7 +96,7 @@ class StarGate(Gate, ConnectionDelegate):
         raise NotImplemented
 
     def _all_dockers(self) -> Set[Docker]:
-        """ get a copy of dockers """
+        """ get a copy of all dockers """
         return self.__docker_pool.items
 
     def _get_docker(self, remote: Address, local: Optional[Address]) -> Optional[Docker]:

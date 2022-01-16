@@ -119,7 +119,7 @@ class BaseHub(Hub, ABC):
         raise NotImplemented
 
     def _all_connections(self) -> Set[Connection]:
-        """ get a copy of connections """
+        """ get a copy of all connections """
         return self.__connection_pool.items
 
     def _get_connection(self, remote: Optional[Address], local: Optional[Address]) -> Optional[Connection]:
@@ -209,7 +209,7 @@ class BaseHub(Hub, ABC):
     def _cleanup_connections(self, connections: Set[Connection]):
         # NOTICE: multi connections may share same channel (UDP Hub)
         for conn in connections:
-            if not conn.opened:
+            if not conn.alive:
                 self._remove_connection(connection=conn)
 
     # Override
