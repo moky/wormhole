@@ -41,23 +41,19 @@ from .port.gate import status_from_state
 
 class DockerPool(AddressPairMap[Docker]):
 
-    # noinspection PyMethodMayBeStatic
-    def _close_docker(self, docker: Docker):
-        if docker.alive:
-            docker.close()
-
     # Override
     def set(self, remote: Optional[Address], local: Optional[Address], item: Optional[Docker]):
         old = self.get(remote=remote, local=local)
         if old is not None and old is not item:
-            self._close_docker(docker=old)
+            self.remove(remote=remote, local=local, item=old)
         super().set(remote=remote, local=local, item=item)
 
     # Override
     def remove(self, remote: Optional[Address], local: Optional[Address], item: Optional[Docker]) -> Optional[Docker]:
         cached = super().remove(remote=remote, local=local, item=item)
         if cached is not None:
-            self._close_docker(docker=cached)
+            if cached.alive:
+                cached.close()
             return cached
 
 

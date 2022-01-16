@@ -65,9 +65,11 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         return self.__fsm
 
     def _set_state_machine(self, fsm: Optional[StateMachine]):
+        # 1. check old machine
         old = self.__fsm
         if old is not None and old is not fsm:
             old.stop()
+        # 2. set new machine
         self.__fsm = fsm
 
     def _create_state_machine(self) -> StateMachine:
@@ -92,18 +94,13 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         # 1. check old channel
         old = self._get_channel()
         if old is not None and old is not channel:
-            # close old channel
-            self._close_channel(channel=old)
+            if old.opened:
+                old.close()
         # 2. set new channel
         if channel is None:
             self.__channel_ref = None
         else:
             self.__channel_ref = weakref.ref(channel)
-
-    # noinspection PyMethodMayBeStatic
-    def _close_channel(self, channel: Channel):
-        if channel.opened:
-            channel.close()
 
     @property  # Override
     def opened(self) -> bool:
@@ -181,12 +178,12 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
                 error = ConnectionError('failed to send: %d byte(s) to %s' % (len(data), target))
         except socket.error as e:
             error = e
-            # socket error, close the channel
-            self._set_channel(channel=None)
+            # the channel will be closed automatically when socket.error raised,
+            # no need to handle it here
         # callback
         delegate = self.delegate
         if delegate is not None:
-            local = self._local
+            local = self.local_address
             if error is None:
                 if sent < len(data):
                     data = data[:sent]

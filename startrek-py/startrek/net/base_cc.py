@@ -153,7 +153,7 @@ class ChannelWriter(Controller, Writer, ABC):
                 # buffer overflow?
                 break
             elif cnt < 0:
-                # socket error?
+                # buffer overflow!
                 if sent == 0:
                     return -1
                 break

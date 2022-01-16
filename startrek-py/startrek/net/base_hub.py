@@ -44,16 +44,11 @@ from .delegate import ConnectionDelegate
 
 class ConnectionPool(AddressPairMap[Connection]):
 
-    # noinspection PyMethodMayBeStatic
-    def _close_connection(self, connection: Connection):
-        if connection.opened:
-            connection.close()
-
     # Override
     def set(self, remote: Optional[Address], local: Optional[Address], item: Optional[Connection]):
         old = self.get(remote=remote, local=local)
         if old is not None and old is not item:
-            self._close_connection(connection=old)
+            self.remove(remote=remote, local=local, item=old)
         super().set(remote=remote, local=local, item=item)
 
     # Override
@@ -61,7 +56,8 @@ class ConnectionPool(AddressPairMap[Connection]):
                item: Optional[Connection]) -> Optional[Connection]:
         cached = super().remove(remote=remote, local=local, item=item)
         if cached is not None:
-            self._close_connection(connection=cached)
+            if cached.opened:
+                cached.close()
             return cached
 
 
@@ -157,23 +153,23 @@ class BaseHub(Hub, ABC):
             return conn
 
     def _drive_channel(self, channel: Channel) -> bool:
-        local = channel.local_address
         # try to receive
         try:
             data, remote = channel.receive(max_len=self.MSS)
         except socket.error as error:
-            # print('[NET] failed to receive data: %s' % error)
-            remote = channel.remote_address
-            # socket error, close the channel
-            channel.close()
-            # callback
+            # the channel will be closed automatically when socket.error raised,
+            # no need to handle it here
             delegate = self.delegate
             if delegate is not None:
+                remote = channel.remote_address
+                local = channel.local_address
                 delegate.connection_error(error=error, data=None, source=remote, destination=local, connection=None)
             return False
         if remote is None:
             # received nothing
             return False
+        else:
+            local = channel.local_address
         # get connection for processing received data
         conn = self.connect(remote=remote, local=local)
         if conn is not None:

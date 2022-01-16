@@ -131,11 +131,6 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         # 3. refresh flags
         raise NotImplemented
 
-    @abstractmethod
-    def _close_socket(self, sock: socket.socket):
-        """ close inner socket """
-        raise NotImplemented
-
     # Override
     def configure_blocking(self, blocking: bool):
         sock = self.sock
@@ -199,25 +194,43 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     def disconnect(self) -> Optional[socket.socket]:
         sock = self._get_socket()
         self._set_socket(sock=None)
+        self._refresh_flags(sock=None)
         return sock
 
     # Override
     def close(self):
-        # set socket to None will refresh flags
+        # set socket to None and refresh flags
         self._set_socket(sock=None)
+        self._refresh_flags(sock=None)
 
     # Override
     def read(self, max_len: int) -> Optional[bytes]:
-        return self.reader.read(max_len=max_len)
+        try:
+            return self.reader.read(max_len=max_len)
+        except socket.error as error:
+            self.close()
+            raise error
 
     # Override
     def write(self, data: bytes) -> int:
-        return self.writer.write(data=data)
+        try:
+            return self.writer.write(data=data)
+        except socket.error as error:
+            self.close()
+            raise error
 
     # Override
     def receive(self, max_len: int) -> (Optional[bytes], Optional[Address]):
-        return self.reader.receive(max_len=max_len)
+        try:
+            return self.reader.receive(max_len=max_len)
+        except socket.error as error:
+            self.close()
+            raise error
 
     # Override
     def send(self, data: bytes, target: Address) -> int:
-        return self.writer.send(data=data, target=target)
+        try:
+            return self.writer.send(data=data, target=target)
+        except socket.error as error:
+            self.close()
+            raise error
