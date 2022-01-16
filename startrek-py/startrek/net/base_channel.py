@@ -128,7 +128,6 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         """ change inner socket """
         # 1. check old socket
         # 2. set new socket
-        # 3. refresh flags
         raise NotImplemented
 
     # Override
@@ -160,6 +159,14 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     @property  # Override
     def alive(self) -> bool:
         return self.opened and (self.connected or self.bound)
+
+    @property  # Override
+    def remote_address(self) -> Address:  # (str, int)
+        return self._remote
+
+    @property  # Override
+    def local_address(self) -> Optional[Address]:  # (str, int)
+        return self._local
 
     # Override
     def bind(self, address: Optional[Address] = None, host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):

@@ -157,8 +157,7 @@ class BaseHub(Hub, ABC):
         try:
             data, remote = channel.receive(max_len=self.MSS)
         except socket.error as error:
-            # the channel will be closed automatically when socket.error raised,
-            # no need to handle it here
+            self._remove_channel(channel=channel)
             delegate = self.delegate
             if delegate is not None:
                 remote = channel.remote_address

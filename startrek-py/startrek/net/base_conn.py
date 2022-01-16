@@ -104,9 +104,6 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property  # Override
     def opened(self) -> bool:
-        if self._get_state_machine() is None:
-            # closed
-            return False
         channel = self.channel
         return channel is not None and channel.opened
 
@@ -125,6 +122,14 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         # channel = self.channel
         # return channel is not None and channel.alive
         return self.opened and (self.connected or self.bound)
+
+    @property  # Override
+    def remote_address(self) -> Address:  # (str, int)
+        return self._remote
+
+    @property  # Override
+    def local_address(self) -> Optional[Address]:  # (str, int)
+        return self._local
 
     # Override
     def close(self):
@@ -161,7 +166,8 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     def _send(self, data: bytes, target: Optional[Address]) -> int:
         channel = self.channel
         if channel is None or not channel.alive:
-            raise socket.error('socket channel lost: %s' % channel)
+            # raise socket.error('socket channel lost: %s' % channel)
+            return -1
         sent = channel.send(data=data, target=target)
         if sent > 0:
             self.__last_sent_time = int(time.time())
@@ -178,14 +184,14 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
                 error = ConnectionError('failed to send: %d byte(s) to %s' % (len(data), target))
         except socket.error as e:
             error = e
-            # the channel will be closed automatically when socket.error raised,
-            # no need to handle it here
+            # socket error, close current channel
+            self._set_channel(channel=None)
         # callback
         delegate = self.delegate
         if delegate is not None:
             local = self.local_address
             if error is None:
-                if sent < len(data):
+                if 0 <= sent < len(data):
                     data = data[:sent]
                 delegate.connection_sent(data=data, source=local, destination=target, connection=self)
             else:

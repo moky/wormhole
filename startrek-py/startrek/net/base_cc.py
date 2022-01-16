@@ -62,9 +62,14 @@ class Controller:
         return self.channel.remote_address
 
     @property
+    def local_address(self) -> Optional[Address]:
+        return self.channel.local_address
+
+    @property
     def sock(self) -> Optional[socket.socket]:
         s = self.channel.sock
-        assert s is not None, 'socket lost: %s' % self.channel
+        if s is None:
+            raise socket.error('socket lost: %s' % self.channel)
         return s
 
     def _check_error(self, error: socket.error, sock: socket.socket = None) -> Optional[socket.error]:

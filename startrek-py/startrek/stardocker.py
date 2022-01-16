@@ -89,7 +89,7 @@ class StarDocker(AddressPairObject, Docker):
         conn = self._get_connection()
         if conn is None and self.__dock is not None:
             # docker not closed, get new connection from the gate
-            conn = self.gate.get_connection(remote=self._remote, local=self._local)
+            conn = self.gate.get_connection(remote=self.remote_address, local=self.local_address)
             self._set_connection(connection=conn)
         return conn
 
@@ -125,6 +125,11 @@ class StarDocker(AddressPairObject, Docker):
 
     # Override
     def process(self) -> bool:
+        # check connection
+        conn = self.connection
+        if conn is None or not conn.alive:
+            # waiting for connection
+            return False
         # get data to be sent
         if len(self.__last_fragments) > 0:
             # get remaining fragments from last outgo task
@@ -152,11 +157,9 @@ class StarDocker(AddressPairObject, Docker):
                     # return True to process next one
                     return True
         # process fragments of outgo task
-        conn = None
         index = 0
         sent = 0
         try:
-            conn = self.connection
             remote_address = self.remote_address
             for fra in fragments:
                 sent = conn.send(data=fra, target=remote_address)
