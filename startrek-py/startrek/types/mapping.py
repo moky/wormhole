@@ -173,10 +173,10 @@ class HashKeyPairMap(WeakKeyPairMap[K, V]):
         old = super().remove(remote=remote, local=local, item=item)
         if old is not None:
             self.__items.discard(old)
-        # clear cached item
-        if item is not None and item is not old:
+            return old
+        elif item is not None:
             self.__items.discard(item)
-        return item if old is None else old
+            return item
 
 
 class AddressPairMap(HashKeyPairMap[Address, V]):

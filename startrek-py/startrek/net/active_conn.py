@@ -40,7 +40,7 @@ class ActiveConnection(BaseConnection):
     @property  # Override
     def channel(self) -> Optional[Channel]:
         sock = self._get_channel()
-        if sock is None:
+        if sock is None or not sock.opened:
             # get new channel via hub
             sock = self.hub.open(remote=self._remote, local=self._local)
             assert sock is not None, 'failed to open channel: local=%s, remote=%s' % (self._local, self._remote)

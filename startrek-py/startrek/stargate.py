@@ -39,6 +39,28 @@ from .port import Docker, Gate, GateDelegate, GateStatus
 from .port.gate import status_from_state
 
 
+class DockerPool(AddressPairMap[Docker]):
+
+    # noinspection PyMethodMayBeStatic
+    def _close_docker(self, docker: Docker):
+        if docker.alive:
+            docker.close()
+
+    # Override
+    def set(self, remote: Optional[Address], local: Optional[Address], item: Optional[Docker]):
+        old = self.get(remote=remote, local=local)
+        if old is not None and old is not item:
+            self._close_docker(docker=old)
+        super().set(remote=remote, local=local, item=item)
+
+    # Override
+    def remove(self, remote: Optional[Address], local: Optional[Address], item: Optional[Docker]) -> Optional[Docker]:
+        cached = super().remove(remote=remote, local=local, item=item)
+        if cached is not None:
+            self._close_docker(docker=cached)
+            return cached
+
+
 class StarGate(Gate, ConnectionDelegate):
     """
         Star Gate
@@ -55,7 +77,7 @@ class StarGate(Gate, ConnectionDelegate):
     def __init__(self, delegate: GateDelegate):
         super().__init__()
         self.__delegate = weakref.ref(delegate)
-        self.__docker_pool: AddressPairMap[Docker] = AddressPairMap()
+        self.__docker_pool = DockerPool()
 
     @property  # Override
     def delegate(self) -> Optional[GateDelegate]:
@@ -64,7 +86,7 @@ class StarGate(Gate, ConnectionDelegate):
     @abstractmethod
     def _create_docker(self, remote: Address, local: Optional[Address], advance_party: List[bytes]) -> Optional[Docker]:
         """
-        Create new docker for received data
+        create new docker for received data
 
         :param remote:        remote address
         :param local:         local address
@@ -74,29 +96,20 @@ class StarGate(Gate, ConnectionDelegate):
         raise NotImplemented
 
     def _all_dockers(self) -> Set[Docker]:
-        """ Get a copy of dockers """
+        """ get a copy of dockers """
         return self.__docker_pool.items
 
     def _get_docker(self, remote: Address, local: Optional[Address]) -> Optional[Docker]:
+        """ get cached docker """
         return self.__docker_pool.get(remote=remote, local=local)
 
     def _set_docker(self, docker: Docker):
-        remote = docker.remote_address
-        local = docker.local_address
-        # check old docker
-        old = self.__docker_pool.get(remote=remote, local=local)
-        if old is not None and old is not docker:
-            self._close_docker(docker=old)
-        # set new docker
-        self.__docker_pool.set(remote=remote, local=local, item=docker)
+        """ cache docker """
+        self.__docker_pool.set(remote=docker.remote_address, local=docker.local_address, item=docker)
 
     def _remove_docker(self, docker: Docker):
-        remote = docker.remote_address
-        local = docker.local_address
-        old = self.__docker_pool.remove(remote=remote, local=local, item=docker)
-        if old is not None and old is not docker:
-            # should not happen
-            self._close_docker(docker=old)
+        """ remove cached docker """
+        self.__docker_pool.remove(remote=docker.remote_address, local=docker.local_address, item=docker)
 
     # noinspection PyMethodMayBeStatic
     def _close_docker(self, docker: Docker):
@@ -140,18 +153,13 @@ class StarGate(Gate, ConnectionDelegate):
         return count
 
     def _cleanup_dockers(self, dockers: Set[Docker]):
-        retired_dockers = set()
-        # 1. check docker which connection lost
         for worker in dockers:
             if worker.alive:
                 # clear expired tasks
                 worker.purge()
             else:
-                retired_dockers.add(worker)
-        # 2. remove docker which connection lost
-        for worker in retired_dockers:
-            self._remove_docker(docker=worker)
-        return retired_dockers
+                # remove docker which connection lost
+                self._remove_docker(docker=worker)
 
     def _heartbeat(self, connection: Connection):
         remote = connection.remote_address

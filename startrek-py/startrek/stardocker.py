@@ -57,8 +57,9 @@ class StarDocker(AddressPairObject, Docker):
             - _check_arrival(ship)
     """
 
-    def __init__(self, remote: Address, local: Optional[Address]):
+    def __init__(self, remote: Address, local: Optional[Address], gate: Gate):
         super().__init__(remote=remote, local=local)
+        self.__gate_ref = weakref.ref(gate)
         self.__dock = self._create_dock()
         self.__conn_ref = None
         # remaining data to be sent
@@ -77,7 +78,7 @@ class StarDocker(AddressPairObject, Docker):
 
     @property  # protected
     def gate(self) -> Gate:
-        raise NotImplemented
+        return self.__gate_ref()
 
     @property  # protected
     def delegate(self) -> Optional[GateDelegate]:
@@ -97,11 +98,12 @@ class StarDocker(AddressPairObject, Docker):
             return ref()
 
     def _set_connection(self, connection: Optional[Connection]):
-        # check old connection
+        # 1. check old connection
         old = self._get_connection()
         if old is not None and old is not connection:
+            # close old connection
             self._close_connection(connection=old)
-        # set new connection
+        # 2. set new connection
         if connection is None:
             self.__conn_ref = None
         else:
@@ -114,6 +116,9 @@ class StarDocker(AddressPairObject, Docker):
 
     @property  # Override
     def alive(self) -> bool:
+        if self.__dock is None:
+            # closed
+            return False
         conn = self.connection
         return conn is not None and conn.alive
 
@@ -278,3 +283,4 @@ class StarDocker(AddressPairObject, Docker):
     # Override
     def close(self):
         self._set_connection(connection=None)
+        self.__dock = None

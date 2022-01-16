@@ -29,7 +29,6 @@
 # ==============================================================================
 
 import socket
-import weakref
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -69,9 +68,8 @@ class Writer(ABC):
 
 class BaseChannel(AddressPairObject, Channel, ABC):
 
-    def __init__(self, remote: Optional[Address], local: Optional[Address], sock: socket.socket):
+    def __init__(self, remote: Optional[Address], local: Optional[Address]):
         super().__init__(remote=remote, local=local)
-        self.__sock_ref = weakref.ref(sock)
         self.__reader = self._create_reader()
         self.__writer = self._create_writer()
         # flags
@@ -79,7 +77,6 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         self.__opened = False
         self.__connected = False
         self.__bound = False
-        self._refresh_flags(sock=sock)
 
     def __del__(self):
         # make sure the relative socket is removed
@@ -97,10 +94,12 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     @abstractmethod
     def _create_reader(self) -> Reader:
+        """ create socket reader """
         raise NotImplemented
 
     @abstractmethod
     def _create_writer(self) -> Writer:
+        """ create socket writer """
         raise NotImplemented
 
     def _refresh_flags(self, sock: Optional[socket.socket]):
@@ -119,25 +118,23 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     def sock(self) -> Optional[socket.socket]:
         return self._get_socket()
 
+    @abstractmethod
     def _get_socket(self) -> Optional[socket.socket]:
-        ref = self.__sock_ref
-        if ref is not None:
-            return ref()
+        """ get inner socket """
+        raise NotImplemented
 
+    @abstractmethod
     def _set_socket(self, sock: Optional[socket.socket]):
-        # check old socket
-        old = self._get_socket()
-        if old is not None and old is not sock:
-            self._close_socket(sock=old)
-        # set new socket
-        if sock is None:
-            self.__sock_ref = None
-        else:
-            self.__sock_ref = weakref.ref(sock)
-        self._refresh_flags(sock=sock)
+        """ change inner socket """
+        # 1. check old socket
+        # 2. set new socket
+        # 3. refresh flags
+        raise NotImplemented
 
+    @abstractmethod
     def _close_socket(self, sock: socket.socket):
-        pass
+        """ close inner socket """
+        raise NotImplemented
 
     # Override
     def configure_blocking(self, blocking: bool):

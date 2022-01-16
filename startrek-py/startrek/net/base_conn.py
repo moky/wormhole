@@ -39,7 +39,7 @@ from ..fsm import StateDelegate
 from .hub import Hub
 from .channel import Channel
 from .connection import Connection
-from .delegate import ConnectionDelegate
+from .delegate import ConnectionDelegate as Delegate
 from .state import ConnectionState, StateMachine, TimedConnection
 
 
@@ -47,8 +47,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     EXPIRES = 16  # seconds
 
-    def __init__(self, remote: Address, local: Optional[Address],
-                 channel: Channel, delegate: ConnectionDelegate, hub: Hub):
+    def __init__(self, remote: Address, local: Optional[Address], channel: Channel, delegate: Delegate, hub: Hub):
         super().__init__(remote=remote, local=local)
         self.__channel_ref = weakref.ref(channel)
         self.__delegate = weakref.ref(delegate)
@@ -70,7 +69,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         return fsm
 
     @property
-    def delegate(self) -> ConnectionDelegate:
+    def delegate(self) -> Delegate:
         return self.__delegate()
 
     @property
@@ -87,11 +86,12 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             return ref()
 
     def _set_channel(self, channel: Optional[Channel]):
-        # check old channel
+        # 1. check old channel
         old = self._get_channel()
         if old is not None and old is not channel:
+            # close old channel
             self._close_channel(channel=old)
-        # set new channel
+        # 2. set new channel
         if channel is None:
             self.__channel_ref = None
         else:
@@ -104,6 +104,9 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property  # Override
     def opened(self) -> bool:
+        if self.__fsm is None:
+            # closed
+            return False
         channel = self.channel
         return channel is not None and channel.opened
 
@@ -127,6 +130,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     def close(self):
         self._set_channel(channel=None)
         self.__fsm.stop()
+        self.__fsm = None
 
     @property  # Override
     def last_sent_time(self) -> int:
@@ -213,6 +217,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     def stop(self):
         self._set_channel(channel=None)
         self.__fsm.stop()
+        self.__fsm = None
 
     #
     #   StateDelegate

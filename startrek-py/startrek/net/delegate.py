@@ -83,9 +83,9 @@ class ConnectionDelegate(ABC):
         Called when connection error
 
         :param error:       connection error
-        :param data:        outgoing data package
-        :param source:      local address
-        :param destination: remote address
+        :param data:        outgoing data package; None for receiving error
+        :param source:      source address
+        :param destination: destination address
         :param connection:  current connection
         """
         raise NotImplemented
