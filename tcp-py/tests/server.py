@@ -1,9 +1,13 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import socket
 import sys
 import os
+import time
 from typing import Optional
+
+from startrek.net.channel import is_opened
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
@@ -93,6 +97,38 @@ SERVER_HOST = '0.0.0.0'
 SERVER_PORT = 9394
 
 
+def test_receive(address: tuple):
+    master = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    master.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    master.setblocking(True)
+    master.bind(address)
+    master.listen(1)
+    while True:
+        try:
+            sock, address = master.accept()
+            time.sleep(5)
+            # check
+            size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
+            print('[TCP] receive buffer size1: %d' % size)
+            total = 0
+            while is_opened(sock=sock):
+                data = sock.recv(1024)
+                cnt = len(data)
+                if cnt > 0:
+                    print('[TCP] received %d bytes: %s' % (cnt, data))
+                    total += cnt
+                else:
+                    print('[TCP] closed: %s' % str(address))
+                    break
+            print('[TCP] total length: %d' % total)
+            size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
+            print('[TCP] receive buffer size2: %d' % size)
+        except socket.error as error:
+            print('[TCP] socket error: %s' % error)
+        except Exception as error:
+            print('[TCP] accept error: %s' % error)
+
+
 if __name__ == '__main__':
 
     TCPGate.info('TCP server (%s:%d) starting ...' % (SERVER_HOST, SERVER_PORT))
@@ -100,3 +136,5 @@ if __name__ == '__main__':
     g_server = Server(host=SERVER_HOST, port=SERVER_PORT)
 
     g_server.start()
+
+    # test_receive(address=(SERVER_HOST, SERVER_PORT))

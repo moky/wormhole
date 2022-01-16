@@ -41,12 +41,30 @@ from startrek import BaseHub
 from .channel import PackageChannel
 
 
+class ChannelPool(AddressPairMap[Channel]):
+
+    # Override
+    def set(self, remote: Optional[Address], local: Optional[Address], item: Optional[Channel]):
+        old = self.get(remote=remote, local=local)
+        if old is not None and old is not item:
+            self.remove(remote=remote, local=local, item=old)
+        super().set(remote=remote, local=local, item=item)
+
+    # Override
+    def remove(self, remote: Optional[Address], local: Optional[Address], item: Optional[Channel]) -> Optional[Channel]:
+        cached = super().remove(remote=remote, local=local, item=item)
+        if cached is not None:
+            if cached.opened:
+                cached.close()
+            return cached
+
+
 class PackageHub(BaseHub, ABC):
     """ Base Package Hub """
 
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__(delegate=delegate)
-        self.__channel_pool: AddressPairMap[Channel] = AddressPairMap()
+        self.__channel_pool = ChannelPool()
 
     def bind(self, address: Address = None, host: str = None, port: int = 0):
         if address is None:
@@ -71,41 +89,30 @@ class PackageHub(BaseHub, ABC):
 
     # Override
     def _all_channels(self) -> Set[Channel]:
+        """ get a copy of all channels """
         return self.__channel_pool.items
 
     def _get_channel(self, local: Optional[Address]) -> Optional[Channel]:
+        """ get cached channel """
         return self.__channel_pool.get(remote=None, local=local)
 
     def _set_channel(self, channel: Channel):
-        local = channel.local_address
-        # check old channel
-        old = self.__channel_pool.get(remote=None, local=local)
-        if old is not None and old is not channel:
-            self._close_channel(channel=old)
-        # set new channel
-        self.__channel_pool.set(remote=None, local=local, item=channel)
+        """ cache channel """
+        self.__channel_pool.set(remote=channel.remote_address, local=channel.local_address, item=channel)
 
     # Override
     def _remove_channel(self, channel: Channel):
-        local = channel.local_address
-        old = self.__channel_pool.remove(remote=None, local=local, item=channel)
-        if old is not None and old is not channel:
-            # should not happen
-            self._close_channel(channel=old)
-
-    # noinspection PyMethodMayBeStatic
-    def _close_channel(self, channel: Channel):
-        if channel.opened:
-            channel.close()
+        """ remove cached channel """
+        self.__channel_pool.remove(remote=channel.remote_address, local=channel.local_address, item=channel)
 
     # Override
     def open(self, remote: Optional[Address], local: Optional[Address]) -> Optional[Channel]:
         if local is None:
             # get any channel
-            items = self.__channel_pool.items
-            for channel in items:
-                if channel is not None:
-                    return channel
+            channels = self._all_channels()
+            for sock in channels:
+                if sock is not None:
+                    return sock
             # channel not found
         else:
             return self._get_channel(local=local)
@@ -117,7 +124,7 @@ class ServerHub(PackageHub):
     # Override
     def _create_connection(self, channel: Channel, remote: Address, local: Optional[Address]) -> Optional[Connection]:
         gate = self.delegate
-        conn = BaseConnection(remote=remote, local=None, channel=channel, delegate=gate, hub=self)
+        conn = BaseConnection(remote=remote, local=None, channel=channel, delegate=gate)
         conn.start()  # start FSM
         return conn
 

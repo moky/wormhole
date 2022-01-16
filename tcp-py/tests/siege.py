@@ -74,7 +74,7 @@ class Soldier(Runner, GateDelegate):
         return self.__gate
 
     def start(self) -> threading.Thread:
-        thr = threading.Thread(target=self.run)
+        thr = threading.Thread(target=self.run, daemon=True)
         # thr.daemon = True
         thr.start()
         return thr
@@ -172,13 +172,14 @@ class Sergeant:
             soldier = Soldier(remote=self.remote_address, local=self.local_address)
             thr = soldier.start()
             threads.append(thr)
+            time.sleep(1)
         for thr in threads:
             thr.join()
             print('**** thread stopped: %s' % thr)
 
     def start(self) -> multiprocessing.Process:
         pro = multiprocessing.Process(target=self.run)
-        # pro.daemon = True
+        pro.daemon = True
         pro.start()
         return pro
 
@@ -249,7 +250,7 @@ all_stations = [
     ('', 0),
     ('', 0),
 ]
-test_station = all_stations[2]
+test_station = all_stations[1]
 
 
 if __name__ == '__main__':

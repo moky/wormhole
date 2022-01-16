@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import random
+import socket
 import time
 
 import sys
@@ -103,6 +104,39 @@ CLIENT_HOST = Hub.inet_address()
 CLIENT_PORT = random.choice(range(9900, 9999))
 
 
+def test_send(address: tuple):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
+    sock.setblocking(True)
+    sock.connect(address)
+    sock.setblocking(False)
+    # check
+    size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
+    print('[TCP] buffer size : %d' % size)
+    # send
+    data = b''
+    for i in range(65536):
+        data += b'% 8d' % i
+    total = len(data)
+    print('[TCP] total length: %d' % total)
+    rest = total
+    sent = 0
+    while rest > 0:
+        try:
+            cnt = sock.send(data)
+        except socket.error:
+            break
+        if cnt > 0:
+            print('[TCP] sent: %d + %d' % (sent, cnt))
+            sent += cnt
+            rest -= cnt
+            data = data[cnt:]
+        else:
+            break
+    # sent = sock.send(data)
+    print('[TCP] sent length : %d' % sent)
+
+
 if __name__ == '__main__':
 
     local_address = (CLIENT_HOST, CLIENT_PORT)
@@ -114,5 +148,7 @@ if __name__ == '__main__':
     g_client.start()
     g_client.test()
     g_client.stop()
+
+    # test_send(address=server_address)
 
     TCPGate.info('Terminated.')

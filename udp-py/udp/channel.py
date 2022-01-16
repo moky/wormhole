@@ -32,7 +32,7 @@ import socket
 from typing import Optional
 
 from startrek.types import Address
-from startrek.net.channel import is_opened, is_connected
+from startrek.net.channel import is_opened, is_bound, is_connected
 from startrek import BaseChannel, ChannelReader, ChannelWriter
 
 
@@ -102,26 +102,37 @@ class PackageChannel(BaseChannel):
     """ Discrete Package Channel """
 
     def __init__(self, remote: Optional[Address], local: Optional[Address], sock: socket.socket):
-        super().__init__(remote=remote, local=local, sock=sock)
+        super().__init__(remote=remote, local=local)
         self.__sock = sock
+        self._refresh_flags(sock=sock)
+
+    # Override
+    def _get_socket(self) -> Optional[socket.socket]:
+        return self.__sock
 
     # Override
     def _set_socket(self, sock: Optional[socket.socket]):
-        super()._set_socket(sock=sock)
+        # 1. check old socket
+        old = self._get_socket()
+        if old is not None and old is not sock:
+            if is_opened(sock=old):
+                close_socket(sock=old)
+        # 2. set new socket
         self.__sock = sock
 
     # Override
-    def _close_socket(self, sock: socket.socket):
-        # DON'T close bound socket
-        if is_opened(sock=sock) and is_connected(sock=sock):
-            # sock.shutdown(socket.SHUT_RDWR)
-            sock.close()
+    def disconnect(self) -> Optional[socket.socket]:
+        # DON'T close bound socket channel
+        if self.bound and not self.connected:
+            return None
+        super().disconnect()
 
     # Override
     def close(self):
         # DON'T close bound socket channel
-        if self.connected:
-            super().close()
+        if self.bound and not self.connected:
+            return False
+        super().close()
 
     # Override
     def _create_reader(self):
@@ -130,3 +141,14 @@ class PackageChannel(BaseChannel):
     # Override
     def _create_writer(self):
         return PackageChannelWriter(channel=self)
+
+
+def close_socket(sock: socket.socket):
+    # DON'T close bound socket
+    if is_bound(sock=sock) and not is_connected(sock=sock):
+        return False
+    try:
+        # sock.shutdown(socket.SHUT_RDWR)
+        sock.close()
+    except socket.error:
+        pass

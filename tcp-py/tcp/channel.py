@@ -62,19 +62,23 @@ class StreamChannel(BaseChannel):
     """ Stream Channel """
 
     def __init__(self, remote: Optional[Address], local: Optional[Address], sock: socket.socket):
-        super().__init__(remote=remote, local=local, sock=sock)
+        super().__init__(remote=remote, local=local)
         self.__sock = sock
+        self._refresh_flags(sock=sock)
+
+    # Override
+    def _get_socket(self) -> Optional[socket.socket]:
+        return self.__sock
 
     # Override
     def _set_socket(self, sock: Optional[socket.socket]):
-        super()._set_socket(sock=sock)
+        # 1. check old socket
+        old = self._get_socket()
+        if old is not None and old is not sock:
+            if is_opened(sock=old):
+                close_socket(sock=old)
+        # 2. set new socket
         self.__sock = sock
-
-    # Override
-    def _close_socket(self, sock: socket.socket):
-        if is_opened(sock=sock):
-            # sock.shutdown(socket.SHUT_RDWR)
-            sock.close()
 
     # Override
     def _create_reader(self):
@@ -83,3 +87,11 @@ class StreamChannel(BaseChannel):
     # Override
     def _create_writer(self):
         return StreamChannelWriter(channel=self)
+
+
+def close_socket(sock: socket.socket):
+    try:
+        # sock.shutdown(socket.SHUT_RDWR)
+        sock.close()
+    except socket.error:
+        pass
