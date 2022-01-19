@@ -58,7 +58,7 @@ class ActiveConnection(BaseConnection):
                 # closed (not start yet)
                 return None
             # get new channel via hub
-            sock = self.hub.open(remote=self.remote_address, local=self.local_address)
-            assert sock is not None, 'failed to open channel: %s, %s' % (self.remote_address, self.local_address)
+            sock = self.hub.open(remote=self._remote, local=self._local)
+            assert sock is not None, 'failed to open channel: %s, %s' % (self._remote, self._local)
             self._set_channel(channel=sock)
         return sock

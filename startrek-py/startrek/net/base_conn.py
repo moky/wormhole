@@ -129,7 +129,8 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property  # Override
     def local_address(self) -> Optional[Address]:  # (str, int)
-        return self._local
+        channel = self._get_channel()
+        return self._local if channel is None else channel.local_address
 
     # Override
     def close(self):

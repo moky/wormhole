@@ -30,7 +30,7 @@
 
 import weakref
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Optional, Set, MutableMapping
+from typing import TypeVar, Generic, Optional, Set, Iterable, MutableMapping
 
 from .pair import Address
 
@@ -42,7 +42,7 @@ V = TypeVar('V')
 class KeyPairMap(Generic[K, V], ABC):
 
     @property
-    def items(self) -> Set[V]:
+    def items(self) -> Iterable[V]:
         """ Get all mapped items """
         raise NotImplemented
 
@@ -153,8 +153,10 @@ class HashKeyPairMap(WeakKeyPairMap[K, V]):
         self.__items: Set[V] = set()
 
     @property
-    def items(self) -> Set[V]:
-        return set(self.__items)
+    def items(self) -> Iterable[V]:
+        # Caveat: the iterator will keep a strong reference to
+        # `item` in WeakSet until it is resumed or closed.
+        return weakref.WeakSet(self.__items)
 
     # Override
     def set(self, remote: Optional[K], local: Optional[K], item: Optional[V]):

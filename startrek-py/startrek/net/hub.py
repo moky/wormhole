@@ -30,7 +30,7 @@
 
 import socket
 from abc import ABC, abstractmethod
-from typing import Optional, Set
+from typing import Optional, Iterable
 
 from ..types import Address
 from ..fsm import Processor
@@ -83,7 +83,7 @@ class Hub(Processor, ABC):
                 return []
 
     @classmethod
-    def inet_addresses(cls) -> Set[str]:
+    def inet_addresses(cls) -> Iterable[str]:
         addresses = set()
         info = cls.addr_info()
         for item in info:

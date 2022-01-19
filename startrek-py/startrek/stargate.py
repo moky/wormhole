@@ -31,7 +31,7 @@
 import traceback
 import weakref
 from abc import abstractmethod
-from typing import Optional, List, Set
+from typing import Optional, List, Iterable
 
 from .types import Address, AddressPairMap
 from .net import Connection, ConnectionDelegate, ConnectionState
@@ -91,7 +91,7 @@ class StarGate(Gate, ConnectionDelegate):
         """
         raise NotImplemented
 
-    def _all_dockers(self) -> Set[Docker]:
+    def _all_dockers(self) -> Iterable[Docker]:
         """ get a copy of all dockers """
         return self.__docker_pool.items
 
@@ -137,7 +137,7 @@ class StarGate(Gate, ConnectionDelegate):
             print('[NET] gate process error: %s' % error)
             traceback.print_exc()
 
-    def _drive_dockers(self, dockers: Set[Docker]) -> int:
+    def _drive_dockers(self, dockers: Iterable[Docker]) -> int:
         count = 0
         for worker in dockers:
             try:
@@ -148,7 +148,7 @@ class StarGate(Gate, ConnectionDelegate):
                 traceback.print_exc()
         return count
 
-    def _cleanup_dockers(self, dockers: Set[Docker]):
+    def _cleanup_dockers(self, dockers: Iterable[Docker]):
         for worker in dockers:
             if worker.alive:
                 # clear expired tasks

@@ -32,7 +32,7 @@ import socket
 import traceback
 import weakref
 from abc import ABC, abstractmethod
-from typing import Optional, Set
+from typing import Optional, Iterable
 
 from ..types import Address, AddressPairMap
 
@@ -85,7 +85,7 @@ class BaseHub(Hub, ABC):
         return self.__delegate()
 
     @abstractmethod
-    def _all_channels(self) -> Set[Channel]:
+    def _all_channels(self) -> Iterable[Channel]:
         """
         get all channels
 
@@ -114,7 +114,7 @@ class BaseHub(Hub, ABC):
         """
         raise NotImplemented
 
-    def _all_connections(self) -> Set[Connection]:
+    def _all_connections(self) -> Iterable[Connection]:
         """ get a copy of all connections """
         return self.__connection_pool.items
 
@@ -175,7 +175,7 @@ class BaseHub(Hub, ABC):
             conn.received(data=data, remote=remote, local=local)
         return True
 
-    def _drive_channels(self, channels: Set[Channel]) -> int:
+    def _drive_channels(self, channels: Iterable[Channel]) -> int:
         count = 0
         for sock in channels:
             try:
@@ -186,22 +186,23 @@ class BaseHub(Hub, ABC):
                 traceback.print_exc()
         return count
 
-    def _drive_connections(self, connections: Set[Connection]):
+    # noinspection PyMethodMayBeStatic
+    def _drive_connections(self, connections: Iterable[Connection]):
         for conn in connections:
             try:
                 conn.tick()  # drive connection to go on
             except Exception as error:
-                print('[NET] drive connection error: %s, %s, %s' % (error, conn, self))
+                print('[NET] drive connection error: %s, %s' % (error, conn))
                 traceback.print_exc()
             # NOTICE: let the delegate to decide whether close an error connection
             #         or just remove it.
 
-    def _cleanup_channels(self, channels: Set[Channel]):
+    def _cleanup_channels(self, channels: Iterable[Channel]):
         for sock in channels:
             if not sock.alive:
                 self._remove_channel(channel=sock)
 
-    def _cleanup_connections(self, connections: Set[Connection]):
+    def _cleanup_connections(self, connections: Iterable[Connection]):
         # NOTICE: multi connections may share same channel (UDP Hub)
         for conn in connections:
             if not conn.alive:
