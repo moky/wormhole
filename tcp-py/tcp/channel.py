@@ -93,5 +93,5 @@ def close_socket(sock: socket.socket):
     try:
         # sock.shutdown(socket.SHUT_RDWR)
         sock.close()
-    except socket.error:
-        pass
+    except socket.error as error:
+        print('[TCP] failed to close socket: %s, %s' % (error, sock))

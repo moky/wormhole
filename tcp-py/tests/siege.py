@@ -61,6 +61,10 @@ class Soldier(Runner, GateDelegate):
         self.__gate = TCPGate(delegate=self, daemon=True)
         self.__time_to_retreat = time.time() + 32
 
+    def __str__(self) -> str:
+        cname = self.__class__.__name__
+        return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
+
     @property
     def local_address(self) -> tuple:
         return self.__local_address
@@ -157,6 +161,10 @@ class Sergeant:
         self.__remote_address = remote
         self.__local_address = local
 
+    def __str__(self) -> str:
+        cname = self.__class__.__name__
+        return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
+
     @property
     def local_address(self) -> tuple:
         return self.__local_address
@@ -192,6 +200,10 @@ class Colonel(Runner):
         super().__init__()
         self.__remote_address = remote
         self.__local_address = local
+
+    def __str__(self) -> str:
+        cname = self.__class__.__name__
+        return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
 
     @property
     def local_address(self) -> tuple:

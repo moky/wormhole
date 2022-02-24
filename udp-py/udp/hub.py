@@ -30,7 +30,7 @@
 
 import socket
 from abc import ABC
-from typing import Optional, Set
+from typing import Optional, Iterable
 
 from startrek.types import Address, AddressPairMap
 from startrek import Channel
@@ -88,7 +88,7 @@ class PackageHub(BaseHub, ABC):
         self._set_channel(channel=channel)
 
     # Override
-    def _all_channels(self) -> Set[Channel]:
+    def _all_channels(self) -> Iterable[Channel]:
         """ get a copy of all channels """
         return self.__channel_pool.items
 

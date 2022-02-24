@@ -31,7 +31,7 @@
 import socket
 from abc import ABC
 from threading import Thread
-from typing import Optional, Set
+from typing import Optional, Iterable
 
 from startrek.types import Address, AddressPairMap
 from startrek.fsm import Runnable
@@ -73,7 +73,7 @@ class StreamHub(BaseHub, ABC):
         self.__channel_pool.set(remote=channel.remote_address, local=channel.local_address, item=channel)
 
     # Override
-    def _all_channels(self) -> Set[Channel]:
+    def _all_channels(self) -> Iterable[Channel]:
         """ get a copy of all channels """
         return self.__channel_pool.items
 
@@ -212,7 +212,7 @@ class ClientHub(StreamHub):
             sock = create_socket(remote=remote, local=local)
             return StreamChannel(remote=remote, local=None, sock=sock)
         except socket.error as error:
-            print('[TCP] creating connection %s -> %s error: %s' % (local, remote, error))
+            print('[TCP] failed to create channel %s -> %s: %s' % (local, remote, error))
 
 
 def create_socket(remote: Address, local: Optional[Address]) -> Optional[socket.socket]:
