@@ -31,7 +31,6 @@
 package chat.dim.type;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -79,14 +78,17 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
         // mapping: (remote, null) => Connection
         // mapping: (local, null) => Connection
         value = table.get(defaultKey);
-        if (value == null) {
-            // take the first value if exists
-            Iterator<V> it = table.values().iterator();
-            return it.hasNext() ? it.next() : null;
-        } else {
+        if (value != null) {
             // take the value with empty key2
             return value;
         }
+        // take any Connection connected to remote / bound to local
+        for (V v : table.values()) {
+            if (v != null) {
+                return v;
+            }
+        }
+        return null;
     }
 
     @Override

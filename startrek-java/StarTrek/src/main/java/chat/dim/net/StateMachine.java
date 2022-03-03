@@ -61,12 +61,12 @@ public class StateMachine extends BaseMachine<StateMachine, StateTransition, Con
 
         // init states
         StateBuilder builder = getStateBuilder();
-        setState(builder.getDefaultState());
-        setState(builder.getPreparingState());
-        setState(builder.getReadyState());
-        setState(builder.getExpiredState());
-        setState(builder.getMaintainingState());
-        setState(builder.getErrorState());
+        addState(builder.getDefaultState());
+        addState(builder.getPreparingState());
+        addState(builder.getReadyState());
+        addState(builder.getExpiredState());
+        addState(builder.getMaintainingState());
+        addState(builder.getErrorState());
     }
 
     protected StateBuilder getStateBuilder() {
@@ -78,8 +78,8 @@ public class StateMachine extends BaseMachine<StateMachine, StateTransition, Con
         return this;
     }
 
-    private void setState(ConnectionState state) {
-        addState(state.name, state);
+    private void addState(ConnectionState state) {
+        setState(state.name, state);
     }
 
     Connection getConnection() {

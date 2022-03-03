@@ -64,8 +64,15 @@ public class AddressPairObject implements Serializable {
         // these two parameters:
         //  name: a  value: aa
         //  name: aa value: a
-        return (remoteAddress == null ? 0 : remoteAddress.hashCode() * 13)
-                + (localAddress == null ? 0 : localAddress.hashCode());
+        SocketAddress remote = remoteAddress;
+        SocketAddress local = localAddress;
+        if (remote == null) {
+            return local == null ? 0 : local.hashCode();
+        } else if (local == null) {
+            return remote.hashCode() * 13;
+        } else {
+            return remote.hashCode() * 13 + local.hashCode();
+        }
     }
 
     @Override
