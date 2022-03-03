@@ -48,7 +48,7 @@ public class ActiveConnection extends BaseConnection {
             // get new channel via hub
             Hub hub = getHub();
             if (hub != null) {
-                sock = hub.openChannel(remoteAddress, localAddress);
+                sock = hub.open(remoteAddress, localAddress);
                 if (sock != null) {
                     setChannel(sock);
                 }

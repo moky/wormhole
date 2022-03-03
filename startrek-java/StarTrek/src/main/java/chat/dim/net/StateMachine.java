@@ -73,13 +73,13 @@ public class StateMachine extends BaseMachine<StateMachine, StateTransition, Con
         return new StateBuilder(new TransitionBuilder());
     }
 
+    private void addState(ConnectionState state) {
+        setState(state.name, state);
+    }
+
     @Override
     protected StateMachine getContext() {
         return this;
-    }
-
-    private void addState(ConnectionState state) {
-        setState(state.name, state);
     }
 
     Connection getConnection() {
@@ -203,10 +203,13 @@ class TransitionBuilder {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
+                if (conn == null || !conn.isAlive()) {
+                    return false;
+                }
                 TimedConnection timed = (TimedConnection) conn;
                 // connection still alive, but
                 // long time no response, change state to 'maintain_expired'
-                return conn != null && conn.isAlive() && !timed.isReceivedRecently((new Date()).getTime());
+                return !timed.isReceivedRecently((new Date()).getTime());
             }
         };
     }
@@ -229,10 +232,13 @@ class TransitionBuilder {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
+                if (conn == null || !conn.isAlive()) {
+                    return false;
+                }
                 TimedConnection timed = (TimedConnection) conn;
                 // connection still alive, and
                 // sent recently, change state to 'maintaining'
-                return conn != null && conn.isAlive() && timed.isSentRecently((new Date()).getTime());
+                return timed.isSentRecently((new Date()).getTime());
             }
         };
     }
@@ -243,10 +249,13 @@ class TransitionBuilder {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
+                if (conn == null || !conn.isAlive()) {
+                    return true;
+                }
                 TimedConnection timed = (TimedConnection) conn;
                 // connection lost, or
                 // long long time no response, change state to 'error'
-                return conn == null || !conn.isAlive() || timed.isNotReceivedLongTimeAgo((new Date()).getTime());
+                return timed.isNotReceivedLongTimeAgo((new Date()).getTime());
             }
         };
     }
@@ -257,10 +266,13 @@ class TransitionBuilder {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
+                if (conn == null || !conn.isAlive()) {
+                    return false;
+                }
                 TimedConnection timed = (TimedConnection) conn;
                 // connection still alive, and
                 // received recently, change state to 'ready'
-                return conn != null && conn.isAlive() && timed.isReceivedRecently((new Date()).getTime());
+                return timed.isReceivedRecently((new Date()).getTime());
             }
         };
     }
@@ -271,10 +283,13 @@ class TransitionBuilder {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
+                if (conn == null || !conn.isAlive()) {
+                    return false;
+                }
                 TimedConnection timed = (TimedConnection) conn;
                 // connection still alive, but
                 // long time no sending, change state to 'maintain_expired'
-                return conn != null && conn.isAlive() && !timed.isSentRecently((new Date()).getTime());
+                return !timed.isSentRecently((new Date()).getTime());
             }
         };
     }
@@ -285,10 +300,13 @@ class TransitionBuilder {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
+                if (conn == null || !conn.isAlive()) {
+                    return true;
+                }
                 TimedConnection timed = (TimedConnection) conn;
                 // connection lost, or
                 // long long time no response, change state to 'error'
-                return conn == null || !conn.isAlive() || timed.isNotReceivedLongTimeAgo((new Date()).getTime());
+                return timed.isNotReceivedLongTimeAgo((new Date()).getTime());
             }
         };
     }
@@ -299,13 +317,12 @@ class TransitionBuilder {
             @Override
             public boolean evaluate(StateMachine ctx) {
                 Connection conn = ctx.getConnection();
-                TimedConnection timed = (TimedConnection) conn;
-                // connection still alive, and
-                // can send/receive data during this state
                 if (conn == null || !conn.isAlive()) {
                     return false;
                 }
-                // check with enter time
+                TimedConnection timed = (TimedConnection) conn;
+                // connection still alive, and
+                // can send/receive data during this state
                 ConnectionState current = ctx.getCurrentState();
                 long enter = current.getEnterTime();
                 return enter > 0 && (timed.getLastSentTime() > enter || timed.getLastReceivedTime() > enter);

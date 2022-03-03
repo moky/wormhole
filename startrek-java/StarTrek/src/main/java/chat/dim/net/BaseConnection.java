@@ -138,10 +138,10 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
         } else {
             channel = null;
         }
-        Hub hub = getHub();
-        if (hub != null) {
-            hub.closeChannel(sock);
-        }
+//        Hub hub = getHub();
+//        if (hub != null) {
+//            hub.closeChannel(sock);
+//        }
     }
 
     @Override

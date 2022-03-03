@@ -96,10 +96,14 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
 
     @Override
     public boolean equals(Object other) {
-        if (other instanceof String) {
-            return other.equals(name);
+        if (this == other) {
+            return true;
+        } else if (other instanceof ConnectionState) {
+            return name.equals(((ConnectionState) other).name);
+        } else if (other instanceof String) {
+            return name.equals(other);
         } else {
-            return other == this;
+            return false;
         }
     }
     public boolean equals(String other) {

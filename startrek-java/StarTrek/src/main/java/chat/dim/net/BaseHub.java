@@ -100,7 +100,7 @@ public abstract class BaseHub implements Hub {
             // local address not matched? ignore this connection
         }
         // try to open channel with direction (remote, local)
-        Channel sock = openChannel(remote, local);
+        Channel sock = open(remote, local);
         if (sock == null || !sock.isOpen()) {
             return null;
         }
@@ -115,17 +115,17 @@ public abstract class BaseHub implements Hub {
         return conn;
     }
 
-    @Override
-    public Connection disconnect(SocketAddress remote, SocketAddress local, Connection connection) {
-        Connection conn = removeConnection(remote, local, connection);
-        if (conn != null) {
-            conn.close();
-        }
-        if (connection != null && connection != conn) {
-            connection.close();
-        }
-        return conn == null ? connection : conn;
-    }
+//    @Override
+//    public Connection disconnect(SocketAddress remote, SocketAddress local, Connection connection) {
+//        Connection conn = removeConnection(remote, local, connection);
+//        if (conn != null) {
+//            conn.close();
+//        }
+//        if (connection != null && connection != conn) {
+//            connection.close();
+//        }
+//        return conn == null ? connection : conn;
+//    }
 
     private Connection removeConnection(SocketAddress remote, SocketAddress local, Connection conn) {
         if (conn == null) {
@@ -182,8 +182,8 @@ public abstract class BaseHub implements Hub {
         } catch (IOException e) {
             //e.printStackTrace();
             remote = sock.getRemoteAddress();
-            // socket error, remove the channel
-            closeChannel(sock);
+//            // socket error, remove the channel
+//            closeChannel(sock);
             // callback
             Connection.Delegate delegate = getDelegate();
             if (delegate != null) {
