@@ -92,7 +92,7 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
     }
 
     @Override
-    public void put(K remote, K local, V value) {
+    public void set(K remote, K local, V value) {
         // create indexes with key pair (remote, local)
         K key1, key2;
         if (remote == null) {

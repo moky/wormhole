@@ -67,7 +67,7 @@ public class Dock {
      * @param income - received ship carrying data package (fragment)
      * @return ship carrying completed data package
      */
-    public Arrival assembleArrival(final Arrival income) {
+    public Arrival assembleArrival(Arrival income) {
         // check fragment from income ship,
         // return a ship with completed package if all fragments received
         return arrivalHall.assembleArrival(income);
@@ -79,7 +79,7 @@ public class Dock {
      * @param outgo - departure task
      * @return false on duplicated
      */
-    public boolean appendDeparture(final Departure outgo) {
+    public boolean appendDeparture(Departure outgo) {
         return departureHall.appendDeparture(outgo);
     }
 
@@ -89,7 +89,7 @@ public class Dock {
      * @param response - incoming ship with SN
      * @return finished task
      */
-    public Departure checkResponse(final Arrival response) {
+    public Departure checkResponse(Arrival response) {
         // check departure tasks with SN
         // remove package/fragment if matched (check page index for fragments too)
         return departureHall.checkResponse(response);
@@ -101,7 +101,7 @@ public class Dock {
      * @param now - current time
      * @return departure task
      */
-    public Departure getNextDeparture(final long now) {
+    public Departure getNextDeparture(long now) {
         // this will be remove from the queue,
         // if needs retry, the caller should append it back
         return departureHall.getNextDeparture(now);

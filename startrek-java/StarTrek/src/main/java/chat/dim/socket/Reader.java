@@ -2,12 +2,12 @@
  *
  *  Star Trek: Interstellar Transport
  *
- *                                Written in 2021 by Moky <albert.moky@gmail.com>
+ *                                Written in 2022 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2021 Albert Moky
+ * Copyright (c) 2022 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,40 +28,29 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.socket;
 
-import java.lang.ref.WeakReference;
+import java.io.IOException;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 
-/**
- * Active connection for client
- */
-public class ActiveConnection extends BaseConnection {
+public interface Reader {
 
-    private final WeakReference<Hub> hubRef;
+    /**
+     *  Read data from socket
+     *
+     * @param dst - buffer to save data
+     * @return data length
+     * @throws IOException
+     */
+    int read(ByteBuffer dst) throws IOException;
 
-    public ActiveConnection(SocketAddress remote, SocketAddress local, Channel sock, Delegate delegate, Hub hub) {
-        super(remote, local, sock, delegate);
-        hubRef = new WeakReference<>(hub);
-    }
-
-    public Hub getHub() {
-        return hubRef.get();
-    }
-
-    @Override
-    public Channel getChannel() {
-        Channel sock = super.getChannel();
-        if (sock == null || !sock.isOpen()) {
-            if (getStateMachine() == null) {
-                // closed (not start yet)
-                return null;
-            }
-            // get new channel via hub
-            sock = getHub().open(remoteAddress, localAddress);
-            assert sock != null : "failed to open channel: " + remoteAddress + ", " + localAddress;
-            setChannel(sock);
-        }
-        return sock;
-    }
+    /**
+     *  Receive data via socket, and return remote address
+     *
+     * @param dst - buffer to save data
+     * @return remote address
+     * @throws IOException
+     */
+    SocketAddress receive(ByteBuffer dst) throws IOException;
 }

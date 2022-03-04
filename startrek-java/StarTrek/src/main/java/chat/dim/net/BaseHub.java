@@ -38,6 +38,27 @@ import java.util.Set;
 
 import chat.dim.type.AddressPairMap;
 
+class ConnectionPool extends AddressPairMap<Connection> {
+
+    @Override
+    public void set(SocketAddress remote, SocketAddress local, Connection value) {
+        Connection old = get(remote, local);
+        if (old != null && old != value) {
+            remove(remote, local, old);
+        }
+        super.set(remote, local, value);
+    }
+
+    @Override
+    public Connection remove(SocketAddress remote, SocketAddress local, Connection value) {
+        Connection cached = super.remove(remote, local, value);
+        if (cached != null && cached.isOpen()) {
+            cached.close();
+        }
+        return cached;
+    }
+}
+
 public abstract class BaseHub implements Hub {
 
     /*  Maximum Segment Size
@@ -51,8 +72,7 @@ public abstract class BaseHub implements Hub {
      */
     public static int MSS = 1472;  // 1500 - 20 - 8
 
-    private final AddressPairMap<Connection> connectionPool = new AddressPairMap<>();
-
+    private final ConnectionPool connectionPool = new ConnectionPool();
     private final WeakReference<Connection.Delegate> delegateRef;
 
     protected BaseHub(Connection.Delegate delegate) {
@@ -72,6 +92,13 @@ public abstract class BaseHub implements Hub {
     protected abstract Set<Channel> allChannels();
 
     /**
+     *  Remove socket channel
+     *
+     * @param channel - socket channel
+     */
+    protected abstract void removeChannel(Channel channel);
+
+    /**
      *  Create connection with sock channel & addresses
      *
      * @param sock   - socket channel
@@ -84,10 +111,19 @@ public abstract class BaseHub implements Hub {
     protected Set<Connection> allConnections() {
         return connectionPool.allValues();
     }
+    protected Connection getConnection(SocketAddress remote, SocketAddress local) {
+        return connectionPool.get(remote, local);
+    }
+    protected void putConnection(Connection conn) {
+        connectionPool.set(conn.getRemoteAddress(), conn.getLocalAddress(), conn);
+    }
+    protected void removeConnection(Connection conn) {
+        connectionPool.remove(conn.getRemoteAddress(), conn.getLocalAddress(), conn);
+    }
 
     @Override
     public Connection connect(SocketAddress remote, SocketAddress local) {
-        Connection conn = connectionPool.get(remote, local);
+        Connection conn = getConnection(remote, local);
         if (conn != null) {
             // check local address
             if (local == null) {
@@ -108,86 +144,26 @@ public abstract class BaseHub implements Hub {
         conn = createConnection(sock, remote, local);
         if (conn != null) {
             // NOTICE: local address in the connection may be set to None
-            local = conn.getLocalAddress();
-            remote = conn.getRemoteAddress();
-            connectionPool.put(remote, local, conn);
+            putConnection(conn);
         }
         return conn;
     }
 
-//    @Override
-//    public Connection disconnect(SocketAddress remote, SocketAddress local, Connection connection) {
-//        Connection conn = removeConnection(remote, local, connection);
-//        if (conn != null) {
-//            conn.close();
-//        }
-//        if (connection != null && connection != conn) {
-//            connection.close();
-//        }
-//        return conn == null ? connection : conn;
-//    }
-
-    private Connection removeConnection(SocketAddress remote, SocketAddress local, Connection conn) {
-        if (conn == null) {
-            assert remote != null : "remote address should not be empty";
-            conn = connectionPool.get(remote, local);
-            if (conn == null) {
-                // connection not exists
-                return null;
-            }
-        }
-        // check local address
-        if (local != null) {
-            SocketAddress address = conn.getLocalAddress();
-            if (address != null && !address.equals(local)) {
-                // local address not matched
-                return null;
-            }
-        }
-        remote = conn.getRemoteAddress();
-        local = conn.getLocalAddress();
-        return connectionPool.remove(remote, local, conn);
-    }
-
-    @Override
-    public boolean process() {
-        // 1. drive all channels to receive data
-        Set<Channel> channels = allChannels();
-        int count = driveChannels(channels);
-        cleanupChannels(channels);
-        // 2. drive all connections to move on
-        Set<Connection> connections = allConnections();
-        driveConnections(connections);
-        cleanupConnections(connections);
-        return count > 0;
-    }
-
-    protected int driveChannels(Set<Channel> channels) {
-        int count = 0;
-        for (Channel sock : channels) {
-            if (sock.isAlive() && drive(sock)) {
-                // received data from this socket channel
-                count += 1;
-            }
-        }
-        return count;
-    }
-    protected boolean drive(Channel sock) {
-        SocketAddress local = sock.getLocalAddress();
+    protected boolean driveChannel(Channel sock) {
+        ByteBuffer buffer = ByteBuffer.allocate(MSS);
         SocketAddress remote;
-        final ByteBuffer buffer = ByteBuffer.allocate(MSS);
         // try to receive
         try {
             remote = sock.receive(buffer);
-        } catch (IOException e) {
+        } catch (IOException error) {
             //e.printStackTrace();
-            remote = sock.getRemoteAddress();
-//            // socket error, remove the channel
-//            closeChannel(sock);
+            removeChannel(sock);
             // callback
             Connection.Delegate delegate = getDelegate();
             if (delegate != null) {
-                delegate.onError(e, null, remote, local, null);
+                remote = sock.getRemoteAddress();
+                SocketAddress local = sock.getLocalAddress();
+                delegate.onError(error, null, remote, local, null);
             }
             return false;
         }
@@ -195,6 +171,7 @@ public abstract class BaseHub implements Hub {
             // received nothing
             return false;
         }
+        SocketAddress local = sock.getLocalAddress();
         // get connection for processing received data
         Connection conn = connect(remote, local);
         if (conn != null) {
@@ -205,19 +182,60 @@ public abstract class BaseHub implements Hub {
         }
         return true;
     }
+    protected int driveChannels(Set<Channel> channels) {
+        int count = 0;
+        for (Channel sock : channels) {
+            if (sock.isAlive() && driveChannel(sock)) {
+                // received data from this socket channel
+                count += 1;
+            }
+        }
+        return count;
+    }
     protected void cleanupChannels(Set<Channel> channels) {
-        // TODO: remove closed channel
+        for (Channel sock : channels) {
+            if (!sock.isAlive()) {
+                removeChannel(sock);
+            }
+        }
     }
 
     protected void driveConnections(Set<Connection> connections) {
         for (Connection conn : connections) {
-            // drive connection to go on
-            conn.tick();
+            try {
+                // drive connection to go on
+                conn.tick();
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
             // NOTICE: let the delegate to decide whether close an error connection
             //         or just remove it.
         }
     }
     protected void cleanupConnections(Set<Connection> connections) {
-        // TODO: remove closed connection
+        for (Connection conn : connections) {
+            if (!conn.isAlive()) {
+                removeConnection(conn);
+            }
+        }
+    }
+
+    @Override
+    public boolean process() {
+        try {
+            // 1. drive all channels to receive data
+            Set<Channel> channels = allChannels();
+            int count = driveChannels(channels);
+            // 2. drive all connections to move on
+            Set<Connection> connections = allConnections();
+            driveConnections(connections);
+            // 3. cleanup closed channels and connections
+            cleanupChannels(channels);
+            cleanupConnections(connections);
+            return count > 0;
+        } catch (Throwable e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 }

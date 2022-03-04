@@ -33,7 +33,6 @@ package chat.dim.net;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.Date;
 
@@ -56,31 +55,40 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
 
     public static long EXPIRES = 16 * 1000;  // 16 seconds
 
-    private Channel channel;
+    private WeakReference<Channel> channelRef;
+    private final WeakReference<Delegate> delegateRef;
 
     private long lastSentTime;
     private long lastReceivedTime;
 
-    private final WeakReference<Delegate> delegateRef;
-    private final WeakReference<Hub> hubRef;
+    private StateMachine fsm;
 
-    private final StateMachine fsm;
-
-    public BaseConnection(SocketAddress remote, SocketAddress local, Channel sock, Delegate delegate, Hub hub) {
+    public BaseConnection(SocketAddress remote, SocketAddress local, Channel sock, Delegate delegate) {
         super(remote, local);
 
-        channel = sock;
+        channelRef = new WeakReference<>(sock);
+        delegateRef = new WeakReference<>(delegate);
 
+        // active times
         lastSentTime = 0;
         lastReceivedTime = 0;
 
-        delegateRef = new WeakReference<>(delegate);
-        hubRef = new WeakReference<>(hub);
-
-        // Finite State Machine
-        fsm = createStateMachine();
+        // connection state machine
+        fsm = null;
     }
 
+    protected StateMachine getStateMachine() {
+        return fsm;
+    }
+    protected void setStateMachine(StateMachine newMachine) {
+        // 1. check old machine
+        StateMachine oldMachine = fsm;
+        if (oldMachine != null && oldMachine != newMachine) {
+            oldMachine.stop();
+        }
+        // 2. set new machine
+        fsm = newMachine;
+    }
     protected StateMachine createStateMachine() {
         StateMachine machine = new StateMachine(this);
         machine.setDelegate(this);
@@ -91,15 +99,25 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
         return delegateRef.get();
     }
 
-    protected Hub getHub() {
-        return hubRef.get();
+    public Channel getChannel() {
+        return channelRef == null ? null : channelRef.get();
     }
-
-    protected Channel getChannel() {
-        return channel;
-    }
-    protected void setChannel(Channel sock) {
-        channel = sock;
+    protected void setChannel(Channel newChannel) {
+        // 1. check old channel
+        if (channelRef != null) {
+            Channel oldChannel = channelRef.get();
+            if (oldChannel != null && oldChannel != newChannel) {
+                if (oldChannel.isOpen()) {
+                    try {
+                        oldChannel.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        // 2. set new channel
+        channelRef = newChannel == null ? null : new WeakReference<>(newChannel);
     }
 
     @Override
@@ -126,22 +144,15 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
     }
 
     @Override
-    public void close() {
-        closeChannel();
-        fsm.stop();
+    public SocketAddress getLocalAddress() {
+        Channel channel = getChannel();
+        return channel == null ? localAddress : channel.getLocalAddress();
     }
 
-    private void closeChannel() {
-        Channel sock = channel;
-        if (sock == null) {
-            return;
-        } else {
-            channel = null;
-        }
-//        Hub hub = getHub();
-//        if (hub != null) {
-//            hub.closeChannel(sock);
-//        }
+    @Override
+    public void close() {
+        setChannel(null);
+        setStateMachine(null);
     }
 
     @Override
@@ -179,10 +190,11 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
     protected int send(ByteBuffer src, SocketAddress destination) throws IOException {
         Channel sock = getChannel();
         if (sock == null || !sock.isAlive()) {
-            throw new SocketException("socket channel lost");
+            //throw new SocketException("socket channel lost");
+            return -1;
         }
         int sent = sock.send(src, destination);
-        if (sent != -1) {
+        if (sent > 0) {
             lastSentTime = (new Date()).getTime();  // update sent time
         }
         return sent;
@@ -190,36 +202,38 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
 
     @Override
     public int send(byte[] pack, SocketAddress destination) {
-        // prepare buffer
-        ByteBuffer buffer = ByteBuffer.allocate(pack.length);
-        buffer.put(pack);
-        buffer.flip();
         // try to send data
         Throwable error = null;
         int sent = -1;
         try {
+            // prepare buffer
+            ByteBuffer buffer = ByteBuffer.allocate(pack.length);
+            buffer.put(pack);
+            buffer.flip();
+            // send buffer
             sent = send(buffer, destination);
-            if (sent == -1) {
+            if (sent < 0) {  // == -1
                 error = new Error("failed to send data: " + pack.length + " byte(s) to " + destination);
-                closeChannel();
             }
         } catch (IOException e) {
             //e.printStackTrace();
             error = e;
-            closeChannel();
+            // socket error, close current channel
+            setChannel(null);
         }
         // callback
         Delegate delegate = getDelegate();
         if (delegate != null) {
             // get local address as source
-            SocketAddress source = localAddress;
-            if (source == null) {
-                Channel sock = channel;
-                if (sock != null) {
-                    source = sock.getLocalAddress();
-                }
-            }
+            SocketAddress source = getLocalAddress();
             if (error == null) {
+                if (sent <= 0) {
+                    pack = new byte[0];
+                } else if (sent < pack.length) {
+                    byte[] data = new byte[sent];
+                    System.arraycopy(pack, 0, data, 0, sent);
+                    pack = data;
+                }
                 delegate.onSent(pack, source, destination, this);
             } else {
                 delegate.onError(error, pack, source, destination, this);
@@ -234,22 +248,27 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
 
     @Override
     public ConnectionState getState() {
-        return fsm.getCurrentState();
+        StateMachine machine = getStateMachine();
+        return machine == null ? null : machine.getCurrentState();
     }
 
     @Override
     public void tick() {
-        // drive state machine forward
-        fsm.tick();
+        StateMachine machine = getStateMachine();
+        if (machine != null) {
+            machine.tick();
+        }
     }
 
     public void start() {
-        fsm.start();
+        StateMachine machine = createStateMachine();
+        machine.start();
+        setStateMachine(machine);
     }
 
     public void stop() {
-        closeChannel();
-        fsm.stop();
+        setChannel(null);
+        setStateMachine(null);
     }
 
     //

@@ -31,6 +31,7 @@
 package chat.dim.startrek;
 
 import java.lang.ref.WeakReference;
+import java.util.Date;
 
 import chat.dim.port.Departure;
 
@@ -46,14 +47,14 @@ public abstract class DepartureShip implements Departure {
      */
     public static int MAX_RETRIES = 2;
 
-    private long lastTime;
-    private int retries;
+    private long expired;  // last tried time (timestamp in milliseconds)
+    private int retries;   // totally 3 times to be sent at the most
 
     private final int priority;
 
     private final WeakReference<Delegate> delegateRef;
 
-    protected DepartureShip(int prior, Delegate delegate) {
+    protected DepartureShip(int prior, Delegate delegate, long now) {
         super();
         // ship priority
         priority = prior;
@@ -65,8 +66,11 @@ public abstract class DepartureShip implements Departure {
             delegateRef = new WeakReference<>(delegate);
         }
 
-        lastTime = 0;  // last tried time (timestamp in milliseconds)
-        retries = -1;  // totally 3 times to be sent at the most
+        expired = now + EXPIRES;
+        retries = -1;
+    }
+    protected DepartureShip(int prior, Delegate delegate) {
+        this(prior, delegate, new Date().getTime());
     }
 
     public Delegate getDelegate() {
@@ -84,23 +88,24 @@ public abstract class DepartureShip implements Departure {
     }
 
     @Override
-    public boolean isTimeout(final long now) {
-        return retries < MAX_RETRIES && lastTime + EXPIRES < now;
+    public boolean isTimeout(long now) {
+        return retries < MAX_RETRIES && expired < now;
     }
 
     @Override
-    public boolean isFailed(final long now) {
-        return 0 < lastTime && lastTime + EXPIRES * (MAX_RETRIES - retries + 2) < now;
+    public boolean isFailed(long now) {
+        long extra = EXPIRES * (MAX_RETRIES - retries);
+        return expired + extra < now;
     }
 
     @Override
-    public boolean update(final long now) {
+    public boolean update(long now) {
         if (retries >= MAX_RETRIES) {
             // retried too many times
             return false;
         }
         // update retried time
-        lastTime = now;
+        expired = now + EXPIRES;
         // increase counter
         ++retries;
         return true;

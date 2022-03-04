@@ -28,29 +28,30 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.socket;
 
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 
-public interface SocketReader {
+public interface Writer {
 
     /**
-     *  Read data from socket
+     *  Write data into socket
      *
-     * @param dst - buffer to save data
-     * @return data length
+     * @param src - data to send
+     * @return sent length
      * @throws IOException
      */
-    int read(ByteBuffer dst) throws IOException;
+    int write(ByteBuffer src) throws IOException;
 
     /**
-     *  Receive data via socket, and return remote address
+     *  Send data via socket with remote address
      *
-     * @param dst - buffer to save data
-     * @return remote address
+     * @param src - data to send
+     * @param target - remote address
+     * @return sent length
      * @throws IOException
      */
-    SocketAddress receive(ByteBuffer dst) throws IOException;
+    int send(ByteBuffer src, SocketAddress target) throws IOException;
 }

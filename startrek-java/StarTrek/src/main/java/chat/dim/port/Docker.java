@@ -42,18 +42,17 @@ import chat.dim.skywalker.Processor;
  */
 public interface Docker extends Processor {
 
+    boolean isAlive();  // connection.isAlive()
+
     SocketAddress getLocalAddress();
     SocketAddress getRemoteAddress();
 
     /**
-     *  Pack the payload to an outgo Ship
+     *  Called when received data
      *
-     * @param payload     - request data
-     * @param priority    - smaller is faster (-1 is the most fast)
-     * @param delegate    - callback handler for the departure ship
-     * @return departure ship containing payload
+     * @param data   - received data package
      */
-    Departure pack(byte[] payload, int priority, Ship.Delegate delegate);
+    void processReceived(byte[] data);
 
     /**
      *  Append outgo ship to a queue for sending out
@@ -64,11 +63,14 @@ public interface Docker extends Processor {
     boolean appendDeparture(Departure outgo);
 
     /**
-     *  Called when received data
+     *  Pack the payload to an outgo Ship
      *
-     * @param data   - received data package
+     * @param payload     - request data
+     * @param priority    - smaller is faster (-1 is the most fast)
+     * @param delegate    - callback handler for the departure ship
+     * @return departure ship containing payload
      */
-    void processReceived(byte[] data);
+    Departure pack(byte[] payload, int priority, Ship.Delegate delegate);
 
     /**
      *  Send 'PING' for keeping connection alive

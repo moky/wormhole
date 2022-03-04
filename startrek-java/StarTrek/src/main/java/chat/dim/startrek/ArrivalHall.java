@@ -57,16 +57,16 @@ public class ArrivalHall {
      * @param income - received ship carrying data package (fragment)
      * @return ship carrying completed data package
      */
-    public Arrival assembleArrival(final Arrival income) {
+    public Arrival assembleArrival(Arrival income) {
         // check ship ID (SN)
-        final Object sn = income.getSN();
+        Object sn = income.getSN();
         if (sn == null) {
             // separated package ship must have SN for assembling
             // we consider it to be a ship carrying a whole package here
             return income;
         }
         // check whether the task has already finished
-        final Long time = arrivalFinished.get(sn);
+        Long time = arrivalFinished.get(sn);
         if (time != null && time > 0) {
             // task already finished
             return null;
@@ -86,7 +86,7 @@ public class ArrivalHall {
             }
         }
         // insert as fragment
-        final Arrival completed = task.assemble(income);
+        Arrival completed = task.assemble(income);
         if (completed == null) {
             // not completed yet, waiting for more fragments
             return null;
@@ -103,38 +103,33 @@ public class ArrivalHall {
      *  Clear all expired tasks
      */
     public void purge() {
-        final Set<Arrival> failedTasks = new HashSet<>();
-        final long now = (new Date()).getTime();
+        long now = (new Date()).getTime();
         // 1. seeking expired tasks
-        for (Arrival ship : arrivals) {
+        Iterator<Arrival> ait = arrivals.iterator();
+        Arrival ship;
+        while (ait.hasNext()) {
+            ship = ait.next();
             if (ship.isFailed(now)) {
                 // task expired
-                failedTasks.add(ship);
-            }
-        }
-        // 2. clear expired tasks
-        if (failedTasks.size() > 0) {
-            Object sn;
-            // remove expired tasks
-            for (Arrival ship : failedTasks) {
                 arrivals.remove(ship);
                 // remove mapping with SN
-                sn = ship.getSN();
-                assert sn != null : "SN empty: " + ship;
-                arrivalMap.remove(sn);
+                arrivalMap.remove(ship.getSN());
                 // TODO: callback?
             }
         }
-        // 3. seeking neglected finished times
-        Iterator<Map.Entry<Object, Long>> it;
-        it = arrivalFinished.entrySet().iterator();
-        long ago = (new Date()).getTime() - 3600;
+        // 2. seeking neglected finished times
+        Iterator<Map.Entry<Object, Long>> mit = arrivalFinished.entrySet().iterator();
+        long ago = now - 3600;
+        Map.Entry<Object, Long> entry;
         Long when;
-        while (it.hasNext()) {
-            when = it.next().getValue();
+        while (mit.hasNext()) {
+            entry = mit.next();
+            when = entry.getValue();
             if (when == null || when < ago) {
                 // long time ago
-                it.remove();
+                mit.remove();
+                // remove mapping with SN
+                arrivalMap.remove(entry.getKey());
             }
         }
     }

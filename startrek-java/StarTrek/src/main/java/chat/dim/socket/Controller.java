@@ -28,30 +28,52 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.socket;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
+import java.nio.channels.SelectableChannel;
 
-public interface SocketWriter {
+import chat.dim.net.BaseChannel;
 
-    /**
-     *  Write data into socket
-     *
-     * @param src - data to send
-     * @return sent length
-     * @throws IOException
-     */
-    int write(ByteBuffer src) throws IOException;
+public abstract class Controller<C extends SelectableChannel> {
 
-    /**
-     *  Send data via socket with remote address
-     *
-     * @param src - data to send
-     * @param target - remote address
-     * @return sent length
-     * @throws IOException
-     */
-    int send(ByteBuffer src, SocketAddress target) throws IOException;
+    private final WeakReference<BaseChannel<C>> channelRef;
+
+    protected Controller(BaseChannel<C> channel) {
+        super();
+        channelRef = new WeakReference<>(channel);
+    }
+
+    public BaseChannel<C> getChannel() {
+        return channelRef.get();
+    }
+
+    public SocketAddress getRemoteAddress() {
+        return getChannel().getRemoteAddress();
+    }
+    public SocketAddress getLocalAddress() {
+        return getChannel().getLocalAddress();
+    }
+
+    public C getSocket() {
+        BaseChannel<C> channel = getChannel();
+        C sock = channel.getSocketChannel();
+        if (sock == null) {
+            throw new NullPointerException("socket lost: " + channel);
+        }
+        return sock;
+    }
+
+    // 1. check E_AGAIN
+    //    the socket will raise 'Resource temporarily unavailable'
+    //    when received nothing in non-blocking mode,
+    //    or buffer overflow while sending too many bytes,
+    //    here we should ignore this exception.
+    // 2. check timeout
+    //    in blocking mode, the socket will wait until send/received data,
+    //    but if timeout was set, it will raise 'timeout' error on timeout,
+    //    here we should ignore this exception
+    protected abstract IOException checkError(IOException error, C sock);
 }

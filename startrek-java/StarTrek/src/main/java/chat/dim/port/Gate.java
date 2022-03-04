@@ -136,13 +136,13 @@ public interface Gate extends Processor {
         /**
          *  Callback when connection status changed
          *
-         * @param oldStatus   - last status
-         * @param newStatus   - current status
+         * @param previous    - old status
+         * @param current     - new status
          * @param remote      - remote address
          * @param local       - local address
          * @param gate        - current gate
          */
-        void onStatusChanged(Status oldStatus, Status newStatus,
+        void onStatusChanged(Status previous, Status current,
                              SocketAddress remote, SocketAddress local, Gate gate);
     }
 }

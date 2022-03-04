@@ -42,9 +42,9 @@ public class LockedDock extends Dock {
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     @Override
-    public Arrival assembleArrival(final Arrival income) {
-        final Arrival completed;
-        final Lock writeLock = lock.writeLock();
+    public Arrival assembleArrival(Arrival income) {
+        Arrival completed;
+        Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
             completed = super.assembleArrival(income);
@@ -55,9 +55,9 @@ public class LockedDock extends Dock {
     }
 
     @Override
-    public boolean appendDeparture(final Departure ship) {
-        final boolean added;
-        final Lock writeLock = lock.writeLock();
+    public boolean appendDeparture(Departure ship) {
+        boolean added;
+        Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
             added = super.appendDeparture(ship);
@@ -68,9 +68,9 @@ public class LockedDock extends Dock {
     }
 
     @Override
-    public Departure checkResponse(final Arrival response) {
-        final Departure finished;
-        final Lock writeLock = lock.writeLock();
+    public Departure checkResponse(Arrival response) {
+        Departure finished;
+        Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
             finished = super.checkResponse(response);
@@ -81,9 +81,9 @@ public class LockedDock extends Dock {
     }
 
     @Override
-    public Departure getNextDeparture(final long now) {
-        final Departure next;
-        final Lock writeLock = lock.writeLock();
+    public Departure getNextDeparture(long now) {
+        Departure next;
+        Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
             next = super.getNextDeparture(now);
@@ -95,7 +95,7 @@ public class LockedDock extends Dock {
 
     @Override
     public void purge() {
-        final Lock writeLock = lock.writeLock();
+        Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
             super.purge();

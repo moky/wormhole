@@ -28,68 +28,57 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.socket;
 
 import java.io.IOException;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectableChannel;
-import java.nio.channels.WritableByteChannel;
 
-public abstract class SocketChannelWriter<C extends SelectableChannel> extends SocketChannelController<C>
-        implements SocketWriter {
+import chat.dim.net.BaseChannel;
 
-    protected SocketChannelWriter(BaseChannel<C> channel) {
+public abstract class ChannelReader<C extends SelectableChannel>
+        extends Controller<C> implements Reader {
+
+    protected ChannelReader(BaseChannel<C> channel) {
         super(channel);
     }
 
-    protected int trySend(ByteBuffer buf, C sock) throws IOException {
+    // 1. check timeout
+    //    in blocking mode, the socket will wait until received something,
+    //    but if timeout was set, it will return nothing too, it's normal;
+    //    otherwise, we know the connection was lost.
+    protected abstract IOException checkData(ByteBuffer buf, int len, C sock);
+
+    @Override
+    public int read(ByteBuffer dst) throws IOException {
+        C sock = getSocket();
+        int cnt = -1;
         try {
-            return ((WritableByteChannel) sock).write(buf);
+            if (sock instanceof ReadableByteChannel) {
+                cnt = ((ReadableByteChannel) sock).read(dst);
+            }
+            if (cnt < 0) {
+                throw new SocketException("socket lost, cannot read data");
+            }
         } catch (IOException error) {
-            error = checkError(error, (C) sock);
-            if (error == null) {
-                // buffer overflow!
-                return -1;
-            } else {
+            error = checkError(error, sock);
+            if (error != null) {
                 // connection lost?
                 throw error;
             }
+            // received nothing
+            dst.clear();
+            cnt = 0;
         }
-    }
-
-    @Override
-    public int write(ByteBuffer src) throws IOException {
-        C sock = getSocket();
-        if (!(sock instanceof WritableByteChannel)) {
-            throw new SocketException("socket lost, cannot write data: " + src.position() + " byte(s)");
+        // check data
+        IOException error = checkData(dst, cnt, sock);
+        if (error != null) {
+            // connection lost!
+            throw error;
         }
-        int sent = 0;
-        int rest = src.position();
-        int cnt;
-        while (true) {  // while (sock.isOpen())
-            cnt = trySend(src, sock);
-            // check send result
-            if (cnt == 0) {
-                // buffer overflow?
-                break;
-            } else if (cnt < 0) {
-                // buffer overflow!
-                if (sent == 0) {
-                    return -1;
-                }
-                break;
-            }
-            // something sent, check remaining data
-            sent += cnt;
-            rest -= cnt;
-            if (rest <= 0) {
-                // done!
-                break;
-            //} else {
-            //    // remove sent part
-            }
-        }
-        return sent;
+        // OK
+        return cnt;
     }
 }

@@ -41,9 +41,30 @@ import chat.dim.port.Docker;
 import chat.dim.port.Gate;
 import chat.dim.type.AddressPairMap;
 
+class DockerPool extends AddressPairMap<Docker> {
+
+    @Override
+    public void set(SocketAddress remote, SocketAddress local, Docker value) {
+        Docker old = get(remote, local);
+        if (old != null && old != value) {
+            remove(remote, local, old);
+        }
+        super.set(remote, local, value);
+    }
+
+    @Override
+    public Docker remove(SocketAddress remote, SocketAddress local, Docker value) {
+        Docker cached = super.remove(remote, local, value);
+        if (cached != null && cached.isAlive()) {
+            cached.close();
+        }
+        return cached;
+    }
+}
+
 public abstract class StarGate implements Gate, Connection.Delegate {
 
-    private final AddressPairMap<Docker> dockerPool = new AddressPairMap<>();
+    private final DockerPool dockerPool = new DockerPool();
 
     private final WeakReference<Delegate> delegateRef;
 
@@ -67,21 +88,17 @@ public abstract class StarGate implements Gate, Connection.Delegate {
      */
     protected abstract Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data);
 
-    protected void removeDocker(SocketAddress remote, SocketAddress local, Docker docker) {
-        docker = dockerPool.remove(remote, local, docker);
-        if (docker != null) {
-            docker.close();
-        }
+    protected Set<Docker> allDockers() {
+        return dockerPool.allValues();
     }
-
-    protected void putDocker(Docker docker) {
-        SocketAddress remote = docker.getRemoteAddress();
-        SocketAddress local = docker.getLocalAddress();
-        dockerPool.put(remote, local, docker);
-    }
-
     protected Docker getDocker(SocketAddress remote, SocketAddress local) {
         return dockerPool.get(remote, local);
+    }
+    protected void putDocker(Docker docker) {
+        dockerPool.set(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
+    }
+    protected void removeDocker(Docker docker) {
+        dockerPool.remove(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
     }
 
     @Override
@@ -96,27 +113,40 @@ public abstract class StarGate implements Gate, Connection.Delegate {
 
     @Override
     public boolean process() {
-        Set<Docker> dockers = dockerPool.allValues();
-        // 1. drive all dockers to process
-        int count = drive(dockers);
-        // 2. cleanup for dockers
-        cleanup(dockers);
-        return count > 0;
+        try {
+            Set<Docker> dockers = dockerPool.allValues();
+            // 1. drive all dockers to process
+            int count = driveDockers(dockers);
+            // 2. cleanup for dockers
+            cleanupDockers(dockers);
+            return count > 0;
+        } catch (Throwable e) {
+            e.printStackTrace();
+            return false;
+        }
     }
-    protected int drive(Set<Docker> dockers) {
+    protected int driveDockers(Set<Docker> dockers) {
         int count = 0;
         for (Docker worker : dockers) {
-            if (worker.process()) {
-                // it's busy
-                ++count;
+            try {
+                if (worker.isAlive() && worker.process()) {
+                    ++count;  // it's buzy
+                }
+            } catch (Throwable e) {
+                e.printStackTrace();
             }
         }
         return count;
     }
-    protected void cleanup(Set<Docker> dockers) {
+    protected void cleanupDockers(Set<Docker> dockers) {
         for (Docker worker : dockers) {
-            // clear expired tasks
-            worker.purge();
+            if (worker.isAlive()) {
+                // clear expired tasks
+                worker.purge();
+            } else {
+                // remove docker which connection lost
+                removeDocker(worker);
+            }
         }
     }
 
@@ -140,12 +170,24 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     public void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
         // 1. callback when status changed
         Delegate delegate = getDelegate();
-        Status s1 = Status.getStatus(previous);
-        Status s2 = Status.getStatus(current);
-        if (!s1.equals(s2) && delegate != null) {
-            SocketAddress remote = connection.getRemoteAddress();
-            SocketAddress local = connection.getLocalAddress();
-            delegate.onStatusChanged(s1, s2, remote, local, this);
+        if (delegate != null) {
+            Status s1 = Status.getStatus(previous);
+            Status s2 = Status.getStatus(current);
+            // check status
+            boolean changed;
+            if (s1 == null) {
+                changed = s2 != null;
+            } else if (s2 == null) {
+                changed = true;
+            } else {
+                changed = !s1.equals(s2);
+            }
+            if (changed) {
+                // callback
+                SocketAddress remote = connection.getRemoteAddress();
+                SocketAddress local = connection.getLocalAddress();
+                delegate.onStatusChanged(s1, s2, remote, local, this);
+            }
         }
         // 2. heartbeat when connection expired
         if (current != null && current.equals(ConnectionState.EXPIRED)) {
