@@ -42,17 +42,17 @@ import chat.dim.startrek.StarGate;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 
-public abstract class PackageDocker extends StarDocker {
+public class PackageDocker extends StarDocker {
 
     public PackageDocker(SocketAddress remote, SocketAddress local, StarGate gate) {
         super(remote, local, gate);
     }
 
-    protected Package parsePackage(final byte[] data) {
+    protected Package parsePackage(byte[] data) {
         return data == null ? null : Package.parse(new Data(data));
     }
 
-    protected Arrival createArrival(final Package pkg) {
+    protected Arrival createArrival(Package pkg) {
         return new PackageArrival(pkg);
     }
 
@@ -61,7 +61,7 @@ public abstract class PackageDocker extends StarDocker {
     }
 
     @Override
-    protected Departure getNextDeparture(final long now) {
+    protected Departure getNextDeparture(long now) {
         Departure outgo = super.getNextDeparture(now);
         if (outgo != null) {
             retryDeparture(outgo);
@@ -84,13 +84,13 @@ public abstract class PackageDocker extends StarDocker {
     }
 
     @Override
-    protected Arrival getArrival(final byte[] data) {
-        final Package pkg = parsePackage(data);
+    protected Arrival getArrival(byte[] data) {
+        Package pkg = parsePackage(data);
         if (pkg == null) {
             return null;
         }
         /* check body length?
-        final ByteArray body = pkg.body;
+        ByteArray body = pkg.body;
         if (body == null || body.getSize() == 0) {
             // should not happen
             return null;
@@ -100,7 +100,7 @@ public abstract class PackageDocker extends StarDocker {
     }
 
     @Override
-    protected Arrival checkArrival(final Arrival income) {
+    protected Arrival checkArrival(Arrival income) {
         assert income instanceof PackageArrival : "income ship error: " + income;
         PackageArrival ship = (PackageArrival) income;
         Package pkg = ship.getPackage();
@@ -113,9 +113,9 @@ public abstract class PackageDocker extends StarDocker {
             pkg = fragments.get(0);
         }
         // check data type in package header
-        final Header head = pkg.head;
-        final DataType type = head.type;
-        final ByteArray body = pkg.body;
+        Header head = pkg.head;
+        DataType type = head.type;
+        ByteArray body = pkg.body;
 
         if (type.isCommandResponse()) {
             // process CommandResponse:

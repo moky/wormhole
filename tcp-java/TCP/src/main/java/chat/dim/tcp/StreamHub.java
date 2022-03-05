@@ -70,6 +70,7 @@ class ChannelPool extends AddressPairMap<Channel> {
 
 public abstract class StreamHub extends BaseHub {
 
+    // (remote, null) => channel
     private final ChannelPool channelPool = new ChannelPool();
 
     protected StreamHub(Connection.Delegate delegate) {
@@ -126,8 +127,8 @@ public abstract class StreamHub extends BaseHub {
         return channelPool.allValues();
     }
 
-    protected Channel getChannel(SocketAddress remote, SocketAddress local) {
-        return channelPool.get(remote, local);
+    protected Channel getChannel(SocketAddress remote) {
+        return channelPool.get(remote, null);
     }
 
     protected void putChannel(Channel channel) {
@@ -142,15 +143,7 @@ public abstract class StreamHub extends BaseHub {
     @Override
     public Channel open(SocketAddress remote, SocketAddress local) {
         assert remote != null : "remote address empty";
-        return getChannel(remote, null);
-    }
-
-    //
-    //  Connection
-    //
-
-    @Override
-    protected Connection getConnection(SocketAddress remote, SocketAddress local) {
-        return super.getConnection(remote, null);
+        // get channel connected to remote address
+        return getChannel(remote);
     }
 }

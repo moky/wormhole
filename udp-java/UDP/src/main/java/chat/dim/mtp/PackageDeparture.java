@@ -48,7 +48,7 @@ public class PackageDeparture extends DepartureShip {
 
     public PackageDeparture(Package pack, int prior, Delegate delegate) {
         super(prior, delegate);
-        final Header head = pack.head;
+        Header head = pack.head;
         sn = head.sn.getBytes();
         completed = pack;
         packages = split(pack);

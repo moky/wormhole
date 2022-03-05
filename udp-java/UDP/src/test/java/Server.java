@@ -24,7 +24,7 @@ public class Server implements Gate.Delegate {
     public Server(SocketAddress local) {
         super();
         localAddress = local;
-        gate = new UDPGate<>(this);
+        gate = new UDPGate<>(this, false);
         gate.setHub(new ServerHub(gate));
     }
 

@@ -31,7 +31,6 @@
 package chat.dim.socket;
 
 import java.io.IOException;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.WritableByteChannel;
@@ -45,32 +44,29 @@ public abstract class ChannelWriter<C extends SelectableChannel>
         super(channel);
     }
 
-    protected int trySend(ByteBuffer buf, C sock) throws IOException {
+    protected int tryWrite(ByteBuffer buf, C sock) throws IOException {
         try {
             return ((WritableByteChannel) sock).write(buf);
         } catch (IOException e) {
             e = checkError(e, sock);
-            if (e == null) {
-                // buffer overflow!
-                return -1;
-            } else {
+            if (e != null) {
                 // connection lost?
                 throw e;
             }
+            // buffer overflow!
+            return -1;
         }
     }
 
     @Override
     public int write(ByteBuffer src) throws IOException {
         C sock = getSocket();
-        if (!(sock instanceof WritableByteChannel)) {
-            throw new SocketException("socket lost, cannot write data: " + src.position() + " byte(s)");
-        }
+        assert sock instanceof WritableByteChannel : "socket error, cannot write data: " + src.position() + " byte(s)";
         int sent = 0;
         int rest = src.position();
         int cnt;
         while (true) {  // while (sock.isOpen())
-            cnt = trySend(src, sock);
+            cnt = tryWrite(src, sock);
             // check send result
             if (cnt == 0) {
                 // buffer overflow?

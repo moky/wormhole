@@ -32,92 +32,140 @@ package chat.dim.udp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.Set;
 
 import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
+import chat.dim.socket.Reader;
+import chat.dim.socket.Writer;
+import chat.dim.type.AddressPairMap;
+
+class ChannelPool extends AddressPairMap<Channel> {
+
+    @Override
+    public void set(SocketAddress remote, SocketAddress local, Channel value) {
+        Channel old = get(remote, local);
+        if (old != null && old != value) {
+            remove(remote, local, old);
+        }
+        super.set(remote, local, value);
+    }
+
+    @Override
+    public Channel remove(SocketAddress remote, SocketAddress local, Channel value) {
+        Channel cached = super.remove(remote, local, value);
+        if (cached != null && cached.isOpen()) {
+            try {
+                cached.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return cached;
+    }
+}
 
 public abstract class PackageHub extends BaseHub {
 
-    // local => channel
-    private final Map<SocketAddress, Channel> channels = new HashMap<>();
+    // (null, local) => channel
+    private final ChannelPool channelPool = new ChannelPool();
 
     protected PackageHub(Connection.Delegate delegate) {
         super(delegate);
     }
 
     public void bind(SocketAddress local) throws IOException {
-        Channel sock = channels.get(local);
+        Channel sock = getChannel(local);
         if (sock == null) {
             DatagramChannel udp = DatagramChannel.open();
             udp.socket().bind(local);
             udp.configureBlocking(false);
-            Channel channel = new PackageChannel(udp, null, local);
-            channels.put(local, channel);
+            Channel channel = createChannel(udp, local);
+            putChannel(channel);
         }
     }
 
-    public void putChannel(Channel channel) {
-        SocketAddress local = channel.getLocalAddress();
-        channels.put(local, channel);
+    //
+    //  Channel
+    //
+
+    /**
+     *  Create channel with socket & address
+     *
+     * @param sock   - socket
+     * @param local  - local address
+     * @return null on socket error
+     */
+    protected Channel createChannel(DatagramChannel sock, SocketAddress local) {
+        return new PackageChannel(sock, null, local) {
+
+            @Override
+            protected Reader createReader() {
+                return new PackageChannelReader(this) {
+                    @Override
+                    protected IOException checkData(ByteBuffer buf, int len, DatagramChannel sock) {
+                        // TODO: check 'E_AGAIN' & TimeoutException
+                        return null;
+                    }
+
+                    @Override
+                    protected IOException checkError(IOException error, DatagramChannel sock) {
+                        // TODO: check TimeoutException
+                        return error;
+                    }
+                };
+            }
+
+            @Override
+            protected Writer createWriter() {
+                return new PackageChannelWriter(this) {
+                    @Override
+                    protected IOException checkError(IOException error, DatagramChannel sock) {
+                        // TODO: check 'E_AGAIN' & TimeoutException
+                        return error;
+                    }
+                };
+            }
+        };
     }
 
     @Override
     protected Set<Channel> allChannels() {
-        return new HashSet<>(channels.values());
+        return channelPool.allValues();
+    }
+
+    protected Channel getChannel(SocketAddress local) {
+        return channelPool.get(null, local);
+    }
+
+    protected void putChannel(Channel channel) {
+        channelPool.set(channel.getRemoteAddress(), channel.getLocalAddress(), channel);
     }
 
     @Override
-    public Channel openChannel(SocketAddress remote, SocketAddress local) {
+    protected void removeChannel(Channel channel) {
+        channelPool.remove(channel.getRemoteAddress(), channel.getLocalAddress(), channel);
+    }
+
+    @Override
+    public Channel open(SocketAddress remote, SocketAddress local) {
         if (local == null) {
-            for (Channel channel : channels.values()) {
-                // any channel
-                return channel;
+            // get any channel
+            Set<Channel> all = allChannels();
+            SocketAddress address;
+            for (Channel channel : all) {
+                address = channel.getRemoteAddress();
+                if (address == null || address.equals(remote)) {
+                    return channel;
+                }
             }
             // channel not found
             return null;
-        } else {
-            return channels.get(local);
         }
-    }
-
-    @Override
-    public void closeChannel(Channel channel) {
-        if (channel == null || !channel.isConnected()) {
-            // DON'T close bound socket channel
-            return;
-        } else {
-            removeChannel(channel);
-        }
-        try {
-            if (channel.isOpen()) {
-                channel.close();
-            }
-        } catch (IOException e) {
-            //e.printStackTrace();
-        }
-    }
-
-    private void removeChannel(Channel channel) {
-        SocketAddress local = channel.getLocalAddress();
-        if (channels.remove(local) == channel) {
-            // removed by key
-            return;
-        }
-        // remove by value
-        Iterator<Map.Entry<SocketAddress, Channel>> it;
-        it = channels.entrySet().iterator();
-        while (it.hasNext()) {
-            if (it.next().getValue() == channel) {
-                it.remove();
-                //break;
-            }
-        }
+        // get channel bound to local address
+        return getChannel(local);
     }
 }

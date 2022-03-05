@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Trek: Interstellar Transport
+ *  UDP: User Datagram Protocol
  *
  *                                Written in 2022 by Moky <albert.moky@gmail.com>
  *
@@ -28,31 +28,25 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.socket;
+package chat.dim.udp;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.SelectableChannel;
+import java.nio.channels.DatagramChannel;
 
 import chat.dim.net.BaseChannel;
+import chat.dim.socket.ChannelReader;
 
-public abstract class ChannelReader<C extends SelectableChannel>
-        extends Controller<C> implements Reader {
+public abstract class PackageChannelReader extends ChannelReader<DatagramChannel> {
 
-    protected ChannelReader(BaseChannel<C> channel) {
+    protected PackageChannelReader(BaseChannel<DatagramChannel> channel) {
         super(channel);
     }
 
-    // 1. check timeout
-    //    in blocking mode, the socket will wait until received something,
-    //    but if timeout was set, it will return nothing too, it's normal;
-    //    otherwise, we know the connection was lost.
-    protected abstract IOException checkData(ByteBuffer buf, int len, C sock);
-
-    protected int tryRead(ByteBuffer dst, C sock) throws IOException {
+    protected SocketAddress tryReceive(ByteBuffer dst, DatagramChannel sock) throws IOException {
         try {
-            return ((ReadableByteChannel) sock).read(dst);
+            return sock.receive(dst);
         } catch (IOException e) {
             e = checkError(e, sock);
             if (e != null) {
@@ -60,15 +54,13 @@ public abstract class ChannelReader<C extends SelectableChannel>
                 throw e;
             }
             // received nothing
-            return -1;
+            return null;
         }
     }
 
-    @Override
-    public int read(ByteBuffer dst) throws IOException {
-        C sock = getSocket();
-        assert sock instanceof ReadableByteChannel : "socket error, cannot read data: " + sock;
-        int cnt = tryRead(dst, sock);
+    protected SocketAddress receiveFrom(ByteBuffer dst, DatagramChannel sock) throws IOException {
+        SocketAddress remote = tryReceive(dst, sock);
+        int cnt = dst.position();
         // check data
         IOException error = checkData(dst, cnt, sock);
         if (error != null) {
@@ -76,6 +68,19 @@ public abstract class ChannelReader<C extends SelectableChannel>
             throw error;
         }
         // OK
-        return cnt;
+        return remote;
+    }
+
+    @Override
+    public SocketAddress receive(ByteBuffer dst) throws IOException {
+        DatagramChannel sock = getSocket();
+        assert sock != null : "socket lost, cannot receive data.";
+        if (sock.isConnected()) {
+            // connected (TCP/UDP)
+            return read(dst) > 0 ? getRemoteAddress() : null;
+        } else {
+            // not connect (UDP)
+            return receiveFrom(dst, sock);
+        }
     }
 }

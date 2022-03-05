@@ -44,7 +44,7 @@ public class PackageArrival extends ArrivalShip {
 
     public PackageArrival(Package pack) {
         super();
-        final Header head = pack.head;
+        Header head = pack.head;
         sn = head.sn.getBytes();
         if (pack.isFragment()) {
             packer = new Packer(head.sn, head.pages);

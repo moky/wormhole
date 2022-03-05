@@ -1,6 +1,6 @@
 /* license: https://mit-license.org
  *
- *  Star Trek: Interstellar Transport
+ *  UDP: User Datagram Protocol
  *
  *                                Written in 2022 by Moky <albert.moky@gmail.com>
  *
@@ -28,54 +28,49 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.socket;
+package chat.dim.udp;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.SelectableChannel;
+import java.nio.channels.DatagramChannel;
 
 import chat.dim.net.BaseChannel;
+import chat.dim.socket.ChannelWriter;
 
-public abstract class ChannelReader<C extends SelectableChannel>
-        extends Controller<C> implements Reader {
+public abstract class PackageChannelWriter extends ChannelWriter<DatagramChannel> {
 
-    protected ChannelReader(BaseChannel<C> channel) {
+    protected PackageChannelWriter(BaseChannel<DatagramChannel> channel) {
         super(channel);
     }
 
-    // 1. check timeout
-    //    in blocking mode, the socket will wait until received something,
-    //    but if timeout was set, it will return nothing too, it's normal;
-    //    otherwise, we know the connection was lost.
-    protected abstract IOException checkData(ByteBuffer buf, int len, C sock);
-
-    protected int tryRead(ByteBuffer dst, C sock) throws IOException {
+    protected int sendTo(ByteBuffer src, SocketAddress target, DatagramChannel sock) throws IOException {
         try {
-            return ((ReadableByteChannel) sock).read(dst);
+            return sock.send(src, target);
         } catch (IOException e) {
             e = checkError(e, sock);
             if (e != null) {
                 // connection lost?
                 throw e;
             }
-            // received nothing
+            // buffer overflow!
             return -1;
         }
     }
 
     @Override
-    public int read(ByteBuffer dst) throws IOException {
-        C sock = getSocket();
-        assert sock instanceof ReadableByteChannel : "socket error, cannot read data: " + sock;
-        int cnt = tryRead(dst, sock);
-        // check data
-        IOException error = checkData(dst, cnt, sock);
-        if (error != null) {
-            // connection lost!
-            throw error;
+    public int send(ByteBuffer src, SocketAddress target) throws IOException {
+        DatagramChannel sock = getSocket();
+        assert sock != null : "socket lost, cannot send data: " + src.position() + " byte(s)";
+        if (sock.isConnected()) {
+            // connected (TCP/UDP)
+            assert target == null || target.equals(getRemoteAddress()) :
+                    "target address error: " + target + ", " + getRemoteAddress();
+            return tryWrite(src, sock);
+        } else {
+            // not connect (UDP)
+            assert target != null : "target address missed for unbound channel";
+            return sendTo(src, target, sock);
         }
-        // OK
-        return cnt;
     }
 }

@@ -32,46 +32,55 @@ package chat.dim.udp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.net.SocketException;
-import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.nio.channels.DatagramChannel;
 
 import chat.dim.net.BaseChannel;
 
-public class PackageChannel extends BaseChannel<DatagramChannel> {
+public abstract class PackageChannel extends BaseChannel<DatagramChannel> {
 
-    public PackageChannel(DatagramChannel channel, SocketAddress remote, SocketAddress local) {
-        super(channel, remote, local);
+    private DatagramChannel channel;
+
+    public PackageChannel(DatagramChannel sock, SocketAddress remote, SocketAddress local) {
+        super(remote, local);
+        channel = sock;
+        refreshFlags(sock);
     }
 
     @Override
-    public SocketAddress receive(ByteBuffer dst) throws IOException {
-        DatagramChannel impl = getChannel();
-        if (impl == null) {
-            throw new SocketException("socket channel lost");
-        }
-        if (impl.isConnected()) {
-            return impl.read(dst) > 0 ? getRemoteAddress() : null;
-        } else {
-            return impl.receive(dst);
-        }
+    public DatagramChannel getSocketChannel() {
+        return channel;
     }
 
     @Override
-    public int send(ByteBuffer src, SocketAddress target) throws IOException {
-        DatagramChannel impl = getChannel();
-        if (impl == null) {
-            throw new SocketException("socket channel lost");
+    protected void setSocketChannel(DatagramChannel sock) throws IOException {
+        // 1. check old socket channel
+        DatagramChannel old = channel;
+        if (old != null && old != sock) {
+            if (old.isOpen() && old.isConnected()) {
+                // DON'T close bound socket
+                old.close();
+            }
         }
-        if (impl.isConnected()) {
-            // connected (TCP/UDP)
-            assert target == null || target.equals(getRemoteAddress()) :
-                    "target address error: " + target + ", " + getRemoteAddress();
-            return impl.write(src);
-        } else {
-            // not connect (UDP)
-            assert target != null : "target address missed for unbound channel";
-            return impl.send(src, target);
+        // 2. set new socket channel
+        channel = sock;
+    }
+
+    @Override
+    public ByteChannel disconnect() throws IOException {
+        // DON'T close bound socket channel
+        if (isBound() && !isConnected()) {
+            return null;
         }
+        return super.disconnect();
+    }
+
+    @Override
+    public void close() throws IOException {
+        // DON'T close bound socket channel
+        if (isBound() && !isConnected()) {
+            return;
+        }
+        super.close();
     }
 }
