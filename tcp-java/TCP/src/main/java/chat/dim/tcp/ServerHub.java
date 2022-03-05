@@ -38,22 +38,29 @@ import java.nio.channels.SocketChannel;
 import chat.dim.net.BaseConnection;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
+import chat.dim.threading.Daemon;
 
 public class ServerHub extends StreamHub implements Runnable {
 
     private SocketAddress localAddress = null;
     private ServerSocketChannel master = null;
-    // running thread
-    private Thread thread = null;
-    private boolean running = false;
 
-    public ServerHub(Connection.Delegate delegate) {
+    private final Daemon daemon;
+    private boolean running;
+
+    public ServerHub(Connection.Delegate delegate, boolean isDaemon) {
         super(delegate);
+        daemon = new Daemon(this, isDaemon);
+        running = false;
+    }
+    public ServerHub(Connection.Delegate delegate) {
+        this(delegate, true);
     }
 
     @Override
     protected Connection createConnection(Channel sock, SocketAddress remote, SocketAddress local) {
-        BaseConnection conn = new BaseConnection(remote, null, sock, getDelegate(), this);
+        Connection.Delegate gate = getDelegate();
+        BaseConnection conn = new BaseConnection(remote, local, sock, gate);
         conn.start();  // start FSM
         return conn;
     }
@@ -66,48 +73,61 @@ public class ServerHub extends StreamHub implements Runnable {
         sock = ServerSocketChannel.open();
         sock.socket().bind(local);
         //sock.configureBlocking(false);
-        master = sock;
+        setMaster(sock);
         localAddress = local;
     }
 
-    public void start() {
-        forceStop();
-        running = true;
-        thread = new Thread(this);
-        thread.start();
-    }
-
-    private void forceStop() {
-        running = false;
-        if (thread != null && thread.isAlive()) {
-            thread.interrupt();
+    protected void setMaster(ServerSocketChannel channel) {
+        // 1. check old channel
+        ServerSocketChannel old = master;
+        if (old != null && old != channel) {
+            if (old.isOpen()) {
+                try {
+                    old.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
-        thread = null;
-    }
-
-    public void stop() {
-        forceStop();
+        // 2. set new channel
+        master = channel;
     }
 
     public boolean isRunning() {
         return running;
     }
 
+    public void start() {
+        stop();
+        running = true;
+        daemon.start();
+    }
+
+    public void stop() {
+        running = false;
+        daemon.stop();
+    }
+
     @Override
     public void run() {
         SocketChannel sock;
-        SocketAddress remote;
         running = true;
         while (isRunning()) {
             try {
                 sock = master.accept();
                 if (sock != null) {
-                    remote = sock.getRemoteAddress();
-                    putChannel(new StreamChannel(sock, remote, localAddress));
+                    accept(sock, sock.getRemoteAddress(), localAddress);
                 }
             } catch (IOException e) {
-                //e.printStackTrace();
+                e.printStackTrace();
             }
         }
+    }
+
+    // override for user-customized channel
+    protected void accept(SocketChannel sock, SocketAddress remote, SocketAddress local) {
+        Channel channel = createChannel(sock, remote, local);
+        assert channel != null : "failed to create socket channel: " + sock + ", remote=" + remote + ", local=" + local;
+        putChannel(channel);
     }
 }

@@ -1,13 +1,13 @@
 /* license: https://mit-license.org
  *
- *  TCP: Transmission Control Protocol
+ *  Star Trek: Interstellar Transport
  *
- *                                Written in 2021 by Moky <albert.moky@gmail.com>
+ *                                Written in 2022 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2021 Albert Moky
+ * Copyright (c) 2022 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,35 +32,24 @@ package chat.dim.tcp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 import chat.dim.net.BaseChannel;
+import chat.dim.socket.ChannelWriter;
 
-public abstract class StreamChannel extends BaseChannel<SocketChannel> {
+public abstract class StreamChannelWriter extends ChannelWriter<SocketChannel> {
 
-    private SocketChannel channel;
-
-    public StreamChannel(SocketChannel sock, SocketAddress remote, SocketAddress local) {
-        super(remote, local);
-        channel = sock;
-        refreshFlags(sock);
+    protected StreamChannelWriter(BaseChannel<SocketChannel> channel) {
+        super(channel);
     }
 
     @Override
-    public SocketChannel getSocketChannel() {
-        return channel;
-    }
-
-    @Override
-    protected void setSocketChannel(SocketChannel sock) throws IOException {
-        // 1. check old socket channel
-        SocketChannel old = channel;
-        if (old != null && old != sock) {
-            if (old.isOpen()) {
-                old.close();
-            }
-        }
-        // 2. set new socket channel
-        channel = sock;
+    public int send(ByteBuffer src, SocketAddress target) throws IOException {
+        // TCP channel will be always connected
+        // so the target address must be the remote address
+        assert target == null || target.equals(getRemoteAddress()) :
+                "target address error: " + target + ", " + getRemoteAddress();
+        return write(src);
     }
 }

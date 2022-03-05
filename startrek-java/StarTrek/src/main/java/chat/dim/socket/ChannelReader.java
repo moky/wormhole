@@ -62,11 +62,11 @@ public abstract class ChannelReader<C extends SelectableChannel>
             if (cnt < 0) {
                 throw new SocketException("socket lost, cannot read data");
             }
-        } catch (IOException error) {
-            error = checkError(error, sock);
-            if (error != null) {
+        } catch (IOException e) {
+            e = checkError(e, sock);
+            if (e != null) {
                 // connection lost?
-                throw error;
+                throw e;
             }
             // received nothing
             dst.clear();

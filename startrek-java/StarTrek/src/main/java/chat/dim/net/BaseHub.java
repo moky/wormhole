@@ -84,6 +84,10 @@ public abstract class BaseHub implements Hub {
         return delegateRef.get();
     }
 
+    //
+    //  Channel
+    //
+
     /**
      *  Get all channels
      *
@@ -97,6 +101,10 @@ public abstract class BaseHub implements Hub {
      * @param channel - socket channel
      */
     protected abstract void removeChannel(Channel channel);
+
+    //
+    //  Connection
+    //
 
     /**
      *  Create connection with sock channel & addresses
@@ -149,13 +157,21 @@ public abstract class BaseHub implements Hub {
         return conn;
     }
 
+    //
+    //  Process
+    //
+
     protected boolean driveChannel(Channel sock) {
+        if (!sock.isAlive()) {
+            // cannot drive closed channel
+            return false;
+        }
         ByteBuffer buffer = ByteBuffer.allocate(MSS);
         SocketAddress remote;
         // try to receive
         try {
             remote = sock.receive(buffer);
-        } catch (IOException error) {
+        } catch (IOException e) {
             //e.printStackTrace();
             removeChannel(sock);
             // callback
@@ -163,7 +179,7 @@ public abstract class BaseHub implements Hub {
             if (delegate != null) {
                 remote = sock.getRemoteAddress();
                 SocketAddress local = sock.getLocalAddress();
-                delegate.onError(error, null, remote, local, null);
+                delegate.onError(e, null, remote, local, null);
             }
             return false;
         }
@@ -185,9 +201,13 @@ public abstract class BaseHub implements Hub {
     protected int driveChannels(Set<Channel> channels) {
         int count = 0;
         for (Channel sock : channels) {
-            if (sock.isAlive() && driveChannel(sock)) {
-                // received data from this socket channel
-                count += 1;
+            try {
+                // drive channel to receive data
+                if (driveChannel(sock)) {
+                    count += 1;
+                }
+            } catch (Throwable e) {
+                e.printStackTrace();
             }
         }
         return count;

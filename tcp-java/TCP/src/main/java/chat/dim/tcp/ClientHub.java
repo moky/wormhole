@@ -47,16 +47,17 @@ public class ClientHub extends StreamHub {
 
     @Override
     protected Connection createConnection(Channel sock, SocketAddress remote, SocketAddress local) {
-        BaseConnection conn = new ActiveConnection(remote, null, sock, getDelegate(), this);
+        Connection.Delegate gate = getDelegate();
+        BaseConnection conn = new ActiveConnection(remote, null, sock, gate, this);
         conn.start();  // start FSM
         return conn;
     }
 
     @Override
-    public Channel openChannel(SocketAddress remote, SocketAddress local) {
-        Channel channel = super.openChannel(remote, local);
+    public Channel open(SocketAddress remote, SocketAddress local) {
+        Channel channel = super.open(remote, local);
         if (channel == null/* && remote != null*/) {
-            channel = createChannel(remote, local);
+            channel = createSocketChannel(remote, local);
             if (channel != null) {
                 putChannel(channel);
             }
@@ -64,14 +65,14 @@ public class ClientHub extends StreamHub {
         return channel;
     }
 
-    private Channel createChannel(SocketAddress remote, SocketAddress local) {
+    private Channel createSocketChannel(SocketAddress remote, SocketAddress local) {
         SocketChannel sock;
         try {
             sock = createSocket(remote, local);
             if (local == null) {
                 local = sock.getLocalAddress();
             }
-            return new StreamChannel(sock, remote, local);
+            return createChannel(sock, remote, local);
         } catch (IOException e) {
             e.printStackTrace();
         }

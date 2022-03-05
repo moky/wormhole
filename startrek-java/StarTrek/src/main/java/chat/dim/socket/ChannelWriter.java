@@ -48,14 +48,14 @@ public abstract class ChannelWriter<C extends SelectableChannel>
     protected int trySend(ByteBuffer buf, C sock) throws IOException {
         try {
             return ((WritableByteChannel) sock).write(buf);
-        } catch (IOException error) {
-            error = checkError(error, sock);
-            if (error == null) {
+        } catch (IOException e) {
+            e = checkError(e, sock);
+            if (e == null) {
                 // buffer overflow!
                 return -1;
             } else {
                 // connection lost?
-                throw error;
+                throw e;
             }
         }
     }

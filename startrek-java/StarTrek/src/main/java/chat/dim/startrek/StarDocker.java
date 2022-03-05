@@ -112,7 +112,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
 
     @Override
     public boolean isAlive() {
-        Connection conn = connectionRef == null ? null : connectionRef.get();
+        Connection conn = getConnection();
         return conn != null && conn.isAlive();
     }
 
@@ -184,7 +184,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
                 // task done
                 return true;
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             // socket error, callback
             error = e;
         }

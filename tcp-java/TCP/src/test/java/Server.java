@@ -22,7 +22,7 @@ public class Server implements Gate.Delegate {
     public Server(SocketAddress local) {
         super();
         localAddress = local;
-        gate = new TCPGate<>(this);
+        gate = new TCPGate<>(this, false);
         gate.setHub(new ServerHub(gate));
     }
 

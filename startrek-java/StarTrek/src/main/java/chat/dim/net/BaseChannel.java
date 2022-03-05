@@ -226,9 +226,9 @@ public abstract class BaseChannel<C extends SelectableChannel>
     public int read(ByteBuffer dst) throws IOException {
         try {
             return reader.read(dst);
-        } catch (IOException error) {
+        } catch (IOException e) {
             close();
-            throw error;
+            throw e;
         }
     }
 
@@ -236,9 +236,9 @@ public abstract class BaseChannel<C extends SelectableChannel>
     public int write(ByteBuffer src) throws IOException {
         try {
             return writer.write(src);
-        } catch (IOException error) {
+        } catch (IOException e) {
             close();
-            throw error;
+            throw e;
         }
     }
 
@@ -246,9 +246,9 @@ public abstract class BaseChannel<C extends SelectableChannel>
     public SocketAddress receive(ByteBuffer dst) throws IOException {
         try {
             return reader.receive(dst);
-        } catch (IOException error) {
+        } catch (IOException e) {
             close();
-            throw error;
+            throw e;
         }
     }
 
@@ -256,9 +256,9 @@ public abstract class BaseChannel<C extends SelectableChannel>
     public int send(ByteBuffer src, SocketAddress target) throws IOException {
         try {
             return writer.send(src, target);
-        } catch (IOException error) {
+        } catch (IOException e) {
             close();
-            throw error;
+            throw e;
         }
     }
 }

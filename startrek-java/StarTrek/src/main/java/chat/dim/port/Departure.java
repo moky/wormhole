@@ -45,8 +45,8 @@ public interface Departure extends Ship {
 
         public final int value;
 
-        Priority(int v) {
-            value = v;
+        Priority(int prior) {
+            value = prior;
         }
     }
 

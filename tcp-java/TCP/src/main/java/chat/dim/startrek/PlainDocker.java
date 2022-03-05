@@ -37,7 +37,7 @@ import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Ship;
 
-public abstract class PlainDocker extends StarDocker {
+public class PlainDocker extends StarDocker {
 
     public PlainDocker(SocketAddress remote, SocketAddress local, StarGate gate) {
         super(remote, local, gate);

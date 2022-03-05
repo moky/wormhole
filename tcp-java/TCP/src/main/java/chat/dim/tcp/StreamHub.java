@@ -32,71 +32,125 @@ package chat.dim.tcp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.util.Set;
 
 import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
+import chat.dim.socket.Reader;
+import chat.dim.socket.Writer;
+import chat.dim.type.AddressPairMap;
+
+class ChannelPool extends AddressPairMap<Channel> {
+
+    @Override
+    public void set(SocketAddress remote, SocketAddress local, Channel value) {
+        Channel old = get(remote, local);
+        if (old != null && old != value) {
+            remove(remote, local, old);
+        }
+        super.set(remote, local, value);
+    }
+
+    @Override
+    public Channel remove(SocketAddress remote, SocketAddress local, Channel value) {
+        Channel cached = super.remove(remote, local, value);
+        if (cached != null && cached.isOpen()) {
+            try {
+                cached.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return cached;
+    }
+}
 
 public abstract class StreamHub extends BaseHub {
 
-    // remote => channel
-    private final Map<SocketAddress, Channel> channels = new HashMap<>();
+    private final ChannelPool channelPool = new ChannelPool();
 
     protected StreamHub(Connection.Delegate delegate) {
         super(delegate);
     }
 
-    public void putChannel(Channel channel) {
-        SocketAddress remote = channel.getRemoteAddress();
-        channels.put(remote, channel);
+    //
+    //  Channel
+    //
+
+    /**
+     *  Create channel with socket & addresses
+     *
+     * @param sock   - socket
+     * @param remote - remote address
+     * @param local  - local address
+     * @return null on socket error
+     */
+    protected Channel createChannel(SocketChannel sock, SocketAddress remote, SocketAddress local) {
+        return new StreamChannel(sock, remote, local) {
+
+            @Override
+            protected Reader createReader() {
+                return new StreamChannelReader(this) {
+                    @Override
+                    protected IOException checkData(ByteBuffer buf, int len, SocketChannel sock) {
+                        // TODO: check 'E_AGAIN' & TimeoutException
+                        return null;
+                    }
+
+                    @Override
+                    protected IOException checkError(IOException error, SocketChannel sock) {
+                        // TODO: check TimeoutException
+                        return error;
+                    }
+                };
+            }
+
+            @Override
+            protected Writer createWriter() {
+                return new StreamChannelWriter(this) {
+                    @Override
+                    protected IOException checkError(IOException error, SocketChannel sock) {
+                        // TODO: check 'E_AGAIN' & TimeoutException
+                        return error;
+                    }
+                };
+            }
+        };
     }
 
     @Override
     protected Set<Channel> allChannels() {
-        return new HashSet<>(channels.values());
+        return channelPool.allValues();
+    }
+
+    protected Channel getChannel(SocketAddress remote, SocketAddress local) {
+        return channelPool.get(remote, local);
+    }
+
+    protected void putChannel(Channel channel) {
+        channelPool.set(channel.getRemoteAddress(), channel.getLocalAddress(), channel);
     }
 
     @Override
-    public Channel openChannel(SocketAddress remote, SocketAddress local) {
+    protected void removeChannel(Channel channel) {
+        channelPool.remove(channel.getRemoteAddress(), channel.getLocalAddress(), channel);
+    }
+
+    @Override
+    public Channel open(SocketAddress remote, SocketAddress local) {
         assert remote != null : "remote address empty";
-        return channels.get(remote);
+        return getChannel(remote, null);
     }
+
+    //
+    //  Connection
+    //
 
     @Override
-    public void closeChannel(Channel channel) {
-        if (channel == null) {
-            return;
-        } else {
-            removeChannel(channel);
-        }
-        try {
-            if (channel.isOpen()) {
-                channel.close();
-            }
-        } catch (IOException e) {
-            //e.printStackTrace();
-        }
-    }
-
-    private void removeChannel(Channel channel) {
-        SocketAddress remote = channel.getRemoteAddress();
-        if (channels.remove(remote) == channel) {
-            // removed by key
-            return;
-        }
-        // remove by value
-        Iterator<Map.Entry<SocketAddress, Channel>> it;
-        it = channels.entrySet().iterator();
-        while (it.hasNext()) {
-            if (it.next().getValue() == channel) {
-                it.remove();
-                //break;
-            }
-        }
+    protected Connection getConnection(SocketAddress remote, SocketAddress local) {
+        return super.getConnection(remote, null);
     }
 }

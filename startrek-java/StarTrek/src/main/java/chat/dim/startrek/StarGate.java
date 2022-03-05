@@ -129,7 +129,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         int count = 0;
         for (Docker worker : dockers) {
             try {
-                if (worker.isAlive() && worker.process()) {
+                if (worker.process()) {
                     ++count;  // it's buzy
                 }
             } catch (Throwable e) {
