@@ -460,9 +460,8 @@ class ErrorDefaultTransition(StateTransition):
             return False
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
         # connection still alive, and
-        # can sent/receive data during this state
+        # can receive data during this state
         current = ctx.current_state
         assert isinstance(current, ConnectionState), 'connection state error: %s' % current
         enter = current.enter_time
-        if enter > 0:
-            return conn.last_sent_time > enter or conn.last_received_time > enter
+        return 0 < enter < conn.last_received_time

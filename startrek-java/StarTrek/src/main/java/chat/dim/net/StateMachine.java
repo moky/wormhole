@@ -322,10 +322,10 @@ class TransitionBuilder {
                 }
                 TimedConnection timed = (TimedConnection) conn;
                 // connection still alive, and
-                // can send/receive data during this state
+                // can receive data during this state
                 ConnectionState current = ctx.getCurrentState();
                 long enter = current.getEnterTime();
-                return enter > 0 && (timed.getLastSentTime() > enter || timed.getLastReceivedTime() > enter);
+                return 0 < enter && enter < timed.getLastReceivedTime();
             }
         };
     }
