@@ -66,6 +66,10 @@ public class ServerHub extends StreamHub implements Runnable {
     }
 
     public void bind(SocketAddress local) throws IOException {
+        if (local == null) {
+            local = localAddress;
+            assert local != null : "local address not set";
+        }
         ServerSocketChannel sock = master;
         if (sock != null && sock.isOpen()) {
             sock.close();

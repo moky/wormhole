@@ -26,8 +26,8 @@ class Server(GateDelegate):
     def __init__(self, host: str, port: int):
         super().__init__()
         self.__local_address = (host, port)
-        gate = TCPGate(delegate=self)
-        gate.hub = ServerHub(delegate=gate)
+        gate = TCPGate(delegate=self, daemonic=False)
+        gate.hub = ServerHub(delegate=gate, daemonic=True)
         self.__gate = gate
 
     @property

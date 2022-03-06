@@ -58,7 +58,7 @@ class Soldier(Runner, GateDelegate):
         super().__init__()
         self.__remote_address = remote
         self.__local_address = local
-        self.__gate = TCPGate(delegate=self, daemon=True)
+        self.__gate = TCPGate(delegate=self, daemonic=True)
         self.__time_to_retreat = time.time() + 32
 
     def __str__(self) -> str:

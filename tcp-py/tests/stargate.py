@@ -2,11 +2,10 @@
 
 import time
 import traceback
-from threading import Thread
 from typing import Generic, TypeVar, Optional, List
 
 from startrek.types import Address
-from startrek.fsm import Runnable
+from startrek.fsm import Runnable, Daemon
 from tcp import Connection, ConnectionState, ActiveConnection
 from tcp import Hub
 from tcp import GateDelegate
@@ -18,13 +17,12 @@ H = TypeVar('H')
 
 class TCPGate(StarGate, Runnable, Generic[H]):
 
-    def __init__(self, delegate: GateDelegate, daemon: bool = False):
+    def __init__(self, delegate: GateDelegate, daemonic: bool = True):
         super().__init__(delegate=delegate)
         self.__hub: H = None
         # running thread
-        self.__thread: Optional[Thread] = None
+        self.__daemon = Daemon(target=self.run, daemonic=daemonic)
         self.__running = False
-        self.__daemon = daemon
 
     @property
     def hub(self) -> H:
@@ -39,23 +37,13 @@ class TCPGate(StarGate, Runnable, Generic[H]):
         return self.__running
 
     def start(self):
-        self.__force_stop()
+        self.stop()
         self.__running = True
-        thr = Thread(target=self.run, daemon=self.__daemon)
-        self.__thread = thr
-        thr.start()
-        return thr
-
-    def __force_stop(self):
-        self.__running = False
-        t: Thread = self.__thread
-        if t is not None:
-            # waiting 2 seconds for stopping the thread
-            self.__thread = None
-            t.join(timeout=2.0)
+        return self.__daemon.start()
 
     def stop(self):
-        self.__force_stop()
+        self.__running = False
+        self.__daemon.stop()
 
     # Override
     def run(self):
@@ -84,13 +72,13 @@ class TCPGate(StarGate, Runnable, Generic[H]):
     def get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
         hub = self.hub
         assert isinstance(hub, Hub), 'hub error: %s' % hub
-        return hub.connect(remote=remote, local=local)
+        return hub.connect(remote=remote, local=None)
 
     # Override
     def _create_docker(self, remote: tuple, local: Optional[tuple],
                        advance_party: List[bytes]) -> Optional[PlainDocker]:
         # TODO: check data format before creating docker
-        return PlainDocker(remote=remote, local=None, gate=self)
+        return PlainDocker(remote=remote, local=local, gate=self)
 
     # Override
     def _get_docker(self, remote: Address, local: Optional[Address]) -> Optional[PlainDocker]:
@@ -127,24 +115,24 @@ class TCPGate(StarGate, Runnable, Generic[H]):
         # if isinstance(error, IOError) and str(error).startswith('failed to send: '):
         self.error(msg='connection error: %s' % error)
 
-    def get_docker(self, remote: tuple, local: Optional[tuple]) -> Optional[PlainDocker]:
+    def get_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[PlainDocker]:
         docker = self._get_docker(remote=remote, local=local)
         if docker is None:
-            docker = self._create_docker(remote=remote, local=local, advance_party=[])
+            docker = self._create_docker(remote=remote, local=local, advance_party=advance_party)
             assert docker is not None, 'failed to create docker: %s, %s' % (remote, local)
             self._set_docker(docker=docker)
         return docker
 
     def send_data(self, payload: bytes, source: Optional[tuple], destination: tuple) -> bool:
-        docker = self.get_docker(remote=destination, local=source)
+        docker = self.get_docker(remote=destination, local=source, advance_party=[])
         if docker is not None:
             return docker.send_data(payload=payload)
 
     @classmethod
     def info(cls, msg: str):
-        # now = time.time()
-        # prefix = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now))
-        # print('[%s] %s' % (prefix, msg))
+        now = time.time()
+        prefix = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now))
+        print('[%s] %s' % (prefix, msg))
         pass
 
     @classmethod

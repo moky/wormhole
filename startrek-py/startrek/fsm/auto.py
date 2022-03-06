@@ -29,7 +29,6 @@
 # ==============================================================================
 
 import time
-from threading import Thread
 
 from .runner import Handler, Runnable, Daemon
 from .machine import S, C, U, T
@@ -38,7 +37,7 @@ from .base import BaseMachine
 
 class AutoMachine(BaseMachine[C, T, S], Runnable, Handler):
 
-    def __init__(self, default: str, daemonic: bool = False):
+    def __init__(self, default: str, daemonic: bool = True):
         super().__init__(default=default)
         self.__daemon = Daemon(target=self.run, daemonic=daemonic)
         self.__running = False
