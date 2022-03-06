@@ -163,7 +163,7 @@ public class DepartureHall {
     }
     private Departure getNextNewDeparture(long now) {
         List<Departure> fleet;
-        Iterator<Departure> iterator;
+        Iterator<Departure> dit;
         Departure ship;
         Object sn;
         List<Integer> priorityList = new ArrayList<>(priorities);
@@ -174,12 +174,12 @@ public class DepartureHall {
                 continue;
             }
             // 2. seeking new task in this priority
-            iterator = fleet.iterator();
-            while (iterator.hasNext()) {
-                ship = iterator.next();
+            dit = fleet.iterator();
+            while (dit.hasNext()) {
+                ship = dit.next();
                 if (ship.getRetries() == -1 && ship.update(now)) {
                     // first time to try, update and remove from the queue
-                    iterator.remove();
+                    dit.remove(); //fleet.remove(ship);
                     sn = ship.getSN();
                     if (sn != null) {
                         departureMap.remove(sn);
@@ -192,7 +192,7 @@ public class DepartureHall {
     }
     private Departure getNextTimeoutDeparture(long now) {
         List<Departure> fleet;
-        Iterator<Departure> iterator;
+        Iterator<Departure> dit;
         Departure ship;
         Object sn;
         List<Integer> priorityList = new ArrayList<>(priorities);
@@ -203,12 +203,12 @@ public class DepartureHall {
                 continue;
             }
             // 2. seeking timeout task in this priority
-            iterator = fleet.iterator();
-            while (iterator.hasNext()) {
-                ship = iterator.next();
+            dit = fleet.iterator();
+            while (dit.hasNext()) {
+                ship = dit.next();
                 if (ship.isTimeout(now) && ship.update(now)) {
                     // respond time out, update and remove from the queue
-                    iterator.remove();
+                    dit.remove(); //fleet.remove(ship);
                     sn = ship.getSN();
                     if (sn != null) {
                         departureMap.remove(sn);
@@ -216,7 +216,7 @@ public class DepartureHall {
                     return ship;
                 } else if (ship.isFailed(now)) {
                     // task expired, remove this ship
-                    iterator.remove();
+                    dit.remove(); //fleet.remove(ship);
                     sn = ship.getSN();
                     if (sn != null) {
                         departureMap.remove(sn);
@@ -281,7 +281,7 @@ public class DepartureHall {
             when = entry.getValue();
             if (when == null || when < ago) {
                 // long time ago
-                mit.remove();
+                mit.remove(); //departureFinished.remove(entry.getKey());
                 // remove mapping with SN
                 departureMap.remove(entry.getKey());
             }

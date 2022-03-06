@@ -44,7 +44,7 @@ public abstract class PackageChannelWriter extends ChannelWriter<DatagramChannel
         super(channel);
     }
 
-    protected int sendTo(ByteBuffer src, SocketAddress target, DatagramChannel sock) throws IOException {
+    protected int trySend(ByteBuffer src, SocketAddress target, DatagramChannel sock) throws IOException {
         try {
             return sock.send(src, target);
         } catch (IOException e) {
@@ -70,7 +70,7 @@ public abstract class PackageChannelWriter extends ChannelWriter<DatagramChannel
         } else {
             // not connect (UDP)
             assert target != null : "target address missed for unbound channel";
-            return sendTo(src, target, sock);
+            return trySend(src, target, sock);
         }
     }
 }

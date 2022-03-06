@@ -79,13 +79,14 @@ class PackageHub(BaseHub, ABC):
             channel = self._create_channel(remote=None, local=address, sock=sock)
             self._set_channel(channel=channel)
 
+    #
+    #   Channel
+    #
+
     # noinspection PyMethodMayBeStatic
     def _create_channel(self, remote: Optional[Address], local: Optional[Address], sock: socket.socket) -> Channel:
         # override for user-customized channel
         return PackageChannel(remote=remote, local=local, sock=sock)
-
-    def put_channel(self, channel: Channel):
-        self._set_channel(channel=channel)
 
     # Override
     def _all_channels(self) -> Iterable[Channel]:
@@ -111,7 +112,8 @@ class PackageHub(BaseHub, ABC):
             # get any channel
             channels = self._all_channels()
             for sock in channels:
-                if sock is not None:
+                address = sock.remote_address
+                if address is None or address == remote:
                     return sock
             # channel not found
         else:
@@ -124,7 +126,7 @@ class ServerHub(PackageHub):
     # Override
     def _create_connection(self, channel: Channel, remote: Address, local: Optional[Address]) -> Optional[Connection]:
         gate = self.delegate
-        conn = BaseConnection(remote=remote, local=None, channel=channel, delegate=gate)
+        conn = BaseConnection(remote=remote, local=local, channel=channel, delegate=gate)
         conn.start()  # start FSM
         return conn
 

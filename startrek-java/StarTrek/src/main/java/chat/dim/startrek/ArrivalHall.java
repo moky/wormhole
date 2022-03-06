@@ -111,7 +111,7 @@ public class ArrivalHall {
             ship = ait.next();
             if (ship.isFailed(now)) {
                 // task expired
-                arrivals.remove(ship);
+                ait.remove(); //arrivals.remove(ship);
                 // remove mapping with SN
                 arrivalMap.remove(ship.getSN());
                 // TODO: callback?
@@ -127,7 +127,7 @@ public class ArrivalHall {
             when = entry.getValue();
             if (when == null || when < ago) {
                 // long time ago
-                mit.remove();
+                mit.remove(); //arrivalFinished.remove(entry.getKey());
                 // remove mapping with SN
                 arrivalMap.remove(entry.getKey());
             }

@@ -38,20 +38,22 @@ from startrek import BaseChannel, ChannelReader, ChannelWriter
 
 class PackageChannelReader(ChannelReader):
 
-    def _receive_from(self, max_len: int) -> (Optional[bytes], Optional[Address]):
-        sock = self.sock
+    def _try_receive(self, max_len: int, sock: socket.socket) -> (Optional[bytes], Optional[Address]):
         try:
-            data, remote = sock.recvfrom(max_len)
+            return sock.recvfrom(max_len)
         except socket.error as error:
             error = self._check_error(error=error, sock=sock)
             if error is not None:
                 # connection lost?
                 raise error
             # received nothing
-            data = None
-            remote = None
+            return None, None
+
+    def _receive_from(self, max_len: int) -> (Optional[bytes], Optional[Address]):
+        sock = self.sock
+        data, remote = self._try_receive(max_len=max_len, sock=sock)
         # check data
-        error = self._check_data(data=data)
+        error = self._check_data(data=data, sock=sock)
         if error is not None:
             # connection lost!
             raise error
@@ -66,14 +68,12 @@ class PackageChannelReader(ChannelReader):
             return self._receive_from(max_len=max_len)
         else:
             # connected (TCP/UDP)
-            data = self.read(max_len=max_len)
-            return data, remote
+            return self.read(max_len=max_len), remote
 
 
 class PackageChannelWriter(ChannelWriter):
 
-    def _sent_to(self, data: bytes, target: Address) -> int:
-        sock = self.sock
+    def _try_send(self, data: bytes, target: Address, sock: socket.socket) -> int:
         try:
             return sock.sendto(data, target)
         except socket.error as error:
@@ -90,12 +90,12 @@ class PackageChannelWriter(ChannelWriter):
         remote = self.remote_address
         if remote is None:
             # not connect (UDP)
-            return self._sent_to(data=data, target=target)
+            return self._try_send(data=data, target=target, sock=self.sock)
         else:
             # connected (TCP/UDP)
             assert target is None or target == remote, 'target address error: %s, %s' % (target, remote)
             # return sock.send(data)
-            return self._try_send(data=data, sock=self.sock)
+            return self._try_write(data=data, sock=self.sock)
 
 
 class PackageChannel(BaseChannel):
@@ -115,7 +115,8 @@ class PackageChannel(BaseChannel):
         # 1. check old socket
         old = self._get_socket()
         if old is not None and old is not sock:
-            if is_opened(sock=old):
+            if is_opened(sock=old) and is_connected(sock=old):
+                # DON'T close bound socket
                 close_socket(sock=old)
         # 2. set new socket
         self.__sock = sock
@@ -125,7 +126,7 @@ class PackageChannel(BaseChannel):
         # DON'T close bound socket channel
         if self.bound and not self.connected:
             return None
-        super().disconnect()
+        return super().disconnect()
 
     # Override
     def close(self):

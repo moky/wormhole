@@ -25,7 +25,7 @@ public class Client implements Gate.Delegate {
         super();
         localAddress = local;
         remoteAddress = remote;
-        gate = new TCPGate<>(this);
+        gate = new TCPGate<>(this, true);
         gate.setHub(new ClientHub(gate));
     }
 

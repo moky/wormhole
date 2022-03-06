@@ -28,7 +28,7 @@ public class Client implements Gate.Delegate {
         super();
         localAddress = local;
         remoteAddress = remote;
-        gate = new UDPGate<>(this);
+        gate = new UDPGate<>(this, true);
         gate.setHub(new ClientHub(gate));
     }
 

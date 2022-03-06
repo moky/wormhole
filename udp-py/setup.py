@@ -10,7 +10,7 @@
 
 from setuptools import setup, find_packages
 
-__version__ = '0.5.3'
+__version__ = '0.5.4'
 __author__ = 'Albert Moky'
 __contact__ = 'albert.moky@gmail.com'
 
@@ -34,6 +34,6 @@ setup(
         'Operating System :: OS Independent',
     ],
     install_requires=[
-        'startrek>=0.3.3'
+        'startrek>=0.3.4'
     ]
 )
