@@ -41,9 +41,11 @@ class ArrivalShip(Arrival, ABC):
     # Arrival task will be expired after 10 minutes if still not completed
     EXPIRES = 600  # seconds
 
-    def __init__(self):
+    def __init__(self, now: int = 0):
         super().__init__()
-        self.__expired = int(time.time()) + self.EXPIRES
+        if now <= 0:
+            now = int(time.time())
+        self.__expired = now + self.EXPIRES
 
     # Override
     def is_failed(self, now: int) -> bool:

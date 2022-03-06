@@ -79,6 +79,10 @@ class StarGate(Gate, ConnectionDelegate):
     def delegate(self) -> Optional[GateDelegate]:
         return self.__delegate()
 
+    #
+    #   Docker
+    #
+
     @abstractmethod
     def _create_docker(self, remote: Address, local: Optional[Address], advance_party: List[bytes]) -> Optional[Docker]:
         """
@@ -107,10 +111,9 @@ class StarGate(Gate, ConnectionDelegate):
         """ remove cached docker """
         self.__docker_pool.remove(remote=docker.remote_address, local=docker.local_address, item=docker)
 
-    # noinspection PyMethodMayBeStatic
-    def _close_docker(self, docker: Docker):
-        if docker.alive:
-            docker.close()
+    #
+    #   Status
+    #
 
     # Override
     def gate_status(self, remote: Address, local: Optional[Address]) -> GateStatus:
@@ -141,7 +144,7 @@ class StarGate(Gate, ConnectionDelegate):
         count = 0
         for worker in dockers:
             try:
-                if worker.alive and worker.process():
+                if worker.process():
                     count += 1  # it's busy
             except Exception as error:
                 print('[NET] drive docker error: %s, %s, %s' % (error, worker, self))

@@ -171,6 +171,10 @@ public abstract class BaseChannel<C extends SelectableChannel>
 
     @Override
     public NetworkChannel bind(SocketAddress local) throws IOException {
+        if (local == null) {
+            local = localAddress;
+            assert local != null : "local address not set";
+        }
         C sock = getSocketChannel();
         if (sock == null) {
             throw new SocketException("socket closed");
@@ -185,6 +189,10 @@ public abstract class BaseChannel<C extends SelectableChannel>
 
     @Override
     public NetworkChannel connect(SocketAddress remote) throws IOException {
+        if (remote == null) {
+            remote = remoteAddress;
+            assert remote != null : "remote address not set";
+        }
         C sock = getSocketChannel();
         if (sock == null) {
             throw new SocketException("socket closed");

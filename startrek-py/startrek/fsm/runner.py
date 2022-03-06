@@ -30,6 +30,7 @@
 
 import time
 from abc import ABC, abstractmethod
+from threading import Thread
 
 
 class Ticker(ABC):
@@ -123,3 +124,37 @@ class Runner(Runnable, Handler, Processor, ABC):
     # noinspection PyMethodMayBeStatic
     def _idle(self):
         time.sleep(0.125)
+
+
+class Daemon:
+
+    def __init__(self, target, daemonic: bool = True):
+        super().__init__()
+        self.__target = target
+        self.__daemon = daemonic
+        self.__thread = None
+
+    @property
+    def alive(self) -> bool:
+        thr = self.__thread
+        if thr is not None:
+            return thr.is_alive()
+
+    def start(self) -> Thread:
+        self.__force_stop()
+        thr = Thread(target=self.__target, daemon=self.__daemon)
+        self.__thread = thr
+        thr.start()
+        return thr
+
+    def __force_stop(self):
+        thr: Thread = self.__thread
+        if thr is not None:
+            self.__thread = None
+            try:
+                thr.join(timeout=1.0)
+            except RuntimeError as error:
+                print('[ERROR] failed to join thread: %s' % error)
+
+    def stop(self):
+        self.__force_stop()

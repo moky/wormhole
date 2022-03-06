@@ -47,10 +47,17 @@ class Status(IntEnum):
     READY = 2
 
 
+READY_STATUS = [
+    ConnectionState.READY,
+    ConnectionState.EXPIRED,
+    ConnectionState.MAINTAINING
+]
+
+
 def status_from_state(state: ConnectionState) -> Status:
     if state is None:
         return Status.ERROR
-    if state in [ConnectionState.READY, ConnectionState.EXPIRED, ConnectionState.MAINTAINING]:
+    if state in READY_STATUS:
         return Status.READY
     if state == ConnectionState.PREPARING:
         return Status.PREPARING

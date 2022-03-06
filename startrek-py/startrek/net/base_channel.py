@@ -169,9 +169,14 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         return self._local
 
     # Override
-    def bind(self, address: Optional[Address] = None, host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
+    def bind(self, address: Optional[Address] = None,
+             host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
         if address is None:
-            address = (host, port)
+            if port > 0:
+                address = (host, port)
+            else:
+                address = self._local
+                assert address is not None, 'local address not set'
         sock = self.sock
         if sock is None:
             raise socket.error('cannot bind socket: local=(%s:%d)' % address)
@@ -186,7 +191,11 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     def connect(self, address: Optional[Address] = None,
                 host: Optional[str] = '127.0.0.1', port: Optional[int] = 0) -> socket.socket:
         if address is None:
-            address = (host, port)
+            if port > 0:
+                address = (host, port)
+            else:
+                address = self._remote
+                assert address is not None, 'remote address not set'
         sock = self.sock
         if sock is None:
             raise socket.error('cannot connect socket: remote=(%s:%d)' % address)

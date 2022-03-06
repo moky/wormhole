@@ -126,12 +126,12 @@ class StarDocker(AddressPairObject, Docker):
 
     # Override
     def process(self) -> bool:
-        # check connection
+        # 1. get connection which is ready for sending data
         conn = self.connection
         if conn is None or not conn.alive:
             # waiting for connection
             return False
-        # get data to be sent
+        # 2. get data waiting to be sent out
         if len(self.__last_fragments) > 0:
             # get remaining fragments from last outgo task
             outgo = self.__last_outgo
@@ -148,7 +148,7 @@ class StarDocker(AddressPairObject, Docker):
             elif outgo.is_failed(now=now):
                 # task timeout, return True to process next one
                 error = TimeoutError('Request timeout')
-                self.__on_error(error=error, ship=outgo, connection=self.connection)
+                self.__outgo_error(error=error, ship=outgo, connection=self.connection)
                 return True
             else:
                 # get fragments from outgo task
@@ -157,13 +157,13 @@ class StarDocker(AddressPairObject, Docker):
                     # all fragments of this task have been sent already
                     # return True to process next one
                     return True
-        # process fragments of outgo task
+        # 3. process fragments of outgo task
         index = 0
         sent = 0
         try:
-            remote_address = self.remote_address
+            remote = self.remote_address
             for fra in fragments:
-                sent = conn.send(data=fra, target=remote_address)
+                sent = conn.send(data=fra, target=remote)
                 if sent < len(fra):
                     # buffer overflow?
                     break
@@ -171,17 +171,16 @@ class StarDocker(AddressPairObject, Docker):
                     # assert sent == len(fra)
                     index += 1
                     sent = 0  # clear counter
-            fra_cnt = len(fragments)
-            if index < fra_cnt:
+            if index < len(fragments):
                 # task failed
-                error = ConnectionError('only %d/%d fragments sent' % (index, fra_cnt))
+                error = ConnectionError('only %d/%d fragments sent' % (index, len(fragments)))
             else:
                 # task done
                 return True
         except Exception as e:
             # socket error, callback
             error = e
-        # remove sent fragments
+        # 4. remove sent fragments
         while index > 0:
             fragments.pop(0)
             index -= 1
@@ -189,13 +188,13 @@ class StarDocker(AddressPairObject, Docker):
         if sent > 0:
             last = fragments.pop(0)
             fragments.insert(0, last[sent:])
-        # store remaining data
+        # 5. store remaining data
         self.__last_outgo = outgo
         self.__last_fragments = fragments
-        # callback for error
-        self.__on_error(error=error, ship=outgo, connection=conn)
+        # 6. callback for error
+        self.__outgo_error(error=error, ship=outgo, connection=conn)
 
-    def __on_error(self, error: IOError, ship: Departure, connection: Connection):
+    def __outgo_error(self, error: IOError, ship: Departure, connection: Connection):
         # callback for error
         delegate = self.delegate
         if delegate is not None:
@@ -208,6 +207,7 @@ class StarDocker(AddressPairObject, Docker):
         # 1. get income ship from received data
         income = self._get_arrival(data=data)
         if income is None:
+            # waiting for more data
             return None
         # 2. check income ship for response
         income = self._check_arrival(ship=income)

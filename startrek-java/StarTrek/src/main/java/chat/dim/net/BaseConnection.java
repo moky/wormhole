@@ -77,6 +77,14 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
         fsm = null;
     }
 
+    @Override
+    protected void finalize() throws Throwable {
+        // make sure the relative channel is closed
+        setChannel(null);
+        setStateMachine(null);
+        super.finalize();
+    }
+
     protected StateMachine getStateMachine() {
         return fsm;
     }
@@ -140,6 +148,8 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
 
     @Override
     public boolean isAlive() {
+        /// Channel sock = getChannel();
+        /// return sock != null && sock.isAlive();
         return isOpen() && (isConnected() || isBound());
     }
 

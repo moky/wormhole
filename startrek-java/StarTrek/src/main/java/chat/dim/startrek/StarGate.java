@@ -78,6 +78,10 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         return delegateRef.get();
     }
 
+    //
+    //  Docker
+    //
+
     /**
      *  Create new docker for received data
      *
@@ -100,6 +104,10 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     protected void removeDocker(Docker docker) {
         dockerPool.remove(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
     }
+
+    //
+    //  Status
+    //
 
     @Override
     public Status getStatus(SocketAddress remote, SocketAddress local) {

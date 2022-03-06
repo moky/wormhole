@@ -84,6 +84,10 @@ class BaseHub(Hub, ABC):
     def delegate(self) -> ConnectionDelegate:
         return self.__delegate()
 
+    #
+    #   Channel
+    #
+
     @abstractmethod
     def _all_channels(self) -> Iterable[Channel]:
         """
@@ -101,6 +105,10 @@ class BaseHub(Hub, ABC):
         :param channel: socket channel
         """
         raise NotImplemented
+
+    #
+    #   Connection
+    #
 
     @abstractmethod
     def _create_connection(self, channel: Channel, remote: Address, local: Optional[Address]) -> Optional[Connection]:
@@ -152,12 +160,19 @@ class BaseHub(Hub, ABC):
             self._set_connection(connection=conn)
             return conn
 
+    #
+    #   Process
+    #
+
     def _drive_channel(self, channel: Channel) -> bool:
+        if not channel.alive:
+            return False
         # try to receive
         try:
             data, remote = channel.receive(max_len=self.MSS)
         except socket.error as error:
             self._remove_channel(channel=channel)
+            # callback
             delegate = self.delegate
             if delegate is not None:
                 remote = channel.remote_address
@@ -179,7 +194,7 @@ class BaseHub(Hub, ABC):
         count = 0
         for sock in channels:
             try:
-                if sock.alive and self._drive_channel(channel=sock):
+                if self._drive_channel(channel=sock):
                     count += 1  # received data from this socket channel
             except Exception as error:
                 print('[NET] drive channel error: %s, %s' % (error, sock))

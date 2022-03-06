@@ -181,7 +181,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         sent = -1
         try:
             sent = self._send(data=data, target=target)
-            if sent <= 0:  # == -1:
+            if sent < 0:  # == -1:
                 error = ConnectionError('failed to send: %d byte(s) to %s' % (len(data), target))
         except socket.error as e:
             error = e
@@ -192,7 +192,9 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         if delegate is not None:
             local = self.local_address
             if error is None:
-                if 0 <= sent < len(data):
+                if sent <= 0:
+                    data = b''
+                elif sent < len(data):
                     data = data[:sent]
                 delegate.connection_sent(data=data, source=local, destination=target, connection=self)
             else:

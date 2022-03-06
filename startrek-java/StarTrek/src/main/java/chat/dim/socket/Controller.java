@@ -37,6 +37,12 @@ import java.nio.channels.SelectableChannel;
 
 import chat.dim.net.BaseChannel;
 
+/**
+ *  Socket Channel Controller
+ *  ~~~~~~~~~~~~~~~~~~~~~~~~~
+ *
+ *  Reader, Writer, ErrorChecker
+ */
 public abstract class Controller<C extends SelectableChannel> {
 
     private final WeakReference<BaseChannel<C>> channelRef;

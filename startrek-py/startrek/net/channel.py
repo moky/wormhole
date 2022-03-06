@@ -109,7 +109,8 @@ class Channel(ABC):
     #
 
     @abstractmethod
-    def bind(self, address: Optional[Address] = None, host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
+    def bind(self, address: Optional[Address] = None,
+             host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
         """
         Binds the channel's socket to a local address (host, port).
 

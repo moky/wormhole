@@ -107,18 +107,21 @@ class ChannelReader(Controller, Reader, ABC):
                 # print('[NET] socket error: remote peer reset socket %s' % sock)
                 return socket.error('remote peer reset socket %s' % sock)
 
-    # Override
-    def read(self, max_len: int) -> Optional[bytes]:
-        sock = self.sock
+    def _try_read(self, max_len: int, sock: Optional[socket.socket]) -> Optional[bytes]:
         try:
-            data = sock.recv(max_len)
+            return sock.recv(max_len)
         except socket.error as error:
             error = self._check_error(error=error, sock=sock)
             if error is not None:
                 # connection lost?
                 raise error
             # received nothing
-            data = None
+            return None
+
+    # Override
+    def read(self, max_len: int) -> Optional[bytes]:
+        sock = self.sock
+        data = self._try_read(max_len=max_len, sock=sock)
         # check data
         error = self._check_data(data=data, sock=sock)
         if error is not None:
@@ -130,17 +133,16 @@ class ChannelReader(Controller, Reader, ABC):
 
 class ChannelWriter(Controller, Writer, ABC):
 
-    def _try_send(self, data: bytes, sock: socket.socket) -> int:
+    def _try_write(self, data: bytes, sock: socket.socket) -> int:
         try:
             return sock.send(data)
         except socket.error as error:
             error = self._check_error(error=error, sock=sock)
-            if error is None:
-                # buffer overflow!
-                return -1
-            else:
+            if error is not None:
                 # connection lost?
                 raise error
+            # buffer overflow!
+            return -1
 
     # Override
     def write(self, data: bytes) -> int:
@@ -151,8 +153,8 @@ class ChannelWriter(Controller, Writer, ABC):
         sent = 0
         rest = len(data)
         # assert rest > 0, 'cannot send empty data'
-        while True:  # is_opened(sock=sock):
-            cnt = self._try_send(data=data, sock=sock)
+        while True:  # while is_opened(sock=sock):
+            cnt = self._try_write(data=data, sock=sock)
             # check send result
             if cnt == 0:
                 # buffer overflow?

@@ -71,7 +71,7 @@ class AddressPairObject:
         remote = self._remote
         local = self._local
         if remote is None:
-            return hash(local)
+            return hash(local)  # if local is not None else 0
         elif local is None:
             return hash(remote) * 13
         else:

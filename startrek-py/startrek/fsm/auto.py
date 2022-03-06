@@ -30,51 +30,41 @@
 
 import time
 from threading import Thread
-from typing import Optional
 
-from .runner import Handler, Runnable
+from .runner import Handler, Runnable, Daemon
 from .machine import S, C, U, T
 from .base import BaseMachine
 
 
 class AutoMachine(BaseMachine[C, T, S], Runnable, Handler):
 
-    def __init__(self, default: str, daemon: bool = False):
+    def __init__(self, default: str, daemonic: bool = False):
         super().__init__(default=default)
-        # running thread
-        self.__thread: Optional[Thread] = None
+        self.__daemon = Daemon(target=self.run, daemonic=daemonic)
         self.__running = False
-        self.__daemon = daemon
 
     @property
     def running(self) -> bool:
         return self.__running
+
+    def __force_stop(self):
+        self.__running = False
+        self.__daemon.stop()
+
+    def __restart(self):
+        self.__force_stop()
+        self.__running = True
+        self.__daemon.start()
 
     # Override
     def start(self):
         self.__restart()
         super().start()
 
-    def __restart(self):
-        self.__force_stop()
-        self.__running = True
-        t = Thread(target=self.run, daemon=self.__daemon)
-        self.__thread = t
-        t.start()
-
-    def __force_stop(self):
-        self.__running = False
-        t: Thread = self.__thread
-        if t is not None:
-            # waiting 2 seconds for stopping the thread
-            self.__thread = None
-            t.join(timeout=2.0)
-
     # Override
     def stop(self):
-        if self.__running:
-            super().stop()
-            self.__force_stop()
+        super().stop()
+        self.__force_stop()
 
     # Override
     def run(self):
