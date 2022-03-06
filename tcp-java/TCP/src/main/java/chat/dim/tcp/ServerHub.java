@@ -75,8 +75,10 @@ public class ServerHub extends StreamHub implements Runnable {
             sock.close();
         }
         sock = ServerSocketChannel.open();
+        sock.configureBlocking(true);
+        sock.socket().setReuseAddress(true);
         sock.socket().bind(local);
-        //sock.configureBlocking(false);
+        sock.configureBlocking(false);
         setMaster(sock);
         localAddress = local;
     }

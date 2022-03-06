@@ -113,7 +113,7 @@ class TCPGate(StarGate, Runnable, Generic[H]):
     def connection_error(self, error: ConnectionError, data: Optional[bytes],
                          source: Optional[tuple], destination: Optional[tuple], connection: Optional[Connection]):
         # if isinstance(error, IOError) and str(error).startswith('failed to send: '):
-        self.error(msg='connection error: %s' % error)
+        self.error(msg='connection error: %s, %s (%s, %s)' % (error, connection, source, destination))
 
     def get_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[PlainDocker]:
         docker = self._get_docker(remote=remote, local=local)

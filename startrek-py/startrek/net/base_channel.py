@@ -102,18 +102,6 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         """ create socket writer """
         raise NotImplemented
 
-    def _refresh_flags(self, sock: Optional[socket.socket]):
-        if sock is None:
-            self.__blocking = False
-            self.__opened = False
-            self.__connected = False
-            self.__bound = False
-        else:
-            self.__blocking = is_blocking(sock=sock)
-            self.__opened = is_opened(sock=sock)
-            self.__connected = is_connected(sock=sock)
-            self.__bound = is_bound(sock=sock)
-
     @property
     def sock(self) -> Optional[socket.socket]:
         return self._get_socket()
@@ -129,6 +117,18 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         # 1. check old socket
         # 2. set new socket
         raise NotImplemented
+
+    def _refresh_flags(self, sock: Optional[socket.socket]):
+        if sock is None:
+            self.__blocking = False
+            self.__opened = False
+            self.__connected = False
+            self.__bound = False
+        else:
+            self.__blocking = is_blocking(sock=sock)
+            self.__opened = is_opened(sock=sock)
+            self.__connected = is_connected(sock=sock)
+            self.__bound = is_bound(sock=sock)
 
     # Override
     def configure_blocking(self, blocking: bool):
@@ -210,14 +210,12 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     def disconnect(self) -> Optional[socket.socket]:
         sock = self._get_socket()
         self._set_socket(sock=None)
-        self._refresh_flags(sock=None)
         return sock
 
     # Override
     def close(self):
         # set socket to None and refresh flags
         self._set_socket(sock=None)
-        self._refresh_flags(sock=None)
 
     # Override
     def read(self, max_len: int) -> Optional[bytes]:

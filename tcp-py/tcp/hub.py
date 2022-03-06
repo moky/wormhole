@@ -154,7 +154,7 @@ class ServerHub(StreamHub, Runnable):
         sock.setblocking(True)
         sock.bind(address)
         sock.listen(1)
-        # sock.setblocking(False)
+        sock.setblocking(False)
         self._set_master(master=sock)
         self.__local = address
 

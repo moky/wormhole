@@ -33,6 +33,7 @@ package chat.dim.udp;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 import java.util.Set;
 
@@ -81,6 +82,8 @@ public abstract class PackageHub extends BaseHub {
         Channel sock = getChannel(local);
         if (sock == null) {
             DatagramChannel udp = DatagramChannel.open();
+            udp.configureBlocking(true);
+            udp.socket().setReuseAddress(true);
             udp.socket().bind(local);
             udp.configureBlocking(false);
             Channel channel = createChannel(udp, local);
@@ -107,13 +110,16 @@ public abstract class PackageHub extends BaseHub {
                 return new PackageChannelReader(this) {
                     @Override
                     protected IOException checkData(ByteBuffer buf, int len, DatagramChannel sock) {
-                        // TODO: check 'E_AGAIN' & TimeoutException
+                        // TODO: check Timeout for received nothing
+                        if (len == -1) {
+                            return new ClosedChannelException();
+                        }
                         return null;
                     }
 
                     @Override
                     protected IOException checkError(IOException error, DatagramChannel sock) {
-                        // TODO: check TimeoutException
+                        // TODO: check 'E_AGAIN' & TimeoutException
                         return error;
                     }
                 };

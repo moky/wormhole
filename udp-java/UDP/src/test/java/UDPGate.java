@@ -130,7 +130,7 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
 
     @Override
     public void onError(Throwable error, byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
-        error("connection error: " + error + ", " + connection);
+        error("connection error: " + error + ", " + connection + " (" + source + ", " + destination + ")");
     }
 
     public Docker getDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {

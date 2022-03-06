@@ -112,14 +112,15 @@ class PackageChannel(BaseChannel):
 
     # Override
     def _set_socket(self, sock: Optional[socket.socket]):
-        # 1. check old socket
-        old = self._get_socket()
+        # 1. replace old socket
+        old = self.__sock
+        self.__sock = sock
+        self._refresh_flags(sock=sock)
+        # 2. close old socket
         if old is not None and old is not sock:
             if is_opened(sock=old) and is_connected(sock=old):
                 # DON'T close bound socket
                 close_socket(sock=old)
-        # 2. set new socket
-        self.__sock = sock
 
     # Override
     def disconnect(self) -> Optional[socket.socket]:

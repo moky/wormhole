@@ -86,6 +86,23 @@ public abstract class BaseChannel<C extends SelectableChannel>
      */
     protected abstract Writer createWriter();
 
+    /**
+     *  Get inner socket channel
+     */
+    public abstract C getSocketChannel();
+
+    /**
+     *  Change inner socket channel
+     *  1. check old channel
+     *  2. set new channel
+     */
+    protected abstract void setSocketChannel(C sock) throws IOException;
+
+    /**
+     *  Refresh channel flags with new socket
+     *
+     * @param sock - socket channel
+     */
     protected void refreshFlags(C sock) {
         // update channel status
         if (sock == null) {
@@ -120,18 +137,6 @@ public abstract class BaseChannel<C extends SelectableChannel>
             return false;
         }
     }
-
-    /**
-     *  Get inner socket channel
-     */
-    public abstract C getSocketChannel();
-
-    /**
-     *  Change inner socket channel
-     *  1. check old channel
-     *  2. set new channel
-     */
-    protected abstract void setSocketChannel(C sock) throws IOException;
 
     @Override
     public SelectableChannel configureBlocking(boolean block) throws IOException {
@@ -215,7 +220,6 @@ public abstract class BaseChannel<C extends SelectableChannel>
     public ByteChannel disconnect() throws IOException {
         C sock = getSocketChannel();
         setSocketChannel(null);
-        refreshFlags(null);
         return (ByteChannel) sock;
     }
 
@@ -223,7 +227,6 @@ public abstract class BaseChannel<C extends SelectableChannel>
     public void close() throws IOException {
         // set socket to null and refresh flags
         setSocketChannel(null);
-        refreshFlags(null);
     }
 
     //

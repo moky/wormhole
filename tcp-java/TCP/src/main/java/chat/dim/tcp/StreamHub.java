@@ -33,6 +33,7 @@ package chat.dim.tcp;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
 import java.util.Set;
 
@@ -97,13 +98,16 @@ public abstract class StreamHub extends BaseHub {
                 return new StreamChannelReader(this) {
                     @Override
                     protected IOException checkData(ByteBuffer buf, int len, SocketChannel sock) {
-                        // TODO: check 'E_AGAIN' & TimeoutException
+                        // TODO: check Timeout for received nothing
+                        if (len == -1) {
+                            return new ClosedChannelException();
+                        }
                         return null;
                     }
 
                     @Override
                     protected IOException checkError(IOException error, SocketChannel sock) {
-                        // TODO: check TimeoutException
+                        // TODO: check 'E_AGAIN' & TimeoutException
                         return error;
                     }
                 };
