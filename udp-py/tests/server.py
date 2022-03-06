@@ -11,7 +11,7 @@ sys.path.append(rootPath)
 
 from udp import Connection
 from udp import Gate, GateDelegate, GateStatus
-from udp import ServerHub
+from udp import Hub, ServerHub
 from udp import Arrival, PackageArrival, Departure, PackageDeparture
 
 from tests.stargate import UDPGate
@@ -22,7 +22,7 @@ class Server(GateDelegate):
     def __init__(self, host: str, port: int):
         super().__init__()
         self.__local_address = (host, port)
-        gate = UDPGate(delegate=self)
+        gate = UDPGate(delegate=self, daemonic=False)
         gate.hub = ServerHub(delegate=gate)
         self.__gate = gate
 
@@ -89,8 +89,8 @@ class Server(GateDelegate):
         UDPGate.error('gate error (%s, %s): %s' % (source, destination, error))
 
 
-# SERVER_HOST = Hub.inet_address()
-SERVER_HOST = '0.0.0.0'
+SERVER_HOST = Hub.inet_address()
+# SERVER_HOST = '0.0.0.0'
 SERVER_PORT = 9394
 
 
