@@ -91,7 +91,7 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     @Override
     protected Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
         // TODO: check data format before creating docker
-        return new PackageDocker(remote, local, this);
+        return new PackageDocker(remote, null, this);
     }
 
     @Override

@@ -138,7 +138,7 @@ class ServerHub(StreamHub, Runnable):
     # Override
     def _create_connection(self, channel: Channel, remote: Address, local: Optional[Address]) -> Optional[Connection]:
         gate = self.delegate
-        conn = BaseConnection(remote=remote, local=local, channel=channel, delegate=gate)
+        conn = BaseConnection(remote=remote, local=None, channel=channel, delegate=gate)
         conn.start()  # start FSM
         return conn
 

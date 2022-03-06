@@ -80,7 +80,7 @@ class UDPGate(StarGate, Runnable, Generic[H]):
     def _create_docker(self, remote: tuple, local: Optional[tuple],
                        advance_party: List[bytes]) -> Optional[PackageDocker]:
         # TODO: check data format before creating docker
-        return PackageDocker(remote=remote, local=local, gate=self)
+        return PackageDocker(remote=remote, local=None, gate=self)
 
     # Override
     def _get_docker(self, remote: Address, local: Optional[Address]) -> Optional[PackageDocker]:

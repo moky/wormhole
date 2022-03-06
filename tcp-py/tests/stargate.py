@@ -78,7 +78,7 @@ class TCPGate(StarGate, Runnable, Generic[H]):
     def _create_docker(self, remote: tuple, local: Optional[tuple],
                        advance_party: List[bytes]) -> Optional[PlainDocker]:
         # TODO: check data format before creating docker
-        return PlainDocker(remote=remote, local=local, gate=self)
+        return PlainDocker(remote=remote, local=None, gate=self)
 
     # Override
     def _get_docker(self, remote: Address, local: Optional[Address]) -> Optional[PlainDocker]:
