@@ -27,7 +27,7 @@ public class DmtpServer extends Server implements Gate.Delegate {
     public DmtpServer(SocketAddress local) {
         super();
         localAddress = local;
-        gate = new UDPGate<>(this);
+        gate = new UDPGate<>(this, false);
         gate.setHub(new ServerHub(gate));
     }
 

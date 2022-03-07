@@ -10,37 +10,27 @@ import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
 import chat.dim.port.Docker;
-import chat.dim.port.Gate;
 import chat.dim.skywalker.Runner;
 import chat.dim.startrek.PlainDocker;
 import chat.dim.startrek.StarGate;
-
-
-class StunDocker extends PlainDocker {
-
-    StunDocker(SocketAddress remote, SocketAddress local, StarGate gate) {
-        super(remote, local, gate);
-    }
-
-    @Override
-    protected Hub getHub() {
-        Gate gate = getGate();
-        if (gate instanceof UDPGate) {
-            //noinspection rawtypes
-            return ((UDPGate) gate).getHub();
-        }
-        return null;
-    }
-}
+import chat.dim.threading.Daemon;
 
 
 public class UDPGate<H extends Hub> extends StarGate implements Runnable {
 
-    private boolean running = false;
-    private H hub = null;
+    private final Daemon daemon;
+    private boolean running;
 
-    public UDPGate(Delegate delegate) {
+    private H hub;
+
+    public UDPGate(Delegate delegate, boolean isDaemon) {
         super(delegate);
+        daemon = new Daemon(this, isDaemon);
+        running = false;
+        hub = null;
+    }
+    public UDPGate(Delegate delegate) {
+        this(delegate, true);
     }
 
     public H getHub() {
@@ -50,16 +40,19 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
         hub = h;
     }
 
+    public boolean isRunning() {
+        return running;
+    }
+
     public void start() {
-        new Thread(this).start();
+        stop();
+        running = true;
+        daemon.start();
     }
 
     public void stop() {
         running = false;
-    }
-
-    public boolean isRunning() {
-        return running;
+        daemon.stop();
     }
 
     @Override
@@ -78,20 +71,30 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
 
     @Override
     public boolean process() {
-        boolean incoming = getHub().process();
-        boolean outgoing = super.process();
-        return incoming || outgoing;
+        try {
+            boolean incoming = getHub().process();
+            boolean outgoing = super.process();
+            return incoming || outgoing;
+        } catch (Throwable e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Override
     public Connection getConnection(SocketAddress remote, SocketAddress local) {
-        return getHub().connect(remote, local);
+        return getHub().connect(remote, null);
     }
 
     @Override
     protected Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
         // STUN package has no wrapper, so we use plain docker here
-        return new StunDocker(remote, null, this);
+        return new PlainDocker(remote, null, this);
+    }
+
+    @Override
+    protected Docker getDocker(SocketAddress remote, SocketAddress local) {
+        return super.getDocker(remote, null);
     }
 
     @Override
@@ -117,49 +120,34 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
         }
     }
 
-    private void kill(SocketAddress remote, SocketAddress local, Connection connection) {
-        // if conn is null, disconnect with (remote, local);
-        // else, disconnect with connection when local address matched.
-        Connection conn = getHub().disconnect(remote, local, connection);
-        // if connection is not activated, means it's a server connection,
-        // remove the docker too.
-        if (conn != null && !(conn instanceof ActiveConnection)) {
-            // remove docker for server connection
-            remote = conn.getRemoteAddress();
-            local = conn.getLocalAddress();
-            removeDocker(remote, local, null);
-        }
-    }
-
     @Override
     public void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
         super.onStateChanged(previous, current, connection);
         info("connection state changed: " + previous + " -> " + current + ", " + connection);
-        if (current != null && current.equals(ConnectionState.ERROR)) {
-            error("remove error connection: " + connection);
-            kill(null, null, connection);
-        }
     }
 
     @Override
     public void onError(Throwable error, byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
-        if (connection == null) {
-            // failed to receive data
-            kill(source, destination, null);
-        } else {
-            // failed to send data
-            kill(destination, source, connection);
-        }
+        error("connection error: " + error + ", " + connection + " (" + source + ", " + destination + ")");
     }
 
-    void sendData(byte[] payload, SocketAddress source, SocketAddress destination) {
-        Docker worker = getDocker(destination, source);
-        if (worker == null) {
-            worker = createDocker(destination, source, null);
-            assert worker != null : "failed to create docker: " + destination + ", " + source;
-            putDocker(worker);
+    public Docker getDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
+        Docker docker = getDocker(remote, local);
+        if (docker == null) {
+            docker = createDocker(remote, local, data);
+            assert docker != null : "failed to create docker: " + remote + ", " + local;
+            putDocker(docker);
         }
-        ((PlainDocker) worker).send(payload);
+        return docker;
+    }
+
+    public boolean sendData(byte[] payload, SocketAddress source, SocketAddress destination) {
+        Docker worker = getDocker(destination, source, null);
+        if (worker instanceof PlainDocker) {
+            return ((PlainDocker) worker).send(payload);
+        } else {
+            return false;
+        }
     }
 
     static void info(String msg) {

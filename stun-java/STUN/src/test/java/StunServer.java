@@ -22,7 +22,7 @@ public class StunServer extends Server implements Gate.Delegate {
     public StunServer(InetSocketAddress sourceAddress, int changePort,
                   InetSocketAddress changedAddress, InetSocketAddress neighbour) {
         super(sourceAddress, changePort, changedAddress, neighbour);
-        gate = new UDPGate<>(this);
+        gate = new UDPGate<>(this, false);
         gate.setHub(new ServerHub(gate));
     }
 

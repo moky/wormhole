@@ -26,7 +26,7 @@ public class StunClient extends Client implements Gate.Delegate {
 
     StunClient(InetSocketAddress local) {
         super(local);
-        gate = new UDPGate<>(this);
+        gate = new UDPGate<>(this, true);
         gate.setHub(new ClientHub(gate));
     }
 
