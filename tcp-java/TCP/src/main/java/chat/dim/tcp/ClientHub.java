@@ -48,7 +48,7 @@ public class ClientHub extends StreamHub {
     @Override
     protected Connection createConnection(Channel sock, SocketAddress remote, SocketAddress local) {
         Connection.Delegate gate = getDelegate();
-        BaseConnection conn = new ActiveConnection(remote, null, sock, gate, this);
+        BaseConnection conn = new ActiveConnection(remote, local, sock, gate, this);
         conn.start();  // start FSM
         return conn;
     }
@@ -59,7 +59,7 @@ public class ClientHub extends StreamHub {
         if (channel == null/* && remote != null*/) {
             channel = createSocketChannel(remote, local);
             if (channel != null) {
-                putChannel(channel);
+                setChannel(channel.getRemoteAddress(), channel.getLocalAddress(), channel);
             }
         }
         return channel;

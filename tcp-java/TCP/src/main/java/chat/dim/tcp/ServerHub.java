@@ -60,7 +60,7 @@ public class ServerHub extends StreamHub implements Runnable {
     @Override
     protected Connection createConnection(Channel sock, SocketAddress remote, SocketAddress local) {
         Connection.Delegate gate = getDelegate();
-        BaseConnection conn = new BaseConnection(remote, null, sock, gate);
+        BaseConnection conn = new BaseConnection(remote, local, sock, gate);
         conn.start();  // start FSM
         return conn;
     }
@@ -70,11 +70,7 @@ public class ServerHub extends StreamHub implements Runnable {
             local = localAddress;
             assert local != null : "local address not set";
         }
-        ServerSocketChannel sock = master;
-        if (sock != null && sock.isOpen()) {
-            sock.close();
-        }
-        sock = ServerSocketChannel.open();
+        ServerSocketChannel sock = ServerSocketChannel.open();
         sock.configureBlocking(true);
         sock.socket().setReuseAddress(true);
         sock.socket().bind(local);
@@ -84,8 +80,10 @@ public class ServerHub extends StreamHub implements Runnable {
     }
 
     protected void setMaster(ServerSocketChannel channel) {
-        // 1. check old channel
+        // 1. replace with new channel
         ServerSocketChannel old = master;
+        master = channel;
+        // 2. close old channel
         if (old != null && old != channel) {
             if (old.isOpen()) {
                 try {
@@ -95,8 +93,6 @@ public class ServerHub extends StreamHub implements Runnable {
                 }
             }
         }
-        // 2. set new channel
-        master = channel;
     }
 
     public boolean isRunning() {
@@ -134,6 +130,6 @@ public class ServerHub extends StreamHub implements Runnable {
     protected void accept(SocketChannel sock, SocketAddress remote, SocketAddress local) {
         Channel channel = createChannel(sock, remote, local);
         assert channel != null : "failed to create socket channel: " + sock + ", remote=" + remote + ", local=" + local;
-        putChannel(channel);
+        setChannel(channel.getRemoteAddress(), channel.getLocalAddress(), channel);
     }
 }

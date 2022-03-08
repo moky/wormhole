@@ -53,11 +53,12 @@ public abstract class StreamChannel extends BaseChannel<SocketChannel> {
 
     @Override
     protected void setSocketChannel(SocketChannel sock) throws IOException {
-        // 1. replace old channel
+        // 1. replace with new socket
         SocketChannel old = channel;
         channel = sock;
+        // 2. refresh flags with new socket
         refreshFlags(sock);
-        // 2. close old channel
+        // 3. close old socket
         if (old != null && old != sock) {
             if (old.isOpen()) {
                 old.close();

@@ -131,23 +131,23 @@ public abstract class StreamHub extends BaseHub {
         return channelPool.allValues();
     }
 
-    protected Channel getChannel(SocketAddress remote) {
-        return channelPool.get(remote, null);
-    }
-
-    protected void putChannel(Channel channel) {
-        channelPool.set(channel.getRemoteAddress(), channel.getLocalAddress(), channel);
-    }
-
     @Override
-    protected void removeChannel(Channel channel) {
-        channelPool.remove(channel.getRemoteAddress(), channel.getLocalAddress(), channel);
+    protected void removeChannel(SocketAddress remote, SocketAddress local, Channel channel) {
+        channelPool.remove(remote, local, channel);
+    }
+
+    protected Channel getChannel(SocketAddress remote, SocketAddress local) {
+        return channelPool.get(remote, local);
+    }
+
+    protected void setChannel(SocketAddress remote, SocketAddress local, Channel channel) {
+        channelPool.set(remote, local, channel);
     }
 
     @Override
     public Channel open(SocketAddress remote, SocketAddress local) {
         assert remote != null : "remote address empty";
         // get channel connected to remote address
-        return getChannel(remote);
+        return getChannel(remote, local);
     }
 }

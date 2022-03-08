@@ -82,7 +82,7 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
 
     @Override
     public Connection getConnection(SocketAddress remote, SocketAddress local) {
-        return getHub().connect(remote, null);
+        return getHub().connect(remote, local);
     }
 
     @Override
@@ -94,6 +94,16 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
     @Override
     protected Docker getDocker(SocketAddress remote, SocketAddress local) {
         return super.getDocker(remote, null);
+    }
+
+    @Override
+    protected void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
+        super.setDocker(remote, null, docker);
+    }
+
+    @Override
+    protected void removeDocker(SocketAddress remote, SocketAddress local, Docker docker) {
+        super.removeDocker(remote, null, docker);
     }
 
     @Override
@@ -135,7 +145,7 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
         if (docker == null) {
             docker = createDocker(remote, local, data);
             assert docker != null : "failed to create docker: " + remote + ", " + local;
-            putDocker(docker);
+            setDocker(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
         }
         return docker;
     }

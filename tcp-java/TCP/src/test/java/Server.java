@@ -23,7 +23,7 @@ public class Server implements Gate.Delegate {
         super();
         localAddress = local;
         gate = new TCPGate<>(this, false);
-        gate.setHub(new ServerHub(gate, true));
+        gate.setHub(new StreamServerHub(gate, true));
     }
 
     private TCPGate<ServerHub> getGate() {

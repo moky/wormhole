@@ -21,7 +21,7 @@ from tcp import Arrival, PlainArrival, Departure, PlainDeparture
 from tests.stargate import TCPGate
 
 
-class TCPClientHub(ClientHub):
+class StreamClientHub(ClientHub):
 
     # Override
     def _get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
@@ -43,7 +43,7 @@ class Client(GateDelegate):
         self.__local_address = local
         self.__remote_address = remote
         gate = TCPGate(delegate=self, daemonic=True)
-        gate.hub = TCPClientHub(delegate=gate)
+        gate.hub = StreamClientHub(delegate=gate)
         self.__gate = gate
 
     @property

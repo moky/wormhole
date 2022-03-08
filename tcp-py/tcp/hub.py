@@ -115,13 +115,13 @@ class ServerHub(StreamHub, Runnable):
         return self.__master
 
     def _set_master(self, master: socket.socket):
-        # 1. check old socket
-        old = self._get_master()
+        # 1. replace with new socket
+        old = self.__master
+        self.__master = master
+        # 2. close old socket
         if old is not None and old is not master:
             if is_opened(sock=old):
                 old.close()
-        # 2. set new socket
-        self.__master = master
 
     @property
     def local_address(self) -> Optional[Address]:
