@@ -21,6 +21,21 @@ from tcp import Arrival, PlainArrival, Departure, PlainDeparture
 from tests.stargate import TCPGate
 
 
+class TCPClientHub(ClientHub):
+
+    # Override
+    def _get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+        return super()._get_connection(remote=remote, local=None)
+
+    # Override
+    def _set_connection(self, remote: tuple, local: Optional[tuple], connection: Connection):
+        super()._set_connection(remote=remote, local=None, connection=connection)
+
+    # Override
+    def _remove_connection(self, remote: tuple, local: Optional[tuple], connection: Optional[Connection]):
+        super()._remove_connection(remote=remote, local=None, connection=connection)
+
+
 class Client(GateDelegate):
 
     def __init__(self, local: tuple, remote: tuple):
@@ -28,7 +43,7 @@ class Client(GateDelegate):
         self.__local_address = local
         self.__remote_address = remote
         gate = TCPGate(delegate=self, daemonic=True)
-        gate.hub = ClientHub(delegate=gate)
+        gate.hub = TCPClientHub(delegate=gate)
         self.__gate = gate
 
     @property

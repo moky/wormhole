@@ -82,22 +82,22 @@ class StreamHub(BaseHub, ABC):
         return self.__channel_pool.items
 
     # Override
-    def _remove_channel(self, channel: Channel):
+    def _remove_channel(self, remote: Optional[Address], local: Optional[Address], channel: Optional[Channel]):
         """ remove cached channel """
-        self.__channel_pool.remove(remote=channel.remote_address, local=channel.local_address, item=channel)
+        self.__channel_pool.remove(remote=remote, local=local, item=channel)
 
     def _get_channel(self, remote: Optional[Address], local: Optional[Address]) -> Optional[Channel]:
         """ get cached channel """
         return self.__channel_pool.get(remote=remote, local=local)
 
-    def _set_channel(self, channel: Channel):
+    def _set_channel(self, remote: Optional[Address], local: Optional[Address], channel: Channel):
         """ cache channel """
-        self.__channel_pool.set(remote=channel.remote_address, local=channel.local_address, item=channel)
+        self.__channel_pool.set(remote=remote, local=local, item=channel)
 
     # Override
     def open(self, remote: Optional[Address], local: Optional[Address]) -> Optional[Channel]:
         assert remote is not None, 'remote address empty: %s, %s' % (remote, local)
-        return self.__channel_pool.get(remote=remote, local=None)
+        return self._get_channel(remote=remote, local=local)
 
 
 class ServerHub(StreamHub, Runnable):
@@ -138,7 +138,7 @@ class ServerHub(StreamHub, Runnable):
     # Override
     def _create_connection(self, channel: Channel, remote: Address, local: Optional[Address]) -> Optional[Connection]:
         gate = self.delegate
-        conn = BaseConnection(remote=remote, local=None, channel=channel, delegate=gate)
+        conn = BaseConnection(remote=remote, local=local, channel=channel, delegate=gate)
         conn.start()  # start FSM
         return conn
 
@@ -185,7 +185,7 @@ class ServerHub(StreamHub, Runnable):
         assert sock is not None, 'socket error: %s, %s' % (remote, local)
         channel = self._create_channel(sock=sock, remote=remote, local=local)
         assert channel is not None, 'failed to create socket channel: %s, remote=%s, local=%s' % (sock, remote, local)
-        self._set_channel(channel=channel)
+        self._set_channel(remote=channel.remote_address, local=channel.local_address, channel=channel)
 
 
 class ClientHub(StreamHub):
@@ -194,7 +194,7 @@ class ClientHub(StreamHub):
     # Override
     def _create_connection(self, channel: Channel, remote: Address, local: Optional[Address]) -> Optional[Connection]:
         gate = self.delegate
-        conn = ActiveConnection(remote=remote, local=None, channel=channel, delegate=gate, hub=self)
+        conn = ActiveConnection(remote=remote, local=local, channel=channel, delegate=gate, hub=self)
         conn.start()  # start FSM
         return conn
 
@@ -204,7 +204,7 @@ class ClientHub(StreamHub):
         if channel is None:  # and remote is not None:
             channel = self.__create_socket_channel(remote=remote, local=local)
             if channel is not None:
-                self._set_channel(channel=channel)
+                self._set_channel(remote=channel.remote_address, local=channel.local_address, channel=channel)
         return channel
 
     def __create_socket_channel(self, remote: Optional[Address], local: Optional[Address]) -> Optional[Channel]:

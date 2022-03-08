@@ -21,13 +21,28 @@ from tcp import Arrival, PlainArrival, Departure, PlainDeparture
 from tests.stargate import TCPGate
 
 
+class TCPServerHub(ServerHub):
+
+    # Override
+    def _get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+        return super()._get_connection(remote=remote, local=None)
+
+    # Override
+    def _set_connection(self, remote: tuple, local: Optional[tuple], connection: Connection):
+        super()._set_connection(remote=remote, local=None, connection=connection)
+
+    # Override
+    def _remove_connection(self, remote: tuple, local: Optional[tuple], connection: Optional[Connection]):
+        super()._remove_connection(remote=remote, local=None, connection=connection)
+
+
 class Server(GateDelegate):
 
     def __init__(self, host: str, port: int):
         super().__init__()
         self.__local_address = (host, port)
         gate = TCPGate(delegate=self, daemonic=False)
-        gate.hub = ServerHub(delegate=gate, daemonic=True)
+        gate.hub = TCPServerHub(delegate=gate, daemonic=True)
         self.__gate = gate
 
     @property

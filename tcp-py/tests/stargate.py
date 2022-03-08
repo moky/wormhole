@@ -4,12 +4,10 @@ import time
 import traceback
 from typing import Generic, TypeVar, Optional, List
 
-from startrek.types import Address
 from startrek.fsm import Runnable, Daemon
 from tcp import Connection, ConnectionState, ActiveConnection
-from tcp import Hub
 from tcp import GateDelegate
-from tcp import StarGate, PlainDocker
+from tcp import StarGate, Docker, PlainDocker
 
 
 H = TypeVar('H')
@@ -58,10 +56,8 @@ class TCPGate(StarGate, Runnable, Generic[H]):
 
     # Override
     def process(self) -> bool:
-        hub = self.hub
-        assert isinstance(hub, Hub), 'hub error: %s' % hub
         try:
-            incoming = hub.process()
+            incoming = self.hub.process()
             outgoing = super().process()
             return incoming or outgoing
         except Exception as error:
@@ -70,19 +66,24 @@ class TCPGate(StarGate, Runnable, Generic[H]):
 
     # Override
     def get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
-        hub = self.hub
-        assert isinstance(hub, Hub), 'hub error: %s' % hub
-        return hub.connect(remote=remote, local=None)
+        return self.hub.connect(remote=remote, local=local)
 
     # Override
-    def _create_docker(self, remote: tuple, local: Optional[tuple],
-                       advance_party: List[bytes]) -> Optional[PlainDocker]:
+    def _create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
         # TODO: check data format before creating docker
         return PlainDocker(remote=remote, local=None, gate=self)
 
     # Override
-    def _get_docker(self, remote: Address, local: Optional[Address]) -> Optional[PlainDocker]:
+    def _get_docker(self, remote: tuple, local: Optional[tuple]) -> Optional[PlainDocker]:
         return super()._get_docker(remote=remote, local=None)
+
+    # Override
+    def _set_docker(self, remote: tuple, local: Optional[tuple], docker: Docker):
+        super()._set_docker(remote=remote, local=None, docker=docker)
+
+    # Override
+    def _remove_docker(self, remote: tuple, local: Optional[tuple], docker: Optional[Docker]):
+        super()._remove_docker(remote=remote, local=None, docker=docker)
 
     # Override
     def _cache_advance_party(self, data: bytes, source: tuple, destination: Optional[tuple],
@@ -120,7 +121,7 @@ class TCPGate(StarGate, Runnable, Generic[H]):
         if docker is None:
             docker = self._create_docker(remote=remote, local=local, advance_party=advance_party)
             assert docker is not None, 'failed to create docker: %s, %s' % (remote, local)
-            self._set_docker(docker=docker)
+            self._set_docker(remote=docker.remote_address, local=docker.local_address, docker=docker)
         return docker
 
     def send_data(self, payload: bytes, source: Optional[tuple], destination: tuple) -> bool:
