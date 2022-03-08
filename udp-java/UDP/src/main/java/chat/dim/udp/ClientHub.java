@@ -44,7 +44,7 @@ public class ClientHub extends PackageHub {
     }
 
     @Override
-    protected Connection createConnection(Channel sock, SocketAddress remote, SocketAddress local) {
+    protected Connection createConnection(SocketAddress remote, SocketAddress local, Channel sock) {
         BaseConnection conn = new ActiveConnection(remote, null, sock, getDelegate(), this);
         conn.start();  // start FSM
         return conn;

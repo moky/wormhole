@@ -116,7 +116,7 @@ public abstract class BaseHub implements Hub {
      * @param local  - local address
      * @return null on channel not exists
      */
-    protected abstract Connection createConnection(Channel sock, SocketAddress remote, SocketAddress local);
+    protected abstract Connection createConnection(SocketAddress remote, SocketAddress local, Channel sock);
 
     protected Set<Connection> allConnections() {
         return connectionPool.allValues();
@@ -151,7 +151,7 @@ public abstract class BaseHub implements Hub {
             return null;
         }
         // create with channel
-        conn = createConnection(sock, remote, local);
+        conn = createConnection(remote, local, sock);
         if (conn != null) {
             // NOTICE: local address in the connection may be set to None
             setConnection(conn.getRemoteAddress(), conn.getLocalAddress(), conn);

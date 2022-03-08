@@ -125,7 +125,7 @@ class ServerHub(PackageHub):
     """ Package Server Hub """
 
     # Override
-    def _create_connection(self, channel: Channel, remote: Address, local: Optional[Address]) -> Optional[Connection]:
+    def _create_connection(self, remote: Address, local: Optional[Address], channel: Channel) -> Optional[Connection]:
         gate = self.delegate
         conn = BaseConnection(remote=remote, local=local, channel=channel, delegate=gate)
         conn.start()  # start FSM
@@ -136,7 +136,7 @@ class ClientHub(PackageHub):
     """ Package Client Hub """
 
     # Override
-    def _create_connection(self, channel: Channel, remote: Address, local: Optional[Address]) -> Optional[Connection]:
+    def _create_connection(self, remote: Address, local: Optional[Address], channel: Channel) -> Optional[Connection]:
         gate = self.delegate
         conn = ActiveConnection(remote=remote, local=None, channel=channel, delegate=gate, hub=self)
         conn.start()  # start FSM

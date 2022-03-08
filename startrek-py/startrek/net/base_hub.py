@@ -113,7 +113,7 @@ class BaseHub(Hub, ABC):
     #
 
     @abstractmethod
-    def _create_connection(self, channel: Channel, remote: Address, local: Optional[Address]) -> Optional[Connection]:
+    def _create_connection(self, remote: Address, local: Optional[Address], channel: Channel) -> Optional[Connection]:
         """
         create connection with channel channel & addresses
 
@@ -156,7 +156,7 @@ class BaseHub(Hub, ABC):
         if channel is None or not channel.opened:
             return None
         # create with channel
-        conn = self._create_connection(channel=channel, remote=remote, local=local)
+        conn = self._create_connection(remote=remote, local=local, channel=channel)
         if conn is not None:
             # cache connection for (remote, local)
             self._set_connection(remote=conn.remote_address, local=conn.local_address, connection=conn)

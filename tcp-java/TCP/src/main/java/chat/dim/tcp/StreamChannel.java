@@ -40,7 +40,7 @@ public abstract class StreamChannel extends BaseChannel<SocketChannel> {
 
     private SocketChannel channel;
 
-    public StreamChannel(SocketChannel sock, SocketAddress remote, SocketAddress local) {
+    public StreamChannel(SocketAddress remote, SocketAddress local, SocketChannel sock) {
         super(remote, local);
         channel = sock;
         refreshFlags(sock);

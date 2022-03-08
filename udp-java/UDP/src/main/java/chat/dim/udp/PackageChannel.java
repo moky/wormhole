@@ -41,7 +41,7 @@ public abstract class PackageChannel extends BaseChannel<DatagramChannel> {
 
     private DatagramChannel channel;
 
-    public PackageChannel(DatagramChannel sock, SocketAddress remote, SocketAddress local) {
+    public PackageChannel(SocketAddress remote, SocketAddress local, DatagramChannel sock) {
         super(remote, local);
         channel = sock;
         refreshFlags(sock);

@@ -86,7 +86,7 @@ public abstract class PackageHub extends BaseHub {
             udp.socket().setReuseAddress(true);
             udp.socket().bind(local);
             udp.configureBlocking(false);
-            Channel channel = createChannel(udp, null, local);
+            Channel channel = createChannel(null, local, udp);
             setChannel(null, local, channel);
         }
     }
@@ -103,8 +103,8 @@ public abstract class PackageHub extends BaseHub {
      * @param local  - local address
      * @return null on socket error
      */
-    protected Channel createChannel(DatagramChannel sock, SocketAddress remote, SocketAddress local) {
-        return new PackageChannel(sock, remote, local) {
+    protected Channel createChannel(SocketAddress remote, SocketAddress local, DatagramChannel sock) {
+        return new PackageChannel(remote, local, sock) {
 
             @Override
             protected Reader createReader() {

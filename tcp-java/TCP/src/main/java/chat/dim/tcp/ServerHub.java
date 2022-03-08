@@ -58,7 +58,7 @@ public class ServerHub extends StreamHub implements Runnable {
     }
 
     @Override
-    protected Connection createConnection(Channel sock, SocketAddress remote, SocketAddress local) {
+    protected Connection createConnection(SocketAddress remote, SocketAddress local, Channel sock) {
         Connection.Delegate gate = getDelegate();
         BaseConnection conn = new BaseConnection(remote, local, sock, gate);
         conn.start();  // start FSM
@@ -118,7 +118,7 @@ public class ServerHub extends StreamHub implements Runnable {
             try {
                 sock = master.accept();
                 if (sock != null) {
-                    accept(sock, sock.getRemoteAddress(), localAddress);
+                    accept(sock.getRemoteAddress(), localAddress, sock);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -127,8 +127,8 @@ public class ServerHub extends StreamHub implements Runnable {
     }
 
     // override for user-customized channel
-    protected void accept(SocketChannel sock, SocketAddress remote, SocketAddress local) {
-        Channel channel = createChannel(sock, remote, local);
+    protected void accept(SocketAddress remote, SocketAddress local, SocketChannel sock) {
+        Channel channel = createChannel(remote, local, sock);
         assert channel != null : "failed to create socket channel: " + sock + ", remote=" + remote + ", local=" + local;
         setChannel(channel.getRemoteAddress(), channel.getLocalAddress(), channel);
     }

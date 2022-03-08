@@ -90,8 +90,8 @@ public abstract class StreamHub extends BaseHub {
      * @param local  - local address
      * @return null on socket error
      */
-    protected Channel createChannel(SocketChannel sock, SocketAddress remote, SocketAddress local) {
-        return new StreamChannel(sock, remote, local) {
+    protected Channel createChannel(SocketAddress remote, SocketAddress local, SocketChannel sock) {
+        return new StreamChannel(remote, local, sock) {
 
             @Override
             protected Reader createReader() {

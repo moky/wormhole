@@ -72,7 +72,7 @@ class StreamHub(BaseHub, ABC):
     #
 
     # noinspection PyMethodMayBeStatic
-    def _create_channel(self, sock: socket.socket, remote: Optional[Address], local: Optional[Address]) -> Channel:
+    def _create_channel(self, remote: Optional[Address], local: Optional[Address], sock: socket.socket) -> Channel:
         """ create channel with socket & addresses """
         return StreamChannel(remote=remote, local=local, sock=sock)
 
@@ -136,7 +136,7 @@ class ServerHub(StreamHub, Runnable):
         return self.__running
 
     # Override
-    def _create_connection(self, channel: Channel, remote: Address, local: Optional[Address]) -> Optional[Connection]:
+    def _create_connection(self, remote: Address, local: Optional[Address], channel: Channel) -> Optional[Connection]:
         gate = self.delegate
         conn = BaseConnection(remote=remote, local=local, channel=channel, delegate=gate)
         conn.start()  # start FSM
@@ -174,16 +174,16 @@ class ServerHub(StreamHub, Runnable):
             try:
                 master = self._get_master()
                 sock, address = master.accept()
-                self._accept(sock=sock, remote=address, local=self.local_address)
+                self._accept(remote=address, local=self.local_address, sock=sock)
             except socket.error as error:
                 print('[TCP] socket error: %s' % error)
             except Exception as error:
                 print('[TCP] accept error: %s' % error)
 
-    def _accept(self, sock: socket.socket, remote: Address, local: Address):
+    def _accept(self, remote: Address, local: Address, sock: socket.socket):
         # override for user-customized channel
         assert sock is not None, 'socket error: %s, %s' % (remote, local)
-        channel = self._create_channel(sock=sock, remote=remote, local=local)
+        channel = self._create_channel(remote=remote, local=local, sock=sock)
         assert channel is not None, 'failed to create socket channel: %s, remote=%s, local=%s' % (sock, remote, local)
         self._set_channel(remote=channel.remote_address, local=channel.local_address, channel=channel)
 
@@ -192,7 +192,7 @@ class ClientHub(StreamHub):
     """ Stream Client Hub """
 
     # Override
-    def _create_connection(self, channel: Channel, remote: Address, local: Optional[Address]) -> Optional[Connection]:
+    def _create_connection(self, remote: Address, local: Optional[Address], channel: Channel) -> Optional[Connection]:
         gate = self.delegate
         conn = ActiveConnection(remote=remote, local=local, channel=channel, delegate=gate, hub=self)
         conn.start()  # start FSM
@@ -213,7 +213,7 @@ class ClientHub(StreamHub):
             sock = create_socket(remote=remote, local=local)
             if local is None:
                 local = get_local_address(sock=sock)
-            return self._create_channel(sock=sock, remote=remote, local=local)
+            return self._create_channel(remote=remote, local=local, sock=sock)
         except socket.error as error:
             print('[TCP] failed to create channel %s -> %s: %s' % (local, remote, error))
 
