@@ -99,16 +99,13 @@ class StarDocker(AddressPairObject, Docker):
             return ref()
 
     def _set_connection(self, connection: Optional[Connection]):
-        # 1. check old connection
+        # 1. replace with new connection
         old = self._get_connection()
+        self.__conn_ref = None if connection is None else weakref.ref(connection)
+        # 2. close old connection
         if old is not None and old is not connection:
             if old.opened:
                 old.close()
-        # 2. set new connection
-        if connection is None:
-            self.__conn_ref = None
-        else:
-            self.__conn_ref = weakref.ref(connection)
 
     @property  # Override
     def alive(self) -> bool:

@@ -103,13 +103,13 @@ class StarGate(Gate, ConnectionDelegate):
         """ get cached docker """
         return self.__docker_pool.get(remote=remote, local=local)
 
-    def _set_docker(self, docker: Docker):
+    def _set_docker(self, remote: Address, local: Optional[Address], docker: Docker):
         """ cache docker """
-        self.__docker_pool.set(remote=docker.remote_address, local=docker.local_address, item=docker)
+        self.__docker_pool.set(remote=remote, local=local, item=docker)
 
-    def _remove_docker(self, docker: Docker):
+    def _remove_docker(self, remote: Address, local: Optional[Address], docker: Optional[Docker]):
         """ remove cached docker """
-        self.__docker_pool.remove(remote=docker.remote_address, local=docker.local_address, item=docker)
+        self.__docker_pool.remove(remote=remote, local=local, item=docker)
 
     #
     #   Status
@@ -158,7 +158,7 @@ class StarGate(Gate, ConnectionDelegate):
                 worker.purge()
             else:
                 # remove docker which connection lost
-                self._remove_docker(docker=worker)
+                self._remove_docker(remote=worker.remote_address, local=worker.local_address, docker=worker)
 
     def _heartbeat(self, connection: Connection):
         remote = connection.remote_address
@@ -200,7 +200,7 @@ class StarGate(Gate, ConnectionDelegate):
         docker = self._create_docker(remote=source, local=destination, advance_party=party)
         if docker is not None:
             # cache docker for (remote, local)
-            self._set_docker(docker=docker)
+            self._set_docker(remote=docker.remote_address, local=docker.local_address, docker=docker)
             # process advance parties one by one
             for item in party:
                 docker.process_received(data=item)

@@ -114,8 +114,9 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     @abstractmethod
     def _set_socket(self, sock: Optional[socket.socket]):
         """ change inner socket """
-        # 1. check old socket
-        # 2. set new socket
+        # 1. replace with new socket
+        # 2. refresh flags with new socket
+        # 3. close old socket
         raise NotImplemented
 
     def _refresh_flags(self, sock: Optional[socket.socket]):

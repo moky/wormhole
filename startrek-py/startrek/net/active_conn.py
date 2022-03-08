@@ -42,7 +42,8 @@ from .base_conn import BaseConnection
 class ActiveConnection(BaseConnection):
     """ Active connection for client """
 
-    def __init__(self, remote: Address, local: Optional[Address], channel: Channel, delegate: Delegate, hub: Hub):
+    def __init__(self, remote: Address, local: Optional[Address], channel: Optional[Channel], delegate: Delegate,
+                 hub: Hub):
         super().__init__(remote=remote, local=local, channel=channel, delegate=delegate)
         self.__hub_ref = weakref.ref(hub)
 

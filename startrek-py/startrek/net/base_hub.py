@@ -98,10 +98,12 @@ class BaseHub(Hub, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def _remove_channel(self, channel: Channel):
+    def _remove_channel(self, remote: Optional[Address], local: Optional[Address], channel: Optional[Channel]):
         """
         remove socket channel
 
+        :param remote:  remote address
+        :param local:   local address
         :param channel: socket channel
         """
         raise NotImplemented
@@ -126,17 +128,17 @@ class BaseHub(Hub, ABC):
         """ get a copy of all connections """
         return self.__connection_pool.items
 
-    def _get_connection(self, remote: Optional[Address], local: Optional[Address]) -> Optional[Connection]:
+    def _get_connection(self, remote: Address, local: Optional[Address]) -> Optional[Connection]:
         """ get cached connection """
         return self.__connection_pool.get(remote=remote, local=local)
 
-    def _set_connection(self, connection: Connection):
+    def _set_connection(self, remote: Address, local: Optional[Address], connection: Connection):
         """ cache connection """
-        self.__connection_pool.set(remote=connection.remote_address, local=connection.local_address, item=connection)
+        self.__connection_pool.set(remote=remote, local=local, item=connection)
 
-    def _remove_connection(self, connection: Connection):
+    def _remove_connection(self, remote: Address, local: Optional[Address], connection: Optional[Connection]):
         """ remove cached connection """
-        self.__connection_pool.remove(remote=connection.remote_address, local=connection.local_address, item=connection)
+        self.__connection_pool.remove(remote=remote, local=local, item=connection)
 
     # Override
     def connect(self, remote: Address, local: Optional[Address] = None) -> Optional[Connection]:
@@ -157,7 +159,7 @@ class BaseHub(Hub, ABC):
         conn = self._create_connection(channel=channel, remote=remote, local=local)
         if conn is not None:
             # cache connection for (remote, local)
-            self._set_connection(connection=conn)
+            self._set_connection(remote=conn.remote_address, local=conn.local_address, connection=conn)
             return conn
 
     #
@@ -171,13 +173,17 @@ class BaseHub(Hub, ABC):
         try:
             data, remote = channel.receive(max_len=self.MSS)
         except socket.error as error:
-            self._remove_channel(channel=channel)
-            # callback
+            remote = channel.remote_address
+            local = channel.local_address
             delegate = self.delegate
-            if delegate is not None:
-                remote = channel.remote_address
-                local = channel.local_address
-                delegate.connection_error(error=error, data=None, source=remote, destination=local, connection=None)
+            if delegate is None:
+                # just remove channel
+                self._remove_channel(remote=remote, local=local, channel=channel)
+            else:
+                # remove channel and callback with connection
+                conn = self._get_connection(remote=remote, local=local)
+                self._remove_channel(remote=remote, local=local, channel=channel)
+                delegate.connection_error(error=error, data=None, source=remote, destination=local, connection=conn)
             return False
         if remote is None:
             # received nothing
@@ -215,13 +221,13 @@ class BaseHub(Hub, ABC):
     def _cleanup_channels(self, channels: Iterable[Channel]):
         for sock in channels:
             if not sock.alive:
-                self._remove_channel(channel=sock)
+                self._remove_channel(remote=sock.remote_address, local=sock.local_address, channel=sock)
 
     def _cleanup_connections(self, connections: Iterable[Connection]):
         # NOTICE: multi connections may share same channel (UDP Hub)
         for conn in connections:
             if not conn.alive:
-                self._remove_connection(connection=conn)
+                self._remove_connection(remote=conn.remote_address, local=conn.local_address, connection=conn)
 
     # Override
     def process(self) -> bool:

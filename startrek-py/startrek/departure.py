@@ -49,10 +49,7 @@ class DepartureShip(Departure, ABC):
         # ship priority
         self.__priority = priority
         # specific delegate for this ship
-        if delegate is None:
-            self.__delegate = None
-        else:
-            self.__delegate = weakref.ref(delegate)
+        self.__delegate = None if delegate is None else weakref.ref(delegate)
         # last tried time (timestamp in seconds)
         if now <= 0:
             now = int(time.time())

@@ -86,10 +86,7 @@ class BaseMachine(Machine[C, T, S]):
 
     @delegate.setter
     def delegate(self, handler: Delegate[C, T, S]):
-        if handler is None:
-            self.__delegate = None
-        else:
-            self.__delegate = weakref.ref(handler)
+        self.__delegate = None if handler is None else weakref.ref(handler)
 
     @property
     def context(self) -> C:
@@ -117,10 +114,7 @@ class BaseMachine(Machine[C, T, S]):
 
     @current_state.setter  # Override
     def current_state(self, state: S):
-        if state is None:
-            self.__current = None
-        else:
-            self.__current = weakref.ref(state)
+        self.__current = None if state is None else weakref.ref(state)
 
     # Override
     def target_state(self, transition: BaseTransition[C]) -> S:

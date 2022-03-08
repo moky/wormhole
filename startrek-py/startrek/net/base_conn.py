@@ -48,7 +48,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     def __init__(self, remote: Address, local: Optional[Address], channel: Channel, delegate: Delegate):
         super().__init__(remote=remote, local=local)
-        self.__channel_ref = weakref.ref(channel)
+        self.__channel_ref = None if channel is None else weakref.ref(channel)
         self.__delegate = weakref.ref(delegate)
         # active times
         self.__last_sent_time = 0
@@ -65,12 +65,12 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         return self.__fsm
 
     def _set_state_machine(self, fsm: Optional[StateMachine]):
-        # 1. check old machine
+        # 1. replace with new machine
         old = self.__fsm
+        self.__fsm = fsm
+        # 2. stop old machine
         if old is not None and old is not fsm:
             old.stop()
-        # 2. set new machine
-        self.__fsm = fsm
 
     def _create_state_machine(self) -> StateMachine:
         fsm = StateMachine(connection=self)
@@ -91,16 +91,13 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             return ref()
 
     def _set_channel(self, channel: Optional[Channel]):
-        # 1. check old channel
+        # 1. replace with new channel
         old = self._get_channel()
+        self.__channel_ref = None if channel is None else weakref.ref(channel)
+        # 2. close old channel
         if old is not None and old is not channel:
             if old.opened:
                 old.close()
-        # 2. set new channel
-        if channel is None:
-            self.__channel_ref = None
-        else:
-            self.__channel_ref = weakref.ref(channel)
 
     @property  # Override
     def opened(self) -> bool:
