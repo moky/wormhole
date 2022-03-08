@@ -69,7 +69,7 @@ class PackageHub(BaseHub, ABC):
     def bind(self, address: Address = None, host: str = None, port: int = 0):
         if address is None:
             address = (host, port)
-        channel = self._get_channel(local=address)
+        channel = self._get_channel(remote=None, local=address)
         if channel is None:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
@@ -77,7 +77,7 @@ class PackageHub(BaseHub, ABC):
             sock.bind(address)
             sock.setblocking(False)
             channel = self._create_channel(remote=None, local=address, sock=sock)
-            self._set_channel(channel=channel)
+            self._set_channel(remote=None, local=address, channel=channel)
 
     #
     #   Channel
@@ -93,22 +93,23 @@ class PackageHub(BaseHub, ABC):
         """ get a copy of all channels """
         return self.__channel_pool.items
 
-    def _get_channel(self, local: Optional[Address]) -> Optional[Channel]:
-        """ get cached channel """
-        return self.__channel_pool.get(remote=None, local=local)
-
-    def _set_channel(self, channel: Channel):
-        """ cache channel """
-        self.__channel_pool.set(remote=channel.remote_address, local=channel.local_address, item=channel)
-
     # Override
-    def _remove_channel(self, channel: Channel):
+    def _remove_channel(self, remote: Optional[Address], local: Optional[Address], channel: Optional[Channel]):
         """ remove cached channel """
-        self.__channel_pool.remove(remote=channel.remote_address, local=channel.local_address, item=channel)
+        self.__channel_pool.remove(remote=remote, local=local, item=channel)
+
+    def _get_channel(self, remote: Optional[Address], local: Optional[Address]) -> Optional[Channel]:
+        """ get cached channel """
+        return self.__channel_pool.get(remote=remote, local=local)
+
+    def _set_channel(self, remote: Optional[Address], local: Optional[Address], channel: Channel):
+        """ cache channel """
+        self.__channel_pool.set(remote=remote, local=local, item=channel)
 
     # Override
     def open(self, remote: Optional[Address], local: Optional[Address]) -> Optional[Channel]:
         if local is None:
+            assert remote is not None, 'both remote, local addresses empty!'
             # get any channel
             channels = self._all_channels()
             for sock in channels:
@@ -117,7 +118,7 @@ class PackageHub(BaseHub, ABC):
                     return sock
             # channel not found
         else:
-            return self._get_channel(local=local)
+            return self._get_channel(remote=remote, local=local)
 
 
 class ServerHub(PackageHub):
@@ -126,7 +127,7 @@ class ServerHub(PackageHub):
     # Override
     def _create_connection(self, channel: Channel, remote: Address, local: Optional[Address]) -> Optional[Connection]:
         gate = self.delegate
-        conn = BaseConnection(remote=remote, local=None, channel=channel, delegate=gate)
+        conn = BaseConnection(remote=remote, local=local, channel=channel, delegate=gate)
         conn.start()  # start FSM
         return conn
 

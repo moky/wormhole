@@ -9,9 +9,8 @@ from startrek.fsm import Runnable, Daemon
 from udp.ba import Data
 from udp.mtp import DataType, Package
 from udp import Connection, ConnectionState, ActiveConnection
-from udp import Hub
 from udp import GateDelegate
-from udp import StarGate, PackageDocker
+from udp import StarGate, Docker, PackageDocker
 
 
 H = TypeVar('H')
@@ -60,10 +59,8 @@ class UDPGate(StarGate, Runnable, Generic[H]):
 
     # Override
     def process(self) -> bool:
-        hub = self.hub
-        assert isinstance(hub, Hub), 'hub error: %s' % hub
         try:
-            incoming = hub.process()
+            incoming = self.hub.process()
             outgoing = super().process()
             return incoming or outgoing
         except Exception as error:
@@ -72,9 +69,7 @@ class UDPGate(StarGate, Runnable, Generic[H]):
 
     # Override
     def get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
-        hub = self.hub
-        assert isinstance(hub, Hub), 'hub error: %s' % hub
-        return hub.connect(remote=remote, local=None)
+        return self.hub.connect(remote=remote, local=local)
 
     # Override
     def _create_docker(self, remote: tuple, local: Optional[tuple],
@@ -85,6 +80,14 @@ class UDPGate(StarGate, Runnable, Generic[H]):
     # Override
     def _get_docker(self, remote: Address, local: Optional[Address]) -> Optional[PackageDocker]:
         return super()._get_docker(remote=remote, local=None)
+
+    # Override
+    def _set_docker(self, remote: tuple, local: Optional[tuple], docker: Docker):
+        super()._set_docker(remote=remote, local=None, docker=docker)
+
+    # Override
+    def _remove_docker(self, remote: tuple, local: Optional[tuple], docker: Optional[Docker]):
+        super()._remove_docker(remote=remote, local=None, docker=docker)
 
     # Override
     def _cache_advance_party(self, data: bytes, source: tuple, destination: Optional[tuple],
@@ -122,7 +125,7 @@ class UDPGate(StarGate, Runnable, Generic[H]):
         if docker is None:
             docker = self._create_docker(remote=remote, local=local, advance_party=advance_party)
             assert docker is not None, 'failed to create docker: %s, %s' % (remote, local)
-            self._set_docker(docker=docker)
+            self._set_docker(remote=docker.remote_address, local=docker.local_address, docker=docker)
         return docker
 
     def send_package(self, pack: Package, source: Optional[tuple], destination: tuple) -> bool:

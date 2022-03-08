@@ -12,11 +12,34 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
+from udp import Channel, Connection
 from udp import Gate, GateDelegate, GateStatus
-from udp import Connection, Hub, ClientHub
+from udp import Hub, ClientHub
 from udp import Arrival, PackageArrival, Departure, PackageDeparture
 
 from tests.stargate import UDPGate
+
+
+class UDPClientHub(ClientHub):
+
+    # Override
+    def _get_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
+        channel = super()._get_channel(remote=remote, local=local)
+        if channel is None:
+            channel = super()._get_channel(remote=None, local=local)
+        return channel
+
+    # Override
+    def _get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+        return super()._get_connection(remote=remote, local=None)
+
+    # Override
+    def _set_connection(self, remote: tuple, local: Optional[tuple], connection: Connection):
+        super()._set_connection(remote=remote, local=None, connection=connection)
+
+    # Override
+    def _remove_connection(self, remote: tuple, local: Optional[tuple], connection: Optional[Connection]):
+        super()._remove_connection(remote=remote, local=None, connection=connection)
 
 
 class Client(GateDelegate):
@@ -26,7 +49,7 @@ class Client(GateDelegate):
         self.__local_address = local
         self.__remote_address = remote
         gate = UDPGate(delegate=self, daemonic=True)
-        gate.hub = ClientHub(delegate=gate)
+        gate.hub = UDPClientHub(delegate=gate)
         self.__gate = gate
 
     @property
