@@ -98,9 +98,11 @@ public abstract class BaseHub implements Hub {
     /**
      *  Remove socket channel
      *
+     * @param remote - remote address
+     * @param local  - local address
      * @param channel - socket channel
      */
-    protected abstract void removeChannel(Channel channel);
+    protected abstract void removeChannel(SocketAddress remote, SocketAddress local, Channel channel);
 
     //
     //  Connection
@@ -122,11 +124,11 @@ public abstract class BaseHub implements Hub {
     protected Connection getConnection(SocketAddress remote, SocketAddress local) {
         return connectionPool.get(remote, local);
     }
-    protected void putConnection(Connection conn) {
-        connectionPool.set(conn.getRemoteAddress(), conn.getLocalAddress(), conn);
+    protected void setConnection(SocketAddress remote, SocketAddress local, Connection conn) {
+        connectionPool.set(remote, local, conn);
     }
-    protected void removeConnection(Connection conn) {
-        connectionPool.remove(conn.getRemoteAddress(), conn.getLocalAddress(), conn);
+    protected void removeConnection(SocketAddress remote, SocketAddress local, Connection conn) {
+        connectionPool.remove(remote, local, conn);
     }
 
     @Override
@@ -152,7 +154,7 @@ public abstract class BaseHub implements Hub {
         conn = createConnection(sock, remote, local);
         if (conn != null) {
             // NOTICE: local address in the connection may be set to None
-            putConnection(conn);
+            setConnection(conn.getRemoteAddress(), conn.getLocalAddress(), conn);
         }
         return conn;
     }
@@ -173,13 +175,17 @@ public abstract class BaseHub implements Hub {
             remote = sock.receive(buffer);
         } catch (IOException e) {
             //e.printStackTrace();
-            removeChannel(sock);
-            // callback
+            remote = sock.getRemoteAddress();
+            SocketAddress local = sock.getLocalAddress();
             Connection.Delegate delegate = getDelegate();
-            if (delegate != null) {
-                remote = sock.getRemoteAddress();
-                SocketAddress local = sock.getLocalAddress();
-                delegate.onError(e, null, remote, local, null);
+            if (delegate == null) {
+                // just remove channel
+                removeChannel(remote, local, sock);
+            } else {
+                // remove channel and callback with connection
+                Connection conn = getConnection(remote, local);
+                removeChannel(remote, local, sock);
+                delegate.onError(e, null, remote, local, conn);
             }
             return false;
         }
@@ -215,7 +221,7 @@ public abstract class BaseHub implements Hub {
     protected void cleanupChannels(Set<Channel> channels) {
         for (Channel sock : channels) {
             if (!sock.isAlive()) {
-                removeChannel(sock);
+                removeChannel(sock.getRemoteAddress(), sock.getLocalAddress(), sock);
             }
         }
     }
@@ -235,7 +241,7 @@ public abstract class BaseHub implements Hub {
     protected void cleanupConnections(Set<Connection> connections) {
         for (Connection conn : connections) {
             if (!conn.isAlive()) {
-                removeConnection(conn);
+                removeConnection(conn.getRemoteAddress(), conn.getLocalAddress(), conn);
             }
         }
     }

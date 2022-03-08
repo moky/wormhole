@@ -93,8 +93,9 @@ public abstract class BaseChannel<C extends SelectableChannel>
 
     /**
      *  Change inner socket channel
-     *  1. check old channel
-     *  2. set new channel
+     *  1. replace with new socket
+     *  2. refresh flags with new socket
+     *  3. close old channel
      */
     protected abstract void setSocketChannel(C sock) throws IOException;
 

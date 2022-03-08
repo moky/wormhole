@@ -98,11 +98,11 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     protected Docker getDocker(SocketAddress remote, SocketAddress local) {
         return dockerPool.get(remote, local);
     }
-    protected void putDocker(Docker docker) {
-        dockerPool.set(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
+    protected void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
+        dockerPool.set(remote, local, docker);
     }
-    protected void removeDocker(Docker docker) {
-        dockerPool.remove(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
+    protected void removeDocker(SocketAddress remote, SocketAddress local, Docker docker) {
+        dockerPool.remove(remote, local, docker);
     }
 
     //
@@ -138,7 +138,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         for (Docker worker : dockers) {
             try {
                 if (worker.process()) {
-                    ++count;  // it's buzy
+                    ++count;  // it's busy
                 }
             } catch (Throwable e) {
                 e.printStackTrace();
@@ -153,7 +153,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
                 worker.purge();
             } else {
                 // remove docker which connection lost
-                removeDocker(worker);
+                removeDocker(worker.getRemoteAddress(), worker.getLocalAddress(), worker);
             }
         }
     }
@@ -221,7 +221,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         worker = createDocker(source, destination, advanceParty);
         if (worker != null) {
             // cache docker for (remote, local)
-            putDocker(worker);
+            setDocker(worker.getRemoteAddress(), worker.getLocalAddress(), worker);
             // process advance parties one by one
             for (byte[] part : advanceParty) {
                 worker.processReceived(part);

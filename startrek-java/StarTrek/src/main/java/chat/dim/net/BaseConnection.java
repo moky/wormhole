@@ -89,13 +89,13 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
         return fsm;
     }
     protected void setStateMachine(StateMachine newMachine) {
-        // 1. check old machine
+        // 1. replace with new machine
         StateMachine oldMachine = fsm;
+        fsm = newMachine;
+        // 2. stop old machine
         if (oldMachine != null && oldMachine != newMachine) {
             oldMachine.stop();
         }
-        // 2. set new machine
-        fsm = newMachine;
     }
     protected StateMachine createStateMachine() {
         StateMachine machine = new StateMachine(this);
@@ -107,25 +107,23 @@ public class BaseConnection extends AddressPairObject implements Connection, Tim
         return delegateRef.get();
     }
 
-    public Channel getChannel() {
-        return channelRef == null ? null : channelRef.get();
+    protected Channel getChannel() {
+        return channelRef.get();
     }
     protected void setChannel(Channel newChannel) {
-        // 1. check old channel
-        if (channelRef != null) {
-            Channel oldChannel = channelRef.get();
-            if (oldChannel != null && oldChannel != newChannel) {
-                if (oldChannel.isOpen()) {
-                    try {
-                        oldChannel.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+        // 1. replace with new channel
+        Channel oldChannel = channelRef.get();
+        channelRef = new WeakReference<>(newChannel);
+        // 2. close old channel
+        if (oldChannel != null && oldChannel != newChannel) {
+            if (oldChannel.isOpen()) {
+                try {
+                    oldChannel.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
             }
         }
-        // 2. set new channel
-        channelRef = newChannel == null ? null : new WeakReference<>(newChannel);
     }
 
     @Override

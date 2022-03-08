@@ -50,7 +50,7 @@ public class ActiveConnection extends BaseConnection {
     }
 
     @Override
-    public Channel getChannel() {
+    protected Channel getChannel() {
         Channel sock = super.getChannel();
         if (sock == null || !sock.isOpen()) {
             if (getStateMachine() == null) {

@@ -49,9 +49,9 @@ import chat.dim.type.AddressPairObject;
 public abstract class StarDocker extends AddressPairObject implements Docker {
 
     private final WeakReference<Gate> gateRef;
-    private Dock dock;
+    private WeakReference<Connection> connectionRef;
 
-    private WeakReference<Connection> connectionRef = null;
+    private Dock dock;
 
     // remaining data to be sent
     private Departure lastOutgo = null;
@@ -60,6 +60,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     protected StarDocker(SocketAddress remote, SocketAddress local, Gate gate) {
         super(remote, local);
         gateRef = new WeakReference<>(gate);
+        connectionRef = new WeakReference<>(null);
         dock = createDock();
     }
 
@@ -90,7 +91,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
      * @return related connection
      */
     protected Connection getConnection() {
-        Connection conn = connectionRef == null ? null : connectionRef.get();
+        Connection conn = connectionRef.get();
         if (conn == null && dock != null) {
             // docket not closed, get new connection from the gate
             conn = getGate().getConnection(remoteAddress, localAddress);
@@ -99,15 +100,15 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         return conn;
     }
     protected void setConnection(Connection conn) {
-        // 1. check old connection
-        Connection old = connectionRef == null ? null : connectionRef.get();
+        // 1. replace with new connection
+        Connection old = connectionRef.get();
+        // 2. set new connection
+        connectionRef = new WeakReference<>(conn);
         if (old != null && old != conn) {
             if (old.isOpen()) {
                 old.close();
             }
         }
-        // 2. set new connection
-        connectionRef = conn == null ? null : new WeakReference<>(conn);
     }
 
     @Override
@@ -118,7 +119,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
 
     @Override
     public SocketAddress getLocalAddress() {
-        Connection conn = connectionRef == null ? null : connectionRef.get();
+        Connection conn = connectionRef.get();
         return conn == null ? localAddress : conn.getLocalAddress();
     }
 
