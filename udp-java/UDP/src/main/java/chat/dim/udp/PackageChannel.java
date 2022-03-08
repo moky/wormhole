@@ -54,11 +54,12 @@ public abstract class PackageChannel extends BaseChannel<DatagramChannel> {
 
     @Override
     protected void setSocketChannel(DatagramChannel sock) throws IOException {
-        // 1. replace old channel
+        // 1. replace with new channel
         DatagramChannel old = channel;
         channel = sock;
+        // 2. refresh flags with new channel
         refreshFlags(sock);
-        // 2. close old channel
+        // 3. close old channel
         if (old != null && old != sock) {
             if (old.isOpen() && old.isConnected()) {
                 // DON'T close bound socket

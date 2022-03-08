@@ -20,7 +20,7 @@ from udp import Arrival, PackageArrival, Departure, PackageDeparture
 from tests.stargate import UDPGate
 
 
-class UDPClientHub(ClientHub):
+class DatagramClientHub(ClientHub):
 
     # Override
     def _get_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
@@ -49,7 +49,7 @@ class Client(GateDelegate):
         self.__local_address = local
         self.__remote_address = remote
         gate = UDPGate(delegate=self, daemonic=True)
-        gate.hub = UDPClientHub(delegate=gate)
+        gate.hub = DatagramClientHub(delegate=gate)
         self.__gate = gate
 
     @property

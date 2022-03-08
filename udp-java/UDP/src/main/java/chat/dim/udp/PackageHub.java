@@ -79,15 +79,15 @@ public abstract class PackageHub extends BaseHub {
     }
 
     public void bind(SocketAddress local) throws IOException {
-        Channel sock = getChannel(local);
+        Channel sock = getChannel(null, local);
         if (sock == null) {
             DatagramChannel udp = DatagramChannel.open();
             udp.configureBlocking(true);
             udp.socket().setReuseAddress(true);
             udp.socket().bind(local);
             udp.configureBlocking(false);
-            Channel channel = createChannel(udp, local);
-            putChannel(channel);
+            Channel channel = createChannel(udp, null, local);
+            setChannel(null, local, channel);
         }
     }
 
@@ -99,11 +99,12 @@ public abstract class PackageHub extends BaseHub {
      *  Create channel with socket & address
      *
      * @param sock   - socket
+     * @param remote - remote address
      * @param local  - local address
      * @return null on socket error
      */
-    protected Channel createChannel(DatagramChannel sock, SocketAddress local) {
-        return new PackageChannel(sock, null, local) {
+    protected Channel createChannel(DatagramChannel sock, SocketAddress remote, SocketAddress local) {
+        return new PackageChannel(sock, remote, local) {
 
             @Override
             protected Reader createReader() {
@@ -143,17 +144,17 @@ public abstract class PackageHub extends BaseHub {
         return channelPool.allValues();
     }
 
-    protected Channel getChannel(SocketAddress local) {
-        return channelPool.get(null, local);
-    }
-
-    protected void putChannel(Channel channel) {
-        channelPool.set(channel.getRemoteAddress(), channel.getLocalAddress(), channel);
-    }
-
     @Override
-    protected void removeChannel(Channel channel) {
-        channelPool.remove(channel.getRemoteAddress(), channel.getLocalAddress(), channel);
+    protected void removeChannel(SocketAddress remote, SocketAddress local, Channel channel) {
+        channelPool.remove(remote, local, channel);
+    }
+
+    protected Channel getChannel(SocketAddress remote, SocketAddress local) {
+        return channelPool.get(remote, local);
+    }
+
+    protected void setChannel(SocketAddress remote, SocketAddress local, Channel channel) {
+        channelPool.set(remote, local, channel);
     }
 
     @Override
@@ -172,6 +173,6 @@ public abstract class PackageHub extends BaseHub {
             return null;
         }
         // get channel bound to local address
-        return getChannel(local);
+        return getChannel(remote, local);
     }
 }

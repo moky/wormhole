@@ -29,7 +29,7 @@ public class Client implements Gate.Delegate {
         localAddress = local;
         remoteAddress = remote;
         gate = new UDPGate<>(this, true);
-        gate.setHub(new ClientHub(gate));
+        gate.setHub(new DatagramClientHub(gate));
     }
 
     private UDPGate<ClientHub> getGate() {

@@ -25,7 +25,7 @@ public class Server implements Gate.Delegate {
         super();
         localAddress = local;
         gate = new UDPGate<>(this, false);
-        gate.setHub(new ServerHub(gate));
+        gate.setHub(new DatagramServerHub(gate));
     }
 
     private UDPGate<ServerHub> getGate() {
