@@ -88,7 +88,12 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
     @Override
     protected Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
         // TODO: check data format before creating docker
-        return new PlainDocker(remote, null, this);
+        Connection conn = getConnection(remote, local);
+        if (conn == null) {
+            // FIXME: no connection for this docker
+            return null;
+        }
+        return new PlainDocker(remote, null, conn, this);
     }
 
     @Override

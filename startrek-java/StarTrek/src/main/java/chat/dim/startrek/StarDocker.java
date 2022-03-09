@@ -49,7 +49,7 @@ import chat.dim.type.AddressPairObject;
 public abstract class StarDocker extends AddressPairObject implements Docker {
 
     private final WeakReference<Gate> gateRef;
-    private WeakReference<Connection> connectionRef;
+    private final WeakReference<Connection> connectionRef;
 
     private Dock dock;
 
@@ -57,16 +57,16 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     private Departure lastOutgo = null;
     private List<byte[]> lastFragments = new ArrayList<>();
 
-    protected StarDocker(SocketAddress remote, SocketAddress local, Gate gate) {
+    protected StarDocker(SocketAddress remote, SocketAddress local, Connection conn, Gate gate) {
         super(remote, local);
         gateRef = new WeakReference<>(gate);
-        connectionRef = new WeakReference<>(null);
+        connectionRef = new WeakReference<>(conn);
         dock = createDock();
     }
 
     @Override
     protected void finalize() throws Throwable {
-        setConnection(null);
+        removeConnection();
         super.finalize();
     }
 
@@ -91,23 +91,14 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
      * @return related connection
      */
     protected Connection getConnection() {
-        Connection conn = connectionRef.get();
-        if (conn == null && dock != null) {
-            // docket not closed, get new connection from the gate
-            conn = getGate().getConnection(remoteAddress, localAddress);
-            setConnection(conn);
-        }
-        return conn;
+        return connectionRef.get();
     }
-    protected void setConnection(Connection conn) {
+    private void removeConnection() {
         // 1. replace with new connection
         Connection old = connectionRef.get();
-        // 2. set new connection
-        connectionRef = new WeakReference<>(conn);
-        if (old != null && old != conn) {
-            if (old.isOpen()) {
-                old.close();
-            }
+        connectionRef.clear();
+        if (old != null && old.isOpen()) {
+            old.close();
         }
     }
 
@@ -308,7 +299,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
 
     @Override
     public void close() {
-        setConnection(null);
+        removeConnection();
         dock = null;
     }
 }

@@ -33,6 +33,7 @@ package chat.dim.mtp;
 import java.net.SocketAddress;
 import java.util.List;
 
+import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Ship;
@@ -44,8 +45,8 @@ import chat.dim.type.Data;
 
 public class PackageDocker extends StarDocker {
 
-    public PackageDocker(SocketAddress remote, SocketAddress local, StarGate gate) {
-        super(remote, local, gate);
+    public PackageDocker(SocketAddress remote, SocketAddress local, Connection conn, StarGate gate) {
+        super(remote, local, conn, gate);
     }
 
     protected Package parsePackage(byte[] data) {

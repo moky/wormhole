@@ -33,14 +33,15 @@ package chat.dim.startrek;
 import java.net.SocketAddress;
 import java.util.Arrays;
 
+import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Ship;
 
 public class PlainDocker extends StarDocker {
 
-    public PlainDocker(SocketAddress remote, SocketAddress local, StarGate gate) {
-        super(remote, local, gate);
+    public PlainDocker(SocketAddress remote, SocketAddress local, Connection conn, StarGate gate) {
+        super(remote, local, conn, gate);
     }
 
     protected Arrival createArrival(byte[] data) {
