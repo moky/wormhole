@@ -138,4 +138,12 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
     public void onResume(StateMachine ctx) {
 
     }
+
+    /**
+     *  Connection State Delegate
+     *  ~~~~~~~~~~~~~~~~~~~~~~~~~
+     */
+    interface Delegate extends chat.dim.fsm.Delegate<StateMachine, StateTransition, ConnectionState> {
+
+    }
 }

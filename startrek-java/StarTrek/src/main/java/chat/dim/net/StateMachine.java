@@ -36,11 +36,6 @@ import java.util.Date;
 import chat.dim.fsm.BaseMachine;
 import chat.dim.fsm.BaseTransition;
 import chat.dim.fsm.Context;
-import chat.dim.fsm.Delegate;
-
-interface StateDelegate extends Delegate<StateMachine, StateTransition, ConnectionState> {
-
-}
 
 abstract class StateTransition extends BaseTransition<StateMachine> {
 

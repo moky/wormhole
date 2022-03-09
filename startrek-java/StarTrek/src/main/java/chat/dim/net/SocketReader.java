@@ -28,13 +28,13 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.socket;
+package chat.dim.net;
 
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 
-public interface Reader {
+public interface SocketReader {
 
     /**
      *  Read data from socket

@@ -51,7 +51,7 @@ interface TimedConnection {
     boolean isNotReceivedLongTimeAgo(long now);
 }
 
-public class BaseConnection extends AddressPairObject implements Connection, TimedConnection, StateDelegate {
+public class BaseConnection extends AddressPairObject implements Connection, TimedConnection, ConnectionState.Delegate {
 
     public static long EXPIRES = 16 * 1000;  // 16 seconds
 

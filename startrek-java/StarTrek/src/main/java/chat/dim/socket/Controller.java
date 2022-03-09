@@ -43,7 +43,7 @@ import chat.dim.net.BaseChannel;
  *
  *  Reader, Writer, ErrorChecker
  */
-public abstract class Controller<C extends SelectableChannel> {
+abstract class Controller<C extends SelectableChannel> {
 
     private final WeakReference<BaseChannel<C>> channelRef;
 

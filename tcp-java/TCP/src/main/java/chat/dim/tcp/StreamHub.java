@@ -40,8 +40,8 @@ import java.util.Set;
 import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
-import chat.dim.socket.Reader;
-import chat.dim.socket.Writer;
+import chat.dim.net.SocketReader;
+import chat.dim.net.SocketWriter;
 import chat.dim.type.AddressPairMap;
 
 class ChannelPool extends AddressPairMap<Channel> {
@@ -94,7 +94,7 @@ public abstract class StreamHub extends BaseHub {
         return new StreamChannel(remote, local, sock) {
 
             @Override
-            protected Reader createReader() {
+            protected SocketReader createReader() {
                 return new StreamChannelReader(this) {
                     @Override
                     public SocketChannel getSocket() {
@@ -119,7 +119,7 @@ public abstract class StreamHub extends BaseHub {
             }
 
             @Override
-            protected Writer createWriter() {
+            protected SocketWriter createWriter() {
                 return new StreamChannelWriter(this) {
                     @Override
                     public SocketChannel getSocket() {

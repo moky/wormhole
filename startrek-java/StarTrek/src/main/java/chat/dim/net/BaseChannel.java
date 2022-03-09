@@ -40,16 +40,14 @@ import java.nio.channels.NetworkChannel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
 
-import chat.dim.socket.Reader;
-import chat.dim.socket.Writer;
 import chat.dim.type.AddressPairObject;
 
 public abstract class BaseChannel<C extends SelectableChannel>
         extends AddressPairObject implements Channel {
 
     // socket reader/writer
-    protected final Reader reader;
-    protected final Writer writer;
+    protected final SocketReader reader;
+    protected final SocketWriter writer;
 
     // flags
     private boolean blocking = false;
@@ -79,12 +77,12 @@ public abstract class BaseChannel<C extends SelectableChannel>
     /**
      *  Create socket reader
      */
-    protected abstract Reader createReader();
+    protected abstract SocketReader createReader();
 
     /**
      *  Create socket writer
      */
-    protected abstract Writer createWriter();
+    protected abstract SocketWriter createWriter();
 
     /**
      *  Get inner socket channel
