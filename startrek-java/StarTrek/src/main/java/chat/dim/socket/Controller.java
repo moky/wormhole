@@ -63,14 +63,7 @@ public abstract class Controller<C extends SelectableChannel> {
         return getChannel().getLocalAddress();
     }
 
-    public C getSocket() {
-        BaseChannel<C> channel = getChannel();
-        C sock = channel.getSocketChannel();
-        if (sock == null) {
-            throw new NullPointerException("socket lost: " + channel);
-        }
-        return sock;
-    }
+    public abstract C getSocket();
 
     // 1. check E_AGAIN
     //    the socket will raise 'Resource temporarily unavailable'

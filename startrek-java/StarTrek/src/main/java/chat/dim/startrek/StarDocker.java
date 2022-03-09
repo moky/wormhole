@@ -55,7 +55,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
 
     // remaining data to be sent
     private Departure lastOutgo = null;
-    List<byte[]> lastFragments = new ArrayList<>();
+    private List<byte[]> lastFragments = new ArrayList<>();
 
     protected StarDocker(SocketAddress remote, SocketAddress local, Gate gate) {
         super(remote, local);

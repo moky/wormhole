@@ -97,6 +97,11 @@ public abstract class StreamHub extends BaseHub {
             protected Reader createReader() {
                 return new StreamChannelReader(this) {
                     @Override
+                    public SocketChannel getSocket() {
+                        return getChannel().getSocketChannel();
+                    }
+
+                    @Override
                     protected IOException checkData(ByteBuffer buf, int len, SocketChannel sock) {
                         // TODO: check Timeout for received nothing
                         if (len == -1) {
@@ -116,6 +121,11 @@ public abstract class StreamHub extends BaseHub {
             @Override
             protected Writer createWriter() {
                 return new StreamChannelWriter(this) {
+                    @Override
+                    public SocketChannel getSocket() {
+                        return getChannel().getSocketChannel();
+                    }
+
                     @Override
                     protected IOException checkError(IOException error, SocketChannel sock) {
                         // TODO: check 'E_AGAIN' & TimeoutException

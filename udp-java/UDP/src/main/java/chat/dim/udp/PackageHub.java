@@ -110,6 +110,11 @@ public abstract class PackageHub extends BaseHub {
             protected Reader createReader() {
                 return new PackageChannelReader(this) {
                     @Override
+                    public DatagramChannel getSocket() {
+                        return getChannel().getSocketChannel();
+                    }
+
+                    @Override
                     protected IOException checkData(ByteBuffer buf, int len, DatagramChannel sock) {
                         // TODO: check Timeout for received nothing
                         if (len == -1) {
@@ -129,6 +134,11 @@ public abstract class PackageHub extends BaseHub {
             @Override
             protected Writer createWriter() {
                 return new PackageChannelWriter(this) {
+                    @Override
+                    public DatagramChannel getSocket() {
+                        return getChannel().getSocketChannel();
+                    }
+
                     @Override
                     protected IOException checkError(IOException error, DatagramChannel sock) {
                         // TODO: check 'E_AGAIN' & TimeoutException
