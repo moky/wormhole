@@ -31,52 +31,46 @@
 package chat.dim.socket;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
+import java.lang.ref.WeakReference;
+import java.net.SocketAddress;
 import java.nio.channels.SelectableChannel;
 
-import chat.dim.net.SocketReader;
+/**
+ *  Socket Channel Controller
+ *  ~~~~~~~~~~~~~~~~~~~~~~~~~
+ *
+ *  Reader, Writer, ErrorChecker
+ */
+abstract class ChannelController<C extends SelectableChannel> {
 
-public abstract class ChannelReader<C extends SelectableChannel>
-        extends ChannelController<C>
-        implements SocketReader {
+    private final WeakReference<BaseChannel<C>> channelRef;
 
-    protected ChannelReader(BaseChannel<C> channel) {
-        super(channel);
+    protected ChannelController(BaseChannel<C> channel) {
+        super();
+        channelRef = new WeakReference<>(channel);
     }
 
-    // 1. check timeout
-    //    in blocking mode, the socket will wait until received something,
-    //    but if timeout was set, it will return nothing too, it's normal;
-    //    otherwise, we know the connection was lost.
-    protected abstract IOException checkData(ByteBuffer buf, int len, C sock);
-
-    protected int tryRead(ByteBuffer dst, C sock) throws IOException {
-        try {
-            return ((ReadableByteChannel) sock).read(dst);
-        } catch (IOException e) {
-            e = checkError(e, sock);
-            if (e != null) {
-                // connection lost?
-                throw e;
-            }
-            // received nothing
-            return -1;
-        }
+    public BaseChannel<C> getChannel() {
+        return channelRef.get();
     }
 
-    @Override
-    public int read(ByteBuffer dst) throws IOException {
-        C sock = getSocket();
-        assert sock instanceof ReadableByteChannel : "socket error, cannot read data: " + sock;
-        int cnt = tryRead(dst, sock);
-        // check data
-        IOException error = checkData(dst, cnt, sock);
-        if (error != null) {
-            // connection lost!
-            throw error;
-        }
-        // OK
-        return cnt;
+    public SocketAddress getRemoteAddress() {
+        return getChannel().getRemoteAddress();
     }
+    public SocketAddress getLocalAddress() {
+        return getChannel().getLocalAddress();
+    }
+
+    public abstract C getSocket();
+
+    // 1. check E_AGAIN
+    //    the socket will raise 'Resource temporarily unavailable'
+    //    when received nothing in non-blocking mode,
+    //    or buffer overflow while sending too many bytes,
+    //    here we should ignore this exception.
+    // 2. check timeout
+    //    in blocking mode, the socket will wait until send/received data,
+    //    but if timeout was set, it will raise 'timeout' error on timeout,
+    //    here we should ignore this exception
+    protected abstract IOException checkError(IOException error, C sock);
 }

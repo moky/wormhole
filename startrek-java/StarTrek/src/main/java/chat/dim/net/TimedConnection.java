@@ -2,12 +2,12 @@
  *
  *  Star Trek: Interstellar Transport
  *
- *                                Written in 2021 by Moky <albert.moky@gmail.com>
+ *                                Written in 2020 by Moky <albert.moky@gmail.com>
  *
  * ==============================================================================
  * The MIT License (MIT)
  *
- * Copyright (c) 2021 Albert Moky
+ * Copyright (c) 2020 Albert Moky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,38 +30,18 @@
  */
 package chat.dim.net;
 
-import java.lang.ref.WeakReference;
-import java.net.SocketAddress;
-
 /**
- * Active connection for client
+ *  Connection with sent/received time
  */
-public class ActiveConnection extends BaseConnection {
+public interface TimedConnection {
 
-    private final WeakReference<Hub> hubRef;
+    long getLastSentTime();
 
-    public ActiveConnection(SocketAddress remote, SocketAddress local, Channel sock, Delegate delegate, Hub hub) {
-        super(remote, local, sock, delegate);
-        hubRef = new WeakReference<>(hub);
-    }
+    long getLastReceivedTime();
 
-    public Hub getHub() {
-        return hubRef.get();
-    }
+    boolean isSentRecently(long now);
 
-    @Override
-    protected Channel getChannel() {
-        Channel sock = super.getChannel();
-        if (sock == null || !sock.isOpen()) {
-            if (getStateMachine() == null) {
-                // closed (not start yet)
-                return null;
-            }
-            // get new channel via hub
-            sock = getHub().open(remoteAddress, localAddress);
-            assert sock != null : "failed to open channel: " + remoteAddress + ", " + localAddress;
-            setChannel(sock);
-        }
-        return sock;
-    }
+    boolean isReceivedRecently(long now);
+
+    boolean isNotReceivedLongTimeAgo(long now);
 }

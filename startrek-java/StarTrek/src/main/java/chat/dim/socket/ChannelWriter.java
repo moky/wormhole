@@ -35,11 +35,11 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.WritableByteChannel;
 
-import chat.dim.net.BaseChannel;
 import chat.dim.net.SocketWriter;
 
 public abstract class ChannelWriter<C extends SelectableChannel>
-        extends Controller<C> implements SocketWriter {
+        extends ChannelController<C>
+        implements SocketWriter {
 
     protected ChannelWriter(BaseChannel<C> channel) {
         super(channel);

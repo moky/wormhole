@@ -6,12 +6,12 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import chat.dim.net.ActiveConnection;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
 import chat.dim.port.Docker;
 import chat.dim.skywalker.Runner;
+import chat.dim.socket.ActiveConnection;
 import chat.dim.startrek.PlainDocker;
 import chat.dim.startrek.StarGate;
 import chat.dim.threading.Daemon;

@@ -34,7 +34,7 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 
-import chat.dim.net.BaseChannel;
+import chat.dim.socket.BaseChannel;
 
 public abstract class StreamChannel extends BaseChannel<SocketChannel> {
 

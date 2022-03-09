@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.socket;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -36,6 +36,9 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Set;
 
+import chat.dim.net.Channel;
+import chat.dim.net.Connection;
+import chat.dim.net.Hub;
 import chat.dim.type.AddressPairMap;
 
 class ConnectionPool extends AddressPairMap<Connection> {

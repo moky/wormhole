@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.socket;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -36,22 +36,15 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Date;
 
+import chat.dim.net.Channel;
+import chat.dim.net.Connection;
+import chat.dim.net.ConnectionState;
+import chat.dim.net.StateMachine;
+import chat.dim.net.TimedConnection;
 import chat.dim.type.AddressPairObject;
 
-interface TimedConnection {
-
-    long getLastSentTime();
-
-    long getLastReceivedTime();
-
-    boolean isSentRecently(long now);
-
-    boolean isReceivedRecently(long now);
-
-    boolean isNotReceivedLongTimeAgo(long now);
-}
-
-public class BaseConnection extends AddressPairObject implements Connection, TimedConnection, ConnectionState.Delegate {
+public class BaseConnection extends AddressPairObject
+        implements Connection, TimedConnection, ConnectionState.Delegate {
 
     public static long EXPIRES = 16 * 1000;  // 16 seconds
 

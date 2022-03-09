@@ -32,10 +32,10 @@ package chat.dim.udp;
 
 import java.net.SocketAddress;
 
-import chat.dim.net.ActiveConnection;
-import chat.dim.net.BaseConnection;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
+import chat.dim.socket.ActiveConnection;
+import chat.dim.socket.BaseConnection;
 
 public class ClientHub extends PackageHub {
 

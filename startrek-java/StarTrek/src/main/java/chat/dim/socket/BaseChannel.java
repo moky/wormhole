@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.socket;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -40,10 +40,14 @@ import java.nio.channels.NetworkChannel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
 
+import chat.dim.net.Channel;
+import chat.dim.net.SocketReader;
+import chat.dim.net.SocketWriter;
 import chat.dim.type.AddressPairObject;
 
 public abstract class BaseChannel<C extends SelectableChannel>
-        extends AddressPairObject implements Channel {
+        extends AddressPairObject
+        implements Channel {
 
     // socket reader/writer
     protected final SocketReader reader;

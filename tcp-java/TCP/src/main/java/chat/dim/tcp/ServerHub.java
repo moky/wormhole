@@ -35,9 +35,9 @@ import java.net.SocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 
-import chat.dim.net.BaseConnection;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
+import chat.dim.socket.BaseConnection;
 import chat.dim.threading.Daemon;
 
 public class ServerHub extends StreamHub implements Runnable {

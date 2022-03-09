@@ -37,11 +37,11 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 import java.util.Set;
 
-import chat.dim.net.BaseHub;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.SocketReader;
 import chat.dim.net.SocketWriter;
+import chat.dim.socket.BaseHub;
 import chat.dim.type.AddressPairMap;
 
 class ChannelPool extends AddressPairMap<Channel> {

@@ -143,7 +143,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
      *  Connection State Delegate
      *  ~~~~~~~~~~~~~~~~~~~~~~~~~
      */
-    interface Delegate extends chat.dim.fsm.Delegate<StateMachine, StateTransition, ConnectionState> {
+    public interface Delegate extends chat.dim.fsm.Delegate<StateMachine, StateTransition, ConnectionState> {
 
     }
 }

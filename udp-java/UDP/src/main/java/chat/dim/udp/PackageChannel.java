@@ -35,7 +35,7 @@ import java.net.SocketAddress;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.DatagramChannel;
 
-import chat.dim.net.BaseChannel;
+import chat.dim.socket.BaseChannel;
 
 public abstract class PackageChannel extends BaseChannel<DatagramChannel> {
 
