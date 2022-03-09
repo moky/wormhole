@@ -228,14 +228,7 @@ public class BaseConnection extends AddressPairObject
             // get local address as source
             SocketAddress source = getLocalAddress();
             if (error == null) {
-                if (sent <= 0) {
-                    pack = new byte[0];
-                } else if (sent < pack.length) {
-                    byte[] data = new byte[sent];
-                    System.arraycopy(pack, 0, data, 0, sent);
-                    pack = data;
-                }
-                delegate.onSent(pack, source, destination, this);
+                delegate.onSent(sent, pack, source, destination, this);
             } else {
                 delegate.onError(error, pack, source, destination, this);
             }

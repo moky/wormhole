@@ -236,7 +236,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     protected abstract void clearAdvanceParty(SocketAddress source, SocketAddress destination, Connection connection);
 
     @Override
-    public void onSent(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
+    public void onSent(int sent, byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
         // ignore this event
     }
 }

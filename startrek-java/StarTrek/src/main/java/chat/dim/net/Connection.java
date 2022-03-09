@@ -106,12 +106,13 @@ public interface Connection extends Ticker {
         /**
          *  Called after data sent
          *
+         * @param sent        - length of sent bytes
          * @param data        - outgo data package
          * @param source      - local address
          * @param destination - remote address
          * @param connection  - current connection
          */
-        void onSent(byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
+        void onSent(int sent, byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
 
         /**
          *  Called when connection error
