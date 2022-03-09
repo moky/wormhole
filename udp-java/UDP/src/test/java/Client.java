@@ -13,11 +13,11 @@ import chat.dim.net.Connection;
 import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
-import chat.dim.port.Gate;
+import chat.dim.port.Docker;
 import chat.dim.skywalker.Runner;
 import chat.dim.udp.ClientHub;
 
-public class Client implements Gate.Delegate {
+public class Client implements Docker.Delegate {
 
     private final SocketAddress localAddress;
     private final SocketAddress remoteAddress;
@@ -58,8 +58,10 @@ public class Client implements Gate.Delegate {
     //
 
     @Override
-    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, SocketAddress local, Gate gate) {
-        UDPGate.info("!!! connection (" + remote + ", " + local + ") state changed: " + oldStatus + " -> " + newStatus);
+    public void onStatusChanged(Docker.Status previous, Docker.Status current,
+                                SocketAddress remote, SocketAddress local, Connection conn,
+                                Docker docker) {
+        UDPGate.info("!!! connection (" + remote + ", " + local + ") state changed: " + previous + " -> " + current);
     }
 
     @Override

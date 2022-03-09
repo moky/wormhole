@@ -64,17 +64,17 @@ class DockerPool extends AddressPairMap<Docker> {
 
 public abstract class StarGate implements Gate, Connection.Delegate {
 
-    private final DockerPool dockerPool = new DockerPool();
+    private final WeakReference<Docker.Delegate> delegateRef;
+    private final DockerPool dockerPool;
 
-    private final WeakReference<Delegate> delegateRef;
-
-    protected StarGate(Delegate delegate) {
+    protected StarGate(Docker.Delegate delegate) {
         super();
         delegateRef = new WeakReference<>(delegate);
+        dockerPool = new DockerPool();
     }
 
-    @Override
-    public Delegate getDelegate() {
+    // delegate for handling events
+    protected Docker.Delegate getDelegate() {
         return delegateRef.get();
     }
 
@@ -82,20 +82,8 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     //  Docker
     //
 
-    /**
-     *  Create new docker for received data
-     *
-     * @param remote - remote address
-     * @param local  - local address
-     * @param data   - advance party
-     * @return docker
-     */
-    protected abstract Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data);
-
-    protected Set<Docker> allDockers() {
-        return dockerPool.allValues();
-    }
-    protected Docker getDocker(SocketAddress remote, SocketAddress local) {
+    @Override
+    public Docker getDocker(SocketAddress remote, SocketAddress local) {
         return dockerPool.get(remote, local);
     }
     protected void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
@@ -105,15 +93,21 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         dockerPool.remove(remote, local, docker);
     }
 
-    //
-    //  Status
-    //
-
-    @Override
-    public Status getStatus(SocketAddress remote, SocketAddress local) {
-        Connection conn = getConnection(remote, local);
-        return conn == null ? Status.ERROR : Status.getStatus(conn.getState());
+    protected Set<Docker> allDockers() {
+        return dockerPool.allValues();
     }
+
+    /**
+     *  Create new docker for received data
+     *
+     * @param data   - advance party
+     * @param remote - remote address
+     * @param local  - local address
+     * @param conn   - current connection
+     * @return docker
+     */
+    protected abstract Docker createDocker(List<byte[]> data,
+                                           SocketAddress remote, SocketAddress local, Connection conn);
 
     //
     //  Processor
@@ -177,10 +171,10 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     @Override
     public void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
         // 1. callback when status changed
-        Delegate delegate = getDelegate();
+        Docker.Delegate delegate = getDelegate();
         if (delegate != null) {
-            Status s1 = Status.getStatus(previous);
-            Status s2 = Status.getStatus(current);
+            Docker.Status s1 = Docker.Status.getStatus(previous);
+            Docker.Status s2 = Docker.Status.getStatus(current);
             // check status
             boolean changed;
             if (s1 == null) {
@@ -194,7 +188,8 @@ public abstract class StarGate implements Gate, Connection.Delegate {
                 // callback
                 SocketAddress remote = connection.getRemoteAddress();
                 SocketAddress local = connection.getLocalAddress();
-                delegate.onStatusChanged(s1, s2, remote, local, this);
+                Docker docker = getDocker(remote, local);
+                delegate.onStatusChanged(s1, s2, remote, local, connection, docker);
             }
         }
         // 2. heartbeat when connection expired
@@ -218,7 +213,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         assert advanceParty != null && advanceParty.size() > 0 : "advance party error";
 
         // docker not exists, check the data to decide which docker should be created
-        worker = createDocker(source, destination, advanceParty);
+        worker = createDocker(advanceParty, source, destination, connection);
         if (worker != null) {
             // cache docker for (remote, local)
             setDocker(worker.getRemoteAddress(), worker.getLocalAddress(), worker);

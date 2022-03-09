@@ -9,11 +9,11 @@ import chat.dim.net.Connection;
 import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
-import chat.dim.port.Gate;
+import chat.dim.port.Docker;
 import chat.dim.startrek.PlainArrival;
 import chat.dim.tcp.ServerHub;
 
-public class Server implements Gate.Delegate {
+public class Server implements Docker.Delegate {
 
     private final SocketAddress localAddress;
 
@@ -48,8 +48,10 @@ public class Server implements Gate.Delegate {
     //
 
     @Override
-    public void onStatusChanged(Gate.Status oldStatus, Gate.Status newStatus, SocketAddress remote, SocketAddress local, Gate gate) {
-        TCPGate.info("!!! connection (" + remote + ", " + local + ") state changed: " + oldStatus + " -> " + newStatus);
+    public void onStatusChanged(Docker.Status previous, Docker.Status current,
+                                SocketAddress remote, SocketAddress local, Connection conn,
+                                Docker docker) {
+        TCPGate.info("!!! connection (" + remote + ", " + local + ") state changed: " + previous + " -> " + current);
     }
 
     @Override

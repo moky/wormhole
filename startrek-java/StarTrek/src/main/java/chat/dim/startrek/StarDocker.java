@@ -42,26 +42,27 @@ import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Docker;
-import chat.dim.port.Gate;
 import chat.dim.port.Ship;
 import chat.dim.type.AddressPairObject;
 
 public abstract class StarDocker extends AddressPairObject implements Docker {
 
-    private final WeakReference<Gate> gateRef;
     private final WeakReference<Connection> connectionRef;
+    private final WeakReference<Delegate> delegateRef;
 
     private Dock dock;
 
     // remaining data to be sent
-    private Departure lastOutgo = null;
-    private List<byte[]> lastFragments = new ArrayList<>();
+    private Departure lastOutgo;
+    private List<byte[]> lastFragments;
 
-    protected StarDocker(SocketAddress remote, SocketAddress local, Connection conn, Gate gate) {
+    protected StarDocker(SocketAddress remote, SocketAddress local, Connection conn, Delegate delegate) {
         super(remote, local);
-        gateRef = new WeakReference<>(gate);
         connectionRef = new WeakReference<>(conn);
+        delegateRef = new WeakReference<>(delegate);
         dock = createDock();
+        lastOutgo = null;
+        lastFragments = new ArrayList<>();
     }
 
     @Override
@@ -75,22 +76,13 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         return new LockedDock();
     }
 
-    protected Gate getGate() {
-        return gateRef.get();
+    // delegate for handling events
+    protected Delegate getDelegate() {
+        return delegateRef.get();
     }
 
-    // delegate for handling gate events
-    protected Gate.Delegate getDelegate() {
-        Gate gate = getGate();
-        return gate == null ? null : gate.getDelegate();
-    }
-
-    /**
-     *  Get related connection which status is 'ready'
-     *
-     * @return related connection
-     */
-    protected Connection getConnection() {
+    @Override
+    public Connection getConnection() {
         return connectionRef.get();
     }
     private void removeConnection() {
@@ -100,6 +92,12 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         if (old != null && old.isOpen()) {
             old.close();
         }
+    }
+
+    @Override
+    public Status getStatus() {
+        Connection conn = connectionRef.get();
+        return conn == null ? Status.ERROR : Status.getStatus(conn.getState());
     }
 
     @Override
@@ -201,7 +199,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
 
     private void onOutgoError(Throwable error, Departure ship, Connection conn) {
         // callback for error
-        Gate.Delegate delegate = getDelegate();
+        Delegate delegate = getDelegate();
         if (delegate != null) {
             delegate.onError(error, ship, getLocalAddress(), getRemoteAddress(), conn);
         }

@@ -39,14 +39,13 @@ import chat.dim.port.Departure;
 import chat.dim.port.Ship;
 import chat.dim.startrek.DepartureShip;
 import chat.dim.startrek.StarDocker;
-import chat.dim.startrek.StarGate;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 
 public class PackageDocker extends StarDocker {
 
-    public PackageDocker(SocketAddress remote, SocketAddress local, Connection conn, StarGate gate) {
-        super(remote, local, conn, gate);
+    public PackageDocker(SocketAddress remote, SocketAddress local, Connection conn, Delegate delegate) {
+        super(remote, local, conn, delegate);
     }
 
     protected Package parsePackage(byte[] data) {

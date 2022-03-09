@@ -32,6 +32,8 @@ package chat.dim.port;
 
 import java.net.SocketAddress;
 
+import chat.dim.net.Connection;
+import chat.dim.net.ConnectionState;
 import chat.dim.skywalker.Processor;
 
 /**
@@ -46,6 +48,7 @@ public interface Docker extends Processor {
 
     SocketAddress getLocalAddress();
     SocketAddress getRemoteAddress();
+    Connection getConnection();
 
     /**
      *  Called when received data
@@ -86,4 +89,62 @@ public interface Docker extends Processor {
      *  Close connection for this docker
      */
     void close();
+
+    /**
+     *  Get docker status
+     *
+     * @return docker status
+     */
+    Status getStatus();
+
+    enum Status {
+
+        ERROR    (-1),
+        INIT      (0),
+        PREPARING (1),
+        READY     (2);
+
+        public final int value;
+
+        Status(int v) {
+            value = v;
+        }
+
+        public static Status getStatus(ConnectionState state) {
+            if (state == null) {
+                return ERROR;
+            } else if (state.equals(ConnectionState.READY)
+                    || state.equals(ConnectionState.EXPIRED)
+                    || state.equals(ConnectionState.MAINTAINING)) {
+                return READY;
+            } else if (state.equals(ConnectionState.PREPARING)) {
+                return PREPARING;
+            } else if (state.equals(ConnectionState.ERROR)) {
+                return ERROR;
+            } else {
+                return INIT;
+            }
+        }
+    }
+
+    /**
+     *  Docker Delegate
+     *  ~~~~~~~~~~~~~~~
+     */
+    interface Delegate extends Ship.Delegate {
+
+        /**
+         *  Callback when connection status changed
+         *
+         * @param previous    - old status
+         * @param current     - new status
+         * @param remote      - remote address
+         * @param local       - local address
+         * @param conn        - current connection
+         * @param docker      - current docker
+         */
+        void onStatusChanged(Status previous, Status current,
+                             SocketAddress remote, SocketAddress local, Connection conn,
+                             Docker docker);
+    }
 }

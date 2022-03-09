@@ -40,8 +40,8 @@ import chat.dim.port.Ship;
 
 public class PlainDocker extends StarDocker {
 
-    public PlainDocker(SocketAddress remote, SocketAddress local, Connection conn, StarGate gate) {
-        super(remote, local, conn, gate);
+    public PlainDocker(SocketAddress remote, SocketAddress local, Connection conn, Delegate delegate) {
+        super(remote, local, conn, delegate);
     }
 
     protected Arrival createArrival(byte[] data) {

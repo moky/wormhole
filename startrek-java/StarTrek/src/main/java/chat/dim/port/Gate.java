@@ -67,8 +67,6 @@ package chat.dim.port;
 
 import java.net.SocketAddress;
 
-import chat.dim.net.Connection;
-import chat.dim.net.ConnectionState;
 import chat.dim.skywalker.Processor;
 
 /**
@@ -78,71 +76,11 @@ import chat.dim.skywalker.Processor;
 public interface Gate extends Processor {
 
     /**
-     *  Get connection with direction
+     *  Get docker with direction
      *
      * @param remote - remote address
      * @param local  - local address
      * @return null on failed
      */
-    Connection getConnection(SocketAddress remote, SocketAddress local);
-
-    /**
-     *  Get gate status with direction
-     *
-     * @param remote - remote address
-     * @param local  - local address
-     * @return gate status
-     */
-    Status getStatus(SocketAddress remote, SocketAddress local);
-
-    enum Status {
-
-        ERROR    (-1),
-        INIT      (0),
-        PREPARING (1),
-        READY     (2);
-
-        public final int value;
-
-        Status(int v) {
-            value = v;
-        }
-
-        public static Status getStatus(ConnectionState state) {
-            if (state == null) {
-                return ERROR;
-            } else if (state.equals(ConnectionState.READY)
-                    || state.equals(ConnectionState.EXPIRED)
-                    || state.equals(ConnectionState.MAINTAINING)) {
-                return READY;
-            } else if (state.equals(ConnectionState.PREPARING)) {
-                return PREPARING;
-            } else if (state.equals(ConnectionState.ERROR)) {
-                return ERROR;
-            } else {
-                return INIT;
-            }
-        }
-    }
-
-    Delegate getDelegate();
-
-    /**
-     *  Gate Delegate
-     *  ~~~~~~~~~~~~~
-     */
-    interface Delegate extends Ship.Delegate {
-
-        /**
-         *  Callback when connection status changed
-         *
-         * @param previous    - old status
-         * @param current     - new status
-         * @param remote      - remote address
-         * @param local       - local address
-         * @param gate        - current gate
-         */
-        void onStatusChanged(Status previous, Status current,
-                             SocketAddress remote, SocketAddress local, Gate gate);
-    }
+    Docker getDocker(SocketAddress remote, SocketAddress local);
 }

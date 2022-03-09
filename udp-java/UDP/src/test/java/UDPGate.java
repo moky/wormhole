@@ -26,12 +26,12 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     private final Daemon daemon;
     private boolean running;
 
-    public UDPGate(Delegate delegate, boolean isDaemon) {
+    public UDPGate(Docker.Delegate delegate, boolean isDaemon) {
         super(delegate);
         daemon = new Daemon(this, isDaemon);
         running = false;
     }
-    public UDPGate(Delegate delegate) {
+    public UDPGate(Docker.Delegate delegate) {
         this(delegate, true);
     }
 
@@ -83,24 +83,12 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
         }
     }
 
-    @Override
-    public Connection getConnection(SocketAddress remote, SocketAddress local) {
-        return getHub().connect(remote, local);
-    }
+    //
+    //  Docker
+    //
 
     @Override
-    protected Docker createDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
-        // TODO: check data format before creating docker
-        Connection conn = getConnection(remote, local);
-        if (conn == null) {
-            // FIXME: no connection for this docker
-            return null;
-        }
-        return new PackageDocker(remote, null, conn, this);
-    }
-
-    @Override
-    protected Docker getDocker(SocketAddress remote, SocketAddress local) {
+    public Docker getDocker(SocketAddress remote, SocketAddress local) {
         return super.getDocker(remote, null);
     }
 
@@ -112,6 +100,13 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     @Override
     protected void removeDocker(SocketAddress remote, SocketAddress local, Docker docker) {
         super.removeDocker(remote, null, docker);
+    }
+
+    @Override
+    protected Docker createDocker(List<byte[]> data,
+                                  SocketAddress remote, SocketAddress local, Connection conn) {
+        // TODO: check data format before creating docker
+        return new PackageDocker(remote, null, conn, getDelegate());
     }
 
     @Override
@@ -151,9 +146,12 @@ public class UDPGate<H extends Hub> extends StarGate implements Runnable {
     public Docker getDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
         Docker docker = getDocker(remote, local);
         if (docker == null) {
-            docker = createDocker(remote, local, data);
-            assert docker != null : "failed to create docker: " + remote + ", " + local;
-            setDocker(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
+            Connection conn = getHub().connect(remote, local);
+            if (conn != null) {
+                docker = createDocker(data, remote, local, conn);
+                assert docker != null : "failed to create docker: " + remote + ", " + local;
+                setDocker(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
+            }
         }
         return docker;
     }
