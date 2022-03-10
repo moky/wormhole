@@ -5,9 +5,9 @@ import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.udp.ClientHub;
 
-public class DatagramClientHub extends ClientHub {
+public class PacketClientHub extends ClientHub {
 
-    public DatagramClientHub(Connection.Delegate delegate) {
+    public PacketClientHub(Connection.Delegate delegate) {
         super(delegate);
     }
 

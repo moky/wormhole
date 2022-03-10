@@ -1,6 +1,6 @@
+package chat.dim.stargate;
 
 import java.net.SocketAddress;
-import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -12,24 +12,20 @@ import chat.dim.net.Hub;
 import chat.dim.port.Docker;
 import chat.dim.skywalker.Runner;
 import chat.dim.socket.ActiveConnection;
-import chat.dim.startrek.PlainDocker;
 import chat.dim.startrek.StarGate;
 import chat.dim.threading.Daemon;
 
-public class TCPGate<H extends Hub> extends StarGate implements Runnable {
+public abstract class AutoGate<H extends Hub> extends StarGate implements Runnable {
 
     private H hub = null;
 
     private final Daemon daemon;
     private boolean running;
 
-    public TCPGate(Docker.Delegate delegate, boolean isDaemon) {
+    public AutoGate(Docker.Delegate delegate, boolean isDaemon) {
         super(delegate);
         daemon = new Daemon(this, isDaemon);
         running = false;
-    }
-    public TCPGate(Docker.Delegate delegate) {
-        this(delegate, true);
     }
 
     public H getHub() {
@@ -80,32 +76,6 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
         }
     }
 
-    //
-    //  Docker
-    //
-
-    @Override
-    public Docker getDocker(SocketAddress remote, SocketAddress local) {
-        return super.getDocker(remote, null);
-    }
-
-    @Override
-    protected void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
-        super.setDocker(remote, null, docker);
-    }
-
-    @Override
-    protected void removeDocker(SocketAddress remote, SocketAddress local, Docker docker) {
-        super.removeDocker(remote, null, docker);
-    }
-
-    @Override
-    protected Docker createDocker(List<byte[]> data,
-                                  SocketAddress remote, SocketAddress local, Connection conn) {
-        // TODO: check data format before creating docker
-        return new PlainDocker(remote, null, conn, getDelegate());
-    }
-
     @Override
     protected List<byte[]> cacheAdvanceParty(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
         // TODO: cache the advance party before decide which docker to use
@@ -153,24 +123,12 @@ public class TCPGate<H extends Hub> extends StarGate implements Runnable {
         return docker;
     }
 
-    public boolean send(byte[] payload, SocketAddress source, SocketAddress destination) {
-        Docker worker = getDocker(destination, source, null);
-        if (worker instanceof PlainDocker) {
-            return ((PlainDocker) worker).send(payload);
-        } else {
-            return false;
-        }
-    }
-
-    static void info(byte[] data) {
-        info(new String(data, StandardCharsets.UTF_8));
-    }
-    static void info(String msg) {
+    public static void info(String msg) {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String now = formatter.format(new Date());
         System.out.printf("[%s] %s\n", now, msg);
     }
-    static void error(String msg) {
+    public static void error(String msg) {
         System.out.printf("ERROR> %s\n", msg);
     }
 }

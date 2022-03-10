@@ -10,6 +10,7 @@ import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Docker;
+import chat.dim.stargate.TCPGate;
 import chat.dim.startrek.PlainArrival;
 import chat.dim.tcp.ServerHub;
 

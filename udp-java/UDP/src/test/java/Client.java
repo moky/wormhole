@@ -15,6 +15,7 @@ import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Docker;
 import chat.dim.skywalker.Runner;
+import chat.dim.stargate.UDPGate;
 import chat.dim.udp.ClientHub;
 
 public class Client implements Docker.Delegate {
@@ -28,8 +29,8 @@ public class Client implements Docker.Delegate {
         super();
         localAddress = local;
         remoteAddress = remote;
-        gate = new UDPGate<>(this);
-        gate.setHub(new DatagramClientHub(gate));
+        gate = new UDPGate<>(this, true);
+        gate.setHub(new PacketClientHub(gate));
     }
 
     private UDPGate<ClientHub> getGate() {
@@ -93,18 +94,20 @@ public class Client implements Docker.Delegate {
 
     void test() {
 
-        StringBuilder text = new StringBuilder();
+        StringBuilder content = new StringBuilder();
         for (int index = 0; index < 1024; ++index) {
-            text.append(" Hello!");
+            content.append(" Hello!");
         }
 
+        String text;
         byte[] data;
         Runner.idle(5000);
 
         for (int index = 0; index < 16; ++index) {
-            data = (index + " sheep:" + text).getBytes();
+            text = index + " sheep:" + content;
+            data = text.getBytes();
             UDPGate.info(">>> sending (" + data.length + " bytes): ");
-            UDPGate.info(data);
+            UDPGate.info(text);
             send(data);
             Runner.idle(2000);
         }

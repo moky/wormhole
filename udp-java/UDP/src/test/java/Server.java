@@ -13,6 +13,7 @@ import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Docker;
+import chat.dim.stargate.UDPGate;
 import chat.dim.udp.ServerHub;
 
 public class Server implements Docker.Delegate {
@@ -25,7 +26,7 @@ public class Server implements Docker.Delegate {
         super();
         localAddress = local;
         gate = new UDPGate<>(this, false);
-        gate.setHub(new DatagramServerHub(gate));
+        gate.setHub(new PacketServerHub(gate));
     }
 
     private UDPGate<ServerHub> getGate() {

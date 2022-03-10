@@ -4,9 +4,9 @@ import java.net.SocketAddress;
 import chat.dim.net.Connection;
 import chat.dim.udp.ServerHub;
 
-public class DatagramServerHub extends ServerHub {
+public class PacketServerHub extends ServerHub {
 
-    public DatagramServerHub(Connection.Delegate delegate) {
+    public PacketServerHub(Connection.Delegate delegate) {
         super(delegate);
     }
 
