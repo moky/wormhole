@@ -38,9 +38,9 @@ import java.nio.channels.DatagramChannel;
 import chat.dim.socket.BaseChannel;
 import chat.dim.socket.ChannelWriter;
 
-public class PackageChannelWriter extends ChannelWriter<DatagramChannel> {
+public class PacketChannelWriter extends ChannelWriter<DatagramChannel> {
 
-    protected PackageChannelWriter(BaseChannel<DatagramChannel> channel) {
+    protected PacketChannelWriter(BaseChannel<DatagramChannel> channel) {
         super(channel);
     }
 

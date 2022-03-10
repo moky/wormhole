@@ -36,7 +36,7 @@ import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.socket.BaseConnection;
 
-public class ServerHub extends PackageHub {
+public class ServerHub extends PacketHub {
 
     public ServerHub(Connection.Delegate delegate) {
         super(delegate);

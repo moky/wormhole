@@ -113,11 +113,11 @@ class ChannelPool extends AddressPairMap<Channel> {
     }
 }
 
-public abstract class PackageHub extends BaseHub {
+public abstract class PacketHub extends BaseHub {
 
     private final AddressPairMap<Channel> channelPool;
 
-    protected PackageHub(Connection.Delegate delegate) {
+    protected PacketHub(Connection.Delegate delegate) {
         super(delegate);
         channelPool = createChannelPool();
     }
@@ -152,7 +152,7 @@ public abstract class PackageHub extends BaseHub {
      * @return null on socket error
      */
     protected Channel createChannel(SocketAddress remote, SocketAddress local, DatagramChannel sock) {
-        return new PackageChannel(remote, local, sock);
+        return new PacketChannel(remote, local, sock);
     }
 
     @Override

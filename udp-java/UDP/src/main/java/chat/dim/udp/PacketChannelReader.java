@@ -39,9 +39,9 @@ import java.nio.channels.DatagramChannel;
 import chat.dim.socket.BaseChannel;
 import chat.dim.socket.ChannelReader;
 
-public class PackageChannelReader extends ChannelReader<DatagramChannel> {
+public class PacketChannelReader extends ChannelReader<DatagramChannel> {
 
-    protected PackageChannelReader(BaseChannel<DatagramChannel> channel) {
+    protected PacketChannelReader(BaseChannel<DatagramChannel> channel) {
         super(channel);
     }
 

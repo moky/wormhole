@@ -39,9 +39,9 @@ import chat.dim.net.SocketReader;
 import chat.dim.net.SocketWriter;
 import chat.dim.socket.BaseChannel;
 
-public class PackageChannel extends BaseChannel<DatagramChannel> {
+public class PacketChannel extends BaseChannel<DatagramChannel> {
 
-    public PackageChannel(SocketAddress remote, SocketAddress local, DatagramChannel sock) {
+    public PacketChannel(SocketAddress remote, SocketAddress local, DatagramChannel sock) {
         super(remote, local, sock);
     }
 
@@ -57,11 +57,11 @@ public class PackageChannel extends BaseChannel<DatagramChannel> {
 
     @Override
     protected SocketReader createReader() {
-        return new PackageChannelReader(this);
+        return new PacketChannelReader(this);
     }
 
     @Override
     protected SocketWriter createWriter() {
-        return new PackageChannelWriter(this);
+        return new PacketChannelWriter(this);
     }
 }
