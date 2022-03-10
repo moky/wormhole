@@ -81,7 +81,7 @@ public class BaseConnection extends AddressPairObject
     protected StateMachine getStateMachine() {
         return fsm;
     }
-    protected void setStateMachine(StateMachine newMachine) {
+    private void setStateMachine(StateMachine newMachine) {
         // 1. replace with new machine
         StateMachine oldMachine = fsm;
         fsm = newMachine;
@@ -96,6 +96,7 @@ public class BaseConnection extends AddressPairObject
         return machine;
     }
 
+    // delegate for handling connection events
     protected Delegate getDelegate() {
         return delegateRef.get();
     }
@@ -111,7 +112,7 @@ public class BaseConnection extends AddressPairObject
         if (oldChannel != null && oldChannel != newChannel) {
             if (oldChannel.isOpen()) {
                 try {
-                    oldChannel.close();
+                    oldChannel.disconnect();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -156,28 +157,20 @@ public class BaseConnection extends AddressPairObject
         setStateMachine(null);
     }
 
-    @Override
-    public long getLastSentTime() {
-        return lastSentTime;
+    public void start() {
+        StateMachine machine = createStateMachine();
+        machine.start();
+        setStateMachine(machine);
     }
 
-    @Override
-    public long getLastReceivedTime() {
-        return lastReceivedTime;
+    public void stop() {
+        setChannel(null);
+        setStateMachine(null);
     }
 
-    @Override
-    public boolean isSentRecently(long now) {
-        return now < lastSentTime + EXPIRES;
-    }
-    @Override
-    public boolean isReceivedRecently(long now) {
-        return now < lastReceivedTime + EXPIRES;
-    }
-    @Override
-    public boolean isNotReceivedLongTimeAgo(long now) {
-        return now > lastReceivedTime + (EXPIRES << 3);
-    }
+    //
+    //  I/O
+    //
 
     @Override
     public void received(byte[] data, SocketAddress remote, SocketAddress local) {
@@ -189,14 +182,14 @@ public class BaseConnection extends AddressPairObject
     }
 
     protected int send(ByteBuffer src, SocketAddress destination) throws IOException {
+        int sent = -1;
         Channel sock = getChannel();
-        if (sock == null || !sock.isAlive()) {
-            //throw new SocketException("socket channel lost");
-            return -1;
-        }
-        int sent = sock.send(src, destination);
-        if (sent > 0) {
-            lastSentTime = (new Date()).getTime();  // update sent time
+        if (sock != null && sock.isAlive()) {
+            sent = sock.send(src, destination);
+            if (sent > 0) {
+                // update sent time
+                lastSentTime = (new Date()).getTime();
+            }
         }
         return sent;
     }
@@ -254,15 +247,31 @@ public class BaseConnection extends AddressPairObject
         }
     }
 
-    public void start() {
-        StateMachine machine = createStateMachine();
-        machine.start();
-        setStateMachine(machine);
+    //
+    //  Timed
+    //
+
+    @Override
+    public long getLastSentTime() {
+        return lastSentTime;
     }
 
-    public void stop() {
-        setChannel(null);
-        setStateMachine(null);
+    @Override
+    public long getLastReceivedTime() {
+        return lastReceivedTime;
+    }
+
+    @Override
+    public boolean isSentRecently(long now) {
+        return now < lastSentTime + EXPIRES;
+    }
+    @Override
+    public boolean isReceivedRecently(long now) {
+        return now < lastReceivedTime + EXPIRES;
+    }
+    @Override
+    public boolean isNotReceivedLongTimeAgo(long now) {
+        return now > lastReceivedTime + (EXPIRES << 3);
     }
 
     //

@@ -32,37 +32,33 @@ package chat.dim.tcp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.nio.channels.ByteChannel;
 import java.nio.channels.SocketChannel;
 
+import chat.dim.net.SocketReader;
+import chat.dim.net.SocketWriter;
 import chat.dim.socket.BaseChannel;
 
-public abstract class StreamChannel extends BaseChannel<SocketChannel> {
-
-    private SocketChannel channel;
+public class StreamChannel extends BaseChannel<SocketChannel> {
 
     public StreamChannel(SocketAddress remote, SocketAddress local, SocketChannel sock) {
-        super(remote, local);
-        channel = sock;
-        refreshFlags(sock);
+        super(remote, local, sock);
     }
 
     @Override
-    public SocketChannel getSocketChannel() {
+    public ByteChannel disconnect() throws IOException {
+        SocketChannel channel = getSocketChannel();
+        close();
         return channel;
     }
 
     @Override
-    protected void setSocketChannel(SocketChannel sock) throws IOException {
-        // 1. replace with new socket
-        SocketChannel old = channel;
-        channel = sock;
-        // 2. refresh flags with new socket
-        refreshFlags(sock);
-        // 3. close old socket
-        if (old != null && old != sock) {
-            if (old.isOpen()) {
-                old.close();
-            }
-        }
+    protected SocketReader createReader() {
+        return new StreamChannelReader(this);
+    }
+
+    @Override
+    protected SocketWriter createWriter() {
+        return new StreamChannelWriter(this);
     }
 }

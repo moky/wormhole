@@ -76,28 +76,22 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         return new LockedDock();
     }
 
-    // delegate for handling events
+    // delegate for handling docker events
     protected Delegate getDelegate() {
         return delegateRef.get();
     }
 
-    @Override
-    public Connection getConnection() {
+    protected Connection getConnection() {
         return connectionRef.get();
     }
     private void removeConnection() {
-        // 1. replace with new connection
+        // 1. clear connection reference
         Connection old = connectionRef.get();
         connectionRef.clear();
+        // 2. close old connection
         if (old != null && old.isOpen()) {
             old.close();
         }
-    }
-
-    @Override
-    public Status getStatus() {
-        Connection conn = connectionRef.get();
-        return conn == null ? Status.ERROR : Status.getStatus(conn.getState());
     }
 
     @Override
@@ -107,102 +101,20 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     }
 
     @Override
+    public Status getStatus() {
+        Connection conn = getConnection();
+        return conn == null ? Status.ERROR : Status.getStatus(conn.getState());
+    }
+
+    @Override
     public SocketAddress getLocalAddress() {
-        Connection conn = connectionRef.get();
+        Connection conn = getConnection();
         return conn == null ? localAddress : conn.getLocalAddress();
     }
 
     @Override
-    public boolean process() {
-        // 1. get connection which is ready for sending data
-        Connection conn = getConnection();
-        if (conn == null || !conn.isAlive()) {
-            // connection not ready now
-            return false;
-        }
-        // 2. get data waiting to be sent out
-        Departure outgo;
-        List<byte[]> fragments;
-        if (lastFragments.size() > 0) {
-            // get remaining fragments from last outgo task
-            outgo = lastOutgo;
-            fragments = lastFragments;
-            lastOutgo = null;
-            lastFragments = new ArrayList<>();
-        } else {
-            // get next outgo task
-            long now = (new Date()).getTime();
-            outgo = getNextDeparture(now);
-            if (outgo == null) {
-                // nothing to do now, return false to let the thread have a rest
-                return false;
-            } else if (outgo.isFailed(now)) {
-                // task timeout, return true to process next one
-                IOException error = new SocketException("Request timeout");
-                onOutgoError(error, outgo, getConnection());
-                return true;
-            } else {
-                // get fragments from outgo task
-                fragments = outgo.getFragments();
-                if (fragments.size() == 0) {
-                    // all fragments of this task have been sent already
-                    // return true to process next one
-                    return true;
-                }
-            }
-        }
-        // 3. process fragments of outgo task
-        Throwable error;
-        int index = 0, sent = 0;
-        try {
-            SocketAddress remote = getRemoteAddress();
-            for (byte[] fra : fragments) {
-                sent = conn.send(fra, remote);
-                if (sent < fra.length) {
-                    // buffer overflow?
-                    break;
-                } else {
-                    assert sent == fra.length : "length of fragment sent error: " + sent + ", " + fra.length;
-                    index += 1;
-                    sent = 0;  // clear counter
-                }
-            }
-            if (index < fragments.size()) {
-                // task failed
-                error = new SocketException("only " + index + "/" + fragments.size() + " fragments sent");
-            } else {
-                // task done
-                return true;
-            }
-        } catch (Throwable e) {
-            // socket error, callback
-            error = e;
-        }
-        // 4. remove sent fragments
-        for (; index > 0; --index) {
-            fragments.remove(0);
-        }
-        // remove partially sent data of next fragment
-        if (sent > 0) {
-            byte[] last = fragments.remove(0);
-            byte[] part = new byte[last.length - sent];
-            System.arraycopy(last, sent, part, 0, last.length - sent);
-            fragments.add(0, part);
-        }
-        // 5. store remaining data
-        lastOutgo = outgo;
-        lastFragments = fragments;
-        // 6. callback for error
-        onOutgoError(error, outgo, conn);
-        return false;
-    }
-
-    private void onOutgoError(Throwable error, Departure ship, Connection conn) {
-        // callback for error
-        Delegate delegate = getDelegate();
-        if (delegate != null) {
-            delegate.onError(error, ship, getLocalAddress(), getRemoteAddress(), conn);
-        }
+    public boolean appendDeparture(Departure outgo) {
+        return dock.appendDeparture(outgo);
     }
 
     @Override
@@ -286,11 +198,6 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     }
 
     @Override
-    public boolean appendDeparture(Departure outgo) {
-        return dock.appendDeparture(outgo);
-    }
-
-    @Override
     public void purge() {
         dock.purge();
     }
@@ -299,5 +206,101 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     public void close() {
         removeConnection();
         dock = null;
+    }
+
+    //
+    //  Processor
+    //
+
+    @Override
+    public boolean process() {
+        // 1. get connection which is ready for sending data
+        Connection conn = getConnection();
+        if (conn == null || !conn.isAlive()) {
+            // connection not ready now
+            return false;
+        }
+        // 2. get data waiting to be sent out
+        Departure outgo;
+        List<byte[]> fragments;
+        if (lastFragments.size() > 0) {
+            // get remaining fragments from last outgo task
+            outgo = lastOutgo;
+            fragments = lastFragments;
+            lastOutgo = null;
+            lastFragments = new ArrayList<>();
+        } else {
+            // get next outgo task
+            long now = (new Date()).getTime();
+            outgo = getNextDeparture(now);
+            if (outgo == null) {
+                // nothing to do now, return false to let the thread have a rest
+                return false;
+            } else if (outgo.isFailed(now)) {
+                // task timeout, return true to process next one
+                IOException error = new SocketException("Request timeout");
+                // callback for error
+                Delegate delegate = getDelegate();
+                if (delegate != null) {
+                    delegate.onError(error, outgo, getLocalAddress(), getRemoteAddress(), conn);
+                }
+                return true;
+            } else {
+                // get fragments from outgo task
+                fragments = outgo.getFragments();
+                if (fragments.size() == 0) {
+                    // all fragments of this task have been sent already
+                    // return true to process next one
+                    return true;
+                }
+            }
+        }
+        // 3. process fragments of outgo task
+        Throwable error;
+        int index = 0, sent = 0;
+        try {
+            SocketAddress remote = getRemoteAddress();
+            for (byte[] fra : fragments) {
+                sent = conn.send(fra, remote);
+                if (sent < fra.length) {
+                    // buffer overflow?
+                    break;
+                } else {
+                    assert sent == fra.length : "length of fragment sent error: " + sent + ", " + fra.length;
+                    index += 1;
+                    sent = 0;  // clear counter
+                }
+            }
+            if (index < fragments.size()) {
+                // task failed
+                error = new SocketException("only " + index + "/" + fragments.size() + " fragments sent");
+            } else {
+                // task done
+                return true;
+            }
+        } catch (Throwable e) {
+            // socket error, callback
+            error = e;
+        }
+        // 4. remove sent fragments
+        for (; index > 0; --index) {
+            fragments.remove(0);
+        }
+        // remove partially sent data of next fragment
+        if (sent > 0) {
+            byte[] last = fragments.remove(0);
+            byte[] part = new byte[last.length - sent];
+            System.arraycopy(last, sent, part, 0, last.length - sent);
+            fragments.add(0, part);
+        }
+        // 5. store remaining data
+        lastOutgo = outgo;
+        lastFragments = fragments;
+        // 6. callback for error
+        Delegate delegate = getDelegate();
+        if (delegate != null) {
+            delegate.onError(error, outgo, getLocalAddress(), getRemoteAddress(), conn);
+        }
+        return false;
     }
 }

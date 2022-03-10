@@ -74,6 +74,10 @@ public class PlainDocker extends StarDocker {
         return income;
     }
 
+    //
+    //  Sending
+    //
+
     public boolean send(byte[] payload) {
         return send(payload, Departure.Priority.NORMAL.value, getDelegate());
     }

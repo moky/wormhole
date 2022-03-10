@@ -53,7 +53,7 @@ public interface Channel extends ByteChannel {
     //boolean isOpen();
     boolean isBound();
 
-    boolean isAlive();  // isOpen && (isConnected() || isBound())
+    boolean isAlive();  // isOpen() && (isConnected() || isBound())
 
     //void close() throws IOException;
 

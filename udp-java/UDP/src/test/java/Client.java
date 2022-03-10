@@ -28,7 +28,7 @@ public class Client implements Docker.Delegate {
         super();
         localAddress = local;
         remoteAddress = remote;
-        gate = new UDPGate<>(this, true);
+        gate = new UDPGate<>(this);
         gate.setHub(new DatagramClientHub(gate));
     }
 

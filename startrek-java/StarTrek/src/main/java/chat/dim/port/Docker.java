@@ -44,18 +44,11 @@ import chat.dim.skywalker.Processor;
  */
 public interface Docker extends Processor {
 
-    boolean isAlive();  // connection.isAlive()
+    boolean isAlive();   // connection.isAlive()
+    Status getStatus();  // connection.getState()
 
-    SocketAddress getLocalAddress();
     SocketAddress getRemoteAddress();
-    Connection getConnection();
-
-    /**
-     *  Called when received data
-     *
-     * @param data   - received data package
-     */
-    void processReceived(byte[] data);
+    SocketAddress getLocalAddress();
 
     /**
      *  Append outgo ship to a queue for sending out
@@ -64,6 +57,13 @@ public interface Docker extends Processor {
      * @return false on duplicated
      */
     boolean appendDeparture(Departure outgo);
+
+    /**
+     *  Called when received data
+     *
+     * @param data   - received data package
+     */
+    void processReceived(byte[] data);
 
     /**
      *  Pack the payload to an outgo Ship
@@ -91,12 +91,9 @@ public interface Docker extends Processor {
     void close();
 
     /**
-     *  Get docker status
-     *
-     * @return docker status
+     *  Docker Status
+     *  ~~~~~~~~~~~~~
      */
-    Status getStatus();
-
     enum Status {
 
         ERROR    (-1),

@@ -183,6 +183,10 @@ public class PackageDocker extends StarDocker {
         return income;
     }
 
+    //
+    //  Sending
+    //
+
     protected void respondCommand(TransactionID sn, byte[] body) {
         send(Package.create(DataType.COMMAND_RESPONSE, sn, 1, 0, -1, new Data(body)));
     }

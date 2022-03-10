@@ -38,10 +38,21 @@ import java.nio.channels.SocketChannel;
 import chat.dim.socket.BaseChannel;
 import chat.dim.socket.ChannelWriter;
 
-public abstract class StreamChannelWriter extends ChannelWriter<SocketChannel> {
+public class StreamChannelWriter extends ChannelWriter<SocketChannel> {
 
     protected StreamChannelWriter(BaseChannel<SocketChannel> channel) {
         super(channel);
+    }
+
+    @Override
+    public SocketChannel getSocket() {
+        return getChannel().getSocketChannel();
+    }
+
+    @Override
+    protected IOException checkError(IOException error, SocketChannel sock) {
+        // TODO: check 'E_AGAIN' & TimeoutException
+        return error;
     }
 
     @Override

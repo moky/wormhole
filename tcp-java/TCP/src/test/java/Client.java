@@ -10,7 +10,6 @@ import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Docker;
-import chat.dim.port.Gate;
 import chat.dim.skywalker.Runner;
 import chat.dim.startrek.PlainArrival;
 import chat.dim.tcp.ClientHub;
@@ -26,7 +25,7 @@ public class Client implements Docker.Delegate {
         super();
         localAddress = local;
         remoteAddress = remote;
-        gate = new TCPGate<>(this, true);
+        gate = new TCPGate<>(this);
         gate.setHub(new StreamClientHub(gate));
     }
 

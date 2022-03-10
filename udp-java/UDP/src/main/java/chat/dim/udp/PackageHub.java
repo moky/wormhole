@@ -32,19 +32,63 @@ package chat.dim.udp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 import java.util.Set;
 
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
-import chat.dim.net.SocketReader;
-import chat.dim.net.SocketWriter;
 import chat.dim.socket.BaseHub;
 import chat.dim.type.AddressPairMap;
 
 class ChannelPool extends AddressPairMap<Channel> {
+
+    @Override
+    public Channel get(SocketAddress remote, SocketAddress local) {
+        assert remote != null || local != null : "both addresses are empty";
+        // -- Step 1 --
+        //    (remote, local)
+        //        this step will get the channel connected to the remote address
+        //        and bound to the local address at the same time;
+        //    (null, local)
+        //        this step will get a channel bound to the local address, and
+        //        surely not connected;
+        //    (remote, null)
+        //        this step will get a channel connected to the remote address,
+        //        no matter which local address to be bound;
+        Channel channel = super.get(remote, local);
+        if (channel != null) {
+            return channel;
+        } else if (remote == null) {
+            // failed to get a channel bound to the local address
+            return null;
+        }
+        // -- Step 2 --
+        //    (remote, local)
+        //        try to get a channel which bound to the local address, but
+        //        not connected to any remote address;
+        //    (null, local)
+        //        this situation has already done at step 1;
+        if (local != null) {
+            // ignore the remote address
+            channel = super.get(null, local);
+            if (channel != null && channel.getRemoteAddress() == null) {
+                // got a channel not connected yet
+                return channel;
+            }
+        }
+        // -- Step 3 --
+        //    (remote, null)
+        //        try to get a channel that bound to any local address, but
+        //        not connected yet;
+        Set<Channel> all = allValues();
+        for (Channel item : all) {
+            if (item.getRemoteAddress() == null) {
+                return item;
+            }
+        }
+        // not found
+        return null;
+    }
 
     @Override
     public void set(SocketAddress remote, SocketAddress local, Channel value) {
@@ -71,11 +115,15 @@ class ChannelPool extends AddressPairMap<Channel> {
 
 public abstract class PackageHub extends BaseHub {
 
-    // (null, local) => channel
-    private final ChannelPool channelPool = new ChannelPool();
+    private final AddressPairMap<Channel> channelPool;
 
     protected PackageHub(Connection.Delegate delegate) {
         super(delegate);
+        channelPool = createChannelPool();
+    }
+
+    protected AddressPairMap<Channel> createChannelPool() {
+        return new ChannelPool();
     }
 
     public void bind(SocketAddress local) throws IOException {
@@ -104,59 +152,12 @@ public abstract class PackageHub extends BaseHub {
      * @return null on socket error
      */
     protected Channel createChannel(SocketAddress remote, SocketAddress local, DatagramChannel sock) {
-        return new PackageChannel(remote, local, sock) {
-
-            @Override
-            protected SocketReader createReader() {
-                return new PackageChannelReader(this) {
-                    @Override
-                    public DatagramChannel getSocket() {
-                        return getChannel().getSocketChannel();
-                    }
-
-                    @Override
-                    protected IOException checkData(ByteBuffer buf, int len, DatagramChannel sock) {
-                        // TODO: check Timeout for received nothing
-                        if (len == -1) {
-                            return new ClosedChannelException();
-                        }
-                        return null;
-                    }
-
-                    @Override
-                    protected IOException checkError(IOException error, DatagramChannel sock) {
-                        // TODO: check 'E_AGAIN' & TimeoutException
-                        return error;
-                    }
-                };
-            }
-
-            @Override
-            protected SocketWriter createWriter() {
-                return new PackageChannelWriter(this) {
-                    @Override
-                    public DatagramChannel getSocket() {
-                        return getChannel().getSocketChannel();
-                    }
-
-                    @Override
-                    protected IOException checkError(IOException error, DatagramChannel sock) {
-                        // TODO: check 'E_AGAIN' & TimeoutException
-                        return error;
-                    }
-                };
-            }
-        };
+        return new PackageChannel(remote, local, sock);
     }
 
     @Override
     protected Set<Channel> allChannels() {
         return channelPool.allValues();
-    }
-
-    @Override
-    protected void removeChannel(SocketAddress remote, SocketAddress local, Channel channel) {
-        channelPool.remove(remote, local, channel);
     }
 
     protected Channel getChannel(SocketAddress remote, SocketAddress local) {
@@ -168,21 +169,14 @@ public abstract class PackageHub extends BaseHub {
     }
 
     @Override
+    protected void removeChannel(SocketAddress remote, SocketAddress local, Channel channel) {
+        channelPool.remove(remote, local, channel);
+    }
+
+    @Override
     public Channel open(SocketAddress remote, SocketAddress local) {
-        if (local == null) {
-            // get any channel
-            Set<Channel> all = allChannels();
-            SocketAddress address;
-            for (Channel channel : all) {
-                address = channel.getRemoteAddress();
-                if (address == null || address.equals(remote)) {
-                    return channel;
-                }
-            }
-            // channel not found
-            return null;
-        }
-        // get channel bound to local address
+        assert remote != null || local != null : "both addresses are empty";
+        // get channel with direction (remote, local)
         return getChannel(remote, local);
     }
 }

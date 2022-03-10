@@ -38,11 +38,26 @@ import java.nio.channels.DatagramChannel;
 import chat.dim.socket.BaseChannel;
 import chat.dim.socket.ChannelWriter;
 
-public abstract class PackageChannelWriter extends ChannelWriter<DatagramChannel> {
+public class PackageChannelWriter extends ChannelWriter<DatagramChannel> {
 
     protected PackageChannelWriter(BaseChannel<DatagramChannel> channel) {
         super(channel);
     }
+
+    @Override
+    public DatagramChannel getSocket() {
+        return getChannel().getSocketChannel();
+    }
+
+    @Override
+    protected IOException checkError(IOException error, DatagramChannel sock) {
+        // TODO: check 'E_AGAIN' & TimeoutException
+        return error;
+    }
+
+    //
+    //  Send
+    //
 
     protected int trySend(ByteBuffer src, SocketAddress target, DatagramChannel sock) throws IOException {
         try {

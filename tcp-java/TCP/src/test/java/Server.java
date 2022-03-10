@@ -23,7 +23,7 @@ public class Server implements Docker.Delegate {
         super();
         localAddress = local;
         gate = new TCPGate<>(this, false);
-        gate.setHub(new StreamServerHub(gate, true));
+        gate.setHub(new StreamServerHub(gate));
     }
 
     private TCPGate<ServerHub> getGate() {

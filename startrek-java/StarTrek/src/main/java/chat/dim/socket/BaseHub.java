@@ -75,15 +75,21 @@ public abstract class BaseHub implements Hub {
      */
     public static int MSS = 1472;  // 1500 - 20 - 8
 
-    private final ConnectionPool connectionPool = new ConnectionPool();
+    private final AddressPairMap<Connection> connectionPool;
     private final WeakReference<Connection.Delegate> delegateRef;
 
     protected BaseHub(Connection.Delegate delegate) {
         super();
         delegateRef = new WeakReference<>(delegate);
+        connectionPool = createConnectionPool();
     }
 
-    public Connection.Delegate getDelegate() {
+    protected AddressPairMap<Connection> createConnectionPool() {
+        return new ConnectionPool();
+    }
+
+    // delegate for handling connection events
+    protected Connection.Delegate getDelegate() {
         return delegateRef.get();
     }
 

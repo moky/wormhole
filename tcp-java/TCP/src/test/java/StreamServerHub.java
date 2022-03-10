@@ -6,8 +6,8 @@ import chat.dim.tcp.ServerHub;
 
 class StreamServerHub extends ServerHub {
 
-    public StreamServerHub(Connection.Delegate delegate, boolean isDaemon) {
-        super(delegate, isDaemon);
+    public StreamServerHub(Connection.Delegate delegate) {
+        super(delegate);
     }
 
     @Override

@@ -43,7 +43,7 @@ public interface Connection extends Ticker {
     boolean isBound();
     boolean isConnected();
 
-    boolean isAlive();  // isOpen && (isConnected() || isBound())
+    boolean isAlive();  // isOpen() && (isConnected() || isBound())
 
     SocketAddress getLocalAddress();
     SocketAddress getRemoteAddress();

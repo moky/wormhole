@@ -64,16 +64,20 @@ class DockerPool extends AddressPairMap<Docker> {
 
 public abstract class StarGate implements Gate, Connection.Delegate {
 
+    private final AddressPairMap<Docker> dockerPool;
     private final WeakReference<Docker.Delegate> delegateRef;
-    private final DockerPool dockerPool;
 
     protected StarGate(Docker.Delegate delegate) {
         super();
         delegateRef = new WeakReference<>(delegate);
-        dockerPool = new DockerPool();
+        dockerPool = createDockerPool();
     }
 
-    // delegate for handling events
+    protected AddressPairMap<Docker> createDockerPool() {
+        return new DockerPool();
+    }
+
+    // delegate for handling docker events
     protected Docker.Delegate getDelegate() {
         return delegateRef.get();
     }
@@ -81,21 +85,6 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     //
     //  Docker
     //
-
-    @Override
-    public Docker getDocker(SocketAddress remote, SocketAddress local) {
-        return dockerPool.get(remote, local);
-    }
-    protected void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
-        dockerPool.set(remote, local, docker);
-    }
-    protected void removeDocker(SocketAddress remote, SocketAddress local, Docker docker) {
-        dockerPool.remove(remote, local, docker);
-    }
-
-    protected Set<Docker> allDockers() {
-        return dockerPool.allValues();
-    }
 
     /**
      *  Create new docker for received data
@@ -108,6 +97,21 @@ public abstract class StarGate implements Gate, Connection.Delegate {
      */
     protected abstract Docker createDocker(List<byte[]> data,
                                            SocketAddress remote, SocketAddress local, Connection conn);
+
+    protected Set<Docker> allDockers() {
+        return dockerPool.allValues();
+    }
+
+    @Override
+    public Docker getDocker(SocketAddress remote, SocketAddress local) {
+        return dockerPool.get(remote, local);
+    }
+    protected void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
+        dockerPool.set(remote, local, docker);
+    }
+    protected void removeDocker(SocketAddress remote, SocketAddress local, Docker docker) {
+        dockerPool.remove(remote, local, docker);
+    }
 
     //
     //  Processor

@@ -32,15 +32,11 @@ package chat.dim.tcp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
 import java.util.Set;
 
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
-import chat.dim.net.SocketReader;
-import chat.dim.net.SocketWriter;
 import chat.dim.socket.BaseHub;
 import chat.dim.type.AddressPairMap;
 
@@ -71,11 +67,15 @@ class ChannelPool extends AddressPairMap<Channel> {
 
 public abstract class StreamHub extends BaseHub {
 
-    // (remote, null) => channel
-    private final ChannelPool channelPool = new ChannelPool();
+    private final AddressPairMap<Channel> channelPool;
 
     protected StreamHub(Connection.Delegate delegate) {
         super(delegate);
+        channelPool = createChannelPool();
+    }
+
+    protected AddressPairMap<Channel> createChannelPool() {
+        return new ChannelPool();
     }
 
     //
@@ -91,59 +91,12 @@ public abstract class StreamHub extends BaseHub {
      * @return null on socket error
      */
     protected Channel createChannel(SocketAddress remote, SocketAddress local, SocketChannel sock) {
-        return new StreamChannel(remote, local, sock) {
-
-            @Override
-            protected SocketReader createReader() {
-                return new StreamChannelReader(this) {
-                    @Override
-                    public SocketChannel getSocket() {
-                        return getChannel().getSocketChannel();
-                    }
-
-                    @Override
-                    protected IOException checkData(ByteBuffer buf, int len, SocketChannel sock) {
-                        // TODO: check Timeout for received nothing
-                        if (len == -1) {
-                            return new ClosedChannelException();
-                        }
-                        return null;
-                    }
-
-                    @Override
-                    protected IOException checkError(IOException error, SocketChannel sock) {
-                        // TODO: check 'E_AGAIN' & TimeoutException
-                        return error;
-                    }
-                };
-            }
-
-            @Override
-            protected SocketWriter createWriter() {
-                return new StreamChannelWriter(this) {
-                    @Override
-                    public SocketChannel getSocket() {
-                        return getChannel().getSocketChannel();
-                    }
-
-                    @Override
-                    protected IOException checkError(IOException error, SocketChannel sock) {
-                        // TODO: check 'E_AGAIN' & TimeoutException
-                        return error;
-                    }
-                };
-            }
-        };
+        return new StreamChannel(remote, local, sock);
     }
 
     @Override
     protected Set<Channel> allChannels() {
         return channelPool.allValues();
-    }
-
-    @Override
-    protected void removeChannel(SocketAddress remote, SocketAddress local, Channel channel) {
-        channelPool.remove(remote, local, channel);
     }
 
     protected Channel getChannel(SocketAddress remote, SocketAddress local) {
@@ -152,6 +105,11 @@ public abstract class StreamHub extends BaseHub {
 
     protected void setChannel(SocketAddress remote, SocketAddress local, Channel channel) {
         channelPool.set(remote, local, channel);
+    }
+
+    @Override
+    protected void removeChannel(SocketAddress remote, SocketAddress local, Channel channel) {
+        channelPool.remove(remote, local, channel);
     }
 
     @Override

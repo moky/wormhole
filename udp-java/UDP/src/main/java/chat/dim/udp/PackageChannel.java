@@ -35,54 +35,33 @@ import java.net.SocketAddress;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.DatagramChannel;
 
+import chat.dim.net.SocketReader;
+import chat.dim.net.SocketWriter;
 import chat.dim.socket.BaseChannel;
 
-public abstract class PackageChannel extends BaseChannel<DatagramChannel> {
-
-    private DatagramChannel channel;
+public class PackageChannel extends BaseChannel<DatagramChannel> {
 
     public PackageChannel(SocketAddress remote, SocketAddress local, DatagramChannel sock) {
-        super(remote, local);
-        channel = sock;
-        refreshFlags(sock);
-    }
-
-    @Override
-    public DatagramChannel getSocketChannel() {
-        return channel;
-    }
-
-    @Override
-    protected void setSocketChannel(DatagramChannel sock) throws IOException {
-        // 1. replace with new channel
-        DatagramChannel old = channel;
-        channel = sock;
-        // 2. refresh flags with new channel
-        refreshFlags(sock);
-        // 3. close old channel
-        if (old != null && old != sock) {
-            if (old.isOpen() && old.isConnected()) {
-                // DON'T close bound socket
-                old.close();
-            }
-        }
+        super(remote, local, sock);
     }
 
     @Override
     public ByteChannel disconnect() throws IOException {
-        // DON'T close bound socket channel
-        if (isBound() && !isConnected()) {
-            return null;
+        DatagramChannel sock = getSocketChannel();
+        if (sock != null) {
+            sock.disconnect();
+            refreshFlags();
         }
-        return super.disconnect();
+        return sock;
     }
 
     @Override
-    public void close() throws IOException {
-        // DON'T close bound socket channel
-        if (isBound() && !isConnected()) {
-            return;
-        }
-        super.close();
+    protected SocketReader createReader() {
+        return new PackageChannelReader(this);
+    }
+
+    @Override
+    protected SocketWriter createWriter() {
+        return new PackageChannelWriter(this);
     }
 }

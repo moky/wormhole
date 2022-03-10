@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ByteChannel;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.NetworkChannel;
 import java.nio.channels.SelectableChannel;
@@ -53,6 +52,9 @@ public abstract class BaseChannel<C extends SelectableChannel>
     protected final SocketReader reader;
     protected final SocketWriter writer;
 
+    // inner socket
+    private C impl;
+
     // flags
     private boolean blocking = false;
     private boolean opened = false;
@@ -65,16 +67,18 @@ public abstract class BaseChannel<C extends SelectableChannel>
      * @param remote      - remote address
      * @param local       - local address
      */
-    protected BaseChannel(SocketAddress remote, SocketAddress local) {
+    protected BaseChannel(SocketAddress remote, SocketAddress local, C sock) {
         super(remote, local);
         reader = createReader();
         writer = createWriter();
+        impl = sock;
+        refreshFlags();
     }
 
     @Override
     protected void finalize() throws Throwable {
         // make sure the relative socket is removed
-        setSocketChannel(null);
+        removeSocketChannel();
         super.finalize();
     }
 
@@ -89,24 +93,10 @@ public abstract class BaseChannel<C extends SelectableChannel>
     protected abstract SocketWriter createWriter();
 
     /**
-     *  Get inner socket channel
+     *  Refresh flags with inner socket
      */
-    public abstract C getSocketChannel();
-
-    /**
-     *  Change inner socket channel
-     *  1. replace with new socket
-     *  2. refresh flags with new socket
-     *  3. close old channel
-     */
-    protected abstract void setSocketChannel(C sock) throws IOException;
-
-    /**
-     *  Refresh channel flags with new socket
-     *
-     * @param sock - socket channel
-     */
-    protected void refreshFlags(C sock) {
+    protected void refreshFlags() {
+        C sock = impl;
         // update channel status
         if (sock == null) {
             blocking = false;
@@ -118,6 +108,21 @@ public abstract class BaseChannel<C extends SelectableChannel>
             opened = sock.isOpen();
             connected = isConnected(sock);
             bound = isBound(sock);
+        }
+    }
+
+    public C getSocketChannel() {
+        return impl;
+    }
+    private void removeSocketChannel() throws IOException {
+        // 1. clear inner channel
+        C old = impl;
+        impl = null;
+        // 2. refresh flags
+        refreshFlags();
+        // 3. close old channel
+        if (old != null && old.isOpen()) {
+            old.close();
         }
     }
 
@@ -220,16 +225,9 @@ public abstract class BaseChannel<C extends SelectableChannel>
     }
 
     @Override
-    public ByteChannel disconnect() throws IOException {
-        C sock = getSocketChannel();
-        setSocketChannel(null);
-        return (ByteChannel) sock;
-    }
-
-    @Override
     public void close() throws IOException {
-        // set socket to null and refresh flags
-        setSocketChannel(null);
+        // close inner socket and refresh flags
+        removeSocketChannel();
     }
 
     //

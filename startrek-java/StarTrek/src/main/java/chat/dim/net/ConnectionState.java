@@ -142,6 +142,8 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
     /**
      *  Connection State Delegate
      *  ~~~~~~~~~~~~~~~~~~~~~~~~~
+     *
+     *  callback when connection state changed
      */
     public interface Delegate extends chat.dim.fsm.Delegate<StateMachine, StateTransition, ConnectionState> {
 
