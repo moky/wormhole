@@ -173,11 +173,11 @@ public class BaseConnection extends AddressPairObject
     //
 
     @Override
-    public void received(byte[] data, SocketAddress remote, SocketAddress local) {
+    public void onReceived(byte[] data) {
         lastReceivedTime = (new Date()).getTime();  // update received time
         Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onConnectionReceived(data, remote, local, this);
+            delegate.onConnectionReceived(data, this);
         }
     }
 
@@ -195,7 +195,7 @@ public class BaseConnection extends AddressPairObject
     }
 
     @Override
-    public int send(byte[] pack, SocketAddress destination) {
+    public int send(byte[] pack) {
         // try to send data
         Throwable error = null;
         int sent = -1;
@@ -205,6 +205,7 @@ public class BaseConnection extends AddressPairObject
             buffer.put(pack);
             buffer.flip();
             // send buffer
+            SocketAddress destination = getRemoteAddress();
             sent = send(buffer, destination);
             if (sent < 0) {  // == -1
                 error = new Error("failed to send data: " + pack.length + " byte(s) to " + destination);
@@ -219,11 +220,10 @@ public class BaseConnection extends AddressPairObject
         Delegate delegate = getDelegate();
         if (delegate != null) {
             // get local address as source
-            SocketAddress source = getLocalAddress();
             if (error == null) {
-                delegate.onConnectionSent(sent, pack, source, destination, this);
+                delegate.onConnectionSent(sent, pack, this);
             } else {
-                delegate.onConnectionError(error, pack, source, destination, this);
+                delegate.onConnectionFailed(error, pack, this);
             }
         }
         return sent;

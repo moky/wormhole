@@ -187,14 +187,15 @@ public abstract class BaseHub implements Hub {
             remote = sock.getRemoteAddress();
             SocketAddress local = sock.getLocalAddress();
             Connection.Delegate delegate = getDelegate();
-            if (delegate == null) {
-                // just remove channel
+            if (delegate == null || remote == null) {
+                // UDP channel may not connected,
+                // so no connection for it
                 removeChannel(remote, local, sock);
             } else {
                 // remove channel and callback with connection
                 Connection conn = getConnection(remote, local);
                 removeChannel(remote, local, sock);
-                delegate.onConnectionError(e, null, remote, local, conn);
+                delegate.onConnectionError(e, null, conn);
             }
             return false;
         }
@@ -209,7 +210,7 @@ public abstract class BaseHub implements Hub {
             byte[] data = new byte[buffer.position()];
             buffer.flip();
             buffer.get(data);
-            conn.received(data, remote, local);
+            conn.onReceived(data);
         }
         return true;
     }

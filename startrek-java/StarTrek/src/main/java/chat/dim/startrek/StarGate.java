@@ -89,14 +89,11 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     /**
      *  Create new docker for received data
      *
-     * @param data   - advance party
-     * @param remote - remote address
-     * @param local  - local address
      * @param conn   - current connection
+     * @param data   - advance party
      * @return docker
      */
-    protected abstract Docker createDocker(List<byte[]> data,
-                                           SocketAddress remote, SocketAddress local, Connection conn);
+    protected abstract Docker createDocker(Connection conn, List<byte[]> data);
 
     protected Set<Docker> allDockers() {
         return dockerPool.allValues();
@@ -203,9 +200,11 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     }
 
     @Override
-    public void onConnectionReceived(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
+    public void onConnectionReceived(byte[] data, Connection connection) {
+        SocketAddress remote = connection.getRemoteAddress();
+        SocketAddress local = connection.getLocalAddress();
         // get docker by (remote, local)
-        Docker worker = getDocker(source, destination);
+        Docker worker = getDocker(remote, local);
         if (worker != null) {
             // docker exists, call docker.onReceived(data);
             worker.processReceived(data);
@@ -213,11 +212,11 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         }
 
         // save advance party from this source address
-        List<byte[]> advanceParty = cacheAdvanceParty(data, source, destination, connection);
+        List<byte[]> advanceParty = cacheAdvanceParty(data, remote, local, connection);
         assert advanceParty != null && advanceParty.size() > 0 : "advance party error";
 
         // docker not exists, check the data to decide which docker should be created
-        worker = createDocker(advanceParty, source, destination, connection);
+        worker = createDocker(connection, advanceParty);
         if (worker != null) {
             // cache docker for (remote, local)
             setDocker(worker.getRemoteAddress(), worker.getLocalAddress(), worker);
@@ -226,7 +225,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
                 worker.processReceived(part);
             }
             // remove advance party
-            clearAdvanceParty(source, destination, connection);
+            clearAdvanceParty(remote, local, connection);
         }
     }
 
@@ -235,7 +234,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     protected abstract void clearAdvanceParty(SocketAddress source, SocketAddress destination, Connection connection);
 
     @Override
-    public void onConnectionSent(int sent, byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
+    public void onConnectionSent(int sent, byte[] data, Connection connection) {
         // ignore this event
     }
 }

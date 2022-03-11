@@ -43,9 +43,8 @@ public class TCPGate<H extends Hub> extends AutoGate<H> {
     }
 
     @Override
-    protected Docker createDocker(List<byte[]> data,
-                                  SocketAddress remote, SocketAddress local, Connection conn) {
+    protected Docker createDocker(Connection conn, List<byte[]> data) {
         // TODO: check data format before creating docker
-        return new PlainDocker(remote, null, conn, getDelegate());
+        return new PlainDocker(conn, getDelegate());
     }
 }

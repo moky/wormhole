@@ -55,8 +55,8 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     private Departure lastOutgo;
     private List<byte[]> lastFragments;
 
-    protected StarDocker(SocketAddress remote, SocketAddress local, Connection conn, Delegate delegate) {
-        super(remote, local);
+    protected StarDocker(Connection conn, Delegate delegate) {
+        super(conn.getRemoteAddress(), conn.getLocalAddress());
         connectionRef = new WeakReference<>(conn);
         delegateRef = new WeakReference<>(delegate);
         dock = createDock();
@@ -258,9 +258,8 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         Throwable error;
         int index = 0, sent = 0;
         try {
-            SocketAddress remote = getRemoteAddress();
             for (byte[] fra : fragments) {
-                sent = conn.send(fra, remote);
+                sent = conn.send(fra);
                 if (sent < fra.length) {
                     // buffer overflow?
                     break;

@@ -52,19 +52,16 @@ public interface Connection extends Ticker {
      *  Send data
      *
      * @param data        - outgo data package
-     * @param destination - remote address; can be null when it's connected
      * @return count of bytes sent, probably zero when it's non-blocking mode
      */
-    int send(byte[] data, SocketAddress destination);
+    int send(byte[] data);
 
     /**
      *  Process received data
      *
      * @param data   - received data
-     * @param remote - remote address
-     * @param local  - local address
      */
-    void received(byte[] data, SocketAddress remote, SocketAddress local);
+    void onReceived(byte[] data);
 
     /**
      *  Close the connection
@@ -97,32 +94,35 @@ public interface Connection extends Ticker {
          *  Called when connection received data
          *
          * @param data        - received data package
-         * @param source      - remote address
-         * @param destination - local address
          * @param connection  - current connection
          */
-        void onConnectionReceived(byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
+        void onConnectionReceived(byte[] data, Connection connection);
 
         /**
          *  Called after data sent
          *
          * @param sent        - length of sent bytes
          * @param data        - outgo data package
-         * @param source      - local address
-         * @param destination - remote address
          * @param connection  - current connection
          */
-        void onConnectionSent(int sent, byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
+        void onConnectionSent(int sent, byte[] data, Connection connection);
+
+        /**
+         *  Called when failed to send data
+         *
+         * @param error       - error message
+         * @param data        - outgo data package
+         * @param connection  - current connection
+         */
+        void onConnectionFailed(Throwable error, byte[] data, Connection connection);
 
         /**
          *  Called when connection error
          *
          * @param error       - error message
          * @param data        - outgo data package
-         * @param source      - local address
-         * @param destination - remote address
          * @param connection  - current connection
          */
-        void onConnectionError(Throwable error, byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
+        void onConnectionError(Throwable error, byte[] data, Connection connection);
     }
 }

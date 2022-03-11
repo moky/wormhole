@@ -106,8 +106,13 @@ public abstract class AutoGate<H extends Hub> extends StarGate implements Runnab
     }
 
     @Override
-    public void onConnectionError(Throwable error, byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
-        error("connection error: " + error + ", " + connection + " (" + source + ", " + destination + ")");
+    public void onConnectionFailed(Throwable error, byte[] data, Connection connection) {
+        error("connection failed: " + error + ", " + connection);
+    }
+
+    @Override
+    public void onConnectionError(Throwable error, byte[] data, Connection connection) {
+        error("connection error: " + error + ", " + connection);
     }
 
     public Docker getDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
@@ -115,7 +120,7 @@ public abstract class AutoGate<H extends Hub> extends StarGate implements Runnab
         if (docker == null) {
             Connection conn = getHub().connect(remote, local);
             if (conn != null) {
-                docker = createDocker(data, remote, local, conn);
+                docker = createDocker(conn, data);
                 assert docker != null : "failed to create docker: " + remote + ", " + local;
                 setDocker(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
             }
