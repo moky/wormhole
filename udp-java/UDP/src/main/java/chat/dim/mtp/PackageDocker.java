@@ -30,7 +30,6 @@
  */
 package chat.dim.mtp;
 
-import java.net.SocketAddress;
 import java.util.List;
 
 import chat.dim.net.Connection;

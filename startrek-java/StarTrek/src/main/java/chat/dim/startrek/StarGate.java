@@ -190,7 +190,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
                 SocketAddress remote = connection.getRemoteAddress();
                 SocketAddress local = connection.getLocalAddress();
                 Docker docker = getDocker(remote, local);
-                delegate.onDockerStatusChanged(s1, s2, remote, local, connection, docker);
+                delegate.onDockerStatusChanged(s1, s2, docker);
             }
         }
         // 2. heartbeat when connection expired

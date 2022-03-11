@@ -133,7 +133,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         // 3. callback for processing income ship with completed data package
         Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onDockerReceived(income, getRemoteAddress(), getLocalAddress(), getConnection());
+            delegate.onDockerReceived(income, this);
         }
     }
 
@@ -169,7 +169,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         // all fragments responded, task finished
         Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onDockerSent(linked, getLocalAddress(), getRemoteAddress(), getConnection());
+            delegate.onDockerSent(linked, this);
         }
         return linked;
     }
@@ -241,7 +241,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
                 // callback for error
                 Delegate delegate = getDelegate();
                 if (delegate != null) {
-                    delegate.onDockerError(error, outgo, getLocalAddress(), getRemoteAddress(), conn);
+                    delegate.onDockerFailed(error, outgo, this);
                 }
                 return true;
             } else {
@@ -297,7 +297,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         // 6. callback for error
         Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onDockerError(error, outgo, getLocalAddress(), getRemoteAddress(), conn);
+            delegate.onDockerFailed(error, outgo, this);
         }
         return false;
     }

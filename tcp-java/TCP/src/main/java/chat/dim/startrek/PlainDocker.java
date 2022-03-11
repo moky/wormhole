@@ -30,7 +30,6 @@
  */
 package chat.dim.startrek;
 
-import java.net.SocketAddress;
 import java.util.Arrays;
 
 import chat.dim.net.Connection;

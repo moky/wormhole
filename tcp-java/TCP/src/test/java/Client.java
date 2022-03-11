@@ -5,7 +5,6 @@ import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
 
-import chat.dim.net.Connection;
 import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
@@ -50,29 +49,29 @@ public class Client implements Docker.Delegate {
     //  Gate Delegate
     //
 
-    @Override
-    public void onDockerStatusChanged(Docker.Status previous, Docker.Status current,
-                                      SocketAddress remote, SocketAddress local, Connection conn,
-                                      Docker docker) {
+    public void onDockerStatusChanged(Docker.Status previous, Docker.Status current, Docker docker) {
+        SocketAddress remote = docker.getRemoteAddress();
+        SocketAddress local = docker.getLocalAddress();
         TCPGate.info("!!! connection (" + remote + ", " + local + ") state changed: " + previous + " -> " + current);
     }
 
     @Override
-    public void onDockerReceived(Arrival income, SocketAddress source, SocketAddress destination, Connection connection) {
+    public void onDockerReceived(Arrival income, Docker docker) {
         assert income instanceof PlainArrival : "arrival ship error: " + income;
         byte[] data = ((PlainArrival) income).getPackage();
         String text = new String(data, StandardCharsets.UTF_8);
+        SocketAddress source = docker.getRemoteAddress();
         TCPGate.info("<<< received (" + data.length + " bytes) from " + source + ": " + text);
     }
 
     @Override
-    public void onDockerSent(Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
+    public void onDockerSent(Departure departure, Docker docker) {
         // plain departure has no response,
         // we would not know whether the task is success here
     }
 
     @Override
-    public void onDockerError(Throwable error, Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
+    public void onDockerFailed(Throwable error, Departure departure, Docker docker) {
         TCPGate.error(error.getMessage());
     }
 

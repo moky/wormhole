@@ -32,7 +32,6 @@ package chat.dim.port;
 
 import java.net.SocketAddress;
 
-import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.skywalker.Processor;
 
@@ -133,48 +132,34 @@ public interface Docker extends Processor {
          *  Callback when new package received
          *
          * @param arrival     - income data package container
-         * @param source      - remote address
-         * @param destination - local address
-         * @param connection  - current connection
+         * @param docker      - current docker
          */
-        void onDockerReceived(Arrival arrival,
-                              SocketAddress source, SocketAddress destination, Connection connection);
+        void onDockerReceived(Arrival arrival, Docker docker);
 
         /**
          *  Callback when package sent
          *
          * @param departure   - outgo data package container
-         * @param source      - local address
-         * @param destination - remote address
-         * @param connection  - current connection
+         * @param docker      - current docker
          */
-        void onDockerSent(Departure departure,
-                          SocketAddress source, SocketAddress destination, Connection connection);
+        void onDockerSent(Departure departure, Docker docker);
 
         /**
-         *  Callback when package sent failed
+         *  Callback when failed to send package
          *
          * @param error       - error message
          * @param departure   - outgo data package container
-         * @param source      - local address
-         * @param destination - remote address
-         * @param connection  - current connection
+         * @param docker      - current docker
          */
-        void onDockerError(Throwable error, Departure departure,
-                           SocketAddress source, SocketAddress destination, Connection connection);
+        void onDockerFailed(Throwable error, Departure departure, Docker docker);
 
         /**
          *  Callback when connection status changed
          *
          * @param previous    - old status
          * @param current     - new status
-         * @param remote      - remote address
-         * @param local       - local address
-         * @param conn        - current connection
          * @param docker      - current docker
          */
-        void onDockerStatusChanged(Status previous, Status current,
-                                   SocketAddress remote, SocketAddress local, Connection conn,
-                                   Docker docker);
+        void onDockerStatusChanged(Status previous, Status current, Docker docker);
     }
 }
