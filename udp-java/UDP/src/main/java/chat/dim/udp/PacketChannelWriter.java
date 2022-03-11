@@ -49,12 +49,6 @@ public class PacketChannelWriter extends ChannelWriter<DatagramChannel> {
         return getChannel().getSocketChannel();
     }
 
-    @Override
-    protected IOException checkError(IOException error, DatagramChannel sock) {
-        // TODO: check 'E_AGAIN' & TimeoutException
-        return error;
-    }
-
     //
     //  Send
     //

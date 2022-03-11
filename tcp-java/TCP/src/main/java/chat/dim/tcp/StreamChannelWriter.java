@@ -50,12 +50,6 @@ public class StreamChannelWriter extends ChannelWriter<SocketChannel> {
     }
 
     @Override
-    protected IOException checkError(IOException error, SocketChannel sock) {
-        // TODO: check 'E_AGAIN' & TimeoutException
-        return error;
-    }
-
-    @Override
     public int send(ByteBuffer src, SocketAddress target) throws IOException {
         // TCP channel will be always connected
         // so the target address must be the remote address

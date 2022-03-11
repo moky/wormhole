@@ -33,7 +33,6 @@ package chat.dim.udp;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 
 import chat.dim.socket.BaseChannel;
@@ -48,21 +47,6 @@ public class PacketChannelReader extends ChannelReader<DatagramChannel> {
     @Override
     public DatagramChannel getSocket() {
         return getChannel().getSocketChannel();
-    }
-
-    @Override
-    protected IOException checkData(ByteBuffer buf, int len, DatagramChannel sock) {
-        // TODO: check Timeout for received nothing
-        if (len == -1) {
-            return new ClosedChannelException();
-        }
-        return null;
-    }
-
-    @Override
-    protected IOException checkError(IOException error, DatagramChannel sock) {
-        // TODO: check 'E_AGAIN' & TimeoutException
-        return error;
     }
 
     //

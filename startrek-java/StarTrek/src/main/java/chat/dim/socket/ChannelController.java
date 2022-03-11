@@ -33,6 +33,8 @@ package chat.dim.socket;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectableChannel;
 
 /**
@@ -41,13 +43,15 @@ import java.nio.channels.SelectableChannel;
  *
  *  Reader, Writer, ErrorChecker
  */
-abstract class ChannelController<C extends SelectableChannel> {
+abstract class ChannelController<C extends SelectableChannel> implements ChannelChecker<C> {
 
     private final WeakReference<BaseChannel<C>> channelRef;
+    private final ChannelChecker<C> checker;
 
     protected ChannelController(BaseChannel<C> channel) {
         super();
         channelRef = new WeakReference<>(channel);
+        checker = createChecker();
     }
 
     public BaseChannel<C> getChannel() {
@@ -63,14 +67,36 @@ abstract class ChannelController<C extends SelectableChannel> {
 
     public abstract C getSocket();
 
-    // 1. check E_AGAIN
-    //    the socket will raise 'Resource temporarily unavailable'
-    //    when received nothing in non-blocking mode,
-    //    or buffer overflow while sending too many bytes,
-    //    here we should ignore this exception.
-    // 2. check timeout
-    //    in blocking mode, the socket will wait until send/received data,
-    //    but if timeout was set, it will raise 'timeout' error on timeout,
-    //    here we should ignore this exception
-    protected abstract IOException checkError(IOException error, C sock);
+    //
+    //  Checker
+    //
+
+    @Override
+    public IOException checkError(IOException error, C sock) {
+        return checker.checkError(error, sock);
+    }
+
+    @Override
+    public IOException checkData(ByteBuffer buf, int len, C sock) {
+        return checker.checkData(buf, len, sock);
+    }
+
+    protected ChannelChecker<C> createChecker() {
+        return new ChannelChecker<C>() {
+            @Override
+            public IOException checkError(IOException error, C sock) {
+                // TODO: check 'E_AGAIN' & TimeoutException
+                return error;
+            }
+
+            @Override
+            public IOException checkData(ByteBuffer buf, int len, C sock) {
+                // TODO: check Timeout for received nothing
+                if (len == -1) {
+                    return new ClosedChannelException();
+                }
+                return null;
+            }
+        };
+    }
 }
