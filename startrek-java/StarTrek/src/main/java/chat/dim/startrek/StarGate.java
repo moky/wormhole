@@ -173,7 +173,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     //
 
     @Override
-    public void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
+    public void onConnectionStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
         // 1. callback when status changed
         Docker.Delegate delegate = getDelegate();
         if (delegate != null) {
@@ -193,7 +193,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
                 SocketAddress remote = connection.getRemoteAddress();
                 SocketAddress local = connection.getLocalAddress();
                 Docker docker = getDocker(remote, local);
-                delegate.onStatusChanged(s1, s2, remote, local, connection, docker);
+                delegate.onDockerStatusChanged(s1, s2, remote, local, connection, docker);
             }
         }
         // 2. heartbeat when connection expired
@@ -203,7 +203,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     }
 
     @Override
-    public void onReceived(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
+    public void onConnectionReceived(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
         // get docker by (remote, local)
         Docker worker = getDocker(source, destination);
         if (worker != null) {
@@ -235,7 +235,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     protected abstract void clearAdvanceParty(SocketAddress source, SocketAddress destination, Connection connection);
 
     @Override
-    public void onSent(int sent, byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
+    public void onConnectionSent(int sent, byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
         // ignore this event
     }
 }

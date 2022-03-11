@@ -59,14 +59,14 @@ public class Client implements Docker.Delegate {
     //
 
     @Override
-    public void onStatusChanged(Docker.Status previous, Docker.Status current,
-                                SocketAddress remote, SocketAddress local, Connection conn,
-                                Docker docker) {
+    public void onDockerStatusChanged(Docker.Status previous, Docker.Status current,
+                                      SocketAddress remote, SocketAddress local, Connection conn,
+                                      Docker docker) {
         UDPGate.info("!!! connection (" + remote + ", " + local + ") state changed: " + previous + " -> " + current);
     }
 
     @Override
-    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Connection connection) {
+    public void onDockerReceived(Arrival income, SocketAddress source, SocketAddress destination, Connection connection) {
         assert income instanceof PackageArrival : "arrival ship error: " + income;
         Package pack = ((PackageArrival) income).getPackage();
         int headLen = pack.head.getSize();
@@ -77,7 +77,7 @@ public class Client implements Docker.Delegate {
     }
 
     @Override
-    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
+    public void onDockerSent(Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         assert outgo instanceof PackageDeparture : "departure ship error: " + outgo;
         Package pack = ((PackageDeparture) outgo).getPackage();
         int bodyLen = pack.head.bodyLength;
@@ -88,7 +88,7 @@ public class Client implements Docker.Delegate {
     }
 
     @Override
-    public void onError(Throwable error, Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
+    public void onDockerError(Throwable error, Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         UDPGate.error(error.getMessage());
     }
 

@@ -91,7 +91,7 @@ public interface Connection extends Ticker {
          * @param current    - new state
          * @param connection - current connection
          */
-        void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection);
+        void onConnectionStateChanged(ConnectionState previous, ConnectionState current, Connection connection);
 
         /**
          *  Called when connection received data
@@ -101,7 +101,7 @@ public interface Connection extends Ticker {
          * @param destination - local address
          * @param connection  - current connection
          */
-        void onReceived(byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
+        void onConnectionReceived(byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
 
         /**
          *  Called after data sent
@@ -112,7 +112,7 @@ public interface Connection extends Ticker {
          * @param destination - remote address
          * @param connection  - current connection
          */
-        void onSent(int sent, byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
+        void onConnectionSent(int sent, byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
 
         /**
          *  Called when connection error
@@ -123,6 +123,6 @@ public interface Connection extends Ticker {
          * @param destination - remote address
          * @param connection  - current connection
          */
-        void onError(Throwable error, byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
+        void onConnectionError(Throwable error, byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
     }
 }

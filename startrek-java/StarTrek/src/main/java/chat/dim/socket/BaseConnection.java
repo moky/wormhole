@@ -177,7 +177,7 @@ public class BaseConnection extends AddressPairObject
         lastReceivedTime = (new Date()).getTime();  // update received time
         Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onReceived(data, remote, local, this);
+            delegate.onConnectionReceived(data, remote, local, this);
         }
     }
 
@@ -221,9 +221,9 @@ public class BaseConnection extends AddressPairObject
             // get local address as source
             SocketAddress source = getLocalAddress();
             if (error == null) {
-                delegate.onSent(sent, pack, source, destination, this);
+                delegate.onConnectionSent(sent, pack, source, destination, this);
             } else {
-                delegate.onError(error, pack, source, destination, this);
+                delegate.onConnectionError(error, pack, source, destination, this);
             }
         }
         return sent;
@@ -297,7 +297,7 @@ public class BaseConnection extends AddressPairObject
         // callback
         Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onStateChanged(previous, current, this);
+            delegate.onConnectionStateChanged(previous, current, this);
         }
     }
 

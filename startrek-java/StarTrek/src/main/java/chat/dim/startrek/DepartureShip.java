@@ -30,7 +30,6 @@
  */
 package chat.dim.startrek;
 
-import java.lang.ref.WeakReference;
 import java.util.Date;
 
 import chat.dim.port.Departure;
@@ -52,29 +51,16 @@ public abstract class DepartureShip implements Departure {
 
     private final int priority;
 
-    private final WeakReference<Delegate> delegateRef;
-
-    protected DepartureShip(int prior, Delegate delegate, long now) {
+    protected DepartureShip(int prior, long now) {
         super();
         // ship priority
         priority = prior;
 
-        // specific delegate for this ship
-        if (delegate == null) {
-            delegateRef = null;
-        } else {
-            delegateRef = new WeakReference<>(delegate);
+        if (now <= 0) {
+            now = new Date().getTime();
         }
-
         expired = now + EXPIRES;
         retries = -1;
-    }
-    protected DepartureShip(int prior, Delegate delegate) {
-        this(prior, delegate, new Date().getTime());
-    }
-
-    public Delegate getDelegate() {
-        return delegateRef == null ? null : delegateRef.get();
     }
 
     @Override

@@ -70,10 +70,9 @@ public interface Docker extends Processor {
      *
      * @param payload     - request data
      * @param priority    - smaller is faster (-1 is the most fast)
-     * @param delegate    - callback handler for the departure ship
      * @return departure ship containing payload
      */
-    Departure pack(byte[] payload, int priority, Ship.Delegate delegate);
+    Departure pack(byte[] payload, int priority);
 
     /**
      *  Send 'PING' for keeping connection alive
@@ -128,7 +127,41 @@ public interface Docker extends Processor {
      *  Docker Delegate
      *  ~~~~~~~~~~~~~~~
      */
-    interface Delegate extends Ship.Delegate {
+    interface Delegate {
+
+        /**
+         *  Callback when new package received
+         *
+         * @param arrival     - income data package container
+         * @param source      - remote address
+         * @param destination - local address
+         * @param connection  - current connection
+         */
+        void onDockerReceived(Arrival arrival,
+                              SocketAddress source, SocketAddress destination, Connection connection);
+
+        /**
+         *  Callback when package sent
+         *
+         * @param departure   - outgo data package container
+         * @param source      - local address
+         * @param destination - remote address
+         * @param connection  - current connection
+         */
+        void onDockerSent(Departure departure,
+                          SocketAddress source, SocketAddress destination, Connection connection);
+
+        /**
+         *  Callback when package sent failed
+         *
+         * @param error       - error message
+         * @param departure   - outgo data package container
+         * @param source      - local address
+         * @param destination - remote address
+         * @param connection  - current connection
+         */
+        void onDockerError(Throwable error, Departure departure,
+                           SocketAddress source, SocketAddress destination, Connection connection);
 
         /**
          *  Callback when connection status changed
@@ -140,8 +173,8 @@ public interface Docker extends Processor {
          * @param conn        - current connection
          * @param docker      - current docker
          */
-        void onStatusChanged(Status previous, Status current,
-                             SocketAddress remote, SocketAddress local, Connection conn,
-                             Docker docker);
+        void onDockerStatusChanged(Status previous, Status current,
+                                   SocketAddress remote, SocketAddress local, Connection conn,
+                                   Docker docker);
     }
 }

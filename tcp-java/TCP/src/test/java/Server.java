@@ -49,14 +49,14 @@ public class Server implements Docker.Delegate {
     //
 
     @Override
-    public void onStatusChanged(Docker.Status previous, Docker.Status current,
-                                SocketAddress remote, SocketAddress local, Connection conn,
-                                Docker docker) {
+    public void onDockerStatusChanged(Docker.Status previous, Docker.Status current,
+                                      SocketAddress remote, SocketAddress local, Connection conn,
+                                      Docker docker) {
         TCPGate.info("!!! connection (" + remote + ", " + local + ") state changed: " + previous + " -> " + current);
     }
 
     @Override
-    public void onReceived(Arrival income, SocketAddress source, SocketAddress destination, Connection connection) {
+    public void onDockerReceived(Arrival income, SocketAddress source, SocketAddress destination, Connection connection) {
         assert income instanceof PlainArrival : "arrival ship error: " + income;
         byte[] data = ((PlainArrival) income).getPackage();
         String text = new String(data, StandardCharsets.UTF_8);
@@ -69,13 +69,13 @@ public class Server implements Docker.Delegate {
     static int counter = 0;
 
     @Override
-    public void onSent(Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
+    public void onDockerSent(Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         // plain departure has no response,
         // we would not know whether the task is success here
     }
 
     @Override
-    public void onError(Throwable error, Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
+    public void onDockerError(Throwable error, Departure outgo, SocketAddress source, SocketAddress destination, Connection connection) {
         TCPGate.error(error.getMessage());
     }
 

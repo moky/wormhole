@@ -100,13 +100,13 @@ public abstract class AutoGate<H extends Hub> extends StarGate implements Runnab
     }
 
     @Override
-    public void onStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
-        super.onStateChanged(previous, current, connection);
+    public void onConnectionStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
+        super.onConnectionStateChanged(previous, current, connection);
         info("connection state changed: " + previous + " -> " + current + ", " + connection);
     }
 
     @Override
-    public void onError(Throwable error, byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
+    public void onConnectionError(Throwable error, byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
         error("connection error: " + error + ", " + connection + " (" + source + ", " + destination + ")");
     }
 

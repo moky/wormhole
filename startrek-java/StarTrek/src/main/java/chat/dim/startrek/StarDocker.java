@@ -42,7 +42,6 @@ import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Docker;
-import chat.dim.port.Ship;
 import chat.dim.type.AddressPairObject;
 
 public abstract class StarDocker extends AddressPairObject implements Docker {
@@ -132,9 +131,9 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             return;
         }
         // 3. callback for processing income ship with completed data package
-        Ship.Delegate delegate = getDelegate();
+        Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onReceived(income, getRemoteAddress(), getLocalAddress(), getConnection());
+            delegate.onDockerReceived(income, getRemoteAddress(), getLocalAddress(), getConnection());
         }
     }
 
@@ -168,9 +167,9 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             return null;
         }
         // all fragments responded, task finished
-        Ship.Delegate delegate = getDelegate();
+        Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onSent(linked, getLocalAddress(), getRemoteAddress(), getConnection());
+            delegate.onDockerSent(linked, getLocalAddress(), getRemoteAddress(), getConnection());
         }
         return linked;
     }
@@ -242,7 +241,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
                 // callback for error
                 Delegate delegate = getDelegate();
                 if (delegate != null) {
-                    delegate.onError(error, outgo, getLocalAddress(), getRemoteAddress(), conn);
+                    delegate.onDockerError(error, outgo, getLocalAddress(), getRemoteAddress(), conn);
                 }
                 return true;
             } else {
@@ -299,7 +298,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         // 6. callback for error
         Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onError(error, outgo, getLocalAddress(), getRemoteAddress(), conn);
+            delegate.onDockerError(error, outgo, getLocalAddress(), getRemoteAddress(), conn);
         }
         return false;
     }

@@ -194,7 +194,7 @@ public abstract class BaseHub implements Hub {
                 // remove channel and callback with connection
                 Connection conn = getConnection(remote, local);
                 removeChannel(remote, local, sock);
-                delegate.onError(e, null, remote, local, conn);
+                delegate.onConnectionError(e, null, remote, local, conn);
             }
             return false;
         }
