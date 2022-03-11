@@ -143,11 +143,11 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     }
     protected void cleanupDockers(Set<Docker> dockers) {
         for (Docker worker : dockers) {
-            if (worker.isAlive()) {
+            if (worker.isOpen()) {
                 // clear expired tasks
                 worker.purge();
             } else {
-                // remove docker which connection lost
+                // remove docker when connection closed
                 removeDocker(worker.getRemoteAddress(), worker.getLocalAddress(), worker);
             }
         }
@@ -190,7 +190,12 @@ public abstract class StarGate implements Gate, Connection.Delegate {
                 SocketAddress remote = connection.getRemoteAddress();
                 SocketAddress local = connection.getLocalAddress();
                 Docker docker = getDocker(remote, local);
-                delegate.onDockerStatusChanged(s1, s2, docker);
+                // NOTICE: if the previous state is null, the docker maybe not
+                //         created yet, this situation means the docker status
+                //         not changed too, so no need to callback here.
+                if (docker != null) {
+                    delegate.onDockerStatusChanged(s1, s2, docker);
+                }
             }
         }
         // 2. heartbeat when connection expired

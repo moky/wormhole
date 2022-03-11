@@ -43,6 +43,7 @@ import chat.dim.skywalker.Processor;
  */
 public interface Docker extends Processor {
 
+    boolean isOpen();    // connection.isOpen()
     boolean isAlive();   // connection.isAlive()
     Status getStatus();  // connection.getState()
 

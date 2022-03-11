@@ -230,7 +230,7 @@ public abstract class BaseHub implements Hub {
     }
     protected void cleanupChannels(Set<Channel> channels) {
         for (Channel sock : channels) {
-            if (!sock.isAlive()) {
+            if (!sock.isOpen()) {
                 removeChannel(sock.getRemoteAddress(), sock.getLocalAddress(), sock);
             }
         }
@@ -250,7 +250,7 @@ public abstract class BaseHub implements Hub {
     }
     protected void cleanupConnections(Set<Connection> connections) {
         for (Connection conn : connections) {
-            if (!conn.isAlive()) {
+            if (!conn.isOpen()) {
                 removeConnection(conn.getRemoteAddress(), conn.getLocalAddress(), conn);
             }
         }

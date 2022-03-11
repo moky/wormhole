@@ -94,6 +94,12 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     }
 
     @Override
+    public boolean isOpen() {
+        Connection conn = getConnection();
+        return conn != null && conn.isOpen();
+    }
+
+    @Override
     public boolean isAlive() {
         Connection conn = getConnection();
         return conn != null && conn.isAlive();
