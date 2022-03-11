@@ -30,9 +30,7 @@
  */
 package chat.dim.udp;
 
-import java.io.IOException;
 import java.net.SocketAddress;
-import java.nio.channels.ByteChannel;
 import java.nio.channels.DatagramChannel;
 
 import chat.dim.net.SocketReader;
@@ -43,16 +41,6 @@ public class PacketChannel extends BaseChannel<DatagramChannel> {
 
     public PacketChannel(SocketAddress remote, SocketAddress local, DatagramChannel sock) {
         super(remote, local, sock);
-    }
-
-    @Override
-    public ByteChannel disconnect() throws IOException {
-        DatagramChannel sock = getSocketChannel();
-        if (sock != null) {
-            sock.disconnect();
-            refreshFlags();
-        }
-        return sock;
     }
 
     @Override

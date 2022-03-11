@@ -30,9 +30,7 @@
  */
 package chat.dim.tcp;
 
-import java.io.IOException;
 import java.net.SocketAddress;
-import java.nio.channels.ByteChannel;
 import java.nio.channels.SocketChannel;
 
 import chat.dim.net.SocketReader;
@@ -43,13 +41,6 @@ public class StreamChannel extends BaseChannel<SocketChannel> {
 
     public StreamChannel(SocketAddress remote, SocketAddress local, SocketChannel sock) {
         super(remote, local, sock);
-    }
-
-    @Override
-    public ByteChannel disconnect() throws IOException {
-        SocketChannel channel = getSocketChannel();
-        close();
-        return channel;
     }
 
     @Override

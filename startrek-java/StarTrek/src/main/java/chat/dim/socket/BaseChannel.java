@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.NetworkChannel;
 import java.nio.channels.SelectableChannel;
@@ -222,6 +223,17 @@ public abstract class BaseChannel<C extends SelectableChannel>
         opened = true;
         blocking = sock.isBlocking();
         return (NetworkChannel) sock;
+    }
+
+    @Override
+    public ByteChannel disconnect() throws IOException {
+        C sock = getSocketChannel();
+        if (sock instanceof DatagramChannel) {
+            return ((DatagramChannel) sock).disconnect();
+        } else {
+            removeSocketChannel();
+        }
+        return sock instanceof ByteChannel ? (ByteChannel) sock : null;
     }
 
     @Override
