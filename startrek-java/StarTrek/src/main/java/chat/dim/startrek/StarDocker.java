@@ -254,10 +254,6 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
                 // get fragments from outgo task
                 fragments = outgo.getFragments();
                 if (fragments.size() == 0) {
-                    Delegate delegate = getDelegate();
-                    if (delegate != null) {
-                        delegate.onDockerSent(outgo, this);
-                    }
                     // all fragments of this task have been sent already
                     // return true to process next one
                     return true;
@@ -284,10 +280,6 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
                 error = new SocketException("only " + index + "/" + fragments.size() + " fragments sent");
             } else {
                 // task done
-                Delegate delegate = getDelegate();
-                if (delegate != null) {
-                    delegate.onDockerSent(outgo, this);
-                }
                 return true;
             }
         } catch (Throwable e) {
