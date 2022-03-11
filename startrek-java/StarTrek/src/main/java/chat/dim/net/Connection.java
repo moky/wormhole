@@ -49,6 +49,13 @@ public interface Connection extends Ticker {
     SocketAddress getRemoteAddress();
 
     /**
+     *  Get state
+     *
+     * @return connection state
+     */
+    ConnectionState getState();
+
+    /**
      *  Send data
      *
      * @param data        - outgo data package
@@ -67,13 +74,6 @@ public interface Connection extends Ticker {
      *  Close the connection
      */
     void close();
-
-    /**
-     *  Get state
-     *
-     * @return connection state
-     */
-    ConnectionState getState();
 
     /**
      *  Connection Delegate

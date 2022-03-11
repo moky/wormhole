@@ -244,7 +244,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             } else if (outgo.isFailed(now)) {
                 // task timeout, return true to process next one
                 IOException error = new SocketException("Request timeout");
-                // callback for error
+                // callback for mission failed
                 Delegate delegate = getDelegate();
                 if (delegate != null) {
                     delegate.onDockerFailed(error, outgo, this);
@@ -254,6 +254,10 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
                 // get fragments from outgo task
                 fragments = outgo.getFragments();
                 if (fragments.size() == 0) {
+                    Delegate delegate = getDelegate();
+                    if (delegate != null) {
+                        delegate.onDockerSent(outgo, this);
+                    }
                     // all fragments of this task have been sent already
                     // return true to process next one
                     return true;
@@ -280,6 +284,10 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
                 error = new SocketException("only " + index + "/" + fragments.size() + " fragments sent");
             } else {
                 // task done
+                Delegate delegate = getDelegate();
+                if (delegate != null) {
+                    delegate.onDockerSent(outgo, this);
+                }
                 return true;
             }
         } catch (Throwable e) {
@@ -303,7 +311,8 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         // 6. callback for error
         Delegate delegate = getDelegate();
         if (delegate != null) {
-            delegate.onDockerFailed(error, outgo, this);
+            //delegate.onDockerFailed(error, outgo, this);
+            delegate.onDockerError(error, outgo, this);
         }
         return false;
     }

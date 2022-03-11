@@ -155,6 +155,15 @@ public interface Docker extends Processor {
         void onDockerFailed(Throwable error, Departure departure, Docker docker);
 
         /**
+         *  Callback when connection error
+         *
+         * @param error       - error message
+         * @param departure   - outgo data package container
+         * @param docker      - current docker
+         */
+        void onDockerError(Throwable error, Departure departure, Docker docker);
+
+        /**
          *  Callback when connection status changed
          *
          * @param previous    - old status

@@ -79,6 +79,11 @@ public class Server implements Docker.Delegate {
         TCPGate.error(error.getMessage());
     }
 
+    @Override
+    public void onDockerError(Throwable error, Departure departure, Docker docker) {
+        TCPGate.error(error.getMessage());
+    }
+
     static String HOST;
     static final int PORT = 9394;
 

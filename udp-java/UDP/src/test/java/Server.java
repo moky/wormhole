@@ -90,6 +90,11 @@ public class Server implements Docker.Delegate {
         UDPGate.error(error.getMessage());
     }
 
+    @Override
+    public void onDockerError(Throwable error, Departure departure, Docker docker) {
+        UDPGate.error(error.getMessage());
+    }
+
     static String HOST;
     static int PORT = 9394;
 

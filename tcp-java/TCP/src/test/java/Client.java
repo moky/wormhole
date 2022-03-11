@@ -75,6 +75,11 @@ public class Client implements Docker.Delegate {
         TCPGate.error(error.getMessage());
     }
 
+    @Override
+    public void onDockerError(Throwable error, Departure departure, Docker docker) {
+        TCPGate.error(error.getMessage());
+    }
+
     void test() {
 
         StringBuilder content = new StringBuilder();
