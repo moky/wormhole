@@ -35,6 +35,10 @@ public abstract class AutoGate<H extends Hub> extends StarGate implements Runnab
         hub = h;
     }
 
+    //
+    //  Threading
+    //
+
     public boolean isRunning() {
         return running;
     }
@@ -76,6 +80,66 @@ public abstract class AutoGate<H extends Hub> extends StarGate implements Runnab
         }
     }
 
+    //
+    //  Docker
+    //
+
+    public Docker getDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
+        Docker docker = getDocker(remote, local);
+        if (docker == null) {
+            Connection conn = getHub().connect(remote, local);
+            if (conn != null) {
+                docker = createDocker(conn, data);
+                assert docker != null : "failed to create docker: " + remote + ", " + local;
+                setDocker(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
+            }
+        }
+        return docker;
+    }
+
+    @Override
+    public Docker getDocker(SocketAddress remote, SocketAddress local) {
+        return super.getDocker(remote, null);
+    }
+
+    @Override
+    public void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
+        super.setDocker(remote, null, docker);
+    }
+
+    @Override
+    protected void removeDocker(SocketAddress remote, SocketAddress local, Docker docker) {
+        super.removeDocker(remote, null, docker);
+    }
+
+    @Override
+    protected void heartbeat(Connection connection) {
+        // let the client to do the job
+        if (connection instanceof ActiveConnection) {
+            super.heartbeat(connection);
+        }
+    }
+
+    //
+    //  Connection Delegate
+    //
+
+    @Override
+    public void onConnectionStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
+        super.onConnectionStateChanged(previous, current, connection);
+        info("connection state changed: " + previous + " -> " + current + ", " + connection);
+    }
+
+    @Override
+    public void onConnectionFailed(Throwable error, byte[] data, Connection connection) {
+        error("connection failed: " + error + ", " + connection);
+    }
+
+    @Override
+    public void onConnectionError(Throwable error, byte[] data, Connection connection) {
+        error("connection error: " + error + ", " + connection);
+    }
+
     @Override
     protected List<byte[]> cacheAdvanceParty(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
         // TODO: cache the advance party before decide which docker to use
@@ -89,38 +153,6 @@ public abstract class AutoGate<H extends Hub> extends StarGate implements Runnab
     @Override
     protected void clearAdvanceParty(SocketAddress source, SocketAddress destination, Connection connection) {
         // TODO: remove advance party for this connection
-    }
-
-    @Override
-    protected void heartbeat(Connection connection) {
-        // let the client to do the job
-        if (connection instanceof ActiveConnection) {
-            super.heartbeat(connection);
-        }
-    }
-
-    @Override
-    public void onConnectionStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
-        super.onConnectionStateChanged(previous, current, connection);
-        info("connection state changed: " + previous + " -> " + current + ", " + connection);
-    }
-
-    @Override
-    public void onConnectionError(Throwable error, byte[] data, Connection connection) {
-        error("connection error: " + error + ", " + connection);
-    }
-
-    public Docker getDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
-        Docker docker = getDocker(remote, local);
-        if (docker == null) {
-            Connection conn = getHub().connect(remote, local);
-            if (conn != null) {
-                docker = createDocker(conn, data);
-                assert docker != null : "failed to create docker: " + remote + ", " + local;
-                setDocker(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
-            }
-        }
-        return docker;
     }
 
     public static void info(String msg) {

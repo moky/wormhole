@@ -41,21 +41,6 @@ public class UDPGate<H extends Hub> extends AutoGate<H> {
     //
 
     @Override
-    public Docker getDocker(SocketAddress remote, SocketAddress local) {
-        return super.getDocker(remote, null);
-    }
-
-    @Override
-    protected void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
-        super.setDocker(remote, null, docker);
-    }
-
-    @Override
-    protected void removeDocker(SocketAddress remote, SocketAddress local, Docker docker) {
-        super.removeDocker(remote, null, docker);
-    }
-
-    @Override
     protected Docker createDocker(Connection conn, List<byte[]> data) {
         // TODO: check data format before creating docker
         PackageDocker docker = new PackageDocker(conn);

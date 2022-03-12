@@ -83,4 +83,13 @@ public interface Gate extends Processor {
      * @return null on failed
      */
     Docker getDocker(SocketAddress remote, SocketAddress local);
+
+    /**
+     *  Set docker with direction
+     *
+     * @param remote - remote address
+     * @param local  - local address
+     * @param docker - docker
+     */
+    void setDocker(SocketAddress remote, SocketAddress local, Docker docker);
 }

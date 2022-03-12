@@ -103,9 +103,12 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     public Docker getDocker(SocketAddress remote, SocketAddress local) {
         return dockerPool.get(remote, local);
     }
-    protected void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
+
+    @Override
+    public void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
         dockerPool.set(remote, local, docker);
     }
+
     protected void removeDocker(SocketAddress remote, SocketAddress local, Docker docker) {
         dockerPool.remove(remote, local, docker);
     }
