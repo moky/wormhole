@@ -47,7 +47,7 @@ import chat.dim.type.AddressPairObject;
 public abstract class StarDocker extends AddressPairObject implements Docker {
 
     private final WeakReference<Connection> connectionRef;
-    private final WeakReference<Delegate> delegateRef;
+    private WeakReference<Delegate> delegateRef;
 
     private Dock dock;
 
@@ -55,10 +55,10 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     private Departure lastOutgo;
     private List<byte[]> lastFragments;
 
-    protected StarDocker(Connection conn, Delegate delegate) {
+    protected StarDocker(Connection conn) {
         super(conn.getRemoteAddress(), conn.getLocalAddress());
         connectionRef = new WeakReference<>(conn);
-        delegateRef = new WeakReference<>(delegate);
+        delegateRef = new WeakReference<>(null);
         dock = createDock();
         lastOutgo = null;
         lastFragments = new ArrayList<>();
@@ -76,6 +76,9 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     }
 
     // delegate for handling docker events
+    public void setDelegate(Delegate delegate) {
+        delegateRef = new WeakReference<>(delegate);
+    }
     protected Delegate getDelegate() {
         return delegateRef.get();
     }

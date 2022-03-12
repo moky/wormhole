@@ -58,6 +58,8 @@ public class UDPGate<H extends Hub> extends AutoGate<H> {
     @Override
     protected Docker createDocker(Connection conn, List<byte[]> data) {
         // TODO: check data format before creating docker
-        return new PackageDocker(conn, getDelegate());
+        PackageDocker docker = new PackageDocker(conn);
+        docker.setDelegate(getDelegate());
+        return docker;
     }
 }

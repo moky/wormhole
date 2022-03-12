@@ -44,8 +44,8 @@ public class ServerHub extends PacketHub {
 
     @Override
     protected Connection createConnection(SocketAddress remote, SocketAddress local, Channel sock) {
-        Connection.Delegate gate = getDelegate();
-        BaseConnection conn = new BaseConnection(remote, local, sock, gate);
+        BaseConnection conn = new BaseConnection(remote, local, sock);
+        conn.setDelegate(getDelegate());  // gate
         conn.start();  // start FSM
         return conn;
     }

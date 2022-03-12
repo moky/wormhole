@@ -39,16 +39,16 @@ import chat.dim.net.Hub;
 /**
  * Active connection for client
  */
-public class ActiveConnection extends BaseConnection {
+public final class ActiveConnection extends BaseConnection {
 
     private final WeakReference<Hub> hubRef;
 
-    public ActiveConnection(SocketAddress remote, SocketAddress local, Channel sock, Delegate delegate, Hub hub) {
-        super(remote, local, sock, delegate);
+    public ActiveConnection(SocketAddress remote, SocketAddress local, Channel sock, Hub hub) {
+        super(remote, local, sock);
         hubRef = new WeakReference<>(hub);
     }
 
-    public Hub getHub() {
+    private Hub getHub() {
         return hubRef.get();
     }
 

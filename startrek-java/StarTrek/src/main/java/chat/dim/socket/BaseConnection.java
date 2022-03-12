@@ -49,18 +49,18 @@ public class BaseConnection extends AddressPairObject
     public static long EXPIRES = 16 * 1000;  // 16 seconds
 
     private WeakReference<Channel> channelRef;
-    private final WeakReference<Delegate> delegateRef;
+    private WeakReference<Delegate> delegateRef;
 
     private long lastSentTime;
     private long lastReceivedTime;
 
     private StateMachine fsm;
 
-    public BaseConnection(SocketAddress remote, SocketAddress local, Channel sock, Delegate delegate) {
+    public BaseConnection(SocketAddress remote, SocketAddress local, Channel sock) {
         super(remote, local);
 
         channelRef = new WeakReference<>(sock);
-        delegateRef = new WeakReference<>(delegate);
+        delegateRef = new WeakReference<>(null);
 
         // active times
         lastSentTime = 0;
@@ -78,6 +78,7 @@ public class BaseConnection extends AddressPairObject
         super.finalize();
     }
 
+    // connection state machine
     protected StateMachine getStateMachine() {
         return fsm;
     }
@@ -97,10 +98,14 @@ public class BaseConnection extends AddressPairObject
     }
 
     // delegate for handling connection events
+    public void setDelegate(Delegate delegate) {
+        delegateRef = new WeakReference<>(delegate);
+    }
     protected Delegate getDelegate() {
         return delegateRef.get();
     }
 
+    // socket channel
     protected Channel getChannel() {
         return channelRef.get();
     }

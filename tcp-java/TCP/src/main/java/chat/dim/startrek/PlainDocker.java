@@ -38,8 +38,8 @@ import chat.dim.port.Departure;
 
 public class PlainDocker extends StarDocker {
 
-    public PlainDocker(Connection conn, Delegate delegate) {
-        super(conn, delegate);
+    public PlainDocker(Connection conn) {
+        super(conn);
     }
 
     protected Arrival createArrival(byte[] data) {

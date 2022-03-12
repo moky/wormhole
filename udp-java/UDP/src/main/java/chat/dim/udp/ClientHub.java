@@ -45,7 +45,8 @@ public class ClientHub extends PacketHub {
 
     @Override
     protected Connection createConnection(SocketAddress remote, SocketAddress local, Channel sock) {
-        BaseConnection conn = new ActiveConnection(remote, null, sock, getDelegate(), this);
+        BaseConnection conn = new ActiveConnection(remote, null, sock, this);
+        conn.setDelegate(getDelegate());  // gate
         conn.start();  // start FSM
         return conn;
     }

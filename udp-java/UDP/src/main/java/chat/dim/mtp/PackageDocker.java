@@ -42,8 +42,8 @@ import chat.dim.type.Data;
 
 public class PackageDocker extends StarDocker {
 
-    public PackageDocker(Connection conn, Delegate delegate) {
-        super(conn, delegate);
+    public PackageDocker(Connection conn) {
+        super(conn);
     }
 
     protected Package parsePackage(byte[] data) {
