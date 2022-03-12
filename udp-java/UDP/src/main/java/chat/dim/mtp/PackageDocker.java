@@ -199,20 +199,15 @@ public class PackageDocker extends StarDocker {
     public boolean send(Package pkg, int priority) {
         return send(createDeparture(pkg, priority));
     }
+
     public boolean send(Departure ship) {
         return appendDeparture(ship);
     }
 
     @Override
-    public Departure pack(byte[] payload, int priority) {
-        Package pkg = Package.create(DataType.MESSAGE, null, 1, 0, -1, new Data(payload));
-        return createDeparture(pkg, priority);
-    }
-
-    @Override
     public void heartbeat() {
         Package pkg = Package.create(DataType.COMMAND, null, 1, 0, -1, new Data(PING));
-        send(createDeparture(pkg, Departure.Priority.SLOWER.value));
+        send(pkg, Departure.Priority.SLOWER.value);
     }
 
     protected static final byte[] PING = {'P', 'I', 'N', 'G'};

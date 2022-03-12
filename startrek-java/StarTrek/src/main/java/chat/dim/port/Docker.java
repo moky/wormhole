@@ -66,15 +66,6 @@ public interface Docker extends Processor {
     void processReceived(byte[] data);
 
     /**
-     *  Pack the payload to an outgo Ship
-     *
-     * @param payload     - request data
-     * @param priority    - smaller is faster (-1 is the most fast)
-     * @return departure ship containing payload
-     */
-    Departure pack(byte[] payload, int priority);
-
-    /**
      *  Send 'PING' for keeping connection alive
      */
     void heartbeat();

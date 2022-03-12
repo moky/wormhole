@@ -37,6 +37,7 @@ import java.util.Set;
 
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
+import chat.dim.port.Departure;
 import chat.dim.port.Docker;
 import chat.dim.port.Gate;
 import chat.dim.type.AddressPairMap;
@@ -80,6 +81,15 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     // delegate for handling docker events
     protected Docker.Delegate getDelegate() {
         return delegateRef.get();
+    }
+
+    @Override
+    public boolean send(Departure outgo, SocketAddress remote, SocketAddress local) {
+        Docker docker = getDocker(remote, local);
+        if (docker == null || !docker.isOpen()) {
+            return false;
+        }
+        return docker.appendDeparture(outgo);
     }
 
     //

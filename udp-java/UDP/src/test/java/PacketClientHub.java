@@ -1,7 +1,6 @@
 
 import java.net.SocketAddress;
 
-import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.udp.ClientHub;
 
@@ -9,15 +8,6 @@ public class PacketClientHub extends ClientHub {
 
     public PacketClientHub(Connection.Delegate delegate) {
         super(delegate);
-    }
-
-    @Override
-    protected Channel getChannel(SocketAddress remote, SocketAddress local) {
-        Channel channel = super.getChannel(remote, local);
-        if (channel == null) {
-            channel = super.getChannel(null, local);
-        }
-        return channel;
     }
 
     @Override

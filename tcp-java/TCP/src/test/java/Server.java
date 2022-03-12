@@ -40,7 +40,8 @@ public class Server implements Docker.Delegate {
     }
 
     private void send(byte[] data, SocketAddress destination) {
-        getGate().send(data, localAddress, destination);
+        boolean ok = getGate().send(data, localAddress, destination);
+        assert ok;
     }
 
     //
