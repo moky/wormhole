@@ -17,18 +17,18 @@ public class UDPGate<H extends Hub> extends AutoGate<H> {
         super(delegate, isDaemon);
     }
 
-    public boolean sendCommand(byte[] body, SocketAddress source, SocketAddress destination) {
+    public boolean sendCommand(byte[] body, SocketAddress remote, SocketAddress local) {
         Package pack = Package.create(DataType.COMMAND, null, 1, 0, -1, new Data(body));
-        return send(pack/*, Departure.Priority.SLOWER.value*/, source, destination);
+        return send(pack, remote, local);
     }
 
-    public boolean sendMessage(byte[] body, SocketAddress source, SocketAddress destination) {
+    public boolean sendMessage(byte[] body, SocketAddress remote, SocketAddress local) {
         Package pack = Package.create(DataType.MESSAGE, null, 1, 0, -1, new Data(body));
-        return send(pack, source, destination);
+        return send(pack, remote, local);
     }
 
-    public boolean send(Package pack, SocketAddress source, SocketAddress destination) {
-        Docker worker = getDocker(destination, source, null);
+    public boolean send(Package pack, SocketAddress remote, SocketAddress local) {
+        Docker worker = getDocker(remote, local, null);
         if (worker instanceof PackageDocker) {
             return ((PackageDocker) worker).send(pack);
         } else {

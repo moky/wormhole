@@ -230,7 +230,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         }
 
         // save advance party from this source address
-        List<byte[]> advanceParty = cacheAdvanceParty(data, remote, local, connection);
+        List<byte[]> advanceParty = cacheAdvanceParty(data, connection);
         assert advanceParty != null && advanceParty.size() > 0 : "advance party error";
 
         // docker not exists, check the data to decide which docker should be created
@@ -243,13 +243,13 @@ public abstract class StarGate implements Gate, Connection.Delegate {
                 worker.processReceived(part);
             }
             // remove advance party
-            clearAdvanceParty(remote, local, connection);
+            clearAdvanceParty(connection);
         }
     }
 
     // cache the advance party before decide which docker to use
-    protected abstract List<byte[]> cacheAdvanceParty(byte[] data, SocketAddress source, SocketAddress destination, Connection connection);
-    protected abstract void clearAdvanceParty(SocketAddress source, SocketAddress destination, Connection connection);
+    protected abstract List<byte[]> cacheAdvanceParty(byte[] data, Connection connection);
+    protected abstract void clearAdvanceParty(Connection connection);
 
     @Override
     public void onConnectionSent(int sent, byte[] data, Connection connection) {

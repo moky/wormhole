@@ -141,7 +141,7 @@ public abstract class AutoGate<H extends Hub> extends StarGate implements Runnab
     }
 
     @Override
-    protected List<byte[]> cacheAdvanceParty(byte[] data, SocketAddress source, SocketAddress destination, Connection connection) {
+    protected List<byte[]> cacheAdvanceParty(byte[] data, Connection connection) {
         // TODO: cache the advance party before decide which docker to use
         List<byte[]> array = new ArrayList<>();
         if (data != null) {
@@ -151,7 +151,7 @@ public abstract class AutoGate<H extends Hub> extends StarGate implements Runnab
     }
 
     @Override
-    protected void clearAdvanceParty(SocketAddress source, SocketAddress destination, Connection connection) {
+    protected void clearAdvanceParty(Connection connection) {
         // TODO: remove advance party for this connection
     }
 
