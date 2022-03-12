@@ -240,10 +240,10 @@ public class BaseConnection extends AddressPairObject
     }
 
     @Override
-    public void tick() {
+    public void tick(long now, long delta) {
         StateMachine machine = getStateMachine();
         if (machine != null) {
-            machine.tick();
+            machine.tick(now, delta);
         }
     }
 

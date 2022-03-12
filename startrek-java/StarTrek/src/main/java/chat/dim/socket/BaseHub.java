@@ -236,17 +236,21 @@ public abstract class BaseHub implements Hub {
         }
     }
 
+    private long last = System.currentTimeMillis();
+
     protected void driveConnections(Set<Connection> connections) {
+        long now = System.currentTimeMillis();
         for (Connection conn : connections) {
             try {
                 // drive connection to go on
-                conn.tick();
+                conn.tick(now, now - last);
             } catch (Throwable e) {
                 e.printStackTrace();
             }
             // NOTICE: let the delegate to decide whether close an error connection
             //         or just remove it.
         }
+        last = now;
     }
     protected void cleanupConnections(Set<Connection> connections) {
         for (Connection conn : connections) {
