@@ -29,69 +29,37 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
-from enum import IntEnum
 from typing import Optional
 
 from ..types import Address
 from ..fsm import Processor
-from ..net import Connection, ConnectionState
 
-from .ship import ShipDelegate
-
-
-class Status(IntEnum):
-    """ Gate Status """
-    ERROR = -1
-    INIT = 0
-    PREPARING = 1
-    READY = 2
+from .ship import Departure
+from .docker import Docker
 
 
-READY_STATUS = [
-    ConnectionState.READY,
-    ConnectionState.EXPIRED,
-    ConnectionState.MAINTAINING
-]
-
-
-def status_from_state(state: ConnectionState) -> Status:
-    if state is None:
-        return Status.ERROR
-    if state in READY_STATUS:
-        return Status.READY
-    if state == ConnectionState.PREPARING:
-        return Status.PREPARING
-    if state == ConnectionState.ERROR:
-        return Status.ERROR
-    return Status.INIT
-
-
-class GateDelegate(ShipDelegate, ABC):
-
-    @abstractmethod
-    def gate_status_changed(self, previous: Status, current: Status, remote: Address, local: Optional[Address], gate):
-        """
-        Callback when connection status changed
-
-        :param previous: old status
-        :param current:  new status
-        :param remote:   remote address
-        :param local:    local address
-        :param gate:     current gate
-        """
-        raise NotImplemented
-
-
-class Gate(Processor):
+class Gate(Processor, ABC):
     """
         Star Gate
         ~~~~~~~~~
     """
 
     @abstractmethod
-    def get_connection(self, remote: Address, local: Optional[Address]) -> Optional[Connection]:
+    def send_ship(self, ship: Departure, remote: Address, local: Optional[Address]) -> bool:
         """
-        Get connection with direction
+        Send outgo ship (carrying data package) by docker
+
+        :param ship:   departure ship
+        :param remote: remote address
+        :param local:  local address
+        :return: False on error
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def get_docker(self, remote: Address, local: Optional[Address]) -> Optional[Docker]:
+        """
+        Get docker with direction
 
         :param remote: remote address
         :param local:  local address
@@ -100,17 +68,12 @@ class Gate(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def gate_status(self, remote: Address, local: Optional[Address]) -> Status:
+    def set_docker(self, remote: Address, local: Optional[Address], docker: Optional[Docker]):
         """
-        Get gate status with direction
+        Set docker with direction
 
         :param remote: remote address
         :param local:  local address
-        :return gate status
+        :param docker: connection docker
         """
-        raise NotImplemented
-
-    @property
-    def delegate(self) -> Optional[GateDelegate]:
-        """ Get delegate for handling events """
         raise NotImplemented

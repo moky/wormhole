@@ -30,11 +30,12 @@
 
 from .net import Hub, Channel, Connection, ConnectionDelegate
 from .net import ConnectionState, ConnectionStateMachine
+
 from .socket import BaseChannel, ChannelReader, ChannelWriter
 from .socket import BaseHub, BaseConnection, ActiveConnection
 
-from .port import Ship, ShipDelegate, Arrival, Departure, DeparturePriority
-from .port import Docker, Gate, GateStatus, GateDelegate
+from .port import Ship, Arrival, Departure, DeparturePriority
+from .port import Docker, DockerStatus, DockerDelegate, Gate
 
 from .arrival import ArrivalShip, ArrivalHall
 from .departure import DepartureShip, DepartureHall
@@ -50,11 +51,12 @@ __all__ = [
 
     'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
     'ConnectionState', 'ConnectionStateMachine',
+
     'BaseChannel', 'ChannelReader', 'ChannelWriter',
     'BaseHub', 'BaseConnection', 'ActiveConnection',
 
-    'Ship', 'ShipDelegate', 'Arrival', 'Departure', 'DeparturePriority',
-    'Docker', 'Gate', 'GateStatus', 'GateDelegate',
+    'Ship', 'Arrival', 'Departure', 'DeparturePriority',
+    'Docker', 'DockerStatus', 'DockerDelegate', 'Gate',
 
     'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
     'Dock', 'LockedDock',

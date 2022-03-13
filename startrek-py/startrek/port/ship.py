@@ -30,21 +30,18 @@
 
 from abc import ABC, abstractmethod
 from enum import IntEnum
-from typing import List, Optional
-
-from ..types import Address
-from ..net import Connection
+from typing import List
 
 
 class Ship(ABC):
 
     @property
-    def sn(self):
+    def sn(self):  # -> object:
         """ Get ID for this ship """
         raise NotImplemented
 
     @abstractmethod
-    def is_failed(self, now: int) -> bool:
+    def is_failed(self, now: float) -> bool:
         """
         Check whether task failed
 
@@ -54,7 +51,7 @@ class Ship(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def update(self, now: int) -> bool:
+    def update(self, now: float) -> bool:
         """
         Update expired time
 
@@ -91,7 +88,7 @@ class Departure(Ship):
         raise NotImplemented
 
     @abstractmethod
-    def is_timeout(self, now: int) -> bool:
+    def is_timeout(self, now: float) -> bool:
         """
         Check whether task needs retry
 
@@ -127,47 +124,3 @@ class Priority(IntEnum):
     URGENT = -1
     NORMAL = 0
     SLOWER = 1
-
-
-class ShipDelegate(ABC):
-    """ Ship Delegate """
-
-    @abstractmethod
-    def gate_received(self, ship: Arrival,
-                      source: Address, destination: Optional[Address], connection: Connection):
-        """
-        Callback when new package received
-
-        :param ship:        income data package container
-        :param source:      remote address
-        :param destination: local address
-        :param connection:  current connection
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def gate_sent(self, ship: Departure,
-                  source: Optional[Address], destination: Address, connection: Connection):
-        """
-        Callback when package sent
-
-        :param ship:        outgo data package container
-        :param source:      local address
-        :param destination: remote address
-        :param connection:  current connection
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def gate_error(self, error: IOError, ship: Departure,
-                   source: Optional[Address], destination: Address, connection: Connection):
-        """
-        Callback when package sent
-
-        :param error:       error message
-        :param ship:        outgo data package container
-        :param source:      local address
-        :param destination: remote address
-        :param connection:  current connection
-        """
-        raise NotImplemented

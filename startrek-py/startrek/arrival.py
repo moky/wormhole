@@ -41,18 +41,19 @@ class ArrivalShip(Arrival, ABC):
     # Arrival task will be expired after 10 minutes if still not completed
     EXPIRES = 600  # seconds
 
-    def __init__(self, now: int = 0):
+    def __init__(self, now: float = 0):
         super().__init__()
+        # last received time (timestamp in seconds)
         if now <= 0:
-            now = int(time.time())
+            now = time.time()
         self.__expired = now + self.EXPIRES
 
     # Override
-    def is_failed(self, now: int) -> bool:
+    def is_failed(self, now: float) -> bool:
         return self.__expired < now
 
     # Override
-    def update(self, now: int) -> bool:
+    def update(self, now: float) -> bool:
         self.__expired = now + self.EXPIRES
         return True
 
@@ -64,7 +65,7 @@ class ArrivalHall:
         super().__init__()
         self.__arrivals: Set[Arrival] = set()
         self.__map = weakref.WeakValueDictionary()  # sn => Arrival
-        self.__finished_times: Dict[Any, int] = {}  # sn => timestamp
+        self.__finished_times: Dict[Any, float] = {}  # sn => timestamp
 
     def assemble_arrival(self, ship: Arrival) -> Optional[Arrival]:
         """
@@ -102,14 +103,14 @@ class ArrivalHall:
             # all fragments received, remove this task
             self.__arrivals.discard(task)
             self.__map.pop(sn, None)
-            self.__finished_times[sn] = int(time.time())
+            self.__finished_times[sn] = time.time()
             return completed
         # not completed yet, waiting for more fragments
 
     def purge(self):
         """ Clear all expired tasks """
         failed_tasks: Set[Arrival] = set()
-        now = int(time.time())
+        now = time.time()
         # 1. seeking expired tasks
         arrivals = set(self.__arrivals)
         for ship in arrivals:

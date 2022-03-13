@@ -158,7 +158,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     # Override
     def received(self, data: bytes):
-        self.__last_received_time = int(time.time())
+        self.__last_received_time = time.time()
         delegate = self.delegate
         if delegate is not None:
             delegate.connection_received(data=data, connection=self)
@@ -170,7 +170,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             return -1
         sent = channel.send(data=data, target=target)
         if sent > 0:
-            self.__last_sent_time = int(time.time())
+            self.__last_sent_time = time.time()
         return sent
 
     # Override
@@ -216,23 +216,23 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     #
 
     @property  # Override
-    def last_sent_time(self) -> int:
+    def last_sent_time(self) -> float:
         return self.__last_sent_time
 
     @property  # Override
-    def last_received_time(self) -> int:
+    def last_received_time(self) -> float:
         return self.__last_received_time
 
     # Override
-    def is_sent_recently(self, now: int) -> bool:
+    def is_sent_recently(self, now: float) -> bool:
         return now < self.__last_sent_time + self.EXPIRES
 
     # Override
-    def is_received_recently(self, now: int) -> bool:
+    def is_received_recently(self, now: float) -> bool:
         return now < self.__last_received_time + self.EXPIRES
 
     # Override
-    def is_long_time_not_received(self, now: int) -> bool:
+    def is_long_time_not_received(self, now: float) -> bool:
         return now > self.__last_received_time + (self.EXPIRES << 3)
 
     #
@@ -249,7 +249,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         if current == ConnectionState.READY:
             if state != ConnectionState.MAINTAINING:
                 # change state to 'connected', reset times to just expired
-                timestamp = int(time.time()) - self.EXPIRES - 1
+                timestamp = time.time() - self.EXPIRES - 1
                 self.__last_sent_time = timestamp
                 self.__last_received_time = timestamp
         # callback

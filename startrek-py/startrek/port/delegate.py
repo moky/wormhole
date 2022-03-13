@@ -2,12 +2,12 @@
 #
 #   Star Trek: Interstellar Transport
 #
-#                                Written in 2021 by Moky <albert.moky@gmail.com>
+#                                Written in 2022 by Moky <albert.moky@gmail.com>
 #
 # ==============================================================================
 # MIT License
 #
-# Copyright (c) 2021 Albert Moky
+# Copyright (c) 2022 Albert Moky
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,66 +28,63 @@
 # SOFTWARE.
 # ==============================================================================
 
-import socket
 from abc import ABC, abstractmethod
-from typing import Union
 
-from .connection import Connection
-from .state import ConnectionState
+from .ship import Arrival, Departure
+from .docker import Docker, Status
 
 
-class ConnectionDelegate(ABC):
-    """ Connection Delegate """
+class DockerDelegate(ABC):
 
     @abstractmethod
-    def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
+    def docker_received(self, ship: Arrival, docker: Docker):
         """
-        Called when connection status is changed
+        Callback when new package received
 
-        :param previous:   old state
-        :param current:    new state
-        :param connection: current connection
+        :param ship:    income data package container
+        :param docker:  connection docker
         """
         raise NotImplemented
 
     @abstractmethod
-    def connection_received(self, data: bytes, connection: Connection):
+    def docker_sent(self, ship: Departure, docker: Docker):
         """
-        Called when connection received data
+        Callback when package sent
 
-        :param data:        received data package
-        :param connection:  current connection
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def connection_sent(self, sent: int, data: bytes, connection: Connection):
-        """
-        Called after data sent via the connection
-
-        :param sent:        length of sent bytes
-        :param data:        sent data package
-        :param connection:  current connection
+        :param ship:    outgo data package container
+        :param docker:  connection connection
         """
         raise NotImplemented
 
     @abstractmethod
-    def connection_failed(self, error: Union[IOError, socket.error], data: bytes, connection: Connection):
+    def docker_failed(self, error: IOError, ship: Departure, docker: Docker):
         """
-        Called when failed to send data via the connection
+        Callback when failed to send package
 
-        :param error:       connection error
-        :param data:        outgoing data package
-        :param connection:  current connection
+        :param error:   error message
+        :param ship:    outgo data package container
+        :param docker:  connection docker
         """
         raise NotImplemented
 
     @abstractmethod
-    def connection_error(self, error: Union[IOError, socket.error], connection: Connection):
+    def docker_error(self, error: IOError, ship: Departure, docker: Docker):
         """
-        Called when connection (receiving) error
+        Callback when connection error
 
-        :param error:       connection error
-        :param connection:  current connection
+        :param error:   error message
+        :param ship:    outgo data package container
+        :param docker:  connection docker
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def docker_status_changed(self, previous: Status, current: Status, docker: Docker):
+        """
+        Callback when connection status changed
+
+        :param previous: old status
+        :param current:  new status
+        :param docker:   connection docker
         """
         raise NotImplemented

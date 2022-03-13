@@ -133,7 +133,7 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
         return self.__name
 
     @property
-    def enter_time(self) -> int:
+    def enter_time(self) -> float:
         return self.__time
 
     def __str__(self) -> str:
@@ -163,7 +163,7 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
             return True
 
     def on_enter(self, ctx: StateMachine):
-        self.__time = int(time.time())
+        self.__time = time.time()
 
     def on_exit(self, ctx: StateMachine):
         self.__time = 0
@@ -178,23 +178,23 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
 class TimedConnection(ABC):
 
     @property
-    def last_sent_time(self) -> int:
+    def last_sent_time(self) -> float:
         raise NotImplemented
 
     @property
-    def last_received_time(self) -> int:
+    def last_received_time(self) -> float:
         raise NotImplemented
 
     @abstractmethod
-    def is_sent_recently(self, now: int) -> bool:
+    def is_sent_recently(self, now: float) -> bool:
         raise NotImplemented
 
     @abstractmethod
-    def is_received_recently(self, now: int) -> bool:
+    def is_received_recently(self, now: float) -> bool:
         raise NotImplemented
 
     @abstractmethod
-    def is_long_time_not_received(self, now: int) -> bool:
+    def is_long_time_not_received(self, now: float) -> bool:
         raise NotImplemented
 
 
@@ -373,7 +373,7 @@ class ReadyExpiredTransition(StateTransition):
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
         # connection still alive, but
         # long time no response, change state to 'maintain_expired'
-        return not conn.is_received_recently(now=int(time.time()))
+        return not conn.is_received_recently(now=time.time())
 
 
 class ReadyErrorTransition(StateTransition):
@@ -395,7 +395,7 @@ class ExpiredMaintainingTransition(StateTransition):
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
         # connection still alive, and
         # sent recently, change state to 'maintaining'
-        return conn.is_sent_recently(now=int(time.time()))
+        return conn.is_sent_recently(now=time.time())
 
 
 class ExpiredErrorTransition(StateTransition):
@@ -408,7 +408,7 @@ class ExpiredErrorTransition(StateTransition):
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
         # connection lost, or
         # long time no response, change state to 'error'
-        return conn.is_long_time_not_received(now=int(time.time()))
+        return conn.is_long_time_not_received(now=time.time())
 
 
 class MaintainingReadyTransition(StateTransition):
@@ -421,7 +421,7 @@ class MaintainingReadyTransition(StateTransition):
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
         # connection still alive, and
         # received recently, change state to 'ready'
-        return conn.is_received_recently(now=int(time.time()))
+        return conn.is_received_recently(now=time.time())
 
 
 class MaintainingExpiredTransition(StateTransition):
@@ -434,7 +434,7 @@ class MaintainingExpiredTransition(StateTransition):
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
         # connection still alive, but
         # long time no sending, change state to 'maintain_expired'
-        return not conn.is_sent_recently(now=int(time.time()))
+        return not conn.is_sent_recently(now=time.time())
 
 
 class MaintainingErrorTransition(StateTransition):
@@ -448,7 +448,7 @@ class MaintainingErrorTransition(StateTransition):
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
         # connection lost, or
         # long time no response, change state to 'error'
-        return conn.is_long_time_not_received(now=int(time.time()))
+        return conn.is_long_time_not_received(now=time.time())
 
 
 class ErrorDefaultTransition(StateTransition):

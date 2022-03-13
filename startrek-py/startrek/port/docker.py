@@ -29,12 +29,41 @@
 # ==============================================================================
 
 from abc import abstractmethod
+from enum import IntEnum
 from typing import Optional
 
 from ..types import Address
 from ..fsm import Processor
+from ..net import ConnectionState
 
-from .ship import Departure, ShipDelegate
+from .ship import Departure
+
+
+class Status(IntEnum):
+    """ Docker Status """
+    ERROR = -1
+    INIT = 0
+    PREPARING = 1
+    READY = 2
+
+
+READY_STATUS = [
+    ConnectionState.READY,
+    ConnectionState.EXPIRED,
+    ConnectionState.MAINTAINING
+]
+
+
+def status_from_state(state: ConnectionState) -> Status:
+    if state is None:
+        return Status.ERROR
+    if state in READY_STATUS:
+        return Status.READY
+    if state == ConnectionState.PREPARING:
+        return Status.PREPARING
+    if state == ConnectionState.ERROR:
+        return Status.ERROR
+    return Status.INIT
 
 
 class Docker(Processor):
@@ -46,8 +75,18 @@ class Docker(Processor):
     """
 
     @property
+    def closed(self) -> bool:
+        """ Connection closed """
+        raise NotImplemented
+
+    @property
     def alive(self) -> bool:
         """ Connection alive """
+        raise NotImplemented
+
+    @property
+    def status(self) -> Status:
+        """ Connection state """
         raise NotImplemented
 
     @property
@@ -61,15 +100,6 @@ class Docker(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def process_received(self, data: bytes):
-        """
-        Called when received data
-
-        :param data: received data package
-        """
-        raise NotImplemented
-
-    @abstractmethod
     def append_departure(self, ship: Departure) -> bool:
         """
         Append outgo ship to a queue for sending out
@@ -80,14 +110,11 @@ class Docker(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def pack(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> Departure:
+    def process_received(self, data: bytes):
         """
-        Pack the payload to an outgo Ship
+        Called when received data
 
-        :param payload:  request data
-        :param priority: smaller is faster (-1 is the most fast)
-        :param delegate: callback handler for the departure ship
-        :return: Departure ship carrying package with payload
+        :param data: received data package
         """
         raise NotImplemented
 

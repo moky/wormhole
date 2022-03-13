@@ -92,7 +92,7 @@ class Dock:
         # remove package/fragment if matched (check page index for fragments too)
         return self.__departure_hall.check_response(ship=ship)
 
-    def next_departure(self, now: int) -> Optional[Departure]:
+    def next_departure(self, now: float) -> Optional[Departure]:
         """
         Get next new/timeout task
 
@@ -127,7 +127,7 @@ class LockedDock(Dock):
         with self.__lock:
             return super().check_response(ship=ship)
 
-    def next_departure(self, now: int) -> Optional[Departure]:
+    def next_departure(self, now: float) -> Optional[Departure]:
         with self.__lock:
             return super().next_departure(now=now)
 

@@ -33,8 +33,7 @@
     Architecture
     ~~~~~~~~~~~~
 
-                   Gate (Ship)       Gate (Ship)     Gate (Ship)
-                   Delegate          Delegate        Delegate
+                Docker Delegate   Docker Delegate   Docker Delegate
                        ^                 ^               ^
                        :                 :               :
           ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~
@@ -65,13 +64,13 @@
                     Remote Peer     Remote Peer     Remote Peer
 """
 
-from .ship import Ship, ShipDelegate, Arrival, Departure, Priority as DeparturePriority
-from .docker import Docker
-from .gate import Gate, Status as GateStatus, GateDelegate
+from .ship import Ship, Arrival, Departure, Priority as DeparturePriority
+from .docker import Docker, Status as DockerStatus
+from .delegate import DockerDelegate
+from .gate import Gate
 
 __all__ = [
-    'Ship', 'ShipDelegate',
-    'Arrival', 'Departure', 'DeparturePriority',
-    'Docker',
-    'Gate', 'GateStatus', 'GateDelegate',
+    'Ship', 'Arrival', 'Departure', 'DeparturePriority',
+    'Docker', 'DockerStatus', 'DockerDelegate',
+    'Gate',
 ]

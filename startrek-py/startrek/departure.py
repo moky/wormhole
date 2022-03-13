@@ -33,7 +33,7 @@ import weakref
 from abc import ABC
 from typing import List, Dict, Set, Any, Optional
 
-from .port import Arrival, Departure, ShipDelegate
+from .port import Arrival, Departure
 
 
 class DepartureShip(Departure, ABC):
@@ -44,24 +44,16 @@ class DepartureShip(Departure, ABC):
     # Departure task will be retried 2 times if timeout
     MAX_RETRIES = 2
 
-    def __init__(self, priority: int = 0, delegate: Optional[ShipDelegate] = None, now: int = 0):
+    def __init__(self, priority: int = 0, now: float = 0):
         super().__init__()
         # ship priority
         self.__priority = priority
-        # specific delegate for this ship
-        self.__delegate = None if delegate is None else weakref.ref(delegate)
         # last tried time (timestamp in seconds)
         if now <= 0:
-            now = int(time.time())
+            now = time.time()
         self.__expired = now + self.EXPIRES
         # totally 3 times to be sent at the most
         self.__retries = -1
-
-    @property
-    def delegate(self) -> Optional[ShipDelegate]:
-        ref = self.__delegate
-        if ref is not None:
-            return ref()
 
     @property
     def priority(self) -> int:
@@ -72,17 +64,17 @@ class DepartureShip(Departure, ABC):
         return self.__retries
 
     # Override
-    def is_timeout(self, now: int) -> bool:
+    def is_timeout(self, now: float) -> bool:
         return self.__retries < self.MAX_RETRIES and self.__expired < now
 
     # Override
-    def is_failed(self, now: int) -> bool:
+    def is_failed(self, now: float) -> bool:
         extra = self.EXPIRES * (self.MAX_RETRIES - self.__retries)
         expired = self.__expired + extra
         return expired < now
 
     # Override
-    def update(self, now: int) -> bool:
+    def update(self, now: float) -> bool:
         if self.__retries < self.MAX_RETRIES:
             # update retried time
             self.__expired = now + self.EXPIRES
@@ -100,7 +92,7 @@ class DepartureHall:
         self.__priorities: List[int] = []
         self.__fleets: Dict[int, List[Departure]] = {}  # priority => List[DepartureShip]
         self.__map = weakref.WeakValueDictionary()  # sn => Departure
-        self.__finished_times: Dict[Any, int] = {}  # sn => timestamp
+        self.__finished_times: Dict[Any, float] = {}  # sn => timestamp
 
     def append_departure(self, ship: Departure) -> bool:
         """
@@ -169,7 +161,7 @@ class DepartureHall:
             # remove it and clear mapping when SN exists
             self.__remove(ship=outgo, sn=sn)
             # mark finished time
-            self.__finished_times[sn] = int(time.time())
+            self.__finished_times[sn] = time.time()
             return outgo
 
     def __remove(self, ship: Departure, sn):
@@ -183,7 +175,7 @@ class DepartureHall:
         # remove mapping by SN
         self.__map.pop(sn, None)
 
-    def next_departure(self, now: int) -> Optional[Departure]:
+    def next_departure(self, now: float) -> Optional[Departure]:
         """
         Get next new/timeout task
 
@@ -197,7 +189,7 @@ class DepartureHall:
             task = self.__next_timeout_departure(now=now)
         return task
 
-    def __next_new_departure(self, now: int) -> Optional[Departure]:
+    def __next_new_departure(self, now: float) -> Optional[Departure]:
         priorities = list(self.__priorities)
         for prior in priorities:
             # 1. get tasks with priority
@@ -215,7 +207,7 @@ class DepartureHall:
                         self.__map.pop(sn, None)
                     return ship
 
-    def __next_timeout_departure(self, now: int) -> Optional[Departure]:
+    def __next_timeout_departure(self, now: float) -> Optional[Departure]:
         priorities = list(self.__priorities)
         for prior in priorities:
             # 1. get tasks with priority
@@ -256,7 +248,7 @@ class DepartureHall:
     def purge(self):
         """ Clear all expired tasks """
         failed_tasks: Set[Departure] = set()
-        now = int(time.time())
+        now = time.time()
         priorities = list(self.__priorities)
         for prior in priorities:
             # 0. get tasks with priority
