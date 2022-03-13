@@ -69,34 +69,31 @@ class Connection(Ticker, ABC):
     def remote_address(self) -> Optional[Address]:  # (str, int)
         raise NotImplemented
 
+    @property
+    def state(self):  # -> ConnectionState:
+        """ Get connection state """
+        raise NotImplemented
+
     @abstractmethod
-    def send(self, data: bytes, target: Optional[Address] = None) -> int:
+    def send(self, data: bytes) -> int:
         """
         Send data
 
-        :param data:   outgo buffer
-        :param target: remote address; can be None when it's connected
+        :param data: outgo data package
         :return: count of bytes sent, probably zero when it's non-blocking mode
         """
         raise NotImplemented
 
     @abstractmethod
-    def received(self, data: bytes, remote: Optional[Address], local: Optional[Address]):
+    def received(self, data: bytes):
         """
-        Process received data
+        Call on received data for processing
 
-        :param data:   received data
-        :param remote: remote address
-        :param local:  local address
+        :param data: received data
         """
         raise NotImplemented
 
     @abstractmethod
     def close(self):
         """ Close the connection """
-        raise NotImplemented
-
-    @property
-    def state(self):  # -> ConnectionState:
-        """ Get connection state """
         raise NotImplemented

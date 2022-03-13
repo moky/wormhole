@@ -32,8 +32,6 @@ import socket
 from abc import ABC, abstractmethod
 from typing import Optional, Union
 
-from ..types import Address
-
 from .connection import Connection
 from .state import ConnectionState
 
@@ -53,39 +51,43 @@ class ConnectionDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connection_received(self, data: bytes, source: Address, destination: Optional[Address], connection: Connection):
+    def connection_received(self, data: bytes, connection: Connection):
         """
         Called when connection received data
 
         :param data:        received data package
-        :param source:      remote address
-        :param destination: local address
         :param connection:  current connection
         """
         raise NotImplemented
 
     @abstractmethod
-    def connection_sent(self, data: bytes, source: Optional[Address], destination: Address, connection: Connection):
+    def connection_sent(self, sent: int, data: bytes, connection: Connection):
         """
-        Called after data sent
+        Called after data sent via the connection
 
+        :param sent:        length of sent bytes
         :param data:        sent data package
-        :param source:      local address
-        :param destination: remote address
         :param connection:  current connection
         """
         raise NotImplemented
 
     @abstractmethod
-    def connection_error(self, error: Union[IOError, socket.error], data: Optional[bytes],
-                         source: Optional[Address], destination: Optional[Address], connection: Optional[Connection]):
+    def connection_failed(self, error: Union[IOError, socket.error], data: bytes, connection: Connection):
         """
-        Called when connection error
+        Called when failed to send data via the connection
 
         :param error:       connection error
-        :param data:        outgoing data package; None for receiving error
-        :param source:      source address
-        :param destination: destination address
+        :param data:        outgoing data package
+        :param connection:  current connection
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def connection_error(self, error: Union[IOError, socket.error], connection: Optional[Connection]):
+        """
+        Called when connection (receiving) error
+
+        :param error:       connection error
         :param connection:  current connection
         """
         raise NotImplemented

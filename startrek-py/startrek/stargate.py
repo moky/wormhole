@@ -28,10 +28,11 @@
 # SOFTWARE.
 # ==============================================================================
 
+import socket
 import traceback
 import weakref
 from abc import abstractmethod
-from typing import Optional, List, Iterable
+from typing import Optional, List, Iterable, Union
 
 from .types import Address, AddressPairMap
 from .net import Connection, ConnectionDelegate, ConnectionState
@@ -186,7 +187,9 @@ class StarGate(Gate, ConnectionDelegate):
             self._heartbeat(connection=connection)
 
     # Override
-    def connection_received(self, data: bytes, source: Address, destination: Optional[Address], connection: Connection):
+    def connection_received(self, data: bytes, connection: Connection):
+        source = connection.remote_address
+        destination = connection.local_address
         # get docker by (remote, local)
         docker = self._get_docker(remote=source, local=destination)
         if docker is not None:
@@ -233,6 +236,16 @@ class StarGate(Gate, ConnectionDelegate):
         raise NotImplemented
 
     # Override
-    def connection_sent(self, data: bytes, source: Optional[Address], destination: Address, connection: Connection):
-        # ignore this event
+    def connection_sent(self, sent: int, data: bytes, connection: Connection):
+        # ignore event for sending success
+        pass
+
+    # Override
+    def connection_failed(self, error: Union[IOError, socket.error], data: bytes, connection: Connection):
+        # ignore event for sending failed
+        pass
+
+    # Override
+    def connection_error(self, error: Union[IOError, socket.error], connection: Optional[Connection]):
+        # ignore event for receiving error
         pass

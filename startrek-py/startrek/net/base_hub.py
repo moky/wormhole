@@ -185,7 +185,7 @@ class BaseHub(Hub, ABC):
                 # remove channel and callback with connection
                 conn = self._get_connection(remote=remote, local=local)
                 self._remove_channel(remote=remote, local=local, channel=channel)
-                delegate.connection_error(error=error, data=None, source=remote, destination=local, connection=conn)
+                delegate.connection_error(error=error, connection=conn)
             return False
         if remote is None:
             # received nothing
@@ -195,7 +195,7 @@ class BaseHub(Hub, ABC):
         # get connection for processing received data
         conn = self.connect(remote=remote, local=local)
         if conn is not None:
-            conn.received(data=data, remote=remote, local=local)
+            conn.received(data=data)
         return True
 
     def _drive_channels(self, channels: Iterable[Channel]) -> int:
