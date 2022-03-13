@@ -104,7 +104,7 @@ class StarDocker(AddressPairObject, Docker):
         self.__conn_ref = None if connection is None else weakref.ref(connection)
         # 2. close old connection
         if old is not None and old is not connection:
-            if old.opened:
+            if not old.closed:
                 old.close()
 
     @property  # Override

@@ -35,12 +35,12 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional, Iterable
 
-from ..types import Address, AddressPairMap
+from startrek.types import Address, AddressPairMap
 
-from .hub import Hub
-from .channel import Channel
-from .connection import Connection
-from .delegate import ConnectionDelegate
+from startrek.net.hub import Hub
+from startrek.net.channel import Channel
+from startrek.net.connection import Connection
+from startrek.net.delegate import ConnectionDelegate
 
 
 class ConnectionPool(AddressPairMap[Connection]):
@@ -57,7 +57,7 @@ class ConnectionPool(AddressPairMap[Connection]):
                item: Optional[Connection]) -> Optional[Connection]:
         cached = super().remove(remote=remote, local=local, item=item)
         if cached is not None:
-            if cached.opened:
+            if not cached.closed:
                 cached.close()
             return cached
 
@@ -155,7 +155,7 @@ class BaseHub(Hub, ABC):
             # local address not matched? ignore this connection
         # try to open channel with direction (remote, local)
         channel = self.open(remote=remote, local=local)
-        if channel is None or not channel.opened:
+        if channel is None or channel.closed:
             return None
         # create with channel
         conn = self._create_connection(remote=remote, local=local, channel=channel)
@@ -170,6 +170,7 @@ class BaseHub(Hub, ABC):
 
     def _drive_channel(self, channel: Channel) -> bool:
         if not channel.alive:
+            # cannot drive closed channel
             return False
         # try to receive
         try:
@@ -178,14 +179,16 @@ class BaseHub(Hub, ABC):
             remote = channel.remote_address
             local = channel.local_address
             delegate = self.delegate
-            if delegate is None:
-                # just remove channel
+            if delegate is None or remote is None:
+                # UDP channel may not connected
+                # so no connection for it
                 self._remove_channel(remote=remote, local=local, channel=channel)
             else:
                 # remove channel and callback with connection
                 conn = self._get_connection(remote=remote, local=local)
                 self._remove_channel(remote=remote, local=local, channel=channel)
-                delegate.connection_error(error=error, connection=conn)
+                if conn is not None:
+                    delegate.connection_error(error=error, connection=conn)
             return False
         if remote is None:
             # received nothing
@@ -226,12 +229,17 @@ class BaseHub(Hub, ABC):
     def _cleanup_channels(self, channels: Iterable[Channel]):
         for sock in channels:
             if not sock.alive:
+                # if channel not connected (TCP) and not bound (UDP),
+                # means it's closed, remove it from the hub
                 self._remove_channel(remote=sock.remote_address, local=sock.local_address, channel=sock)
 
     def _cleanup_connections(self, connections: Iterable[Connection]):
         # NOTICE: multi connections may share same channel (UDP Hub)
         for conn in connections:
-            if not conn.alive:
+            if conn.closed:
+                # if connection closed, remove it from the hub; notice that
+                # ActiveConnection can reconnect, it'll be not connected
+                # but still open, don't remove it in this situation.
                 self._remove_connection(remote=conn.remote_address, local=conn.local_address, connection=conn)
 
     # Override

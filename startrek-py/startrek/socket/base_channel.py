@@ -34,12 +34,11 @@ from typing import Optional
 
 from ..types import Address, AddressPairObject
 
-from .channel import is_blocking, is_opened, is_connected, is_bound
-from .channel import Channel
+from ..net.channel import is_blocking, is_opened, is_connected, is_bound
+from ..net import Channel
 
 
-class Reader(ABC):
-    """ socket reader """
+class SocketReader(ABC):
 
     @abstractmethod
     def read(self, max_len: int) -> Optional[bytes]:
@@ -52,8 +51,7 @@ class Reader(ABC):
         raise NotImplemented
 
 
-class Writer(ABC):
-    """ socket writer """
+class SocketWriter(ABC):
 
     @abstractmethod
     def write(self, data: bytes) -> int:
@@ -68,7 +66,7 @@ class Writer(ABC):
 
 class BaseChannel(AddressPairObject, Channel, ABC):
 
-    def __init__(self, remote: Optional[Address], local: Optional[Address]):
+    def __init__(self, remote: Optional[Address], local: Optional[Address], sock: socket.socket):
         super().__init__(remote=remote, local=local)
         self.__reader = self._create_reader()
         self.__writer = self._create_writer()
@@ -77,49 +75,51 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         self.__opened = False
         self.__connected = False
         self.__bound = False
+        self.__sock = sock
+        self._refresh_flags()
 
     def __del__(self):
         # make sure the relative socket is removed
-        self._set_socket(sock=None)
+        self.__remove_socket()
         self.__reader = None
         self.__writer = None
 
     @property  # protected
-    def reader(self) -> Reader:
+    def reader(self) -> SocketReader:
         return self.__reader
 
     @property  # protected
-    def writer(self) -> Writer:
+    def writer(self) -> SocketWriter:
         return self.__writer
 
     @abstractmethod
-    def _create_reader(self) -> Reader:
+    def _create_reader(self) -> SocketReader:
         """ create socket reader """
         raise NotImplemented
 
     @abstractmethod
-    def _create_writer(self) -> Writer:
+    def _create_writer(self) -> SocketWriter:
         """ create socket writer """
         raise NotImplemented
 
     @property
     def sock(self) -> Optional[socket.socket]:
-        return self._get_socket()
+        return self.__sock
 
     @abstractmethod
-    def _get_socket(self) -> Optional[socket.socket]:
-        """ get inner socket """
-        raise NotImplemented
-
-    @abstractmethod
-    def _set_socket(self, sock: Optional[socket.socket]):
-        """ change inner socket """
-        # 1. replace with new socket
-        # 2. refresh flags with new socket
+    def __remove_socket(self):
+        # 1. clear inner socket
+        sock = self.__sock
+        self.__sock = None
+        # 2. refresh flags
+        self._refresh_flags()
         # 3. close old socket
-        raise NotImplemented
+        if sock is not None and is_opened(sock=sock):
+            sock.close()
 
-    def _refresh_flags(self, sock: Optional[socket.socket]):
+    def _refresh_flags(self):
+        """ refresh flags with inner socket """
+        sock = self.__sock
         if sock is None:
             self.__blocking = False
             self.__opened = False
@@ -146,8 +146,8 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         return self.__blocking
 
     @property  # Override
-    def opened(self) -> bool:
-        return self.__opened
+    def closed(self) -> bool:
+        return not self.__opened
 
     @property  # Override
     def connected(self) -> bool:
@@ -159,7 +159,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     @property  # Override
     def alive(self) -> bool:
-        return self.opened and (self.connected or self.bound)
+        return (not self.closed) and (self.connected or self.bound)
 
     @property  # Override
     def remote_address(self) -> Address:  # (str, int)
@@ -209,14 +209,18 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     # Override
     def disconnect(self) -> Optional[socket.socket]:
-        sock = self._get_socket()
-        self._set_socket(sock=None)
+        sock = self.sock
+        if sock is not None and is_connected(sock=sock):
+            try:
+                sock.close()
+            finally:
+                self._refresh_flags()
         return sock
 
     # Override
     def close(self):
         # set socket to None and refresh flags
-        self._set_socket(sock=None)
+        self.__remove_socket()
 
     # Override
     def read(self, max_len: int) -> Optional[bytes]:

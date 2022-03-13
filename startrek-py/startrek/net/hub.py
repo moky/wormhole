@@ -60,7 +60,7 @@ class Hub(Processor, ABC):
 
         :param remote: remote address
         :param local:  local address
-        :return: None on channel not opened
+        :return: None on channel closed
         """
         raise NotImplemented
 

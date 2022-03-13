@@ -36,20 +36,20 @@ from typing import Optional
 from ..types import Address, AddressPairObject
 from ..fsm import StateDelegate
 
-from .channel import Channel
-from .connection import Connection
-from .delegate import ConnectionDelegate as Delegate
-from .state import ConnectionState, StateMachine, TimedConnection
+from ..net import Channel
+from ..net import Connection, ConnectionState
+from ..net import ConnectionDelegate as Delegate
+from ..net.state import StateMachine, TimedConnection
 
 
 class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelegate):
 
     EXPIRES = 16  # seconds
 
-    def __init__(self, remote: Address, local: Optional[Address], channel: Channel, delegate: Delegate):
+    def __init__(self, remote: Address, local: Optional[Address], channel: Channel):
         super().__init__(remote=remote, local=local)
         self.__channel_ref = None if channel is None else weakref.ref(channel)
-        self.__delegate = weakref.ref(delegate)
+        self.__delegate = None
         # active times
         self.__last_sent_time = 0
         self.__last_received_time = 0
@@ -79,7 +79,13 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property
     def delegate(self) -> Delegate:
-        return self.__delegate()
+        ref = self.__delegate
+        if ref is not None:
+            return ref()
+
+    @delegate.setter
+    def delegate(self, gate: Delegate):
+        self.__delegate = None if gate is None else weakref.ref(gate)
 
     @property
     def channel(self) -> Optional[Channel]:
@@ -96,13 +102,16 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         self.__channel_ref = None if channel is None else weakref.ref(channel)
         # 2. close old channel
         if old is not None and old is not channel:
-            if old.opened:
-                old.close()
+            if old.connected:
+                try:
+                    old.disconnect()
+                except socket.error as error:
+                    print('[SOCKET] failed to close channel: %s, %s' % (error, old))
 
     @property  # Override
-    def opened(self) -> bool:
+    def closed(self) -> bool:
         channel = self.channel
-        return channel is not None and channel.opened
+        return channel is None or channel.closed
 
     @property  # Override
     def bound(self) -> bool:
@@ -118,7 +127,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     def alive(self) -> bool:
         # channel = self.channel
         # return channel is not None and channel.alive
-        return self.opened and (self.connected or self.bound)
+        return (not self.closed) and (self.connected or self.bound)
 
     @property  # Override
     def remote_address(self) -> Address:  # (str, int)
@@ -126,7 +135,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property  # Override
     def local_address(self) -> Optional[Address]:  # (str, int)
-        channel = self._get_channel()
+        channel = self.channel
         return self._local if channel is None else channel.local_address
 
     # Override
@@ -134,25 +143,18 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         self._set_channel(channel=None)
         self._set_state_machine(fsm=None)
 
-    @property  # Override
-    def last_sent_time(self) -> int:
-        return self.__last_sent_time
+    def start(self):
+        fsm = self._create_state_machine()
+        fsm.start()
+        self._set_state_machine(fsm=fsm)
 
-    @property  # Override
-    def last_received_time(self) -> int:
-        return self.__last_received_time
+    def stop(self):
+        self._set_channel(channel=None)
+        self._set_state_machine(fsm=None)
 
-    # Override
-    def is_sent_recently(self, now: int) -> bool:
-        return now < self.__last_sent_time + self.EXPIRES
-
-    # Override
-    def is_received_recently(self, now: int) -> bool:
-        return now < self.__last_received_time + self.EXPIRES
-
-    # Override
-    def is_long_time_not_received(self, now: int) -> bool:
-        return now > self.__last_received_time + (self.EXPIRES << 3)
+    #
+    #   I/O
+    #
 
     # Override
     def received(self, data: bytes):
@@ -200,10 +202,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     @property  # Override
     def state(self) -> ConnectionState:
         fsm = self._get_state_machine()
-        if fsm is None:
-            return ConnectionState.ERROR
-        else:
-            return fsm.current_state
+        return ConnectionState.ERROR if fsm is None else fsm.current_state
 
     # Override
     def tick(self, now: float, delta: float):
@@ -212,14 +211,29 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             # drive state machine forward
             fsm.tick(now=now, delta=delta)
 
-    def start(self):
-        fsm = self._create_state_machine()
-        fsm.start()
-        self._set_state_machine(fsm=fsm)
+    #
+    #   Timed Connection
+    #
 
-    def stop(self):
-        self._set_channel(channel=None)
-        self._set_state_machine(fsm=None)
+    @property  # Override
+    def last_sent_time(self) -> int:
+        return self.__last_sent_time
+
+    @property  # Override
+    def last_received_time(self) -> int:
+        return self.__last_received_time
+
+    # Override
+    def is_sent_recently(self, now: int) -> bool:
+        return now < self.__last_sent_time + self.EXPIRES
+
+    # Override
+    def is_received_recently(self, now: int) -> bool:
+        return now < self.__last_received_time + self.EXPIRES
+
+    # Override
+    def is_long_time_not_received(self, now: int) -> bool:
+        return now > self.__last_received_time + (self.EXPIRES << 3)
 
     #
     #   StateDelegate

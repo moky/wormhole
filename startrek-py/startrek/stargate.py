@@ -246,6 +246,6 @@ class StarGate(Gate, ConnectionDelegate):
         pass
 
     # Override
-    def connection_error(self, error: Union[IOError, socket.error], connection: Optional[Connection]):
+    def connection_error(self, error: Union[IOError, socket.error], connection: Connection):
         # ignore event for receiving error
         pass

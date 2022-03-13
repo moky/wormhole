@@ -342,7 +342,7 @@ class DefaultPreparingTransition(StateTransition):
     def evaluate(self, ctx: StateMachine) -> bool:
         conn = ctx.connection
         # connection started? change state to 'preparing'
-        return conn is not None and conn.opened
+        return not (conn is None or conn.closed)
 
 
 class PreparingReadyTransition(StateTransition):
@@ -360,7 +360,7 @@ class PreparingDefaultTransition(StateTransition):
     def evaluate(self, ctx: StateMachine) -> bool:
         conn = ctx.connection
         # connection stopped, change state to 'not_connect'
-        return conn is None or not conn.opened
+        return conn is None or conn.closed
 
 
 class ReadyExpiredTransition(StateTransition):

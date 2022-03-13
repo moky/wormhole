@@ -30,8 +30,8 @@
 
 from .net import Hub, Channel, Connection, ConnectionDelegate
 from .net import ConnectionState, ConnectionStateMachine
-from .net import BaseChannel, ChannelReader, ChannelWriter
-from .net import BaseHub, BaseConnection, ActiveConnection
+from .socket import BaseChannel, ChannelReader, ChannelWriter
+from .socket import BaseHub, BaseConnection, ActiveConnection
 
 from .port import Ship, ShipDelegate, Arrival, Departure, DeparturePriority
 from .port import Docker, Gate, GateStatus, GateDelegate

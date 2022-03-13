@@ -83,7 +83,7 @@ class ConnectionDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connection_error(self, error: Union[IOError, socket.error], connection: Optional[Connection]):
+    def connection_error(self, error: Union[IOError, socket.error], connection: Connection):
         """
         Called when connection (receiving) error
 

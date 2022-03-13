@@ -38,8 +38,8 @@ from ..types import Address
 class Channel(ABC):
 
     @property
-    def opened(self) -> bool:
-        """ is_open() """
+    def closed(self) -> bool:
+        """ not is_open() """
         raise NotImplemented
 
     @property

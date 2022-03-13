@@ -35,8 +35,9 @@ from typing import Optional
 
 from ..types import Address
 
-from .channel import is_blocking
-from .base_channel import Reader, Writer, BaseChannel
+from ..net.channel import is_blocking
+
+from .base_channel import SocketReader, SocketWriter, BaseChannel
 
 
 #
@@ -67,10 +68,7 @@ class Controller:
 
     @property
     def sock(self) -> Optional[socket.socket]:
-        s = self.channel.sock
-        if s is None:
-            raise socket.error('socket lost: %s' % self.channel)
-        return s
+        return self.channel.sock
 
     def _check_error(self, error: socket.error, sock: socket.socket = None) -> Optional[socket.error]:
         if sock is None:
@@ -94,7 +92,7 @@ class Controller:
         return error
 
 
-class ChannelReader(Controller, Reader, ABC):
+class ChannelReader(Controller, SocketReader, ABC):
 
     def _check_data(self, data: Optional[bytes], sock: socket.socket = None) -> Optional[socket.error]:
         # in blocking mode, the socket will wait until received something,
@@ -131,7 +129,7 @@ class ChannelReader(Controller, Reader, ABC):
         return data
 
 
-class ChannelWriter(Controller, Writer, ABC):
+class ChannelWriter(Controller, SocketWriter, ABC):
 
     def _try_write(self, data: bytes, sock: socket.socket) -> int:
         try:

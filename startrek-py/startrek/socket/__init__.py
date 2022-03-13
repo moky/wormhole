@@ -28,6 +28,21 @@
 # SOFTWARE.
 # ==============================================================================
 
+from .base_channel import BaseChannel
+from .base_channel import SocketReader, SocketWriter
+from .base_cc import ChannelReader, ChannelWriter
+
+from .base_conn import BaseConnection
+from .active_conn import ActiveConnection
+
+from .base_hub import BaseHub
+
 
 __all__ = [
+    'BaseChannel',
+    'SocketReader', 'SocketWriter',
+    'ChannelReader', 'ChannelWriter',
+
+    'BaseConnection', 'ActiveConnection',
+    'BaseHub',
 ]

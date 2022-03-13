@@ -42,8 +42,8 @@ class Connection(Ticker, ABC):
     #
 
     @property
-    def opened(self) -> bool:
-        """ not closed """
+    def closed(self) -> bool:
+        """ not is_open() """
         raise NotImplemented
 
     @property

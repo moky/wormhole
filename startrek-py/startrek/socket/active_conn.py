@@ -33,18 +33,17 @@ from typing import Optional
 
 from ..types import Address
 
-from .hub import Hub
-from .channel import Channel
-from .delegate import ConnectionDelegate as Delegate
+from ..net import Hub
+from ..net import Channel
+
 from .base_conn import BaseConnection
 
 
 class ActiveConnection(BaseConnection):
     """ Active connection for client """
 
-    def __init__(self, remote: Address, local: Optional[Address], channel: Optional[Channel], delegate: Delegate,
-                 hub: Hub):
-        super().__init__(remote=remote, local=local, channel=channel, delegate=delegate)
+    def __init__(self, remote: Address, local: Optional[Address], channel: Optional[Channel], hub: Hub):
+        super().__init__(remote=remote, local=local, channel=channel)
         self.__hub_ref = weakref.ref(hub)
 
     @property
@@ -52,9 +51,13 @@ class ActiveConnection(BaseConnection):
         return self.__hub_ref()
 
     @property  # Override
+    def closed(self) -> bool:
+        return self._get_state_machine() is None
+
+    @property  # Override
     def channel(self) -> Optional[Channel]:
         sock = self._get_channel()
-        if sock is None or not sock.opened:
+        if sock is None or sock.closed:
             if self._get_state_machine() is None:
                 # closed (not start yet)
                 return None
