@@ -99,7 +99,7 @@ public interface Connection extends Ticker {
         void onConnectionReceived(byte[] data, Connection connection);
 
         /**
-         *  Called after data sent
+         *  Called after data sent via the connection
          *
          * @param sent        - length of sent bytes
          * @param data        - outgo data package
@@ -108,7 +108,7 @@ public interface Connection extends Ticker {
         void onConnectionSent(int sent, byte[] data, Connection connection);
 
         /**
-         *  Called when failed to send data
+         *  Called when failed to send data via the connection
          *
          * @param error       - error message
          * @param data        - outgo data package
@@ -117,7 +117,7 @@ public interface Connection extends Ticker {
         void onConnectionFailed(Throwable error, byte[] data, Connection connection);
 
         /**
-         *  Called when connection error
+         *  Called when connection (receiving) error
          *
          * @param error       - error message
          * @param data        - outgo data package

@@ -253,6 +253,16 @@ public abstract class StarGate implements Gate, Connection.Delegate {
 
     @Override
     public void onConnectionSent(int sent, byte[] data, Connection connection) {
-        // ignore this event
+        // ignore event for sending success
+    }
+
+    @Override
+    public void onConnectionFailed(Throwable error, byte[] data, Connection connection) {
+        // ignore event for sending failed
+    }
+
+    @Override
+    public void onConnectionError(Throwable error, byte[] data, Connection connection) {
+        // ignore event for receiving error
     }
 }
