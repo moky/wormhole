@@ -185,7 +185,7 @@ class BaseMachine(Machine[C, T, S]):
     #
 
     # Override
-    def tick(self):
+    def tick(self, now: float, delta: float):
         machine = self.context
         current = self.current_state
         if current is not None and self.__status == Status.RUNNING:

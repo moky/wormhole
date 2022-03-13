@@ -32,7 +32,7 @@ from abc import ABC, abstractmethod
 from enum import IntEnum
 from typing import Optional, TypeVar, Generic
 
-from .runner import Ticker
+from .ticker import Ticker
 
 S = TypeVar('S')  # State
 C = TypeVar('C')  # Context

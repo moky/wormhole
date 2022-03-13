@@ -28,67 +28,19 @@
 # SOFTWARE.
 # ==============================================================================
 
-import time
-
-from .runner import Handler, Runnable, Daemon
+from .ticker import Metronome
 from .machine import S, C, U, T
 from .base import BaseMachine
 
 
-class AutoMachine(BaseMachine[C, T, S], Runnable, Handler):
-
-    def __init__(self, default: str, daemonic: bool = True):
-        super().__init__(default=default)
-        self.__daemon = Daemon(target=self.run, daemonic=daemonic)
-        self.__running = False
-
-    @property
-    def running(self) -> bool:
-        return self.__running
-
-    def __force_stop(self):
-        self.__running = False
-        self.__daemon.stop()
-
-    def __restart(self):
-        self.__force_stop()
-        self.__running = True
-        self.__daemon.start()
+class AutoMachine(BaseMachine[C, T, S]):
 
     # Override
     def start(self):
-        self.__restart()
         super().start()
+        Metronome().add(ticker=self)
 
     # Override
     def stop(self):
+        Metronome().remove(ticker=self)
         super().stop()
-        self.__force_stop()
-
-    # Override
-    def run(self):
-        self.setup()
-        try:
-            self.handle()
-        finally:
-            self.finish()
-
-    # Override
-    def setup(self):
-        """ prepare for running """
-        pass
-
-    # Override
-    def finish(self):
-        """ clean up after run """
-        pass
-
-    # Override
-    def handle(self):
-        while self.running:
-            self.tick()
-            self._idle()
-
-    # noinspection PyMethodMayBeStatic
-    def _idle(self):
-        time.sleep(0.125)

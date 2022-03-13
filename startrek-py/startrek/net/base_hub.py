@@ -29,6 +29,7 @@
 # ==============================================================================
 
 import socket
+import time
 import traceback
 import weakref
 from abc import ABC, abstractmethod
@@ -79,6 +80,7 @@ class BaseHub(Hub, ABC):
         super().__init__()
         self.__delegate = weakref.ref(delegate)
         self.__connection_pool = ConnectionPool()
+        self.__last_time_drive_connection = time.time()
 
     @property
     def delegate(self) -> ConnectionDelegate:
@@ -209,14 +211,17 @@ class BaseHub(Hub, ABC):
 
     # noinspection PyMethodMayBeStatic
     def _drive_connections(self, connections: Iterable[Connection]):
+        now = time.time()
+        delta = now - self.__last_time_drive_connection
         for conn in connections:
             try:
-                conn.tick()  # drive connection to go on
+                conn.tick(now=now, delta=delta)  # drive connection to go on
             except Exception as error:
                 print('[NET] drive connection error: %s, %s' % (error, conn))
                 traceback.print_exc()
             # NOTICE: let the delegate to decide whether close an error connection
             #         or just remove it.
+        self.__last_time_drive_connection = now
 
     def _cleanup_channels(self, channels: Iterable[Channel]):
         for sock in channels:

@@ -33,7 +33,8 @@
     ~~~~~~~~~~~~~~~~~~~~
 """
 
-from .runner import Ticker, Processor, Handler, Runnable, Runner, Daemon
+from .ticker import Singleton, Ticker, Metronome
+from .runner import Processor, Handler, Runnable, Runner, Daemon
 from .machine import Context, Transition, State, Machine, Delegate as StateDelegate
 from .base import BaseTransition, BaseState, BaseMachine
 from .auto import AutoMachine
@@ -43,7 +44,8 @@ name = "FSM"
 __author__ = 'Albert Moky'
 
 __all__ = [
-    'Ticker', 'Processor', 'Handler', 'Runnable', 'Runner', 'Daemon',
+    'Singleton', 'Ticker', 'Metronome',
+    'Processor', 'Handler', 'Runnable', 'Runner', 'Daemon',
     'Context', 'Transition', 'State', 'Machine', 'StateDelegate',
     'BaseTransition', 'BaseState', 'BaseMachine',
     'AutoMachine',

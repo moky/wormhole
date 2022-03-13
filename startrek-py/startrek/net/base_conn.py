@@ -211,11 +211,11 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             return fsm.current_state
 
     # Override
-    def tick(self):
+    def tick(self, now: float, delta: float):
         fsm = self._get_state_machine()
         if fsm is not None:
             # drive state machine forward
-            fsm.tick()
+            fsm.tick(now=now, delta=delta)
 
     def start(self):
         fsm = self._create_state_machine()

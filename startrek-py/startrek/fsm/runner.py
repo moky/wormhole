@@ -33,14 +33,6 @@ from abc import ABC, abstractmethod
 from threading import Thread
 
 
-class Ticker(ABC):
-
-    @abstractmethod
-    def tick(self):
-        """ Drive current thread forward """
-        raise NotImplemented
-
-
 class Processor(ABC):
 
     @abstractmethod
@@ -133,6 +125,15 @@ class Daemon:
         self.__target = target
         self.__daemon = daemonic
         self.__thread = None
+        self.__timeout = 1.0
+
+    @property
+    def timeout(self) -> float:
+        return self.__timeout
+
+    @timeout.setter
+    def timeout(self, waiting: float):
+        self.__timeout = waiting
 
     @property
     def alive(self) -> bool:
@@ -152,7 +153,7 @@ class Daemon:
         if thr is not None:
             self.__thread = None
             try:
-                thr.join(timeout=1.0)
+                thr.join(timeout=self.timeout)
             except RuntimeError as error:
                 print('[ERROR] failed to join thread: %s' % error)
 
