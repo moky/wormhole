@@ -47,7 +47,7 @@ class BaseGate(StarGate, Generic[H], ABC):
         return docker
 
     # Override
-    def _get_docker(self, remote: Address, local: Optional[Address]) -> Optional[PlainDocker]:
+    def _get_docker(self, remote: Address, local: Optional[Address]) -> Optional[Docker]:
         return super()._get_docker(remote=remote, local=None)
 
     # Override

@@ -75,8 +75,12 @@ class BaseHub(Hub, ABC):
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__()
         self.__delegate = weakref.ref(delegate)
-        self.__connection_pool = ConnectionPool()
+        self.__connection_pool = self._create_connection_pool()
         self.__last_time_drive_connection = time.time()
+
+    # noinspection PyMethodMayBeStatic
+    def _create_connection_pool(self):
+        return ConnectionPool()
 
     @property
     def delegate(self) -> ConnectionDelegate:

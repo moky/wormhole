@@ -9,22 +9,15 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from udp import Channel, Connection
-from udp import Gate, GateDelegate, GateStatus
+from udp import Connection
+from udp import Docker, DockerDelegate, DockerStatus
 from udp import Hub, ServerHub
 from udp import Arrival, PackageArrival, Departure, PackageDeparture
 
 from tests.stargate import UDPGate
 
 
-class DatagramServerHub(ServerHub):
-
-    # Override
-    def _get_channel(self, remote: Optional[tuple], local: Optional[tuple]) -> Optional[Channel]:
-        channel = super()._get_channel(remote=remote, local=local)
-        if channel is None:
-            channel = super()._get_channel(remote=None, local=local)
-        return channel
+class PacketServerHub(ServerHub):
 
     # Override
     def _get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
@@ -39,13 +32,13 @@ class DatagramServerHub(ServerHub):
         super()._remove_connection(remote=remote, local=None, connection=connection)
 
 
-class Server(GateDelegate):
+class Server(DockerDelegate):
 
     def __init__(self, host: str, port: int):
         super().__init__()
         self.__local_address = (host, port)
         gate = UDPGate(delegate=self, daemonic=False)
-        gate.hub = DatagramServerHub(delegate=gate)
+        gate.hub = PacketServerHub(delegate=gate)
         self.__gate = gate
 
     @property
@@ -65,20 +58,20 @@ class Server(GateDelegate):
         self.gate.start()
 
     def send(self, data: bytes, destination: tuple):
-        self.gate.send_command(body=data, source=self.local_address, destination=destination)
+        self.gate.send_command(body=data, remote=destination, local=self.local_address)
 
     #
-    #   Gate Delegate
+    #   Docker Delegate
     #
 
     # Override
-    def gate_status_changed(self, previous: GateStatus, current: GateStatus,
-                            remote: tuple, local: Optional[tuple], gate: Gate):
+    def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
+        remote = docker.remote_address
+        local = docker.local_address
         UDPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
 
     # Override
-    def gate_received(self, ship: Arrival,
-                      source: tuple, destination: Optional[tuple], connection: Connection):
+    def docker_received(self, ship: Arrival, docker: Docker):
         assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
         pack = ship.package
         data = pack.body.get_bytes()
@@ -87,6 +80,7 @@ class Server(GateDelegate):
         except UnicodeDecodeError as error:
             UDPGate.error(msg='failed to decode data: %s, %s' % (error, data))
             text = str(data)
+        source = docker.remote_address
         UDPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
         text = '%d# %d byte(s) received' % (self.counter, len(data))
         self.counter += 1
@@ -97,18 +91,18 @@ class Server(GateDelegate):
     counter = 0
 
     # Override
-    def gate_sent(self, ship: Departure,
-                  source: Optional[tuple], destination: tuple, connection: Connection):
+    def docker_sent(self, ship: Departure, docker: Docker):
         assert isinstance(ship, PackageDeparture), 'departure ship error: %s' % ship
-        pack = ship.package
-        data = pack.body.get_bytes()
-        size = len(data)
-        UDPGate.info('message sent: %d byte(s) to %s' % (size, destination))
+        size = ship.package.body.size
+        UDPGate.info('message sent: %d byte(s) to %s' % (size, docker.remote_address))
 
     # Override
-    def gate_error(self, error: IOError, ship: Departure,
-                   source: Optional[tuple], destination: tuple, connection: Connection):
-        UDPGate.error('gate error (%s, %s): %s' % (source, destination, error))
+    def docker_failed(self, error: IOError, ship: Departure, docker: Docker):
+        UDPGate.error('failed to sent: %s, %s' % (error, docker))
+
+    # Override
+    def docker_error(self, error: IOError, ship: Departure, docker: Docker):
+        UDPGate.error('connection error: %s, %s' % (error, docker))
 
 
 SERVER_HOST = Hub.inet_address()

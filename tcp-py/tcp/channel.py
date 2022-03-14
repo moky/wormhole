@@ -51,7 +51,8 @@ class StreamChannelWriter(ChannelWriter):
     def send(self, data: bytes, target: Address) -> int:
         # TCP channel will be always connected
         # so the target address must be the remote address
-        assert target == self.remote_address, 'target error: %s, %s' % (target, self.remote_address)
+        remote = self.remote_address
+        assert target is None or target == remote, 'target error: %s, remote=%s' % (target, remote)
         return self.write(data=data)
 
 

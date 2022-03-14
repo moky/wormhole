@@ -54,7 +54,7 @@ class DockerPool(AddressPairMap[Docker]):
     def remove(self, remote: Optional[Address], local: Optional[Address], item: Optional[Docker]) -> Optional[Docker]:
         cached = super().remove(remote=remote, local=local, item=item)
         if cached is not None:
-            if cached.alive:
+            if not cached.closed:
                 cached.close()
             return cached
 
@@ -73,7 +73,11 @@ class StarGate(Gate, ConnectionDelegate, ABC):
     def __init__(self, delegate: DockerDelegate):
         super().__init__()
         self.__delegate = weakref.ref(delegate)
-        self.__docker_pool = DockerPool()
+        self.__docker_pool = self._create_docker_pool()
+
+    # noinspection PyMethodMayBeStatic
+    def _create_docker_pool(self):
+        return DockerPool()
 
     @property
     def delegate(self) -> Optional[DockerDelegate]:

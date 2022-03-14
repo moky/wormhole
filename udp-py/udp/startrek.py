@@ -33,7 +33,6 @@ from typing import List, Optional
 
 from startrek import Arrival, ArrivalShip
 from startrek import Departure, DepartureShip, DeparturePriority
-from startrek import ShipDelegate
 from startrek import StarDocker
 
 from .ba import Data
@@ -42,8 +41,8 @@ from .mtp import DataType, TransactionID, Package, Packer
 
 class PackageArrival(ArrivalShip):
 
-    def __init__(self, pack: Package):
-        super().__init__()
+    def __init__(self, pack: Package, now: float = 0):
+        super().__init__(now=now)
         head = pack.head
         self.__sn = head.sn.get_bytes()
         if head.is_fragment:
@@ -80,7 +79,7 @@ class PackageArrival(ArrivalShip):
                 self.__completed = packer.insert(fragment=item)
         if self.__completed is None:
             # extend expired time, wait for more fragments
-            now = int(time.time())
+            now = time.time()
             self.update(now=now)
         else:
             # package completed
@@ -89,8 +88,8 @@ class PackageArrival(ArrivalShip):
 
 class PackageDeparture(DepartureShip):
 
-    def __init__(self, pack: Package, priority: int = 0, delegate: ShipDelegate = None):
-        super().__init__(priority=priority, delegate=delegate)
+    def __init__(self, pack: Package, priority: int = 0, now: float = 0):
+        super().__init__(priority=priority, now=now)
         self.__sn = pack.head.sn.get_bytes()
         self.__completed = pack
         self.__packages = self._split_package(pack=pack)
@@ -115,8 +114,8 @@ class PackageDeparture(DepartureShip):
     def fragments(self) -> List[bytes]:
         if len(self.__fragments) == 0:
             packages = list(self.__packages)
-            for item in packages:
-                self.__fragments.append(item.get_bytes())
+            for pack in packages:
+                self.__fragments.append(pack.get_bytes())
         return self.__fragments
 
     # Override
@@ -158,11 +157,11 @@ class PackageDocker(StarDocker):
         return PackageArrival(pack=pack)
 
     # noinspection PyMethodMayBeStatic
-    def _create_departure(self, pack: Package, priority: int = 0, delegate: ShipDelegate = None) -> Departure:
-        return PackageDeparture(pack=pack, priority=priority, delegate=delegate)
+    def _create_departure(self, pack: Package, priority: int = 0) -> Departure:
+        return PackageDeparture(pack=pack, priority=priority)
 
     # Override
-    def _next_departure(self, now: int) -> Optional[Departure]:
+    def _next_departure(self, now: float) -> Optional[Departure]:
         outgo = super()._next_departure(now=now)
         if outgo is not None:
             self._retry_departure(ship=outgo)
@@ -254,6 +253,10 @@ class PackageDocker(StarDocker):
                 return None
         return ship
 
+    #
+    #   Sending
+    #
+
     # protected
     def _respond_command(self, sn: TransactionID, body: bytes):
         pack = Package.new(data_type=DataType.COMMAND_RESPONSE, sn=sn, body=Data(buffer=body))
@@ -264,35 +267,17 @@ class PackageDocker(StarDocker):
         pack = Package.new(data_type=DataType.MESSAGE_RESPONSE, sn=sn, pages=pages, index=index, body=Data(buffer=OK))
         self.send_package(pack=pack)
 
-    # Override
-    def pack(self, payload: bytes, priority: int = 0, delegate: ShipDelegate = None) -> Departure:
-        pkg = Package.new(data_type=DataType.MESSAGE, body=Data(buffer=payload))
-        return self._create_departure(pack=pkg, priority=priority, delegate=delegate)
-
-    # Override
-    def heartbeat(self):
-        pkg = Package.new(data_type=DataType.COMMAND, body=Data(buffer=PING))
-        outgo = self._create_departure(pack=pkg, priority=DeparturePriority.SLOWER)
-        self.send_ship(ship=outgo)
-
-    #
-    #   Send
-    #
+    def send_package(self, pack: Package, priority: int = 0) -> bool:
+        outgo = self._create_departure(pack=pack, priority=priority)
+        return self.send_ship(ship=outgo)
 
     def send_ship(self, ship: Departure) -> bool:
         return self.append_departure(ship=ship)
 
-    # def send_data(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> bool:
-    #     if delegate is None:
-    #         delegate = self.delegate
-    #     ship = self.pack(payload=payload, priority=priority, delegate=delegate)
-    #     return self.send_ship(ship=ship)
-
-    def send_package(self, pack: Package, priority: int = 0, delegate: ShipDelegate = None) -> bool:
-        if delegate is None:
-            delegate = self.delegate
-        ship = self._create_departure(pack=pack, priority=priority, delegate=delegate)
-        return self.send_ship(ship=ship)
+    # Override
+    def heartbeat(self):
+        pkg = Package.new(data_type=DataType.COMMAND, body=Data(buffer=PING))
+        self.send_package(pack=pkg, priority=DeparturePriority.SLOWER)
 
 
 PING = b'PING'
