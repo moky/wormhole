@@ -81,7 +81,7 @@ class StarGate(Gate, ConnectionDelegate, ABC):
 
     # Override
     def send_ship(self, ship: Departure, remote: Address, local: Optional[Address]) -> bool:
-        docker = self.get_docker(remote=remote, local=local)
+        docker = self._get_docker(remote=remote, local=local)
         if not (docker is None or docker.closed):
             return docker.append_departure(ship=ship)
 
@@ -104,13 +104,11 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         """ get a copy of all dockers """
         return self.__docker_pool.items
 
-    # Override
-    def get_docker(self, remote: Address, local: Optional[Address]) -> Optional[Docker]:
+    def _get_docker(self, remote: Address, local: Optional[Address]) -> Optional[Docker]:
         """ get cached docker """
         return self.__docker_pool.get(remote=remote, local=local)
 
-    # Override
-    def set_docker(self, remote: Address, local: Optional[Address], docker: Docker):
+    def _set_docker(self, remote: Address, local: Optional[Address], docker: Docker):
         """ cache docker """
         self.__docker_pool.set(remote=remote, local=local, item=docker)
 
@@ -158,7 +156,7 @@ class StarGate(Gate, ConnectionDelegate, ABC):
     def _heartbeat(self, connection: Connection):
         remote = connection.remote_address
         local = connection.local_address
-        docker = self.get_docker(remote=remote, local=local)
+        docker = self._get_docker(remote=remote, local=local)
         if docker is not None:
             docker.heartbeat()
 
@@ -177,7 +175,7 @@ class StarGate(Gate, ConnectionDelegate, ABC):
                 # callback
                 remote = connection.remote_address
                 local = connection.local_address
-                docker = self.get_docker(remote=remote, local=local)
+                docker = self._get_docker(remote=remote, local=local)
                 # NOTICE: if the previous state is null, the docker maybe not
                 #         created yet, this situation means the docker status
                 #         not changed too, so no need to callback here.
@@ -189,22 +187,22 @@ class StarGate(Gate, ConnectionDelegate, ABC):
 
     # Override
     def connection_received(self, data: bytes, connection: Connection):
-        source = connection.remote_address
-        destination = connection.local_address
+        remote = connection.remote_address
+        local = connection.local_address
         # get docker by (remote, local)
-        docker = self.get_docker(remote=source, local=destination)
+        docker = self._get_docker(remote=remote, local=local)
         if docker is not None:
             # docker exists, call docker.onReceived(data)
             docker.process_received(data=data)
             return
-        # save advance party from this source address
+        # cache advance party for this connection
         party = self._cache_advance_party(data=data, connection=connection)
         assert party is not None and len(party) > 0, 'advance party error'
         # docker not exists, check the data to decide which docker should be created
         docker = self._create_docker(connection=connection, advance_party=party)
         if docker is not None:
             # cache docker for (remote, local)
-            self.set_docker(remote=docker.remote_address, local=docker.local_address, docker=docker)
+            self._set_docker(remote=docker.remote_address, local=docker.local_address, docker=docker)
             # process advance parties one by one
             for item in party:
                 docker.process_received(data=item)
