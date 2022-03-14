@@ -65,7 +65,9 @@ abstract class ChannelController<C extends SelectableChannel> implements Channel
         return getChannel().getLocalAddress();
     }
 
-    public abstract C getSocket();
+    public C getSocket() {
+        return getChannel().getSocketChannel();
+    }
 
     //
     //  Checker

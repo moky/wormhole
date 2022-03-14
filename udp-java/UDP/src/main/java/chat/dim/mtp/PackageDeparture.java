@@ -31,6 +31,7 @@
 package chat.dim.mtp;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
@@ -55,7 +56,7 @@ public class PackageDeparture extends DepartureShip {
         fragments = new ArrayList<>();
     }
     public PackageDeparture(Package pack, int prior) {
-        this(pack, prior, 0);
+        this(pack, prior, new Date().getTime());
     }
 
     protected List<Package> split(Package pack) {

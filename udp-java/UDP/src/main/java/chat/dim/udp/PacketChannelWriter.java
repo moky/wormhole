@@ -44,11 +44,6 @@ public class PacketChannelWriter extends ChannelWriter<DatagramChannel> {
         super(channel);
     }
 
-    @Override
-    public DatagramChannel getSocket() {
-        return getChannel().getSocketChannel();
-    }
-
     //
     //  Send
     //

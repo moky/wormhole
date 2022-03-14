@@ -45,11 +45,6 @@ public class StreamChannelWriter extends ChannelWriter<SocketChannel> {
     }
 
     @Override
-    public SocketChannel getSocket() {
-        return getChannel().getSocketChannel();
-    }
-
-    @Override
     public int send(ByteBuffer src, SocketAddress target) throws IOException {
         // TCP channel will be always connected
         // so the target address must be the remote address

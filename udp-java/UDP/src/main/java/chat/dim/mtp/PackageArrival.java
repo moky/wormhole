@@ -30,6 +30,7 @@
  */
 package chat.dim.mtp;
 
+import java.util.Date;
 import java.util.List;
 
 import chat.dim.port.Arrival;
@@ -42,8 +43,8 @@ public class PackageArrival extends ArrivalShip {
     private final Packer packer;
     private Package completed;
 
-    public PackageArrival(Package pack) {
-        super();
+    public PackageArrival(Package pack, long now) {
+        super(now);
         Header head = pack.head;
         sn = head.sn.getBytes();
         if (pack.isFragment()) {
@@ -53,6 +54,9 @@ public class PackageArrival extends ArrivalShip {
             packer = null;
             completed = pack;
         }
+    }
+    public PackageArrival(Package pack) {
+        this(pack, new Date().getTime());
     }
 
     public Package getPackage() {

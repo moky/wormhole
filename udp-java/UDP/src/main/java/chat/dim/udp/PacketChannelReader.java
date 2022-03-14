@@ -44,11 +44,6 @@ public class PacketChannelReader extends ChannelReader<DatagramChannel> {
         super(channel);
     }
 
-    @Override
-    public DatagramChannel getSocket() {
-        return getChannel().getSocketChannel();
-    }
-
     //
     //  Receive
     //

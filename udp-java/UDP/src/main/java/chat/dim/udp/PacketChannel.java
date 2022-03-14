@@ -33,9 +33,9 @@ package chat.dim.udp;
 import java.net.SocketAddress;
 import java.nio.channels.DatagramChannel;
 
-import chat.dim.net.SocketReader;
-import chat.dim.net.SocketWriter;
 import chat.dim.socket.BaseChannel;
+import chat.dim.socket.SocketReader;
+import chat.dim.socket.SocketWriter;
 
 public class PacketChannel extends BaseChannel<DatagramChannel> {
 

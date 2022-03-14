@@ -195,7 +195,9 @@ public abstract class BaseHub implements Hub {
                 // remove channel and callback with connection
                 Connection conn = getConnection(remote, local);
                 removeChannel(remote, local, sock);
-                delegate.onConnectionError(e, null, conn);
+                if (conn != null) {
+                    delegate.onConnectionError(e, conn);
+                }
             }
             return false;
         }
@@ -230,7 +232,9 @@ public abstract class BaseHub implements Hub {
     }
     protected void cleanupChannels(Set<Channel> channels) {
         for (Channel sock : channels) {
-            if (!sock.isOpen()) {
+            if (!sock.isAlive()) {
+                // if channel not connected (TCP) and not bound (UDP),
+                // means it's closed, remove it from the hub
                 removeChannel(sock.getRemoteAddress(), sock.getLocalAddress(), sock);
             }
         }
@@ -240,10 +244,11 @@ public abstract class BaseHub implements Hub {
 
     protected void driveConnections(Set<Connection> connections) {
         long now = System.currentTimeMillis();
+        long delta = now - last;
         for (Connection conn : connections) {
             try {
                 // drive connection to go on
-                conn.tick(now, now - last);
+                conn.tick(now, delta);
             } catch (Throwable e) {
                 e.printStackTrace();
             }
@@ -255,6 +260,9 @@ public abstract class BaseHub implements Hub {
     protected void cleanupConnections(Set<Connection> connections) {
         for (Connection conn : connections) {
             if (!conn.isOpen()) {
+                // if connection closed, remove it from the hub; notice that
+                // ActiveConnection can reconnect, it'll be not connected
+                // but still open, don't remove it in this situation.
                 removeConnection(conn.getRemoteAddress(), conn.getLocalAddress(), conn);
             }
         }

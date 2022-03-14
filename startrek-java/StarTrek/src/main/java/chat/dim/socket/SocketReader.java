@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.socket;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -41,7 +41,7 @@ public interface SocketReader {
      *
      * @param dst - buffer to save data
      * @return data length
-     * @throws IOException
+     * @throws IOException on socket error
      */
     int read(ByteBuffer dst) throws IOException;
 
@@ -50,7 +50,7 @@ public interface SocketReader {
      *
      * @param dst - buffer to save data
      * @return remote address
-     * @throws IOException
+     * @throws IOException on socket error
      */
     SocketAddress receive(ByteBuffer dst) throws IOException;
 }

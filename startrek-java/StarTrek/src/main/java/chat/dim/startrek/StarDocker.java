@@ -66,6 +66,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
 
     @Override
     protected void finalize() throws Throwable {
+        // make sure the relative connection is closed
         removeConnection();
         super.finalize();
     }
@@ -245,13 +246,13 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
                 // nothing to do now, return false to let the thread have a rest
                 return false;
             } else if (outgo.isFailed(now)) {
-                // task timeout, return true to process next one
-                IOException error = new SocketException("Request timeout");
-                // callback for mission failed
                 Delegate delegate = getDelegate();
                 if (delegate != null) {
+                    // callback for mission failed
+                    IOException error = new SocketException("Request timeout");
                     delegate.onDockerFailed(error, outgo, this);
                 }
+                // task timeout, return true to process next one
                 return true;
             } else {
                 // get fragments from outgo task

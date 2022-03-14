@@ -41,8 +41,6 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
 
 import chat.dim.net.Channel;
-import chat.dim.net.SocketReader;
-import chat.dim.net.SocketWriter;
 import chat.dim.type.AddressPairObject;
 
 public abstract class BaseChannel<C extends SelectableChannel>
@@ -229,7 +227,11 @@ public abstract class BaseChannel<C extends SelectableChannel>
     public ByteChannel disconnect() throws IOException {
         C sock = getSocketChannel();
         if (sock instanceof DatagramChannel) {
-            return ((DatagramChannel) sock).disconnect();
+            try {
+                return ((DatagramChannel) sock).disconnect();
+            } finally {
+                refreshFlags();
+            }
         } else {
             removeSocketChannel();
         }

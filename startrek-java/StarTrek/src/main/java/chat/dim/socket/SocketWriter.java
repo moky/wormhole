@@ -28,7 +28,7 @@
  * SOFTWARE.
  * ==============================================================================
  */
-package chat.dim.net;
+package chat.dim.socket;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -41,7 +41,7 @@ public interface SocketWriter {
      *
      * @param src - data to send
      * @return sent length
-     * @throws IOException
+     * @throws IOException on socket error
      */
     int write(ByteBuffer src) throws IOException;
 
@@ -51,7 +51,7 @@ public interface SocketWriter {
      * @param src - data to send
      * @param target - remote address
      * @return sent length
-     * @throws IOException
+     * @throws IOException on socket error
      */
     int send(ByteBuffer src, SocketAddress target) throws IOException;
 }

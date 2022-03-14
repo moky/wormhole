@@ -124,7 +124,7 @@ public interface Docker extends Processor {
          *  Callback when new package received
          *
          * @param arrival     - income data package container
-         * @param docker      - current docker
+         * @param docker      - connection docker
          */
         void onDockerReceived(Arrival arrival, Docker docker);
 
@@ -132,7 +132,7 @@ public interface Docker extends Processor {
          *  Callback when package sent
          *
          * @param departure   - outgo data package container
-         * @param docker      - current docker
+         * @param docker      - connection docker
          */
         void onDockerSent(Departure departure, Docker docker);
 
@@ -141,7 +141,7 @@ public interface Docker extends Processor {
          *
          * @param error       - error message
          * @param departure   - outgo data package container
-         * @param docker      - current docker
+         * @param docker      - connection docker
          */
         void onDockerFailed(Throwable error, Departure departure, Docker docker);
 
@@ -150,7 +150,7 @@ public interface Docker extends Processor {
          *
          * @param error       - error message
          * @param departure   - outgo data package container
-         * @param docker      - current docker
+         * @param docker      - connection docker
          */
         void onDockerError(Throwable error, Departure departure, Docker docker);
 
@@ -159,7 +159,7 @@ public interface Docker extends Processor {
          *
          * @param previous    - old status
          * @param current     - new status
-         * @param docker      - current docker
+         * @param docker      - connection docker
          */
         void onDockerStatusChanged(Status previous, Status current, Docker docker);
     }

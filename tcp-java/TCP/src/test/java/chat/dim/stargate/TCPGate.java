@@ -54,7 +54,7 @@ public class TCPGate<H extends Hub> extends AutoGate<H> {
     }
 
     @Override
-    public void onConnectionError(Throwable error, byte[] data, Connection connection) {
+    public void onConnectionError(Throwable error, Connection connection) {
         error("connection error: " + error + ", " + connection);
     }
 

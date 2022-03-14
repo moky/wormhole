@@ -109,13 +109,11 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         return dockerPool.allValues();
     }
 
-    @Override
-    public Docker getDocker(SocketAddress remote, SocketAddress local) {
+    protected Docker getDocker(SocketAddress remote, SocketAddress local) {
         return dockerPool.get(remote, local);
     }
 
-    @Override
-    public void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
+    protected void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
         dockerPool.set(remote, local, docker);
     }
 
@@ -229,7 +227,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
             return;
         }
 
-        // save advance party from this source address
+        // cache advance party for this connection
         List<byte[]> advanceParty = cacheAdvanceParty(data, connection);
         assert advanceParty != null && advanceParty.size() > 0 : "advance party error";
 
@@ -262,7 +260,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     }
 
     @Override
-    public void onConnectionError(Throwable error, byte[] data, Connection connection) {
+    public void onConnectionError(Throwable error, Connection connection) {
         // ignore event for receiving error
     }
 }

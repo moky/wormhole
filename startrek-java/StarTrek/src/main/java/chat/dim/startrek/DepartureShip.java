@@ -55,12 +55,11 @@ public abstract class DepartureShip implements Departure {
         super();
         // ship priority
         priority = prior;
-
-        if (now <= 0) {
-            now = new Date().getTime();
-        }
         expired = now + EXPIRES;
         retries = -1;
+    }
+    protected DepartureShip(int prior) {
+        this(prior, new Date().getTime());
     }
 
     @Override

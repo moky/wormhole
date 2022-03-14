@@ -120,9 +120,8 @@ public interface Connection extends Ticker {
          *  Called when connection (receiving) error
          *
          * @param error       - error message
-         * @param data        - outgo data package
          * @param connection  - current connection
          */
-        void onConnectionError(Throwable error, byte[] data, Connection connection);
+        void onConnectionError(Throwable error, Connection connection);
     }
 }

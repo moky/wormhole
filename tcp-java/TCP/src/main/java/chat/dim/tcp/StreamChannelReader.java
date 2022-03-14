@@ -45,11 +45,6 @@ public class StreamChannelReader extends ChannelReader<SocketChannel> {
     }
 
     @Override
-    public SocketChannel getSocket() {
-        return getChannel().getSocketChannel();
-    }
-
-    @Override
     public SocketAddress receive(ByteBuffer dst) throws IOException {
         return read(dst) > 0 ? getRemoteAddress() : null;
     }

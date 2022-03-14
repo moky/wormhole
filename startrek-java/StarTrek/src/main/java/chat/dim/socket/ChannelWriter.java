@@ -35,8 +35,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.WritableByteChannel;
 
-import chat.dim.net.SocketWriter;
-
 public abstract class ChannelWriter<C extends SelectableChannel>
         extends ChannelController<C>
         implements SocketWriter {

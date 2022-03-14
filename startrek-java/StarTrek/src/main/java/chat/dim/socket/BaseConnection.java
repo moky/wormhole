@@ -115,7 +115,7 @@ public class BaseConnection extends AddressPairObject
         channelRef = new WeakReference<>(newChannel);
         // 2. close old channel
         if (oldChannel != null && oldChannel != newChannel) {
-            if (oldChannel.isOpen()) {
+            if (oldChannel.isConnected()) {
                 try {
                     oldChannel.disconnect();
                 } catch (IOException e) {
@@ -224,7 +224,6 @@ public class BaseConnection extends AddressPairObject
         // callback
         Delegate delegate = getDelegate();
         if (delegate != null) {
-            // get local address as source
             if (error == null) {
                 delegate.onConnectionSent(sent, pack, this);
             } else {

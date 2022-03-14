@@ -35,8 +35,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectableChannel;
 
-import chat.dim.net.SocketReader;
-
 public abstract class ChannelReader<C extends SelectableChannel>
         extends ChannelController<C>
         implements SocketReader {

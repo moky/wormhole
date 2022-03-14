@@ -30,15 +30,20 @@
  */
 package chat.dim.startrek;
 
+import java.util.Date;
+
 import chat.dim.port.Arrival;
 
 public class PlainArrival extends ArrivalShip {
 
     private final byte[] data;
 
-    public PlainArrival(byte[] pack) {
-        super();
+    public PlainArrival(byte[] pack, long now) {
+        super(now);
         data = pack;
+    }
+    public PlainArrival(byte[] pack) {
+        this(pack, new Date().getTime());
     }
 
     public byte[] getPackage() {

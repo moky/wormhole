@@ -43,12 +43,12 @@ public abstract class BaseGate<H extends Hub>
     }
 
     @Override
-    public Docker getDocker(SocketAddress remote, SocketAddress local) {
+    protected Docker getDocker(SocketAddress remote, SocketAddress local) {
         return super.getDocker(remote, null);
     }
 
     @Override
-    public void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
+    protected void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
         super.setDocker(remote, null, docker);
     }
 
