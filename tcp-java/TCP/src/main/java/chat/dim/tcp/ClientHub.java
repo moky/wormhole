@@ -65,9 +65,8 @@ public class ClientHub extends StreamHub {
     }
 
     private Channel createSocketChannel(SocketAddress remote, SocketAddress local) {
-        SocketChannel sock;
         try {
-            sock = createSocket(remote, local);
+            SocketChannel sock = createSocket(remote, local);
             if (local == null) {
                 local = sock.getLocalAddress();
             }

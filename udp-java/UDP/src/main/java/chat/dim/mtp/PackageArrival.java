@@ -70,7 +70,7 @@ public class PackageArrival extends ArrivalShip {
 
     @Override
     public Arrival assemble(Arrival income) {
-        if (completed == null && this != income) {
+        if (completed == null && income != this) {
             assert income instanceof PackageArrival : "arrival ship error: " + income;
             List<Package> fragments = ((PackageArrival) income).getFragments();
             assert fragments != null && fragments.size() > 0 : "fragments error: " + income;
@@ -78,7 +78,14 @@ public class PackageArrival extends ArrivalShip {
                 completed = packer.insert(item);
             }
         }
-        return completed == null ? null : this;
+        if (completed == null) {
+            // extend expired time, wait for more fragments
+            update(new Date().getTime());
+            return null;
+        } else {
+            // package completed
+            return this;
+        }
     }
 
     List<Package> getFragments() {

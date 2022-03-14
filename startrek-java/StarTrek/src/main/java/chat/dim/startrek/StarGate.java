@@ -56,7 +56,7 @@ class DockerPool extends AddressPairMap<Docker> {
     @Override
     public Docker remove(SocketAddress remote, SocketAddress local, Docker value) {
         Docker cached = super.remove(remote, local, value);
-        if (cached != null && cached.isAlive()) {
+        if (cached != null && cached.isOpen()) {
             cached.close();
         }
         return cached;

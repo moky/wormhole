@@ -48,8 +48,8 @@ public class StreamChannelWriter extends ChannelWriter<SocketChannel> {
     public int send(ByteBuffer src, SocketAddress target) throws IOException {
         // TCP channel will be always connected
         // so the target address must be the remote address
-        assert target == null || target.equals(getRemoteAddress()) :
-                "target address error: " + target + ", " + getRemoteAddress();
+        SocketAddress remote = getRemoteAddress();
+        assert target == null || target.equals(remote) : "target error: " + target + ", remote=" + remote;
         return write(src);
     }
 }

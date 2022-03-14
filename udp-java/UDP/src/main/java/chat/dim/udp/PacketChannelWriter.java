@@ -68,12 +68,12 @@ public class PacketChannelWriter extends ChannelWriter<DatagramChannel> {
         assert sock != null : "socket lost, cannot send data: " + src.position() + " byte(s)";
         if (sock.isConnected()) {
             // connected (TCP/UDP)
-            assert target == null || target.equals(getRemoteAddress()) :
-                    "target address error: " + target + ", " + getRemoteAddress();
+            SocketAddress remote = getRemoteAddress();
+            assert target == null || target.equals(remote) : "target error: " + target + ", remote=" + remote;
             return tryWrite(src, sock);
         } else {
             // not connect (UDP)
-            assert target != null : "target address missed for unbound channel";
+            assert target != null : "target missed for unbound channel";
             return trySend(src, target, sock);
         }
     }
