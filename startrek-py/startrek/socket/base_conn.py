@@ -225,11 +225,11 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     # Override
     def is_sent_recently(self, now: float) -> bool:
-        return now < self.__last_sent_time + self.EXPIRES
+        return now <= self.__last_sent_time + self.EXPIRES
 
     # Override
     def is_received_recently(self, now: float) -> bool:
-        return now < self.__last_received_time + self.EXPIRES
+        return now <= self.__last_received_time + self.EXPIRES
 
     # Override
     def is_long_time_not_received(self, now: float) -> bool:
@@ -247,11 +247,14 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     def exit_state(self, state: ConnectionState, ctx: StateMachine):
         current = ctx.current_state
         if current == ConnectionState.READY:
-            if state != ConnectionState.MAINTAINING:
-                # change state to 'connected', reset times to just expired
-                timestamp = time.time() - self.EXPIRES - 1
-                self.__last_sent_time = timestamp
-                self.__last_received_time = timestamp
+            if state == ConnectionState.PREPARING:
+                # connection state changed from 'preparing' to 'ready',
+                # set times to expired soon.
+                timestamp = time.time() - (self.EXPIRES >> 1)
+                if self.__last_sent_time < timestamp:
+                    self.__last_sent_time = timestamp
+                if self.__last_received_time < timestamp:
+                    self.__last_received_time = timestamp
         # callback
         delegate = self.delegate
         if delegate is not None:

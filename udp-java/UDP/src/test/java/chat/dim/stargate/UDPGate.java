@@ -63,11 +63,13 @@ public class UDPGate<H extends Hub> extends AutoGate<H> {
 
     @Override
     public void onConnectionFailed(Throwable error, byte[] data, Connection connection) {
+        super.onConnectionFailed(error, data, connection);
         error("connection failed: " + error + ", " + connection);
     }
 
     @Override
     public void onConnectionError(Throwable error, Connection connection) {
+        super.onConnectionError(error, connection);
         error("connection error: " + error + ", " + connection);
     }
 

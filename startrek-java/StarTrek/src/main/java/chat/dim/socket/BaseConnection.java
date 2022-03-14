@@ -267,11 +267,11 @@ public class BaseConnection extends AddressPairObject
 
     @Override
     public boolean isSentRecently(long now) {
-        return now < lastSentTime + EXPIRES;
+        return now <= lastSentTime + EXPIRES;
     }
     @Override
     public boolean isReceivedRecently(long now) {
-        return now < lastReceivedTime + EXPIRES;
+        return now <= lastReceivedTime + EXPIRES;
     }
     @Override
     public boolean isNotReceivedLongTimeAgo(long now) {
@@ -290,12 +290,19 @@ public class BaseConnection extends AddressPairObject
     @Override
     public void exitState(ConnectionState previous, StateMachine ctx) {
         ConnectionState current = ctx.getCurrentState();
+        // if current == 'ready'
         if (current != null && current.equals(ConnectionState.READY)) {
-            if (previous == null || !previous.equals(ConnectionState.MAINTAINING)) {
-                // change state to 'ready', reset times to just expired
-                long timestamp = (new Date()).getTime() - EXPIRES - 1;
-                lastSentTime = timestamp;
-                lastReceivedTime = timestamp;
+            // if previous == 'preparing'
+            if (previous != null && previous.equals(ConnectionState.PREPARING)) {
+                // connection state changed from 'preparing' to 'ready',
+                // set times to expired soon.
+                long timestamp = (new Date()).getTime() - (EXPIRES >> 1);
+                if (lastSentTime < timestamp) {
+                    lastSentTime = timestamp;
+                }
+                if (lastReceivedTime < timestamp) {
+                    lastReceivedTime = timestamp;
+                }
             }
         }
         // callback
