@@ -28,11 +28,9 @@
 # SOFTWARE.
 # ==============================================================================
 
-import socket
 from typing import Optional
 
 from startrek.types import Address
-from startrek.net.channel import is_opened
 from startrek import BaseChannel, ChannelReader, ChannelWriter
 
 
@@ -53,34 +51,12 @@ class StreamChannelWriter(ChannelWriter):
     def send(self, data: bytes, target: Address) -> int:
         # TCP channel will be always connected
         # so the target address must be the remote address
-        remote = self.remote_address
-        assert target is None or target == remote, 'target address error: %s, %s' % (target, remote)
+        assert target == self.remote_address, 'target error: %s, %s' % (target, self.remote_address)
         return self.write(data=data)
 
 
 class StreamChannel(BaseChannel):
     """ Stream Channel """
-
-    def __init__(self, remote: Optional[Address], local: Optional[Address], sock: socket.socket):
-        super().__init__(remote=remote, local=local)
-        self.__sock = sock
-        self._refresh_flags(sock=sock)
-
-    # Override
-    def _get_socket(self) -> Optional[socket.socket]:
-        return self.__sock
-
-    # Override
-    def _set_socket(self, sock: Optional[socket.socket]):
-        # 1. replace with new socket
-        old = self.__sock
-        self.__sock = sock
-        # 2. refresh flags with new socket
-        self._refresh_flags(sock=sock)
-        # 3. close old socket
-        if old is not None and old is not sock:
-            if is_opened(sock=old):
-                close_socket(sock=old)
 
     # Override
     def _create_reader(self):
@@ -89,11 +65,3 @@ class StreamChannel(BaseChannel):
     # Override
     def _create_writer(self):
         return StreamChannelWriter(channel=self)
-
-
-def close_socket(sock: socket.socket):
-    try:
-        # sock.shutdown(socket.SHUT_RDWR)
-        sock.close()
-    except socket.error as error:
-        print('[TCP] failed to close socket: %s, %s' % (error, sock))

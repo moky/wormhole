@@ -32,9 +32,7 @@ import weakref
 from typing import Optional
 
 from ..types import Address
-
-from ..net import Hub
-from ..net import Channel
+from ..net import Hub, Channel
 
 from .base_conn import BaseConnection
 

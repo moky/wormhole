@@ -35,6 +35,7 @@ from typing import Optional, Iterable
 from ..types import Address
 from ..fsm import Processor
 
+from .channel import close_socket
 from .channel import Channel
 from .connection import Connection
 
@@ -107,5 +108,5 @@ class Hub(Processor, ABC):
             ip = sock.getsockname()[0]
         finally:
             if sock is not None:
-                sock.close()
+                close_socket(sock=sock)
         return ip

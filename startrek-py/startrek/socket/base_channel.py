@@ -106,7 +106,6 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     def sock(self) -> Optional[socket.socket]:
         return self.__sock
 
-    @abstractmethod
     def __remove_socket(self):
         # 1. clear inner socket
         sock = self.__sock

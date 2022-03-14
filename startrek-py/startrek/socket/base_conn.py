@@ -163,7 +163,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         if delegate is not None:
             delegate.connection_received(data=data, connection=self)
 
-    def _send(self, data: bytes, target: Optional[Address]) -> int:
+    def _send(self, data: bytes, target: Address) -> int:
         channel = self.channel
         if channel is None or not channel.alive:
             # raise socket.error('socket channel lost: %s' % channel)

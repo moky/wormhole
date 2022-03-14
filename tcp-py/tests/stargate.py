@@ -1,26 +1,26 @@
 # -*- coding: utf-8 -*-
 
+import socket
 import time
 import traceback
-from typing import Generic, TypeVar, Optional, List
+from abc import ABC
+from typing import Generic, TypeVar, Optional, List, Union
 
 from startrek.fsm import Runnable, Daemon
-from tcp import Connection, ConnectionState, ActiveConnection
-from tcp import GateDelegate
-from tcp import StarGate, Docker, PlainDocker
+from startrek.types import Address
+from tcp import Connection, ConnectionState
+from tcp import Docker, DockerDelegate
+from tcp import StarGate, PlainDocker
 
 
 H = TypeVar('H')
 
 
-class TCPGate(StarGate, Runnable, Generic[H]):
+class BaseGate(StarGate, Generic[H], ABC):
 
-    def __init__(self, delegate: GateDelegate, daemonic: bool = True):
+    def __init__(self, delegate: DockerDelegate):
         super().__init__(delegate=delegate)
         self.__hub: H = None
-        # running thread
-        self.__daemon = Daemon(target=self.run, daemonic=daemonic)
-        self.__running = False
 
     @property
     def hub(self) -> H:
@@ -29,6 +29,62 @@ class TCPGate(StarGate, Runnable, Generic[H]):
     @hub.setter
     def hub(self, h: H):
         self.__hub = h
+
+    #
+    #   Docker
+    #
+    def get_docker(self, remote: Address, local: Optional[Address], advance_party: List[bytes]) -> Docker:
+        docker = self._get_docker(remote=remote, local=local)
+        if docker is None:
+            hub = self.hub
+            # from startrek import Hub
+            # assert isinstance(hub, Hub)
+            conn = hub.connect(remote=remote, local=local)
+            if conn is not None:
+                docker = self._create_docker(connection=conn, advance_party=advance_party)
+                assert docker is not None, 'failed to create docker: %s, %s' % (remote, local)
+                self._set_docker(remote=remote, local=local, docker=docker)
+        return docker
+
+    # Override
+    def _get_docker(self, remote: Address, local: Optional[Address]) -> Optional[PlainDocker]:
+        return super()._get_docker(remote=remote, local=None)
+
+    # Override
+    def _set_docker(self, remote: Address, local: Optional[Address], docker: Docker):
+        super()._set_docker(remote=remote, local=None, docker=docker)
+
+    # Override
+    def _remove_docker(self, remote: Address, local: Optional[Address], docker: Optional[Docker]):
+        super()._remove_docker(remote=remote, local=None, docker=docker)
+
+    # # Override
+    # def _heartbeat(self, connection: Connection):
+    #     # let the client to do the job
+    #     if isinstance(connection, ActiveConnection):
+    #         super()._heartbeat(connection=connection)
+
+    # Override
+    def _cache_advance_party(self, data: bytes, connection: Connection) -> List[bytes]:
+        # TODO: cache the advance party before decide which docker to use
+        if data is None or len(data) == 0:
+            return []
+        else:
+            return [data]
+
+    # Override
+    def _clear_advance_party(self, connection: Connection):
+        # TODO: remove advance party for this connection
+        pass
+
+
+class AutoGate(BaseGate, Runnable, Generic[H], ABC):
+
+    def __init__(self, delegate: DockerDelegate, daemonic: bool = True):
+        super().__init__(delegate=delegate)
+        # running thread
+        self.__daemon = Daemon(target=self.run, daemonic=daemonic)
+        self.__running = False
 
     @property
     def running(self) -> bool:
@@ -64,70 +120,43 @@ class TCPGate(StarGate, Runnable, Generic[H]):
             print('[TCP] process error: %s' % error)
             traceback.print_exc()
 
-    # Override
-    def get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
-        return self.hub.connect(remote=remote, local=local)
+
+class TCPGate(AutoGate, Generic[H]):
+
+    def send_data(self, payload: bytes, remote: Address, local: Address) -> bool:
+        docker = self.get_docker(remote=remote, local=local, advance_party=[])
+        if isinstance(docker, PlainDocker):
+            return docker.send_data(payload=payload)
+
+    #
+    #   Docker
+    #
 
     # Override
-    def _create_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[Docker]:
+    def _create_docker(self, connection: Connection, advance_party: List[bytes]) -> Optional[Docker]:
         # TODO: check data format before creating docker
-        return PlainDocker(remote=remote, local=None, gate=self)
+        docker = PlainDocker(connection=connection)
+        docker.delegate = self.delegate
+        return docker
 
-    # Override
-    def _get_docker(self, remote: tuple, local: Optional[tuple]) -> Optional[PlainDocker]:
-        return super()._get_docker(remote=remote, local=None)
-
-    # Override
-    def _set_docker(self, remote: tuple, local: Optional[tuple], docker: Docker):
-        super()._set_docker(remote=remote, local=None, docker=docker)
-
-    # Override
-    def _remove_docker(self, remote: tuple, local: Optional[tuple], docker: Optional[Docker]):
-        super()._remove_docker(remote=remote, local=None, docker=docker)
-
-    # Override
-    def _cache_advance_party(self, data: bytes, source: tuple, destination: Optional[tuple],
-                             connection: Connection) -> List[bytes]:
-        # TODO: cache the advance party before decide which docker to use
-        if data is None:
-            return []
-        else:
-            return [data]
-
-    # Override
-    def _clear_advance_party(self, source: tuple, destination: Optional[tuple], connection: Connection):
-        # TODO: remove advance party for this connection
-        pass
-
-    # Override
-    def _heartbeat(self, connection: Connection):
-        # let the client to do the job
-        if isinstance(connection, ActiveConnection):
-            super()._heartbeat(connection=connection)
+    #
+    #   Connection Delegate
+    #
 
     # Override
     def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
         super().connection_state_changed(previous=previous, current=current, connection=connection)
-        self.info('connection state changed: %s -> %s, %s' % (previous, current, connection))
+        self.info(msg='connection state changed: %s -> %s, %s' % (previous, current, connection))
 
     # Override
-    def connection_error(self, error: ConnectionError, data: Optional[bytes],
-                         source: Optional[tuple], destination: Optional[tuple], connection: Optional[Connection]):
+    def connection_failed(self, error: Union[IOError, socket.error], data: bytes, connection: Connection):
+        super().connection_failed(error=error, data=data, connection=connection)
+        self.error(msg='connection failed: %s, %s' % (error, connection))
+
+    # Override
+    def connection_error(self, error: Union[IOError, socket.error], connection: Connection):
         # if isinstance(error, IOError) and str(error).startswith('failed to send: '):
-        self.error(msg='connection error: %s, %s (%s, %s)' % (error, connection, source, destination))
-
-    def get_docker(self, remote: tuple, local: Optional[tuple], advance_party: List[bytes]) -> Optional[PlainDocker]:
-        docker = self._get_docker(remote=remote, local=local)
-        if docker is None:
-            docker = self._create_docker(remote=remote, local=local, advance_party=advance_party)
-            assert docker is not None, 'failed to create docker: %s, %s' % (remote, local)
-            self._set_docker(remote=docker.remote_address, local=docker.local_address, docker=docker)
-        return docker
-
-    def send_data(self, payload: bytes, source: Optional[tuple], destination: tuple) -> bool:
-        docker = self.get_docker(remote=destination, local=source, advance_party=[])
-        if docker is not None:
-            return docker.send_data(payload=payload)
+        self.error(msg='connection error: %s, %s' % (error, connection))
 
     @classmethod
     def info(cls, msg: str):

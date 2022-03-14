@@ -9,12 +9,14 @@ import sys
 import os
 from typing import Optional
 
+from startrek.types import Address
+
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
 from tcp import Connection
-from tcp import Gate, GateDelegate, GateStatus
+from tcp import Docker, DockerDelegate, DockerStatus
 from tcp import Hub, ClientHub
 from tcp import Arrival, PlainArrival, Departure, PlainDeparture
 
@@ -24,21 +26,21 @@ from tests.stargate import TCPGate
 class StreamClientHub(ClientHub):
 
     # Override
-    def _get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+    def _get_connection(self, remote: Address, local: Optional[Address]) -> Optional[Connection]:
         return super()._get_connection(remote=remote, local=None)
 
     # Override
-    def _set_connection(self, remote: tuple, local: Optional[tuple], connection: Connection):
+    def _set_connection(self, remote: Address, local: Optional[Address], connection: Connection):
         super()._set_connection(remote=remote, local=None, connection=connection)
 
     # Override
-    def _remove_connection(self, remote: tuple, local: Optional[tuple], connection: Optional[Connection]):
+    def _remove_connection(self, remote: Address, local: Optional[Address], connection: Optional[Connection]):
         super()._remove_connection(remote=remote, local=None, connection=connection)
 
 
-class Client(GateDelegate):
+class Client(DockerDelegate):
 
-    def __init__(self, local: tuple, remote: tuple):
+    def __init__(self, local: Address, remote: Address):
         super().__init__()
         self.__local_address = local
         self.__remote_address = remote
@@ -47,11 +49,11 @@ class Client(GateDelegate):
         self.__gate = gate
 
     @property
-    def local_address(self) -> tuple:
+    def local_address(self) -> Address:
         return self.__local_address
 
     @property
-    def remote_address(self) -> tuple:
+    def remote_address(self) -> Address:
         return self.__remote_address
 
     @property
@@ -64,21 +66,21 @@ class Client(GateDelegate):
     def stop(self):
         self.gate.stop()
 
-    def send(self, data: bytes):
-        self.gate.send_data(payload=data, source=self.local_address, destination=self.remote_address)
+    def send(self, data: bytes) -> bool:
+        return self.gate.send_data(payload=data, remote=self.remote_address, local=self.local_address)
 
     #
-    #   Gate Delegate
+    #   Docker Delegate
     #
 
     # Override
-    def gate_status_changed(self, previous: GateStatus, current: GateStatus,
-                            remote: tuple, local: Optional[tuple], gate: Gate):
+    def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
+        remote = docker.remote_address
+        local = docker.local_address
         TCPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
 
     # Override
-    def gate_received(self, ship: Arrival,
-                      source: tuple, destination: Optional[tuple], connection: Connection):
+    def docker_received(self, ship: Arrival, docker: Docker):
         assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
         data = ship.package
         try:
@@ -86,20 +88,22 @@ class Client(GateDelegate):
         except UnicodeDecodeError as error:
             TCPGate.error(msg='failed to decode data: %s, %s' % (error, data))
             text = str(data)
+        source = docker.remote_address
         TCPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
 
     # Override
-    def gate_sent(self, ship: Departure,
-                  source: Optional[tuple], destination: tuple, connection: Connection):
+    def docker_sent(self, ship: Departure, docker: Docker):
         assert isinstance(ship, PlainDeparture), 'departure ship error: %s' % ship
-        data = ship.package
-        size = len(data)
-        TCPGate.info('message sent: %d byte(s) to %s' % (size, destination))
+        size = len(ship.package)
+        TCPGate.info('message sent: %d byte(s) to %s' % (size, docker.remote_address))
 
     # Override
-    def gate_error(self, error: IOError, ship: Departure,
-                   source: Optional[tuple], destination: tuple, connection: Connection):
-        TCPGate.error('gate error (%s, %s): %s' % (source, destination, error))
+    def docker_failed(self, error: IOError, ship: Departure, docker: Docker):
+        TCPGate.error('failed to sent: %s, %s' % (error, docker))
+
+    # Override
+    def docker_error(self, error: IOError, ship: Departure, docker: Docker):
+        TCPGate.error('connection error: %s, %s' % (error, docker))
 
     def test(self):
         text = b'Hello world!' * 512
@@ -119,7 +123,7 @@ CLIENT_HOST = Hub.inet_address()
 CLIENT_PORT = random.choice(range(9900, 9999))
 
 
-def test_send(address: tuple):
+def test_send(address: Address):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
     sock.setblocking(True)

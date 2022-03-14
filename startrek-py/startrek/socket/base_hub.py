@@ -35,12 +35,8 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional, Iterable
 
-from startrek.types import Address, AddressPairMap
-
-from startrek.net.hub import Hub
-from startrek.net.channel import Channel
-from startrek.net.connection import Connection
-from startrek.net.delegate import ConnectionDelegate
+from ..types import Address, AddressPairMap
+from ..net import Hub, Channel, Connection, ConnectionDelegate
 
 
 class ConnectionPool(AddressPairMap[Connection]):

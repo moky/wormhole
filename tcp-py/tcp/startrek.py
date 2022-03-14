@@ -30,15 +30,15 @@
 
 from typing import List, Optional
 
-from startrek import Arrival, ArrivalShip, Departure, DepartureShip, DeparturePriority
-from startrek import ShipDelegate
+from startrek import Arrival, ArrivalShip
+from startrek import Departure, DepartureShip, DeparturePriority
 from startrek import StarDocker
 
 
 class PlainArrival(ArrivalShip):
 
-    def __init__(self, data: bytes):
-        super().__init__()
+    def __init__(self, data: bytes, now: float = 0):
+        super().__init__(now=now)
         self.__data = data
 
     @property
@@ -51,7 +51,7 @@ class PlainArrival(ArrivalShip):
         return None
 
     # Override
-    def assemble(self, ship):
+    def assemble(self, ship: Arrival):
         assert self is ship, 'plain arrival error: %s, %s' % (ship, self)
         # plain arrival needs no assembling
         return self
@@ -59,8 +59,8 @@ class PlainArrival(ArrivalShip):
 
 class PlainDeparture(DepartureShip):
 
-    def __init__(self, data: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None):
-        super().__init__(priority=priority, delegate=delegate)
+    def __init__(self, data: bytes, priority: int = 0, now: float = 0):
+        super().__init__(priority=priority, now=now)
         self.__data = data
         self.__fragments = [data]
 
@@ -101,22 +101,12 @@ class PlainDocker(StarDocker):
         if len(data) == 4:
             if data == PING:
                 # PING -> PONG
-                outgo = self.pack(payload=PONG, priority=DeparturePriority.SLOWER)
-                self.append_departure(ship=outgo)
+                self.send_data(payload=PONG, priority=DeparturePriority.SLOWER)
                 return None
             if data == PONG or data == NOOP:
                 # ignore
                 return None
         return ship
-
-    # Override
-    def pack(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> Departure:
-        return PlainDeparture(data=payload, priority=priority, delegate=delegate)
-
-    # Override
-    def heartbeat(self):
-        outgo = self.pack(payload=PING, priority=DeparturePriority.SLOWER)
-        self.send_ship(ship=outgo)
 
     #
     #   Send
@@ -125,13 +115,16 @@ class PlainDocker(StarDocker):
     def send_ship(self, ship: Departure) -> bool:
         return self.append_departure(ship=ship)
 
-    def send_data(self, payload: bytes, priority: int = 0, delegate: Optional[ShipDelegate] = None) -> bool:
-        if delegate is None:
-            delegate = self.delegate
-        ship = self.pack(payload=payload, priority=priority, delegate=delegate)
+    def send_data(self, payload: bytes, priority: int = 0) -> bool:
+        ship = PlainDeparture(data=payload, priority=priority)
         return self.send_ship(ship=ship)
+
+    # Override
+    def heartbeat(self):
+        self.send_data(payload=PING, priority=DeparturePriority.SLOWER)
 
 
 PING = b'PING'
 PONG = b'PONG'
 NOOP = b'NOOP'
+OK = b'OK'

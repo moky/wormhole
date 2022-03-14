@@ -230,17 +230,25 @@ def is_blocking(sock: socket.socket) -> bool:
         return False
 
 
-def is_closed(sock: socket.socket) -> bool:
-    return getattr(sock, '_closed', False)
-
-
-def is_opened(sock: socket.socket) -> bool:
-    return not getattr(sock, '_closed', False)
-
-
 def is_connected(sock: socket.socket) -> bool:
     return get_remote_address(sock=sock) is not None
 
 
 def is_bound(sock: socket.socket) -> bool:
     return get_local_address(sock=sock) is not None
+
+
+def is_opened(sock: socket.socket) -> bool:
+    return not getattr(sock, '_closed', False)
+
+
+def is_closed(sock: socket.socket) -> bool:
+    return getattr(sock, '_closed', False)
+
+
+def close_socket(sock: socket.socket):
+    try:
+        # sock.shutdown(socket.SHUT_RDWR)
+        sock.close()
+    except socket.error as error:
+        print('[TCP] failed to close socket: %s, %s' % (error, sock))
