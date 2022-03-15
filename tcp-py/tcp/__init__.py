@@ -36,7 +36,6 @@ from startrek import BaseHub, BaseConnection, ActiveConnection
 
 from startrek import Ship, Arrival, Departure, DeparturePriority
 from startrek import Docker, DockerStatus, DockerDelegate, Gate
-
 from startrek import ArrivalShip, ArrivalHall, DepartureShip, DepartureHall
 from startrek import Dock, LockedDock, StarDocker, StarGate
 
@@ -50,15 +49,22 @@ __author__ = 'Albert Moky'
 
 __all__ = [
 
+    #
+    #   StarTrek
+    #
     'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
     'ConnectionState', 'ConnectionStateMachine',
     'BaseChannel', 'ChannelReader', 'ChannelWriter',
     'BaseHub', 'BaseConnection', 'ActiveConnection',
+
     'Ship', 'Arrival', 'Departure', 'DeparturePriority',
     'Docker', 'DockerStatus', 'DockerDelegate', 'Gate',
     'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
     'Dock', 'LockedDock', 'StarDocker', 'StarGate',
 
+    #
+    #   TCP
+    #
     'PlainArrival', 'PlainDeparture', 'PlainDocker',
     'StreamChannel', 'StreamChannelReader', 'StreamChannelWriter',
     'StreamHub', 'ServerHub', 'ClientHub',

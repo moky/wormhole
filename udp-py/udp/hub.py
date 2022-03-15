@@ -100,8 +100,8 @@ class ChannelPool(AddressPairMap[Channel]):
             return cached
 
 
-class PackageHub(BaseHub, ABC):
-    """ Base Package Hub """
+class PacketHub(BaseHub, ABC):
+    """ Base Datagram Hub """
 
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__(delegate=delegate)
@@ -158,8 +158,8 @@ class PackageHub(BaseHub, ABC):
         return self._get_channel(remote=remote, local=local)
 
 
-class ServerHub(PackageHub):
-    """ Package Server Hub """
+class ServerHub(PacketHub):
+    """ Datagram Server Hub """
 
     # Override
     def _create_connection(self, remote: Address, local: Optional[Address], channel: Channel) -> Optional[Connection]:
@@ -169,8 +169,8 @@ class ServerHub(PackageHub):
         return conn
 
 
-class ClientHub(PackageHub):
-    """ Package Client Hub """
+class ClientHub(PacketHub):
+    """ Datagram Client Hub """
 
     # Override
     def _create_connection(self, remote: Address, local: Optional[Address], channel: Channel) -> Optional[Connection]:

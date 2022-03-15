@@ -35,13 +35,12 @@ from startrek import BaseHub, BaseConnection, ActiveConnection
 
 from startrek import Ship, Arrival, Departure, DeparturePriority
 from startrek import Docker, DockerStatus, DockerDelegate, Gate
-
 from startrek import ArrivalShip, ArrivalHall, DepartureShip, DepartureHall
 from startrek import Dock, LockedDock, StarDocker, StarGate
 
 from .startrek import PackageArrival, PackageDeparture, PackageDocker
 from .channel import PacketChannel, PacketChannelReader, PacketChannelWriter
-from .hub import PackageHub, ServerHub, ClientHub
+from .hub import PacketHub, ServerHub, ClientHub
 
 name = "UDP"
 
@@ -49,16 +48,23 @@ __author__ = 'Albert Moky'
 
 __all__ = [
 
+    #
+    #   StarTrek
+    #
     'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
     'ConnectionState', 'ConnectionStateMachine',
     'BaseChannel', 'ChannelReader', 'ChannelWriter',
     'BaseHub', 'BaseConnection', 'ActiveConnection',
+
     'Ship', 'Arrival', 'Departure', 'DeparturePriority',
     'Docker', 'DockerStatus', 'DockerDelegate', 'Gate',
     'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
     'Dock', 'LockedDock', 'StarDocker', 'StarGate',
 
+    #
+    #   UDP
+    #
     'PackageArrival', 'PackageDeparture', 'PackageDocker',
     'PacketChannel', 'PacketChannelReader', 'PacketChannelWriter',
-    'PackageHub', 'ServerHub', 'ClientHub',
+    'PacketHub', 'ServerHub', 'ClientHub',
 ]

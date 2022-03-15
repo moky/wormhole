@@ -62,6 +62,7 @@ class ChannelPool(AddressPairMap[Channel]):
 
 
 class StreamHub(BaseHub, ABC):
+    """ Base Stream Hub """
 
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__(delegate=delegate)
