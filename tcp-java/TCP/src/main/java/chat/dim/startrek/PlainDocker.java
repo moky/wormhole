@@ -77,6 +77,7 @@ public class PlainDocker extends StarDocker {
     //
 
     public boolean send(byte[] payload, int priority) {
+        // sending payload with priority
         return sendShip(new PlainDeparture(payload, priority));
     }
 

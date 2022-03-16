@@ -199,24 +199,25 @@ public class PackageDocker extends StarDocker {
     }
 
     protected void respondCommand(TransactionID sn, byte[] body) {
-        send(createCommandResponse(sn, body));
+        sendPackage(createCommandResponse(sn, body));
     }
     protected void respondMessage(TransactionID sn, int pages, int index) {
-        send(createMessageResponse(sn, pages, index));
+        sendPackage(createMessageResponse(sn, pages, index));
     }
 
     public boolean sendCommand(byte[] body) {
-        return send(createCommand(body), Departure.Priority.SLOWER.value);
+        return sendPackage(createCommand(body), Departure.Priority.SLOWER.value);
     }
     public boolean sendMessage(byte[] body) {
-        return send(createMessage(body), Departure.Priority.NORMAL.value);
+        return sendPackage(createMessage(body), Departure.Priority.NORMAL.value);
     }
 
-    public boolean send(Package pkg) {
-        return send(pkg, Departure.Priority.NORMAL.value);
+    public boolean sendPackage(Package pkg) {
+        return sendPackage(pkg, Departure.Priority.NORMAL.value);
     }
 
-    public boolean send(Package pkg, int priority) {
+    public boolean sendPackage(Package pkg, int priority) {
+        // send data package with priority
         return sendShip(createDeparture(pkg, priority));
     }
 

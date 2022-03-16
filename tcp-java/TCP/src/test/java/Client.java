@@ -42,7 +42,7 @@ public class Client implements Docker.Delegate {
     }
 
     private void send(byte[] data) {
-        boolean ok = getGate().send(data, remoteAddress, localAddress);
+        boolean ok = getGate().sendMessage(data, remoteAddress, localAddress);
         assert ok;
     }
 

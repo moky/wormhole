@@ -5,14 +5,12 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
-import chat.dim.mtp.DataType;
 import chat.dim.mtp.Package;
 import chat.dim.mtp.PackageDocker;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
 import chat.dim.port.Docker;
-import chat.dim.type.Data;
 
 public class UDPGate<H extends Hub> extends AutoGate<H> {
 
@@ -20,20 +18,28 @@ public class UDPGate<H extends Hub> extends AutoGate<H> {
         super(delegate, isDaemon);
     }
 
-    public boolean sendCommand(byte[] body, SocketAddress remote, SocketAddress local) {
-        Package pack = Package.create(DataType.COMMAND, null, 1, 0, -1, new Data(body));
-        return sendPackage(pack, remote, local);
+    public boolean sendMessage(byte[] body, SocketAddress remote, SocketAddress local) {
+        Docker docker = getDocker(remote, local, null);
+        if (docker instanceof PackageDocker) {
+            return ((PackageDocker) docker).sendMessage(body);
+        } else {
+            return false;
+        }
     }
 
-    public boolean sendMessage(byte[] body, SocketAddress remote, SocketAddress local) {
-        Package pack = Package.create(DataType.MESSAGE, null, 1, 0, -1, new Data(body));
-        return sendPackage(pack, remote, local);
+    public boolean sendCommand(byte[] body, SocketAddress remote, SocketAddress local) {
+        Docker docker = getDocker(remote, local, null);
+        if (docker instanceof PackageDocker) {
+            return ((PackageDocker) docker).sendCommand(body);
+        } else {
+            return false;
+        }
     }
 
     public boolean sendPackage(Package pack, SocketAddress remote, SocketAddress local) {
         Docker docker = getDocker(remote, local, null);
         if (docker instanceof PackageDocker) {
-            return ((PackageDocker) docker).send(pack);
+            return ((PackageDocker) docker).sendPackage(pack);
         } else {
             return false;
         }
