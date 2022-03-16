@@ -127,8 +127,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
         return self._local if conn is None else conn.local_address
 
     # Override
-    def append_departure(self, ship: Departure) -> bool:
-        """ Append outgo Ship to the waiting queue """
+    def send_ship(self, ship: Departure) -> bool:
         return self.__dock.append_departure(ship=ship)
 
     # Override

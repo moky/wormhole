@@ -80,6 +80,7 @@ class Departure(Ship):
 
     @property
     def priority(self) -> int:
+        """ Task priority, default is 0, smaller is faster """
         raise NotImplemented
 
     @property

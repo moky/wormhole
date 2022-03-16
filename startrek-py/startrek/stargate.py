@@ -84,10 +84,16 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         return self.__delegate()
 
     # Override
+    def send_data(self, payload: Union[bytes, bytearray], remote: Address, local: Optional[Address]) -> bool:
+        docker = self._get_docker(remote=remote, local=local)
+        if not (docker is None or docker.closed):
+            return docker.send_data(payload=payload)
+
+    # Override
     def send_ship(self, ship: Departure, remote: Address, local: Optional[Address]) -> bool:
         docker = self._get_docker(remote=remote, local=local)
         if not (docker is None or docker.closed):
-            return docker.append_departure(ship=ship)
+            return docker.send_ship(ship=ship)
 
     #
     #   Docker

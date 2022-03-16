@@ -30,7 +30,7 @@
 
 from abc import abstractmethod
 from enum import IntEnum
-from typing import Optional
+from typing import Optional, Union
 
 from ..types import Address
 from ..fsm import Processor
@@ -100,9 +100,21 @@ class Docker(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def append_departure(self, ship: Departure) -> bool:
+    def send_data(self, payload: Union[bytes, bytearray]) -> bool:
         """
-        Append outgo ship to a queue for sending out
+        Pack data to an outgo ship (with normal priority), and
+        append to the waiting queue for sending out
+
+        :param payload: data to be sent
+        :return: False on error
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def send_ship(self, ship: Departure) -> bool:
+        """
+        Append outgo ship (carrying data package, with priority)
+        to the waiting queue for sending out
 
         :param ship: outgo ship carrying data package/fragment
         :return: False on duplicated
