@@ -29,7 +29,7 @@
 # ==============================================================================
 
 import time
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from startrek import Arrival, ArrivalShip
 from startrek import Departure, DepartureShip, DeparturePriority
@@ -175,7 +175,7 @@ class PackageDocker(StarDocker):
             pack = ship.package
             if not pack.is_response:
                 # put back for next retry
-                return self.append_departure(ship=ship)
+                return self.send_ship(ship=ship)
 
     # Override
     def _get_arrival(self, data: bytes) -> Optional[Arrival]:
@@ -257,27 +257,52 @@ class PackageDocker(StarDocker):
     #   Sending
     #
 
+    # noinspection PyMethodMayBeStatic
+    def _create_command(self, body: Union[bytes, bytearray]) -> Package:
+        return Package.new(data_type=DataType.COMMAND, body=Data(buffer=body))
+
+    # noinspection PyMethodMayBeStatic
+    def _create_message(self, body: Union[bytes, bytearray]) -> Package:
+        return Package.new(data_type=DataType.MESSAGE, body=Data(buffer=body))
+
+    # noinspection PyMethodMayBeStatic
+    def _create_command_response(self, sn: TransactionID, body: bytes) -> Package:
+        return Package.new(data_type=DataType.COMMAND_RESPONSE, sn=sn, body=Data(buffer=body))
+
+    # noinspection PyMethodMayBeStatic
+    def _create_message_response(self, sn: TransactionID, pages: int, index: int) -> Package:
+        return Package.new(data_type=DataType.MESSAGE_RESPONSE, sn=sn, pages=pages, index=index, body=Data(buffer=OK))
+
     # protected
     def _respond_command(self, sn: TransactionID, body: bytes):
-        pack = Package.new(data_type=DataType.COMMAND_RESPONSE, sn=sn, body=Data(buffer=body))
+        pack = self._create_command_response(sn=sn, body=body)
         self.send_package(pack=pack)
 
     # protected
     def _respond_message(self, sn: TransactionID, pages: int, index: int):
-        pack = Package.new(data_type=DataType.MESSAGE_RESPONSE, sn=sn, pages=pages, index=index, body=Data(buffer=OK))
+        pack = self._create_message_response(sn=sn, pages=pages, index=index)
         self.send_package(pack=pack)
 
+    def send_command(self, body: Union[bytes, bytearray]) -> bool:
+        pack = self._create_command(body=body)
+        return self.send_package(pack=pack, priority=DeparturePriority.SLOWER)
+
+    def send_message(self, body: Union[bytes, bytearray]) -> bool:
+        pack = self._create_message(body=body)
+        return self.send_package(pack=pack, priority=DeparturePriority.NORMAL)
+
     def send_package(self, pack: Package, priority: int = 0) -> bool:
+        """ send data package with priority """
         outgo = self._create_departure(pack=pack, priority=priority)
         return self.send_ship(ship=outgo)
 
-    def send_ship(self, ship: Departure) -> bool:
-        return self.append_departure(ship=ship)
+    # Override
+    def send_data(self, payload: Union[bytes, bytearray]) -> bool:
+        return self.send_message(body=payload)
 
     # Override
     def heartbeat(self):
-        pkg = Package.new(data_type=DataType.COMMAND, body=Data(buffer=PING))
-        self.send_package(pack=pkg, priority=DeparturePriority.SLOWER)
+        self.send_command(body=PING)
 
 
 PING = b'PING'

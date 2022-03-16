@@ -7,8 +7,7 @@ from typing import Generic, TypeVar, Optional, List, Union
 
 from startrek.fsm import Runnable, Daemon
 from startrek.types import Address
-from udp.ba import Data
-from udp.mtp import DataType, Package
+from udp.mtp import Package
 from udp import Connection, ConnectionState
 from udp import Docker, DockerDelegate
 from udp import StarGate, PackageDocker
@@ -124,13 +123,15 @@ class AutoGate(BaseGate, Runnable, Generic[H], ABC):
 
 class UDPGate(AutoGate, Generic[H]):
 
-    def send_command(self, body: bytes, remote: Address, local: Optional[Address]) -> bool:
-        pack = Package.new(data_type=DataType.COMMAND, body=Data(buffer=body))
-        return self.send_package(pack=pack, remote=remote, local=local)
+    def send_message(self, body: Union[bytes, bytearray], remote: Address, local: Optional[Address]) -> bool:
+        docker = self.get_docker(remote=remote, local=local, advance_party=[])
+        if isinstance(docker, PackageDocker):
+            return docker.send_message(body=body)
 
-    def send_message(self, body: bytes, remote: Address, local: Optional[Address]) -> bool:
-        pack = Package.new(data_type=DataType.MESSAGE, body=Data(buffer=body))
-        return self.send_package(pack=pack, remote=remote, local=local)
+    def send_command(self, body: Union[bytes, bytearray], remote: Address, local: Optional[Address]) -> bool:
+        docker = self.get_docker(remote=remote, local=local, advance_party=[])
+        if isinstance(docker, PackageDocker):
+            return docker.send_command(body=body)
 
     def send_package(self, pack: Package, remote: Address, local: Optional[Address]) -> bool:
         docker = self.get_docker(remote=remote, local=local, advance_party=[])
