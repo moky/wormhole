@@ -67,7 +67,7 @@ public final class ActiveConnection extends BaseConnection {
             }
             // get new channel via hub
             sock = getHub().open(remoteAddress, localAddress);
-            assert sock != null : "failed to open channel: " + remoteAddress + ", " + localAddress;
+            //assert sock != null : "failed to open channel: " + remoteAddress + ", " + localAddress;
             setChannel(sock);
         }
         return sock;
