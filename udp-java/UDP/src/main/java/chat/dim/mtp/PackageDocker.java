@@ -76,7 +76,7 @@ public class PackageDocker extends StarDocker {
             Package pack = ((PackageDeparture) outgo).getPackage();
             if (!pack.isResponse()) {
                 // put back for next retry
-                appendDeparture(outgo);
+                sendShip(outgo);
             }
         }
     }
@@ -185,11 +185,31 @@ public class PackageDocker extends StarDocker {
     //  Sending
     //
 
+    protected Package createCommand(byte[] body) {
+        return Package.create(DataType.COMMAND, null, 1, 0, -1, new Data(body));
+    }
+    protected Package createMessage(byte[] body) {
+        return Package.create(DataType.MESSAGE, null, 1, 0, -1, new Data(body));
+    }
+    protected Package createCommandResponse(TransactionID sn, byte[] body) {
+        return Package.create(DataType.COMMAND_RESPONSE, sn, 1, 0, -1, new Data(body));
+    }
+    protected Package createMessageResponse(TransactionID sn, int pages, int index) {
+        return Package.create(DataType.MESSAGE_RESPONSE, sn, pages, index, -1, new Data(OK));
+    }
+
     protected void respondCommand(TransactionID sn, byte[] body) {
-        send(Package.create(DataType.COMMAND_RESPONSE, sn, 1, 0, -1, new Data(body)));
+        send(createCommandResponse(sn, body));
     }
     protected void respondMessage(TransactionID sn, int pages, int index) {
-        send(Package.create(DataType.MESSAGE_RESPONSE, sn, pages, index, -1, new Data(OK)));
+        send(createMessageResponse(sn, pages, index));
+    }
+
+    public boolean sendCommand(byte[] body) {
+        return send(createCommand(body), Departure.Priority.SLOWER.value);
+    }
+    public boolean sendMessage(byte[] body) {
+        return send(createMessage(body), Departure.Priority.NORMAL.value);
     }
 
     public boolean send(Package pkg) {
@@ -197,17 +217,18 @@ public class PackageDocker extends StarDocker {
     }
 
     public boolean send(Package pkg, int priority) {
-        return send(createDeparture(pkg, priority));
+        return sendShip(createDeparture(pkg, priority));
     }
 
-    public boolean send(Departure ship) {
-        return appendDeparture(ship);
+    @Override
+    public boolean sendData(byte[] payload) {
+        return sendMessage(payload);
     }
 
     @Override
     public void heartbeat() {
-        Package pkg = Package.create(DataType.COMMAND, null, 1, 0, -1, new Data(PING));
-        send(pkg, Departure.Priority.SLOWER.value);
+        boolean ok = sendCommand(PING);
+        assert ok : "failed to send command: PING";
     }
 
     protected static final byte[] PING = {'P', 'I', 'N', 'G'};

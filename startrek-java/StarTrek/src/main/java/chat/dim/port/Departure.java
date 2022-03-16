@@ -50,6 +50,11 @@ public interface Departure extends Ship {
         }
     }
 
+    /**
+     *  Task priority
+     *
+     * @return default is 0, smaller is faster
+     */
     int getPriority();
 
     /**

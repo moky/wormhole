@@ -19,11 +19,10 @@ public class TCPGate<H extends Hub> extends AutoGate<H> {
 
     public boolean send(byte[] payload, SocketAddress remote, SocketAddress local) {
         Docker worker = getDocker(remote, local, null);
-        if (worker instanceof PlainDocker) {
-            return ((PlainDocker) worker).send(payload);
-        } else {
+        if (worker == null || !worker.isOpen()) {
             return false;
         }
+        return worker.sendData(payload);
     }
 
     //

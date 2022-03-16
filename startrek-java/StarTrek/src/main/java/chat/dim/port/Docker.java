@@ -51,12 +51,22 @@ public interface Docker extends Processor {
     SocketAddress getLocalAddress();
 
     /**
-     *  Append outgo ship to a queue for sending out
+     *  Pack data to an outgo ship (with normal priority), and
+     *  append to the waiting queue for sending out
      *
-     * @param outgo - outgo ship carrying data package/fragment
+     * @param payload  - data to be sent
+     * @return false on error
+     */
+    boolean sendData(byte[] payload);
+
+    /**
+     *  Append outgo ship (carrying data package, with priority)
+     *  to the waiting queue for sending out
+     *
+     * @param ship - outgo ship carrying data package/fragment
      * @return false on duplicated
      */
-    boolean appendDeparture(Departure outgo);
+    boolean sendShip(Departure ship);
 
     /**
      *  Called when received data

@@ -84,12 +84,21 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     }
 
     @Override
-    public boolean send(Departure outgo, SocketAddress remote, SocketAddress local) {
+    public boolean sendData(byte[] payload, SocketAddress remote, SocketAddress local) {
         Docker docker = getDocker(remote, local);
         if (docker == null || !docker.isOpen()) {
             return false;
         }
-        return docker.appendDeparture(outgo);
+        return docker.sendData(payload);
+    }
+
+    @Override
+    public boolean sendShip(Departure outgo, SocketAddress remote, SocketAddress local) {
+        Docker docker = getDocker(remote, local);
+        if (docker == null || !docker.isOpen()) {
+            return false;
+        }
+        return docker.sendShip(outgo);
     }
 
     //

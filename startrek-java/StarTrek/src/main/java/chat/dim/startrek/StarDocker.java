@@ -122,8 +122,8 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     }
 
     @Override
-    public boolean appendDeparture(Departure outgo) {
-        return dock.appendDeparture(outgo);
+    public boolean sendShip(Departure ship) {
+        return dock.appendDeparture(ship);
     }
 
     @Override

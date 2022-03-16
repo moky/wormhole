@@ -76,16 +76,13 @@ public class PlainDocker extends StarDocker {
     //  Sending
     //
 
-    public boolean send(byte[] payload) {
-        return send(payload, Departure.Priority.NORMAL.value);
-    }
-
     public boolean send(byte[] payload, int priority) {
-        return send(new PlainDeparture(payload, priority));
+        return sendShip(new PlainDeparture(payload, priority));
     }
 
-    public boolean send(Departure ship) {
-        return appendDeparture(ship);
+    @Override
+    public boolean sendData(byte[] payload) {
+        return send(payload, Departure.Priority.NORMAL.value);
     }
 
     @Override

@@ -75,12 +75,24 @@ import chat.dim.skywalker.Processor;
 public interface Gate extends Processor {
 
     /**
-     *  Send outgo ship(carrying data package) by docker
+     *  Pack data to an outgo ship (with normal priority), and
+     *  append to the waiting queue of docker for remote address
+     *
+     * @param payload - data to be sent
+     * @param remote  - remote address
+     * @param local   - local address
+     * @return false on error
+     */
+    boolean sendData(byte[] payload, SocketAddress remote, SocketAddress local);
+
+    /**
+     *  Append outgo ship (carrying data package, with priority)
+     *  to the waiting queue of docker for remote address
      *
      * @param outgo  - departure ship
      * @param remote - remote address
      * @param local  - local address
      * @return false on error
      */
-    boolean send(Departure outgo, SocketAddress remote, SocketAddress local);
+    boolean sendShip(Departure outgo, SocketAddress remote, SocketAddress local);
 }

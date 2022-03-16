@@ -22,18 +22,18 @@ public class UDPGate<H extends Hub> extends AutoGate<H> {
 
     public boolean sendCommand(byte[] body, SocketAddress remote, SocketAddress local) {
         Package pack = Package.create(DataType.COMMAND, null, 1, 0, -1, new Data(body));
-        return send(pack, remote, local);
+        return sendPackage(pack, remote, local);
     }
 
     public boolean sendMessage(byte[] body, SocketAddress remote, SocketAddress local) {
         Package pack = Package.create(DataType.MESSAGE, null, 1, 0, -1, new Data(body));
-        return send(pack, remote, local);
+        return sendPackage(pack, remote, local);
     }
 
-    public boolean send(Package pack, SocketAddress remote, SocketAddress local) {
-        Docker worker = getDocker(remote, local, null);
-        if (worker instanceof PackageDocker) {
-            return ((PackageDocker) worker).send(pack);
+    public boolean sendPackage(Package pack, SocketAddress remote, SocketAddress local) {
+        Docker docker = getDocker(remote, local, null);
+        if (docker instanceof PackageDocker) {
+            return ((PackageDocker) docker).send(pack);
         } else {
             return false;
         }
