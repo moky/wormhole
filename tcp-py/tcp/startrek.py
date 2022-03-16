@@ -28,10 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from startrek import Arrival, ArrivalShip
-from startrek import Departure, DepartureShip, DeparturePriority
+from startrek import DepartureShip, DeparturePriority
 from startrek import StarDocker
 
 
@@ -101,7 +101,7 @@ class PlainDocker(StarDocker):
         if len(data) == 4:
             if data == PING:
                 # PING -> PONG
-                self.send_data(payload=PONG, priority=DeparturePriority.SLOWER)
+                self.send(payload=PONG, priority=DeparturePriority.SLOWER)
                 return None
             if data == PONG or data == NOOP:
                 # ignore
@@ -109,19 +109,21 @@ class PlainDocker(StarDocker):
         return ship
 
     #
-    #   Send
+    #   Sending
     #
 
-    def send_ship(self, ship: Departure) -> bool:
-        return self.append_departure(ship=ship)
-
-    def send_data(self, payload: bytes, priority: int = 0) -> bool:
+    def send(self, payload: bytes, priority: int) -> bool:
+        """ sending payload with priority """
         ship = PlainDeparture(data=payload, priority=priority)
         return self.send_ship(ship=ship)
 
     # Override
+    def send_data(self, payload: Union[bytes, bytearray]) -> bool:
+        return self.send(payload=payload, priority=DeparturePriority.NORMAL)
+
+    # Override
     def heartbeat(self):
-        self.send_data(payload=PING, priority=DeparturePriority.SLOWER)
+        self.send(payload=PING, priority=DeparturePriority.SLOWER)
 
 
 PING = b'PING'

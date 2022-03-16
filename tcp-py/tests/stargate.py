@@ -123,9 +123,9 @@ class AutoGate(BaseGate, Runnable, Generic[H], ABC):
 
 class TCPGate(AutoGate, Generic[H]):
 
-    def send_data(self, payload: bytes, remote: Address, local: Address) -> bool:
+    def send_message(self, payload: bytes, remote: Address, local: Address) -> bool:
         docker = self.get_docker(remote=remote, local=local, advance_party=[])
-        if isinstance(docker, PlainDocker):
+        if docker is not None:
             return docker.send_data(payload=payload)
 
     #

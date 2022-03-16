@@ -64,7 +64,7 @@ class Server(DockerDelegate):
         self.gate.start()
 
     def send(self, data: bytes, destination: Address) -> bool:
-        return self.gate.send_data(payload=data, remote=destination, local=self.local_address)
+        return self.gate.send_message(payload=data, remote=destination, local=self.local_address)
 
     #
     #   Docker Delegate

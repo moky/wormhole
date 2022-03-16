@@ -36,6 +36,7 @@ import time
 from typing import Optional
 
 from startrek.fsm import Runner
+from startrek.types import Address
 
 import sys
 import os
@@ -45,16 +46,31 @@ rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
 from tcp import Connection
-from tcp import Gate, GateDelegate, GateStatus
+from tcp import Docker, DockerDelegate, DockerStatus
 from tcp import Hub, ClientHub
 from tcp import Arrival, PlainArrival, Departure, PlainDeparture
 
 from tests.stargate import TCPGate
 
 
-class Soldier(Runner, GateDelegate):
+class StreamClientHub(ClientHub):
 
-    def __init__(self, remote: tuple, local: Optional[tuple] = None):
+    # Override
+    def _get_connection(self, remote: Address, local: Optional[Address]) -> Optional[Connection]:
+        return super()._get_connection(remote=remote, local=None)
+
+    # Override
+    def _set_connection(self, remote: Address, local: Optional[Address], connection: Connection):
+        super()._set_connection(remote=remote, local=None, connection=connection)
+
+    # Override
+    def _remove_connection(self, remote: Address, local: Optional[Address], connection: Optional[Connection]):
+        super()._remove_connection(remote=remote, local=None, connection=connection)
+
+
+class Soldier(Runner, DockerDelegate):
+
+    def __init__(self, remote: Address, local: Optional[Address] = None):
         super().__init__()
         self.__remote_address = remote
         self.__local_address = local
@@ -66,11 +82,11 @@ class Soldier(Runner, GateDelegate):
         return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
 
     @property
-    def local_address(self) -> tuple:
+    def local_address(self) -> Address:
         return self.__local_address
 
     @property
-    def remote_address(self) -> tuple:
+    def remote_address(self) -> Address:
         return self.__remote_address
 
     @property
@@ -84,20 +100,20 @@ class Soldier(Runner, GateDelegate):
         return thr
 
     def send(self, data: bytes) -> bool:
-        return self.gate.send_data(payload=data, source=self.local_address, destination=self.remote_address)
+        return self.gate.send_message(payload=data, remote=self.remote_address, local=self.local_address)
 
     #
-    #   Gate Delegate
+    #   Docker Delegate
     #
 
     # Override
-    def gate_status_changed(self, previous: GateStatus, current: GateStatus,
-                            remote: tuple, local: Optional[tuple], gate: Gate):
+    def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
+        remote = docker.remote_address
+        local = docker.local_address
         TCPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
 
     # Override
-    def gate_received(self, ship: Arrival,
-                      source: tuple, destination: Optional[tuple], connection: Connection):
+    def docker_received(self, ship: Arrival, docker: Docker):
         assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
         data = ship.package
         try:
@@ -105,20 +121,24 @@ class Soldier(Runner, GateDelegate):
         except UnicodeDecodeError as error:
             TCPGate.error(msg='failed to decode data: %s, %s' % (error, data))
             text = str(data)
+        source = docker.remote_address
         TCPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
 
     # Override
-    def gate_sent(self, ship: Departure,
-                  source: Optional[tuple], destination: tuple, connection: Connection):
+    def docker_sent(self, ship: Departure, docker: Docker):
         assert isinstance(ship, PlainDeparture), 'departure ship error: %s' % ship
         data = ship.package
         size = len(data)
+        destination = docker.remote_address
         TCPGate.info('message sent: %d byte(s) to %s' % (size, destination))
 
     # Override
-    def gate_error(self, error, ship: Departure,
-                   source: Optional[tuple], destination: tuple, connection: Connection):
-        TCPGate.error('gate error (%s, %s): %s' % (source, destination, error))
+    def docker_failed(self, error: IOError, ship: Departure, docker: Docker):
+        TCPGate.error('gate error: %s, %s' % (error, docker))
+
+    # Override
+    def docker_error(self, error: IOError, ship: Departure, docker: Docker):
+        TCPGate.error('gate error: %s, %s' % (error, docker))
 
     @property  # Override
     def running(self) -> bool:
@@ -129,7 +149,7 @@ class Soldier(Runner, GateDelegate):
     def setup(self):
         super().setup()
         gate = self.gate
-        gate.hub = ClientHub(delegate=gate)
+        gate.hub = StreamClientHub(delegate=gate)
         gate.start()
 
     # Override
@@ -156,7 +176,7 @@ class Sergeant:
 
     UNITS = 10  # threads count
 
-    def __init__(self, remote: tuple, local: Optional[tuple] = None):
+    def __init__(self, remote: Address, local: Optional[Address] = None):
         super().__init__()
         self.__remote_address = remote
         self.__local_address = local
@@ -166,11 +186,11 @@ class Sergeant:
         return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
 
     @property
-    def local_address(self) -> tuple:
+    def local_address(self) -> Address:
         return self.__local_address
 
     @property
-    def remote_address(self) -> tuple:
+    def remote_address(self) -> Address:
         return self.__remote_address
 
     def run(self):
@@ -196,7 +216,7 @@ class Colonel(Runner):
 
     TROOPS = 16  # progresses count
 
-    def __init__(self, remote: tuple, local: Optional[tuple] = None):
+    def __init__(self, remote: Address, local: Optional[Address] = None):
         super().__init__()
         self.__remote_address = remote
         self.__local_address = local
@@ -206,11 +226,11 @@ class Colonel(Runner):
         return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
 
     @property
-    def local_address(self) -> tuple:
+    def local_address(self) -> Address:
         return self.__local_address
 
     @property
-    def remote_address(self) -> tuple:
+    def remote_address(self) -> Address:
         return self.__remote_address
 
     def start(self):

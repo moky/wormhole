@@ -67,7 +67,7 @@ class Client(DockerDelegate):
         self.gate.stop()
 
     def send(self, data: bytes) -> bool:
-        return self.gate.send_data(payload=data, remote=self.remote_address, local=self.local_address)
+        return self.gate.send_message(payload=data, remote=self.remote_address, local=self.local_address)
 
     #
     #   Docker Delegate
