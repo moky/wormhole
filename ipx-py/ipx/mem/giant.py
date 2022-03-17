@@ -87,13 +87,14 @@ class GiantQueue(CycledQueue):
 
         NOTICE: all integers are stored as NBO (Network Byte Order, big-endian)
     """
+    MAX_CHUNK_SIZE = 65535
 
     def __init__(self, memory: Memory):
         super().__init__(memory=memory)
         # limit max size for each chunk
         max_size = self.capacity - 4  # deduct chunk size & its check (2 + 2 bytes)
-        if max_size >= 65535:
-            self.__max_size = 65535
+        if max_size >= self.MAX_CHUNK_SIZE:
+            self.__max_size = self.MAX_CHUNK_SIZE
         else:
             self.__max_size = max_size
         # receiving big data

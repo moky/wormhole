@@ -30,8 +30,7 @@
 
 from .memory import Memory, MemoryBuffer
 from .queue import Queue, QueueController
-from .buffer import CycledBuffer
-from .cycle import CycledQueue
+from .cycle import CycledBuffer, CycledQueue
 from .giant import GiantQueue
 
 

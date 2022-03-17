@@ -129,13 +129,8 @@ class MemoryBuffer(ABC):
                % (cname, self.capacity, self.available, self.memory, cname, mod)
 
     @abstractmethod
-    def peek(self, length: int) -> Union[bytes, bytearray, None]:
-        """ get (not remove) data from buffer, None on empty """
-        raise NotImplemented
-
-    @abstractmethod
-    def read(self, length: int) -> Union[bytes, bytearray, None]:
-        """ get (and remove) data with length from buffer, None on empty """
+    def read(self) -> Union[bytes, bytearray, None]:
+        """ get (and remove) data from buffer, None on empty """
         raise NotImplemented
 
     @abstractmethod

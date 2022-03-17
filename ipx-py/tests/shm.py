@@ -9,7 +9,7 @@ from ipx import Arrow, SharedMemoryArrow
 
 
 def new_arrow() -> SharedMemoryArrow:
-    return SharedMemoryArrow.new(size=96, name='0x00ABCDEF')
+    return SharedMemoryArrow.new(size=2048, name='0x00ABCDEF')
     # return SharedMemoryArrow.new(size=64, name=None)
 
 
