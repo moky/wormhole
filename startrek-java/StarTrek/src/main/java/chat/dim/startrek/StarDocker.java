@@ -32,7 +32,6 @@ package chat.dim.startrek;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
-import java.net.SocketAddress;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Date;
