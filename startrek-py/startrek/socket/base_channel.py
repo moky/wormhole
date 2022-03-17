@@ -168,6 +168,18 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     def local_address(self) -> Optional[Address]:  # (str, int)
         return self._local
 
+    def __str__(self) -> str:
+        mod = self.__module__
+        cname = self.__class__.__name__
+        return '<%s: remote=%s, local=%s>\n%s\n</%s module="%s">'\
+               % (cname, self._remote, self._local, self.__sock, cname, mod)
+
+    def __repr__(self) -> str:
+        mod = self.__module__
+        cname = self.__class__.__name__
+        return '<%s: remote=%s, local=%s>\n%s\n</%s module="%s">'\
+               % (cname, self._remote, self._local, self.__sock, cname, mod)
+
     # Override
     def bind(self, address: Optional[Address] = None,
              host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):

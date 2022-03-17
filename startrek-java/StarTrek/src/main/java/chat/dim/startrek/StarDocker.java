@@ -115,11 +115,13 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         return conn == null ? Status.ERROR : Status.getStatus(conn.getState());
     }
 
+    /*/
     @Override
     public SocketAddress getLocalAddress() {
         Connection conn = getConnection();
         return conn == null ? localAddress : conn.getLocalAddress();
     }
+    /*/
 
     @Override
     public boolean sendShip(Departure ship) {

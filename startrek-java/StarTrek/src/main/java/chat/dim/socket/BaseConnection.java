@@ -150,11 +150,13 @@ public class BaseConnection extends AddressPairObject
         return isOpen() && (isConnected() || isBound());
     }
 
+    /*/
     @Override
     public SocketAddress getLocalAddress() {
         Channel channel = getChannel();
         return channel == null ? localAddress : channel.getLocalAddress();
     }
+    /*/
 
     @Override
     public void close() {

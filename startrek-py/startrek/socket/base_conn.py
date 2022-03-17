@@ -135,8 +135,20 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property  # Override
     def local_address(self) -> Optional[Address]:  # (str, int)
-        channel = self.channel
-        return self._local if channel is None else channel.local_address
+        # channel = self.channel
+        return self._local  # if channel is None else channel.local_address
+
+    def __str__(self) -> str:
+        mod = self.__module__
+        cname = self.__class__.__name__
+        return '<%s: remote=%s, local=%s>\n%s\n</%s module="%s">'\
+               % (cname, self._remote, self._local, self._get_channel(), cname, mod)
+
+    def __repr__(self) -> str:
+        mod = self.__module__
+        cname = self.__class__.__name__
+        return '<%s: remote=%s, local=%s>\n%s\n</%s module="%s">'\
+               % (cname, self._remote, self._local, self._get_channel(), cname, mod)
 
     # Override
     def close(self):

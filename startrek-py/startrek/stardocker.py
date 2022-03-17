@@ -123,8 +123,20 @@ class StarDocker(AddressPairObject, Docker, ABC):
 
     @property  # Override
     def local_address(self) -> Optional[Address]:  # (str, int)
-        conn = self._get_connection()
-        return self._local if conn is None else conn.local_address
+        # conn = self._get_connection()
+        return self._local  # if conn is None else conn.local_address
+
+    def __str__(self) -> str:
+        mod = self.__module__
+        cname = self.__class__.__name__
+        return '<%s: remote=%s, local=%s>\n%s\n</%s module="%s">'\
+               % (cname, self._remote, self._local, self._get_connection(), cname, mod)
+
+    def __repr__(self) -> str:
+        mod = self.__module__
+        cname = self.__class__.__name__
+        return '<%s: remote=%s, local=%s>\n%s\n</%s module="%s">'\
+               % (cname, self._remote, self._local, self._get_connection(), cname, mod)
 
     # Override
     def send_ship(self, ship: Departure) -> bool:
