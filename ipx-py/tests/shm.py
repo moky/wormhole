@@ -54,8 +54,10 @@ def test_read(arrow: Arrow = None):
         while data is not None:
             if isinstance(data, bytes) and len(data) > 64:
                 data = data[:30] + b'....' + data[-30:]
+                data = '%s, %d byte(s)' % (data, len(data))
             elif isinstance(data, str) and len(data) > 64:
                 data = data[:30] + '....' + data[-30:]
+                data = '%s, %d byte(s)' % (data, len(data))
             print('---- read %d: %s' % (i, data))
             print('---- arrow %d: %s' % (i, arrow))
             data = arrow.receive()
@@ -69,7 +71,7 @@ def test_process():
     child.start()
     test_write(data=g_test_data)
     child.join()
-    # g_shared.destroy()
+    # del_arrow(arrow=g_shared)
 
 
 def test_fork():
@@ -82,7 +84,7 @@ def test_fork():
         print('==== Parent process %d, child=%d' % (os.getpid(), pid))
         test_write(data=g_test_data, arrow=g_shared)
         time.sleep(0.5)
-        del_arrow(arrow=g_shared)
+        # del_arrow(arrow=g_shared)
 
 
 g_test_data = [

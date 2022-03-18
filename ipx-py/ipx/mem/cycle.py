@@ -222,15 +222,58 @@ def get_positions(memory: Memory) -> (int, int):
     return rp, wp
 
 
-def add_wrote_position(memory: Memory, pos: int):
+def read_data(memory: Memory, start: int, end: int) -> bytes:
+    """ read data from range [start, end) """
+    if start < end:
+        # data stored continuously
+        return memory.get_bytes(start=start, end=end)
+    elif end == DATA_ZONE_START:
+        # data stored to the tail of memory
+        return memory.get_bytes(start=start)
+    else:
+        # data separated to two parts
+        left = memory.get_bytes(start=start)
+        right = memory.get_bytes(start=DATA_ZONE_START, end=end)
+        return left + right
+
+
+def move_read_pointer(memory: Memory):
+    """ move reading pointer forward """
+    r = memory.get_byte(index=READ_POS)
+    if r < INDEX_LIMIT:
+        memory.set_byte(index=READ_POS, value=(r + 1))
+    else:
+        memory.set_byte(index=READ_POS, value=0)
+
+
+def write_data(memory: Memory, start: int, end: int, data: Union[bytes, bytearray]) -> int:
+    """ write data into memory from start position and return the tail position """
+    tail = end - memory.size
+    if tail < 0:
+        # store data continuously
+        memory.update(index=start, source=data)
+        return end
+    elif tail == 0:
+        # store data to the tail
+        memory.update(index=start, source=data)
+        return DATA_ZONE_START
+    else:
+        # separate data to two parts
+        m = len(data) - tail
+        memory.update(index=start, source=data[:m])
+        memory.update(index=DATA_ZONE_START, source=data[m:])
+        return DATA_ZONE_START + tail
+
+
+def add_write_position(memory: Memory, pos: int):
     """ add end position just wrote """
-    # 1. convert position to data zone offset
+    # convert position to data zone offset
     idx = int_to_bytes(value=(pos - DATA_ZONE_START), length=INDEX_SIZE)
-    # 2. add new index
+    # add new index
     w = memory.get_byte(index=WRITE_POS)
     w = w + 1 if w < INDEX_LIMIT else 0
     memory.update(index=(INDEX_ZONE_START + w * INDEX_SIZE), source=idx)
-    # 3. move writing pointer forward
+    # move writing pointer forward
     memory.set_byte(index=WRITE_POS, value=w)
 
 
@@ -314,27 +357,13 @@ class CycledBuffer(MemoryBuffer):
         # 1. get next range [start, end) for reading
         start, end = get_read_range(memory=memory)
         if start == end:
-            # -1, data zone empty
+            # both -1, data zone empty
             return None
-        conf = self.config
         # 2. get data from range [start, end)
-        if end == conf.data_zone_start:
-            # data stored to the tail of memory
-            data = memory.get_bytes(start=start)
-        elif start < end:
-            # data stored continuously
-            data = memory.get_bytes(start=start, end=end)
-        else:
-            # data separated to two parts
-            left = memory.get_bytes(start=start)
-            right = memory.get_bytes(start=conf.data_zone_start, end=end)
-            data = left + right
+        data = read_data(memory=memory, start=start, end=end)
         # 3. move reading pointer forward
-        r = memory.get_byte(index=conf.read_pos)
-        if r < conf.index_limit:
-            memory.set_byte(index=conf.read_pos, value=(r + 1))
-        else:
-            memory.set_byte(index=conf.read_pos, value=0)
+        move_read_pointer(memory=memory)
+        # OK
         return data
 
     # Override
@@ -343,36 +372,22 @@ class CycledBuffer(MemoryBuffer):
         # 1. get range [start, end) for writing
         start, end = get_write_range(memory=memory)
         if start == end:
-            # -1, memory is full
+            # both -1, memory is full
             return False
-        conf = self.config
-        # 2. check empty spaces
+        # 2. check empty spaces for storing data
         if start < end:
             spaces = end - start
         else:
+            conf = self.config
             spaces = conf.data_zone_end - start + end - conf.data_zone_start
         data_size = len(data)
         if spaces < data_size:
             # not enough spaces
             return False
-        # 3. write data into data zone
-        end = start + data_size
-        tail = end - conf.data_zone_end
-        if tail > 0:
-            # separate data to two parts
-            m = data_size - tail
-            memory.update(index=start, source=data[:m])
-            memory.update(index=conf.data_zone_start, source=data[m:])
-            end = conf.data_zone_start + tail
-        elif tail == 0:
-            # store data to the tail
-            memory.update(index=start, source=data)
-            end = conf.data_zone_start
-        else:
-            # store data continuously
-            memory.update(index=start, source=data)
-        # 4. write 'end' position into index zone
-        add_wrote_position(memory=memory, pos=end)
+        # 3. write data into data zone with range [start, end),
+        #    and append tail position of the data into index zone
+        pos = write_data(memory=memory, start=start, end=(start + data_size), data=data)
+        add_write_position(memory=memory, pos=pos)
         return True
 
 
