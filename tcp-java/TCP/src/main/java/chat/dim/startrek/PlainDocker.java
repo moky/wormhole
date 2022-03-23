@@ -46,6 +46,10 @@ public class PlainDocker extends StarDocker {
         return new PlainArrival(data);
     }
 
+    protected Departure createDeparture(byte[] data, int priority) {
+        return new PlainDeparture(data, priority);
+    }
+
     @Override
     protected Arrival getArrival(byte[] data) {
         if (data == null || data.length == 0) {
@@ -78,7 +82,7 @@ public class PlainDocker extends StarDocker {
 
     public boolean send(byte[] payload, int priority) {
         // sending payload with priority
-        return sendShip(new PlainDeparture(payload, priority));
+        return sendShip(createDeparture(payload, priority));
     }
 
     @Override

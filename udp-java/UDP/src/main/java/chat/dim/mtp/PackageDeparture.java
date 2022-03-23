@@ -31,7 +31,6 @@
 package chat.dim.mtp;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
@@ -47,8 +46,8 @@ public class PackageDeparture extends DepartureShip {
     private final List<Package> packages;
     private final List<byte[]> fragments;
 
-    public PackageDeparture(Package pack, int prior, long now) {
-        super(prior, now);
+    public PackageDeparture(Package pack, int prior, int maxTries) {
+        super(prior, maxTries);
         Header head = pack.head;
         sn = head.sn.getBytes();
         completed = pack;
@@ -56,7 +55,7 @@ public class PackageDeparture extends DepartureShip {
         fragments = new ArrayList<>();
     }
     public PackageDeparture(Package pack, int prior) {
-        this(pack, prior, new Date().getTime());
+        this(pack, prior, 1 + RETRIES);
     }
 
     protected List<Package> split(Package pack) {

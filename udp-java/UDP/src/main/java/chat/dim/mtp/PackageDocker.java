@@ -55,29 +55,13 @@ public class PackageDocker extends StarDocker {
     }
 
     protected Departure createDeparture(Package pkg, int priority) {
-        return new PackageDeparture(pkg, priority);
-    }
-
-    @Override
-    protected Departure getNextDeparture(long now) {
-        Departure outgo = super.getNextDeparture(now);
-        if (outgo != null) {
-            retryDeparture(outgo);
-        }
-        return outgo;
-    }
-
-    protected void retryDeparture(Departure outgo) {
-        if (outgo.getRetries() >= DepartureShip.MAX_RETRIES) {
-            // last try
-            return;
-        }
-        if (outgo instanceof PackageDeparture) {
-            Package pack = ((PackageDeparture) outgo).getPackage();
-            if (!pack.isResponse()) {
-                // put back for next retry
-                sendShip(outgo);
-            }
+        if (pkg.isResponse()) {
+            // response package needs no response again,
+            // so this ship will be removed immediately after sent.
+            return new PackageDeparture(pkg, priority, DepartureShip.DISPOSABLE);
+        } else {
+            // normal package
+            return new PackageDeparture(pkg, priority);
         }
     }
 

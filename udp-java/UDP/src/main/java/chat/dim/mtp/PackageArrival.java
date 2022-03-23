@@ -80,7 +80,6 @@ public class PackageArrival extends ArrivalShip {
         }
         if (completed == null) {
             // extend expired time, wait for more fragments
-            update(new Date().getTime());
             return null;
         } else {
             // package completed
