@@ -43,4 +43,23 @@ public interface Arrival extends Ship {
      * @return new ship carried the whole data package
      */
     Arrival assemble(Arrival income);
+
+    //
+    //  task states
+    //
+
+    /**
+     *  Check whether task timeout
+     *
+     * @param now - current time
+     * @return true on timeout
+     */
+    boolean isTimeout(long now);
+
+    /**
+     *  Update expired time
+     *
+     * @param now - current time
+     */
+    void touch(long now);
 }

@@ -88,7 +88,9 @@ public class ArrivalHall {
         // insert as fragment
         Arrival completed = task.assemble(income);
         if (completed == null) {
-            // not completed yet, waiting for more fragments
+            // not completed yet, update expired time
+            // and wait for more fragments.
+            task.touch((new Date()).getTime());
             return null;
         }
         // all fragments received, remove this task
@@ -109,7 +111,7 @@ public class ArrivalHall {
         Arrival ship;
         while (ait.hasNext()) {
             ship = ait.next();
-            if (ship.isFailed(now)) {
+            if (ship.isTimeout(now)) {
                 // task expired
                 ait.remove(); //arrivals.remove(ship);
                 // remove mapping with SN

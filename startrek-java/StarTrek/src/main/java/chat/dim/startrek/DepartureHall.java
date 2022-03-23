@@ -82,7 +82,7 @@ public class DepartureHall {
         fleet.add(outgo);
         // 3. build mapping if SN exists
         Object sn = outgo.getSN();
-        if (sn != null) {
+        if (sn != null && !outgo.isDisposable()) {
             departureMap.put(sn, outgo);
         }
         return true;
@@ -177,12 +177,20 @@ public class DepartureHall {
             dit = fleet.iterator();
             while (dit.hasNext()) {
                 ship = dit.next();
-                if (ship.getRetries() == -1 && ship.update(now)) {
-                    // first time to try, update and remove from the queue
-                    dit.remove(); //fleet.remove(ship);
-                    sn = ship.getSN();
-                    if (sn != null) {
-                        departureMap.remove(sn);
+                if (ship.isNew()) {
+                    if (ship.isDisposable()) {
+                        // disposable ship needs no response,
+                        // remove it immediately.
+                        dit.remove(); //fleet.remove(ship);
+                        // TODO: disposable ship will not be mapped.
+                        //       see 'appendDeparture()'
+                        sn = ship.getSN();
+                        if (sn != null) {
+                            departureMap.remove(sn);
+                        }
+                    } else {
+                        // first try, update expired time for response
+                        ship.touch(now);
                     }
                     return ship;
                 }
@@ -206,16 +214,17 @@ public class DepartureHall {
             dit = fleet.iterator();
             while (dit.hasNext()) {
                 ship = dit.next();
-                if (ship.isTimeout(now) && ship.update(now)) {
-                    // respond time out, update and remove from the queue
+                if (ship.isTimeout(now)) {
+                    // response timeout, needs retry now.
+                    // 2.1. update expired time;
+                    ship.touch(now);
+                    // 2.2. move to the tail
                     dit.remove(); //fleet.remove(ship);
-                    sn = ship.getSN();
-                    if (sn != null) {
-                        departureMap.remove(sn);
-                    }
+                    fleet.add(ship);
                     return ship;
                 } else if (ship.isFailed(now)) {
-                    // task expired, remove this ship
+                    // try too many times and still missing response,
+                    // task failed, remove this ship.
                     dit.remove(); //fleet.remove(ship);
                     sn = ship.getSN();
                     if (sn != null) {

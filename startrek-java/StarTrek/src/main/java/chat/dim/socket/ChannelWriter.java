@@ -53,7 +53,7 @@ public abstract class ChannelWriter<C extends SelectableChannel>
                 throw e;
             }
             // buffer overflow!
-            return -1;
+            return 0;
         }
     }
 
@@ -67,14 +67,8 @@ public abstract class ChannelWriter<C extends SelectableChannel>
         while (true) {  // while (sock.isOpen())
             cnt = tryWrite(src, sock);
             // check send result
-            if (cnt == 0) {
+            if (cnt <= 0) {
                 // buffer overflow?
-                break;
-            } else if (cnt < 0) {
-                // buffer overflow!
-                if (sent == 0) {
-                    return -1;
-                }
                 break;
             }
             // something sent, check remaining data

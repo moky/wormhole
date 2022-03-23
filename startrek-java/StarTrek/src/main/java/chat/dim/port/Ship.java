@@ -44,20 +44,4 @@ public interface Ship {
      * @return SN
      */
     Object getSN();
-
-    /**
-     *  Check whether task failed
-     *
-     * @param now - current time
-     * @return true on failed
-     */
-    boolean isFailed(long now);
-
-    /**
-     *  Update expired time
-     *
-     * @param now - current time
-     * @return false on error (nothing changed)
-     */
-    boolean update(long now);
 }

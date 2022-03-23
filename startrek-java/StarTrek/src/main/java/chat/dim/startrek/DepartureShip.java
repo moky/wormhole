@@ -30,8 +30,6 @@
  */
 package chat.dim.startrek;
 
-import java.util.Date;
-
 import chat.dim.port.Departure;
 
 public abstract class DepartureShip implements Departure {
@@ -42,24 +40,39 @@ public abstract class DepartureShip implements Departure {
     public static long EXPIRES = 120 * 1000; // milliseconds
 
     /**
-     *  Departure task will be retried 2 times if timeout
+     *  Departure task will be retried 2 times if response timeout
      */
-    public static int MAX_RETRIES = 2;
+    public static int RETRIES = 2;
 
-    private long expired;  // last tried time (timestamp in milliseconds)
-    private int retries;   // totally 3 times to be sent at the most
+    // if (max_tries == -1),
+    // means this ship well be sent only once
+    // and no need to wait for response.
+    public static final int DISPOSABLE = -1;
 
+    // expired time (timestamp in milliseconds)
+    private long expired;
+
+    // tries:
+    //    -1, this ship needs no response, so it will be sent out
+    //        and removed immediately;
+    //     0, this ship was sent and now is waiting for response,
+    //        it should be removed after expired;
+    //    >0, this task needs retry and waiting for response,
+    //        don't remove it now.
+    private int tries;
+
+    // task priority, smaller is faster
     private final int priority;
 
-    protected DepartureShip(int prior, long now) {
+    protected DepartureShip(int prior, int maxTries) {
         super();
-        // ship priority
+        assert maxTries != 0 : "max tries should not be 0";
         priority = prior;
-        expired = now + EXPIRES;
-        retries = -1;
+        expired = 0;
+        tries = maxTries;
     }
-    protected DepartureShip(int prior) {
-        this(prior, new Date().getTime());
+    protected DepartureShip() {
+        this(0, 1 + RETRIES);
     }
 
     @Override
@@ -67,32 +80,36 @@ public abstract class DepartureShip implements Departure {
         return priority;
     }
 
+    //
+    //  task states
+    //
+
     @Override
-    public int getRetries() {
-        return retries;
+    public boolean isNew() {
+        return expired == 0;
+    }
+
+    @Override
+    public boolean isDisposable() {
+        return tries <= 0;  // -1
     }
 
     @Override
     public boolean isTimeout(long now) {
-        return retries < MAX_RETRIES && expired < now;
+        return tries > 0 && now > expired;
     }
 
     @Override
     public boolean isFailed(long now) {
-        long extra = EXPIRES * (MAX_RETRIES - retries);
-        return expired + extra < now;
+        return tries == 0 && now > expired;
     }
 
     @Override
-    public boolean update(long now) {
-        if (retries >= MAX_RETRIES) {
-            // retried too many times
-            return false;
-        }
+    public void touch(long now) {
+        assert tries > 0 : "touch error, tries=" + tries;
         // update retried time
         expired = now + EXPIRES;
-        // increase counter
-        ++retries;
-        return true;
+        // decrease counter
+        --tries;
     }
 }

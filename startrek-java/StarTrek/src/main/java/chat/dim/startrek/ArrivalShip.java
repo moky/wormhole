@@ -52,14 +52,17 @@ public abstract class ArrivalShip implements Arrival {
         this(new Date().getTime());
     }
 
+    //
+    //  task states
+    //
+
     @Override
-    public boolean isFailed(long now) {
-        return expired < now;
+    public boolean isTimeout(long now) {
+        return now > expired;
     }
 
     @Override
-    public boolean update(long now) {
+    public void touch(long now) {
         expired = now + EXPIRES;
-        return true;
     }
 }

@@ -58,21 +58,6 @@ public interface Departure extends Ship {
     int getPriority();
 
     /**
-     *  Get retries
-     *
-     * @return tried times
-     */
-    int getRetries();
-
-    /**
-     *  Check whether task needs retry
-     *
-     * @param now - current time
-     * @return true on retry
-     */
-    boolean isTimeout(long now);
-
-    /**
      *  Get fragments to sent
      *
      * @return remaining separated data packages
@@ -87,4 +72,45 @@ public interface Departure extends Ship {
      * @return true on task finished
      */
     boolean checkResponse(Arrival response);
+
+    //
+    //  task states
+    //
+
+    /**
+     *  Check whether it's a new task
+     *
+     * @return true for new task
+     */
+    boolean isNew();
+
+    /**
+     *  Check whether it can be removed immediately
+     *
+     * @return true for task needs no response
+     */
+    boolean isDisposable();
+
+    /**
+     *  Check whether task needs retry
+     *
+     * @param now - current time
+     * @return true on timeout
+     */
+    boolean isTimeout(long now);
+
+    /**
+     *  Check whether task's response(s) missed
+     *
+     * @param now - current time
+     * @return true on failed
+     */
+    boolean isFailed(long now);
+
+    /**
+     *  Update expired time
+     *
+     * @param now - current time
+     */
+    void touch(long now);
 }
