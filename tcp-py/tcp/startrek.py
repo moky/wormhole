@@ -59,8 +59,8 @@ class PlainArrival(ArrivalShip):
 
 class PlainDeparture(DepartureShip):
 
-    def __init__(self, data: bytes, priority: int = 0, now: float = 0):
-        super().__init__(priority=priority, now=now)
+    def __init__(self, data: bytes, priority: int = 0):
+        super().__init__(priority=priority, max_tries=DepartureShip.DISPOSABLE)
         self.__data = data
         self.__fragments = [data]
 
@@ -89,6 +89,10 @@ class PlainDocker(StarDocker):
     def _create_arrival(self, data: bytes) -> Arrival:
         return PlainArrival(data=data)
 
+    # noinspection PyMethodMayBeStatic
+    def _create_departure(self, data: bytes, priority: int):
+        return PlainDeparture(data=data, priority=priority)
+
     # Override
     def _get_arrival(self, data: bytes) -> Optional[Arrival]:
         if data is not None and len(data) > 0:
@@ -114,7 +118,7 @@ class PlainDocker(StarDocker):
 
     def send(self, payload: bytes, priority: int) -> bool:
         """ sending payload with priority """
-        ship = PlainDeparture(data=payload, priority=priority)
+        ship = self._create_departure(data=payload, priority=priority)
         return self.send_ship(ship=ship)
 
     # Override

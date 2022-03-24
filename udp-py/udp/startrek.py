@@ -28,7 +28,6 @@
 # SOFTWARE.
 # ==============================================================================
 
-import time
 from typing import List, Optional, Union
 
 from startrek import Arrival, ArrivalShip
@@ -79,8 +78,7 @@ class PackageArrival(ArrivalShip):
                 self.__completed = packer.insert(fragment=item)
         if self.__completed is None:
             # extend expired time, wait for more fragments
-            now = time.time()
-            self.update(now=now)
+            return None
         else:
             # package completed
             return self
@@ -88,8 +86,8 @@ class PackageArrival(ArrivalShip):
 
 class PackageDeparture(DepartureShip):
 
-    def __init__(self, pack: Package, priority: int = 0, now: float = 0):
-        super().__init__(priority=priority, now=now)
+    def __init__(self, pack: Package, priority: int = 0, max_tries: int = 3):
+        super().__init__(priority=priority, max_tries=max_tries)
         self.__sn = pack.head.sn.get_bytes()
         self.__completed = pack
         self.__packages = self._split_package(pack=pack)
@@ -158,24 +156,13 @@ class PackageDocker(StarDocker):
 
     # noinspection PyMethodMayBeStatic
     def _create_departure(self, pack: Package, priority: int = 0) -> Departure:
-        return PackageDeparture(pack=pack, priority=priority)
-
-    # Override
-    def _next_departure(self, now: float) -> Optional[Departure]:
-        outgo = super()._next_departure(now=now)
-        if outgo is not None:
-            self._retry_departure(ship=outgo)
-        return outgo
-
-    def _retry_departure(self, ship: Departure):
-        if ship.retries >= DepartureShip.MAX_RETRIES:
-            # last try
-            return False
-        if isinstance(ship, PackageDeparture):
-            pack = ship.package
-            if not pack.is_response:
-                # put back for next retry
-                return self.send_ship(ship=ship)
+        if pack.is_response:
+            # response package needs no response again,
+            # so this ship will be removed immediately after sent.
+            return PackageDeparture(pack=pack, priority=priority, max_tries=DepartureShip.DISPOSABLE)
+        else:
+            # normal package
+            return PackageDeparture(pack=pack, priority=priority)
 
     # Override
     def _get_arrival(self, data: bytes) -> Optional[Arrival]:
