@@ -33,31 +33,19 @@ from enum import IntEnum
 from typing import List
 
 
+"""
+    Star Ship
+    ~~~~~~~~~
+    
+    Container carrying data package
+"""
+
+
 class Ship(ABC):
 
     @property
     def sn(self):  # -> object:
         """ Get ID for this ship """
-        raise NotImplemented
-
-    @abstractmethod
-    def is_failed(self, now: float) -> bool:
-        """
-        Check whether task failed
-
-        :param now: current timestamp
-        :return true on failed
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def update(self, now: float) -> bool:
-        """
-        Update expired time
-
-        :param now: current timestamp
-        :return false on error (nothing changed)
-        """
         raise NotImplemented
 
 
@@ -74,6 +62,29 @@ class Arrival(Ship):
         """
         raise NotImplemented
 
+    #
+    #   task states
+    #
+
+    @abstractmethod
+    def is_timeout(self, now: float) -> bool:
+        """
+        Check whether task timeout
+
+        :param now: current time
+        :return False on timeout
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def touch(self, now: float):
+        """
+        Update expired time
+
+        :param now: current time
+        """
+        raise NotImplemented
+
 
 class Departure(Ship):
     """ Outgoing Ship """
@@ -81,21 +92,6 @@ class Departure(Ship):
     @property
     def priority(self) -> int:
         """ Task priority, default is 0, smaller is faster """
-        raise NotImplemented
-
-    @property
-    def retries(self) -> int:
-        """ How many times retried """
-        raise NotImplemented
-
-    @abstractmethod
-    def is_timeout(self, now: float) -> bool:
-        """
-        Check whether task needs retry
-
-        :param now: current time
-        :return true on retry
-        """
         raise NotImplemented
 
     @property
@@ -114,7 +110,58 @@ class Departure(Ship):
         if all fragments responded, means this task is finished.
 
         :param ship: income ship carrying response
-        :return true on task finished
+        :return True on task finished
+        """
+        raise NotImplemented
+
+    #
+    #   task states
+    #
+
+    @abstractmethod
+    def is_new(self) -> bool:
+        """
+        Check whether it's a new task
+
+        :return True for new task
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def is_disposable(self) -> bool:
+        """
+        Check whether it can be removed immediately
+
+        : return True for task needs no response
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def is_timeout(self, now: float) -> bool:
+        """
+        Check whether task needs retry
+
+        :param now: current time
+        :return True for retrying
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def is_failed(self, now: float) -> bool:
+        """
+        Check whether task's response(s) missed
+
+        :param now: current time
+        :return True on failed
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def touch(self, now: float):
+        """
+        Update expired time
+
+        :param now: current time
         """
         raise NotImplemented
 

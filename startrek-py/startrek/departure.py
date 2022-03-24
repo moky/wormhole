@@ -41,47 +41,60 @@ class DepartureShip(Departure, ABC):
     # Departure task will be expired after 2 minutes if no response received
     EXPIRES = 120  # seconds
 
-    # Departure task will be retried 2 times if timeout
-    MAX_RETRIES = 2
+    # Departure task will be retried 2 times if response timeout
+    RETRIES = 2
 
-    def __init__(self, priority: int = 0, now: float = 0):
+    # if (max_tries == -1),
+    # means this ship will be sent only once
+    # and no need to wait for response.
+    DISPOSABLE = -1
+
+    def __init__(self, priority: int = 0, max_tries: int = 3):  # max_tries = 1 + RETRIES
         super().__init__()
         # ship priority
         self.__priority = priority
-        # last tried time (timestamp in seconds)
-        if now <= 0:
-            now = time.time()
-        self.__expired = now + self.EXPIRES
-        # totally 3 times to be sent at the most
-        self.__retries = -1
+        # expired time (timestamp in seconds)
+        self.__expired = 0
+        # tries:
+        #   -1, this ship needs no response, so it will be sent out
+        #       and removed immediately;
+        #    0, this ship was sent and now is waiting for response,
+        #       it should be removed after expired;
+        #   >0, this ship needs retry and waiting for response,
+        #       don't remove it now.
+        self.__tries = max_tries
 
     @property
     def priority(self) -> int:
         return self.__priority
 
-    @property
-    def retries(self) -> int:
-        return self.__retries
+    #
+    #   task states
+    #
+
+    # Override
+    def is_new(self) -> bool:
+        return self.__expired == 0
+
+    # Override
+    def is_disposable(self) -> bool:
+        return self.__tries <= 0  # -1
 
     # Override
     def is_timeout(self, now: float) -> bool:
-        return self.__retries < self.MAX_RETRIES and self.__expired < now
+        return self.__tries > 0 and now > self.__expired
 
     # Override
     def is_failed(self, now: float) -> bool:
-        extra = self.EXPIRES * (self.MAX_RETRIES - self.__retries)
-        expired = self.__expired + extra
-        return expired < now
+        return self.__tries == 0 and now > self.__expired
 
     # Override
-    def update(self, now: float) -> bool:
-        if self.__retries < self.MAX_RETRIES:
-            # update retried time
-            self.__expired = now + self.EXPIRES
-            # increase counter
-            self.__retries += 1
-            return True
-        # else, retried too many times
+    def touch(self, now: float):
+        assert self.__tries > 0, 'touch error, tries=%d' % self.__tries
+        # update retried time
+        self.__expired = now + self.EXPIRES
+        # decrease counter
+        self.__tries -= 1
 
 
 class DepartureHall:
@@ -90,7 +103,7 @@ class DepartureHall:
     def __init__(self):
         super().__init__()
         self.__priorities: List[int] = []
-        self.__fleets: Dict[int, List[Departure]] = {}  # priority => List[DepartureShip]
+        self.__fleets: Dict[int, List[Departure]] = {}  # priority => List[Departure]
         self.__map = weakref.WeakValueDictionary()  # sn => Departure
         self.__finished_times: Dict[Any, float] = {}  # sn => timestamp
 
@@ -117,7 +130,9 @@ class DepartureHall:
         fleet.append(ship)
         # 3. build mapping if SN exists
         sn = ship.sn
-        if sn is not None:
+        if not (sn is None or ship.is_disposable()):
+            # disposable ship needs no response, so
+            # we don't build index for it.
             self.__map[sn] = ship
         return True
 
@@ -182,10 +197,10 @@ class DepartureHall:
         :param now: current time
         :return departure task
         """
-        # task.retries == 0
+        # task.__expired == 0
         task = self.__next_new_departure(now=now)
         if task is None:
-            # task.retries < MAX_RETRIES and timeout
+            # task.__tries > 0 and timeout
             task = self.__next_timeout_departure(now=now)
         return task
 
@@ -199,12 +214,19 @@ class DepartureHall:
             # 2. seeking new task in this priority
             departures = list(fleet)
             for ship in departures:
-                if ship.retries == -1 and ship.update(now=now):
-                    # first time to try, update and remove from the queue
-                    fleet.remove(ship)
-                    sn = ship.sn
-                    if sn is not None:
-                        self.__map.pop(sn, None)
+                if ship.is_new():
+                    if ship.is_disposable():
+                        # disposable ship needs no response,
+                        # remove it immediately.
+                        fleet.remove(ship)
+                        # TODO: disposable ship will not be mapped.
+                        #       see 'append_departure(ship)'
+                        sn = ship.sn
+                        if sn is not None:
+                            self.__map.pop(sn, None)
+                    else:
+                        # first time to try, update expired time for response
+                        ship.touch(now=now)
                     return ship
 
     def __next_timeout_departure(self, now: float) -> Optional[Departure]:
@@ -217,15 +239,18 @@ class DepartureHall:
             # 2. seeking timeout task in this priority
             departures = list(fleet)
             for ship in departures:
-                if ship.is_timeout(now=now) and ship.update(now=now):
-                    # respond time out, update and remove from the queue
-                    fleet.remove(ship)
-                    sn = ship.sn
-                    if sn is not None:
-                        self.__map.pop(sn, None)
+                if ship.is_timeout(now=now):
+                    # response timeout, needs retry now.
+                    # 2.1. update expired time;
+                    ship.touch(now=now)
+                    # 2.2. move to the tail
+                    if len(fleet) > 1:
+                        fleet.remove(ship)
+                        fleet.append(ship)
                     return ship
                 elif ship.is_failed(now=now):
-                    # task expired, remove this ship
+                    # try too many times and still missing response,
+                    # task failed, remove this ship.
                     fleet.remove(ship)
                     sn = ship.sn
                     if sn is not None:

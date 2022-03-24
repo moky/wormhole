@@ -48,14 +48,17 @@ class ArrivalShip(Arrival, ABC):
             now = time.time()
         self.__expired = now + self.EXPIRES
 
-    # Override
-    def is_failed(self, now: float) -> bool:
-        return self.__expired < now
+    #
+    #   task states
+    #
 
     # Override
-    def update(self, now: float) -> bool:
+    def is_timeout(self, now: float) -> bool:
+        return now > self.__expired
+
+    # Override
+    def touch(self, now: float):
         self.__expired = now + self.EXPIRES
-        return True
 
 
 class ArrivalHall:
@@ -85,7 +88,7 @@ class ArrivalHall:
         if timestamp is not None and timestamp > 0:
             # task already finished
             return None
-        task = self.__map.get(sn)
+        task: Arrival = self.__map.get(sn)
         if task is None:
             # new arrival, try assembling to check whether a fragment
             task = ship.assemble(ship=ship)
@@ -99,13 +102,17 @@ class ArrivalHall:
                 return task
         # insert as fragment
         completed = task.assemble(ship=ship)
-        if completed is not None:
-            # all fragments received, remove this task
-            self.__arrivals.discard(task)
-            self.__map.pop(sn, None)
-            self.__finished_times[sn] = time.time()
-            return completed
-        # not completed yet, waiting for more fragments
+        if completed is None:
+            # not completed yet, update expired time
+            # and wait for more fragments.
+            task.touch(now=time.time())
+            return None
+        # all fragments received, remove this task
+        self.__arrivals.discard(task)
+        self.__map.pop(sn, None)
+        # mark finished time
+        self.__finished_times[sn] = time.time()
+        return completed
 
     def purge(self):
         """ Clear all expired tasks """
@@ -114,7 +121,7 @@ class ArrivalHall:
         # 1. seeking expired tasks
         arrivals = set(self.__arrivals)
         for ship in arrivals:
-            if ship.is_failed(now=now):
+            if ship.is_timeout(now=now):
                 # task expired
                 failed_tasks.add(ship)
         # 2. clear expired tasks

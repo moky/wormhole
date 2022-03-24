@@ -140,7 +140,7 @@ class ChannelWriter(Controller, SocketWriter, ABC):
                 # connection lost?
                 raise error
             # buffer overflow!
-            return -1
+            return 0
 
     # Override
     def write(self, data: bytes) -> int:
@@ -154,19 +154,16 @@ class ChannelWriter(Controller, SocketWriter, ABC):
         while True:  # while is_opened(sock=sock):
             cnt = self._try_write(data=data, sock=sock)
             # check send result
-            if cnt == 0:
+            if cnt <= 0:
                 # buffer overflow?
-                break
-            elif cnt < 0:
-                # buffer overflow!
-                if sent == 0:
-                    return -1
                 break
             # something sent, check remaining data
             sent += cnt
             rest -= cnt
-            if rest > 0:
-                data = data[cnt:]
+            if rest <= 0:
+                # done!
+                break
             else:
-                break  # done!
+                # remove sent part
+                data = data[cnt:]
         return sent

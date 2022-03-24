@@ -45,7 +45,7 @@ public abstract class DepartureShip implements Departure {
     public static int RETRIES = 2;
 
     // if (max_tries == -1),
-    // means this ship well be sent only once
+    // means this ship will be sent only once
     // and no need to wait for response.
     public static final int DISPOSABLE = -1;
 
@@ -57,7 +57,7 @@ public abstract class DepartureShip implements Departure {
     //        and removed immediately;
     //     0, this ship was sent and now is waiting for response,
     //        it should be removed after expired;
-    //    >0, this task needs retry and waiting for response,
+    //    >0, this ship needs retry and waiting for response,
     //        don't remove it now.
     private int tries;
 

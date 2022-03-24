@@ -83,6 +83,8 @@ public class DepartureHall {
         // 3. build mapping if SN exists
         Object sn = outgo.getSN();
         if (sn != null && !outgo.isDisposable()) {
+            // disposable ship needs no response, so
+            // we don't build index for it.
             departureMap.put(sn, outgo);
         }
         return true;
@@ -153,10 +155,10 @@ public class DepartureHall {
      * @return departure task
      */
     public Departure getNextDeparture(long now) {
-        // task.retries == 0
+        // task.expired == 0
         Departure next = getNextNewDeparture(now);
         if (next == null) {
-            // task.retries < MAX_RETRIES and timeout
+            // task.tries > 0 and timeout
             next = getNextTimeoutDeparture(now);
         }
         return next;
@@ -219,8 +221,10 @@ public class DepartureHall {
                     // 2.1. update expired time;
                     ship.touch(now);
                     // 2.2. move to the tail
-                    dit.remove(); //fleet.remove(ship);
-                    fleet.add(ship);
+                    if (fleet.size() > 1) {
+                        dit.remove(); //fleet.remove(ship);
+                        fleet.add(ship);
+                    }
                     return ship;
                 } else if (ship.isFailed(now)) {
                     // try too many times and still missing response,
