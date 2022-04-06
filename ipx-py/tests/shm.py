@@ -7,9 +7,12 @@ from typing import List, Any
 
 from ipx import Arrow, SharedMemoryArrow
 
+from tests.sysv import SysvSharedMemoryController
+
 
 def new_arrow() -> SharedMemoryArrow:
-    return SharedMemoryArrow.new(size=2048, name='0x00ABCDEF')
+    controller = SysvSharedMemoryController.new(size=2048, name='0x00ABCDEF')
+    return SharedMemoryArrow(controller=controller)
     # return SharedMemoryArrow.new(size=64, name=None)
 
 

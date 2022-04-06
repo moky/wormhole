@@ -30,10 +30,6 @@
 
 from .shared import SharedMemory, SharedMemoryController
 
-# from .mmap import MmapSharedMemoryController as DefaultSharedMemoryController
-# from .mp import MpSharedMemoryController as DefaultSharedMemoryController
-from .sysv import SysvSharedMemoryController as DefaultSharedMemoryController
-
 
 name = "SHM"
 
@@ -41,6 +37,6 @@ __author__ = 'Albert Moky'
 
 __all__ = [
 
-    'SharedMemory', 'SharedMemoryController',
-    'DefaultSharedMemoryController',
+    'SharedMemory',
+    'SharedMemoryController',
 ]

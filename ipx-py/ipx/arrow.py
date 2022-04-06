@@ -32,7 +32,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 from .shm import SharedMemoryController
-from .shm import DefaultSharedMemoryController
 
 
 class Arrow(ABC):
@@ -139,8 +138,3 @@ class SharedMemoryArrow(Arrow):
 
     def destroy(self):
         self.controller.destroy()
-
-    @classmethod
-    def new(cls, size: int, name: str):
-        controller = DefaultSharedMemoryController.new(size=size, name=name)
-        return cls(controller=controller)

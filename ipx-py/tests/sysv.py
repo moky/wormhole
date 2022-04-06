@@ -30,11 +30,11 @@
 
 from typing import Union, Optional
 
-import sysv_ipc
+import sysv_ipc  # 'sysv-ipc'==1.1.0
 
-from ..mem import GiantQueue
-from .shared import SharedMemory
-from .shared import SharedMemoryController
+from ipx import GiantQueue
+from ipx import SharedMemory
+from ipx import SharedMemoryController
 
 
 def create_shared_memory(size: int, key: int) -> sysv_ipc.SharedMemory:

@@ -8,13 +8,15 @@
     Inter-Process eXchange
 """
 
+import io
+
 from setuptools import setup, find_packages
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 __author__ = 'Albert Moky'
 __contact__ = 'albert.moky@gmail.com'
 
-with open('README.md', 'r') as fh:
+with io.open('README.md', 'r', encoding='utf-8') as fh:
     readme = fh.read()
 
 setup(
@@ -34,6 +36,5 @@ setup(
         'Operating System :: OS Independent',
     ],
     install_requires=[
-        'sysv-ipc',  # 1.1.0
     ]
 )

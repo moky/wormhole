@@ -51,6 +51,12 @@ class QueueController:
     def __init__(self, queue: Queue):
         super().__init__()
         self.__queue = queue
+        self.__coder = self._create_coder()
+
+    # noinspection PyMethodMayBeStatic
+    def _create_coder(self):
+        # override for user-customized DataCoder
+        return JsonCoder()
 
     @property
     def queue(self) -> Queue:
@@ -66,33 +72,6 @@ class QueueController:
         cname = self.__class__.__name__
         return '<%s>%s</%s module="%s">' % (cname, self.queue, cname, mod)
 
-    # noinspection PyMethodMayBeStatic
-    def _decode(self, data: Union[bytes, bytearray]) -> Any:
-        # noinspection PyBroadException,PyUnusedLocal
-        try:
-            s = data.decode('utf-8')
-            return json.loads(s)
-        except Exception as error:
-            # print('[SHM] not json: %s, %s' % (error, data))
-            # import traceback
-            # traceback.print_exc()
-            return data
-
-    # noinspection PyMethodMayBeStatic
-    def _encode(self, obj: Any) -> Union[bytes, bytearray]:
-        if isinstance(obj, bytes) or isinstance(obj, bytearray):
-            return obj
-        else:
-            data = json.dumps(obj)
-            return data.encode('utf-8')
-
-    def shift(self) -> Optional[Any]:
-        data = self.queue.shift()
-        if data is None or len(data) == 0:
-            return data
-        else:
-            return self._decode(data=data)
-
     def push(self, obj: Optional[Any]) -> bool:
         if obj is None:
             # if the queue support giant data, pushing None means to drive the queue to
@@ -103,3 +82,38 @@ class QueueController:
         else:
             data = self._encode(obj=obj)
         return self.queue.push(data=data)
+
+    def shift(self) -> Optional[Any]:
+        data = self.queue.shift()
+        if data is None or len(data) == 0:
+            return data
+        else:
+            return self._decode(data=data)
+
+    def _encode(self, obj: Any) -> Union[bytes, bytearray]:
+        if isinstance(obj, bytes) or isinstance(obj, bytearray):
+            return obj
+        else:
+            return self.__coder.encode(obj)
+
+    def _decode(self, data: Union[bytes, bytearray]) -> Any:
+        # noinspection PyBroadException,PyUnusedLocal
+        try:
+            return self.__coder.decode(data)
+        except Exception as error:
+            # print('[SHM] not json: %s, %s' % (error, data))
+            # import traceback
+            # traceback.print_exc()
+            return data
+
+
+# noinspection PyMethodMayBeStatic
+class JsonCoder:
+
+    def encode(self, o: Union[dict, list]) -> bytes:
+        """ JsON encode """
+        return bytes(json.dumps(o), encoding='utf-8')
+
+    def decode(self, data: bytes) -> Union[dict, list, None]:
+        """ JsON decode """
+        return json.loads(data)

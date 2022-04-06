@@ -36,7 +36,6 @@ from .mem import Queue, QueueController
 from .mem import CycledBuffer, CycledQueue, GiantQueue
 
 from .shm import SharedMemory, SharedMemoryController
-from .shm import DefaultSharedMemoryController
 
 from .arrow import Arrow, SharedMemoryArrow
 
@@ -57,7 +56,6 @@ __all__ = [
 
     # Shared Memory
     'SharedMemory', 'SharedMemoryController',
-    'DefaultSharedMemoryController',
 
     # Half-duplex Pipe
     'Arrow', 'SharedMemoryArrow',
