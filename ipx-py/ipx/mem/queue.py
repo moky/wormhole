@@ -56,7 +56,7 @@ class QueueController:
     # noinspection PyMethodMayBeStatic
     def _create_coder(self):
         # override for user-customized DataCoder
-        return JsonCoder()
+        return DefaultColder()
 
     @property
     def queue(self) -> Queue:
@@ -107,13 +107,42 @@ class QueueController:
             return data
 
 
+class DefaultColder:
+
+    def __init__(self):
+        self.__json = JsonCoder()
+        self.__utf8 = Utf8Coder()
+
+    def encode(self, obj: Any) -> bytes:
+        js = self.__json.encode(obj=obj)
+        js = self.__utf8.encode(string=js)
+        return js
+
+    def decode(self, data: bytes) -> Optional[Any]:
+        js = self.__utf8.decode(data=data)
+        js = self.__json.decode(string=js)
+        return js
+
+
 # noinspection PyMethodMayBeStatic
 class JsonCoder:
 
-    def encode(self, o: Union[dict, list]) -> bytes:
+    def encode(self, obj: Any) -> str:
         """ JsON encode """
-        return bytes(json.dumps(o), encoding='utf-8')
+        return json.dumps(obj)
 
-    def decode(self, data: bytes) -> Union[dict, list, None]:
+    def decode(self, string: str) -> Optional[Any]:
         """ JsON decode """
-        return json.loads(data)
+        return json.loads(string)
+
+
+# noinspection PyMethodMayBeStatic
+class Utf8Coder:
+
+    def encode(self, string: str) -> bytes:
+        """ UTF-8 encode """
+        return string.encode('utf-8')
+
+    def decode(self, data: bytes) -> Optional[str]:
+        """ UTF-8 decode """
+        return data.decode('utf-8')
