@@ -35,51 +35,59 @@
 (function (ns, sys) {
     'use strict';
 
-    var Stringer = sys.type.Stringer;
-    var ConstantString = sys.type.ConstantString;
+    var KeyPairMap = function () {};
+    sys.Interface(KeyPairMap, null);
 
-    var SocketAddress = function () {};
-    sys.Interface(SocketAddress, [Stringer]);
-
-    SocketAddress.prototype.getHost = function () {
+    /**
+     *  Get all mapped values
+     *
+     * @return {[]} values
+     */
+    KeyPairMap.prototype.allValues = function () {
         ns.assert(false, 'implement me!');
         return null;
     };
 
-    SocketAddress.prototype.getPort = function () {
+    /**
+     *  Get value by key pair (remote, local)
+     *
+     * @param {SocketAddress} remote - remote address
+     * @param {SocketAddress} local  - local address
+     * @return {*} mapped value
+     */
+    KeyPairMap.prototype.get = function (remote, local) {
         ns.assert(false, 'implement me!');
-        return 0;
+        return null;
     };
 
     /**
-     *  IP Socket Address
-     *  ~~~~~~~~~~~~~~~~~
+     *  Set value by key pair (remote, local)
      *
-     * @param {String} host
-     * @param {Number} port
+     * @param {SocketAddress} remote - remote address
+     * @param {SocketAddress} local  - local address
+     * @param {*} value  - mapping value
      */
-    var InetSocketAddress = function (host, port) {
-        ConstantString.call(this, '(' + host + ':' + port + ')');
-        this.__host = host;
-        this.__port = port;
-    };
-    sys.Class(InetSocketAddress, ConstantString, [SocketAddress], null);
-
-    // Override
-    InetSocketAddress.prototype.getHost = function () {
-        return this.__host;
+    KeyPairMap.prototype.set = function (remote, local, value) {
+        ns.assert(false, 'implement me!');
+        return null;
     };
 
-    // Override
-    InetSocketAddress.prototype.getPort = function () {
-        return this.__port;
+    /**
+     *  Remove mapping by key pair (remote, local)
+     *
+     * @param {SocketAddress} remote - remote address
+     * @param {SocketAddress} local  - local address
+     * @param {*} value  - mapped value (Optional)
+     * @return {*} removed value
+     */
+    KeyPairMap.prototype.remove = function (remote, local, value) {
+        ns.assert(false, 'implement me!');
+        return null;
     };
 
     //-------- namespace --------
-    ns.type.SocketAddress = SocketAddress;
-    ns.type.InetSocketAddress = InetSocketAddress;
+    ns.type.KeyPairMap = KeyPairMap;
 
-    ns.type.registers('SocketAddress');
-    ns.type.registers('InetSocketAddress');
+    ns.type.registers('KeyPairMap');
 
 })(StarTrek, MONKEY);

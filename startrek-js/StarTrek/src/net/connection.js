@@ -49,10 +49,10 @@
         return false;
     };
 
-    // Connection.prototype.isBound = function () {
-    //     ns.assert(false, 'implement me!');
-    //     return false;
-    // };
+    Connection.prototype.isBound = function () {
+        ns.assert(false, 'implement me!');
+        return false;
+    };
 
     Connection.prototype.isConnected = function () {
         ns.assert(false, 'implement me!');
@@ -65,10 +65,10 @@
         return false;
     };
 
-    // Connection.prototype.getLocalAddress = function () {
-    //     ns.assert(false, 'implement me!');
-    //     return null;
-    // };
+    Connection.prototype.getLocalAddress = function () {
+        ns.assert(false, 'implement me!');
+        return null;
+    };
 
     Connection.prototype.getRemoteAddress = function () {
         ns.assert(false, 'implement me!');

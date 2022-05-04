@@ -44,6 +44,9 @@ if (typeof StarTrek !== 'object') {
     }
 
     //-------- namespace --------
+    if (typeof ns.type !== 'object') {
+        ns.type = new ns.Namespace();
+    }
     if (typeof ns.net !== 'object') {
         ns.net = new sys.Namespace();
     }
@@ -54,20 +57,9 @@ if (typeof StarTrek !== 'object') {
         ns.socket = new sys.Namespace();
     }
 
+    ns.registers('type');
     ns.registers('net');
     ns.registers('port');
     ns.registers('socket');
 
 })(StarTrek, MONKEY);
-
-(function (ns) {
-    'use strict';
-
-    //-------- namespace --------
-    if (typeof ns.type !== 'object') {
-        ns.type = new ns.Namespace();
-    }
-
-    ns.registers('type');
-
-})(MONKEY);

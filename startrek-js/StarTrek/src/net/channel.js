@@ -43,10 +43,10 @@
         return false;
     };
 
-    // Channel.prototype.isBound = function () {
-    //     ns.assert(false, 'implement me!');
-    //     return false;
-    // };
+    Channel.prototype.isBound = function () {
+        ns.assert(false, 'implement me!');
+        return false;
+    };
 
     Channel.prototype.isAlive = function () {
         // return this.isOpen() && (this.isConnected() || this.isBound());
@@ -95,30 +95,53 @@
     |*          Selectable Channel                    *|
     \*================================================*/
 
-    // Channel.prototype.configureBlocking = function (block) {
-    //     ns.assert(false, 'implement me!');
-    //     return null;
-    // };
+    /**
+     *  Adjusts this channel's blocking mode.
+     *
+     * @param {boolean} block
+     * @return {*} the inner SelectableChannel
+     */
+    Channel.prototype.configureBlocking = function (block) {
+        ns.assert(false, 'implement me!');
+        return null;
+    };
 
-    // Channel.prototype.isBlocking = function () {
-    //     ns.assert(false, 'implement me!');
-    //     return false;
-    // };
+    /**
+     *  Tells whether or not every I/O operation on this channel will block
+     *  until it completes.  A newly-created channel is always in blocking mode.
+     *
+     * @return {boolean} true when this channel is in blocking mode
+     */
+    Channel.prototype.isBlocking = function () {
+        ns.assert(false, 'implement me!');
+        return false;
+    };
 
 
     /*================================================*\
     |*          Network Channel                       *|
     \*================================================*/
 
-    // Channel.prototype.bind = function (local) {
-    //     ns.assert(false, 'implement me!');
-    //     return null;
-    // };
+    /**
+     *  Binds the channel's socket to a local address.
+     *
+     * @param {SocketAddress} local
+     * @return {*} the inner NetworkChannel
+     */
+    Channel.prototype.bind = function (local) {
+        ns.assert(false, 'implement me!');
+        return null;
+    };
 
-    // Channel.prototype.getLocalAddress = function () {
-    //     ns.assert(false, 'implement me!');
-    //     return null;
-    // };
+    /**
+     *  Get local address that this channel's socket is bound to.
+     *
+     * @return {SocketAddress} local address
+     */
+    Channel.prototype.getLocalAddress = function () {
+        ns.assert(false, 'implement me!');
+        return null;
+    };
 
 
     /*================================================*\

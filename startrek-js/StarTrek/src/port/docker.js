@@ -69,10 +69,10 @@
         return null;
     };
 
-    // Docker.prototype.getLocalAddress = function () {
-    //     ns.assert(false, 'implement me!');
-    //     return null;
-    // };
+    Docker.prototype.getLocalAddress = function () {
+        ns.assert(false, 'implement me!');
+        return null;
+    };
 
     /**
      *  Pack data to an outgo ship (with normal priority), and
