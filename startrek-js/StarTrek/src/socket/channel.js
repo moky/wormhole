@@ -40,7 +40,7 @@
     sys.Interface(SocketReader, null);
 
     /**
-     *  Read data from channel
+     *  Read data from socket
      *
      * @param {uint} maxLen - max length of received data
      * @return {Uint8Array} received data
@@ -50,16 +50,39 @@
         return null;
     };
 
+    /**
+     *  Receive data from socket
+     *
+     * @param {uint} maxLen - max length of received data
+     * @return {Uint8Array} received data
+     */
+    SocketReader.prototype.receive = function (maxLen) {
+        ns.assert(false, 'implement me!');
+        return null;
+    };
+
     var SocketWriter = function () {};
     sys.Interface(SocketWriter, null);
 
     /**
-     *  Write data into channel
+     *  Write data into socket
      *
      * @param {Uint8Array} src - data to be wrote
      * @return {int} -1 on error
      */
     SocketWriter.prototype.write = function (src) {
+        ns.assert(false, 'implement me!');
+        return 0;
+    };
+
+    /**
+     *  Send data via socket with remote address
+     *
+     * @param {Uint8Array} src       - data to send
+     * @param {SocketAddress} target - remote address
+     * @return {int} sent length, -1 on error
+     */
+    SocketWriter.prototype.send = function (src, target) {
         ns.assert(false, 'implement me!');
         return 0;
     };
@@ -93,6 +116,13 @@
         this.refreshFlags();
     };
     sys.Class(BaseChannel, AddressPairObject, [Channel], null);
+
+    // destroy()
+    BaseChannel.prototype.finalize = function () {
+        // make sure the relative socket is removed
+        removeSocketChannel.call(this);
+        // super.finalize();
+    };
 
     /**
      *  Create socket reader
@@ -240,6 +270,26 @@
     BaseChannel.prototype.write = function (src) {
         try {
             return this.__writer.write(src);
+        } catch (e) {
+            this.close();
+            throw e;
+        }
+    };
+
+    // Override
+    BaseChannel.prototype.receive = function (maxLen) {
+        try {
+            return this.__reader.receive(maxLen);
+        } catch (e) {
+            this.close();
+            throw e;
+        }
+    };
+
+    // Override
+    BaseChannel.prototype.send = function (src, target) {
+        try {
+            return this.__writer.send(src, target);
         } catch (e) {
             this.close();
             throw e;

@@ -179,6 +179,44 @@
         return null;
     };
 
+
+    /*================================================*\
+    |*          Datagram Channel                      *|
+    \*================================================*/
+
+    /**
+     *  Disconnects this channel's socket.
+     *
+     * @return {*} the ByteChannel
+     */
+    Channel.prototype.disconnect = function () {
+        ns.assert(false, 'implement me!');
+        return null;
+    };
+
+    /**
+     *  Receives a datagram via this channel.
+     *
+     * @param {uint} maxLen
+     * @return {Uint8Array} received data package
+     */
+    Channel.prototype.receive = function (maxLen) {
+        ns.assert(false, 'implement me!');
+        return null;
+    };
+
+    /**
+     *  Sends a datagram via this channel.
+     *
+     * @param {Uint8Array} src       - data package to be sent
+     * @param {SocketAddress} target - remote address
+     * @return {int} the number of bytes sent, -1 on error
+     */
+    Channel.prototype.send = function (src, target) {
+        ns.assert(false, 'implement me!');
+        return 0;
+    };
+
     //-------- namespace --------
     ns.net.Channel = Channel;
 
