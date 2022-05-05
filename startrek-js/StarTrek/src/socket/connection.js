@@ -30,7 +30,10 @@
 // =============================================================================
 //
 
-//! require 'namespace.js'
+//! require 'type/apm.js'
+//! require 'net/connection.js'
+//! require 'net/state.js'
+//! require 'net/machine.js'
 
 (function (ns, sys) {
     'use strict';
@@ -41,6 +44,14 @@
     var ConnectionState = ns.net.ConnectionState;
     var StateMachine = ns.net.StateMachine;
 
+    /**
+     *  Base Connection
+     *  ~~~~~~~~~~~~~~~
+     *
+     * @param {SocketAddress} remote
+     * @param {SocketAddress} local
+     * @param {Channel} channel
+     */
     var BaseConnection = function (remote, local, channel) {
         AddressPairObject.call(this, remote, local);
         this.__channel = channel;
@@ -108,7 +119,7 @@
                 try {
                     old.disconnect();
                 } catch (e) {
-                    console.error('BaseConnection::setChannel()', e);
+                    console.error('BaseConnection::setChannel()', e, old);
                 }
             }
         }
@@ -314,5 +325,52 @@
     ns.socket.BaseConnection = BaseConnection;
 
     ns.socket.registers('BaseConnection');
+
+})(StarTrek, MONKEY);
+
+(function (ns, sys) {
+    'use strict';
+
+    var BaseConnection = ns.socket.BaseConnection;
+
+    /**
+     *  Active Connection
+     *  ~~~~~~~~~~~~~~~~~
+     *  for client
+     *
+     * @param {SocketAddress} remote
+     * @param {SocketAddress} local
+     * @param {Channel} channel
+     * @param {Hub} hub
+     */
+    var ActiveConnection = function (remote, local, channel, hub) {
+        BaseConnection.call(this, remote, local, channel);
+        this.__hub = hub;
+    };
+    sys.Class(ActiveConnection, BaseConnection, null, {
+        // Override
+        isOpen: function () {
+            return this.getStateMachine() !== null;
+        },
+        // Override
+        getChannel: function () {
+            var channel = BaseConnection.prototype.getChannel.call(this);
+            if (!channel || !channel.isOpen()) {
+                if (this.getStateMachine() === null) {
+                    // closed (not start yet)
+                    return null;
+                }
+                // get new channel via hub
+                this.__hub.open(this.remoteAddress, this.localAddress);
+                this.setChannel(channel);
+            }
+            return channel;
+        }
+    })
+
+    //-------- namespace --------
+    ns.socket.ActiveConnection = ActiveConnection;
+
+    ns.socket.registers('ActiveConnection');
 
 })(StarTrek, MONKEY);

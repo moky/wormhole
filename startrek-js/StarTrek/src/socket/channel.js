@@ -217,7 +217,7 @@
         }
         var sock = this.getSocketChannel();
         var nc = sock.bind(local);
-        console.error('bind local socket: ', local);
+        console.info('BaseChannel::bind()', local, sock);
         this.localAddress = local;
         this.__bound = true;
         this.__opened = true;
