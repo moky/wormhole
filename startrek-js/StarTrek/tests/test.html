@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StarTrek Test Cases</title>
+  <link href="../../Crypto/tests/test.css" type="text/css" rel="stylesheet" />
+  <script src="../../Crypto/libs/loader.js"></script>
+  <script src="../../Crypto/libs/runner.js"></script>
+  <script src="../../Crypto/libs/utils.js"></script>
+
+  <script src="../../Crypto/dist/crypto.js"></script>
+  <script src="../../FSM/dist/fsm.js"></script>
+
+  <script>
+    !function (ns) {
+      var sources = [
+        'src/namespace.js',
+
+        'src/type/address.js',
+        'src/type/pair.js',
+        'src/type/hash.js',
+        'src/type/apm.js',
+
+        'src/net/channel.js',
+        'src/net/state.js',
+        'src/net/machine.js',
+        'src/net/connection.js',
+        'src/net/hub.js',
+
+        'src/port/ship.js',
+        'src/port/arrival.js',
+        'src/port/departure.js',
+        'src/port/docker.js',
+        'src/port/gate.js',
+
+        'src/socket/channel.js',
+        'src/socket/controller.js',
+        'src/socket/connection.js',
+        'src/socket/hub.js',
+
+        'src/startrek/arrival.js',
+        'src/startrek/departure.js',
+        'src/startrek/dock.js',
+        'src/startrek/docker.js',
+        'src/startrek/gate.js',
+        null
+      ];
+      var dist = 'dist/startrek.js';
+
+      var tests = [
+        '../../Crypto/tests/crypto_tests.js',
+        '../../FSM/tests/fsm_tests.js',
+        'tests/startrek_tests.js',
+        null
+      ];
+
+      var base = window.location.href;
+      base = base.substring(0, base.indexOf('tests/test.html'));
+      var loader = new Loader(base);
+
+      for (var i = 0; i < sources.length; ++i) {
+        loader.importJS(sources[i]);
+      }
+      for (var j = 0; j < tests.length; ++j) {
+        loader.importJS(tests[j]);
+      }
+
+      ns.sources = sources;
+      ns.dist = dist;
+    }(window);
+
+    $(function () {
+      var runner = new Runner('crypto_tests');
+      runner.run(crypto_tests);
+    });
+
+    $(function () {
+      var runner = new Runner('fsm_tests');
+      runner.run(fsm_tests);
+    });
+
+    $(function () {
+      var runner = new Runner('startrek_tests');
+      runner.run(startrek_tests);
+    });
+  </script>
+</head>
+<body>
+
+<h2>Crypto Tests</h2>
+<div id="crypto_tests">Testing ...</div>
+<div>&nbsp;</div>
+
+<h2>FiniteStateMachine Tests</h2>
+<div id="fsm_tests">Testing ...</div>
+<div>&nbsp;</div>
+
+<h2>StarTrek Tests</h2>
+<div id="startrek_tests">Testing ...</div>
+<div>&nbsp;</div>
+
+<h2>Makefile</h2>
+<p class="console">
+  <script>
+    !(function () {
+      var text = 'cat';
+      var file;
+      for (var i = 0; i < sources.length; ++i) {
+        file = sources[i];
+        if (!file) {
+          continue;
+        }
+        text += ' ' + file;
+      }
+      text += ' >> ' + dist;
+      document.writeln(text);
+    }());
+  </script>
+</p>
+</body>
+</html>

@@ -139,7 +139,6 @@
     'use strict';
 
     var ConnectionState = ns.net.ConnectionState;
-    var Docker = ns.port.Docker;
 
     /**
      *  Docker Status
@@ -174,7 +173,10 @@
         }
     };
 
-    Docker.Status = DockerStatus;
+    //-------- namespace --------
+    ns.port.DockerStatus = DockerStatus;
+
+    ns.port.registers('DockerStatus');
 
 })(StarTrek, MONKEY);
 
@@ -182,6 +184,7 @@
     'use strict';
 
     var Docker = ns.port.Docker;
+    var DockerStatus = ns.port.DockerStatus;
 
     /**
      *  Docker Delegate
@@ -235,14 +238,17 @@
     /**
      *  Callback when connection status changed
      *
-     * @param {Docker.Status} previous    - old status
-     * @param {Docker.Status} current     - new status
+     * @param {DockerStatus} previous    - old status
+     * @param {DockerStatus} current     - new status
      * @param {Docker} docker      - connection docker
      */
     DockerDelegate.prototype.onDockerStatusChanged = function (previous, current, docker) {
         ns.assert(false, 'implement me!');
     };
 
-    Docker.Delegate = DockerDelegate;
+    //-------- namespace --------
+    ns.port.DockerDelegate = DockerDelegate;
+
+    ns.port.registers('DockerDelegate');
 
 })(StarTrek, MONKEY);

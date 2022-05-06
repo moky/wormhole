@@ -36,6 +36,7 @@
     'use strict';
 
     var Ticker = sys.threading.Ticker;
+    // var ConnectionState = ns.port.ConnectionState;
 
     var Connection = function () {};
     sys.Interface(Connection, [Ticker]);
