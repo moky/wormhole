@@ -314,7 +314,7 @@ if (typeof StarTrek !== "object") {
     };
     Channel.prototype.connect = function (remote) {
         ns.assert(false, "implement me!");
-        return false;
+        return null;
     };
     Channel.prototype.getRemoteAddress = function () {
         ns.assert(false, "implement me!");
@@ -961,7 +961,7 @@ if (typeof StarTrek !== "object") {
             this.__bound = false;
         }
     };
-    BaseChannel.prototype.getSocketChannel = function () {
+    BaseChannel.prototype.getSocket = function () {
         return this.__sock;
     };
     var removeSocketChannel = function () {
@@ -973,7 +973,7 @@ if (typeof StarTrek !== "object") {
         }
     };
     BaseChannel.prototype.configureBlocking = function (block) {
-        var sock = this.getSocketChannel();
+        var sock = this.getSocket();
         sock.configureBlocking(block);
         this.__blocking = block;
         return sock;
@@ -997,7 +997,7 @@ if (typeof StarTrek !== "object") {
         if (!local) {
             local = this.localAddress;
         }
-        var sock = this.getSocketChannel();
+        var sock = this.getSocket();
         var nc = sock.bind(local);
         console.info("BaseChannel::bind()", local, sock);
         this.localAddress = local;
@@ -1010,7 +1010,7 @@ if (typeof StarTrek !== "object") {
         if (!remote) {
             remote = this.remoteAddress;
         }
-        var sock = this.getSocketChannel();
+        var sock = this.getSocket();
         sock.connect(remote);
         this.remoteAddress = remote;
         this.__connected = true;
@@ -1019,7 +1019,7 @@ if (typeof StarTrek !== "object") {
         return sock;
     };
     BaseChannel.prototype.disconnect = function () {
-        var sock = this.getSocketChannel();
+        var sock = this.getSocket();
         removeSocketChannel.call(this);
         return sock;
     };
@@ -1107,7 +1107,7 @@ if (typeof StarTrek !== "object") {
     };
     ChannelController.prototype.getSocket = function () {
         var channel = this.getChannel();
-        return channel.getSocketChannel();
+        return channel.getSocket();
     };
     ChannelController.prototype.createChecker = function () {
         return new DefaultChecker();
@@ -1289,9 +1289,9 @@ if (typeof StarTrek !== "object") {
     };
     BaseConnection.prototype.sendTo = function (data, destination) {
         var sent = -1;
-        var sock = this.getChannel();
-        if (sock && sock.isAlive()) {
-            sent = sock.send(data, destination);
+        var channel = this.getChannel();
+        if (channel && channel.isAlive()) {
+            sent = channel.send(data, destination);
             if (sent > 0) {
                 this.__lastSentTime = new Date().getTime();
             }
@@ -1533,14 +1533,14 @@ if (typeof StarTrek !== "object") {
         return count;
     };
     BaseHub.prototype.cleanupChannels = function (channels) {
-        var sock;
+        var channel;
         for (var index = channels.length - 1; index >= 0; --index) {
-            sock = channels[index];
-            if (!sock.isAlive()) {
+            channel = channels[index];
+            if (!channel.isAlive()) {
                 this.removeChannel(
-                    sock.getRemoteAddress(),
-                    sock.getLocalAddress(),
-                    sock
+                    channel.getRemoteAddress(),
+                    channel.getLocalAddress(),
+                    channel
                 );
             }
         }

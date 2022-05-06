@@ -268,13 +268,13 @@
 
     // protected
     BaseHub.prototype.cleanupChannels = function (channels) {
-        var sock;
+        var channel;
         for (var index = channels.length - 1; index >= 0; --index) {
-            sock = channels[index];
-            if (!sock.isAlive()) {
+            channel = channels[index];
+            if (!channel.isAlive()) {
                 // if channel not connected (TCP) and not bound (UDP),
                 // means it's closed, remove it from the hub
-                this.removeChannel(sock.getRemoteAddress(), sock.getLocalAddress(), sock);
+                this.removeChannel(channel.getRemoteAddress(), channel.getLocalAddress(), channel);
             }
         }
     };

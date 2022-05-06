@@ -138,11 +138,11 @@
     /**
      *  Get inner socket
      *
-     * @return {*}
+     * @return {WebSocket|*} WebSocket wrapper
      */
     ChannelController.prototype.getSocket = function () {
         var channel = this.getChannel();
-        return channel.getSocketChannel();
+        return channel.getSocket();
     };
 
     //

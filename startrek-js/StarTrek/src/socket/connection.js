@@ -191,9 +191,9 @@
     // protected
     BaseConnection.prototype.sendTo = function (data, destination) {
         var sent = -1;
-        var sock = this.getChannel();
-        if (sock && sock.isAlive()) {
-            sent = sock.send(data, destination);
+        var channel = this.getChannel();
+        if (channel && channel.isAlive()) {
+            sent = channel.send(data, destination);
             if (sent > 0)  {
                 // update sent time
                 this.__lastSentTime = (new Date()).getTime();

@@ -99,7 +99,7 @@
      *  Adjusts this channel's blocking mode.
      *
      * @param {boolean} block
-     * @return {*} the inner SelectableChannel
+     * @return {WebSocket|*} the inner SelectableChannel
      */
     Channel.prototype.configureBlocking = function (block) {
         ns.assert(false, 'implement me!');
@@ -126,7 +126,7 @@
      *  Binds the channel's socket to a local address.
      *
      * @param {SocketAddress} local
-     * @return {*} the inner NetworkChannel
+     * @return {WebSocket|*} the inner NetworkChannel
      */
     Channel.prototype.bind = function (local) {
         ns.assert(false, 'implement me!');
@@ -162,11 +162,11 @@
      *  Connect to remote address
      *
      * @param {SocketAddress} remote - remote address
-     * @return {boolean} true on success
+     * @return {WebSocket|*} the inner NetworkChannel; null on failed
      */
     Channel.prototype.connect = function (remote) {
         ns.assert(false, 'implement me!');
-        return false;
+        return null;
     };
 
     /**
@@ -187,7 +187,7 @@
     /**
      *  Disconnects this channel's socket.
      *
-     * @return {*} the ByteChannel
+     * @return {WebSocket|*} the inner ByteChannel
      */
     Channel.prototype.disconnect = function () {
         ns.assert(false, 'implement me!');

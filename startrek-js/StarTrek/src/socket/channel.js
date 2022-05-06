@@ -96,12 +96,44 @@
 
 })(StarTrek, MONKEY);
 
+/**
+ *  WebSocket Wrapper
+ *  ~~~~~~~~~~~~~~~~~
+ *
+ *  Socket = {
+ *      configureBlocking: function(block) {},
+ *
+ *      isBlocking:  function() {return false},
+ *      isOpen:      function() {return true},
+ *      isConnected: function() {return true},
+ *      isBound:     function() {return true},
+ *      isAlive:     function() {return true},
+ *
+ *      bind:    function(local)  {return ws},
+ *      connect: function(remote) {return ws},
+ *      close:   function()       {ws.close()},
+ *
+ *      read:    function(maxLen)       {return new Uint8Array(maxLen)},
+ *      write:   function(data)         {return data.length},
+ *      receive: function(maxLen)       {return new Uint8Array(maxLen)},
+ *      send:    function(data, remote) {return data.length}
+ *  }
+ */
+
 (function (ns, sys) {
     'use strict';
 
     var AddressPairObject = ns.type.AddressPairObject;
     var Channel = ns.net.Channel;
 
+    /**
+     *  Base Channel
+     *  ~~~~~~~~~~~~
+     *
+     * @param {SocketAddress} remote - remote address
+     * @param {SocketAddress} local  - local address
+     * @param {WebSocket|*} sock     - WebSocket wrapper
+     */
     var BaseChannel = function (remote, local, sock) {
         AddressPairObject.call(this, remote, local);
         this.__sock = sock;
@@ -161,7 +193,12 @@
         }
     };
 
-    BaseChannel.prototype.getSocketChannel = function () {
+    /**
+     *  Get inner socket
+     *
+     * @return {WebSocket|*} WebSocket wrapper
+     */
+    BaseChannel.prototype.getSocket = function () {
         return this.__sock;
     };
 
@@ -179,7 +216,7 @@
 
     // Override
     BaseChannel.prototype.configureBlocking = function (block) {
-        var sock = this.getSocketChannel();
+        var sock = this.getSocket();
         sock.configureBlocking(block);
         this.__blocking = block;
         return sock;
@@ -215,7 +252,7 @@
         if (!local) {
             local = this.localAddress;
         }
-        var sock = this.getSocketChannel();
+        var sock = this.getSocket();
         var nc = sock.bind(local);
         console.info('BaseChannel::bind()', local, sock);
         this.localAddress = local;
@@ -230,7 +267,7 @@
         if (!remote) {
             remote = this.remoteAddress;
         }
-        var sock = this.getSocketChannel();
+        var sock = this.getSocket();
         sock.connect(remote);
         this.remoteAddress = remote;
         this.__connected = true;
@@ -241,7 +278,7 @@
 
     // Override
     BaseChannel.prototype.disconnect = function () {
-        var sock = this.getSocketChannel();
+        var sock = this.getSocket();
         removeSocketChannel.call(this);
         return sock;
     };
