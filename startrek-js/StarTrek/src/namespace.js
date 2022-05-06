@@ -45,7 +45,7 @@ if (typeof StarTrek !== 'object') {
 
     //-------- namespace --------
     if (typeof ns.type !== 'object') {
-        ns.type = new ns.Namespace();
+        ns.type = new sys.Namespace();
     }
     if (typeof ns.net !== 'object') {
         ns.net = new sys.Namespace();

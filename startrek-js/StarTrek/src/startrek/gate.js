@@ -85,7 +85,7 @@
     var StarGate = function (delegate) {
         Object.call(this);
         this.__delegate = delegate;
-        this.__pool = this.createDockerPool();
+        this.__dockerPool = this.createDockerPool();
     };
     sys.Class(StarGate, Object, [Gate, ConnectionDelegate], null);
 
@@ -136,22 +136,22 @@
 
     // protected
     StarGate.prototype.allDockers = function () {
-        return this.__pool.allValues();
+        return this.__dockerPool.allValues();
     };
 
     // protected
     StarGate.prototype.getDocker = function (remote, local) {
-        return this.__pool.get(remote, local);
+        return this.__dockerPool.get(remote, local);
     };
 
     // protected
     StarGate.prototype.setDocker = function (remote, local, docker) {
-        this.__pool.set(remote, local, docker);
+        this.__dockerPool.set(remote, local, docker);
     };
 
     // protected
     StarGate.prototype.removeDocker = function (remote, local, docker) {
-        this.__pool.remove(remote, local, docker);
+        this.__dockerPool.remove(remote, local, docker);
     };
 
     //
@@ -257,7 +257,7 @@
     };
 
     // Override
-    DockerPool.prototype.onConnectionReceived = function (data, connection) {
+    StarGate.prototype.onConnectionReceived = function (data, connection) {
         var remote = connection.getRemoteAddress();
         var local = connection.getLocalAddress();
         // get docker by (remote, local)
@@ -284,17 +284,17 @@
     };
 
     // Override
-    DockerPool.prototype.onConnectionSent = function (sent, data, connection) {
+    StarGate.prototype.onConnectionSent = function (sent, data, connection) {
         // ignore event for sending success
     };
 
     // Override
-    DockerPool.prototype.onConnectionFailed = function (error, data, connection) {
+    StarGate.prototype.onConnectionFailed = function (error, data, connection) {
         // ignore event for sending success
     };
 
     // Override
-    DockerPool.prototype.onConnectionError = function (error, connection) {
+    StarGate.prototype.onConnectionError = function (error, connection) {
         // ignore event for sending success
     };
 
@@ -306,19 +306,19 @@
      * @return {Uint8Array[]}
      */
     // protected
-    DockerPool.prototype.cacheAdvanceParty = function (data, connection) {
+    StarGate.prototype.cacheAdvanceParty = function (data, connection) {
         ns.assert('implement me!');
         return null;
     };
 
     // protected
-    DockerPool.prototype.clearAdvanceParty = function (connection) {
+    StarGate.prototype.clearAdvanceParty = function (connection) {
         ns.assert('implement me!');
     };
 
     //-------- namespace --------
-    ns.DockerPool = DockerPool;
+    ns.StarGate = StarGate;
 
-    ns.registers('DockerPool');
+    ns.registers('StarGate');
 
 })(StarTrek, MONKEY);

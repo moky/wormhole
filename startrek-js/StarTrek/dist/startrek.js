@@ -14,7 +14,7 @@ if (typeof StarTrek !== "object") {
         ns.assert = console.assert;
     }
     if (typeof ns.type !== "object") {
-        ns.type = new ns.Namespace();
+        ns.type = new sys.Namespace();
     }
     if (typeof ns.net !== "object") {
         ns.net = new sys.Namespace();
@@ -1432,7 +1432,7 @@ if (typeof StarTrek !== "object") {
     var BaseHub = function (delegate) {
         Object.call(this);
         this.__delegate = delegate;
-        this.__pool = this.createConnectionPool();
+        this.__connPool = this.createConnectionPool();
         this.__last = new Date().getTime();
     };
     sys.Class(BaseHub, Object, [Hub], null);
@@ -1455,16 +1455,16 @@ if (typeof StarTrek !== "object") {
         return null;
     };
     BaseHub.prototype.allConnections = function () {
-        return this.__pool.allValues();
+        return this.__connPool.allValues();
     };
     BaseHub.prototype.getConnection = function (remote, local) {
-        return this.__pool.get(remote, local);
+        return this.__connPool.get(remote, local);
     };
     BaseHub.prototype.setConnection = function (remote, local, connection) {
-        this.__pool.set(remote, local, connection);
+        this.__connPool.set(remote, local, connection);
     };
     BaseHub.prototype.removeConnection = function (remote, local, connection) {
-        this.__pool.remove(remote, local, connection);
+        this.__connPool.remove(remote, local, connection);
     };
     BaseHub.prototype.connect = function (remote, local) {
         var conn = this.getConnection(remote, local);
@@ -2158,7 +2158,7 @@ if (typeof StarTrek !== "object") {
     var StarGate = function (delegate) {
         Object.call(this);
         this.__delegate = delegate;
-        this.__pool = this.createDockerPool();
+        this.__dockerPool = this.createDockerPool();
     };
     sys.Class(StarGate, Object, [Gate, ConnectionDelegate], null);
     StarGate.prototype.createDockerPool = function () {
@@ -2186,16 +2186,16 @@ if (typeof StarTrek !== "object") {
         return null;
     };
     StarGate.prototype.allDockers = function () {
-        return this.__pool.allValues();
+        return this.__dockerPool.allValues();
     };
     StarGate.prototype.getDocker = function (remote, local) {
-        return this.__pool.get(remote, local);
+        return this.__dockerPool.get(remote, local);
     };
     StarGate.prototype.setDocker = function (remote, local, docker) {
-        this.__pool.set(remote, local, docker);
+        this.__dockerPool.set(remote, local, docker);
     };
     StarGate.prototype.removeDocker = function (remote, local, docker) {
-        this.__pool.remove(remote, local, docker);
+        this.__dockerPool.remove(remote, local, docker);
     };
     StarGate.prototype.process = function () {
         try {
@@ -2275,7 +2275,7 @@ if (typeof StarTrek !== "object") {
             this.heartbeat(connection);
         }
     };
-    DockerPool.prototype.onConnectionReceived = function (data, connection) {
+    StarGate.prototype.onConnectionReceived = function (data, connection) {
         var remote = connection.getRemoteAddress();
         var local = connection.getLocalAddress();
         var worker = this.getDocker(remote, local);
@@ -2297,20 +2297,16 @@ if (typeof StarTrek !== "object") {
             this.clearAdvanceParty(connection);
         }
     };
-    DockerPool.prototype.onConnectionSent = function (sent, data, connection) {};
-    DockerPool.prototype.onConnectionFailed = function (
-        error,
-        data,
-        connection
-    ) {};
-    DockerPool.prototype.onConnectionError = function (error, connection) {};
-    DockerPool.prototype.cacheAdvanceParty = function (data, connection) {
+    StarGate.prototype.onConnectionSent = function (sent, data, connection) {};
+    StarGate.prototype.onConnectionFailed = function (error, data, connection) {};
+    StarGate.prototype.onConnectionError = function (error, connection) {};
+    StarGate.prototype.cacheAdvanceParty = function (data, connection) {
         ns.assert("implement me!");
         return null;
     };
-    DockerPool.prototype.clearAdvanceParty = function (connection) {
+    StarGate.prototype.clearAdvanceParty = function (connection) {
         ns.assert("implement me!");
     };
-    ns.DockerPool = DockerPool;
-    ns.registers("DockerPool");
+    ns.StarGate = StarGate;
+    ns.registers("StarGate");
 })(StarTrek, MONKEY);

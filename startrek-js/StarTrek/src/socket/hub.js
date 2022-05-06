@@ -82,7 +82,7 @@
     var BaseHub = function (delegate) {
         Object.call(this);
         this.__delegate = delegate;
-        this.__pool = this.createConnectionPool();
+        this.__connPool = this.createConnectionPool();
         // last time drove connections
         this.__last = (new Date()).getTime();
     };
@@ -156,22 +156,22 @@
 
     // protected
     BaseHub.prototype.allConnections = function () {
-        return this.__pool.allValues();
+        return this.__connPool.allValues();
     };
 
     // protected
     BaseHub.prototype.getConnection = function (remote, local) {
-        return this.__pool.get(remote, local);
+        return this.__connPool.get(remote, local);
     };
 
     // protected
     BaseHub.prototype.setConnection = function (remote, local, connection) {
-        this.__pool.set(remote, local, connection);
+        this.__connPool.set(remote, local, connection);
     };
 
     // protected
     BaseHub.prototype.removeConnection = function (remote, local, connection) {
-        this.__pool.remove(remote, local, connection);
+        this.__connPool.remove(remote, local, connection);
     };
 
     //
