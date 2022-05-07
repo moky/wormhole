@@ -357,7 +357,7 @@ if (typeof StarTrek !== "object") {
             if (other instanceof ConnectionState) {
                 return this.__name === other.toString();
             } else {
-                if (ns.Interface.conforms(other, Stringer)) {
+                if (sys.Interface.conforms(other, Stringer)) {
                     return this.__name === other.toString();
                 } else {
                     return this.__name === other;
@@ -1608,7 +1608,7 @@ if (typeof StarTrek !== "object") {
     ns.registers("ArrivalShip");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
-    var Arrays = ns.type.Arrays;
+    var Arrays = sys.type.Arrays;
     var Dictionary = sys.type.Dictionary;
     var ArrivalHall = function () {
         Object.call(this);
@@ -1717,7 +1717,7 @@ if (typeof StarTrek !== "object") {
     ns.registers("DepartureShip");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
-    var Arrays = ns.type.Arrays;
+    var Arrays = sys.type.Arrays;
     var Dictionary = sys.type.Dictionary;
     var DepartureHall = function () {
         Object.call(this);

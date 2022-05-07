@@ -93,7 +93,7 @@
             return true;
         } else if (other instanceof ConnectionState) {
             return this.__name === other.toString();
-        } else if (ns.Interface.conforms(other, Stringer)) {
+        } else if (sys.Interface.conforms(other, Stringer)) {
             return this.__name === other.toString();
         } else {
             return this.__name === other;

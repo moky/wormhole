@@ -109,6 +109,9 @@
  *      isBound:     function() {return true},
  *      isAlive:     function() {return true},
  *
+ *      getRemoteAddress: function() {return remote},
+ *      getLocalAddress:  function() {return local},
+ *
  *      bind:    function(local)  {return ws},
  *      connect: function(remote) {return ws},
  *      close:   function()       {ws.close()},

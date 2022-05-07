@@ -129,7 +129,7 @@
 (function (ns, sys) {
     'use strict';
 
-    var Arrays = ns.type.Arrays;
+    var Arrays = sys.type.Arrays;
     var Dictionary = sys.type.Dictionary;
 
     var DepartureHall = function () {
