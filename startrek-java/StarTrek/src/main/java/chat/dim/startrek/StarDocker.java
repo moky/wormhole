@@ -282,7 +282,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             }
             if (index < fragments.size()) {
                 // task failed
-                error = new SocketException("only " + index + "/" + fragments.size() + " fragments sent");
+                error = new SocketException("only " + index + "/" + fragments.size() + " fragments sent.");
             } else {
                 // task done
                 return true;

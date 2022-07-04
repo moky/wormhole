@@ -137,7 +137,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     @Override
     public boolean process() {
         try {
-            Set<Docker> dockers = dockerPool.allValues();
+            Set<Docker> dockers = allDockers();
             // 1. drive all dockers to process
             int count = driveDockers(dockers);
             // 2. cleanup for dockers

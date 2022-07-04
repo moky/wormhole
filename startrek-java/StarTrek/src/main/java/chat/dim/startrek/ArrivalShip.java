@@ -37,7 +37,8 @@ import chat.dim.port.Arrival;
 public abstract class ArrivalShip implements Arrival {
 
     /**
-     *  Arrival task will be expired after 10 minutes if still not completed.
+     *  Arrival task will be expired after 10 minutes
+     *  if still not completed.
      */
     public static long EXPIRES = 600 * 1000; // milliseconds
 

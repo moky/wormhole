@@ -39,7 +39,7 @@ import chat.dim.fsm.Context;
 
 abstract class StateTransition extends BaseTransition<StateMachine> {
 
-    protected StateTransition(String target) {
+    StateTransition(String target) {
         super(target);
     }
 }

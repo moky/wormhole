@@ -50,6 +50,7 @@ public class Client implements Docker.Delegate {
     //  Gate Delegate
     //
 
+    @Override
     public void onDockerStatusChanged(Docker.Status previous, Docker.Status current, Docker docker) {
         SocketAddress remote = docker.getRemoteAddress();
         SocketAddress local = docker.getLocalAddress();

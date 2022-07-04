@@ -35,12 +35,14 @@ import chat.dim.port.Departure;
 public abstract class DepartureShip implements Departure {
 
     /**
-     *  Departure task will be expired after 2 minutes if no response received.
+     *  Departure task will be expired after 2 minutes
+     *  if no response received.
      */
     public static long EXPIRES = 120 * 1000; // milliseconds
 
     /**
-     *  Departure task will be retried 2 times if response timeout
+     *  Departure task will be retried 2 times
+     *  if response timeout.
      */
     public static int RETRIES = 2;
 
