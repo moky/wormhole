@@ -148,7 +148,7 @@
         ERROR:    -1,
         INIT:      0,
         PREPARING: 1,
-        READY:     1
+        READY:     2
     });
 
     /**
@@ -182,9 +182,6 @@
 
 (function (ns, sys) {
     'use strict';
-
-    var Docker = ns.port.Docker;
-    var DockerStatus = ns.port.DockerStatus;
 
     /**
      *  Docker Delegate

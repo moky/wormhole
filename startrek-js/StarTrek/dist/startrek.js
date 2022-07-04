@@ -1,8 +1,8 @@
 /**
- * Star Trek: Interstellar Transport (v0.1.0)
+ * Star Trek: Interstellar Transport (v0.2.0)
  *
  * @author    moKy <albert.moky at gmail.com>
- * @date      May. 6, 2022
+ * @date      Jul. 5, 2022
  * @copyright (c) 2022 Albert Moky
  * @license   {@link https://mit-license.org | MIT License}
  */;
@@ -371,10 +371,10 @@ if (typeof StarTrek !== "object") {
     ConnectionState.prototype.getEnterTime = function () {
         return this.__enterTime;
     };
-    ConnectionState.prototype.onEnter = function (machine) {
+    ConnectionState.prototype.onEnter = function (previous, machine) {
         this.__enterTime = new Date().getTime();
     };
-    ConnectionState.prototype.onExit = function (machine) {
+    ConnectionState.prototype.onExit = function (next, machine) {
         this.__enterTime = 0;
     };
     ConnectionState.prototype.onPause = function (machine) {};
@@ -821,7 +821,7 @@ if (typeof StarTrek !== "object") {
         ERROR: -1,
         INIT: 0,
         PREPARING: 1,
-        READY: 1
+        READY: 2
     });
     DockerStatus.getStatus = function (state) {
         if (!state) {
@@ -850,8 +850,6 @@ if (typeof StarTrek !== "object") {
     ns.port.registers("DockerStatus");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
-    var Docker = ns.port.Docker;
-    var DockerStatus = ns.port.DockerStatus;
     var DockerDelegate = function () {};
     sys.Interface(DockerDelegate, null);
     DockerDelegate.prototype.onDockerReceived = function (arrival, docker) {

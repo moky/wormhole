@@ -109,12 +109,12 @@
     };
 
     // Override
-    ConnectionState.prototype.onEnter = function (machine) {
+    ConnectionState.prototype.onEnter = function (previous, machine) {
         this.__enterTime = (new Date()).getTime();
     };
 
     // Override
-    ConnectionState.prototype.onExit = function (machine) {
+    ConnectionState.prototype.onExit = function (next, machine) {
         this.__enterTime = 0;
     };
 
