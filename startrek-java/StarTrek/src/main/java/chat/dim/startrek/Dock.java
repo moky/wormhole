@@ -79,8 +79,8 @@ public class Dock {
      * @param outgo - departure task
      * @return false on duplicated
      */
-    public boolean appendDeparture(Departure outgo) {
-        return departureHall.appendDeparture(outgo);
+    public boolean addDeparture(Departure outgo) {
+        return departureHall.addDeparture(outgo);
     }
 
     /**

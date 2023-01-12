@@ -30,7 +30,6 @@
  */
 package chat.dim.type;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -43,7 +42,7 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
     //    mapping: (remote, local) => Connection
     //    mapping: (remote, null) => Connection
     //    mapping: (local, null) => Connection
-    private final Map<K, Map<K, V>> map = new HashMap<>();
+    private final Map<K, Map<K, V>> map = new WeakHashMap<>();
 
     protected WeakKeyPairMap(K any) {
         super();

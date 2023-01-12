@@ -55,12 +55,12 @@ public class LockedDock extends Dock {
     }
 
     @Override
-    public boolean appendDeparture(Departure ship) {
+    public boolean addDeparture(Departure ship) {
         boolean added;
         Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            added = super.appendDeparture(ship);
+            added = super.addDeparture(ship);
         } finally {
             writeLock.unlock();
         }

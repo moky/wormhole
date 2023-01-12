@@ -35,11 +35,14 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Ship;
+import chat.dim.type.WeakMap;
+import chat.dim.type.WeakSet;
 
 /**
  *  Memory cache for Departures
@@ -47,45 +50,144 @@ import chat.dim.port.Ship;
  */
 public class DepartureHall {
 
-    // tasks for sending out
-    private final List<Integer> priorities = new ArrayList<>();
-    private final Map<Integer, List<Departure>> departureFleets = new HashMap<>();
+    // all departure ships
+    private final Set<Object> allDepartures = new WeakSet<>();  // SN or the ship itself
 
-    private final Map<Object, Departure> departureMap = new WeakHashMap<>();  // ID -> ship
-    private final Map<Object, Long> departureFinished = new HashMap<>();      // ID -> timestamp
+    // new ships waiting to send out
+    private final List<Departure> newDepartures = new ArrayList<>();
+
+    // ships waiting for responses
+    private final Map<Integer, List<Departure>> departureFleets = new HashMap<>();
+    private final List<Integer> priorities = new ArrayList<>();
+
+    // index
+    private final Map<Object, Departure> departureMap = new WeakMap<>();  // SN => ship
+    private final Map<Object, Long> departureFinished = new HashMap<>();  // SN => timestamp
+    private final Map<Object, Integer> departureLevel = new WeakHashMap<>();  // SN => priority
 
     /**
-     *  Append outgoing ship to a fleet with priority
+     *  Add outgoing ship to the waiting queue
      *
      * @param outgo - departure task
      * @return false on duplicated
      */
-    public boolean appendDeparture(Departure outgo) {
-        int priority = outgo.getPriority();
-        // 1. choose an array with priority
-        List<Departure> fleet = departureFleets.get(priority);
-        if (fleet == null) {
-            // 1.1. create new array for this priority
-            fleet = new ArrayList<>();
-            departureFleets.put(priority, fleet);
-            // 1.2. insert the priority in a sorted list
-            insertPriority(priority);
-        } else {
-            // 1.3. check duplicated task
-            if (fleet.contains(outgo)) {
+    public boolean addDeparture(Departure outgo) {
+        // 1. check duplicated
+        Object sn = outgo.getSN();
+        if (sn == null) {
+            if (allDepartures.contains(outgo)) {
                 return false;
+            } else {
+                allDepartures.add(outgo);
+            }
+        } else {
+            if (allDepartures.contains(sn)) {
+                return false;
+            } else {
+                allDepartures.add(sn);
             }
         }
-        // 2. append to the tail
-        fleet.add(outgo);
-        // 3. build mapping if SN exists
+        // 2. insert to the sorted queue
+        int priority = outgo.getPriority();
+        int index;
+        for (index = 0; index < newDepartures.size(); ++index) {
+            if (newDepartures.get(index).getPriority() > priority) {
+                // take the place before first ship
+                // which priority is greater then this one.
+                break;
+            }
+        }
+        newDepartures.add(index, outgo);
+        return true;
+    }
+
+    /**
+     *  Check response from incoming ship
+     *
+     * @param response - incoming ship with SN
+     * @return finished task
+     */
+    public Departure checkResponse(Arrival response) {
+        Object sn = response.getSN();
+        assert sn != null : "Ship SN not found: " + response;
+        // check whether this task has already finished
+        Long time = departureFinished.get(sn);
+        if (time != null && time > 0) {
+            return null;
+        }
+        // check departure
+        Departure ship = departureMap.get(sn);
+        if (ship != null && ship.checkResponse(response)) {
+            // all fragments sent, departure task finished
+            // remove it and clear mapping when SN exists
+            removeShip(ship, sn);
+            // mark finished time
+            departureFinished.put(sn, System.currentTimeMillis());
+            return ship;
+        }
+        return null;
+    }
+    private void removeShip(Departure ship, Object sn) {
+        int priority = departureLevel.get(sn);
+        List<Departure> fleet = departureFleets.get(priority);
+        if (fleet != null) {
+            fleet.remove(ship);
+            // remove array when empty
+            if (fleet.size() == 0) {
+                departureFleets.remove(priority);
+            }
+        }
+        // remove mapping by SN
+        departureMap.remove(sn);
+        departureLevel.remove(sn);
+    }
+
+    /**
+     *  Get next new/timeout task
+     *
+     * @param now - current time
+     * @return departure task
+     */
+    public Departure getNextDeparture(long now) {
+        // task.expired == 0
+        Departure next = getNextNewDeparture(now);
+        if (next == null) {
+            // task.tries > 0 and timeout
+            next = getNextTimeoutDeparture(now);
+        }
+        return next;
+    }
+    private Departure getNextNewDeparture(long now) {
+        if (newDepartures.size() == 0) {
+            return null;
+        }
+        // get first ship
+        Departure outgo = newDepartures.remove(0);
         Object sn = outgo.getSN();
-        if (sn != null && outgo.isImportant()) {
-            // disposable ship needs no response, so
-            // we don't build index for it.
+        if (outgo.isImportant() && sn != null) {
+            // this task needs response
+            // choose an array with priority
+            int priority = outgo.getPriority();
+            insertShip(outgo, priority, sn);
+            // build index for it
             departureMap.put(sn, outgo);
         }
-        return true;
+        // update expired time
+        outgo.touch(now);
+        return outgo;
+    }
+    private void insertShip(Departure outgo, int priority, Object sn) {
+        List<Departure> fleet = departureFleets.get(priority);
+        if (fleet == null) {
+            // create new array for this priority
+            fleet = new ArrayList<>();
+            departureFleets.put(priority, fleet);
+            // insert the priority in a sorted list
+            insertPriority(priority);
+        }
+        // append to the tail, and build index for it
+        fleet.add(outgo);
+        departureLevel.put(sn, priority);
     }
     private void insertPriority(int priority) {
         int total = priorities.size();
@@ -106,99 +208,6 @@ public class DepartureHall {
         // insert new value before the bigger one
         priorities.add(index, priority);
     }
-
-    /**
-     *  Check response from incoming ship
-     *
-     * @param response - incoming ship with SN
-     * @return finished task
-     */
-    public Departure checkResponse(Arrival response) {
-        Object sn = response.getSN();
-        assert sn != null : "SN not found: " + response;
-        // check whether this task has already finished
-        Long time = departureFinished.get(sn);
-        if (time != null && time > 0) {
-            return null;
-        }
-        // check departure
-        Departure ship = departureMap.get(sn);
-        if (ship != null && ship.checkResponse(response)) {
-            // all fragments sent, departure task finished
-            // remove it and clear mapping when SN exists
-            remove(ship, sn);
-            // mark finished time
-            departureFinished.put(sn, System.currentTimeMillis());
-            return ship;
-        }
-        return null;
-    }
-    private void remove(Departure ship, Object sn) {
-        int priority = ship.getPriority();
-        List<Departure> fleet = departureFleets.get(priority);
-        if (fleet != null) {
-            fleet.remove(ship);
-            // remove array when empty
-            if (fleet.size() == 0) {
-                departureFleets.remove(priority);
-            }
-        }
-        // remove mapping by SN
-        departureMap.remove(sn);
-    }
-
-    /**
-     *  Get next new/timeout task
-     *
-     * @param now - current time
-     * @return departure task
-     */
-    public Departure getNextDeparture(long now) {
-        // task.expired == 0
-        Departure next = getNextNewDeparture(now);
-        if (next == null) {
-            // task.tries > 0 and timeout
-            next = getNextTimeoutDeparture(now);
-        }
-        return next;
-    }
-    private Departure getNextNewDeparture(long now) {
-        List<Departure> fleet;
-        Iterator<Departure> dit;
-        Departure ship;
-        Object sn;
-        List<Integer> priorityList = new ArrayList<>(priorities);
-        for (int priority : priorityList) {
-            // 1. get tasks with priority
-            fleet = departureFleets.get(priority);
-            if (fleet == null) {
-                continue;
-            }
-            // 2. seeking new task in this priority
-            dit = fleet.iterator();
-            while (dit.hasNext()) {
-                ship = dit.next();
-                if (ship.getState(now).equals(Ship.State.NEW)) {
-                    if (ship.isImportant()) {
-                        // first try, update expired time for response
-                        ship.touch(now);
-                    } else {
-                        // disposable ship needs no response,
-                        // remove it immediately.
-                        dit.remove(); //fleet.remove(ship);
-                        // disposable ship will not be mapped.
-                        // see 'appendDeparture()'
-                        sn = ship.getSN();
-                        if (sn != null) {
-                            departureMap.remove(sn);
-                        }
-                    }
-                    return ship;
-                }
-            }
-        }
-        return null;
-    }
     private Departure getNextTimeoutDeparture(long now) {
         List<Departure> fleet;
         Iterator<Departure> dit;
@@ -216,25 +225,23 @@ public class DepartureHall {
             dit = fleet.iterator();
             while (dit.hasNext()) {
                 ship = dit.next();
+                sn = ship.getSN();
+                assert sn != null : "Ship ID should not be empty here";
                 state = ship.getState(now);
                 if (state.equals(Ship.State.TIMEOUT)) {
                     // response timeout, needs retry now.
-                    // 2.1. update expired time;
+                    // move to next priority
+                    dit.remove();
+                    insertShip(ship, priority + 1, sn);
+                    // update expired time
                     ship.touch(now);
-                    // 2.2. move to the tail
-                    if (fleet.size() > 1) {
-                        dit.remove(); //fleet.remove(ship);
-                        fleet.add(ship);
-                    }
                     return ship;
                 } else if (state.equals(Ship.State.FAILED)) {
                     // try too many times and still missing response,
                     // task failed, remove this ship.
-                    dit.remove(); //fleet.remove(ship);
-                    sn = ship.getSN();
-                    if (sn != null) {
-                        departureMap.remove(sn);
-                    }
+                    dit.remove();
+                    departureMap.remove(sn);
+                    departureLevel.remove(sn);
                     return ship;
                 }
             }
@@ -258,6 +265,7 @@ public class DepartureHall {
             prior = pit.next();
             fleet = departureFleets.get(prior);
             if (fleet == null) {
+                pit.remove();
                 continue;
             }
             fit = fleet.iterator();
@@ -267,9 +275,9 @@ public class DepartureHall {
                     // task done
                     fit.remove();
                     sn = ship.getSN();
-                    if (sn != null) {
-                        departureMap.remove(sn);
-                    }
+                    assert sn != null : "Ship SN should not be empty here";
+                    departureMap.remove(sn);
+                    departureLevel.remove(sn);
                     // mark finished time
                     departureFinished.put(sn, now);
                 }
@@ -277,6 +285,7 @@ public class DepartureHall {
             // remove array when empty
             if (fleet.size() == 0) {
                 departureFleets.remove(prior);
+                pit.remove();
             }
         }
         // 2. seeking neglected finished times

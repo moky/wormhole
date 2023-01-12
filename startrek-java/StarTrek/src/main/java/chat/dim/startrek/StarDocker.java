@@ -125,7 +125,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
 
     @Override
     public boolean sendShip(Departure ship) {
-        return dock.appendDeparture(ship);
+        return dock.addDeparture(ship);
     }
 
     @Override
@@ -169,21 +169,19 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
      *  Check and remove linked departure ship with same SN (and page index for fragment)
      *
      * @param income - income ship with SN
-     * @return linked outgo ship
      */
-    protected Departure checkResponse(Arrival income) {
+    protected void checkResponse(Arrival income) {
         // check response for linked departure ship (same SN)
         Departure linked = dock.checkResponse(income);
         if (linked == null) {
             // linked departure task not found, or not finished yet
-            return null;
+            return;
         }
         // all fragments responded, task finished
         Delegate delegate = getDelegate();
         if (delegate != null) {
             delegate.onDockerSent(linked, this);
         }
-        return linked;
     }
 
     /**
