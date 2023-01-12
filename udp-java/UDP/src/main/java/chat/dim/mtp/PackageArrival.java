@@ -30,7 +30,6 @@
  */
 package chat.dim.mtp;
 
-import java.util.Date;
 import java.util.List;
 
 import chat.dim.port.Arrival;
@@ -56,7 +55,7 @@ public class PackageArrival extends ArrivalShip {
         }
     }
     public PackageArrival(Package pack) {
-        this(pack, new Date().getTime());
+        this(pack, System.currentTimeMillis());
     }
 
     public Package getPackage() {

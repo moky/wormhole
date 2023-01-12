@@ -30,6 +30,7 @@
  */
 package chat.dim.net;
 
+import java.io.IOError;
 import java.net.SocketAddress;
 
 import chat.dim.threading.Ticker;
@@ -114,7 +115,7 @@ public interface Connection extends Ticker {
          * @param data        - outgo data package
          * @param connection  - current connection
          */
-        void onConnectionFailed(Throwable error, byte[] data, Connection connection);
+        void onConnectionFailed(IOError error, byte[] data, Connection connection);
 
         /**
          *  Called when connection (receiving) error
@@ -122,6 +123,6 @@ public interface Connection extends Ticker {
          * @param error       - error message
          * @param connection  - current connection
          */
-        void onConnectionError(Throwable error, Connection connection);
+        void onConnectionError(IOError error, Connection connection);
     }
 }

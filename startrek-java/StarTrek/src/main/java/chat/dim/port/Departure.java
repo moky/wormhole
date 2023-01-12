@@ -38,6 +38,36 @@ import java.util.List;
  */
 public interface Departure extends Ship {
 
+    /**
+     *  Get fragments to sent
+     *
+     * @return remaining separated data packages
+     */
+    List<byte[]> getFragments();
+
+    /**
+     *  The arrival ship may carried response(s) for the departure.
+     *  if all fragments responded, means this task is finished.
+     *
+     * @param response - income ship carried with response
+     * @return true on task finished
+     */
+    boolean checkResponse(Arrival response);
+
+    /**
+     *  Whether needs to wait for responses
+     *
+     * @return false for disposable
+     */
+    boolean isImportant();
+
+    /**
+     *  Task priority
+     *
+     * @return default is 0, smaller is faster
+     */
+    int getPriority();
+
     enum Priority {
         URGENT (-1),
         NORMAL ( 0),
@@ -49,68 +79,4 @@ public interface Departure extends Ship {
             value = prior;
         }
     }
-
-    /**
-     *  Task priority
-     *
-     * @return default is 0, smaller is faster
-     */
-    int getPriority();
-
-    /**
-     *  Get fragments to sent
-     *
-     * @return remaining separated data packages
-     */
-    List<byte[]> getFragments();
-
-    /**
-     *  The received ship may carried a response for the departure
-     *  if all fragments responded, means this task is finished.
-     *
-     * @param response - income ship carried with response
-     * @return true on task finished
-     */
-    boolean checkResponse(Arrival response);
-
-    //
-    //  task states
-    //
-
-    /**
-     *  Check whether it's a new task
-     *
-     * @return true for new task
-     */
-    boolean isNew();
-
-    /**
-     *  Check whether it can be removed immediately
-     *
-     * @return true for task needs no response
-     */
-    boolean isDisposable();
-
-    /**
-     *  Check whether task needs retry
-     *
-     * @param now - current time
-     * @return true on timeout
-     */
-    boolean isTimeout(long now);
-
-    /**
-     *  Check whether task's response(s) missed
-     *
-     * @param now - current time
-     * @return true on failed
-     */
-    boolean isFailed(long now);
-
-    /**
-     *  Update expired time
-     *
-     * @param now - current time
-     */
-    void touch(long now);
 }

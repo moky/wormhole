@@ -1,4 +1,5 @@
 
+import java.io.IOError;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
@@ -73,12 +74,12 @@ public class Client implements Docker.Delegate {
     }
 
     @Override
-    public void onDockerFailed(Throwable error, Departure departure, Docker docker) {
+    public void onDockerFailed(IOError error, Departure departure, Docker docker) {
         TCPGate.error(error.getMessage());
     }
 
     @Override
-    public void onDockerError(Throwable error, Departure departure, Docker docker) {
+    public void onDockerError(IOError error, Departure departure, Docker docker) {
         TCPGate.error(error.getMessage());
     }
 

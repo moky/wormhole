@@ -44,4 +44,42 @@ public interface Ship {
      * @return SN
      */
     Object getSN();
+
+    /**
+     *  Update sent time
+     *
+     * @param now - current time
+     */
+    void touch(long now);
+
+    /**
+     *  Check ship state
+     *
+     * @param now - current time
+     * @return current state
+     */
+    State getState(long now);
+
+    enum State {
+        //
+        //  Arrival States
+        //
+        ASSEMBLING (0x00),  // waiting for more fragments
+        EXPIRED    (0x01),  // failed to received all fragments
+
+        //
+        //  Departure States
+        //
+        NEW        (0x10),  // not try yet
+        WAITING    (0x11),  // sent, waiting for responses
+        TIMEOUT    (0x12),  // waiting to send again
+        DONE       (0x13),  // all fragments responded (or no need respond)
+        FAILED     (0x14);  // tried 3 times and missed response(s)
+
+        public final int value;
+
+        State(int state) {
+            value = state;
+        }
+    }
 }

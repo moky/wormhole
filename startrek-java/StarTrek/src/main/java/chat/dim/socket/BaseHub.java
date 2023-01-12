@@ -30,6 +30,7 @@
  */
 package chat.dim.socket;
 
+import java.io.IOError;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
@@ -196,7 +197,7 @@ public abstract class BaseHub implements Hub {
                 Connection conn = getConnection(remote, local);
                 removeChannel(remote, local, sock);
                 if (conn != null) {
-                    delegate.onConnectionError(e, conn);
+                    delegate.onConnectionError(new IOError(e), conn);
                 }
             }
             return false;
@@ -219,13 +220,9 @@ public abstract class BaseHub implements Hub {
     protected int driveChannels(Set<Channel> channels) {
         int count = 0;
         for (Channel sock : channels) {
-            try {
-                // drive channel to receive data
-                if (driveChannel(sock)) {
-                    count += 1;
-                }
-            } catch (Throwable e) {
-                e.printStackTrace();
+            // drive channel to receive data
+            if (driveChannel(sock)) {
+                count += 1;
             }
         }
         return count;
@@ -246,12 +243,8 @@ public abstract class BaseHub implements Hub {
         long now = System.currentTimeMillis();
         long delta = now - last;
         for (Connection conn : connections) {
-            try {
-                // drive connection to go on
-                conn.tick(now, delta);
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
+            // drive connection to go on
+            conn.tick(now, delta);
             // NOTICE: let the delegate to decide whether close an error connection
             //         or just remove it.
         }
@@ -270,20 +263,15 @@ public abstract class BaseHub implements Hub {
 
     @Override
     public boolean process() {
-        try {
-            // 1. drive all channels to receive data
-            Set<Channel> channels = allChannels();
-            int count = driveChannels(channels);
-            // 2. drive all connections to move on
-            Set<Connection> connections = allConnections();
-            driveConnections(connections);
-            // 3. cleanup closed channels and connections
-            cleanupChannels(channels);
-            cleanupConnections(connections);
-            return count > 0;
-        } catch (Throwable e) {
-            e.printStackTrace();
-            return false;
-        }
+        // 1. drive all channels to receive data
+        Set<Channel> channels = allChannels();
+        int count = driveChannels(channels);
+        // 2. drive all connections to move on
+        Set<Connection> connections = allConnections();
+        driveConnections(connections);
+        // 3. cleanup closed channels and connections
+        cleanupChannels(channels);
+        cleanupConnections(connections);
+        return count > 0;
     }
 }

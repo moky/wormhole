@@ -30,17 +30,15 @@
  */
 package chat.dim.startrek;
 
-import java.util.Date;
-
 import chat.dim.port.Arrival;
 
 public abstract class ArrivalShip implements Arrival {
 
     /**
-     *  Arrival task will be expired after 10 minutes
+     *  Arrival task will be expired after 5 minutes
      *  if still not completed.
      */
-    public static long EXPIRES = 600 * 1000; // milliseconds
+    public static long EXPIRES = 300 * 1000; // milliseconds
 
     // expired time (timestamp in milliseconds)
     private long expired;
@@ -50,20 +48,21 @@ public abstract class ArrivalShip implements Arrival {
         expired = now + EXPIRES;
     }
     protected ArrivalShip() {
-        this(new Date().getTime());
-    }
-
-    //
-    //  task states
-    //
-
-    @Override
-    public boolean isTimeout(long now) {
-        return now > expired;
+        this(System.currentTimeMillis());
     }
 
     @Override
     public void touch(long now) {
+        // update expired time
         expired = now + EXPIRES;
+    }
+
+    @Override
+    public State getState(long now) {
+        if (now > expired) {
+            return State.EXPIRED;
+        } else {
+            return State.ASSEMBLING;
+        }
     }
 }

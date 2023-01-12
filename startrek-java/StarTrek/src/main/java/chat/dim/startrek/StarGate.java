@@ -30,6 +30,7 @@
  */
 package chat.dim.startrek;
 
+import java.io.IOError;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.util.List;
@@ -136,27 +137,18 @@ public abstract class StarGate implements Gate, Connection.Delegate {
 
     @Override
     public boolean process() {
-        try {
-            Set<Docker> dockers = allDockers();
-            // 1. drive all dockers to process
-            int count = driveDockers(dockers);
-            // 2. cleanup for dockers
-            cleanupDockers(dockers);
-            return count > 0;
-        } catch (Throwable e) {
-            e.printStackTrace();
-            return false;
-        }
+        Set<Docker> dockers = allDockers();
+        // 1. drive all dockers to process
+        int count = driveDockers(dockers);
+        // 2. cleanup for dockers
+        cleanupDockers(dockers);
+        return count > 0;
     }
     protected int driveDockers(Set<Docker> dockers) {
         int count = 0;
         for (Docker worker : dockers) {
-            try {
-                if (worker.process()) {
-                    ++count;  // it's busy
-                }
-            } catch (Throwable e) {
-                e.printStackTrace();
+            if (worker.process()) {
+                ++count;  // it's busy
             }
         }
         return count;
@@ -264,12 +256,12 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     }
 
     @Override
-    public void onConnectionFailed(Throwable error, byte[] data, Connection connection) {
+    public void onConnectionFailed(IOError error, byte[] data, Connection connection) {
         // ignore event for sending failed
     }
 
     @Override
-    public void onConnectionError(Throwable error, Connection connection) {
+    public void onConnectionError(IOError error, Connection connection) {
         // ignore event for receiving error
     }
 }

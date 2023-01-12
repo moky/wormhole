@@ -30,17 +30,18 @@
  */
 package chat.dim.startrek;
 
+import java.io.IOError;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Docker;
+import chat.dim.port.Ship;
 import chat.dim.type.AddressPairObject;
 
 public abstract class StarDocker extends AddressPairObject implements Docker {
@@ -241,17 +242,17 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             lastFragments = new ArrayList<>();
         } else {
             // get next outgo task
-            long now = (new Date()).getTime();
+            long now = System.currentTimeMillis();
             outgo = getNextDeparture(now);
             if (outgo == null) {
                 // nothing to do now, return false to let the thread have a rest
                 return false;
-            } else if (outgo.isFailed(now)) {
+            } else if (outgo.getState(now).equals(Ship.State.FAILED)) {
                 Delegate delegate = getDelegate();
                 if (delegate != null) {
                     // callback for mission failed
-                    IOException error = new SocketException("Request timeout");
-                    delegate.onDockerFailed(error, outgo, this);
+                    IOException e = new SocketException("Request timeout");
+                    delegate.onDockerFailed(new IOError(e), outgo, this);
                 }
                 // task timeout, return true to process next one
                 return true;
@@ -266,7 +267,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             }
         }
         // 3. process fragments of outgo task
-        Throwable error;
+        IOError error;
         int index = 0, sent = 0;
         try {
             for (byte[] fra : fragments) {
@@ -282,14 +283,14 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             }
             if (index < fragments.size()) {
                 // task failed
-                error = new SocketException("only " + index + "/" + fragments.size() + " fragments sent.");
+                throw  new SocketException("only " + index + "/" + fragments.size() + " fragments sent.");
             } else {
                 // task done
                 return true;
             }
-        } catch (Throwable e) {
+        } catch (IOException e) {
             // socket error, callback
-            error = e;
+            error = new IOError(e);
         }
         // 4. remove sent fragments
         for (; index > 0; --index) {

@@ -1,5 +1,6 @@
 package chat.dim.stargate;
 
+import java.io.IOError;
 import java.net.SocketAddress;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -48,13 +49,13 @@ public class TCPGate<H extends Hub> extends AutoGate<H> {
     }
 
     @Override
-    public void onConnectionFailed(Throwable error, byte[] data, Connection connection) {
+    public void onConnectionFailed(IOError error, byte[] data, Connection connection) {
         super.onConnectionFailed(error, data, connection);
         error("connection failed: " + error + ", " + connection);
     }
 
     @Override
-    public void onConnectionError(Throwable error, Connection connection) {
+    public void onConnectionError(IOError error, Connection connection) {
         super.onConnectionError(error, connection);
         error("connection error: " + error + ", " + connection);
     }

@@ -67,4 +67,10 @@ public class PlainDeparture extends DepartureShip {
         // plain departure needs no response
         return false;
     }
+
+    @Override
+    public boolean isImportant() {
+        // plain ship no needs response
+        return false;
+    }
 }

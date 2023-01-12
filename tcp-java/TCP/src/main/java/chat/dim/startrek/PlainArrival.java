@@ -30,8 +30,6 @@
  */
 package chat.dim.startrek;
 
-import java.util.Date;
-
 import chat.dim.port.Arrival;
 
 public class PlainArrival extends ArrivalShip {
@@ -43,7 +41,7 @@ public class PlainArrival extends ArrivalShip {
         data = pack;
     }
     public PlainArrival(byte[] pack) {
-        this(pack, new Date().getTime());
+        this(pack, System.currentTimeMillis());
     }
 
     public byte[] getPackage() {

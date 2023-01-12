@@ -112,6 +112,13 @@ public class PackageDeparture extends DepartureShip {
         fragments.clear();
         return packages.size() == 0;
     }
+
+    @Override
+    public boolean isImportant() {
+        Header head = completed.head;
+        return !head.isResponse();
+    }
+
     private boolean removePage(int index) {
         Iterator<Package> iterator = packages.iterator();
         while (iterator.hasNext()) {

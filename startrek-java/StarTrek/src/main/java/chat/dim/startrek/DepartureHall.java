@@ -31,17 +31,15 @@
 package chat.dim.startrek;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.WeakHashMap;
 
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
+import chat.dim.port.Ship;
 
 /**
  *  Memory cache for Departures
@@ -82,7 +80,7 @@ public class DepartureHall {
         fleet.add(outgo);
         // 3. build mapping if SN exists
         Object sn = outgo.getSN();
-        if (sn != null && !outgo.isDisposable()) {
+        if (sn != null && outgo.isImportant()) {
             // disposable ship needs no response, so
             // we don't build index for it.
             departureMap.put(sn, outgo);
@@ -120,17 +118,18 @@ public class DepartureHall {
         assert sn != null : "SN not found: " + response;
         // check whether this task has already finished
         Long time = departureFinished.get(sn);
-        if (time == null || time == 0) {
-            // check departure
-            Departure ship = departureMap.get(sn);
-            if (ship != null && ship.checkResponse(response)) {
-                // all fragments sent, departure task finished
-                // remove it and clear mapping when SN exists
-                remove(ship, sn);
-                // mark finished time
-                departureFinished.put(sn, (new Date()).getTime());
-                return ship;
-            }
+        if (time != null && time > 0) {
+            return null;
+        }
+        // check departure
+        Departure ship = departureMap.get(sn);
+        if (ship != null && ship.checkResponse(response)) {
+            // all fragments sent, departure task finished
+            // remove it and clear mapping when SN exists
+            remove(ship, sn);
+            // mark finished time
+            departureFinished.put(sn, System.currentTimeMillis());
+            return ship;
         }
         return null;
     }
@@ -179,20 +178,20 @@ public class DepartureHall {
             dit = fleet.iterator();
             while (dit.hasNext()) {
                 ship = dit.next();
-                if (ship.isNew()) {
-                    if (ship.isDisposable()) {
+                if (ship.getState(now).equals(Ship.State.NEW)) {
+                    if (ship.isImportant()) {
+                        // first try, update expired time for response
+                        ship.touch(now);
+                    } else {
                         // disposable ship needs no response,
                         // remove it immediately.
                         dit.remove(); //fleet.remove(ship);
-                        // TODO: disposable ship will not be mapped.
-                        //       see 'appendDeparture()'
+                        // disposable ship will not be mapped.
+                        // see 'appendDeparture()'
                         sn = ship.getSN();
                         if (sn != null) {
                             departureMap.remove(sn);
                         }
-                    } else {
-                        // first try, update expired time for response
-                        ship.touch(now);
                     }
                     return ship;
                 }
@@ -204,6 +203,7 @@ public class DepartureHall {
         List<Departure> fleet;
         Iterator<Departure> dit;
         Departure ship;
+        Ship.State state;
         Object sn;
         List<Integer> priorityList = new ArrayList<>(priorities);
         for (int priority : priorityList) {
@@ -216,7 +216,8 @@ public class DepartureHall {
             dit = fleet.iterator();
             while (dit.hasNext()) {
                 ship = dit.next();
-                if (ship.isTimeout(now)) {
+                state = ship.getState(now);
+                if (state.equals(Ship.State.TIMEOUT)) {
                     // response timeout, needs retry now.
                     // 2.1. update expired time;
                     ship.touch(now);
@@ -226,7 +227,7 @@ public class DepartureHall {
                         fleet.add(ship);
                     }
                     return ship;
-                } else if (ship.isFailed(now)) {
+                } else if (state.equals(Ship.State.FAILED)) {
                     // try too many times and still missing response,
                     // task failed, remove this ship.
                     dit.remove(); //fleet.remove(ship);
@@ -241,52 +242,46 @@ public class DepartureHall {
         return null;
     }
 
-    private void clear(List<Departure> fleet, Set<Departure> failedTasks, int priority) {
-        Object sn;
-        // remove expired tasks
-        for (Departure ship : failedTasks) {
-            fleet.remove(ship);
-            // remove mapping when SN exists
-            sn = ship.getSN();
-            if (sn != null) {
-                departureMap.remove(sn);
-            }
-            // TODO: callback?
-        }
-        // remove array when empty
-        if (fleet.size() == 0) {
-            departureFleets.remove(priority);
-        }
-    }
-
     /**
      *  Clear all expired tasks
      */
     public void purge() {
-        Set<Departure> failedTasks = new HashSet<>();
-        long now = (new Date()).getTime();
+        long now = System.currentTimeMillis();
+        // 1. seeking finished tasks
+        Iterator<Integer> pit = priorities.iterator();
+        int prior;
         List<Departure> fleet;
-        List<Integer> priorityList = new ArrayList<>(priorities);
-        for (int priority : priorityList) {
-            // 0. get tasks with priority
-            fleet = departureFleets.get(priority);
+        Iterator<Departure> fit;
+        Departure ship;
+        Object sn;
+        while (pit.hasNext()) {
+            prior = pit.next();
+            fleet = departureFleets.get(prior);
             if (fleet == null) {
                 continue;
             }
-            // 1. seeking expired tasks in this priority
-            for (Departure ship : fleet) {
-                if (ship.isFailed(now)) {
-                    // task expired
-                    failedTasks.add(ship);
+            fit = fleet.iterator();
+            while (fit.hasNext()) {
+                ship = fit.next();
+                if (ship.getState(now).equals(Ship.State.DONE)) {
+                    // task done
+                    fit.remove();
+                    sn = ship.getSN();
+                    if (sn != null) {
+                        departureMap.remove(sn);
+                    }
+                    // mark finished time
+                    departureFinished.put(sn, now);
                 }
             }
-            // 2. clear expired tasks
-            clear(fleet, failedTasks, priority);
-            failedTasks.clear();
+            // remove array when empty
+            if (fleet.size() == 0) {
+                departureFleets.remove(prior);
+            }
         }
-        // 3. seeking neglected finished times
+        // 2. seeking neglected finished times
         Iterator<Map.Entry<Object, Long>> mit = departureFinished.entrySet().iterator();
-        long ago = now - 3600;
+        long ago = now - 3600 * 1000;
         Map.Entry<Object, Long> entry;
         Long when;
         while (mit.hasNext()) {
@@ -294,9 +289,7 @@ public class DepartureHall {
             when = entry.getValue();
             if (when == null || when < ago) {
                 // long time ago
-                mit.remove(); //departureFinished.remove(entry.getKey());
-                // remove mapping with SN
-                departureMap.remove(entry.getKey());
+                mit.remove();
             }
         }
     }

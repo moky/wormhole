@@ -53,13 +53,8 @@ public abstract class AutoGate<H extends Hub>
 
     @Override
     public boolean process() {
-        try {
-            boolean incoming = getHub().process();
-            boolean outgoing = super.process();
-            return incoming || outgoing;
-        } catch (Throwable e) {
-            e.printStackTrace();
-            return false;
-        }
+        boolean incoming = getHub().process();
+        boolean outgoing = super.process();
+        return incoming || outgoing;
     }
 }

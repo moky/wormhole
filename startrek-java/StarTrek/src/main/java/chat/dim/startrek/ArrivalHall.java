@@ -30,7 +30,6 @@
  */
 package chat.dim.startrek;
 
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -39,6 +38,7 @@ import java.util.Set;
 import java.util.WeakHashMap;
 
 import chat.dim.port.Arrival;
+import chat.dim.port.Ship;
 
 /**
  *  Memory cache for Arrivals
@@ -58,46 +58,48 @@ public class ArrivalHall {
      * @return ship carrying completed data package
      */
     public Arrival assembleArrival(Arrival income) {
-        // check ship ID (SN)
+        // 1. check ship ID (SN)
         Object sn = income.getSN();
         if (sn == null) {
             // separated package ship must have SN for assembling
             // we consider it to be a ship carrying a whole package here
             return income;
         }
-        // check whether the task has already finished
-        Long time = arrivalFinished.get(sn);
-        if (time != null && time > 0) {
-            // task already finished
-            return null;
-        }
-        Arrival task = arrivalMap.get(sn);
-        if (task == null) {
-            // new arrival, try assembling to check whether a fragment
-            task = income.assemble(income);
-            if (task == null) {
+        // 2. check cached ship
+        Arrival completed;
+        Arrival cached = arrivalMap.get(sn);
+        if (cached == null) {
+            // check whether the task has already finished
+            Long time = arrivalFinished.get(sn);
+            if (time != null && time > 0) {
+                // task already finished
+                return null;
+            }
+            // 3. new arrival, try assembling to check whether a fragment
+            completed = income.assemble(income);
+            if (completed == null) {
                 // it's a fragment, waiting for more fragments
                 arrivals.add(income);
                 arrivalMap.put(sn, income);
-                return null;
+                //income.touch(System.currentTimeMillis());
+            }
+            // else, it's a completed package
+        } else {
+            // 3. cached ship found, try assembling (insert as fragment)
+            //    to check whether all fragments received
+            completed = cached.assemble(income);
+            if (completed == null) {
+                // it's not completed yet, update expired time
+                // and wait for more fragments.
+                cached.touch(System.currentTimeMillis());
             } else {
-                // it's a completed package
-                return task;
+                // all fragments received, remove cached ship
+                arrivals.remove(cached);
+                arrivalMap.remove(sn);
+                // mark finished time
+                arrivalFinished.put(sn, System.currentTimeMillis());
             }
         }
-        // insert as fragment
-        Arrival completed = task.assemble(income);
-        if (completed == null) {
-            // not completed yet, update expired time
-            // and wait for more fragments.
-            task.touch((new Date()).getTime());
-            return null;
-        }
-        // all fragments received, remove this task
-        arrivals.remove(task);
-        arrivalMap.remove(sn);
-        // mark finished time
-        arrivalFinished.put(sn, (new Date()).getTime());
         return completed;
     }
 
@@ -105,23 +107,27 @@ public class ArrivalHall {
      *  Clear all expired tasks
      */
     public void purge() {
-        long now = (new Date()).getTime();
+        long now = System.currentTimeMillis();
         // 1. seeking expired tasks
         Iterator<Arrival> ait = arrivals.iterator();
         Arrival ship;
+        Object sn;
         while (ait.hasNext()) {
             ship = ait.next();
-            if (ship.isTimeout(now)) {
+            if (ship.getState(now).equals(Ship.State.EXPIRED)) {
                 // task expired
                 ait.remove(); //arrivals.remove(ship);
                 // remove mapping with SN
-                arrivalMap.remove(ship.getSN());
-                // TODO: callback?
+                sn = ship.getSN();
+                if (sn != null) {
+                    arrivalMap.remove(sn);
+                    // TODO: callback?
+                }
             }
         }
         // 2. seeking neglected finished times
         Iterator<Map.Entry<Object, Long>> mit = arrivalFinished.entrySet().iterator();
-        long ago = now - 3600;
+        long ago = now - 3600 * 1000;
         Map.Entry<Object, Long> entry;
         Long when;
         while (mit.hasNext()) {
@@ -129,9 +135,7 @@ public class ArrivalHall {
             when = entry.getValue();
             if (when == null || when < ago) {
                 // long time ago
-                mit.remove(); //arrivalFinished.remove(entry.getKey());
-                // remove mapping with SN
-                arrivalMap.remove(entry.getKey());
+                mit.remove();
             }
         }
     }

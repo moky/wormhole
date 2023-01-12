@@ -30,37 +30,6 @@
  */
 package chat.dim.net;
 
-/*
- *    Finite States:
- *
- *             //===============\\          (Start)          //=============\\
- *             ||               || ------------------------> ||             ||
- *             ||    Default    ||                           ||  Preparing  ||
- *             ||               || <------------------------ ||             ||
- *             \\===============//         (Timeout)         \\=============//
- *                                                               |       |
- *             //===============\\                               |       |
- *             ||               || <-----------------------------+       |
- *             ||     Error     ||          (Error)                 (Connected
- *             ||               || <-----------------------------+   or bound)
- *             \\===============//                               |       |
- *                 A       A                                     |       |
- *                 |       |            //===========\\          |       |
- *                 (Error) +----------- ||           ||          |       |
- *                 |                    ||  Expired  || <--------+       |
- *                 |       +----------> ||           ||          |       |
- *                 |       |            \\===========//          |       |
- *                 |       (Timeout)           |         (Timeout)       |
- *                 |       |                   |                 |       V
- *             //===============\\     (Sent)  |             //=============\\
- *             ||               || <-----------+             ||             ||
- *             ||  Maintaining  ||                           ||    Ready    ||
- *             ||               || ------------------------> ||             ||
- *             \\===============//       (Received)          \\=============//
- */
-
-import java.util.Date;
-
 import chat.dim.fsm.BaseState;
 import chat.dim.fsm.State;
 
@@ -97,10 +66,12 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
 
     @Override
     public boolean equals(Object other) {
-        if (this == other) {
-            return true;
-        } else if (other instanceof ConnectionState) {
-            return name.equals(((ConnectionState) other).name);
+        if (other instanceof ConnectionState) {
+            if (this == other) {
+                return true;
+            }
+            ConnectionState state = (ConnectionState) other;
+            return name.equals(state.name);
         } else if (other instanceof String) {
             return name.equals(other);
         } else {
@@ -122,7 +93,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
 
     @Override
     public void onEnter(State<StateMachine, StateTransition> previous, StateMachine ctx) {
-        enterTime = new Date().getTime();
+        enterTime = System.currentTimeMillis();
     }
 
     @Override
@@ -148,5 +119,77 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
      */
     public interface Delegate extends chat.dim.fsm.Delegate<StateMachine, StateTransition, ConnectionState> {
 
+    }
+
+    /**
+     *  State Builder
+     *  ~~~~~~~~~~~~~
+     */
+    static class Builder {
+
+        private final StateTransition.Builder stb;
+
+        Builder(StateTransition.Builder builder) {
+            super();
+            stb = builder;
+        }
+
+        // Connection not started yet
+        ConnectionState getDefaultState() {
+            ConnectionState state = new ConnectionState(ConnectionState.DEFAULT);
+            // Default -> Preparing
+            state.addTransition(stb.getDefaultPreparingTransition());
+            return state;
+        }
+
+        // Connection started, preparing to connect/bind
+        ConnectionState getPreparingState() {
+            ConnectionState state = new ConnectionState(ConnectionState.PREPARING);
+            // Preparing -> Ready
+            state.addTransition(stb.getPreparingReadyTransition());
+            // Preparing -> Default
+            state.addTransition(stb.getPreparingDefaultTransition());
+            return state;
+        }
+
+        // Normal state of connection
+        ConnectionState getReadyState() {
+            ConnectionState state = new ConnectionState(ConnectionState.READY);
+            // Ready -> Expired
+            state.addTransition(stb.getReadyExpiredTransition());
+            // Ready -> Error
+            state.addTransition(stb.getReadyErrorTransition());
+            return state;
+        }
+
+        // Long time no response, need maintaining
+        ConnectionState getExpiredState() {
+            ConnectionState state = new ConnectionState(ConnectionState.EXPIRED);
+            // Expired -> Maintaining
+            state.addTransition(stb.getExpiredMaintainingTransition());
+            // Expired -> Error
+            state.addTransition(stb.getExpiredErrorTransition());
+            return state;
+        }
+
+        // Heartbeat sent, waiting response
+        ConnectionState getMaintainingState() {
+            ConnectionState state = new ConnectionState(ConnectionState.MAINTAINING);
+            // Maintaining -> Ready
+            state.addTransition(stb.getMaintainingReadyTransition());
+            // Maintaining -> Expired
+            state.addTransition(stb.getMaintainingExpiredTransition());
+            // Maintaining -> Error
+            state.addTransition(stb.getMaintainingErrorTransition());
+            return state;
+        }
+
+        // Connection lost
+        ConnectionState getErrorState() {
+            ConnectionState state = new ConnectionState(ConnectionState.ERROR);
+            // Error -> Default
+            state.addTransition(stb.getErrorDefaultTransition());
+            return state;
+        }
     }
 }

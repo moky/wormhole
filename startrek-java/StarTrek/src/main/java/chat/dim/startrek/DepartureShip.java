@@ -30,6 +30,8 @@
  */
 package chat.dim.startrek;
 
+import java.util.List;
+
 import chat.dim.port.Departure;
 
 public abstract class DepartureShip implements Departure {
@@ -78,40 +80,32 @@ public abstract class DepartureShip implements Departure {
     }
 
     @Override
-    public int getPriority() {
-        return priority;
-    }
-
-    //
-    //  task states
-    //
-
-    @Override
-    public boolean isNew() {
-        return expired == 0;
-    }
-
-    @Override
-    public boolean isDisposable() {
-        return tries <= 0;  // -1
-    }
-
-    @Override
-    public boolean isTimeout(long now) {
-        return tries > 0 && now > expired;
-    }
-
-    @Override
-    public boolean isFailed(long now) {
-        return tries == 0 && now > expired;
-    }
-
-    @Override
     public void touch(long now) {
         assert tries > 0 : "touch error, tries=" + tries;
-        // update retried time
-        expired = now + EXPIRES;
         // decrease counter
         --tries;
+        // update retried time
+        expired = now + EXPIRES;
+    }
+
+    @Override
+    public State getState(long now) {
+        List<byte[]> fragments = getFragments();
+        if (fragments.size() == 0) {
+            return State.DONE;
+        } else if (expired == 0) {
+            return State.NEW;
+        } else if (now < expired) {
+            return State.WAITING;
+        } else if (tries > 0) {
+            return State.TIMEOUT;
+        } else {
+            return State.FAILED;
+        }
+    }
+
+    @Override
+    public int getPriority() {
+        return priority;
     }
 }

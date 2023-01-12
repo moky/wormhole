@@ -30,11 +30,11 @@
  */
 package chat.dim.socket;
 
+import java.io.IOError;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.util.Date;
 
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
@@ -181,7 +181,7 @@ public class BaseConnection extends AddressPairObject
 
     @Override
     public void onReceived(byte[] data) {
-        lastReceivedTime = (new Date()).getTime();  // update received time
+        lastReceivedTime = System.currentTimeMillis();  // update received time
         Delegate delegate = getDelegate();
         if (delegate != null) {
             delegate.onConnectionReceived(data, this);
@@ -195,7 +195,7 @@ public class BaseConnection extends AddressPairObject
             sent = sock.send(src, destination);
             if (sent > 0) {
                 // update sent time
-                lastSentTime = (new Date()).getTime();
+                lastSentTime = System.currentTimeMillis();
             }
         }
         return sent;
@@ -204,7 +204,7 @@ public class BaseConnection extends AddressPairObject
     @Override
     public int send(byte[] pack) {
         // try to send data
-        Throwable error = null;
+        IOError error = null;
         int sent = -1;
         try {
             // prepare buffer
@@ -215,11 +215,11 @@ public class BaseConnection extends AddressPairObject
             SocketAddress destination = getRemoteAddress();
             sent = send(buffer, destination);
             if (sent < 0) {  // == -1
-                error = new Error("failed to send data: " + pack.length + " byte(s) to " + destination);
+                throw new IOException("failed to send data: " + pack.length + " byte(s) to " + destination);
             }
         } catch (IOException e) {
             //e.printStackTrace();
-            error = e;
+            error = new IOError(e);
             // socket error, close current channel
             setChannel(null);
         }
@@ -298,7 +298,7 @@ public class BaseConnection extends AddressPairObject
             if (previous != null && previous.equals(ConnectionState.PREPARING)) {
                 // connection state changed from 'preparing' to 'ready',
                 // set times to expired soon.
-                long timestamp = (new Date()).getTime() - (EXPIRES >> 1);
+                long timestamp = System.currentTimeMillis() - (EXPIRES >> 1);
                 if (lastSentTime < timestamp) {
                     lastSentTime = timestamp;
                 }

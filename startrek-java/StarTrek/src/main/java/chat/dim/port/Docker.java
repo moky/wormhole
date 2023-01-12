@@ -30,6 +30,7 @@
  */
 package chat.dim.port;
 
+import java.io.IOError;
 import java.net.SocketAddress;
 
 import chat.dim.net.ConnectionState;
@@ -153,7 +154,7 @@ public interface Docker extends Processor {
          * @param departure   - outgo data package container
          * @param docker      - connection docker
          */
-        void onDockerFailed(Throwable error, Departure departure, Docker docker);
+        void onDockerFailed(IOError error, Departure departure, Docker docker);
 
         /**
          *  Callback when connection error
@@ -162,7 +163,7 @@ public interface Docker extends Processor {
          * @param departure   - outgo data package container
          * @param docker      - connection docker
          */
-        void onDockerError(Throwable error, Departure departure, Docker docker);
+        void onDockerError(IOError error, Departure departure, Docker docker);
 
         /**
          *  Callback when connection status changed
