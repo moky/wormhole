@@ -48,11 +48,6 @@ public abstract class DepartureShip implements Departure {
      */
     public static int RETRIES = 2;
 
-    // if (max_tries == -1),
-    // means this ship will be sent only once
-    // and no need to wait for response.
-    public static final int DISPOSABLE = -1;
-
     // expired time (timestamp in milliseconds)
     private long expired;
 

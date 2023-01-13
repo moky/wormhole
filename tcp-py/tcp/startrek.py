@@ -37,13 +37,13 @@ from startrek import StarDocker
 
 class PlainArrival(ArrivalShip):
 
-    def __init__(self, data: bytes, now: float = 0):
+    def __init__(self, pack: bytes, now: float = 0):
         super().__init__(now=now)
-        self.__data = data
+        self.__pack = pack
 
     @property
     def package(self) -> bytes:
-        return self.__data
+        return self.__pack
 
     @property  # Override
     def sn(self):
@@ -59,14 +59,14 @@ class PlainArrival(ArrivalShip):
 
 class PlainDeparture(DepartureShip):
 
-    def __init__(self, data: bytes, priority: int = 0):
-        super().__init__(priority=priority, max_tries=DepartureShip.DISPOSABLE)
-        self.__data = data
-        self.__fragments = [data]
+    def __init__(self, pack: bytes, priority: int = 0):
+        super().__init__(priority=priority, max_tries=1)
+        self.__completed = pack
+        self.__fragments = [pack]
 
     @property
     def package(self) -> bytes:
-        return self.__data
+        return self.__completed
 
     @property  # Override
     def sn(self):
@@ -82,21 +82,26 @@ class PlainDeparture(DepartureShip):
         # plain departure needs no response
         return False
 
+    @property  # Override
+    def is_important(self) -> bool:
+        # plain departure no needs response
+        return False
+
 
 class PlainDocker(StarDocker):
 
     # noinspection PyMethodMayBeStatic
-    def _create_arrival(self, data: bytes) -> Arrival:
-        return PlainArrival(data=data)
+    def _create_arrival(self, pack: bytes) -> Arrival:
+        return PlainArrival(pack=pack)
 
     # noinspection PyMethodMayBeStatic
-    def _create_departure(self, data: bytes, priority: int):
-        return PlainDeparture(data=data, priority=priority)
+    def _create_departure(self, pack: bytes, priority: int):
+        return PlainDeparture(pack=pack, priority=priority)
 
     # Override
     def _get_arrival(self, data: bytes) -> Optional[Arrival]:
         if data is not None and len(data) > 0:
-            return self._create_arrival(data=data)
+            return self._create_arrival(pack=data)
 
     # Override
     def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:
@@ -118,7 +123,7 @@ class PlainDocker(StarDocker):
 
     def send(self, payload: bytes, priority: int) -> bool:
         """ sending payload with priority """
-        ship = self._create_departure(data=payload, priority=priority)
+        ship = self._create_departure(pack=payload, priority=priority)
         return self.send_ship(ship=ship)
 
     # Override

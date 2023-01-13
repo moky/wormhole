@@ -49,7 +49,7 @@ class DepartureShip(Departure, ABC):
 
     def __init__(self, priority: int = 0, max_tries: int = None):  # max_tries = 1 + RETRIES
         super().__init__()
-        # ship priority
+        # task priority, smaller is faster
         self.__priority = priority
         # expired time (timestamp in seconds)
         self.__expired = 0

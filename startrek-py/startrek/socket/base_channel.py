@@ -68,8 +68,6 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     def __init__(self, remote: Optional[Address], local: Optional[Address], sock: socket.socket):
         super().__init__(remote=remote, local=local)
-        self.__reader = self._create_reader()
-        self.__writer = self._create_writer()
         # flags
         self.__blocking = False
         self.__opened = False
@@ -77,6 +75,9 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         self.__bound = False
         self.__sock = sock
         self._refresh_flags()
+        # socket reader/writer
+        self.__reader = self._create_reader()
+        self.__writer = self._create_writer()
 
     def __del__(self):
         # make sure the relative socket is removed
@@ -108,7 +109,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     def __remove_socket(self):
         # 1. clear inner socket
-        sock = self.__sock
+        sock: socket.socket = self.__sock
         self.__sock = None
         # 2. refresh flags
         self._refresh_flags()
@@ -251,7 +252,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             raise error
 
     # Override
-    def receive1(self, max_len: int) -> Tuple[Optional[bytes], Optional[Address]]:
+    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[Address]]:
         try:
             return self.reader.receive(max_len=max_len)
         except socket.error as error:

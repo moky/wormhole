@@ -41,7 +41,7 @@ public class PlainDeparture extends DepartureShip {
     private final List<byte[]> fragments;
 
     public PlainDeparture(byte[] pack, int prior) {
-        super(prior, DISPOSABLE);
+        super(prior, 1);
         completed = pack;
         fragments = new ArrayList<>();
         fragments.add(pack);
@@ -70,7 +70,7 @@ public class PlainDeparture extends DepartureShip {
 
     @Override
     public boolean isImportant() {
-        // plain ship no needs response
+        // plain departure no needs response
         return false;
     }
 }

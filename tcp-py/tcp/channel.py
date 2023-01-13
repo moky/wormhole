@@ -28,7 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional
+from typing import Optional, Tuple
 
 from startrek.types import Address
 from startrek import BaseChannel, ChannelReader, ChannelWriter
@@ -37,7 +37,7 @@ from startrek import BaseChannel, ChannelReader, ChannelWriter
 class StreamChannelReader(ChannelReader):
 
     # Override
-    def receive(self, max_len: int) -> (Optional[bytes], Optional[Address]):
+    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[Address]]:
         data = self.read(max_len=max_len)
         if data is None or len(data) == 0:
             return None, None

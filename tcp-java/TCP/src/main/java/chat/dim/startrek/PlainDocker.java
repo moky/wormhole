@@ -42,12 +42,12 @@ public class PlainDocker extends StarDocker {
         super(conn);
     }
 
-    protected Arrival createArrival(byte[] data) {
-        return new PlainArrival(data);
+    protected Arrival createArrival(byte[] pack) {
+        return new PlainArrival(pack);
     }
 
-    protected Departure createDeparture(byte[] data, int priority) {
-        return new PlainDeparture(data, priority);
+    protected Departure createDeparture(byte[] pack, int priority) {
+        return new PlainDeparture(pack, priority);
     }
 
     @Override

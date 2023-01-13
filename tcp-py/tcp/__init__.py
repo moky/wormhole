@@ -29,12 +29,12 @@
 # ==============================================================================
 
 
-from startrek import Hub, Channel, Connection, ConnectionDelegate
-from startrek import ConnectionState, ConnectionStateMachine
+from startrek import Hub, Channel
+from startrek import Connection, ConnectionDelegate, ConnectionState
 from startrek import BaseChannel, ChannelReader, ChannelWriter
 from startrek import BaseHub, BaseConnection, ActiveConnection
 
-from startrek import Ship, Arrival, Departure, DeparturePriority
+from startrek import Ship, Arrival, Departure, ShipStatus, DeparturePriority
 from startrek import Docker, DockerStatus, DockerDelegate, Gate
 from startrek import ArrivalShip, ArrivalHall, DepartureShip, DepartureHall
 from startrek import Dock, LockedDock, StarDocker, StarGate
@@ -52,12 +52,12 @@ __all__ = [
     #
     #   StarTrek
     #
-    'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
-    'ConnectionState', 'ConnectionStateMachine',
+    'Hub', 'Channel',
+    'Connection', 'ConnectionDelegate', 'ConnectionState',
     'BaseChannel', 'ChannelReader', 'ChannelWriter',
     'BaseHub', 'BaseConnection', 'ActiveConnection',
 
-    'Ship', 'Arrival', 'Departure', 'DeparturePriority',
+    'Ship', 'Arrival', 'Departure', 'ShipStatus', 'DeparturePriority',
     'Docker', 'DockerStatus', 'DockerDelegate', 'Gate',
     'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
     'Dock', 'LockedDock', 'StarDocker', 'StarGate',
