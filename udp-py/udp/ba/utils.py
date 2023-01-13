@@ -30,7 +30,7 @@
 
 import binascii
 import random
-from typing import Union
+from typing import Union, Tuple
 
 from .array import Endian
 
@@ -140,7 +140,7 @@ def array_hash(buffer: Union[bytes, bytearray], offset: int, size: int) -> int:
 def array_concat(left_buffer: Union[bytes, bytearray],
                  left_offset: int, left_size: int,
                  right_buffer: Union[bytes, bytearray],
-                 right_offset: int, right_size: int) -> (Union[bytes, bytearray], int, int):
+                 right_offset: int, right_size: int) -> Tuple[Union[bytes, bytearray], int, int]:
     """ Concat two data with range [start, end) and return (buffer, offset, size) """
     if left_size == 0:
         return right_buffer, right_offset, right_size
@@ -300,7 +300,7 @@ def array_insert(index: int, src: Union[bytes, bytearray], src_offset: int, src_
                             buffer=buffer, offset=offset, size=size)
 
 
-def array_remove(index: int, buffer: bytearray, offset: int, size: int) -> (int, int, int):
+def array_remove(index: int, buffer: bytearray, offset: int, size: int) -> Tuple[int, int, int]:
     """ Remove element at index, return its value and new offset & size """
     pos = offset + index
     if index == 0:
@@ -384,7 +384,7 @@ def int_to_buffer(value: int, buffer: bytearray, offset: int, size: int, endian:
 """
 
 
-def varint_from_buffer(buffer: Union[bytes, bytearray], offset: int, size: int) -> (int, int):
+def varint_from_buffer(buffer: Union[bytes, bytearray], offset: int, size: int) -> Tuple[int, int]:
     """
     Get integer value from variable data buffer with range [offset, offset + size)
 

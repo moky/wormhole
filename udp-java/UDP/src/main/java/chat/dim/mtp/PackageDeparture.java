@@ -113,12 +113,6 @@ public class PackageDeparture extends DepartureShip {
         return packages.size() == 0;
     }
 
-    @Override
-    public boolean isImportant() {
-        Header head = completed.head;
-        return !head.isResponse();
-    }
-
     private boolean removePage(int index) {
         Iterator<Package> iterator = packages.iterator();
         while (iterator.hasNext()) {
@@ -129,5 +123,13 @@ public class PackageDeparture extends DepartureShip {
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean isImportant() {
+        Header head = completed.head;
+        // Only message needs waiting response;
+        // and the completed package won't be a fragment.
+        return head.isMessage();
     }
 }

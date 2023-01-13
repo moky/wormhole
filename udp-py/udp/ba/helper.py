@@ -29,7 +29,7 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 
 from .utils import array_concat, array_find
 from .utils import array_set, array_update, array_insert, array_remove
@@ -80,7 +80,7 @@ class MutableByteArrayHelper(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def remove(self, index: int, data: MutableByteArray) -> (Optional[int], int, int):
+    def remove(self, index: int, data: MutableByteArray) -> Tuple[Optional[int], int, int]:
         """ Remove element at index and return its value, new offset & size """
         raise NotImplemented
 
@@ -164,7 +164,7 @@ class DefaultMutableByteArrayHelper(MutableByteArrayHelper):
                             buffer=data.buffer, offset=data.offset, size=data.size)
 
     # Override
-    def remove(self, index: int, data: MutableByteArray) -> (Optional[int], int, int):
+    def remove(self, index: int, data: MutableByteArray) -> Tuple[Optional[int], int, int]:
         return array_remove(index=index, buffer=data.buffer, offset=data.offset, size=data.size)
 
 

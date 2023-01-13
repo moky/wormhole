@@ -68,8 +68,8 @@ class ArrivalHall:
     def __init__(self):
         super().__init__()
         self.__arrivals: Set[Arrival] = set()
-        self.__map = weakref.WeakValueDictionary()  # sn => Arrival
-        self.__finished_times: Dict[Any, float] = {}  # sn => timestamp
+        self.__map: Dict[Any, Arrival] = weakref.WeakValueDictionary()    # sn => Arrival
+        self.__finished_times: Dict[Any, float] = {}                      # sn => timestamp
 
     def assemble_arrival(self, ship: Arrival) -> Optional[Arrival]:
         """

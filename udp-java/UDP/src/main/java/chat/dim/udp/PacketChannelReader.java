@@ -53,12 +53,13 @@ public class PacketChannelReader extends ChannelReader<DatagramChannel> {
             return sock.receive(dst);
         } catch (IOException e) {
             e = checkError(e, sock);
-            if (e != null) {
+            if (e == null) {
+                // received nothing
+                return null;
+            } else {
                 // connection lost?
                 throw e;
             }
-            // received nothing
-            return null;
         }
     }
 
@@ -67,12 +68,13 @@ public class PacketChannelReader extends ChannelReader<DatagramChannel> {
         int cnt = dst.position();
         // check data
         IOException error = checkData(dst, cnt, sock);
-        if (error != null) {
+        if (error == null) {
+            // OK
+            return remote;
+        } else {
             // connection lost!
             throw error;
         }
-        // OK
-        return remote;
     }
 
     @Override

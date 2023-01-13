@@ -70,8 +70,8 @@ class ChannelPool(AddressPairMap[Channel]):
         #         this situation has already done at step 1;
         if local is not None:
             # ignore the remote address
-            channel = super().get(remote=None, local=local)
-            if isinstance(channel, Channel) and channel.remote_address is None:
+            channel: Channel = super().get(remote=None, local=local)
+            if channel is not None and channel.remote_address is None:
                 # got a channel not connected yet
                 return channel
         # -- Step 3 --

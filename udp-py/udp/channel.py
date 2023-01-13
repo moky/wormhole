@@ -29,7 +29,7 @@
 # ==============================================================================
 
 import socket
-from typing import Optional
+from typing import Optional, Tuple
 
 from startrek.types import Address
 from startrek import BaseChannel, ChannelReader, ChannelWriter
@@ -38,29 +38,31 @@ from startrek import BaseChannel, ChannelReader, ChannelWriter
 class PacketChannelReader(ChannelReader):
     """ Datagram Packet Channel Reader """
 
-    def _try_receive(self, max_len: int, sock: socket.socket) -> (Optional[bytes], Optional[Address]):
+    def _try_receive(self, max_len: int, sock: socket.socket) -> Tuple[Optional[bytes], Optional[Address]]:
         try:
             return sock.recvfrom(max_len)
         except socket.error as error:
-            error = self._check_error(error=error, sock=sock)
-            if error is not None:
+            error = self.check_error(error=error, sock=sock)
+            if error is None:
+                # received nothing
+                return None, None
+            else:
                 # connection lost?
                 raise error
-            # received nothing
-            return None, None
 
-    def _receive_from(self, max_len: int, sock: socket.socket) -> (Optional[bytes], Optional[Address]):
+    def _receive_from(self, max_len: int, sock: socket.socket) -> Tuple[Optional[bytes], Optional[Address]]:
         data, remote = self._try_receive(max_len=max_len, sock=sock)
         # check data
-        error = self._check_data(data=data, sock=sock)
-        if error is not None:
+        error = self.check_data(data=data, sock=sock)
+        if error is None:
+            # OK
+            return data, remote
+        else:
             # connection lost!
             raise error
-        # OK
-        return data, remote
 
     # Override
-    def receive(self, max_len: int) -> (Optional[bytes], Optional[Address]):
+    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[Address]]:
         remote = self.remote_address
         if remote is None:
             # not connect (UDP)
@@ -77,7 +79,7 @@ class PacketChannelWriter(ChannelWriter):
         try:
             return sock.sendto(data, target)
         except socket.error as error:
-            error = self._check_error(error=error)
+            error = self.check_error(error=error, sock=sock)
             if error is None:
                 # buffer overflow!
                 return -1

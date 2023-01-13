@@ -35,7 +35,6 @@ import java.util.List;
 import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
-import chat.dim.startrek.DepartureShip;
 import chat.dim.startrek.StarDocker;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
@@ -55,13 +54,14 @@ public class PackageDocker extends StarDocker {
     }
 
     protected Departure createDeparture(Package pkg, int priority) {
-        if (pkg.isResponse()) {
-            // response package needs no response again,
-            // so this ship will be removed immediately after sent.
-            return new PackageDeparture(pkg, priority, DepartureShip.DISPOSABLE);
-        } else {
+        if (pkg.isMessage()) {
             // normal package
             return new PackageDeparture(pkg, priority);
+        } else {
+            // command package needs no response, and
+            // response package needs no response again,
+            // so this ship will be removed immediately after sent.
+            return new PackageDeparture(pkg, priority, 1);
         }
     }
 

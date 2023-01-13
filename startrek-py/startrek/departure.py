@@ -93,16 +93,16 @@ class DepartureHall:
     def __init__(self):
         super().__init__()
         # all departure ships
-        self.__all_departures = weakref.WeakSet()  # SN or the ship itself
+        self.__all_departures: Set[Departure] = weakref.WeakSet()
         # new ships waiting to send out
         self.__new_departures: List[Departure] = []
         # ships waiting for responses
         self.__fleets: Dict[int, List[Departure]] = {}  # priority => List[Departure]
         self.__priorities: List[int] = []
         # index
-        self.__map = weakref.WeakValueDictionary()    # sn => Departure
-        self.__finished_times: Dict[Any, float] = {}  # sn => timestamp
-        self.__departure_level = weakref.WeakKeyDictionary()  # SN => priority
+        self.__map: Dict[Any, Departure] = weakref.WeakValueDictionary()  # SN => ship
+        self.__finished_times: Dict[Any, float] = {}                      # SN => timestamp
+        self.__departure_level: Dict[Any, int] = {}                       # SN => priority
 
     def add_departure(self, ship: Departure) -> bool:
         """
@@ -112,17 +112,10 @@ class DepartureHall:
         :return: false on duplicated
         """
         # 1. check duplicated
-        sn = ship.sn
-        if sn is None:
-            if ship in self.__all_departures:
-                return False
-            else:
-                self.__all_departures.add(ship)
+        if ship in self.__all_departures:
+            return False
         else:
-            if sn in self.__all_departures:
-                return False
-            else:
-                self.__all_departures.add(sn)
+            self.__all_departures.add(ship)
         # 2. insert to the sorted queue
         priority = ship.priority
         index = len(self.__new_departures)
@@ -170,7 +163,7 @@ class DepartureHall:
         # remove mapping by SN
         self.__map.pop(sn, None)
         self.__departure_level.pop(sn, None)
-        self.__all_departures.discard(sn)
+        self.__all_departures.discard(ship)
 
     def next_departure(self, now: float) -> Optional[Departure]:
         """
@@ -201,10 +194,7 @@ class DepartureHall:
             else:
                 # disposable ship needs no response,
                 # remove it immediately
-                if sn is None:
-                    self.__all_departures.discard(outgo)
-                else:
-                    self.__all_departures.discard(sn)
+                self.__all_departures.discard(outgo)
             outgo.touch(now=now)
             return outgo
 
@@ -264,7 +254,7 @@ class DepartureHall:
                     # remove mapping by SN
                     self.__map.pop(sn, None)
                     self.__departure_level.pop(sn, None)
-                    self.__all_departures.discard(sn)
+                    self.__all_departures.discard(ship)
                     return ship
 
     def __clear(self, fleet: List[Departure], failed_tasks: Set[Departure], priority: int):

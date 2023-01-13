@@ -53,12 +53,13 @@ public class PacketChannelWriter extends ChannelWriter<DatagramChannel> {
             return sock.send(src, target);
         } catch (IOException e) {
             e = checkError(e, sock);
-            if (e != null) {
+            if (e == null) {
+                // buffer overflow!
+                return -1;
+            } else {
                 // connection lost?
                 throw e;
             }
-            // buffer overflow!
-            return -1;
         }
     }
 

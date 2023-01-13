@@ -28,7 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Union, Optional
+from typing import Union, Optional, Tuple
 
 from .utils import hex_encode, random_bytes
 from .utils import array_equal, array_hash
@@ -205,7 +205,7 @@ def get_slice(data: ByteArray, start: int, end: int) -> Union[bytes, bytearray]:
     return data.buffer[start:end]
 
 
-def adjust_positions(size: int, start: int, end: Optional[int]) -> (int, int):
+def adjust_positions(size: int, start: int, end: Optional[int]) -> Tuple[int, int]:
     helper = get_data_helper()
     start = helper.adjust(index=start, size=size)
     if end is None:

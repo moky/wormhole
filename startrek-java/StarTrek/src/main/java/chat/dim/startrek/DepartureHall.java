@@ -51,7 +51,7 @@ import chat.dim.type.WeakSet;
 public class DepartureHall {
 
     // all departure ships
-    private final Set<Object> allDepartures = new WeakSet<>();  // SN or the ship itself
+    private final Set<Departure> allDepartures = new WeakSet<>();
 
     // new ships waiting to send out
     private final List<Departure> newDepartures = new ArrayList<>();
@@ -61,8 +61,8 @@ public class DepartureHall {
     private final List<Integer> priorities = new ArrayList<>();
 
     // index
-    private final Map<Object, Departure> departureMap = new WeakMap<>();  // SN => ship
-    private final Map<Object, Long> departureFinished = new HashMap<>();  // SN => timestamp
+    private final Map<Object, Departure> departureMap = new WeakMap<>();      // SN => ship
+    private final Map<Object, Long> departureFinished = new HashMap<>();      // SN => timestamp
     private final Map<Object, Integer> departureLevel = new WeakHashMap<>();  // SN => priority
 
     /**
@@ -73,19 +73,10 @@ public class DepartureHall {
      */
     public boolean addDeparture(Departure outgo) {
         // 1. check duplicated
-        Object sn = outgo.getSN();
-        if (sn == null) {
-            if (allDepartures.contains(outgo)) {
-                return false;
-            } else {
-                allDepartures.add(outgo);
-            }
+        if (allDepartures.contains(outgo)) {
+            return false;
         } else {
-            if (allDepartures.contains(sn)) {
-                return false;
-            } else {
-                allDepartures.add(sn);
-            }
+            allDepartures.add(outgo);
         }
         // 2. insert to the sorted queue
         int priority = outgo.getPriority();
@@ -140,7 +131,7 @@ public class DepartureHall {
         // remove mapping by SN
         departureMap.remove(sn);
         departureLevel.remove(sn);
-        allDepartures.remove(sn);
+        allDepartures.remove(ship);
     }
 
     /**
@@ -175,11 +166,7 @@ public class DepartureHall {
         } else {
             // disposable ship needs no response,
             // remove it immediately
-            if (sn == null) {
-                allDepartures.remove(outgo);
-            } else {
-                allDepartures.remove(sn);
-            }
+            allDepartures.remove(outgo);
         }
         // update expired time
         outgo.touch(now);
@@ -252,7 +239,7 @@ public class DepartureHall {
                     // remove mapping by SN
                     departureMap.remove(sn);
                     departureLevel.remove(sn);
-                    allDepartures.remove(sn);
+                    allDepartures.remove(ship);
                     return ship;
                 }
             }

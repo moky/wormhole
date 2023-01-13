@@ -57,9 +57,8 @@ class PackageArrival(ArrivalShip):
 
     @property
     def fragments(self) -> Optional[List[Package]]:
-        packer = self.__packer
+        packer: Packer = self.__packer
         if packer is not None:
-            assert isinstance(packer, Packer), 'packer error: %s' % packer
             return packer.fragments
 
     @property  # Override
@@ -69,7 +68,7 @@ class PackageArrival(ArrivalShip):
     # Override
     def assemble(self, ship):  # -> Optional[PackageArrival]:
         if self.__completed is None and ship is not self:
-            packer = self.__packer
+            packer: Packer = self.__packer
             # assert isinstance(packer, Packer), 'packer error: %s' % packer
             # assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
             fragments = ship.fragments
@@ -86,7 +85,7 @@ class PackageArrival(ArrivalShip):
 
 class PackageDeparture(DepartureShip):
 
-    def __init__(self, pack: Package, priority: int = 0, max_tries: int = 3):
+    def __init__(self, pack: Package, priority: int = 0, max_tries: int = None):
         super().__init__(priority=priority, max_tries=max_tries)
         self.__sn = pack.head.sn.get_bytes()
         self.__completed = pack
@@ -110,7 +109,7 @@ class PackageDeparture(DepartureShip):
 
     @property  # Override
     def fragments(self) -> List[bytes]:
-        if len(self.__fragments) == 0:
+        if len(self.__fragments) == 0 and len(self.__packages) > 0:
             packages = list(self.__packages)
             for pack in packages:
                 self.__fragments.append(pack.get_bytes())
@@ -142,6 +141,13 @@ class PackageDeparture(DepartureShip):
                 self.__packages.remove(pack)
                 return True
 
+    @property
+    def is_important(self) -> bool:
+        head = self.__completed.head
+        # Only message needs waiting response;
+        # and the completed package won't be a fragment.
+        return head.is_message
+
 
 class PackageDocker(StarDocker):
 
@@ -156,13 +162,14 @@ class PackageDocker(StarDocker):
 
     # noinspection PyMethodMayBeStatic
     def _create_departure(self, pack: Package, priority: int = 0) -> Departure:
-        if pack.is_response:
-            # response package needs no response again,
-            # so this ship will be removed immediately after sent.
-            return PackageDeparture(pack=pack, priority=priority, max_tries=DepartureShip.DISPOSABLE)
-        else:
+        if pack.is_message:
             # normal package
             return PackageDeparture(pack=pack, priority=priority)
+        else:
+            # command package needs no response, and
+            # response package needs no response again,
+            # so this ship will be removed immediately after sent.
+            return PackageDeparture(pack=pack, priority=priority, max_tries=1)
 
     # Override
     def _get_arrival(self, data: bytes) -> Optional[Arrival]:
