@@ -43,7 +43,7 @@ public abstract class DepartureShip implements Departure {
     public static long EXPIRES = 120 * 1000; // milliseconds
 
     /**
-     *  Departure task will be retried 2 times
+     *  Important departure task will be retried 2 times
      *  if response timeout.
      */
     public static int RETRIES = 2;
@@ -56,13 +56,7 @@ public abstract class DepartureShip implements Departure {
     // expired time (timestamp in milliseconds)
     private long expired;
 
-    // tries:
-    //    -1, this ship needs no response, so it will be sent out
-    //        and removed immediately;
-    //     0, this ship was sent and now is waiting for response,
-    //        it should be removed after expired;
-    //    >0, this ship needs retry and waiting for response,
-    //        don't remove it now.
+    // how many times to try sending
     private int tries;
 
     // task priority, smaller is faster
@@ -89,18 +83,20 @@ public abstract class DepartureShip implements Departure {
     }
 
     @Override
-    public State getState(long now) {
+    public Status getStatus(long now) {
         List<byte[]> fragments = getFragments();
-        if (fragments.size() == 0) {
-            return State.DONE;
+        if (fragments == null || fragments.size() == 0) {
+            return Status.DONE;
         } else if (expired == 0) {
-            return State.NEW;
+            return Status.NEW;
+        //} else if (!isImportant()) {
+        //    return Status.DONE;
         } else if (now < expired) {
-            return State.WAITING;
+            return Status.WAITING;
         } else if (tries > 0) {
-            return State.TIMEOUT;
+            return Status.TIMEOUT;
         } else {
-            return State.FAILED;
+            return Status.FAILED;
         }
     }
 

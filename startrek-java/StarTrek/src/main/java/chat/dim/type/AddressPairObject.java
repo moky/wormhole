@@ -53,8 +53,9 @@ public class AddressPairObject implements Serializable {
     }
 
     @Override
-    public java.lang.String toString() {
-        return "<" + getClass().getName() + ": remote=" + getRemoteAddress() + ", local=" + getLocalAddress() + " />";
+    public String toString() {
+        String cname = getClass().getName();
+        return "<" + cname + " remote=\"" + getRemoteAddress() + "\" local=\"" + getLocalAddress() + "\" />";
     }
 
     @Override

@@ -74,7 +74,7 @@ public class Dock {
     }
 
     /**
-     *  Append outgoing ship to a fleet with priority
+     *  Add outgoing ship to the waiting queue
      *
      * @param outgo - departure task
      * @return false on duplicated

@@ -60,6 +60,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         connectionRef = new WeakReference<>(conn);
         delegateRef = new WeakReference<>(null);
         dock = createDock();
+        // remaining data to be sent
         lastOutgo = null;
         lastFragments = new ArrayList<>();
     }
@@ -68,6 +69,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     protected void finalize() throws Throwable {
         // make sure the relative connection is closed
         removeConnection();
+        dock = null;
         super.finalize();
     }
 
@@ -122,6 +124,13 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         return conn == null ? localAddress : conn.getLocalAddress();
     }
     /*/
+
+    @Override
+    public String toString() {
+        String cname = getClass().getName();
+        return "<" + cname + " remote=\"" + getRemoteAddress() + "\" local=\"" + getLocalAddress() + "\">\n\t"
+                + connectionRef.get() + "\n</" + cname + ">";
+    }
 
     @Override
     public boolean sendShip(Departure ship) {
@@ -195,14 +204,12 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     }
 
     /**
-     *  Get outgo Ship from waiting queue
+     *  Get outgo ship from waiting queue
      *
      * @param now - current time
      * @return next new or timeout task
      */
     protected Departure getNextDeparture(long now) {
-        // this will be remove from the queue,
-        // if needs retry, the caller should append it back
         return dock.getNextDeparture(now);
     }
 
@@ -245,7 +252,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             if (outgo == null) {
                 // nothing to do now, return false to let the thread have a rest
                 return false;
-            } else if (outgo.getState(now).equals(Ship.State.FAILED)) {
+            } else if (outgo.getStatus(now).equals(Ship.Status.FAILED)) {
                 Delegate delegate = getDelegate();
                 if (delegate != null) {
                     // callback for mission failed
@@ -281,7 +288,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             }
             if (index < fragments.size()) {
                 // task failed
-                throw  new SocketException("only " + index + "/" + fragments.size() + " fragments sent.");
+                throw new SocketException("only " + index + "/" + fragments.size() + " fragments sent.");
             } else {
                 // task done
                 return true;

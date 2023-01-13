@@ -58,11 +58,11 @@ public abstract class ArrivalShip implements Arrival {
     }
 
     @Override
-    public State getState(long now) {
+    public Status getStatus(long now) {
         if (now > expired) {
-            return State.EXPIRED;
+            return Status.EXPIRED;
         } else {
-            return State.ASSEMBLING;
+            return Status.ASSEMBLING;
         }
     }
 }

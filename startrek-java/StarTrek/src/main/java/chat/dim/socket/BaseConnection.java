@@ -159,6 +159,13 @@ public class BaseConnection extends AddressPairObject
     /*/
 
     @Override
+    public String toString() {
+        String cname = getClass().getName();
+        return "<" + cname + " remote=\"" + getRemoteAddress() + "\" local=\"" + getLocalAddress() + "\">\n\t"
+                + channelRef.get() + "\n</" + cname + ">";
+    }
+
+    @Override
     public void close() {
         setChannel(null);
         setStateMachine(null);
@@ -189,14 +196,15 @@ public class BaseConnection extends AddressPairObject
     }
 
     protected int send(ByteBuffer src, SocketAddress destination) throws IOException {
-        int sent = -1;
         Channel sock = getChannel();
-        if (sock != null && sock.isAlive()) {
-            sent = sock.send(src, destination);
-            if (sent > 0) {
-                // update sent time
-                lastSentTime = System.currentTimeMillis();
-            }
+        if (sock == null || !sock.isAlive()) {
+            //throw new IOException("socket channel lost: " + sock);
+            return -1;
+        }
+        int sent = sock.send(src, destination);
+        if (sent > 0) {
+            // update sent time
+            lastSentTime = System.currentTimeMillis();
         }
         return sent;
     }

@@ -56,19 +56,19 @@ public interface Ship {
      *  Check ship state
      *
      * @param now - current time
-     * @return current state
+     * @return current status
      */
-    State getState(long now);
+    Status getStatus(long now);
 
-    enum State {
+    enum Status {
         //
-        //  Arrival States
+        //  Arrival Status
         //
         ASSEMBLING (0x00),  // waiting for more fragments
         EXPIRED    (0x01),  // failed to received all fragments
 
         //
-        //  Departure States
+        //  Departure Status
         //
         NEW        (0x10),  // not try yet
         WAITING    (0x11),  // sent, waiting for responses
@@ -78,7 +78,7 @@ public interface Ship {
 
         public final int value;
 
-        State(int state) {
+        Status(int state) {
             value = state;
         }
     }

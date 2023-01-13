@@ -57,7 +57,7 @@ public class DepartureHall {
     private final List<Departure> newDepartures = new ArrayList<>();
 
     // ships waiting for responses
-    private final Map<Integer, List<Departure>> departureFleets = new HashMap<>();
+    private final Map<Integer, List<Departure>> departureFleets = new HashMap<>();  // priority => List[Departure]
     private final List<Integer> priorities = new ArrayList<>();
 
     // index
@@ -140,6 +140,7 @@ public class DepartureHall {
         // remove mapping by SN
         departureMap.remove(sn);
         departureLevel.remove(sn);
+        allDepartures.remove(sn);
     }
 
     /**
@@ -152,7 +153,7 @@ public class DepartureHall {
         // task.expired == 0
         Departure next = getNextNewDeparture(now);
         if (next == null) {
-            // task.tries > 0 and timeout
+            // task.expired < now
             next = getNextTimeoutDeparture(now);
         }
         return next;
@@ -171,6 +172,14 @@ public class DepartureHall {
             insertShip(outgo, priority, sn);
             // build index for it
             departureMap.put(sn, outgo);
+        } else {
+            // disposable ship needs no response,
+            // remove it immediately
+            if (sn == null) {
+                allDepartures.remove(outgo);
+            } else {
+                allDepartures.remove(sn);
+            }
         }
         // update expired time
         outgo.touch(now);
@@ -212,7 +221,7 @@ public class DepartureHall {
         List<Departure> fleet;
         Iterator<Departure> dit;
         Departure ship;
-        Ship.State state;
+        Ship.Status status;
         Object sn;
         List<Integer> priorityList = new ArrayList<>(priorities);
         for (int priority : priorityList) {
@@ -227,8 +236,8 @@ public class DepartureHall {
                 ship = dit.next();
                 sn = ship.getSN();
                 assert sn != null : "Ship ID should not be empty here";
-                state = ship.getState(now);
-                if (state.equals(Ship.State.TIMEOUT)) {
+                status = ship.getStatus(now);
+                if (status.equals(Ship.Status.TIMEOUT)) {
                     // response timeout, needs retry now.
                     // move to next priority
                     dit.remove();
@@ -236,12 +245,14 @@ public class DepartureHall {
                     // update expired time
                     ship.touch(now);
                     return ship;
-                } else if (state.equals(Ship.State.FAILED)) {
+                } else if (status.equals(Ship.Status.FAILED)) {
                     // try too many times and still missing response,
                     // task failed, remove this ship.
                     dit.remove();
+                    // remove mapping by SN
                     departureMap.remove(sn);
                     departureLevel.remove(sn);
+                    allDepartures.remove(sn);
                     return ship;
                 }
             }
@@ -265,13 +276,14 @@ public class DepartureHall {
             prior = pit.next();
             fleet = departureFleets.get(prior);
             if (fleet == null) {
+                // this priority is empty
                 pit.remove();
                 continue;
             }
             fit = fleet.iterator();
             while (fit.hasNext()) {
                 ship = fit.next();
-                if (ship.getState(now).equals(Ship.State.DONE)) {
+                if (ship.getStatus(now).equals(Ship.Status.DONE)) {
                     // task done
                     fit.remove();
                     sn = ship.getSN();

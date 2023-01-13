@@ -182,6 +182,13 @@ public abstract class BaseChannel<C extends SelectableChannel>
     }
 
     @Override
+    public String toString() {
+        String cname = getClass().getName();
+        return "<" + cname + " remote=\"" + getRemoteAddress() + "\" local=\"" + getLocalAddress() + "\">\n\t"
+                + impl + "\n</" + cname + ">";
+    }
+
+    @Override
     public NetworkChannel bind(SocketAddress local) throws IOException {
         if (local == null) {
             local = localAddress;
@@ -225,12 +232,15 @@ public abstract class BaseChannel<C extends SelectableChannel>
 
     @Override
     public ByteChannel disconnect() throws IOException {
-        C sock = getSocketChannel();
+        C sock = impl;
         if (sock instanceof DatagramChannel) {
-            try {
-                return ((DatagramChannel) sock).disconnect();
-            } finally {
-                refreshFlags();
+            DatagramChannel udp = (DatagramChannel) sock;
+            if (udp.isConnected()) {
+                try {
+                    return udp.disconnect();
+                } finally {
+                    refreshFlags();
+                }
             }
         } else {
             removeSocketChannel();

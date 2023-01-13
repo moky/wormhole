@@ -35,10 +35,10 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.WeakHashMap;
 
 import chat.dim.port.Arrival;
 import chat.dim.port.Ship;
+import chat.dim.type.WeakMap;
 
 /**
  *  Memory cache for Arrivals
@@ -47,9 +47,8 @@ import chat.dim.port.Ship;
 public class ArrivalHall {
 
     private final Set<Arrival> arrivals = new HashSet<>();
-    private final Map<Object, Arrival> arrivalMap = new WeakHashMap<>();
-
-    private final Map<Object, Long> arrivalFinished = new HashMap<>();  // ID -> timestamp
+    private final Map<Object, Arrival> arrivalMap = new WeakMap<>();    // SN => ship
+    private final Map<Object, Long> arrivalFinished = new HashMap<>();  // SN => timestamp
 
     /**
      *  Check received ship for completed package
@@ -114,7 +113,7 @@ public class ArrivalHall {
         Object sn;
         while (ait.hasNext()) {
             ship = ait.next();
-            if (ship.getState(now).equals(Ship.State.EXPIRED)) {
+            if (ship.getStatus(now).equals(Ship.Status.EXPIRED)) {
                 // task expired
                 ait.remove(); //arrivals.remove(ship);
                 // remove mapping with SN
