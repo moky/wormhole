@@ -57,7 +57,7 @@ class DockerDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def docker_failed(self, error: IOError, ship: Departure, docker: Docker):
+    def docker_failed(self, error: OSError, ship: Departure, docker: Docker):
         """
         Callback when failed to send package
 
@@ -68,7 +68,7 @@ class DockerDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def docker_error(self, error: IOError, ship: Departure, docker: Docker):
+    def docker_error(self, error: OSError, ship: Departure, docker: Docker):
         """
         Callback when connection error
 

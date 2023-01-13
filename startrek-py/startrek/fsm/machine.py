@@ -49,11 +49,13 @@ class Transition(ABC, Generic[C]):
     """ State Transition """
 
     @abstractmethod
-    def evaluate(self, ctx: C) -> bool:
+    def evaluate(self, ctx: C, now: float, elapsed: float) -> bool:
         """
         Evaluate the current state
 
-        :param ctx: context (machine)
+        :param ctx:     context (machine)
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
+        :param elapsed: seconds from previous tick
         :return True when current state should be changed
         """
         raise NotImplemented
@@ -63,29 +65,33 @@ class State(ABC, Generic[C, T]):
     """ Finite State """
 
     @abstractmethod
-    def on_enter(self, ctx: C):
+    def on_enter(self, old, ctx: C, now: float, elapsed: float):
         """
-        Called before entered
-        (get current state from context)
+        Called after new state entered
 
-        :param ctx: context (machine)
+        :param old:     previous state
+        :param ctx:     context (machine)
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
+        :param elapsed: seconds from previous tick
         """
         raise NotImplemented
 
     @abstractmethod
-    def on_exit(self, ctx: C):
+    def on_exit(self, new, ctx: C, now: float, elapsed: float):
         """
-        Called after exited
-        (get current state from context)
+        Called before old state exited
 
-        :param ctx: context (machine)
+        :param new:     next state
+        :param ctx:     context (machine)
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
+        :param elapsed: seconds from previous tick
         """
         raise NotImplemented
 
     @abstractmethod
     def on_pause(self, ctx: C):
         """
-        Called before paused
+        Called before current state paused
 
         :param ctx: context (machine)
         """
@@ -94,18 +100,20 @@ class State(ABC, Generic[C, T]):
     @abstractmethod
     def on_resume(self, ctx: C):
         """
-        Called after resumed
+        Called after current state resumed
 
         :param ctx: context (machine)
         """
         raise NotImplemented
 
     @abstractmethod
-    def evaluate(self, ctx: C) -> Optional[T]:
+    def evaluate(self, ctx: C, now: float, elapsed: float) -> Optional[T]:
         """
         Called by machine.tick() to evaluate each transitions
 
-        :param ctx: context (machine)
+        :param ctx:     context (machine)
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
+        :param elapsed: seconds from previous tick
         :return success transition, or None to stay the current state
         """
         raise NotImplemented
@@ -139,7 +147,7 @@ class Delegate(ABC, Generic[C, T, S]):
     @abstractmethod
     def pause_state(self, state: S, ctx: C):
         """
-        Called before pause this state
+        Called after pause this state
 
         :param state: current state
         :param ctx:   context (machine)
@@ -149,7 +157,7 @@ class Delegate(ABC, Generic[C, T, S]):
     @abstractmethod
     def resume_state(self, state: S, ctx: C):
         """
-        Called after resume this state
+        Called before resume this state
 
         :param state: current state
         :param ctx:   context (machine)
@@ -161,34 +169,8 @@ class Machine(Ticker, ABC, Generic[C, T, S]):
     """ State Machine """
 
     @property
-    def default_state(self) -> S:
-        raise NotImplemented
-
-    @property
+    @abstractmethod
     def current_state(self) -> S:
-        raise NotImplemented
-
-    @current_state.setter
-    def current_state(self, state: S):
-        raise NotImplemented
-
-    @abstractmethod
-    def target_state(self, transition: T) -> S:
-        """
-        Get target state of this transition
-
-        :param transition: evaluated transition
-        :return: next state
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def change_state(self, state: Optional[S]):
-        """
-        Exit current state, and enter new state
-
-        :param state: next state
-        """
         raise NotImplemented
 
     @abstractmethod

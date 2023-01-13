@@ -42,34 +42,41 @@ class Connection(Ticker, ABC):
     #
 
     @property
+    @abstractmethod
     def closed(self) -> bool:
         """ not is_open() """
         raise NotImplemented
 
     @property
+    @abstractmethod
     def bound(self) -> bool:
         """ is_bound() """
         raise NotImplemented
 
     @property
+    @abstractmethod
     def connected(self) -> bool:
         """ is_connected() """
         raise NotImplemented
 
     @property
+    @abstractmethod
     def alive(self) -> bool:
         """ is_opened() and (is_connected() or is_bound()) """
         raise NotImplemented
 
     @property
+    @abstractmethod
     def local_address(self) -> Optional[Address]:  # (str, int)
         raise NotImplemented
 
     @property
+    @abstractmethod
     def remote_address(self) -> Optional[Address]:  # (str, int)
         raise NotImplemented
 
     @property
+    @abstractmethod
     def state(self):  # -> ConnectionState:
         """ Get connection state """
         raise NotImplemented

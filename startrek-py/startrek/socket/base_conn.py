@@ -34,7 +34,7 @@ import weakref
 from typing import Optional
 
 from ..types import Address, AddressPairObject
-from ..fsm import StateDelegate
+from ..fsm import Delegate as StateDelegate
 
 from ..net import Channel
 from ..net import Connection, ConnectionState
@@ -64,6 +64,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     def _get_state_machine(self) -> Optional[StateMachine]:
         return self.__fsm
 
+    # private
     def _set_state_machine(self, fsm: Optional[StateMachine]):
         # 1. replace with new machine
         old = self.__fsm
@@ -170,7 +171,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     # Override
     def received(self, data: bytes):
-        self.__last_received_time = time.time()
+        self.__last_received_time = time.time()  # update received time
         delegate = self.delegate
         if delegate is not None:
             delegate.connection_received(data=data, connection=self)
@@ -193,7 +194,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         try:
             sent = self._send(data=data, target=self.remote_address)
             if sent < 0:  # == -1:
-                error = ConnectionError('failed to send: %d byte(s) to %s' % (len(data), self.remote_address))
+                raise socket.error('failed to send: %d byte(s) to %s' % (len(data), self.remote_address))
         except socket.error as e:
             error = e
             # socket error, close current channel
@@ -217,11 +218,11 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         return ConnectionState.ERROR if fsm is None else fsm.current_state
 
     # Override
-    def tick(self, now: float, delta: float):
+    def tick(self, now: float, elapsed: float):
         fsm = self._get_state_machine()
         if fsm is not None:
             # drive state machine forward
-            fsm.tick(now=now, delta=delta)
+            fsm.tick(now=now, elapsed=elapsed)
 
     #
     #   Timed Connection
@@ -244,7 +245,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         return now <= self.__last_received_time + self.EXPIRES
 
     # Override
-    def is_long_time_not_received(self, now: float) -> bool:
+    def is_not_received_long_time_ago(self, now: float) -> bool:
         return now > self.__last_received_time + (self.EXPIRES << 3)
 
     #
@@ -258,6 +259,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     # Override
     def exit_state(self, state: ConnectionState, ctx: StateMachine):
         current = ctx.current_state
+        assert current is None or isinstance(current, ConnectionState), 'connection state error: %s' % current
         if current == ConnectionState.READY:
             if state == ConnectionState.PREPARING:
                 # connection state changed from 'preparing' to 'ready',

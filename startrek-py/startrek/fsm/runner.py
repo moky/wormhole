@@ -29,8 +29,10 @@
 # ==============================================================================
 
 import time
+import traceback
 from abc import ABC, abstractmethod
 from threading import Thread
+from typing import Optional
 
 
 class Processor(ABC):
@@ -117,23 +119,18 @@ class Runner(Runnable, Handler, Processor, ABC):
     def _idle(self):
         time.sleep(0.125)
 
+    @abstractmethod
+    def process(self) -> bool:
+        raise NotImplemented
+
 
 class Daemon:
 
     def __init__(self, target, daemonic: bool = True):
         super().__init__()
-        self.__target = target
+        self.__target = target  # Callable
         self.__daemon = daemonic
-        self.__thread = None
-        self.__timeout = 1.0
-
-    @property
-    def timeout(self) -> float:
-        return self.__timeout
-
-    @timeout.setter
-    def timeout(self, waiting: float):
-        self.__timeout = waiting
+        self.__thread: Optional[Thread] = None
 
     @property
     def alive(self) -> bool:
@@ -141,21 +138,30 @@ class Daemon:
         if thr is not None:
             return thr.is_alive()
 
-    def start(self) -> Thread:
+    def start(self):
         self.__force_stop()
         thr = Thread(target=self.__target, daemon=self.__daemon)
-        self.__thread = thr
         thr.start()
-        return thr
-
-    def __force_stop(self):
-        thr: Thread = self.__thread
-        if thr is not None:
-            self.__thread = None
-            try:
-                thr.join(timeout=self.timeout)
-            except RuntimeError as error:
-                print('[ERROR] failed to join thread: %s' % error)
+        self.__thread = thr
 
     def stop(self):
         self.__force_stop()
+
+    def __force_stop(self):
+        thr = self.__thread
+        if thr is not None:
+            self.__thread = None
+            self._join(thr=thr)
+
+    def _join(self, thr: Thread):
+        # Waits at most seconds for this thread to die.
+        # A timeout of 0 means to wait forever.
+        self.join(thr=thr, timeout=1.0)
+
+    @classmethod
+    def join(cls, thr: Thread, timeout: float = None):
+        try:
+            thr.join(timeout=timeout)
+        except RuntimeError as error:
+            print('[ERROR] failed to join thread: %s, timeout: %d' % (error, timeout))
+            traceback.print_exc()

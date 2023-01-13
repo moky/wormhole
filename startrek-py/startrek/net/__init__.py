@@ -63,8 +63,7 @@ from .hub import Hub
 from .channel import Channel
 from .connection import Connection
 from .delegate import ConnectionDelegate
-
-from .state import ConnectionState, StateMachine as ConnectionStateMachine
+from .state import ConnectionState
 
 __all__ = [
 
@@ -72,6 +71,7 @@ __all__ = [
 
     'Channel',
 
-    'Connection', 'ConnectionDelegate',
-    'ConnectionState', 'ConnectionStateMachine',
+    'Connection',
+    'ConnectionDelegate',
+    'ConnectionState',
 ]

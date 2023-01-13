@@ -30,7 +30,7 @@
 
 import socket
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Tuple
 
 from ..types import Address, AddressPairObject
 
@@ -46,7 +46,7 @@ class SocketReader(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def receive(self, max_len: int) -> (Optional[bytes], Optional[Address]):
+    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[Address]]:
         """ receive data via socket, and return it with remote address """
         raise NotImplemented
 
@@ -171,13 +171,13 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s: remote=%s, local=%s>\n%s\n</%s module="%s">'\
+        return '<%s remote="%s" local="%s">\n\t%s\n</%s module="%s">'\
                % (cname, self._remote, self._local, self.__sock, cname, mod)
 
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s: remote=%s, local=%s>\n%s\n</%s module="%s">'\
+        return '<%s remote="%s" local="%s">\n\t%s\n</%s module="%s">'\
                % (cname, self._remote, self._local, self.__sock, cname, mod)
 
     # Override
@@ -220,10 +220,11 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     # Override
     def disconnect(self) -> Optional[socket.socket]:
-        sock = self.sock
+        sock = self.__sock
         if sock is not None and is_connected(sock=sock):
             try:
                 sock.close()
+                self.__sock = None
             finally:
                 self._refresh_flags()
         return sock
@@ -250,7 +251,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             raise error
 
     # Override
-    def receive(self, max_len: int) -> (Optional[bytes], Optional[Address]):
+    def receive1(self, max_len: int) -> Tuple[Optional[bytes], Optional[Address]]:
         try:
             return self.reader.receive(max_len=max_len)
         except socket.error as error:

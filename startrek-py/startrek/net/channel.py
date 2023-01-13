@@ -30,7 +30,7 @@
 
 import socket
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Tuple
 
 from ..types import Address
 
@@ -38,16 +38,19 @@ from ..types import Address
 class Channel(ABC):
 
     @property
+    @abstractmethod
     def closed(self) -> bool:
         """ not is_open() """
         raise NotImplemented
 
     @property
+    @abstractmethod
     def bound(self) -> bool:
         """ is_bound() """
         raise NotImplemented
 
     @property
+    @abstractmethod
     def alive(self) -> bool:
         """ is_opened() and (is_connected() or is_bound()) """
         raise NotImplemented
@@ -100,6 +103,7 @@ class Channel(ABC):
         raise NotImplemented
 
     @property
+    @abstractmethod
     def blocking(self) -> bool:
         """ is_blocking() """
         raise NotImplemented
@@ -123,6 +127,7 @@ class Channel(ABC):
         raise NotImplemented
 
     @property
+    @abstractmethod
     def local_address(self) -> Optional[Address]:  # (str, int)
         """
         Returns the socket address that this channel's socket is bound to.
@@ -137,6 +142,7 @@ class Channel(ABC):
     #
 
     @property
+    @abstractmethod
     def connected(self) -> bool:
         """ is_connected() """
         raise NotImplemented
@@ -156,6 +162,7 @@ class Channel(ABC):
         raise NotImplemented
 
     @property
+    @abstractmethod
     def remote_address(self) -> Optional[Address]:  # (str, int)
         """
         Returns the remote address to which this channel's socket is connected.
@@ -179,7 +186,7 @@ class Channel(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def receive(self, max_len: int) -> (Optional[bytes], Optional[Address]):
+    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[Address]]:
         """
         Receives a data package via this channel.
 

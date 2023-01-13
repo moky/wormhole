@@ -75,26 +75,31 @@ class Docker(Processor):
     """
 
     @property
+    @abstractmethod
     def closed(self) -> bool:
         """ Connection closed """
         raise NotImplemented
 
     @property
+    @abstractmethod
     def alive(self) -> bool:
         """ Connection alive """
         raise NotImplemented
 
     @property
+    @abstractmethod
     def status(self) -> Status:
         """ Connection state """
         raise NotImplemented
 
     @property
+    @abstractmethod
     def remote_address(self) -> Address:
         """ Remote address of connection """
         raise NotImplemented
 
     @property
+    @abstractmethod
     def local_address(self) -> Optional[Address]:
         """ Local address of connection """
         raise NotImplemented

@@ -72,14 +72,14 @@ class Dock:
         # return a ship with completed package if all fragments received
         return self.__arrival_hall.assemble_arrival(ship=ship)
 
-    def append_departure(self, ship: Departure) -> bool:
+    def add_departure(self, ship: Departure) -> bool:
         """
-        Append outgoing ship to a fleet with priority
+        Add outgoing ship to the waiting queue
 
         :param ship: departure task
         :return False on duplicated
         """
-        return self.__departure_hall.append_departure(ship=ship)
+        return self.__departure_hall.add_departure(ship=ship)
 
     def check_response(self, ship: Arrival) -> Optional[Departure]:
         """
@@ -119,9 +119,9 @@ class LockedDock(Dock):
         with self.__lock:
             return super().assemble_arrival(ship=ship)
 
-    def append_departure(self, ship: Departure) -> bool:
+    def add_departure(self, ship: Departure) -> bool:
         with self.__lock:
-            return super().append_departure(ship=ship)
+            return super().add_departure(ship=ship)
 
     def check_response(self, ship: Arrival) -> Optional[Departure]:
         with self.__lock:

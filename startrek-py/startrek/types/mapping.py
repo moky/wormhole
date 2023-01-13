@@ -42,6 +42,7 @@ V = TypeVar('V')
 class KeyPairMap(Generic[K, V], ABC):
 
     @property
+    @abstractmethod
     def items(self) -> Iterable[V]:
         """ Get all mapped items """
         raise NotImplemented
@@ -68,6 +69,12 @@ class WeakKeyPairMap(KeyPairMap[K, V], ABC):
         super().__init__()
         self.__default = default  # default key
         self.__map: MutableMapping[K, MutableMapping[K, V]] = {}  # (K, K) => V
+
+    @property  # Override
+    def items(self) -> Iterable[V]:
+        # Caveat: the iterator will keep a strong reference to
+        # `item` in WeakSet until it is resumed or closed.
+        return self.__map.items()
 
     # Override
     def get(self, remote: Optional[K], local: Optional[K]) -> Optional[V]:
@@ -152,7 +159,7 @@ class HashKeyPairMap(WeakKeyPairMap[K, V]):
         super().__init__(default=default)
         self.__items: Set[V] = set()
 
-    @property
+    @property  # Override
     def items(self) -> Iterable[V]:
         # Caveat: the iterator will keep a strong reference to
         # `item` in WeakSet until it is resumed or closed.

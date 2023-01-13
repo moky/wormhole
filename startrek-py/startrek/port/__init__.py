@@ -64,13 +64,19 @@
                     Remote Peer     Remote Peer     Remote Peer
 """
 
-from .ship import Ship, Arrival, Departure, Priority as DeparturePriority
+from .ship import Ship, Arrival, Departure
+from .ship import Status as ShipStatus, Priority as DeparturePriority
 from .docker import Docker, Status as DockerStatus
 from .delegate import DockerDelegate
 from .gate import Gate
 
 __all__ = [
-    'Ship', 'Arrival', 'Departure', 'DeparturePriority',
-    'Docker', 'DockerStatus', 'DockerDelegate',
+
+    'Ship', 'Arrival', 'Departure',
+    'ShipStatus', 'DeparturePriority',
+
+    'Docker',
+    'DockerStatus', 'DockerDelegate',
+
     'Gate',
 ]

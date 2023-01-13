@@ -30,8 +30,7 @@
 
 from abc import ABC, abstractmethod
 from enum import IntEnum
-from typing import List
-
+from typing import Any, List
 
 """
     Star Ship
@@ -41,11 +40,60 @@ from typing import List
 """
 
 
+class Priority(IntEnum):
+    """ Departure Ship Priority """
+
+    URGENT = -1
+    NORMAL = 0
+    SLOWER = 1
+
+
+class Status(IntEnum):
+    """ Ship Status """
+    #
+    #  Arrival Status
+    #
+    ASSEMBLING = 0x00  # waiting for more fragments
+    EXPIRED = 0x01     # failed to received all fragments
+    #
+    #  Departure Status
+    #
+    NEW = 0x10      # not try yet
+    WAITING = 0x11  # sent, waiting for responses
+    TIMEOUT = 0x12  # waiting to send again
+    DONE = 0x13     # all fragments responded (or no need respond)
+    FAILED = 0x14   # tried 3 times and missed response(s)
+
+
 class Ship(ABC):
 
     @property
-    def sn(self):  # -> object:
-        """ Get ID for this ship """
+    @abstractmethod
+    def sn(self) -> Any:
+        """
+        Get ID for this ship
+
+        :return: SN
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def touch(self, now: float):
+        """
+        Update expired time
+
+        :param now: current time
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def get_status(self, now: float) -> Status:
+        """
+        Check ship state
+
+        :param now: current time
+        :return: current status
+        """
         raise NotImplemented
 
 
@@ -62,39 +110,18 @@ class Arrival(Ship):
         """
         raise NotImplemented
 
-    #
-    #   task states
-    #
-
-    @abstractmethod
-    def is_timeout(self, now: float) -> bool:
-        """
-        Check whether task timeout
-
-        :param now: current time
-        :return False on timeout
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def touch(self, now: float):
-        """
-        Update expired time
-
-        :param now: current time
-        """
-        raise NotImplemented
-
 
 class Departure(Ship):
     """ Outgoing Ship """
 
     @property
+    @abstractmethod
     def priority(self) -> int:
         """ Task priority, default is 0, smaller is faster """
         raise NotImplemented
 
     @property
+    @abstractmethod
     def fragments(self) -> List[bytes]:
         """
         Get fragments to sent
@@ -118,57 +145,12 @@ class Departure(Ship):
     #   task states
     #
 
+    @property
     @abstractmethod
-    def is_new(self) -> bool:
+    def is_important(self) -> bool:
         """
-        Check whether it's a new task
+        Whether needs to wait for responses
 
-        :return True for new task
+        :return false for disposable
         """
         raise NotImplemented
-
-    @abstractmethod
-    def is_disposable(self) -> bool:
-        """
-        Check whether it can be removed immediately
-
-        : return True for task needs no response
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def is_timeout(self, now: float) -> bool:
-        """
-        Check whether task needs retry
-
-        :param now: current time
-        :return True for retrying
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def is_failed(self, now: float) -> bool:
-        """
-        Check whether task's response(s) missed
-
-        :param now: current time
-        :return True on failed
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def touch(self, now: float):
-        """
-        Update expired time
-
-        :param now: current time
-        """
-        raise NotImplemented
-
-
-class Priority(IntEnum):
-    """ Departure Ship Priority """
-
-    URGENT = -1
-    NORMAL = 0
-    SLOWER = 1

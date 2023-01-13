@@ -33,68 +33,58 @@ import weakref
 from abc import ABC
 from typing import List, Dict, Set, Any, Optional
 
+from .port import ShipStatus
 from .port import Arrival, Departure
 
 
 class DepartureShip(Departure, ABC):
 
-    # Departure task will be expired after 2 minutes if no response received
+    # Departure task will be expired after 2 minutes
+    # if no response received.
     EXPIRES = 120  # seconds
 
-    # Departure task will be retried 2 times if response timeout
+    # Important departure task will be retried 2 times
+    # if response timeout.
     RETRIES = 2
 
-    # if (max_tries == -1),
-    # means this ship will be sent only once
-    # and no need to wait for response.
-    DISPOSABLE = -1
-
-    def __init__(self, priority: int = 0, max_tries: int = 3):  # max_tries = 1 + RETRIES
+    def __init__(self, priority: int = 0, max_tries: int = None):  # max_tries = 1 + RETRIES
         super().__init__()
         # ship priority
         self.__priority = priority
         # expired time (timestamp in seconds)
         self.__expired = 0
-        # tries:
-        #   -1, this ship needs no response, so it will be sent out
-        #       and removed immediately;
-        #    0, this ship was sent and now is waiting for response,
-        #       it should be removed after expired;
-        #   >0, this ship needs retry and waiting for response,
-        #       don't remove it now.
+        # how many times to try sending
+        if max_tries is None:
+            max_tries = 1 + self.RETRIES
         self.__tries = max_tries
 
     @property
     def priority(self) -> int:
         return self.__priority
 
-    #
-    #   task states
-    #
-
-    # Override
-    def is_new(self) -> bool:
-        return self.__expired == 0
-
-    # Override
-    def is_disposable(self) -> bool:
-        return self.__tries <= 0  # -1
-
-    # Override
-    def is_timeout(self, now: float) -> bool:
-        return self.__tries > 0 and now > self.__expired
-
-    # Override
-    def is_failed(self, now: float) -> bool:
-        return self.__tries == 0 and now > self.__expired
-
     # Override
     def touch(self, now: float):
         assert self.__tries > 0, 'touch error, tries=%d' % self.__tries
-        # update retried time
-        self.__expired = now + self.EXPIRES
         # decrease counter
         self.__tries -= 1
+        # update retried time
+        self.__expired = now + self.EXPIRES
+
+    # Override
+    def get_status(self, now: float) -> ShipStatus:
+        fragments = self.fragments
+        if fragments is None or len(fragments) == 0:
+            return ShipStatus.DONE
+        elif self.__expired == 0:
+            return ShipStatus.NEW
+        # elif not self.is_important:
+        #     return ShipStatus.DONE
+        elif now < self.__expired:
+            return ShipStatus.WAITING
+        elif self.__tries > 0:
+            return ShipStatus.TIMEOUT
+        else:
+            return ShipStatus.FAILED
 
 
 class DepartureHall:
@@ -102,41 +92,135 @@ class DepartureHall:
 
     def __init__(self):
         super().__init__()
-        self.__priorities: List[int] = []
+        # all departure ships
+        self.__all_departures = weakref.WeakSet()  # SN or the ship itself
+        # new ships waiting to send out
+        self.__new_departures: List[Departure] = []
+        # ships waiting for responses
         self.__fleets: Dict[int, List[Departure]] = {}  # priority => List[Departure]
-        self.__map = weakref.WeakValueDictionary()  # sn => Departure
+        self.__priorities: List[int] = []
+        # index
+        self.__map = weakref.WeakValueDictionary()    # sn => Departure
         self.__finished_times: Dict[Any, float] = {}  # sn => timestamp
+        self.__departure_level = weakref.WeakKeyDictionary()  # SN => priority
 
-    def append_departure(self, ship: Departure) -> bool:
+    def add_departure(self, ship: Departure) -> bool:
         """
-        Append outgoing ship to a fleet with priority
+        Add outgoing ship to the waiting queue
 
-        :param ship: departure task carrying data package/fragment
-        :return False on duplicated
+        :param ship: departure task
+        :return: false on duplicated
         """
-        priority = ship.priority
-        # 1. choose an array with priority
-        fleet = self.__fleets.get(priority)
-        if fleet is None:
-            # 1.1. create new array for this priority
-            fleet = []
-            self.__fleets[priority] = fleet
-            # 1.2. insert the priority in a sorted list
-            self.__insert(priority=priority)
-        elif ship in fleet:
-            # 1.3. check duplicated
-            return False
-        # 2. append to the tail
-        fleet.append(ship)
-        # 3. build mapping if SN exists
+        # 1. check duplicated
         sn = ship.sn
-        if not (sn is None or ship.is_disposable()):
-            # disposable ship needs no response, so
-            # we don't build index for it.
-            self.__map[sn] = ship
+        if sn is None:
+            if ship in self.__all_departures:
+                return False
+            else:
+                self.__all_departures.add(ship)
+        else:
+            if sn in self.__all_departures:
+                return False
+            else:
+                self.__all_departures.add(sn)
+        # 2. insert to the sorted queue
+        priority = ship.priority
+        index = len(self.__new_departures)
+        while index > 0:
+            index -= 1
+            if self.__new_departures[index].priority <= priority:
+                # take the place before first ship
+                # which priority is greater than this one.
+                index += 1  # insert after
+                break
+        self.__new_departures.insert(index, ship)
         return True
 
-    def __insert(self, priority: int) -> bool:
+    def check_response(self, ship: Arrival) -> Optional[Departure]:
+        """
+        Check response from income ship
+
+        :param ship: incoming ship with SN
+        :return finished task
+        """
+        sn = ship.sn
+        assert sn is not None, 'Ship SN not found: %s' % ship
+        # check whether this task has already finished
+        timestamp = self.__finished_times.get(sn)
+        if timestamp is not None and timestamp > 0:
+            return None
+        # check departure task
+        outgo: Departure = self.__map.get(sn, None)
+        if outgo is not None and outgo.check_response(ship=ship):
+            # all fragments sent, departure task finished
+            # remove it and clear mapping when SN exists
+            self.__remove_ship(ship=outgo, sn=sn)
+            # mark finished time
+            self.__finished_times[sn] = time.time()
+            return outgo
+
+    def __remove_ship(self, ship: Departure, sn):
+        priority = self.__departure_level.get(sn)
+        fleet = self.__fleets.get(priority)
+        if fleet is not None and ship in fleet:
+            fleet.remove(ship)
+            # remove array when empty
+            if len(fleet) == 0:
+                self.__fleets.pop(priority, None)
+        # remove mapping by SN
+        self.__map.pop(sn, None)
+        self.__departure_level.pop(sn, None)
+        self.__all_departures.discard(sn)
+
+    def next_departure(self, now: float) -> Optional[Departure]:
+        """
+        Get next new/timeout task
+
+        :param now: current time
+        :return departure task
+        """
+        # task.__expired == 0
+        task = self.__next_new_departure(now=now)
+        if task is None:
+            # task.__expired < now
+            task = self.__next_timeout_departure(now=now)
+        return task
+
+    def __next_new_departure(self, now: float) -> Optional[Departure]:
+        if len(self.__new_departures) > 0:
+            # get first ship
+            outgo = self.__new_departures.pop(0)
+            sn = outgo.sn
+            if outgo.is_important and sn is not None:
+                # this task needs response
+                # choose an array with priority
+                priority = outgo.priority
+                self.__insert_ship(ship=outgo, priority=priority, sn=sn)
+                # build index for it
+                self.__map[sn] = outgo
+            else:
+                # disposable ship needs no response,
+                # remove it immediately
+                if sn is None:
+                    self.__all_departures.discard(outgo)
+                else:
+                    self.__all_departures.discard(sn)
+            outgo.touch(now=now)
+            return outgo
+
+    def __insert_ship(self, ship: Departure, priority: int, sn):
+        fleet = self.__fleets.get(priority)
+        if fleet is None:
+            # create new array for this priority
+            fleet = []
+            self.__fleets[priority] = fleet
+            # insert the priority in a sorted list
+            self.__insert_priority(priority=priority)
+        # append to the tail, and build index for it
+        fleet.append(ship)
+        self.__departure_level[sn] = priority
+
+    def __insert_priority(self, priority: int) -> bool:
         index = 0
         for value in self.__priorities:
             if value == priority:
@@ -153,82 +237,6 @@ class DepartureHall:
         self.__priorities.insert(index, priority)
         return True
 
-    def check_response(self, ship: Arrival) -> Optional[Departure]:
-        """
-        Check response from income ship
-
-        :param ship: incoming ship with SN
-        :return finished task
-        """
-        sn = ship.sn
-        assert sn is not None, 'SN not found: %s' % ship
-        # check whether this task has already finished
-        timestamp = self.__finished_times.get(sn)
-        if timestamp is not None and timestamp > 0:
-            return None
-        # check departure task
-        outgo = self.__map.get(sn, None)
-        if outgo is None:
-            return None
-        # assert isinstance(outgo, Departure), 'outgo task error: %s' % outgo
-        if outgo.check_response(ship=ship):
-            # all fragments sent, departure task finished
-            # remove it and clear mapping when SN exists
-            self.__remove(ship=outgo, sn=sn)
-            # mark finished time
-            self.__finished_times[sn] = time.time()
-            return outgo
-
-    def __remove(self, ship: Departure, sn):
-        priority = ship.priority
-        fleet = self.__fleets.get(priority)
-        if fleet is not None and ship in fleet:
-            fleet.remove(ship)
-            # remove array when empty
-            if len(fleet) == 0:
-                self.__fleets.pop(priority, None)
-        # remove mapping by SN
-        self.__map.pop(sn, None)
-
-    def next_departure(self, now: float) -> Optional[Departure]:
-        """
-        Get next new/timeout task
-
-        :param now: current time
-        :return departure task
-        """
-        # task.__expired == 0
-        task = self.__next_new_departure(now=now)
-        if task is None:
-            # task.__tries > 0 and timeout
-            task = self.__next_timeout_departure(now=now)
-        return task
-
-    def __next_new_departure(self, now: float) -> Optional[Departure]:
-        priorities = list(self.__priorities)
-        for prior in priorities:
-            # 1. get tasks with priority
-            fleet = self.__fleets.get(prior)
-            if fleet is None:
-                continue
-            # 2. seeking new task in this priority
-            departures = list(fleet)
-            for ship in departures:
-                if ship.is_new():
-                    if ship.is_disposable():
-                        # disposable ship needs no response,
-                        # remove it immediately.
-                        fleet.remove(ship)
-                        # TODO: disposable ship will not be mapped.
-                        #       see 'append_departure(ship)'
-                        sn = ship.sn
-                        if sn is not None:
-                            self.__map.pop(sn, None)
-                    else:
-                        # first time to try, update expired time for response
-                        ship.touch(now=now)
-                    return ship
-
     def __next_timeout_departure(self, now: float) -> Optional[Departure]:
         priorities = list(self.__priorities)
         for prior in priorities:
@@ -239,22 +247,24 @@ class DepartureHall:
             # 2. seeking timeout task in this priority
             departures = list(fleet)
             for ship in departures:
-                if ship.is_timeout(now=now):
+                sn = ship.sn
+                status = ship.get_status(now=now)
+                if status == ShipStatus.TIMEOUT:
                     # response timeout, needs retry now.
-                    # 2.1. update expired time;
+                    # move to next priority
+                    fleet.remove(ship)
+                    self.__insert_ship(ship=ship, priority=(prior + 1), sn=sn)
+                    # update expired time;
                     ship.touch(now=now)
-                    # 2.2. move to the tail
-                    if len(fleet) > 1:
-                        fleet.remove(ship)
-                        fleet.append(ship)
                     return ship
-                elif ship.is_failed(now=now):
+                elif status == ShipStatus.FAILED:
                     # try too many times and still missing response,
                     # task failed, remove this ship.
                     fleet.remove(ship)
-                    sn = ship.sn
-                    if sn is not None:
-                        self.__map.pop(sn, None)
+                    # remove mapping by SN
+                    self.__map.pop(sn, None)
+                    self.__departure_level.pop(sn, None)
+                    self.__all_departures.discard(sn)
                     return ship
 
     def __clear(self, fleet: List[Departure], failed_tasks: Set[Departure], priority: int):
@@ -272,33 +282,35 @@ class DepartureHall:
 
     def purge(self):
         """ Clear all expired tasks """
-        failed_tasks: Set[Departure] = set()
         now = time.time()
+        # 1. seeking finished tasks
         priorities = list(self.__priorities)
         for prior in priorities:
-            # 0. get tasks with priority
             fleet = self.__fleets.get(prior)
             if fleet is None:
+                # this priority is empty
+                self.__priorities.remove(prior)
                 continue
-            # 1. seeking expired task in this priority
             departures = list(fleet)
             for ship in departures:
-                if ship.is_failed(now=now):
-                    # task expired
-                    failed_tasks.add(ship)
-            # 2. clear expired tasks
-            self.__clear(fleet=fleet, failed_tasks=failed_tasks, priority=prior)
-            failed_tasks.clear()
-        # 3. seeking neglected finished times
-        neglected_times = set()
+                if ship.get_status(now=now) == ShipStatus.DONE:
+                    # task done
+                    fleet.remove(ship)
+                    sn = ship.sn
+                    assert sn is not None, 'Ship SN should not be empty here'
+                    self.__map.pop(sn, None)
+                    self.__departure_level.pop(sn, None)
+                    # mark finished time
+                    self.__finished_times[sn] = now
+            # remove array when empty
+            if len(fleet) == 0:
+                self.__fleets.pop(prior, None)
+                self.__priorities.remove(prior)
+        # 2. seeking neglected finished times
         ago = now - 3600
         keys = set(self.__finished_times.keys())
         for sn in keys:
             when = self.__finished_times.get(sn)
             if when is None or when < ago:
                 # long time ago
-                neglected_times.add(sn)
-        # 4. clear neglected times
-        for sn in neglected_times:
-            self.__finished_times.pop(sn, None)
-            self.__map.pop(sn, None)
+                self.__finished_times.pop(sn, None)

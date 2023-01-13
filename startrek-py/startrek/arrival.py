@@ -33,13 +33,14 @@ import weakref
 from abc import ABC
 from typing import Optional, Set, Dict, Any
 
+from .port import ShipStatus
 from .port import Arrival
 
 
 class ArrivalShip(Arrival, ABC):
 
-    # Arrival task will be expired after 10 minutes if still not completed
-    EXPIRES = 600  # seconds
+    # Arrival task will be expired after 5 minutes if still not completed
+    EXPIRES = 300  # seconds
 
     def __init__(self, now: float = 0):
         super().__init__()
@@ -48,17 +49,17 @@ class ArrivalShip(Arrival, ABC):
             now = time.time()
         self.__expired = now + self.EXPIRES
 
-    #
-    #   task states
-    #
-
-    # Override
-    def is_timeout(self, now: float) -> bool:
-        return now > self.__expired
-
     # Override
     def touch(self, now: float):
+        # update expired time
         self.__expired = now + self.EXPIRES
+
+    # Override
+    def get_status(self, now: float) -> ShipStatus:
+        if now > self.__expired:
+            return ShipStatus.EXPIRED
+        else:
+            return ShipStatus.ASSEMBLING
 
 
 class ArrivalHall:
@@ -77,69 +78,63 @@ class ArrivalHall:
         :param ship: income ship carrying data package/fragment
         :return a ship carrying completed data package
         """
-        # check ship ID (SN)
+        # 1. check ship ID (SN)
         sn = ship.sn
         if sn is None:
             # separated package ship must have SN for assembling
             # we consider it to be a ship carrying a whole package here
             return ship
-        # check whether the task as already finished
-        timestamp = self.__finished_times.get(sn)
-        if timestamp is not None and timestamp > 0:
-            # task already finished
-            return None
-        task: Arrival = self.__map.get(sn)
-        if task is None:
-            # new arrival, try assembling to check whether a fragment
-            task = ship.assemble(ship=ship)
-            if task is None:
+        # 2. check cached ship
+        cached: Arrival = self.__map.get(sn)
+        if cached is None:
+            # check whether the task as already finished
+            timestamp = self.__finished_times.get(sn)
+            if timestamp is not None and timestamp > 0:
+                # task already finished
+                return None
+            # 3. new arrival, try assembling to check whether a fragment
+            completed = ship.assemble(ship=ship)
+            if completed is None:
                 # it's a fragment, waiting for more fragments
                 self.__arrivals.add(ship)
                 self.__map[sn] = ship
-                return None
+                # ship.touch(now=time.time())
+            # else, it's a completed package
+        else:
+            # 3. cached ship found, try assembling (insert as fragment)
+            #    to check whether all fragments received
+            completed = cached.assemble(ship=ship)
+            if completed is None:
+                # it's not completed yet, update expired time
+                # and wait for more fragments.
+                cached.touch(now=time.time())
             else:
-                # it's a completed package
-                return task
-        # insert as fragment
-        completed = task.assemble(ship=ship)
-        if completed is None:
-            # not completed yet, update expired time
-            # and wait for more fragments.
-            task.touch(now=time.time())
-            return None
-        # all fragments received, remove this task
-        self.__arrivals.discard(task)
-        self.__map.pop(sn, None)
-        # mark finished time
-        self.__finished_times[sn] = time.time()
+                # all fragments received, remove cached ship
+                self.__arrivals.discard(cached)
+                self.__map.pop(sn, None)
+                # mark finished time
+                self.__finished_times[sn] = time.time()
         return completed
 
     def purge(self):
         """ Clear all expired tasks """
-        failed_tasks: Set[Arrival] = set()
         now = time.time()
         # 1. seeking expired tasks
         arrivals = set(self.__arrivals)
         for ship in arrivals:
-            if ship.is_timeout(now=now):
+            if ship.get_status(now=now) == ShipStatus.EXPIRED:
                 # task expired
-                failed_tasks.add(ship)
-        # 2. clear expired tasks
-        for ship in failed_tasks:
-            self.__arrivals.discard(ship)
-            # remove mapping with SN
-            self.__map.pop(ship.sn, None)
-            # TODO: callback?
-        # 3. seeking neglected finished times
-        neglected_times = set()
+                self.__arrivals.discard(ship)
+                # remove mapping with SN
+                sn = ship.sn
+                if sn is not None:
+                    self.__map.pop(sn, None)
+                    # TODO: callback?
+        # 2. seeking neglected finished times
         ago = now - 3600
         keys = set(self.__finished_times.keys())
         for sn in keys:
             when = self.__finished_times.get(sn)
             if when is None or when < ago:
                 # long time ago
-                neglected_times.add(sn)
-        # 4. clear neglected times
-        for sn in neglected_times:
-            self.__finished_times.pop(sn, None)
-            self.__map.pop(sn, None)
+                self.__finished_times.pop(sn, None)

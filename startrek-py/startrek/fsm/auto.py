@@ -28,19 +28,29 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .ticker import Metronome
+from abc import ABC  # , abstractmethod
+
+from .ticker import PrimeMetronome
 from .machine import S, C, U, T
 from .base import BaseMachine
 
 
-class AutoMachine(BaseMachine[C, T, S]):
+class AutoMachine(BaseMachine[C, T, S], ABC):
+
+    # @property  # Override
+    # @abstractmethod
+    # def context(self) -> C:
+    #     """ machine itself """
+    #     raise NotImplemented
 
     # Override
     def start(self):
         super().start()
-        Metronome().add(ticker=self)
+        timer = PrimeMetronome()
+        timer.add_ticker(ticker=self)
 
     # Override
     def stop(self):
-        Metronome().remove(ticker=self)
+        timer = PrimeMetronome()
+        timer.remove_ticker(ticker=self)
         super().stop()

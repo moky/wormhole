@@ -28,14 +28,16 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .net import Hub, Channel, Connection, ConnectionDelegate
-from .net import ConnectionState, ConnectionStateMachine
+from .net import Hub, Channel
+from .net import Connection, ConnectionDelegate, ConnectionState
 
 from .socket import BaseChannel, ChannelReader, ChannelWriter
 from .socket import BaseHub, BaseConnection, ActiveConnection
 
-from .port import Ship, Arrival, Departure, DeparturePriority
-from .port import Docker, DockerStatus, DockerDelegate, Gate
+from .port import Ship, Arrival, Departure
+from .port import ShipStatus, DeparturePriority
+from .port import Docker, DockerStatus, DockerDelegate
+from .port import Gate
 
 from .arrival import ArrivalShip, ArrivalHall
 from .departure import DepartureShip, DepartureHall
@@ -49,14 +51,16 @@ __author__ = 'Albert Moky'
 
 __all__ = [
 
-    'Hub', 'Channel', 'Connection', 'ConnectionDelegate',
-    'ConnectionState', 'ConnectionStateMachine',
+    'Hub', 'Channel',
+    'Connection', 'ConnectionDelegate', 'ConnectionState',
 
     'BaseChannel', 'ChannelReader', 'ChannelWriter',
     'BaseHub', 'BaseConnection', 'ActiveConnection',
 
-    'Ship', 'Arrival', 'Departure', 'DeparturePriority',
-    'Docker', 'DockerStatus', 'DockerDelegate', 'Gate',
+    'Ship', 'Arrival', 'Departure',
+    'ShipStatus', 'DeparturePriority',
+    'Docker', 'DockerStatus', 'DockerDelegate',
+    'Gate',
 
     'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
     'Dock', 'LockedDock',

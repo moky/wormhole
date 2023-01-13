@@ -29,7 +29,6 @@
 # ==============================================================================
 
 import socket
-import traceback
 import weakref
 from abc import ABC, abstractmethod
 from typing import Optional, List, Iterable, Union
@@ -132,26 +131,19 @@ class StarGate(Gate, ConnectionDelegate, ABC):
 
     # Override
     def process(self) -> bool:
-        try:
-            dockers = self._all_dockers()
-            # 1. drive all dockers to process
-            count = self._drive_dockers(dockers=dockers)
-            # 2. cleanup for dockers
-            self._cleanup_dockers(dockers=dockers)
-            return count > 0
-        except Exception as error:
-            print('[NET] gate process error: %s' % error)
-            traceback.print_exc()
+        dockers = self._all_dockers()
+        # 1. drive all dockers to process
+        count = self._drive_dockers(dockers=dockers)
+        # 2. cleanup for dockers
+        self._cleanup_dockers(dockers=dockers)
+        return count > 0
 
+    # noinspection PyMethodMayBeStatic
     def _drive_dockers(self, dockers: Iterable[Docker]) -> int:
         count = 0
         for worker in dockers:
-            try:
-                if worker.process():
-                    count += 1  # it's busy
-            except Exception as error:
-                print('[NET] drive docker error: %s, %s, %s' % (error, worker, self))
-                traceback.print_exc()
+            if worker.process():
+                count += 1  # it's busy
         return count
 
     def _cleanup_dockers(self, dockers: Iterable[Docker]):
@@ -164,6 +156,7 @@ class StarGate(Gate, ConnectionDelegate, ABC):
                 worker.purge()
 
     def _heartbeat(self, connection: Connection):
+        """ Send a heartbeat package('PING') to remote address """
         remote = connection.remote_address
         local = connection.local_address
         docker = self._get_docker(remote=remote, local=local)

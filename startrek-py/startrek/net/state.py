@@ -28,7 +28,6 @@
 # SOFTWARE.
 # ==============================================================================
 
-import time
 import weakref
 from abc import ABC, abstractmethod
 
@@ -98,7 +97,10 @@ class StateMachine(BaseMachine, Context):
 
 
 class StateTransition(BaseTransition[StateMachine], ABC):
-    pass
+
+    @abstractmethod
+    def evaluate(self, ctx: StateMachine, now: float, elapsed: float) -> bool:
+        raise NotImplemented
 
 
 class ConnectionState(BaseState[StateMachine, StateTransition]):
@@ -143,9 +145,9 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
         return self.__name
 
     def __eq__(self, other) -> bool:
-        if self is other:
-            return True
-        elif isinstance(other, ConnectionState):
+        if isinstance(other, ConnectionState):
+            if self is other:
+                return True
             return self.__name == other.name
         elif isinstance(other, str):
             return self.__name == other
@@ -153,19 +155,19 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
             return False
 
     def __ne__(self, other) -> bool:
-        if self is other:
-            return False
-        elif isinstance(other, ConnectionState):
+        if isinstance(other, ConnectionState):
+            if self is other:
+                return False
             return self.__name != other.name
         elif isinstance(other, str):
             return self.__name != other
         else:
             return True
 
-    def on_enter(self, ctx: StateMachine):
-        self.__time = time.time()
+    def on_enter(self, old, ctx: StateMachine, now: float, elapsed: float):
+        self.__time = now
 
-    def on_exit(self, ctx: StateMachine):
+    def on_exit(self, new, ctx: StateMachine, now: float, elapsed: float):
         self.__time = 0
 
     def on_pause(self, ctx: StateMachine):
@@ -178,10 +180,12 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
 class TimedConnection(ABC):
 
     @property
+    @abstractmethod
     def last_sent_time(self) -> float:
         raise NotImplemented
 
     @property
+    @abstractmethod
     def last_received_time(self) -> float:
         raise NotImplemented
 
@@ -194,7 +198,7 @@ class TimedConnection(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def is_long_time_not_received(self, now: float) -> bool:
+    def is_not_received_long_time_ago(self, now: float) -> bool:
         raise NotImplemented
 
 
@@ -206,17 +210,12 @@ class StateBuilder:
 
     def __init__(self, transition_builder):
         super().__init__()
-        self.__builder = transition_builder
-
-    # noinspection PyMethodMayBeStatic
-    def get_named_state(self, name: str) -> ConnectionState:
-        return ConnectionState(name=name)
+        self.__builder: TransitionBuilder = transition_builder
 
     # Connection not started yet
     def get_default_state(self) -> ConnectionState:
         builder = self.__builder
-        # assert isinstance(builder, TransitionBuilder)
-        state = self.get_named_state(name=ConnectionState.DEFAULT)
+        state = ConnectionState(name=ConnectionState.DEFAULT)
         # Default -> Preparing
         state.add_transition(transition=builder.get_default_preparing_transition())
         return state
@@ -224,8 +223,7 @@ class StateBuilder:
     # Connection started, preparing to connect/bind
     def get_preparing_state(self) -> ConnectionState:
         builder = self.__builder
-        # assert isinstance(builder, TransitionBuilder)
-        state = self.get_named_state(name=ConnectionState.PREPARING)
+        state = ConnectionState(name=ConnectionState.PREPARING)
         # Preparing -> Ready
         state.add_transition(transition=builder.get_preparing_ready_transition())
         # Preparing -> Default
@@ -235,8 +233,7 @@ class StateBuilder:
     # Normal state of connection
     def get_ready_state(self) -> ConnectionState:
         builder = self.__builder
-        # assert isinstance(builder, TransitionBuilder)
-        state = self.get_named_state(name=ConnectionState.READY)
+        state = ConnectionState(name=ConnectionState.READY)
         # Ready -> Expired
         state.add_transition(transition=builder.get_ready_expired_transition())
         # Ready -> Error
@@ -246,8 +243,7 @@ class StateBuilder:
     # Long time no response, need maintaining
     def get_expired_state(self) -> ConnectionState:
         builder = self.__builder
-        # assert isinstance(builder, TransitionBuilder)
-        state = self.get_named_state(name=ConnectionState.EXPIRED)
+        state = ConnectionState(name=ConnectionState.EXPIRED)
         # Expired -> Maintaining
         state.add_transition(transition=builder.get_expired_maintaining_transition())
         # Expired -> Error
@@ -257,8 +253,7 @@ class StateBuilder:
     # Heartbeat sent, waiting response
     def get_maintaining_state(self) -> ConnectionState:
         builder = self.__builder
-        # assert isinstance(builder, TransitionBuilder)
-        state = self.get_named_state(name=ConnectionState.MAINTAINING)
+        state = ConnectionState(name=ConnectionState.MAINTAINING)
         # Maintaining -> Ready
         state.add_transition(transition=builder.get_maintaining_ready_transition())
         # Maintaining -> Expired
@@ -270,8 +265,7 @@ class StateBuilder:
     # Connection lost
     def get_error_state(self) -> ConnectionState:
         builder = self.__builder
-        # assert isinstance(builder, TransitionBuilder)
-        state = self.get_named_state(name=ConnectionState.ERROR)
+        state = ConnectionState(name=ConnectionState.ERROR)
         # Error -> Default
         state.add_transition(transition=builder.get_error_default_transition())
         return state
@@ -339,7 +333,7 @@ class TransitionBuilder:
 class DefaultPreparingTransition(StateTransition):
     """ Default -> Preparing """
 
-    def evaluate(self, ctx: StateMachine) -> bool:
+    def evaluate(self, ctx: StateMachine, now: float, elapsed: float) -> bool:
         conn = ctx.connection
         # connection started? change state to 'preparing'
         return not (conn is None or conn.closed)
@@ -348,7 +342,7 @@ class DefaultPreparingTransition(StateTransition):
 class PreparingReadyTransition(StateTransition):
     """ Preparing -> Ready """
 
-    def evaluate(self, ctx: StateMachine) -> bool:
+    def evaluate(self, ctx: StateMachine, now: float, elapsed: float) -> bool:
         conn = ctx.connection
         # connected or bound, change state to 'ready'
         return conn is not None and conn.alive
@@ -357,7 +351,7 @@ class PreparingReadyTransition(StateTransition):
 class PreparingDefaultTransition(StateTransition):
     """ Preparing -> Default """
 
-    def evaluate(self, ctx: StateMachine) -> bool:
+    def evaluate(self, ctx: StateMachine, now: float, elapsed: float) -> bool:
         conn = ctx.connection
         # connection stopped, change state to 'not_connect'
         return conn is None or conn.closed
@@ -366,20 +360,20 @@ class PreparingDefaultTransition(StateTransition):
 class ReadyExpiredTransition(StateTransition):
     """ Ready -> Expired """
 
-    def evaluate(self, ctx: StateMachine) -> bool:
+    def evaluate(self, ctx: StateMachine, now: float, elapsed: float) -> bool:
         conn = ctx.connection
         if conn is None or not conn.alive:
             return False
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
         # connection still alive, but
         # long time no response, change state to 'maintain_expired'
-        return not conn.is_received_recently(now=time.time())
+        return not conn.is_received_recently(now=now)
 
 
 class ReadyErrorTransition(StateTransition):
     """ Ready -> Error """
 
-    def evaluate(self, ctx: StateMachine) -> bool:
+    def evaluate(self, ctx: StateMachine, now: float, elapsed: float) -> bool:
         conn = ctx.connection
         # connection lost, change state to 'error
         return conn is None or not conn.alive
@@ -388,59 +382,59 @@ class ReadyErrorTransition(StateTransition):
 class ExpiredMaintainingTransition(StateTransition):
     """ Expired -> Maintaining """
 
-    def evaluate(self, ctx: StateMachine) -> bool:
+    def evaluate(self, ctx: StateMachine, now: float, elapsed: float) -> bool:
         conn = ctx.connection
         if conn is None or not conn.alive:
             return False
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
         # connection still alive, and
         # sent recently, change state to 'maintaining'
-        return conn.is_sent_recently(now=time.time())
+        return conn.is_sent_recently(now=now)
 
 
 class ExpiredErrorTransition(StateTransition):
     """ Expired -> Error """
 
-    def evaluate(self, ctx: StateMachine) -> bool:
+    def evaluate(self, ctx: StateMachine, now: float, elapsed: float) -> bool:
         conn = ctx.connection
         if conn is None or not conn.alive:
             return True
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
         # connection lost, or
         # long time no response, change state to 'error'
-        return conn.is_long_time_not_received(now=time.time())
+        return conn.is_not_received_long_time_ago(now=now)
 
 
 class MaintainingReadyTransition(StateTransition):
     """ Maintaining -> Ready """
 
-    def evaluate(self, ctx: StateMachine) -> bool:
+    def evaluate(self, ctx: StateMachine, now: float, elapsed: float) -> bool:
         conn = ctx.connection
         if conn is None or not conn.alive:
             return False
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
         # connection still alive, and
         # received recently, change state to 'ready'
-        return conn.is_received_recently(now=time.time())
+        return conn.is_received_recently(now=now)
 
 
 class MaintainingExpiredTransition(StateTransition):
     """ Maintaining -> Expired """
 
-    def evaluate(self, ctx: StateMachine) -> bool:
+    def evaluate(self, ctx: StateMachine, now: float, elapsed: float) -> bool:
         conn = ctx.connection
         if conn is None or not conn.alive:
             return False
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
         # connection still alive, but
         # long time no sending, change state to 'maintain_expired'
-        return not conn.is_sent_recently(now=time.time())
+        return not conn.is_sent_recently(now=now)
 
 
 class MaintainingErrorTransition(StateTransition):
     """ Maintaining -> Error """
 
-    def evaluate(self, ctx: StateMachine) -> bool:
+    def evaluate(self, ctx: StateMachine, now: float, elapsed: float) -> bool:
         conn = ctx.connection
         # connection lost, change state to 'error'
         if conn is None or not conn.alive:
@@ -448,13 +442,13 @@ class MaintainingErrorTransition(StateTransition):
         assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
         # connection lost, or
         # long time no response, change state to 'error'
-        return conn.is_long_time_not_received(now=time.time())
+        return conn.is_not_received_long_time_ago(now=now)
 
 
 class ErrorDefaultTransition(StateTransition):
     """ Error -> Default """
 
-    def evaluate(self, ctx: StateMachine) -> bool:
+    def evaluate(self, ctx: StateMachine, now: float, elapsed: float) -> bool:
         conn = ctx.connection
         if conn is None or not conn.alive:
             return False

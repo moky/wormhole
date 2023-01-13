@@ -35,20 +35,91 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Set
 
-from .runner import Runnable, Daemon
+from .runner import Runner, Daemon
 
 
 class Ticker(ABC):
 
     @abstractmethod
-    def tick(self, now: float, delta: float):
+    def tick(self, now: float, elapsed: float):
         """
         Drive current thread forward
 
-        :param: now - current time (seconds from Jan 1, 1970 UTC)
-        :param: delta - seconds from last call
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
+        :param elapsed: seconds from previous tick
         """
         raise NotImplemented
+
+
+class Metronome(Runner):
+
+    # at least wait 0.1 second
+    MIN_INTERVAL = 0.1
+
+    def __init__(self, interval: float):
+        super().__init__()
+        self.__interval = interval
+        self.__last_time = 0
+        self.__daemon = Daemon(target=self.run)
+        self.__lock = threading.Lock()
+        self.__tickers = weakref.WeakSet()
+
+    # Override
+    def setup(self):
+        super().setup()
+        self.__last_time = time.time()
+
+    # Override
+    def process(self) -> bool:
+        tickers = self.tickers
+        if len(tickers) == 0:
+            # nothing to do now,
+            # return False to have a rest ^_^
+            return False
+        # 1. check time
+        now = time.time()
+        elapsed = now - self.__last_time
+        waiting = self.__interval - elapsed
+        if waiting < self.MIN_INTERVAL:
+            waiting = self.MIN_INTERVAL
+        time.sleep(waiting)
+        now += waiting
+        elapsed += waiting
+        # 2. drive tickers
+        for item in tickers:
+            try:
+                item.tick(now=now, elapsed=elapsed)
+            except Exception as error:
+                print('[Metronome] drive ticker error: %s, %s' % (error, item))
+                traceback.print_exc()
+        # 3. update last time
+        self.__last_time = now
+        return True
+
+    @property  # private
+    def tickers(self) -> Set[Ticker]:
+        with self.__lock:
+            return set(self.__tickers)
+
+    def add_ticker(self, ticker: Ticker):
+        with self.__lock:
+            self.__tickers.add(ticker)
+
+    def remove_ticker(self, ticker: Ticker):
+        with self.__lock:
+            self.__tickers.remove(ticker)
+
+    def start(self):
+        self.__daemon.start()
+
+    def stop(self):
+        super().stop()
+        self.__daemon.stop()
+
+
+#
+#   Singleton for Prime Metronome
+#
 
 
 class Singleton(object):
@@ -71,84 +142,15 @@ class Singleton(object):
 
 
 @Singleton
-class Metronome(Runnable):
-
-    MIN_DELTA = 0.1
-    MAX_DELTA = 0.125
+class PrimeMetronome:
 
     def __init__(self):
-        super().__init__()
-        self.__lock = threading.Lock()
-        self.__adding = weakref.WeakSet()
-        self.__removing = weakref.WeakSet()
-        self.__tickers = weakref.WeakSet()
-        # running as daemon
-        self.__daemon = Daemon(target=self.run)
-        self.__running = False
-        self.start()
+        metronome = Metronome(interval=0.2)
+        metronome.start()
+        self.__metronome = metronome
 
-    @property
-    def running(self) -> bool:
-        return self.__running
+    def add_ticker(self, ticker: Ticker):
+        self.__metronome.add_ticker(ticker=ticker)
 
-    def start(self):
-        if not self.running:
-            self.__running = True
-            self.__daemon.start()
-
-    def stop(self):
-        if self.running:
-            self.__running = False
-            self.__daemon.stop()
-
-    # Override
-    def run(self):
-        now = time.time()
-        delta = 0
-        while self.running:
-            # 1. drive all tickers with timestamp
-            try:
-                self.__drive(now=now, delta=delta)
-            except Exception as error:
-                print('[Metronome] drive error: %s' % error)
-                traceback.print_exc()
-            # 2. get new timestamp
-            last = now
-            now = time.time()
-            delta = now - last
-            if delta < self.MIN_DELTA:
-                # 3. too frequently
-                time.sleep(self.MAX_DELTA - delta)
-                now = time.time()
-                delta = now - last
-
-    def __drive(self, now: float, delta: float):
-        tickers = self.tickers
-        for item in tickers:
-            try:
-                item.tick(now=now, delta=delta)
-            except Exception as error:
-                print('[Metronome] drive ticker error: %s, %s' % (error, item))
-                traceback.print_exc()
-
-    @property
-    def tickers(self) -> Set[Ticker]:
-        with self.__lock:
-            for item in self.__adding:
-                self.__tickers.add(item)
-            self.__adding.clear()
-            for item in self.__removing:
-                self.__tickers.discard(item)
-            self.__removing.clear()
-        # OK
-        return set(self.__tickers)
-
-    def add(self, ticker: Ticker):
-        with self.__lock:
-            self.__removing.discard(ticker)
-            self.__adding.add(ticker)
-
-    def remove(self, ticker: Ticker):
-        with self.__lock:
-            self.__adding.discard(ticker)
-            self.__removing.add(ticker)
+    def remove_ticker(self, ticker: Ticker):
+        self.__metronome.remove_ticker(ticker=ticker)

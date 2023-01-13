@@ -28,8 +28,9 @@
 # SOFTWARE.
 # ==============================================================================
 
+import time
 import weakref
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import List, Optional, Dict
 
 from .machine import S, C, U, T
@@ -48,27 +49,47 @@ class BaseTransition(Transition[C], ABC):
         """ target state name """
         return self.__target
 
+    # @abstractmethod  # Override
+    # def evaluate(self, ctx: C, now: float, elapsed: float) -> bool:
+    #     raise NotImplemented
+
 
 class BaseState(State[C, T], ABC):
     """ State with transitions """
 
     def __init__(self):
         super().__init__()
-        self.__transitions: List[T] = []
+        self.__transitions: List[Transition[C]] = []
 
-    def add_transition(self, transition: T):
-        assert transition not in self.__transitions, 'transition exists'
+    def add_transition(self, transition: Transition[C]):
+        assert transition not in self.__transitions, 'transition exists: %s' % transition
         self.__transitions.append(transition)
 
     # Override
-    def evaluate(self, ctx: C) -> Optional[T]:
+    def evaluate(self, ctx: C, now: float, elapsed: float) -> Optional[T]:
         for trans in self.__transitions:
-            if trans.evaluate(ctx):
+            if trans.evaluate(ctx, now=now, elapsed=elapsed):
                 # OK, get target state from this transition
                 return trans
 
+    # @abstractmethod  # Override
+    # def on_enter(self, old, ctx: C, now: float, elapsed: float):
+    #     raise NotImplemented
+    #
+    # @abstractmethod  # Override
+    # def on_exit(self, new, ctx: C, now: float, elapsed: float):
+    #     raise NotImplemented
+    #
+    # @abstractmethod  # Override
+    # def on_pause(self, ctx: C):
+    #     raise NotImplemented
+    #
+    # @abstractmethod  # Override
+    # def on_resume(self, ctx: C):
+    #     raise NotImplemented
 
-class BaseMachine(Machine[C, T, S]):
+
+class BaseMachine(Machine[C, T, S], ABC):
 
     def __init__(self, default: str):
         super().__init__()
@@ -89,6 +110,7 @@ class BaseMachine(Machine[C, T, S]):
         self.__delegate = None if handler is None else weakref.ref(handler)
 
     @property
+    @abstractmethod
     def context(self) -> C:
         """ machine itself """
         raise NotImplemented
@@ -96,50 +118,66 @@ class BaseMachine(Machine[C, T, S]):
     #
     #   States
     #
-    def set_state(self, name: str, state: S):
+    def set_state(self, name: str, state: State[C, T]):
         self.__states[name] = state
 
-    def get_state(self, name: str) -> S:
+    def get_state(self, name: str) -> Optional[State[C, T]]:
         return self.__states.get(name)
 
-    @property  # Override
-    def default_state(self) -> S:
+    @property  # protected
+    def default_state(self) -> State[C, T]:
         return self.__states.get(self.__default)
 
+    # protected
+    def get_target_state(self, transition: BaseTransition[C]) -> State[C, T]:
+        # Get target state of this transition
+        return self.__states.get(transition.target)
+
     @property  # Override
-    def current_state(self) -> Optional[S]:
+    def current_state(self) -> Optional[State[C, T]]:
         ref = self.__current
         if ref is not None:
             return ref()
 
-    @current_state.setter  # Override
-    def current_state(self, state: S):
+    def __set_current_state(self, state: State[C, T]):
         self.__current = None if state is None else weakref.ref(state)
 
-    # Override
-    def target_state(self, transition: BaseTransition[C]) -> S:
-        return self.__states.get(transition.target)
+    def __change_state(self, state: Optional[State[C, T]], now: float, elapsed: float):
+        """
+        Exit current state, and enter new state
 
-    # Override
-    def change_state(self, state: Optional[S]):
+        :param state:   next state
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
+        :param elapsed: seconds from previous tick
+        """
         old = self.current_state
         if old == state:
             # print('[FSM] state not change: %s' % state)
             return False
         machine = self.context
         delegate = self.delegate
-        # events before state changed
+        #
+        #  Events before state changed
+        #
         if delegate is not None:
+            # prepare for changing current state to the new one,
+            # the delegate can get old state via ctx if need
             delegate.enter_state(state, machine)
-        if state is not None:
-            state.on_enter(machine)
-        # change state
-        self.current_state = state
-        # events after state changed
-        if delegate is not None:
-            delegate.exit_state(old, machine)
         if old is not None:
-            old.on_exit(machine)
+            old.on_exit(state, machine, now=now, elapsed=elapsed)
+        #
+        #  Change current state
+        #
+        self.__set_current_state(state=state)
+        #
+        #  Events after state changed
+        #
+        if state is not None:
+            state.on_enter(old, machine, now=now, elapsed=elapsed)
+        if delegate is not None:
+            # handle after the current state changed,
+            # the delegate can get new state via ctx if need
+            delegate.exit_state(old, machine)
         return True
 
     #
@@ -148,50 +186,67 @@ class BaseMachine(Machine[C, T, S]):
 
     # Override
     def start(self):
-        self.change_state(state=self.default_state)
+        now = time.time()
+        ok = self.__change_state(state=self.default_state, now=now, elapsed=0)
+        assert ok, 'failed to change default state'
         self.__status = Status.RUNNING
 
     # Override
     def stop(self):
         self.__status = Status.STOPPED
-        self.change_state(state=None)  # force current state to None
+        self.__change_state(state=None, now=0, elapsed=0)  # force current state to None
 
     # Override
     def pause(self):
         machine = self.context
         current = self.current_state
-        # events before state paused
+        #
+        #  Events before state paused
+        #
+        if current is not None:
+            current.on_pause(machine)
+        #
+        #  Pause state
+        #
+        self.__status = Status.PAUSED
+        #
+        #  Events after state paused
+        #
         delegate = self.delegate
         if delegate is not None:
             delegate.pause_state(current, machine)
-        current.on_pause(machine)
-        # pause state
-        self.__status = Status.PAUSED
 
     # Override
     def resume(self):
         machine = self.context
         current = self.current_state
-        # resume state
-        self.__status = Status.RUNNING
-        # events after state resumed
+        #
+        #  Events before state resumed
         delegate = self.delegate
         if delegate is not None:
             delegate.resume_state(current, machine)
-        current.on_resume(machine)
+        #
+        #  Resume state
+        #
+        self.__status = Status.RUNNING
+        #
+        #  Events after state resumed
+        #
+        if current is not None:
+            current.on_resume(machine)
 
     #
     #   Ticker
     #
 
     # Override
-    def tick(self, now: float, delta: float):
+    def tick(self, now: float, elapsed: float):
         machine = self.context
         current = self.current_state
         if current is not None and self.__status == Status.RUNNING:
-            trans = current.evaluate(machine)
+            trans = current.evaluate(machine, now=now, elapsed=elapsed)
             if trans is not None:
                 # assert isinstance(trans, BaseTransition), 'transition error: %s' % trans
-                target = self.target_state(transition=trans)
+                target = self.get_target_state(transition=trans)
                 assert target is not None, 'target state error: %s' % trans.target
-                self.change_state(state=target)
+                self.__change_state(state=target, now=now, elapsed=elapsed)

@@ -30,8 +30,8 @@
 
 import socket
 import weakref
-from abc import ABC
-from typing import Optional
+from abc import ABC, abstractmethod
+from typing import Optional  # , Tuple
 
 from ..types import Address
 
@@ -40,39 +40,56 @@ from ..net.channel import is_blocking
 from .base_channel import SocketReader, SocketWriter, BaseChannel
 
 
-#
-#   Socket Channel Controller
-#   ~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-#   Reader, Writer, ErrorChecker
-#
+class Checker(ABC):
+
+    @abstractmethod
+    def check_error(self, error: socket.error, sock: socket.socket) -> Optional[socket.error]:
+        """
+        Check socket error
+
+        (1) check E_AGAIN
+            the socket will raise 'Resource temporarily unavailable'
+            when received nothing in non-blocking mode,
+            or buffer overflow while sending too many bytes,
+            here we should ignore this exception.
+        (2) check timeout
+            in blocking mode, the socket will wait until send/received data,
+            but if timeout was set, it will raise 'timeout' error on timeout,
+            here we should ignore this exception
+
+        :param error:
+        :param sock:
+        :return:
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    def check_data(self, data: Optional[bytes], sock: socket.socket) -> Optional[socket.error]:
+        """
+        Check data received from socket
+
+        (1) check timeout
+            in blocking mode, the socket will wait until received something,
+            but if timeout was set, it will return nothing too, it's normal;
+            otherwise, we know the connection was lost.
+
+        :param data:
+        :param sock:
+        :return:
+        """
+        raise NotImplemented
 
 
-class Controller:
+class ChannelChecker(Checker):
 
-    def __init__(self, channel: BaseChannel):
+    def __init__(self, sock: socket.socket):
         super().__init__()
-        self.__channel = weakref.ref(channel)
+        self.__sock = sock
 
-    @property
-    def channel(self) -> BaseChannel:
-        return self.__channel()
-
-    @property
-    def remote_address(self) -> Optional[Address]:
-        return self.channel.remote_address
-
-    @property
-    def local_address(self) -> Optional[Address]:
-        return self.channel.local_address
-
-    @property
-    def sock(self) -> Optional[socket.socket]:
-        return self.channel.sock
-
-    def _check_error(self, error: socket.error, sock: socket.socket = None) -> Optional[socket.error]:
+    # Override
+    def check_error(self, error: socket.error, sock: socket.socket) -> Optional[socket.error]:
         if sock is None:
-            sock = self.sock
+            sock = self.__sock
         # the socket will raise 'Resource temporarily unavailable'
         # when received nothing in non-blocking mode,
         # or buffer overflow while sending too many bytes,
@@ -91,25 +108,61 @@ class Controller:
         # print('[NET] socket error: %s' % error)
         return error
 
-
-class ChannelReader(Controller, SocketReader, ABC):
-
-    def _check_data(self, data: Optional[bytes], sock: socket.socket = None) -> Optional[socket.error]:
+    # Override
+    def check_data(self, data: Optional[bytes], sock: socket.socket) -> Optional[socket.error]:
         # in blocking mode, the socket will wait until received something,
         # but if timeout was set, it will return None too, it's normal;
         # otherwise, we know the connection was lost.
         if data is None or len(data) == 0:
             if sock is None:
-                sock = self.sock
+                sock = self.__sock
             if sock.gettimeout() is None:  # and self.blocking:
                 # print('[NET] socket error: remote peer reset socket %s' % sock)
                 return socket.error('remote peer reset socket %s' % sock)
+
+
+class Controller(Checker):
+
+    def __init__(self, channel: BaseChannel):
+        super().__init__()
+        self.__channel = weakref.ref(channel)
+        self.__checker = self._create_checker()
+
+    def _create_checker(self) -> Checker:
+        return ChannelChecker(sock=self.sock)
+
+    @property
+    def channel(self) -> BaseChannel:
+        return self.__channel()
+
+    @property
+    def remote_address(self) -> Optional[Address]:
+        return self.channel.remote_address
+
+    @property
+    def local_address(self) -> Optional[Address]:
+        return self.channel.local_address
+
+    @property
+    def sock(self) -> Optional[socket.socket]:
+        return self.channel.sock
+
+    # Override
+    def check_error(self, error: socket.error, sock: socket.socket) -> Optional[socket.error]:
+        return self.__checker.check_error(error=error, sock=sock)
+
+    # Override
+    def check_data(self, data: Optional[bytes], sock: socket.socket = None) -> Optional[socket.error]:
+        return self.__checker.check_data(data=data, sock=sock)
+
+
+class ChannelReader(Controller, SocketReader, ABC):
 
     def _try_read(self, max_len: int, sock: Optional[socket.socket]) -> Optional[bytes]:
         try:
             return sock.recv(max_len)
         except socket.error as error:
-            error = self._check_error(error=error, sock=sock)
+            error = self.check_error(error=error, sock=sock)
             if error is not None:
                 # connection lost?
                 raise error
@@ -121,12 +174,17 @@ class ChannelReader(Controller, SocketReader, ABC):
         sock = self.sock
         data = self._try_read(max_len=max_len, sock=sock)
         # check data
-        error = self._check_data(data=data, sock=sock)
+        error = self.check_data(data=data, sock=sock)
         if error is not None:
             # connection lost!
             raise error
         # OK
         return data
+
+    # @abstractmethod  # Override
+    # def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[Address]]:
+    #     """ receive data via socket, and return it with remote address """
+    #     raise NotImplemented
 
 
 class ChannelWriter(Controller, SocketWriter, ABC):
@@ -135,7 +193,7 @@ class ChannelWriter(Controller, SocketWriter, ABC):
         try:
             return sock.send(data)
         except socket.error as error:
-            error = self._check_error(error=error, sock=sock)
+            error = self.check_error(error=error, sock=sock)
             if error is not None:
                 # connection lost?
                 raise error
@@ -167,3 +225,8 @@ class ChannelWriter(Controller, SocketWriter, ABC):
                 # remove sent part
                 data = data[cnt:]
         return sent
+
+    # @abstractmethod  # Override
+    # def send(self, data: bytes, target: Address) -> int:
+    #     """ send data via socket with remote address """
+    #     raise NotImplemented

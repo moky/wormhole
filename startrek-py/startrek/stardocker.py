@@ -35,7 +35,7 @@ from typing import Optional, List
 
 from .types import Address, AddressPairObject
 from .net import Connection
-from .port import Arrival, Departure
+from .port import Arrival, Departure, ShipStatus
 from .port import Docker, DockerStatus, DockerDelegate
 from .port.docker import status_from_state
 
@@ -140,7 +140,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
 
     # Override
     def send_ship(self, ship: Departure) -> bool:
-        return self.__dock.append_departure(ship=ship)
+        return self.__dock.add_departure(ship=ship)
 
     # Override
     def process_received(self, data: bytes):
@@ -178,8 +178,12 @@ class StarDocker(AddressPairObject, Docker, ABC):
         """
         raise NotImplemented
 
-    def _check_response(self, ship: Arrival) -> Optional[Departure]:
-        """ Check and remove linked departure ship with same SN (and page index for fragment) """
+    def _check_response(self, ship: Arrival):  # -> Optional[Departure]:
+        """
+        Check and remove linked departure ship with same SN (and page index for fragment)
+
+        :param ship: income ship with SN
+        """
         # check response for linked departure ship (same SN)
         linked = self.__dock.check_response(ship=ship)
         if linked is None:
@@ -197,19 +201,20 @@ class StarDocker(AddressPairObject, Docker, ABC):
 
     def _next_departure(self, now: float) -> Optional[Departure]:
         """ Get outgo ship from waiting queue """
-        # this will be remove from the queue,
-        # if needs retry, the caller should append it back
         return self.__dock.next_departure(now=now)
 
     # Override
     def purge(self):
-        """ Clear expired tasks """
         self.__dock.purge()
 
     # Override
     def close(self):
         self.__remove_connection()
         self.__dock = None
+
+    #
+    #  Processor
+    #
 
     # Override
     def process(self) -> bool:
@@ -232,7 +237,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
             if outgo is None:
                 # nothing to do now, return False to let the thread have a rest
                 return False
-            elif outgo.is_failed(now=now):
+            elif outgo.get_status(now=now) == ShipStatus.FAILED:
                 delegate = self.delegate
                 if delegate is not None:
                     # callback for mission failed
