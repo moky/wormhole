@@ -257,19 +257,6 @@ class DepartureHall:
                     self.__all_departures.discard(ship)
                     return ship
 
-    def __clear(self, fleet: List[Departure], failed_tasks: Set[Departure], priority: int):
-        # remove expired tasks
-        for ship in failed_tasks:
-            fleet.remove(ship)
-            # remove mapping when SN exists
-            sn = ship.sn
-            if sn is not None:
-                self.__map.pop(sn, None)
-            # TODO: callback?
-        # remove array when empty
-        if len(fleet) == 0:
-            self.__fleets.pop(priority, None)
-
     def purge(self):
         """ Clear all expired tasks """
         now = time.time()
