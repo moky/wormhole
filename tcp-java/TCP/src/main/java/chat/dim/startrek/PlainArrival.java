@@ -30,28 +30,47 @@
  */
 package chat.dim.startrek;
 
+import java.util.Arrays;
+
 import chat.dim.port.Arrival;
 
 public class PlainArrival extends ArrivalShip {
 
-    private final byte[] data;
+    private final byte[] completed;
 
     public PlainArrival(byte[] pack, long now) {
         super(now);
-        data = pack;
+        completed = pack;
     }
     public PlainArrival(byte[] pack) {
         this(pack, System.currentTimeMillis());
     }
 
     public byte[] getPackage() {
-        return data;
+        return completed;
     }
 
     @Override
     public Object getSN() {
         // plain ship has no SN
         return null;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (super.equals(other)) {
+            return true;
+        } else if (other instanceof PlainArrival) {
+            PlainArrival ship = (PlainArrival) other;
+            return Arrays.equals(completed, ship.completed);
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(completed);
     }
 
     @Override

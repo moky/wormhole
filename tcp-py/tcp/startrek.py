@@ -39,16 +39,36 @@ class PlainArrival(ArrivalShip):
 
     def __init__(self, pack: bytes, now: float = 0):
         super().__init__(now=now)
-        self.__pack = pack
+        self.__completed = pack
 
     @property
     def package(self) -> bytes:
-        return self.__pack
+        return self.__completed
 
     @property  # Override
     def sn(self):
         # plain ship has no SN
         return None
+
+    # Override
+    def __eq__(self, other) -> bool:
+        if isinstance(other, PlainArrival):
+            if other is self:
+                return True
+            return self.__completed == other.__completed
+
+    # Override
+    def __ne__(self, other) -> bool:
+        if isinstance(other, PlainArrival):
+            if other is self:
+                return False
+            return self.__completed != other.__completed
+        else:
+            return True
+
+    # Override
+    def __hash__(self) -> int:
+        return hash(self.__completed)
 
     # Override
     def assemble(self, ship: Arrival):
@@ -72,6 +92,26 @@ class PlainDeparture(DepartureShip):
     def sn(self):
         # plain ship has no SN
         return None
+
+    # Override
+    def __eq__(self, other) -> bool:
+        if isinstance(other, PlainDeparture):
+            if other is self:
+                return True
+            return self.__completed == other.__completed
+
+    # Override
+    def __ne__(self, other) -> bool:
+        if isinstance(other, PlainDeparture):
+            if other is self:
+                return False
+            return self.__completed != other.__completed
+        else:
+            return True
+
+    # Override
+    def __hash__(self) -> int:
+        return hash(self.__completed)
 
     @property  # Override
     def fragments(self) -> List[bytes]:

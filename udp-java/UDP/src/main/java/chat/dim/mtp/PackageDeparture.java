@@ -36,10 +36,12 @@ import java.util.List;
 
 import chat.dim.port.Arrival;
 import chat.dim.startrek.DepartureShip;
+import chat.dim.type.ByteArray;
 
 public class PackageDeparture extends DepartureShip {
 
-    private final byte[] sn;
+    private final Header head;
+    private final ByteArray body;
 
     private final Package completed;
 
@@ -48,8 +50,8 @@ public class PackageDeparture extends DepartureShip {
 
     public PackageDeparture(Package pack, int prior, int maxTries) {
         super(prior, maxTries);
-        Header head = pack.head;
-        sn = head.sn.getBytes();
+        head = pack.head;
+        body = pack.body;
         completed = pack;
         packages = split(pack);
         fragments = new ArrayList<>();
@@ -73,8 +75,25 @@ public class PackageDeparture extends DepartureShip {
     }
 
     @Override
-    public byte[] getSN() {
-        return sn;
+    public TransactionID getSN() {
+        return head.sn;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (super.equals(other)) {
+            return true;
+        } else if (other instanceof PackageDeparture) {
+            PackageDeparture ship = (PackageDeparture) other;
+            return head.equals(ship.head) && body.equals(ship.body);
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return head.hashCode() * 13 + body.hashCode();
     }
 
     @Override

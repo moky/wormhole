@@ -42,10 +42,11 @@ class PackageArrival(ArrivalShip):
 
     def __init__(self, pack: Package, now: float = 0):
         super().__init__(now=now)
-        head = pack.head
-        self.__sn = head.sn.get_bytes()
-        if head.is_fragment:
-            self.__packer = Packer(sn=head.sn, pages=head.pages)
+        # head & body of the received package (or first fragment)
+        self.__head = pack.head
+        self.__body = pack.body
+        if self.__head.is_fragment:
+            self.__packer = Packer(sn=self.__head.sn, pages=self.__head.pages)
             self.__completed = self.__packer.insert(fragment=pack)
         else:
             self.__packer = None
@@ -62,8 +63,28 @@ class PackageArrival(ArrivalShip):
             return packer.fragments
 
     @property  # Override
-    def sn(self) -> bytes:
-        return self.__sn
+    def sn(self) -> TransactionID:
+        return self.__head.sn
+
+    # Override
+    def __eq__(self, other) -> bool:
+        if isinstance(other, PackageArrival):
+            if other is self:
+                return True
+            return self.__head == other.__head and self.__body == other.__body
+
+    # Override
+    def __ne__(self, other) -> bool:
+        if isinstance(other, PackageArrival):
+            if other is self:
+                return False
+            return self.__head != other.__head or self.__body != other.__body
+        else:
+            return True
+
+    # Override
+    def __hash__(self) -> int:
+        return hash(self.__head) * 13 + hash(self.__body)
 
     # Override
     def assemble(self, ship):  # -> Optional[PackageArrival]:
@@ -87,7 +108,8 @@ class PackageDeparture(DepartureShip):
 
     def __init__(self, pack: Package, priority: int = 0, max_tries: int = None):
         super().__init__(priority=priority, max_tries=max_tries)
-        self.__sn = pack.head.sn.get_bytes()
+        self.__head = pack.head
+        self.__body = pack.body
         self.__completed = pack
         self.__packages = self._split_package(pack=pack)
         self.__fragments: List[bytes] = []
@@ -104,8 +126,28 @@ class PackageDeparture(DepartureShip):
         return self.__completed
 
     @property  # Override
-    def sn(self) -> bytes:
-        return self.__sn
+    def sn(self) -> TransactionID:
+        return self.__head.sn
+
+    # Override
+    def __eq__(self, other) -> bool:
+        if isinstance(other, PackageDeparture):
+            if other is self:
+                return True
+            return self.__head == other.__head and self.__body == other.__body
+
+    # Override
+    def __ne__(self, other) -> bool:
+        if isinstance(other, PackageDeparture):
+            if other is self:
+                return False
+            return self.__head != other.__head or self.__body != other.__body
+        else:
+            return True
+
+    # Override
+    def __hash__(self) -> int:
+        return hash(self.__head) * 13 + hash(self.__body)
 
     @property  # Override
     def fragments(self) -> List[bytes]:

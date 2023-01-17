@@ -34,18 +34,21 @@ import java.util.List;
 
 import chat.dim.port.Arrival;
 import chat.dim.startrek.ArrivalShip;
+import chat.dim.type.ByteArray;
 
 public class PackageArrival extends ArrivalShip {
 
-    private final byte[] sn;
+    // head & body of the received package (or first fragment)
+    private final Header head;
+    private final ByteArray body;
 
     private final Packer packer;
     private Package completed;
 
     public PackageArrival(Package pack, long now) {
         super(now);
-        Header head = pack.head;
-        sn = head.sn.getBytes();
+        head = pack.head;
+        body = pack.body;
         if (pack.isFragment()) {
             packer = new Packer(head.sn, head.pages);
             completed = packer.insert(pack);
@@ -63,8 +66,25 @@ public class PackageArrival extends ArrivalShip {
     }
 
     @Override
-    public byte[] getSN() {
-        return sn;
+    public TransactionID getSN() {
+        return head.sn;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (super.equals(other)) {
+            return true;
+        } else if (other instanceof PackageArrival) {
+            PackageArrival ship = (PackageArrival) other;
+            return head.equals(ship.head) && body.equals(ship.body);
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return head.hashCode() * 13 + body.hashCode();
     }
 
     @Override
