@@ -31,7 +31,7 @@
 import time
 import weakref
 from abc import ABC
-from typing import List, Dict, Set, Any, Optional
+from typing import Optional, Any, List, Dict, MutableMapping
 
 from .port import ShipStatus
 from .port import Arrival, Departure
@@ -93,16 +93,16 @@ class DepartureHall:
     def __init__(self):
         super().__init__()
         # all departure ships
-        self.__all_departures: Set[Departure] = weakref.WeakSet()
+        self.__all_departures = weakref.WeakSet()
         # new ships waiting to send out
         self.__new_departures: List[Departure] = []
         # ships waiting for responses
         self.__fleets: Dict[int, List[Departure]] = {}  # priority => List[Departure]
         self.__priorities: List[int] = []
         # index
-        self.__map: Dict[Any, Departure] = weakref.WeakValueDictionary()  # SN => ship
-        self.__finished_times: Dict[Any, float] = {}                      # SN => timestamp
-        self.__departure_level: Dict[Any, int] = {}                       # SN => priority
+        self.__map: MutableMapping[Any, Departure] = weakref.WeakValueDictionary()  # SN => ship
+        self.__finished_times: Dict[Any, float] = {}                                # SN => timestamp
+        self.__departure_level: Dict[Any, int] = {}                                 # SN => priority
 
     def add_departure(self, ship: Departure) -> bool:
         """

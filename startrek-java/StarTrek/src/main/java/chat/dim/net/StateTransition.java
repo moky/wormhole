@@ -48,7 +48,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         StateTransition getDefaultPreparingTransition() {
             return new StateTransition(ConnectionState.PREPARING) {
                 @Override
-                public boolean evaluate(StateMachine ctx, long now, long elapsed) {
+                public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
                     // connection started? change state to 'preparing'
                     return conn != null && conn.isOpen();
@@ -60,7 +60,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         StateTransition getPreparingReadyTransition() {
             return new StateTransition(ConnectionState.READY) {
                 @Override
-                public boolean evaluate(StateMachine ctx, long now, long elapsed) {
+                public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
                     // connected or bound, change state to 'ready'
                     return conn != null && conn.isAlive();
@@ -72,7 +72,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         StateTransition getPreparingDefaultTransition() {
             return new StateTransition(ConnectionState.DEFAULT) {
                 @Override
-                public boolean evaluate(StateMachine ctx, long now, long elapsed) {
+                public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
                     // connection stopped, change state to 'not_connect'
                     return conn == null || !conn.isOpen();
@@ -84,7 +84,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         StateTransition getReadyExpiredTransition() {
             return new StateTransition(ConnectionState.EXPIRED) {
                 @Override
-                public boolean evaluate(StateMachine ctx, long now, long elapsed) {
+                public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
                     if (conn == null || !conn.isAlive()) {
                         return false;
@@ -101,7 +101,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         StateTransition getReadyErrorTransition() {
             return new StateTransition(ConnectionState.ERROR) {
                 @Override
-                public boolean evaluate(StateMachine ctx, long now, long elapsed) {
+                public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
                     // connection lost, change state to 'error'
                     return conn == null || !conn.isAlive();
@@ -113,7 +113,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         StateTransition getExpiredMaintainingTransition() {
             return new StateTransition(ConnectionState.MAINTAINING) {
                 @Override
-                public boolean evaluate(StateMachine ctx, long now, long elapsed) {
+                public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
                     if (conn == null || !conn.isAlive()) {
                         return false;
@@ -130,7 +130,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         StateTransition getExpiredErrorTransition() {
             return new StateTransition(ConnectionState.ERROR) {
                 @Override
-                public boolean evaluate(StateMachine ctx, long now, long elapsed) {
+                public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
                     if (conn == null || !conn.isAlive()) {
                         return true;
@@ -147,7 +147,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         StateTransition getMaintainingReadyTransition() {
             return new StateTransition(ConnectionState.READY) {
                 @Override
-                public boolean evaluate(StateMachine ctx, long now, long elapsed) {
+                public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
                     if (conn == null || !conn.isAlive()) {
                         return false;
@@ -164,7 +164,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         StateTransition getMaintainingExpiredTransition() {
             return new StateTransition(ConnectionState.EXPIRED) {
                 @Override
-                public boolean evaluate(StateMachine ctx, long now, long elapsed) {
+                public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
                     if (conn == null || !conn.isAlive()) {
                         return false;
@@ -181,7 +181,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         StateTransition getMaintainingErrorTransition() {
             return new StateTransition(ConnectionState.ERROR) {
                 @Override
-                public boolean evaluate(StateMachine ctx, long now, long elapsed) {
+                public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
                     if (conn == null || !conn.isAlive()) {
                         return true;
@@ -198,7 +198,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         StateTransition getErrorDefaultTransition() {
             return new StateTransition(ConnectionState.DEFAULT) {
                 @Override
-                public boolean evaluate(StateMachine ctx, long now, long elapsed) {
+                public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
                     if (conn == null || !conn.isAlive()) {
                         return false;

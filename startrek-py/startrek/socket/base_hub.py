@@ -211,10 +211,10 @@ class BaseHub(Hub, ABC):
     # noinspection PyMethodMayBeStatic
     def _drive_connections(self, connections: Iterable[Connection]):
         now = time.time()
-        delta = now - self.__last_time_drive_connection
+        elapsed = now - self.__last_time_drive_connection
         for conn in connections:
             # drive connection to go on
-            conn.tick(now=now, elapsed=delta)
+            conn.tick(now=now, elapsed=elapsed)
             # NOTICE: let the delegate to decide whether close an error connection
             #         or just remove it.
         self.__last_time_drive_connection = now

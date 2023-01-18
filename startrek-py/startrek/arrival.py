@@ -31,7 +31,7 @@
 import time
 import weakref
 from abc import ABC
-from typing import Optional, Set, Dict, Any
+from typing import Optional, Any, Set, Dict, MutableMapping
 
 from .port import ShipStatus
 from .port import Arrival
@@ -68,8 +68,8 @@ class ArrivalHall:
     def __init__(self):
         super().__init__()
         self.__arrivals: Set[Arrival] = set()
-        self.__map: Dict[Any, Arrival] = weakref.WeakValueDictionary()    # sn => Arrival
-        self.__finished_times: Dict[Any, float] = {}                      # sn => timestamp
+        self.__map: MutableMapping[Any, Arrival] = weakref.WeakValueDictionary()  # sn => Arrival
+        self.__finished_times: Dict[Any, float] = {}                              # sn => timestamp
 
     def assemble_arrival(self, ship: Arrival) -> Optional[Arrival]:
         """

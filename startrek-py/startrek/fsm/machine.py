@@ -49,13 +49,12 @@ class Transition(ABC, Generic[C]):
     """ State Transition """
 
     @abstractmethod
-    def evaluate(self, ctx: C, now: float, elapsed: float) -> bool:
+    def evaluate(self, ctx: C, now: float) -> bool:
         """
         Evaluate the current state
 
         :param ctx:     context (machine)
         :param now:     current time (seconds from Jan 1, 1970 UTC)
-        :param elapsed: seconds from previous tick
         :return True when current state should be changed
         """
         raise NotImplemented
@@ -65,26 +64,24 @@ class State(ABC, Generic[C, T]):
     """ Finite State """
 
     @abstractmethod
-    def on_enter(self, old, ctx: C, now: float, elapsed: float):
+    def on_enter(self, old, ctx: C, now: float):
         """
         Called after new state entered
 
         :param old:     previous state
         :param ctx:     context (machine)
         :param now:     current time (seconds from Jan 1, 1970 UTC)
-        :param elapsed: seconds from previous tick
         """
         raise NotImplemented
 
     @abstractmethod
-    def on_exit(self, new, ctx: C, now: float, elapsed: float):
+    def on_exit(self, new, ctx: C, now: float):
         """
         Called before old state exited
 
         :param new:     next state
         :param ctx:     context (machine)
         :param now:     current time (seconds from Jan 1, 1970 UTC)
-        :param elapsed: seconds from previous tick
         """
         raise NotImplemented
 
@@ -107,13 +104,12 @@ class State(ABC, Generic[C, T]):
         raise NotImplemented
 
     @abstractmethod
-    def evaluate(self, ctx: C, now: float, elapsed: float) -> Optional[T]:
+    def evaluate(self, ctx: C, now: float) -> Optional[T]:
         """
         Called by machine.tick() to evaluate each transitions
 
         :param ctx:     context (machine)
         :param now:     current time (seconds from Jan 1, 1970 UTC)
-        :param elapsed: seconds from previous tick
         :return success transition, or None to stay the current state
         """
         raise NotImplemented

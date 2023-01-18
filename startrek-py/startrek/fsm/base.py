@@ -50,7 +50,7 @@ class BaseTransition(Transition[C], ABC):
         return self.__target
 
     # @abstractmethod  # Override
-    # def evaluate(self, ctx: C, now: float, elapsed: float) -> bool:
+    # def evaluate(self, ctx: C, now: float) -> bool:
     #     raise NotImplemented
 
 
@@ -66,18 +66,18 @@ class BaseState(State[C, T], ABC):
         self.__transitions.append(transition)
 
     # Override
-    def evaluate(self, ctx: C, now: float, elapsed: float) -> Optional[T]:
+    def evaluate(self, ctx: C, now: float) -> Optional[T]:
         for trans in self.__transitions:
-            if trans.evaluate(ctx, now=now, elapsed=elapsed):
+            if trans.evaluate(ctx, now=now):
                 # OK, get target state from this transition
                 return trans
 
     # @abstractmethod  # Override
-    # def on_enter(self, old, ctx: C, now: float, elapsed: float):
+    # def on_enter(self, old, ctx: C, now: float):
     #     raise NotImplemented
     #
     # @abstractmethod  # Override
-    # def on_exit(self, new, ctx: C, now: float, elapsed: float):
+    # def on_exit(self, new, ctx: C, now: float):
     #     raise NotImplemented
     #
     # @abstractmethod  # Override
@@ -142,13 +142,12 @@ class BaseMachine(Machine[C, T, S], ABC):
     def __set_current_state(self, state: State[C, T]):
         self.__current = None if state is None else weakref.ref(state)
 
-    def __change_state(self, state: Optional[State[C, T]], now: float, elapsed: float):
+    def __change_state(self, state: Optional[State[C, T]], now: float):
         """
         Exit current state, and enter new state
 
         :param state:   next state
         :param now:     current time (seconds from Jan 1, 1970 UTC)
-        :param elapsed: seconds from previous tick
         """
         old = self.current_state
         if old == state:
@@ -164,7 +163,7 @@ class BaseMachine(Machine[C, T, S], ABC):
             # the delegate can get old state via ctx if need
             delegate.enter_state(state, machine)
         if old is not None:
-            old.on_exit(state, machine, now=now, elapsed=elapsed)
+            old.on_exit(state, machine, now=now)
         #
         #  Change current state
         #
@@ -173,7 +172,7 @@ class BaseMachine(Machine[C, T, S], ABC):
         #  Events after state changed
         #
         if state is not None:
-            state.on_enter(old, machine, now=now, elapsed=elapsed)
+            state.on_enter(old, machine, now=now)
         if delegate is not None:
             # handle after the current state changed,
             # the delegate can get new state via ctx if need
@@ -187,14 +186,15 @@ class BaseMachine(Machine[C, T, S], ABC):
     # Override
     def start(self):
         now = time.time()
-        ok = self.__change_state(state=self.default_state, now=now, elapsed=0)
+        ok = self.__change_state(state=self.default_state, now=now)
         assert ok, 'failed to change default state'
         self.__status = Status.RUNNING
 
     # Override
     def stop(self):
         self.__status = Status.STOPPED
-        self.__change_state(state=None, now=0, elapsed=0)  # force current state to None
+        now = time.time()
+        self.__change_state(state=None, now=now)  # force current state to None
 
     # Override
     def pause(self):
@@ -244,9 +244,9 @@ class BaseMachine(Machine[C, T, S], ABC):
         machine = self.context
         current = self.current_state
         if current is not None and self.__status == Status.RUNNING:
-            trans = current.evaluate(machine, now=now, elapsed=elapsed)
+            trans = current.evaluate(machine, now=now)
             if trans is not None:
                 # assert isinstance(trans, BaseTransition), 'transition error: %s' % trans
                 target = self.get_target_state(transition=trans)
                 assert target is not None, 'target state error: %s' % trans.target
-                self.__change_state(state=target, now=now, elapsed=elapsed)
+                self.__change_state(state=target, now=now)

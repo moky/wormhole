@@ -92,12 +92,12 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
     }
 
     @Override
-    public void onEnter(State<StateMachine, StateTransition> previous, StateMachine ctx, long now, long elapsed) {
+    public void onEnter(State<StateMachine, StateTransition> previous, StateMachine ctx, long now) {
         enterTime = now;
     }
 
     @Override
-    public void onExit(State<StateMachine, StateTransition> next, StateMachine ctx, long now, long elapsed) {
+    public void onExit(State<StateMachine, StateTransition> next, StateMachine ctx, long now) {
         enterTime = 0;
     }
 
