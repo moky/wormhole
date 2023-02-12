@@ -61,17 +61,17 @@
 
 //! require 'namespace.js'
 
-(function (ns, sys) {
+(function (ns, fsm, sys) {
     'use strict';
 
-    var Processor = sys.skywalker.Processor;
+    var Interface = sys.type.Interface;
+    var Processor = fsm.skywalker.Processor;
 
     /**
      *  Connections & Channels Container
      *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
      */
-    var Hub = function () {};
-    sys.Interface(Hub, [Processor]);
+    var Hub = Interface(null, [Processor]);
 
     /**
      *  Get opened channel with direction (remote, local)
@@ -81,8 +81,7 @@
      * @return {Channel} null on socket closed
      */
     Hub.prototype.open = function (remote, local) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -93,13 +92,10 @@
      * @return {Connection} null on connection not found
      */
     Hub.prototype.connect = function (remote, local) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     //-------- namespace --------
     ns.net.Hub = Hub;
 
-    ns.net.registers('Hub');
-
-})(StarTrek, MONKEY);
+})(StarTrek, FiniteStateMachine, MONKEY);

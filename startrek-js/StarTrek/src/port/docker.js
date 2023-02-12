@@ -30,12 +30,14 @@
 // =============================================================================
 //
 
+//! require <fsm.js>
 //! require 'namespace.js'
 
-(function (ns, sys) {
+(function (ns, fsm, sys) {
     'use strict';
 
-    var Processor = sys.skywalker.Processor;
+    var Interface = sys.type.Interface;
+    var Processor = fsm.skywalker.Processor;
 
     /**
      *  Star Worker
@@ -43,35 +45,29 @@
      *
      *  Processor for Star Ships
      */
-    var Docker = function () {};
-    sys.Interface(Docker, [Processor]);
+    var Docker = Interface(null, [Processor]);
 
     // connection.isOpen()
     Docker.prototype.isOpen = function () {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     // connection.isAlive()
     Docker.prototype.isAlive = function () {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     // connection.getState()
     Docker.prototype.getStatus = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     Docker.prototype.getRemoteAddress = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     Docker.prototype.getLocalAddress = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -82,8 +78,7 @@
      * @return {boolean} false on error
      */
     Docker.prototype.sendData = function (payload) {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -94,8 +89,7 @@
      * @return {boolean} false on duplicated
      */
     Docker.prototype.sendShip = function (ship) {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -104,47 +98,45 @@
      * @param {Uint8Array} data - received data package
      */
     Docker.prototype.processReceived = function (data) {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     /**
      *  Send 'PING' for keeping connection alive
      */
     Docker.prototype.heartbeat = function () {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     /**
      *  Clear all expired tasks
      */
     Docker.prototype.purge = function () {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     /**
      *  Close connection for this docker
      */
     Docker.prototype.close = function () {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     //-------- namespace --------
     ns.port.Docker = Docker;
 
-    ns.port.registers('Docker');
-
-})(StarTrek, MONKEY);
+})(StarTrek, FiniteStateMachine, MONKEY);
 
 (function (ns, sys) {
     'use strict';
 
-    var ConnectionState = ns.net.ConnectionState;
+    var Enum = sys.type.Enum;
 
     /**
      *  Docker Status
      *  ~~~~~~~~~~~~~
      */
-    var DockerStatus = sys.type.Enum(null, {
+    var DockerStatus = Enum(null, {
         ERROR:    -1,
         INIT:      0,
         PREPARING: 1,
@@ -158,6 +150,7 @@
      * @return {DockerStatus}
      */
     DockerStatus.getStatus = function (state) {
+        var ConnectionState = ns.net.ConnectionState;
         if (!state) {
             return DockerStatus.ERROR;
         } else if (state.equals(ConnectionState.READY)
@@ -176,19 +169,18 @@
     //-------- namespace --------
     ns.port.DockerStatus = DockerStatus;
 
-    ns.port.registers('DockerStatus');
-
 })(StarTrek, MONKEY);
 
 (function (ns, sys) {
     'use strict';
 
+    var Interface = sys.type.Interface;
+
     /**
      *  Docker Delegate
      *  ~~~~~~~~~~~~~~~
      */
-    var DockerDelegate = function () {};
-    sys.Interface(DockerDelegate, null);
+    var DockerDelegate = Interface(null, null);
 
     /**
      *  Callback when new package received
@@ -197,7 +189,7 @@
      * @param {Docker} docker       - connection docker
      */
     DockerDelegate.prototype.onDockerReceived = function (arrival, docker) {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -207,7 +199,7 @@
      * @param {Docker} docker       - connection docker
      */
     DockerDelegate.prototype.onDockerSent = function (departure, docker) {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -218,7 +210,7 @@
      * @param {Docker} docker       - connection docker
      */
     DockerDelegate.prototype.onDockerFailed = function (error, departure, docker) {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -229,7 +221,7 @@
      * @param {Docker} docker       - connection docker
      */
     DockerDelegate.prototype.onDockerError = function (error, departure, docker) {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -240,12 +232,10 @@
      * @param {Docker} docker      - connection docker
      */
     DockerDelegate.prototype.onDockerStatusChanged = function (previous, current, docker) {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     //-------- namespace --------
     ns.port.DockerDelegate = DockerDelegate;
-
-    ns.port.registers('DockerDelegate');
 
 })(StarTrek, MONKEY);

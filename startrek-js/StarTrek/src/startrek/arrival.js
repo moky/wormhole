@@ -35,7 +35,9 @@
 (function (ns, sys) {
     'use strict';
 
+    var Class = sys.type.Class;
     var Arrival = ns.port.Arrival;
+    var ShipStatus = ns.port.ShipStatus;
 
     /**
      *  Arrival Ship
@@ -50,44 +52,52 @@
         }
         this.__expired = now + ArrivalShip.EXPIRED;
     };
-    sys.Class(ArrivalShip, Object, [Arrival], null);
+    Class(ArrivalShip, Object, [Arrival], null);
 
     /**
-     *  Arrival task will be expired after 10 minutes
+     *  Arrival task will be expired after 5 minutes
      *  if still not completed.
      */
-    ArrivalShip.EXPIRES = 600 * 1000;  // milliseconds
-
-    // Override
-    ArrivalShip.prototype.isTimeout = function (now) {
-        return now > this.__expired;
-    };
+    ArrivalShip.EXPIRES = 300 * 1000;  // milliseconds
 
     // Override
     ArrivalShip.prototype.touch = function (now) {
+        // update expired time
         this.__expired = now + ArrivalShip.EXPIRES;
+    };
+
+    // Override
+    ArrivalShip.prototype.getStatus = function (now) {
+        if (now > this.__expired) {
+            return ShipStatus.EXPIRED;
+        } else {
+            return ShipStatus.ASSEMBLING;
+        }
     };
 
     //-------- namespace --------
     ns.ArrivalShip = ArrivalShip;
-
-    ns.registers('ArrivalShip');
 
 })(StarTrek, MONKEY);
 
 (function (ns, sys) {
     'use strict';
 
+    var Class = sys.type.Class;
     var Arrays = sys.type.Arrays;
-    var Dictionary = sys.type.Dictionary;
+    var ShipStatus = ns.port.ShipStatus;
 
+    /**
+     *  Memory cache for Arrivals
+     *  ~~~~~~~~~~~~~~~~~~~~~~~~~
+     */
     var ArrivalHall = function () {
         Object.call(this);
-        this.__arrivals = [];           // Arrival[]
-        this.__amap = new Dictionary(); // ID => Arrival
-        this.__aft = new Dictionary();  // ID => timestamp
+        this.__arrivals = [];        // Set<Arrival>
+        this.__arrival_map = {};     // SN => Arrival
+        this.__finished_times = {};  // SN => timestamp
     }
-    sys.Class(ArrivalHall, Object, null, null);
+    Class(ArrivalHall, Object, null, null);
 
     /**
      *  Check received ship for completed package
@@ -96,46 +106,48 @@
      * @return {Arrival|Ship} ship carrying completed data package
      */
     ArrivalHall.prototype.assembleArrival = function (income) {
-        // check ship ID (SN)
+        // 1. check ship ID (SN)
         var sn = income.getSN();
         if (!sn) {
             // separated package ship must have SN for assembling
             // we consider it to be a ship carrying a whole package here
             return income;
         }
-        // check whether the task has already finished
-        var time = this.__aft.getValue(sn);
-        if (time && time > 0) {
-            // task already finished
-            return null;
-        }
-        var task = this.__amap.getValue(sn);
-        if (!task) {
-            // new arrival, try assembling to check whether a fragment
-            task = income.assemble(income);
-            if (!task) {
+        // 2. check cached ship
+        var completed;
+        var cached = this.__arrival_map[sn];
+        if (cached) {
+            // 3. cached ship found, try assembling (insert as fragment)
+            //    to check whether all fragments received
+            completed = cached.assemble(income);
+            if (completed) {
+                // all fragments received, remove cached ship
+                Arrays.remove(this.__arrivals, cached);
+                delete this.__arrival_map[sn];
+                // mark finished time
+                this.__finished_times[sn] = (new Date()).getTime();
+            } else {
+                // it's not completed yet, update expired time
+                // and wait for more fragments.
+                cached.touch((new Date()).getTime());
+            }
+        } else {
+            // check whether the task has already finished
+            var time = this.__finished_times[sn];
+            if (time && time > 0) {
+                // task already finished
+                return null;
+            }
+            // 3. new arrival, try assembling to check whether a fragment
+            completed = income.assemble(income);
+            if (!completed) {
                 // it's a fragment, waiting for more fragments
                 this.__arrivals.push(income);
-                this.__amap.setValue(sn, income);
-                return null;
-            } else {
-                // it's a completed package
-                return task;
+                this.__arrival_map[sn] = income;
+                //income.touch((new Date()).getDate());
             }
+            // else, it's a completed package
         }
-        // insert as fragment
-        var completed = task.assemble(income);
-        if (!completed) {
-            // not completed yet, update expired time
-            // and wait for more fragments.
-            task.touch((new Date()).getTime());
-            return null;
-        }
-        // all fragments received, remove this task
-        Arrays.remove(this.__arrivals, task);
-        this.__amap.removeValue(sn);
-        // mark finished time
-        this.__aft.setValue(sn, (new Date()).getTime());
         return completed;
     };
 
@@ -146,35 +158,37 @@
         var now = (new Date()).getTime();
         // 1. seeking expired tasks
         var ship;
+        var sn;
         for (var i = this.__arrivals.length - 1; i >= 0; --i) {
             ship = this.__arrivals[i];
-            if (ship.isTimeout(now)) {
+            if (ship.getStatus(now).equals(ShipStatus.EXPIRED)) {
                 // task expired
                 this.__arrivals.splice(i, 1);
                 // remove mapping with SN
-                this.__amap.removeValue(ship.getSN());
-                // TODO: callback?
+                sn = ship.getSN();
+                if (sn) {
+                    delete this.__arrival_map[sn];
+                    // TODO: callback?
+                }
             }
         }
         // 2. seeking neglected finished times
-        var ago = now - 3600;
-        var keys = this.__aft.allKeys();
-        var sn, when;
+        var ago = now - 3600 * 1000;
+        var when;
+        var keys = Object.keys(this.__finished_times);
         for (var j = keys.length - 1; j >= 0; --j) {
             sn = keys[j];
-            when = this.__aft.getValue(sn);
+            when = this.__finished_times[sn];
             if (!when || when < ago) {
                 // long time ago
-                this.__aft.removeValue(sn);
-                // remove mapping with SN
-                this.__amap.removeValue(sn);
+                delete this.__finished_times[sn];
+                // // remove mapping with SN
+                // delete this.__arrival_map[sn];
             }
         }
     };
 
     //-------- namespace --------
     ns.ArrivalHall = ArrivalHall;
-
-    ns.registers('ArrivalHall');
 
 })(StarTrek, MONKEY);

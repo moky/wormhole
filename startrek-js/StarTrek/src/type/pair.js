@@ -35,17 +35,17 @@
 (function (ns, sys) {
     'use strict';
 
-    var KeyPairMap = function () {};
-    sys.Interface(KeyPairMap, null);
+    var Interface = sys.type.Interface;
+
+    var KeyPairMap = Interface(null, null);
 
     /**
      *  Get all mapped values
      *
-     * @return {[]} values
+     * @return {[]} all values
      */
-    KeyPairMap.prototype.allValues = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+    KeyPairMap.prototype.values = function () {
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -56,8 +56,7 @@
      * @return {*} mapped value
      */
     KeyPairMap.prototype.get = function (remote, local) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -68,8 +67,7 @@
      * @param {*} value  - mapping value
      */
     KeyPairMap.prototype.set = function (remote, local, value) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -81,13 +79,10 @@
      * @return {*} removed value
      */
     KeyPairMap.prototype.remove = function (remote, local, value) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     //-------- namespace --------
     ns.type.KeyPairMap = KeyPairMap;
-
-    ns.type.registers('KeyPairMap');
 
 })(StarTrek, MONKEY);

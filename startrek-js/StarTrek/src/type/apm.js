@@ -36,6 +36,7 @@
 (function (ns, sys) {
     'use strict';
 
+    var Class = sys.type.Class;
     var InetSocketAddress = ns.type.InetSocketAddress;
     var HashKeyPairMap = ns.type.HashKeyPairMap;
 
@@ -44,20 +45,19 @@
     var AddressPairMap = function () {
         HashKeyPairMap.call(this, AnyAddress);
     };
-    sys.Class(AddressPairMap, HashKeyPairMap, null, null);
+    Class(AddressPairMap, HashKeyPairMap, null, null);
 
     AddressPairMap.AnyAddress = AnyAddress;
 
     //-------- namespace --------
     ns.type.AddressPairMap = AddressPairMap;
 
-    ns.type.registers('AddressPairMap');
-
 })(StarTrek, MONKEY);
 
 (function (ns, sys) {
     'use strict';
 
+    var Class = sys.type.Class;
     var BaseObject = sys.type.BaseObject;
 
     /**
@@ -72,7 +72,7 @@
         this.remoteAddress = remote;
         this.localAddress = local;
     };
-    sys.Class(AddressPairObject, BaseObject, null, null);
+    Class(AddressPairObject, BaseObject, null, null);
 
     AddressPairObject.prototype.getRemoteAddress = function () {
         return this.remoteAddress;
@@ -80,14 +80,6 @@
 
     AddressPairObject.prototype.getLocalAddress = function () {
         return this.localAddress;
-    };
-
-    var address_equals = function (address1, address2) {
-        if (address1) {
-            return address1.equals(address2);
-        } else {
-            return !address2;
-        }
     };
 
     // Override
@@ -106,6 +98,23 @@
 
     // Override
     AddressPairObject.prototype.valueOf = function () {
+        return desc.call(this);
+    };
+
+    // Override
+    AddressPairObject.prototype.toString = function () {
+        return desc.call(this);
+    };
+
+    var address_equals = function (address1, address2) {
+        if (address1) {
+            return address1.equals(address2);
+        } else {
+            return !address2;
+        }
+    };
+
+    var desc = function () {
         var cname = this.constructor.name;
         var remote = this.getRemoteAddress();
         var local = this.getLocalAddress();
@@ -115,12 +124,10 @@
         if (local) {
             local = local.toString();
         }
-        return '<' + cname + ': remote=' + remote + ', local=' + local + ' />';
+        return '<' + cname + ' remote="' + remote + '" local="' + local + '" />';
     };
 
     //-------- namespace --------
     ns.type.AddressPairObject = AddressPairObject;
-
-    ns.type.registers('AddressPairObject');
 
 })(StarTrek, MONKEY);

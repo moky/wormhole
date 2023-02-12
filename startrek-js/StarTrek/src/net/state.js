@@ -30,46 +30,26 @@
 // =============================================================================
 //
 
-/**
- *    Finite States:
- *
- *             //===============\\          (Start)          //=============\\
- *             ||               || ------------------------> ||             ||
- *             ||    Default    ||                           ||  Preparing  ||
- *             ||               || <------------------------ ||             ||
- *             \\===============//         (Timeout)         \\=============//
- *                                                               |       |
- *             //===============\\                               |       |
- *             ||               || <-----------------------------+       |
- *             ||     Error     ||          (Error)                 (Connected
- *             ||               || <-----------------------------+   or bound)
- *             \\===============//                               |       |
- *                 A       A                                     |       |
- *                 |       |            //===========\\          |       |
- *                 (Error) +----------- ||           ||          |       |
- *                 |                    ||  Expired  || <--------+       |
- *                 |       +----------> ||           ||          |       |
- *                 |       |            \\===========//          |       |
- *                 |       (Timeout)           |         (Timeout)       |
- *                 |       |                   |                 |       V
- *             //===============\\     (Sent)  |             //=============\\
- *             ||               || <-----------+             ||             ||
- *             ||  Maintaining  ||                           ||    Ready    ||
- *             ||               || ------------------------> ||             ||
- *             \\===============//       (Received)          \\=============//
- */
-
+//! require <fsm.js>
 //! require 'namespace.js'
 
 (function (ns, fsm, sys) {
     'use strict';
 
-    var Stringer = sys.type.Stringer;
+    var Class = sys.type.Class;
     var BaseState = fsm.BaseState;
 
     /**
      *  Connection State
      *  ~~~~~~~~~~~~~~~~
+     *  Defined for indicating connection state
+     *
+     *      DEFAULT     - 'initialized', or sent timeout
+     *      PREPARING   - connecting or binding
+     *      READY       - got response recently
+     *      EXPIRED     - long time, needs maintaining (still connected/bound)
+     *      MAINTAINING - sent 'PING', waiting for response
+     *      ERROR       - long long time no response, connection lost
      *
      * @param {String} name
      */
@@ -78,7 +58,7 @@
         this.__name = name;
         this.__enterTime = 0;  // timestamp (milliseconds)
     };
-    sys.Class(ConnectionState, BaseState, null, null);
+    Class(ConnectionState, BaseState, null, null);
 
     ConnectionState.DEFAULT     = 'default';
     ConnectionState.PREPARING   = 'preparing';
@@ -91,16 +71,26 @@
     ConnectionState.prototype.equals = function (other) {
         if (this === other) {
             return true;
+        } else if (!other) {
+            return false;
         } else if (other instanceof ConnectionState) {
-            return this.__name === other.toString();
-        } else if (sys.Interface.conforms(other, Stringer)) {
             return this.__name === other.toString();
         } else {
             return this.__name === other;
         }
     };
 
+    // Override
+    ConnectionState.prototype.valueOf = function () {
+        return this.__name;
+    };
+
+    // Override
     ConnectionState.prototype.toString = function () {
+        return this.__name;
+    };
+
+    ConnectionState.prototype.getName = function () {
         return this.__name;
     };
 
@@ -109,12 +99,12 @@
     };
 
     // Override
-    ConnectionState.prototype.onEnter = function (previous, machine) {
-        this.__enterTime = (new Date()).getTime();
+    ConnectionState.prototype.onEnter = function (previous, machine, now) {
+        this.__enterTime = now;
     };
 
     // Override
-    ConnectionState.prototype.onExit = function (next, machine) {
+    ConnectionState.prototype.onExit = function (next, machine, now) {
         this.__enterTime = 0;
     };
 
@@ -134,32 +124,74 @@
      */
     ConnectionState.Delegate = fsm.Delegate;
 
+    /**
+     *  State Builder
+     *  ~~~~~~~~~~~~~
+     */
+    var StateBuilder = function (transitionBuilder) {
+        Object.call(this);
+        this.builder = transitionBuilder;
+    };
+    Class(StateBuilder, Object, null, {
+        // Connection not started yet
+        getDefaultState: function () {
+            var state = getNamedState(ConnectionState.DEFAULT);
+            // Default -> Preparing
+            state.addTransition(this.builder.getDefaultPreparingTransition());
+            return state;
+        },
+        // Connection started, preparing to connect/bind
+        getPreparingState: function () {
+            var state = getNamedState(ConnectionState.PREPARING);
+            // Preparing -> Ready
+            state.addTransition(this.builder.getPreparingReadyTransition());
+            // Preparing -> Default
+            state.addTransition(this.builder.getPreparingDefaultTransition());
+            return state;
+        },
+        // Normal state of connection
+        getReadyState: function () {
+            var state = getNamedState(ConnectionState.READY);
+            // Ready -> Expired
+            state.addTransition(this.builder.getReadyExpiredTransition());
+            // Ready -> Error
+            state.addTransition(this.builder.getReadyErrorTransition());
+            return state;
+        },
+        // Long time no response, need maintaining
+        getExpiredState: function () {
+            var state = getNamedState(ConnectionState.EXPIRED);
+            // Expired -> Maintaining
+            state.addTransition(this.builder.getExpiredMaintainingTransition());
+            // Expired -> Error
+            state.addTransition(this.builder.getExpiredErrorTransition());
+            return state;
+        },
+        // Heartbeat sent, waiting response
+        getMaintainingState: function () {
+            var state = getNamedState(ConnectionState.MAINTAINING);
+            // Maintaining -> Ready
+            state.addTransition(this.builder.getMaintainingReadyTransition());
+            // Maintaining -> Expired
+            state.addTransition(this.builder.getMaintainingExpiredTransition());
+            // Maintaining -> Error
+            state.addTransition(this.builder.getMaintainingErrorTransition());
+            return state;
+        },
+        // Connection lost
+        getErrorState: function () {
+            var state = getNamedState(ConnectionState.ERROR);
+            // Error -> Default
+            state.addTransition(this.builder.getErrorDefaultTransition());
+            return state;
+        }
+    });
+    var getNamedState = function (name) {
+        return new ConnectionState(name);
+    };
+
     //-------- namespace --------
     ns.net.ConnectionState = ConnectionState;
-
-    ns.net.registers('ConnectionState');
-
-})(StarTrek, FiniteStateMachine, MONKEY);
-
-(function (ns, fsm, sys) {
-    'use strict';
-
-    var BaseTransition = fsm.BaseTransition;
-
-    var StateTransition = function (targetStateName, evaluate) {
-        BaseTransition.call(this, targetStateName);
-        this.__evaluate = evaluate;
-    };
-    sys.Class(StateTransition, BaseTransition, null, null);
-
-    // Override
-    StateTransition.prototype.evaluate = function(machine) {
-        return this.__evaluate.call(this, machine);
-    };
-
-    //-------- namespace --------
-    ns.net.StateTransition = StateTransition;
-
-    ns.net.registers('StateTransition');
+    ns.net.StateBuilder = StateBuilder;
 
 })(StarTrek, FiniteStateMachine, MONKEY);

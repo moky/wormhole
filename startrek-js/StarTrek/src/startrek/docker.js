@@ -31,16 +31,16 @@
 //
 
 //! require 'type/apm.js'
-//! require 'net/connection.js'
+//! require 'port/ship.js'
 //! require 'port/docker.js'
-//! require 'port/arrival.js'
-//! require 'port/departure.js'
 //! require 'dock.js'
 
 (function (ns, sys) {
     'use strict';
 
+    var Class = sys.type.Class;
     var AddressPairObject = ns.type.AddressPairObject;
+    var ShipStatus = ns.port.ShipStatus;
     var Docker = ns.port.Docker;
     var DockerStatus = ns.port.DockerStatus;
     var Dock = ns.Dock;
@@ -54,17 +54,18 @@
         var remote = connection.getRemoteAddress();
         var local = connection.getLocalAddress();
         AddressPairObject.call(this, remote, local);
-        this.__conn = connection;
+        this.__conn = connection;        // Connection
         this.__delegate = null;          // DockerDelegate
         this.__dock = this.createDock();
         this.__lastOutgo = null;         // Departure
         this.__lastFragments = [];       // Uint8Array[]
     };
-    sys.Class(StarDocker, AddressPairObject, [Docker], null);
+    Class(StarDocker, AddressPairObject, [Docker], null);
 
     StarDocker.prototype.finalize = function () {
         // make sure the relative connection is closed
         removeConnection.call(this);
+        this.__dock = null;
         // super.finalize();
     };
 
@@ -132,7 +133,7 @@
 
     // Override
     StarDocker.prototype.sendShip = function (ship) {
-        return this.__dock.appendDeparture(ship);
+        return this.__dock.addDeparture(ship);
     };
 
     // Override
@@ -164,8 +165,7 @@
      */
     // protected
     StarDocker.prototype.getArrival = function (data) {
-        ns.assert('implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -176,8 +176,7 @@
      */
     // protected
     StarDocker.prototype.checkArrival = function (income) {
-        ns.assert('implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -267,7 +266,7 @@
             if (!outgo) {
                 // nothing to do now, return false to let the thread have a rest
                 return false;
-            } else if (outgo.isFailed(now)) {
+            } else if (outgo.getStatus(now).equals(ShipStatus.FAILED)) {
                 delegate = this.getDelegate();
                 if (delegate) {
                     // callback for mission failed
@@ -337,7 +336,5 @@
 
     //-------- namespace --------
     ns.StarDocker = StarDocker;
-
-    ns.registers('StarDocker');
 
 })(StarTrek, MONKEY);

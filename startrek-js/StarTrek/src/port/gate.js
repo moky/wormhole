@@ -64,19 +64,20 @@
  *                  Remote Peer     Remote Peer     Remote Peer
  */
 
+//! require <fsm.js>
 //! require 'namespace.js'
 
-(function (ns, sys) {
+(function (ns, fsm, sys) {
     'use strict';
 
-    var Processor = sys.skywalker.Processor;
+    var Interface = sys.type.Interface;
+    var Processor = fsm.skywalker.Processor;
 
     /**
      *  Star Gate
      *  ~~~~~~~~~
      */
-    var Gate = function () {};
-    sys.Interface(Gate, [Processor]);
+    var Gate = Interface(null, [Processor]);
 
     /**
      *  Pack data to an outgo ship (with normal priority), and
@@ -88,8 +89,7 @@
      * @return {boolean} false on error
      */
     Gate.prototype.sendData = function (payload, remote, local) {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -102,13 +102,10 @@
      * @return {boolean} false on error
      */
     Gate.prototype.sendShip = function (outgo, remote, local) {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     //-------- namespace --------
     ns.port.Gate = Gate;
 
-    ns.port.registers('Gate');
-
-})(StarTrek, MONKEY);
+})(StarTrek, FiniteStateMachine, MONKEY);

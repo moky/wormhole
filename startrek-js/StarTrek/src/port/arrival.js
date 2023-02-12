@@ -35,14 +35,14 @@
 (function (ns, sys) {
     'use strict';
 
+    var Interface = sys.type.Interface;
     var Ship = ns.port.Ship;
 
     /**
      *  Incoming Ship
      *  ~~~~~~~~~~~~~
      */
-    var Arrival = function () {};
-    sys.Interface(Arrival, [Ship]);
+    var Arrival = Interface(null, [Ship]);
 
     /**
      *  Data package can be sent as separated batches
@@ -51,37 +51,10 @@
      * @return {Arrival} new ship carried the whole data package
      */
     Arrival.prototype.assemble = function (income) {
-        ns.assert(false, 'implement me!');
-        return null;
-    };
-
-    //
-    //  task states
-    //
-
-    /**
-     *  Check whether task timeout
-     *
-     * @param {number} now - current time
-     * @return {boolean} true on timeout
-     */
-    Arrival.prototype.isTimeout = function (now) {
-        ns.assert(false, 'implement me!');
-        return false;
-    };
-
-    /**
-     *  Update expired time
-     *
-     * @param {number} now - current time
-     */
-    Arrival.prototype.touch = function (now) {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     //-------- namespace --------
     ns.port.Arrival = Arrival;
-
-    ns.port.registers('Arrival');
 
 })(StarTrek, MONKEY);

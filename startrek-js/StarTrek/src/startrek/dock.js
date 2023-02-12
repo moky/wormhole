@@ -36,6 +36,7 @@
 (function (ns, sys) {
     'use strict';
 
+    var Class = sys.type.Class;
     var ArrivalHall = ns.ArrivalHall;
     var DepartureHall = ns.DepartureHall;
 
@@ -44,7 +45,7 @@
         this.__arrivalHall = this.createArrivalHall();
         this.__departureHall = this.createDepartureHall();
     };
-    sys.Class(Dock, Object, null, null);
+    Class(Dock, Object, null, null);
 
     // protected: override for user-customized hall
     Dock.prototype.createArrivalHall = function () {
@@ -69,13 +70,13 @@
     };
 
     /**
-     *  Append outgoing ship to a fleet with priority
+     *  Add outgoing ship to the waiting queue
      *
      * @param {Departure|Ship} outgo - departure task
      * @return {boolean} false on duplicated
      */
-    Dock.prototype.appendDeparture = function (outgo) {
-        return this.__departureHall.appendDeparture(outgo);
+    Dock.prototype.addDeparture = function (outgo) {
+        return this.__departureHall.addDeparture(outgo);
     };
 
     /**
@@ -113,23 +114,4 @@
     //-------- namespace --------
     ns.Dock = Dock;
 
-    ns.registers('Dock');
-
 })(StarTrek, MONKEY);
-
-// (function (ns, sys) {
-//     'use strict';
-//
-//     var Dock = ns.Dock;
-//
-//     var LockedDock = function () {
-//         Dock.call(this);
-//     };
-//     sys.Class(LockedDock, Dock, null, null);
-//
-//     //-------- namespace --------
-//     ns.LockedDock = LockedDock;
-//
-//     ns.registers('LockedDock');
-//
-// })(StarTrek, MONKEY);

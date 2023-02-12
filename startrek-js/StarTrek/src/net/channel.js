@@ -35,27 +35,25 @@
 (function (ns, sys) {
     'use strict';
 
-    var Channel = function () {};
-    sys.Interface(Channel, null);
+    var Interface = sys.type.Interface;
+
+    var Channel = Interface(null, null);
 
     Channel.prototype.isOpen = function () {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     Channel.prototype.isBound = function () {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     Channel.prototype.isAlive = function () {
         // return this.isOpen() && (this.isConnected() || this.isBound());
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     Channel.prototype.close = function () {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
 
@@ -70,8 +68,7 @@
      * @return {Uint8Array} received data
      */
     Channel.prototype.read = function (maxLen) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
 
@@ -86,8 +83,7 @@
      * @return {int} -1 on error
      */
     Channel.prototype.write = function (src) {
-        ns.assert(false, 'implement me!');
-        return 0;
+        throw new Error('NotImplemented');
     };
 
 
@@ -102,8 +98,7 @@
      * @return {WebSocket|*} the inner SelectableChannel
      */
     Channel.prototype.configureBlocking = function (block) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -113,8 +108,7 @@
      * @return {boolean} true when this channel is in blocking mode
      */
     Channel.prototype.isBlocking = function () {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
 
@@ -129,8 +123,7 @@
      * @return {WebSocket|*} the inner NetworkChannel
      */
     Channel.prototype.bind = function (local) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -139,8 +132,7 @@
      * @return {SocketAddress} local address
      */
     Channel.prototype.getLocalAddress = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
 
@@ -154,8 +146,7 @@
      * @return {boolean}
      */
     Channel.prototype.isConnected = function () {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -165,8 +156,7 @@
      * @return {WebSocket|*} the inner NetworkChannel; null on failed
      */
     Channel.prototype.connect = function (remote) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -175,8 +165,7 @@
      * @return {SocketAddress} remote address
      */
     Channel.prototype.getRemoteAddress = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
 
@@ -190,8 +179,7 @@
      * @return {WebSocket|*} the inner ByteChannel
      */
     Channel.prototype.disconnect = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -201,8 +189,7 @@
      * @return {Uint8Array} received data package
      */
     Channel.prototype.receive = function (maxLen) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -213,13 +200,10 @@
      * @return {int} the number of bytes sent, -1 on error
      */
     Channel.prototype.send = function (src, target) {
-        ns.assert(false, 'implement me!');
-        return 0;
+        throw new Error('NotImplemented');
     };
 
     //-------- namespace --------
     ns.net.Channel = Channel;
-
-    ns.net.registers('Channel');
 
 })(StarTrek, MONKEY);

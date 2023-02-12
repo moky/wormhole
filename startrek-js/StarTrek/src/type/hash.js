@@ -35,57 +35,58 @@
 (function (ns, sys) {
     'use strict';
 
-    var Dictionary = sys.type.Dictionary;
+    var Class = sys.type.Class;
+
     var KeyPairMap = ns.type.KeyPairMap;
 
     var HashKeyPairMap = function (any) {
         Object.call(this);
+        // default key
         this.__default = any;
-        this.__map = new Dictionary();
+        // because the remote address will always different to local address, so
+        // we shared the same map for all directions here:
+        //    mapping: (remote, local) => Connection
+        //    mapping: (remote, null) => Connection
+        //    mapping: (local, null) => Connection
+        this.__map = {};
+        // cached values
         this.__values = [];
     };
-    sys.Class(HashKeyPairMap, Object, [KeyPairMap], null);
+    Class(HashKeyPairMap, Object, [KeyPairMap], null);
 
     // Override
-    HashKeyPairMap.prototype.allValues = function () {
+    HashKeyPairMap.prototype.values = function () {
         return this.__values;
     };
 
     // Override
     HashKeyPairMap.prototype.get = function (remote, local) {
-        var key1, key2;
-        if (remote) {
-            key1 = remote;
-            key2 = local;
-        } else {
-            key1 = local;
-            key2 = null;
-        }
-        var table = this.__map.getValue(key1);
+        var keys = get_keys(remote, local, this.__default);
+        var table = this.__map[keys[0]];
         if (!table) {
             return null;
         }
         var value;
-        if (key2) {
+        if (keys[1]) {
             // mapping: (remote, local) => Connection
-            value = table.getValue(key2);
+            value = table[keys[1]];
             if (value) {
                 return value;
             }
             // take any Connection connected to remote
-            return table.getValue(this.__default);
+            return table[this.__default];
         }
         // mapping: (remote, null) => Connection
         // mapping: (local, null) => Connection
-        value = table.getValue(this.__default);
+        value = table[this.__default];
         if (value) {
             // take the value with empty key2
             return value;
         }
         // take any Connection connected to remote / bound to local
-        var allKeys = table.allKeys();
+        var allKeys = Object.keys(table);
         for (var i = 0; i < allKeys.length; ++i) {
-            value = table.getValue(allKeys[i]);
+            value = table[allKeys[i]];
             if (value) {
                 return value;
             }
@@ -104,13 +105,17 @@
         }
         // create indexes with key pair (remote, local)
         var keys = get_keys(remote, local, this.__default);
-        var table = this.__map.getValue(keys.key1);
+        var table = this.__map[keys[0]];
         if (table) {
-            table.setValue(keys.key2, value);
+            if (!value) {
+                delete table[keys[1]];
+            } else {
+                table[keys[1]] = value;
+            }
         } else if (value) {
-            table = new Dictionary();
-            table.setValue(keys.key2, value);
-            this.__map.setValue(keys.key1, table);
+            table = {};
+            table[keys[1]] = value;
+            this.__map[keys[0]] = table;
         }
     };
 
@@ -118,10 +123,10 @@
     HashKeyPairMap.prototype.remove = function (remote, local, value) {
         // remove indexes with key pair (remote, local)
         var keys = get_keys(remote, local, this.__default);
-        var table = this.__map.getValue(keys.key1);
+        var table = this.__map[keys[0]];
         var old = null;
         if (table) {
-            old = table.removeValue(keys.key2);
+            old = table[keys[1]];
             if (old) {
                 remove_item(this.__values, old);
             }
@@ -135,20 +140,11 @@
 
     var get_keys = function (remoteAddress, localAddress, defaultAddress) {
         if (!remoteAddress) {
-            return {
-                key1: localAddress,
-                key2: defaultAddress
-            }
+            return [localAddress, defaultAddress]
         } else if (!localAddress) {
-            return {
-                key1: remoteAddress,
-                key2: defaultAddress
-            }
+            return [remoteAddress, defaultAddress]
         } else {
-            return {
-                key1: remoteAddress,
-                key2: localAddress
-            }
+            return [remoteAddress, localAddress]
         }
     };
 
@@ -181,7 +177,5 @@
 
     //-------- namespace --------
     ns.type.HashKeyPairMap = HashKeyPairMap;
-
-    ns.type.registers('HashKeyPairMap');
 
 })(StarTrek, MONKEY);

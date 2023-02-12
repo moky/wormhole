@@ -35,20 +35,19 @@
 (function (ns, sys) {
     'use strict';
 
+    var Interface = sys.type.Interface;
+    var Class = sys.type.Class;
     var Stringer = sys.type.Stringer;
     var ConstantString = sys.type.ConstantString;
 
-    var SocketAddress = function () {};
-    sys.Interface(SocketAddress, [Stringer]);
+    var SocketAddress = Interface(null, [Stringer]);
 
     SocketAddress.prototype.getHost = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     SocketAddress.prototype.getPort = function () {
-        ns.assert(false, 'implement me!');
-        return 0;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -63,7 +62,7 @@
         this.__host = host;
         this.__port = port;
     };
-    sys.Class(InetSocketAddress, ConstantString, [SocketAddress], null);
+    Class(InetSocketAddress, ConstantString, [SocketAddress], null);
 
     // Override
     InetSocketAddress.prototype.getHost = function () {
@@ -78,8 +77,5 @@
     //-------- namespace --------
     ns.type.SocketAddress = SocketAddress;
     ns.type.InetSocketAddress = InetSocketAddress;
-
-    ns.type.registers('SocketAddress');
-    ns.type.registers('InetSocketAddress');
 
 })(StarTrek, MONKEY);

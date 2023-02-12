@@ -38,6 +38,7 @@
 (function (ns, sys) {
     'use strict';
 
+    var Class = sys.type.Class;
     var AddressPairObject = ns.type.AddressPairObject;
     var Connection = ns.net.Connection;
     var TimedConnection = ns.net.TimedConnection;
@@ -62,7 +63,7 @@
         // connection state machine
         this.__fsm = null;
     };
-    sys.Class(BaseConnection, AddressPairObject, [Connection, TimedConnection, ConnectionState.Delegate], null);
+    Class(BaseConnection, AddressPairObject, [Connection, TimedConnection, ConnectionState.Delegate], null);
 
     BaseConnection.EXPIRES = 16 * 1000;  // 16 seconds
 
@@ -241,10 +242,10 @@
     };
 
     // Override
-    BaseConnection.prototype.tick = function (now, delta) {
+    BaseConnection.prototype.tick = function (now, elapsed) {
         var machine = this.getStateMachine();
         if (machine) {
-            machine.tick(now, delta);
+            machine.tick(now, elapsed);
         }
     };
 
@@ -324,13 +325,12 @@
     //-------- namespace --------
     ns.socket.BaseConnection = BaseConnection;
 
-    ns.socket.registers('BaseConnection');
-
 })(StarTrek, MONKEY);
 
 (function (ns, sys) {
     'use strict';
 
+    var Class = sys.type.Class;
     var BaseConnection = ns.socket.BaseConnection;
 
     /**
@@ -347,7 +347,7 @@
         BaseConnection.call(this, remote, local, channel);
         this.__hub = hub;
     };
-    sys.Class(ActiveConnection, BaseConnection, null, {
+    Class(ActiveConnection, BaseConnection, null, {
         // Override
         isOpen: function () {
             return this.getStateMachine() !== null;
@@ -370,7 +370,5 @@
 
     //-------- namespace --------
     ns.socket.ActiveConnection = ActiveConnection;
-
-    ns.socket.registers('ActiveConnection');
 
 })(StarTrek, MONKEY);

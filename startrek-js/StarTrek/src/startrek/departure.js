@@ -35,7 +35,10 @@
 (function (ns, sys) {
     'use strict';
 
+    var Class = sys.type.Class;
+    var Enum = sys.type.Enum;
     var Departure = ns.port.Departure;
+    var ShipStatus = ns.port.ShipStatus;
 
     /**
      *  Departure Ship
@@ -48,26 +51,49 @@
         Object.call(this);
         if (priority === null) {
             priority = 0;
-        } else if (priority instanceof sys.type.Enum) {
+        } else if (Enum.isEnum(priority)) {
             priority = priority.valueOf();
         }
         if (maxTries === null) {
             maxTries = 1 + DepartureShip.RETRIES;
         }
-        // task priority, smaller is faster
-        this.__priority = priority;
-        // tries:
-        //    -1, this ship needs no response, so it will be sent out
-        //        and removed immediately;
-        //     0, this ship was sent and now is waiting for response,
-        //        it should be removed after expired;
-        //    >0, this ship needs retry and waiting for response,
-        //        don't remove it now.
+        this.__priority = priority;  // task priority, smaller is faster
         this.__tries = maxTries;
-        // expired time (timestamp in milliseconds)
-        this.__expired = 0;
+        this.__expired = 0;          // timestamp in milliseconds
     };
-    sys.Class(DepartureShip, Object, [Departure], null);
+    Class(DepartureShip, Object, [Departure], {
+
+        // Override
+        getPriority: function () {
+            return this.__priority;
+        },
+
+        // Override
+        touch: function (now) {
+            // update retried time
+            this.__expired = now + DepartureShip.EXPIRES;
+            // decrease counter
+            this.__tries -= 1;
+        },
+
+        // Override
+        getStatus: function (now) {
+            var fragments = this.getFragments();
+            if (!fragments || fragments.length === 0) {
+                return ShipStatus.DONE;
+            } else if (this.__expired === 0) {
+                return ShipStatus.NEW;
+            //} else if (!this.isImportant()) {
+            //    return ShipStatus.DONE;
+            } else if (now < this.__expired) {
+                return ShipStatus.WAITING;
+            } else if (this.__tries > 0) {
+                return ShipStatus.TIMEOUT;
+            } else {
+                return ShipStatus.FAILED;
+            }
+        }
+    });
 
     /**
      *  Departure task will be expired after 2 minutes
@@ -81,116 +107,63 @@
      */
     DepartureShip.RETRIES = 2;
 
-    // if (max_tries == -1),
-    // means this ship will be sent only once
-    // and no need to wait for response.
-    DepartureShip.DISPOSABLE = -1;
-
-    // Override
-    DepartureShip.prototype.getPriority = function () {
-        return this.__priority;
-    };
-
-    // Override
-    DepartureShip.prototype.isNew = function () {
-        return this.__expired === 0;
-    };
-
-    // Override
-    DepartureShip.prototype.isDisposable = function () {
-        return this.__tries <= 0;  // -1
-    };
-
-    // Override
-    DepartureShip.prototype.isTimeout = function (now) {
-        return this.__tries > 0 && now > this.__expired;
-    };
-
-    // Override
-    DepartureShip.prototype.isFailed = function (now) {
-        return this.__tries === 0 && now > this.__expired;
-    };
-
-    // Override
-    DepartureShip.prototype.touch = function (now) {
-        // update retried time
-        this.__expired = now + DepartureShip.EXPIRES;
-        // decrease counter
-        this.__tries -= 1;
-    };
-
     //-------- namespace --------
     ns.DepartureShip = DepartureShip;
-
-    ns.registers('DepartureShip');
 
 })(StarTrek, MONKEY);
 
 (function (ns, sys) {
     'use strict';
 
+    var Class = sys.type.Class;
     var Arrays = sys.type.Arrays;
-    var Dictionary = sys.type.Dictionary;
-
-    var DepartureHall = function () {
-        Object.call(this);
-        this.__priorities = [];           // int[]
-        this.__fleets = new Dictionary(); // int(prior) => Departure[]
-        this.__dmap = new Dictionary();   // ID => Arrival
-        this.__dft = new Dictionary();    // ID => timestamp
-    }
-    sys.Class(DepartureHall, Object, null, null);
+    var ShipStatus = ns.port.ShipStatus;
 
     /**
-     *  Append outgoing ship to a fleet with priority
+     *  Memory cache for Departures
+     *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     */
+    var DepartureHall = function () {
+        Object.call(this);
+        // all departure ships
+        this.__all_departures = [];  // Set<Departure>
+        // new ships waiting to send out
+        this.__new_departures = [];  // List<Departure>
+        // ships waiting for responses
+        this.__fleets = {};          // int(prior) => List<Departure>
+        this.__priorities = [];      // List<int>
+        // index
+        this.__departure_map = {};   // SN => Departure
+        this.__departure_level = {}; // SN => priority
+        this.__finished_times = {};  // SN => timestamp
+    }
+    Class(DepartureHall, Object, null, null);
+
+    /**
+     *  Add outgoing ship to the waiting queue
      *
      * @param {Departure|Ship} outgo - departure task
      * @return {boolean} false on duplicated
      */
-    DepartureHall.prototype.appendDeparture = function (outgo) {
-        var priority = outgo.getPriority();
-        // 1. choose an array with priority
-        var fleet = this.__fleets.getValue(priority);
-        if (!fleet) {
-            // 1.1. create new array for this priority
-            fleet = [];
-            this.__fleets.setValue(priority, fleet);
-            // 1.2. insert the priority in  a sorted list
-            insertPriority(priority, this.__priorities);
+    DepartureHall.prototype.addDeparture = function (outgo) {
+        // 1. check duplicated
+        if (this.__all_departures.indexOf(outgo) >= 0) {
+            return false;
         } else {
-            // 1.3. check duplicated task
-            if (fleet.indexOf(outgo) >= 0) {
-                return false;
-            }
+            this.__all_departures.push(outgo);
         }
-        // 2. append to the tail
-        fleet.push(outgo);
-        // 3. build mapping if SN exists
-        var sn = outgo.getSN();
-        if (sn && !outgo.isDisposable()) {
-            // disposable ship needs no response, so
-            // we don't build index for it
-            this.__dmap.setValue(sn, outgo);
-        }
-        return true;
-    };
-    var insertPriority = function (prior, priorities) {
-        var index, value;
-        // seeking position for new priority
-        for (index = 0; index < priorities.length; ++index) {
-            value = priorities[index];
-            if (value === prior) {
-                // duplicated
-                return;
-            } else if (value > prior) {
-                // got it
+        // 2. insert to the sorted queue
+        var priority = outgo.getPriority();
+        var index;
+        for (index = 0; index < this.__new_departures.length; ++index) {
+            if (this.__new_departures[index].getPriority() > priority) {
+                // take the place before first ship
+                // which priority is greater then this one.
                 break;
             }
-            // current value is smaller than the new value,
-            // keep going
         }
-        // insert new value before the bigger one
-        Arrays.insert(priorities, index, prior);
+        Arrays.insert(this.__new_departures, index, outgo);
+        return true;
     };
 
     /**
@@ -202,33 +175,36 @@
     DepartureHall.prototype.checkResponse = function (response) {
         var sn = response.getSN();
         // check whether this task has already finished
-        var time = this.__dft.getValue(sn);
-        if (!time || time === 0) {
-            // check departure
-            var ship = this.__dmap.getValue(sn);
-            if (ship && ship.checkResponse(response)) {
-                // all fragments sent, departure task finished
-                // remove it and clear mapping when SN exists
-                removeShip(ship, sn, this.__fleets, this.__dmap);
-                // mark finished time
-                this.__dft.setValue(sn, (new Date()).getTime());
-                return ship;
-            }
+        var time = this.__finished_times[sn];
+        if (time && time > 0) {
+            return null;
+        }
+        // check departure
+        var ship = this.__departure_map[sn];
+        if (ship && ship.checkResponse(response)) {
+            // all fragments sent, departure task finished
+            // remove it and clear mapping when SN exists
+            removeShip.call(this, ship, sn);
+            // mark finished time
+            this.__finished_times[sn] = (new Date()).getTime();
+            return ship;
         }
         return null;
     };
-    var removeShip = function (ship, sn, departureFleets, departureMap) {
-        var prior = ship.getPriority();
-        var fleet = departureFleets.getValue(prior);
+    var removeShip = function (ship, sn) {
+        var priority = this.__departure_level[sn];
+        var fleet = this.__fleets[priority];
         if (fleet) {
             Arrays.remove(fleet, ship);
             // remove array when empty
             if (fleet.length === 0) {
-                departureFleets.removeValue(prior);
+                delete this.__fleets[priority];
             }
         }
         // remove mapping by SN
-        departureMap.removeValue(sn);
+        delete this.__departure_map[sn];
+        delete this.__departure_level[sn];
+        Arrays.remove(this.__all_departures, ship);
     };
 
     /**
@@ -241,80 +217,98 @@
         // task.expired == 0
         var next = getNextNewDeparture.call(this, now);
         if (!next) {
-            // task.tries > 0 and timeout
+            // task.expired < now
             next = getNextTimeoutDeparture.call(this, now);
         }
         return next;
     };
     var getNextNewDeparture = function (now) {
-        var priorityList = new Array(this.__priorities);
-        var prior, sn;
-        var fleet, ship;
-        var i, j;
-        for (i = 0; i < priorityList.length; ++i) {
-            // 1. get tasks with priority
-            prior = priorityList[i];
-            fleet = this.__fleets.getValue(prior);
-            if (!fleet) {
-                continue;
-            }
-            // 2. seeking new task in this priority
-            for (j = 0; j < fleet.length; ++j) {
-                ship = fleet[j];
-                if (ship.isNew()) {
-                    if (ship.isDisposable()) {
-                        // disposable ship needs no response,
-                        // remove it immediately.
-                        fleet.splice(j, 1); //fleet.remove(ship);
-                        // TODO: disposable ship will not be mapped.
-                        //       see 'appendDeparture()'
-                        sn = ship.getSN();
-                        if (sn) {
-                            this.__dmap.removeValue(sn);
-                        }
-                    } else {
-                        // first try, update expired time for response
-                        ship.touch(now);
-                    }
-                    return ship;
-                }
-            }
+        if (this.__new_departures.length === 0) {
+            return null;
         }
-        return null;
+        // get first ship
+        var outgo = this.__new_departures.shift();
+        var sn = outgo.getSN();
+        if (outgo.isImportant() && sn) {
+            // this task needs response
+            // choose an array with priority
+            var priority = outgo.getPriority();
+            insertShip.call(this, outgo, priority, sn);
+            // build index for it
+            this.__departure_map[sn] = outgo;
+        } else {
+            // disposable ship needs no response,
+            // remove it immediately
+            Arrays.remove(this.__all_departures, outgo);
+        }
+        // update expired time
+        outgo.touch(now);
+        return outgo;
+    };
+    var insertShip = function (outgo, priority, sn) {
+        var fleet = this.__fleets[priority];
+        if (!fleet) {
+            // create new array for this priority
+            fleet = [];
+            this.__fleets[priority] = fleet;
+            // insert the priority in a sorted list
+            insertPriority.call(this, priority);
+        }
+        // append to the tail, and build index for it
+        fleet.push(outgo);
+        this.__departure_level[sn] = priority;
+    };
+    var insertPriority = function (priority) {
+        var index, value;
+        // seeking position for new priority
+        for (index = 0; index < this.__priorities.length; ++index) {
+            value = this.__priorities[index];
+            if (value === priority) {
+                // duplicated
+                return;
+            } else if (value > priority) {
+                // got it
+                break;
+            }
+            // current value is smaller than the new value,
+            // keep going
+        }
+        // insert new value before the bigger one
+        Arrays.insert(this.__priorities, index, priority);
     };
     var getNextTimeoutDeparture = function (now) {
         var priorityList = new Array(this.__priorities);
-        var prior, sn;
-        var fleet, ship;
+        var prior;
+        var fleet, ship, sn, status;
         var i, j;
         for (i = 0; i < priorityList.length; ++i) {
             // 1. get tasks with priority
             prior = priorityList[i];
-            fleet = this.__fleets.getValue(prior);
+            fleet = this.__fleets[prior];
             if (!fleet) {
                 continue;
             }
             // 2. seeking timeout task in this priority
             for (j = 0; j < fleet.length; ++j) {
                 ship = fleet[j];
-                if (ship.isTimeout(now)) {
+                sn = ship.getSN();
+                status = ship.getStatus(now);
+                if (status.equals(ShipStatus.TIMEOUT)) {
                     // response timeout, needs retry now.
-                    // 2.1. update expired time;
+                    // move to next priority
+                    fleet.splice(j, 1);
+                    insertShip.call(this, ship, prior + 1, sn);
+                    // update expired time
                     ship.touch(now);
-                    // 2.2. move to the tail
-                    if (fleet.length > 1/* && fleet.length > (j + 1)*/) {
-                        fleet.splice(j, 1);
-                        fleet.push(ship);
-                    }
                     return ship;
-                } else if (ship.isFailed(now)) {
+                } else if (status.equals(ShipStatus.FAILED)) {
                     // try too many times and still missing response,
                     // task failed, remove this ship.
                     fleet.splice(j, 1);
-                    sn = ship.getSN();
-                    if (sn) {
-                        this.__dmap.removeValue(sn);
-                    }
+                    // remove mapping by SN
+                    delete this.__departure_map[sn];
+                    delete this.__departure_level[sn];
+                    Arrays.remove(this.__all_departures, ship);
                     return ship;
                 }
             }
@@ -323,67 +317,56 @@
     };
 
     DepartureHall.prototype.purge = function () {
-        var failedTasks = [];
         var now = (new Date()).getTime();
-        var priorityList = new Array(this.__priorities);
+        // 1. seeking finished tasks
         var prior;
-        var fleet, ship;
+        var fleet, ship, sn;
         var i, j;
-        for (i = 0; i < priorityList.length; ++i) {
-            // 0. get tasks with priority
-            prior = priorityList[i];
-            fleet = this.__fleets.getValue(prior);
+        for (i = this.__priorities.length - 1; i >= 0; --i) {
+            // get tasks with priority
+            prior = this.__priorities[i];
+            fleet = this.__fleets[prior];
             if (!fleet) {
+                // this priority is empty
+                this.__priorities.splice(i, 1);
                 continue;
             }
-            // 1. seeking expired tasks in this priority
-            for (j = 0; j < fleet.length; ++j) {
+            // seeking expired tasks in this priority
+            for (j = fleet.length - 1; j >= 0; --j) {
                 ship = fleet[j];
-                if (ship.isFailed(now)) {
-                    // task expired
-                    failedTasks.push(ship);
+                if (ship.getStatus(now).equals(ShipStatus.DONE)) {
+                    // task done
+                    fleet.splice(j, 1);
+                    sn = ship.getSN();
+                    delete this.__departure_map[sn];
+                    delete this.__departure_level[sn];
+                    // mark finished time
+                    this.__finished_times[sn] = now;
                 }
             }
-            // 2. clear expired tasks
-            clear.call(this, fleet, failedTasks, prior);
-            failedTasks = [];
+            // remove array when empty
+            if (fleet.length === 0) {
+                delete this.__fleets[prior];
+                this.__priorities.splice(i, 1);
+            }
         }
         // 3. seeking neglected finished times
-        var ago = now - 3600;
-        var keys = this.__dft.allKeys();
-        var sn, when;
+        var ago = now - 3600 * 1000;
+        var keys = Object.keys(this.__finished_times);
+        var when;
         for (j = keys.length - 1; j >= 0; --j) {
             sn = keys[j];
-            when = this.__dft.getValue(sn);
+            when = this.__finished_times[sn];
             if (!when || when < ago) {
                 // long time ago
-                this.__dft.removeValue(sn);
-                // remove mapping with SN
-                this.__dmap.removeValue(sn);
+                delete this.__finished_times[sn];
+                // // remove mapping with SN
+                // delete this.__departure_map[sn];
             }
-        }
-    };
-    var clear = function (fleet, failedTasks, prior) {
-        var sn, ship;
-        for (var index = failedTasks.length - 1; index >= 0; --index) {
-            ship = fleet[index];
-            fleet.splice(index, 1);
-            // remove mapping when SN exists
-            sn = ship.getSN();
-            if (sn) {
-                this.__dmap.removeValue(sn);
-            }
-            // TODO: callback?
-        }
-        // remove array when empty
-        if (fleet.length === 0)  {
-            this.__fleets.removeValue(prior);
         }
     };
 
     //-------- namespace --------
     ns.DepartureHall = DepartureHall;
-
-    ns.registers('DepartureHall');
 
 })(StarTrek, MONKEY);

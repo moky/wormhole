@@ -36,12 +36,14 @@
 (function (ns, sys) {
     'use strict';
 
+    var Class = sys.type.Class;
     var AddressPairMap = ns.type.AddressPairMap;
+    var Hub = ns.net.Hub;
 
     var ConnectionPool = function () {
         AddressPairMap.call(this);
     };
-    sys.Class(ConnectionPool, AddressPairMap, null, {
+    Class(ConnectionPool, AddressPairMap, null, {
         // Override
         set: function (remote, local, value) {
             var old = this.get(remote, local);
@@ -58,20 +60,7 @@
             }
             return cached;
         }
-    })
-
-    //-------- namespace --------
-    ns.socket.ConnectionPool = ConnectionPool;
-
-    ns.socket.registers('ConnectionPool');
-
-})(StarTrek, MONKEY);
-
-(function (ns, sys) {
-    'use strict';
-
-    var Hub = ns.net.Hub;
-    var ConnectionPool = ns.socket.ConnectionPool;
+    });
 
     /**
      *  Base Hub
@@ -86,7 +75,7 @@
         // last time drove connections
         this.__last = (new Date()).getTime();
     };
-    sys.Class(BaseHub, Object, [Hub], null);
+    Class(BaseHub, Object, [Hub], null);
 
     // protected
     BaseHub.prototype.createConnectionPool = function () {
@@ -120,8 +109,7 @@
      */
     // protected
     BaseHub.prototype.allChannels = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -133,7 +121,7 @@
      */
     // protected
     BaseHub.prototype.removeChannel = function (remote, local, channel) {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     //
@@ -150,13 +138,12 @@
      */
     // protected
     BaseHub.prototype.createConnection = function (remote, local, channel) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     // protected
     BaseHub.prototype.allConnections = function () {
-        return this.__connPool.allValues();
+        return this.__connPool.values();
     };
 
     // protected
@@ -254,13 +241,10 @@
     // protected
     BaseHub.prototype.driveChannels = function (channels) {
         var count = 0;
-        for (var index = channels.length - 1; index >= 0; --index) {
-            try {
-                if (this.driveChannel(channels[index])) {
-                    ++count;
-                }
-            } catch (e) {
-                console.error('BaseHub::driveChannel()', e, channels[index]);
+        for (var i = channels.length - 1; i >= 0; --i) {
+            // drive channel to receive data
+            if (this.driveChannel(channels[i])) {
+                ++count;
             }
         }
         return count;
@@ -268,13 +252,13 @@
 
     // protected
     BaseHub.prototype.cleanupChannels = function (channels) {
-        var channel;
-        for (var index = channels.length - 1; index >= 0; --index) {
-            channel = channels[index];
-            if (!channel.isAlive()) {
+        var sock;
+        for (var i = channels.length - 1; i >= 0; --i) {
+            sock = channels[i];
+            if (!sock.isAlive()) {
                 // if channel not connected (TCP) and not bound (UDP),
                 // means it's closed, remove it from the hub
-                this.removeChannel(channel.getRemoteAddress(), channel.getLocalAddress(), channel);
+                this.removeChannel(sock.getRemoteAddress(), sock.getLocalAddress(), sock);
             }
         }
     };
@@ -282,14 +266,10 @@
     // protected
     BaseHub.prototype.driveConnections = function (connections) {
         var now = (new Date()).getTime();
-        var delta = now - this.__last;
-        for (var index = connections.length - 1; index >= 0; --index) {
-            try {
-                // drive connection to go on
-                connections[index].tick(now, delta);
-            } catch (e) {
-                console.error('BaseHub::driveConnections()', e, connections[index]);
-            }
+        var elapsed = now - this.__last;
+        for (var i = connections.length - 1; i >= 0; --i) {
+            // drive connection to go on
+            connections[i].tick(now, elapsed);
             // NOTICE: let the delegate to decide whether close an error connection
             //         or just remove it.
         }
@@ -299,8 +279,8 @@
     // protected
     BaseHub.prototype.cleanupConnections = function (connections) {
         var conn;
-        for (var index = connections.length - 1; index >= 0; --index) {
-            conn = connections[index];
+        for (var i = connections.length - 1; i >= 0; --i) {
+            conn = connections[i];
             if (!conn.isOpen()) {
                 // if connection closed, remove it from the hub; notice that
                 // ActiveConnection can reconnect, it'll be not connected
@@ -312,26 +292,19 @@
 
     // Override
     BaseHub.prototype.process = function () {
-        try {
-            // 1. drive all channels to receive data
-            var channels = this.allChannels();
-            var count = this.driveChannels(channels);
-            // 2. drive all connections to move on
-            var connections = this.allConnections();
-            this.driveConnections(connections);
-            // 3. cleanup closed channels and connections
-            this.cleanupChannels(channels);
-            this.cleanupConnections(connections);
-            return count > 0;
-        } catch (e) {
-            console.error('BaseHub::process()', e);
-            return false;
-        }
+        // 1. drive all channels to receive data
+        var channels = this.allChannels();
+        var count = this.driveChannels(channels);
+        // 2. drive all connections to move on
+        var connections = this.allConnections();
+        this.driveConnections(connections);
+        // 3. cleanup closed channels and connections
+        this.cleanupChannels(channels);
+        this.cleanupConnections(connections);
+        return count > 0;
     };
 
     //-------- namespace --------
     ns.socket.BaseHub = BaseHub;
-
-    ns.socket.registers('BaseHub');
 
 })(StarTrek, MONKEY);

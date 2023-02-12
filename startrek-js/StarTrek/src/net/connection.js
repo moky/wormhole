@@ -32,48 +32,41 @@
 
 //! require 'namespace.js'
 
-(function (ns, sys) {
+(function (ns, fsm, sys) {
     'use strict';
 
-    var Ticker = sys.threading.Ticker;
-    // var ConnectionState = ns.port.ConnectionState;
+    var Interface = sys.type.Interface;
+    var Ticker = fsm.threading.Ticker;
 
-    var Connection = function () {};
-    sys.Interface(Connection, [Ticker]);
+    var Connection = Interface(null, [Ticker]);
 
     //
     //  Flags
     //
 
     Connection.prototype.isOpen = function () {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     Connection.prototype.isBound = function () {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     Connection.prototype.isConnected = function () {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     Connection.prototype.isAlive = function () {
         // return this.isOpen() && (this.isConnected() || this.isBound());
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     Connection.prototype.getLocalAddress = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     Connection.prototype.getRemoteAddress = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -82,8 +75,7 @@
      * @return {ConnectionState}
      */
     Connection.prototype.getState = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -93,8 +85,7 @@
      * @return {int} count of bytes sent, -1 on error
      */
     Connection.prototype.send = function (data) {
-        ns.assert(false, 'implement me!');
-        return 0;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -103,32 +94,31 @@
      * @param {Uint8Array} data - received data
      */
     Connection.prototype.onReceived = function (data) {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     /**
      *  Close the connection
      */
     Connection.prototype.close = function () {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     //-------- namespace --------
     ns.net.Connection = Connection;
 
-    ns.net.registers('Connection');
-
-})(StarTrek, MONKEY);
+})(StarTrek, FiniteStateMachine, MONKEY);
 
 (function (ns, sys) {
     'use strict';
+
+    var Interface = sys.type.Interface;
 
     /**
      *  Connection Delegate
      *  ~~~~~~~~~~~~~~~~~~~
      */
-    var ConnectionDelegate = function () {};
-    sys.Interface(ConnectionDelegate, null);
+    var ConnectionDelegate = Interface(null, null);
 
     /**
      *  Called when connection state is changed
@@ -138,7 +128,7 @@
      * @param {Connection} connection    - current connection
      */
     ConnectionDelegate.prototype.onConnectionStateChanged = function (previous, current, connection) {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -148,7 +138,7 @@
      * @param {Connection} connection - current connection
      */
     ConnectionDelegate.prototype.onConnectionReceived = function (data, connection) {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -159,7 +149,7 @@
      * @param {Connection} connection - current connection
      */
     ConnectionDelegate.prototype.onConnectionSent = function (sent, data, connection) {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -170,7 +160,7 @@
      * @param {Connection} connection - current connection
      */
     ConnectionDelegate.prototype.onConnectionFailed = function (error, data, connection) {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -180,50 +170,42 @@
      * @param {Connection} connection - current connection
      */
     ConnectionDelegate.prototype.onConnectionError = function (error, connection) {
-        ns.assert(false, 'implement me!');
+        throw new Error('NotImplemented');
     };
 
     //-------- namespace --------
     ns.net.ConnectionDelegate = ConnectionDelegate;
-
-    ns.net.registers('ConnectionDelegate');
 
 })(StarTrek, MONKEY);
 
 (function (ns, sys) {
     'use strict';
 
-    var TimedConnection = function () {};
-    sys.Interface(TimedConnection, null);
+    var Interface = sys.type.Interface;
+
+    var TimedConnection = Interface(null, null);
 
     TimedConnection.prototype.getLastSentTime = function () {
-        ns.assert(false, 'implement me!');
-        return 0;
+        throw new Error('NotImplemented');
     };
 
     TimedConnection.prototype.getLastReceivedTime = function () {
-        ns.assert(false, 'implement me!');
-        return 0;
+        throw new Error('NotImplemented');
     };
 
     TimedConnection.prototype.isSentRecently = function () {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     TimedConnection.prototype.isReceivedRecently = function () {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     TimedConnection.prototype.isNotReceivedLongTimeAgo = function () {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     //-------- namespace --------
     ns.net.TimedConnection = TimedConnection;
-
-    ns.net.registers('TimedConnection');
 
 })(StarTrek, MONKEY);

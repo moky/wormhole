@@ -35,14 +35,33 @@
 (function (ns, sys) {
     'use strict';
 
+    var Interface = sys.type.Interface;
+    var Enum = sys.type.Enum;
+
+    var ShipStatus = Enum(null, {
+        //
+        //  Arrival Status
+        //
+        ASSEMBLING: (0x00),  // waiting for more fragments
+        EXPIRED:    (0x01),  // failed to received all fragments
+
+        //
+        //  Departure Status
+        //
+        NEW:        (0x10),  // not try yet
+        WAITING:    (0x11),  // sent, waiting for responses
+        TIMEOUT:    (0x12),  // waiting to send again
+        DONE:       (0x13),  // all fragments responded (or no need respond)
+        FAILED:     (0x14)   // tried 3 times and missed response(s)
+    });
+
     /**
      *  Star Ship
      *  ~~~~~~~~~
      *
      *  Container carrying data package
      */
-    var Ship = function () {};
-    sys.Interface(Ship, null);
+    var Ship = Interface(null, null);
 
     /**
      *  Get ID for this Ship
@@ -50,13 +69,30 @@
      * @return SN
      */
     Ship.prototype.getSN = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
+    };
+
+    /**
+     *  Update sent time
+     *
+     * @param {number} now - current time
+     */
+    Ship.prototype.touch = function (now) {
+        throw new Error('NotImplemented');
+    };
+
+    /**
+     *  Check ship state
+     *
+     * @param {number} now - current time
+     * @return {ShipStatus} current status
+     */
+    Ship.prototype.getStatus = function (now) {
+        throw new Error('NotImplemented');
     };
 
     //-------- namespace --------
     ns.port.Ship = Ship;
-
-    ns.port.registers('Ship');
+    ns.port.ShipStatus = ShipStatus;
 
 })(StarTrek, MONKEY);

@@ -33,33 +33,24 @@
 //! require <crypto.js>
 
 if (typeof StarTrek !== 'object') {
-    StarTrek = new MONKEY.Namespace();
+    StarTrek = {};
 }
 
-(function (ns, sys) {
+(function (ns) {
     'use strict';
-
-    if (typeof ns.assert !== 'function') {
-        ns.assert = console.assert;
-    }
 
     //-------- namespace --------
     if (typeof ns.type !== 'object') {
-        ns.type = new sys.Namespace();
+        ns.type = {};
     }
     if (typeof ns.net !== 'object') {
-        ns.net = new sys.Namespace();
+        ns.net = {};
     }
     if (typeof ns.port !== 'object') {
-        ns.port = new sys.Namespace();
+        ns.port = {};
     }
     if (typeof ns.socket !== 'object') {
-        ns.socket = new sys.Namespace();
+        ns.socket = {};
     }
 
-    ns.registers('type');
-    ns.registers('net');
-    ns.registers('port');
-    ns.registers('socket');
-
-})(StarTrek, MONKEY);
+})(StarTrek);

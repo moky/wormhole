@@ -36,8 +36,9 @@
 (function (ns, sys) {
     'use strict';
 
-    var SocketReader = function () {};
-    sys.Interface(SocketReader, null);
+    var Interface = sys.type.Interface;
+
+    var SocketReader = Interface(null, null);
 
     /**
      *  Read data from socket
@@ -46,8 +47,7 @@
      * @return {Uint8Array} received data
      */
     SocketReader.prototype.read = function (maxLen) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -57,12 +57,10 @@
      * @return {Uint8Array} received data
      */
     SocketReader.prototype.receive = function (maxLen) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
-    var SocketWriter = function () {};
-    sys.Interface(SocketWriter, null);
+    var SocketWriter = Interface(null, null);
 
     /**
      *  Write data into socket
@@ -71,8 +69,7 @@
      * @return {int} -1 on error
      */
     SocketWriter.prototype.write = function (src) {
-        ns.assert(false, 'implement me!');
-        return 0;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -83,16 +80,12 @@
      * @return {int} sent length, -1 on error
      */
     SocketWriter.prototype.send = function (src, target) {
-        ns.assert(false, 'implement me!');
-        return 0;
+        throw new Error('NotImplemented');
     };
 
     //-------- namespace --------
     ns.socket.SocketReader = SocketReader;
     ns.socket.SocketWriter = SocketWriter;
-
-    ns.socket.registers('SocketReader');
-    ns.socket.registers('SocketWriter');
 
 })(StarTrek, MONKEY);
 
@@ -126,6 +119,7 @@
 (function (ns, sys) {
     'use strict';
 
+    var Class = sys.type.Class;
     var AddressPairObject = ns.type.AddressPairObject;
     var Channel = ns.net.Channel;
 
@@ -150,7 +144,7 @@
         this.__bound = false;
         this.refreshFlags();
     };
-    sys.Class(BaseChannel, AddressPairObject, [Channel], null);
+    Class(BaseChannel, AddressPairObject, [Channel], null);
 
     // destroy()
     BaseChannel.prototype.finalize = function () {
@@ -164,8 +158,7 @@
      */
     // protected
     BaseChannel.prototype.createReader = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -173,8 +166,7 @@
      */
     // protected
     BaseChannel.prototype.createWriter = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -257,7 +249,6 @@
         }
         var sock = this.getSocket();
         var nc = sock.bind(local);
-        console.info('BaseChannel::bind()', local, sock);
         this.localAddress = local;
         this.__bound = true;
         this.__opened = true;
@@ -281,7 +272,7 @@
 
     // Override
     BaseChannel.prototype.disconnect = function () {
-        var sock = this.getSocket();
+        var sock = this.__sock;
         removeSocketChannel.call(this);
         return sock;
     };
@@ -338,7 +329,5 @@
 
     //-------- namespace --------
     ns.socket.BaseChannel = BaseChannel;
-
-    ns.socket.registers('BaseChannel');
 
 })(StarTrek, MONKEY);

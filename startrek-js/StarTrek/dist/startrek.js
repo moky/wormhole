@@ -1,54 +1,46 @@
 /**
- * Star Trek: Interstellar Transport (v0.2.0)
+ * Star Trek: Interstellar Transport (v0.2.2)
  *
  * @author    moKy <albert.moky at gmail.com>
- * @date      Jul. 5, 2022
- * @copyright (c) 2022 Albert Moky
+ * @date      Feb. 12, 2023
+ * @copyright (c) 2023 Albert Moky
  * @license   {@link https://mit-license.org | MIT License}
  */;
 if (typeof StarTrek !== "object") {
-    StarTrek = new MONKEY.Namespace();
+    StarTrek = {};
 }
-(function (ns, sys) {
-    if (typeof ns.assert !== "function") {
-        ns.assert = console.assert;
-    }
+(function (ns) {
     if (typeof ns.type !== "object") {
-        ns.type = new sys.Namespace();
+        ns.type = {};
     }
     if (typeof ns.net !== "object") {
-        ns.net = new sys.Namespace();
+        ns.net = {};
     }
     if (typeof ns.port !== "object") {
-        ns.port = new sys.Namespace();
+        ns.port = {};
     }
     if (typeof ns.socket !== "object") {
-        ns.socket = new sys.Namespace();
+        ns.socket = {};
     }
-    ns.registers("type");
-    ns.registers("net");
-    ns.registers("port");
-    ns.registers("socket");
-})(StarTrek, MONKEY);
+})(StarTrek);
 (function (ns, sys) {
+    var Interface = sys.type.Interface;
+    var Class = sys.type.Class;
     var Stringer = sys.type.Stringer;
     var ConstantString = sys.type.ConstantString;
-    var SocketAddress = function () {};
-    sys.Interface(SocketAddress, [Stringer]);
+    var SocketAddress = Interface(null, [Stringer]);
     SocketAddress.prototype.getHost = function () {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     SocketAddress.prototype.getPort = function () {
-        ns.assert(false, "implement me!");
-        return 0;
+        throw new Error("NotImplemented");
     };
     var InetSocketAddress = function (host, port) {
         ConstantString.call(this, "(" + host + ":" + port + ")");
         this.__host = host;
         this.__port = port;
     };
-    sys.Class(InetSocketAddress, ConstantString, [SocketAddress], null);
+    Class(InetSocketAddress, ConstantString, [SocketAddress], null);
     InetSocketAddress.prototype.getHost = function () {
         return this.__host;
     };
@@ -57,72 +49,58 @@ if (typeof StarTrek !== "object") {
     };
     ns.type.SocketAddress = SocketAddress;
     ns.type.InetSocketAddress = InetSocketAddress;
-    ns.type.registers("SocketAddress");
-    ns.type.registers("InetSocketAddress");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
-    var KeyPairMap = function () {};
-    sys.Interface(KeyPairMap, null);
-    KeyPairMap.prototype.allValues = function () {
-        ns.assert(false, "implement me!");
-        return null;
+    var Interface = sys.type.Interface;
+    var KeyPairMap = Interface(null, null);
+    KeyPairMap.prototype.values = function () {
+        throw new Error("NotImplemented");
     };
     KeyPairMap.prototype.get = function (remote, local) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     KeyPairMap.prototype.set = function (remote, local, value) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     KeyPairMap.prototype.remove = function (remote, local, value) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     ns.type.KeyPairMap = KeyPairMap;
-    ns.type.registers("KeyPairMap");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
-    var Dictionary = sys.type.Dictionary;
+    var Class = sys.type.Class;
     var KeyPairMap = ns.type.KeyPairMap;
     var HashKeyPairMap = function (any) {
         Object.call(this);
         this.__default = any;
-        this.__map = new Dictionary();
+        this.__map = {};
         this.__values = [];
     };
-    sys.Class(HashKeyPairMap, Object, [KeyPairMap], null);
-    HashKeyPairMap.prototype.allValues = function () {
+    Class(HashKeyPairMap, Object, [KeyPairMap], null);
+    HashKeyPairMap.prototype.values = function () {
         return this.__values;
     };
     HashKeyPairMap.prototype.get = function (remote, local) {
-        var key1, key2;
-        if (remote) {
-            key1 = remote;
-            key2 = local;
-        } else {
-            key1 = local;
-            key2 = null;
-        }
-        var table = this.__map.getValue(key1);
+        var keys = get_keys(remote, local, this.__default);
+        var table = this.__map[keys[0]];
         if (!table) {
             return null;
         }
         var value;
-        if (key2) {
-            value = table.getValue(key2);
+        if (keys[1]) {
+            value = table[keys[1]];
             if (value) {
                 return value;
             }
-            return table.getValue(this.__default);
+            return table[this.__default];
         }
-        value = table.getValue(this.__default);
+        value = table[this.__default];
         if (value) {
             return value;
         }
-        var allKeys = table.allKeys();
+        var allKeys = Object.keys(table);
         for (var i = 0; i < allKeys.length; ++i) {
-            value = table.getValue(allKeys[i]);
+            value = table[allKeys[i]];
             if (value) {
                 return value;
             }
@@ -135,23 +113,27 @@ if (typeof StarTrek !== "object") {
             this.__values.push(value);
         }
         var keys = get_keys(remote, local, this.__default);
-        var table = this.__map.getValue(keys.key1);
+        var table = this.__map[keys[0]];
         if (table) {
-            table.setValue(keys.key2, value);
+            if (!value) {
+                delete table[keys[1]];
+            } else {
+                table[keys[1]] = value;
+            }
         } else {
             if (value) {
-                table = new Dictionary();
-                table.setValue(keys.key2, value);
-                this.__map.setValue(keys.key1, table);
+                table = {};
+                table[keys[1]] = value;
+                this.__map[keys[0]] = table;
             }
         }
     };
     HashKeyPairMap.prototype.remove = function (remote, local, value) {
         var keys = get_keys(remote, local, this.__default);
-        var table = this.__map.getValue(keys.key1);
+        var table = this.__map[keys[0]];
         var old = null;
         if (table) {
-            old = table.removeValue(keys.key2);
+            old = table[keys[1]];
             if (old) {
                 remove_item(this.__values, old);
             }
@@ -163,12 +145,12 @@ if (typeof StarTrek !== "object") {
     };
     var get_keys = function (remoteAddress, localAddress, defaultAddress) {
         if (!remoteAddress) {
-            return { key1: localAddress, key2: defaultAddress };
+            return [localAddress, defaultAddress];
         } else {
             if (!localAddress) {
-                return { key1: remoteAddress, key2: defaultAddress };
+                return [remoteAddress, defaultAddress];
             } else {
-                return { key1: remoteAddress, key2: localAddress };
+                return [remoteAddress, localAddress];
             }
         }
     };
@@ -198,40 +180,33 @@ if (typeof StarTrek !== "object") {
         }
     };
     ns.type.HashKeyPairMap = HashKeyPairMap;
-    ns.type.registers("HashKeyPairMap");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
+    var Class = sys.type.Class;
     var InetSocketAddress = ns.type.InetSocketAddress;
     var HashKeyPairMap = ns.type.HashKeyPairMap;
     var AnyAddress = new InetSocketAddress("0.0.0.0", 0);
     var AddressPairMap = function () {
         HashKeyPairMap.call(this, AnyAddress);
     };
-    sys.Class(AddressPairMap, HashKeyPairMap, null, null);
+    Class(AddressPairMap, HashKeyPairMap, null, null);
     AddressPairMap.AnyAddress = AnyAddress;
     ns.type.AddressPairMap = AddressPairMap;
-    ns.type.registers("AddressPairMap");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
+    var Class = sys.type.Class;
     var BaseObject = sys.type.BaseObject;
     var AddressPairObject = function (remote, local) {
         BaseObject.call(this);
         this.remoteAddress = remote;
         this.localAddress = local;
     };
-    sys.Class(AddressPairObject, BaseObject, null, null);
+    Class(AddressPairObject, BaseObject, null, null);
     AddressPairObject.prototype.getRemoteAddress = function () {
         return this.remoteAddress;
     };
     AddressPairObject.prototype.getLocalAddress = function () {
         return this.localAddress;
-    };
-    var address_equals = function (address1, address2) {
-        if (address1) {
-            return address1.equals(address2);
-        } else {
-            return !address2;
-        }
     };
     AddressPairObject.prototype.equals = function (other) {
         if (!other) {
@@ -252,6 +227,19 @@ if (typeof StarTrek !== "object") {
         }
     };
     AddressPairObject.prototype.valueOf = function () {
+        return desc.call(this);
+    };
+    AddressPairObject.prototype.toString = function () {
+        return desc.call(this);
+    };
+    var address_equals = function (address1, address2) {
+        if (address1) {
+            return address1.equals(address2);
+        } else {
+            return !address2;
+        }
+    };
+    var desc = function () {
         var cname = this.constructor.name;
         var remote = this.getRemoteAddress();
         var local = this.getLocalAddress();
@@ -261,89 +249,72 @@ if (typeof StarTrek !== "object") {
         if (local) {
             local = local.toString();
         }
-        return "<" + cname + ": remote=" + remote + ", local=" + local + " />";
+        return "<" + cname + ' remote="' + remote + '" local="' + local + '" />';
     };
     ns.type.AddressPairObject = AddressPairObject;
-    ns.type.registers("AddressPairObject");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
-    var Channel = function () {};
-    sys.Interface(Channel, null);
+    var Interface = sys.type.Interface;
+    var Channel = Interface(null, null);
     Channel.prototype.isOpen = function () {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     Channel.prototype.isBound = function () {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     Channel.prototype.isAlive = function () {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     Channel.prototype.close = function () {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     Channel.prototype.read = function (maxLen) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Channel.prototype.write = function (src) {
-        ns.assert(false, "implement me!");
-        return 0;
+        throw new Error("NotImplemented");
     };
     Channel.prototype.configureBlocking = function (block) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Channel.prototype.isBlocking = function () {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     Channel.prototype.bind = function (local) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Channel.prototype.getLocalAddress = function () {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Channel.prototype.isConnected = function () {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     Channel.prototype.connect = function (remote) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Channel.prototype.getRemoteAddress = function () {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Channel.prototype.disconnect = function () {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Channel.prototype.receive = function (maxLen) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Channel.prototype.send = function (src, target) {
-        ns.assert(false, "implement me!");
-        return 0;
+        throw new Error("NotImplemented");
     };
     ns.net.Channel = Channel;
-    ns.net.registers("Channel");
 })(StarTrek, MONKEY);
 (function (ns, fsm, sys) {
-    var Stringer = sys.type.Stringer;
+    var Class = sys.type.Class;
     var BaseState = fsm.BaseState;
     var ConnectionState = function (name) {
         BaseState.call(this);
         this.__name = name;
         this.__enterTime = 0;
     };
-    sys.Class(ConnectionState, BaseState, null, null);
+    Class(ConnectionState, BaseState, null, null);
     ConnectionState.DEFAULT = "default";
     ConnectionState.PREPARING = "preparing";
     ConnectionState.READY = "ready";
@@ -354,10 +325,10 @@ if (typeof StarTrek !== "object") {
         if (this === other) {
             return true;
         } else {
-            if (other instanceof ConnectionState) {
-                return this.__name === other.toString();
+            if (!other) {
+                return false;
             } else {
-                if (sys.Interface.conforms(other, Stringer)) {
+                if (other instanceof ConnectionState) {
                     return this.__name === other.toString();
                 } else {
                     return this.__name === other;
@@ -365,74 +336,32 @@ if (typeof StarTrek !== "object") {
             }
         }
     };
+    ConnectionState.prototype.valueOf = function () {
+        return this.__name;
+    };
     ConnectionState.prototype.toString = function () {
+        return this.__name;
+    };
+    ConnectionState.prototype.getName = function () {
         return this.__name;
     };
     ConnectionState.prototype.getEnterTime = function () {
         return this.__enterTime;
     };
-    ConnectionState.prototype.onEnter = function (previous, machine) {
-        this.__enterTime = new Date().getTime();
+    ConnectionState.prototype.onEnter = function (previous, machine, now) {
+        this.__enterTime = now;
     };
-    ConnectionState.prototype.onExit = function (next, machine) {
+    ConnectionState.prototype.onExit = function (next, machine, now) {
         this.__enterTime = 0;
     };
     ConnectionState.prototype.onPause = function (machine) {};
     ConnectionState.prototype.onResume = function (machine) {};
     ConnectionState.Delegate = fsm.Delegate;
-    ns.net.ConnectionState = ConnectionState;
-    ns.net.registers("ConnectionState");
-})(StarTrek, FiniteStateMachine, MONKEY);
-(function (ns, fsm, sys) {
-    var BaseTransition = fsm.BaseTransition;
-    var StateTransition = function (targetStateName, evaluate) {
-        BaseTransition.call(this, targetStateName);
-        this.__evaluate = evaluate;
-    };
-    sys.Class(StateTransition, BaseTransition, null, null);
-    StateTransition.prototype.evaluate = function (machine) {
-        return this.__evaluate.call(this, machine);
-    };
-    ns.net.StateTransition = StateTransition;
-    ns.net.registers("StateTransition");
-})(StarTrek, FiniteStateMachine, MONKEY);
-(function (ns, fsm, sys) {
-    var Context = fsm.Context;
-    var BaseMachine = fsm.BaseMachine;
-    var ConnectionState = ns.net.ConnectionState;
-    var StateTransition = ns.net.StateTransition;
-    var StateMachine = function (connection) {
-        BaseMachine.call(this);
-        this.__connection = connection;
-        var builder = this.getStateBuilder();
-        init_states(this, builder);
-    };
-    sys.Class(StateMachine, BaseMachine, [Context], null);
-    StateMachine.prototype.getStateBuilder = function () {
-        return new StateBuilder(new TransitionBuilder());
-    };
-    StateMachine.prototype.getConnection = function () {
-        return this.__connection;
-    };
-    StateMachine.prototype.getContext = function () {
-        return this;
-    };
-    var add_state = function (machine, state) {
-        machine.setState(state.toString(), state);
-    };
-    var init_states = function (machine, builder) {
-        add_state(machine, builder.getDefaultState());
-        add_state(machine, builder.getPreparingState());
-        add_state(machine, builder.getReadyState());
-        add_state(machine, builder.getExpiredState());
-        add_state(machine, builder.getMaintainingState());
-        add_state(machine, builder.getErrorState());
-    };
     var StateBuilder = function (transitionBuilder) {
         Object.call(this);
         this.builder = transitionBuilder;
     };
-    sys.Class(StateBuilder, Object, null, {
+    Class(StateBuilder, Object, null, {
         getDefaultState: function () {
             var state = getNamedState(ConnectionState.DEFAULT);
             state.addTransition(this.builder.getDefaultPreparingTransition());
@@ -472,92 +401,138 @@ if (typeof StarTrek !== "object") {
     var getNamedState = function (name) {
         return new ConnectionState(name);
     };
+    ns.net.ConnectionState = ConnectionState;
+    ns.net.StateBuilder = StateBuilder;
+})(StarTrek, FiniteStateMachine, MONKEY);
+(function (ns, fsm, sys) {
+    var Class = sys.type.Class;
+    var BaseTransition = fsm.BaseTransition;
+    var ConnectionState = ns.net.ConnectionState;
+    var StateTransition = function (targetStateName, evaluate) {
+        BaseTransition.call(this, targetStateName);
+        this.__evaluate = evaluate;
+    };
+    Class(StateTransition, BaseTransition, null, null);
+    StateTransition.prototype.evaluate = function (machine, now) {
+        return this.__evaluate.call(this, machine, now);
+    };
     var TransitionBuilder = function () {
         Object.call(this);
     };
-    sys.Class(TransitionBuilder, Object, null, {
+    Class(TransitionBuilder, Object, null, {
         getDefaultPreparingTransition: function () {
-            return new StateTransition(ConnectionState.PREPARING, function (machine) {
+            return new StateTransition(ConnectionState.PREPARING, function (
+                machine,
+                now
+            ) {
                 var conn = machine.getConnection();
                 return conn && conn.isOpen();
             });
         },
         getPreparingReadyTransition: function () {
-            return new StateTransition(ConnectionState.READY, function (machine) {
+            return new StateTransition(ConnectionState.READY, function (
+                machine,
+                now
+            ) {
                 var conn = machine.getConnection();
                 return conn && conn.isAlive();
             });
         },
         getPreparingDefaultTransition: function () {
-            return new StateTransition(ConnectionState.DEFAULT, function (machine) {
+            return new StateTransition(ConnectionState.DEFAULT, function (
+                machine,
+                now
+            ) {
                 var conn = machine.getConnection();
                 return !conn || !conn.isOpen();
             });
         },
         getReadyExpiredTransition: function () {
-            return new StateTransition(ConnectionState.EXPIRED, function (machine) {
+            return new StateTransition(ConnectionState.EXPIRED, function (
+                machine,
+                now
+            ) {
                 var conn = machine.getConnection();
                 if (!conn || !conn.isAlive()) {
                     return false;
                 }
-                return !conn.isReceivedRecently(new Date().getTime());
+                return !conn.isReceivedRecently(now);
             });
         },
         getReadyErrorTransition: function () {
-            return new StateTransition(ConnectionState.ERROR, function (machine) {
+            return new StateTransition(ConnectionState.ERROR, function (
+                machine,
+                now
+            ) {
                 var conn = machine.getConnection();
                 return !conn || !conn.isAlive();
             });
         },
         getExpiredMaintainingTransition: function () {
             return new StateTransition(ConnectionState.MAINTAINING, function (
-                machine
+                machine,
+                now
             ) {
                 var conn = machine.getConnection();
                 if (!conn || !conn.isAlive()) {
                     return false;
                 }
-                return conn.isSentRecently(new Date().getTime());
+                return conn.isSentRecently(now);
             });
         },
         getExpiredErrorTransition: function () {
-            return new StateTransition(ConnectionState.ERROR, function (machine) {
+            return new StateTransition(ConnectionState.ERROR, function (
+                machine,
+                now
+            ) {
                 var conn = machine.getConnection();
                 if (!conn || !conn.isAlive()) {
                     return true;
                 }
-                return conn.isNotReceivedLongTimeAgo(new Date().getTime());
+                return conn.isNotReceivedLongTimeAgo(now);
             });
         },
         getMaintainingReadyTransition: function () {
-            return new StateTransition(ConnectionState.READY, function (machine) {
+            return new StateTransition(ConnectionState.READY, function (
+                machine,
+                now
+            ) {
                 var conn = machine.getConnection();
                 if (!conn || !conn.isAlive()) {
                     return false;
                 }
-                return conn.isReceivedRecently(new Date().getTime());
+                return conn.isReceivedRecently(now);
             });
         },
         getMaintainingExpiredTransition: function () {
-            return new StateTransition(ConnectionState.EXPIRED, function (machine) {
+            return new StateTransition(ConnectionState.EXPIRED, function (
+                machine,
+                now
+            ) {
                 var conn = machine.getConnection();
                 if (!conn || !conn.isAlive()) {
                     return false;
                 }
-                return !conn.isSentRecently(new Date().getTime());
+                return !conn.isSentRecently(now);
             });
         },
         getMaintainingErrorTransition: function () {
-            return new StateTransition(ConnectionState.ERROR, function (machine) {
+            return new StateTransition(ConnectionState.ERROR, function (
+                machine,
+                now
+            ) {
                 var conn = machine.getConnection();
                 if (!conn || !conn.isAlive()) {
                     return true;
                 }
-                return conn.isNotReceivedLongTimeAgo(new Date().getTime());
+                return conn.isNotReceivedLongTimeAgo(now);
             });
         },
         getErrorDefaultTransition: function () {
-            return new StateTransition(ConnectionState.DEFAULT, function (machine) {
+            return new StateTransition(ConnectionState.DEFAULT, function (
+                machine,
+                now
+            ) {
                 var conn = machine.getConnection();
                 if (!conn || !conn.isAlive()) {
                     return false;
@@ -568,262 +543,247 @@ if (typeof StarTrek !== "object") {
             });
         }
     });
-    ns.net.StateMachine = StateMachine;
-    ns.net.registers("StateMachine");
+    ns.net.StateTransition = StateTransition;
+    ns.net.TransitionBuilder = TransitionBuilder;
 })(StarTrek, FiniteStateMachine, MONKEY);
-(function (ns, sys) {
-    var Ticker = sys.threading.Ticker;
-    var Connection = function () {};
-    sys.Interface(Connection, [Ticker]);
+(function (ns, fsm, sys) {
+    var Class = sys.type.Class;
+    var Context = fsm.Context;
+    var BaseMachine = fsm.BaseMachine;
+    var ConnectionState = ns.net.ConnectionState;
+    var StateBuilder = ns.net.StateBuilder;
+    var TransitionBuilder = ns.net.TransitionBuilder;
+    var StateMachine = function (connection) {
+        BaseMachine.call(this, ConnectionState.DEFAULT);
+        this.__connection = connection;
+        var builder = this.createStateBuilder();
+        add_state(this, builder.getDefaultState());
+        add_state(this, builder.getPreparingState());
+        add_state(this, builder.getReadyState());
+        add_state(this, builder.getExpiredState());
+        add_state(this, builder.getMaintainingState());
+        add_state(this, builder.getErrorState());
+    };
+    Class(StateMachine, BaseMachine, [Context], null);
+    StateMachine.prototype.createStateBuilder = function () {
+        return new StateBuilder(new TransitionBuilder());
+    };
+    StateMachine.prototype.getConnection = function () {
+        return this.__connection;
+    };
+    StateMachine.prototype.getContext = function () {
+        return this;
+    };
+    var add_state = function (machine, state) {
+        machine.setState(state.getName(), state);
+    };
+    ns.net.StateMachine = StateMachine;
+})(StarTrek, FiniteStateMachine, MONKEY);
+(function (ns, fsm, sys) {
+    var Interface = sys.type.Interface;
+    var Ticker = fsm.threading.Ticker;
+    var Connection = Interface(null, [Ticker]);
     Connection.prototype.isOpen = function () {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     Connection.prototype.isBound = function () {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     Connection.prototype.isConnected = function () {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     Connection.prototype.isAlive = function () {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     Connection.prototype.getLocalAddress = function () {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Connection.prototype.getRemoteAddress = function () {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Connection.prototype.getState = function () {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Connection.prototype.send = function (data) {
-        ns.assert(false, "implement me!");
-        return 0;
+        throw new Error("NotImplemented");
     };
     Connection.prototype.onReceived = function (data) {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     Connection.prototype.close = function () {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     ns.net.Connection = Connection;
-    ns.net.registers("Connection");
-})(StarTrek, MONKEY);
+})(StarTrek, FiniteStateMachine, MONKEY);
 (function (ns, sys) {
-    var ConnectionDelegate = function () {};
-    sys.Interface(ConnectionDelegate, null);
+    var Interface = sys.type.Interface;
+    var ConnectionDelegate = Interface(null, null);
     ConnectionDelegate.prototype.onConnectionStateChanged = function (
         previous,
         current,
         connection
     ) {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     ConnectionDelegate.prototype.onConnectionReceived = function (
         data,
         connection
     ) {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     ConnectionDelegate.prototype.onConnectionSent = function (
         sent,
         data,
         connection
     ) {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     ConnectionDelegate.prototype.onConnectionFailed = function (
         error,
         data,
         connection
     ) {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     ConnectionDelegate.prototype.onConnectionError = function (
         error,
         connection
     ) {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     ns.net.ConnectionDelegate = ConnectionDelegate;
-    ns.net.registers("ConnectionDelegate");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
-    var TimedConnection = function () {};
-    sys.Interface(TimedConnection, null);
+    var Interface = sys.type.Interface;
+    var TimedConnection = Interface(null, null);
     TimedConnection.prototype.getLastSentTime = function () {
-        ns.assert(false, "implement me!");
-        return 0;
+        throw new Error("NotImplemented");
     };
     TimedConnection.prototype.getLastReceivedTime = function () {
-        ns.assert(false, "implement me!");
-        return 0;
+        throw new Error("NotImplemented");
     };
     TimedConnection.prototype.isSentRecently = function () {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     TimedConnection.prototype.isReceivedRecently = function () {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     TimedConnection.prototype.isNotReceivedLongTimeAgo = function () {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     ns.net.TimedConnection = TimedConnection;
-    ns.net.registers("TimedConnection");
 })(StarTrek, MONKEY);
-(function (ns, sys) {
-    var Processor = sys.skywalker.Processor;
-    var Hub = function () {};
-    sys.Interface(Hub, [Processor]);
+(function (ns, fsm, sys) {
+    var Interface = sys.type.Interface;
+    var Processor = fsm.skywalker.Processor;
+    var Hub = Interface(null, [Processor]);
     Hub.prototype.open = function (remote, local) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Hub.prototype.connect = function (remote, local) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     ns.net.Hub = Hub;
-    ns.net.registers("Hub");
-})(StarTrek, MONKEY);
+})(StarTrek, FiniteStateMachine, MONKEY);
 (function (ns, sys) {
-    var Ship = function () {};
-    sys.Interface(Ship, null);
+    var Interface = sys.type.Interface;
+    var Enum = sys.type.Enum;
+    var ShipStatus = Enum(null, {
+        ASSEMBLING: 0,
+        EXPIRED: 1,
+        NEW: 16,
+        WAITING: 17,
+        TIMEOUT: 18,
+        DONE: 19,
+        FAILED: 20
+    });
+    var Ship = Interface(null, null);
     Ship.prototype.getSN = function () {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
+    };
+    Ship.prototype.touch = function (now) {
+        throw new Error("NotImplemented");
+    };
+    Ship.prototype.getStatus = function (now) {
+        throw new Error("NotImplemented");
     };
     ns.port.Ship = Ship;
-    ns.port.registers("Ship");
+    ns.port.ShipStatus = ShipStatus;
 })(StarTrek, MONKEY);
 (function (ns, sys) {
+    var Interface = sys.type.Interface;
     var Ship = ns.port.Ship;
-    var Arrival = function () {};
-    sys.Interface(Arrival, [Ship]);
+    var Arrival = Interface(null, [Ship]);
     Arrival.prototype.assemble = function (income) {
-        ns.assert(false, "implement me!");
-        return null;
-    };
-    Arrival.prototype.isTimeout = function (now) {
-        ns.assert(false, "implement me!");
-        return false;
-    };
-    Arrival.prototype.touch = function (now) {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     ns.port.Arrival = Arrival;
-    ns.port.registers("Arrival");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
+    var Interface = sys.type.Interface;
+    var Enum = sys.type.Enum;
     var Ship = ns.port.Ship;
-    var Departure = function () {};
-    sys.Interface(Departure, [Ship]);
-    var DeparturePriority = sys.type.Enum(null, {
-        URGENT: -1,
-        NORMAL: 0,
-        SLOWER: 1
-    });
+    var DeparturePriority = Enum(null, { URGENT: -1, NORMAL: 0, SLOWER: 1 });
+    var Departure = Interface(null, [Ship]);
     Departure.prototype.getPriority = function () {
-        ns.assert(false, "implement me!");
-        return 0;
+        throw new Error("NotImplemented");
     };
     Departure.prototype.getFragments = function () {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Departure.prototype.checkResponse = function (response) {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
-    Departure.prototype.isNew = function () {
-        ns.assert(false, "implement me!");
-        return false;
-    };
-    Departure.prototype.isDisposable = function () {
-        ns.assert(false, "implement me!");
-        return false;
-    };
-    Departure.prototype.isTimeout = function (now) {
-        ns.assert(false, "implement me!");
-        return false;
-    };
-    Departure.prototype.isFailed = function (now) {
-        ns.assert(false, "implement me!");
-        return false;
-    };
-    Departure.prototype.touch = function (now) {
-        ns.assert(false, "implement me!");
+    Departure.prototype.isImportant = function () {
+        throw new Error("NotImplemented");
     };
     Departure.Priority = DeparturePriority;
     ns.port.Departure = Departure;
-    ns.port.registers("Departure");
 })(StarTrek, MONKEY);
-(function (ns, sys) {
-    var Processor = sys.skywalker.Processor;
-    var Docker = function () {};
-    sys.Interface(Docker, [Processor]);
+(function (ns, fsm, sys) {
+    var Interface = sys.type.Interface;
+    var Processor = fsm.skywalker.Processor;
+    var Docker = Interface(null, [Processor]);
     Docker.prototype.isOpen = function () {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     Docker.prototype.isAlive = function () {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     Docker.prototype.getStatus = function () {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Docker.prototype.getRemoteAddress = function () {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Docker.prototype.getLocalAddress = function () {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     Docker.prototype.sendData = function (payload) {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     Docker.prototype.sendShip = function (ship) {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     Docker.prototype.processReceived = function (data) {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     Docker.prototype.heartbeat = function () {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     Docker.prototype.purge = function () {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     Docker.prototype.close = function () {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     ns.port.Docker = Docker;
-    ns.port.registers("Docker");
-})(StarTrek, MONKEY);
+})(StarTrek, FiniteStateMachine, MONKEY);
 (function (ns, sys) {
-    var ConnectionState = ns.net.ConnectionState;
-    var DockerStatus = sys.type.Enum(null, {
-        ERROR: -1,
-        INIT: 0,
-        PREPARING: 1,
-        READY: 2
-    });
+    var Enum = sys.type.Enum;
+    var DockerStatus = Enum(null, { ERROR: -1, INIT: 0, PREPARING: 1, READY: 2 });
     DockerStatus.getStatus = function (state) {
+        var ConnectionState = ns.net.ConnectionState;
         if (!state) {
             return DockerStatus.ERROR;
         } else {
@@ -847,79 +807,68 @@ if (typeof StarTrek !== "object") {
         }
     };
     ns.port.DockerStatus = DockerStatus;
-    ns.port.registers("DockerStatus");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
-    var DockerDelegate = function () {};
-    sys.Interface(DockerDelegate, null);
+    var Interface = sys.type.Interface;
+    var DockerDelegate = Interface(null, null);
     DockerDelegate.prototype.onDockerReceived = function (arrival, docker) {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     DockerDelegate.prototype.onDockerSent = function (departure, docker) {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     DockerDelegate.prototype.onDockerFailed = function (
         error,
         departure,
         docker
     ) {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     DockerDelegate.prototype.onDockerError = function (error, departure, docker) {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     DockerDelegate.prototype.onDockerStatusChanged = function (
         previous,
         current,
         docker
     ) {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     ns.port.DockerDelegate = DockerDelegate;
-    ns.port.registers("DockerDelegate");
 })(StarTrek, MONKEY);
-(function (ns, sys) {
-    var Processor = sys.skywalker.Processor;
-    var Gate = function () {};
-    sys.Interface(Gate, [Processor]);
+(function (ns, fsm, sys) {
+    var Interface = sys.type.Interface;
+    var Processor = fsm.skywalker.Processor;
+    var Gate = Interface(null, [Processor]);
     Gate.prototype.sendData = function (payload, remote, local) {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     Gate.prototype.sendShip = function (outgo, remote, local) {
-        ns.assert(false, "implement me!");
-        return false;
+        throw new Error("NotImplemented");
     };
     ns.port.Gate = Gate;
-    ns.port.registers("Gate");
-})(StarTrek, MONKEY);
+})(StarTrek, FiniteStateMachine, MONKEY);
 (function (ns, sys) {
-    var SocketReader = function () {};
-    sys.Interface(SocketReader, null);
+    var Interface = sys.type.Interface;
+    var SocketReader = Interface(null, null);
     SocketReader.prototype.read = function (maxLen) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     SocketReader.prototype.receive = function (maxLen) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
-    var SocketWriter = function () {};
-    sys.Interface(SocketWriter, null);
+    var SocketWriter = Interface(null, null);
     SocketWriter.prototype.write = function (src) {
-        ns.assert(false, "implement me!");
-        return 0;
+        throw new Error("NotImplemented");
     };
     SocketWriter.prototype.send = function (src, target) {
-        ns.assert(false, "implement me!");
-        return 0;
+        throw new Error("NotImplemented");
     };
     ns.socket.SocketReader = SocketReader;
     ns.socket.SocketWriter = SocketWriter;
-    ns.socket.registers("SocketReader");
-    ns.socket.registers("SocketWriter");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
+    var Class = sys.type.Class;
     var AddressPairObject = ns.type.AddressPairObject;
     var Channel = ns.net.Channel;
     var BaseChannel = function (remote, local, sock) {
@@ -933,17 +882,15 @@ if (typeof StarTrek !== "object") {
         this.__bound = false;
         this.refreshFlags();
     };
-    sys.Class(BaseChannel, AddressPairObject, [Channel], null);
+    Class(BaseChannel, AddressPairObject, [Channel], null);
     BaseChannel.prototype.finalize = function () {
         removeSocketChannel.call(this);
     };
     BaseChannel.prototype.createReader = function () {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     BaseChannel.prototype.createWriter = function () {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     BaseChannel.prototype.refreshFlags = function () {
         var sock = this.__sock;
@@ -997,7 +944,6 @@ if (typeof StarTrek !== "object") {
         }
         var sock = this.getSocket();
         var nc = sock.bind(local);
-        console.info("BaseChannel::bind()", local, sock);
         this.localAddress = local;
         this.__bound = true;
         this.__opened = true;
@@ -1017,7 +963,7 @@ if (typeof StarTrek !== "object") {
         return sock;
     };
     BaseChannel.prototype.disconnect = function () {
-        var sock = this.getSocket();
+        var sock = this.__sock;
         removeSocketChannel.call(this);
         return sock;
     };
@@ -1057,28 +1003,21 @@ if (typeof StarTrek !== "object") {
         }
     };
     ns.socket.BaseChannel = BaseChannel;
-    ns.socket.registers("BaseChannel");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
-    var ChannelChecker = function () {};
-    sys.Interface(ChannelChecker, null);
+    var Interface = sys.type.Interface;
+    var Class = sys.type.Class;
+    var ChannelChecker = Interface(null, null);
     ChannelChecker.prototype.checkError = function (error, sock) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     ChannelChecker.prototype.checkData = function (data, sock) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
-    ns.socket.ChannelChecker = ChannelChecker;
-    ns.socket.registers("ChannelChecker");
-})(StarTrek, MONKEY);
-(function (ns, sys) {
-    var ChannelChecker = ns.socket.ChannelChecker;
     var DefaultChecker = function () {
         Object.call(this);
     };
-    sys.Class(DefaultChecker, Object, [ChannelChecker], {
+    Class(DefaultChecker, Object, [ChannelChecker], {
         checkError: function (error, sock) {
             return error;
         },
@@ -1091,7 +1030,7 @@ if (typeof StarTrek !== "object") {
         this.__channel = channel;
         this.__checker = this.createChecker();
     };
-    sys.Class(ChannelController, Object, [ChannelChecker], null);
+    Class(ChannelController, Object, [ChannelChecker], null);
     ChannelController.prototype.getChannel = function () {
         return this.__channel;
     };
@@ -1117,16 +1056,16 @@ if (typeof StarTrek !== "object") {
         return this.__checker.checkData(data, sock);
     };
     ns.socket.ChannelController = ChannelController;
-    ns.socket.registers("ChannelController");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
+    var Class = sys.type.Class;
     var SocketReader = ns.socket.SocketReader;
     var SocketWriter = ns.socket.SocketWriter;
     var ChannelController = ns.socket.ChannelController;
     var ChannelReader = function (channel) {
         ChannelController.call(this, channel);
     };
-    sys.Class(ChannelReader, ChannelController, [SocketReader], {
+    Class(ChannelReader, ChannelController, [SocketReader], {
         read: function (maxLen) {
             var sock = this.getSocket();
             var data = this.tryRead(maxLen, sock);
@@ -1151,7 +1090,7 @@ if (typeof StarTrek !== "object") {
     var ChannelWriter = function (channel) {
         ChannelController.call(this, channel);
     };
-    sys.Class(ChannelWriter, ChannelController, [SocketWriter], {
+    Class(ChannelWriter, ChannelController, [SocketWriter], {
         write: function (data) {
             var sock = this.getSocket();
             var sent = 0;
@@ -1185,10 +1124,9 @@ if (typeof StarTrek !== "object") {
     });
     ns.socket.ChannelReader = ChannelReader;
     ns.socket.ChannelWriter = ChannelWriter;
-    ns.socket.registers("ChannelReader");
-    ns.socket.registers("ChannelWriter");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
+    var Class = sys.type.Class;
     var AddressPairObject = ns.type.AddressPairObject;
     var Connection = ns.net.Connection;
     var TimedConnection = ns.net.TimedConnection;
@@ -1202,7 +1140,7 @@ if (typeof StarTrek !== "object") {
         this.__lastReceivedTime = 0;
         this.__fsm = null;
     };
-    sys.Class(
+    Class(
         BaseConnection,
         AddressPairObject,
         [Connection, TimedConnection, ConnectionState.Delegate],
@@ -1325,10 +1263,10 @@ if (typeof StarTrek !== "object") {
         var machine = this.getStateMachine();
         return machine ? machine.getCurrentState() : null;
     };
-    BaseConnection.prototype.tick = function (now, delta) {
+    BaseConnection.prototype.tick = function (now, elapsed) {
         var machine = this.getStateMachine();
         if (machine) {
-            machine.tick(now, delta);
+            machine.tick(now, elapsed);
         }
     };
     BaseConnection.prototype.getLastSentTime = function () {
@@ -1368,15 +1306,15 @@ if (typeof StarTrek !== "object") {
     BaseConnection.prototype.pauseState = function (current, machine) {};
     BaseConnection.prototype.resumeState = function (current, machine) {};
     ns.socket.BaseConnection = BaseConnection;
-    ns.socket.registers("BaseConnection");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
+    var Class = sys.type.Class;
     var BaseConnection = ns.socket.BaseConnection;
     var ActiveConnection = function (remote, local, channel, hub) {
         BaseConnection.call(this, remote, local, channel);
         this.__hub = hub;
     };
-    sys.Class(ActiveConnection, BaseConnection, null, {
+    Class(ActiveConnection, BaseConnection, null, {
         isOpen: function () {
             return this.getStateMachine() !== null;
         },
@@ -1393,14 +1331,15 @@ if (typeof StarTrek !== "object") {
         }
     });
     ns.socket.ActiveConnection = ActiveConnection;
-    ns.socket.registers("ActiveConnection");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
+    var Class = sys.type.Class;
     var AddressPairMap = ns.type.AddressPairMap;
+    var Hub = ns.net.Hub;
     var ConnectionPool = function () {
         AddressPairMap.call(this);
     };
-    sys.Class(ConnectionPool, AddressPairMap, null, {
+    Class(ConnectionPool, AddressPairMap, null, {
         set: function (remote, local, value) {
             var old = this.get(remote, local);
             if (old && old !== value) {
@@ -1421,19 +1360,13 @@ if (typeof StarTrek !== "object") {
             return cached;
         }
     });
-    ns.socket.ConnectionPool = ConnectionPool;
-    ns.socket.registers("ConnectionPool");
-})(StarTrek, MONKEY);
-(function (ns, sys) {
-    var Hub = ns.net.Hub;
-    var ConnectionPool = ns.socket.ConnectionPool;
     var BaseHub = function (delegate) {
         Object.call(this);
         this.__delegate = delegate;
         this.__connPool = this.createConnectionPool();
         this.__last = new Date().getTime();
     };
-    sys.Class(BaseHub, Object, [Hub], null);
+    Class(BaseHub, Object, [Hub], null);
     BaseHub.prototype.createConnectionPool = function () {
         return new ConnectionPool();
     };
@@ -1442,18 +1375,16 @@ if (typeof StarTrek !== "object") {
     };
     BaseHub.MSS = 1472;
     BaseHub.prototype.allChannels = function () {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     BaseHub.prototype.removeChannel = function (remote, local, channel) {
-        ns.assert(false, "implement me!");
+        throw new Error("NotImplemented");
     };
     BaseHub.prototype.createConnection = function (remote, local, channel) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     BaseHub.prototype.allConnections = function () {
-        return this.__connPool.allValues();
+        return this.__connPool.values();
     };
     BaseHub.prototype.getConnection = function (remote, local) {
         return this.__connPool.get(remote, local);
@@ -1519,46 +1450,38 @@ if (typeof StarTrek !== "object") {
     };
     BaseHub.prototype.driveChannels = function (channels) {
         var count = 0;
-        for (var index = channels.length - 1; index >= 0; --index) {
-            try {
-                if (this.driveChannel(channels[index])) {
-                    ++count;
-                }
-            } catch (e) {
-                console.error("BaseHub::driveChannel()", e, channels[index]);
+        for (var i = channels.length - 1; i >= 0; --i) {
+            if (this.driveChannel(channels[i])) {
+                ++count;
             }
         }
         return count;
     };
     BaseHub.prototype.cleanupChannels = function (channels) {
-        var channel;
-        for (var index = channels.length - 1; index >= 0; --index) {
-            channel = channels[index];
-            if (!channel.isAlive()) {
+        var sock;
+        for (var i = channels.length - 1; i >= 0; --i) {
+            sock = channels[i];
+            if (!sock.isAlive()) {
                 this.removeChannel(
-                    channel.getRemoteAddress(),
-                    channel.getLocalAddress(),
-                    channel
+                    sock.getRemoteAddress(),
+                    sock.getLocalAddress(),
+                    sock
                 );
             }
         }
     };
     BaseHub.prototype.driveConnections = function (connections) {
         var now = new Date().getTime();
-        var delta = now - this.__last;
-        for (var index = connections.length - 1; index >= 0; --index) {
-            try {
-                connections[index].tick(now, delta);
-            } catch (e) {
-                console.error("BaseHub::driveConnections()", e, connections[index]);
-            }
+        var elapsed = now - this.__last;
+        for (var i = connections.length - 1; i >= 0; --i) {
+            connections[i].tick(now, elapsed);
         }
         this.__last = now;
     };
     BaseHub.prototype.cleanupConnections = function (connections) {
         var conn;
-        for (var index = connections.length - 1; index >= 0; --index) {
-            conn = connections[index];
+        for (var i = connections.length - 1; i >= 0; --i) {
+            conn = connections[i];
             if (!conn.isOpen()) {
                 this.removeConnection(
                     conn.getRemoteAddress(),
@@ -1569,24 +1492,20 @@ if (typeof StarTrek !== "object") {
         }
     };
     BaseHub.prototype.process = function () {
-        try {
-            var channels = this.allChannels();
-            var count = this.driveChannels(channels);
-            var connections = this.allConnections();
-            this.driveConnections(connections);
-            this.cleanupChannels(channels);
-            this.cleanupConnections(connections);
-            return count > 0;
-        } catch (e) {
-            console.error("BaseHub::process()", e);
-            return false;
-        }
+        var channels = this.allChannels();
+        var count = this.driveChannels(channels);
+        var connections = this.allConnections();
+        this.driveConnections(connections);
+        this.cleanupChannels(channels);
+        this.cleanupConnections(connections);
+        return count > 0;
     };
     ns.socket.BaseHub = BaseHub;
-    ns.socket.registers("BaseHub");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
+    var Class = sys.type.Class;
     var Arrival = ns.port.Arrival;
+    var ShipStatus = ns.port.ShipStatus;
     var ArrivalShip = function (now) {
         Object.call(this);
         if (!now) {
@@ -1594,90 +1513,98 @@ if (typeof StarTrek !== "object") {
         }
         this.__expired = now + ArrivalShip.EXPIRED;
     };
-    sys.Class(ArrivalShip, Object, [Arrival], null);
-    ArrivalShip.EXPIRES = 600 * 1000;
-    ArrivalShip.prototype.isTimeout = function (now) {
-        return now > this.__expired;
-    };
+    Class(ArrivalShip, Object, [Arrival], null);
+    ArrivalShip.EXPIRES = 300 * 1000;
     ArrivalShip.prototype.touch = function (now) {
         this.__expired = now + ArrivalShip.EXPIRES;
     };
+    ArrivalShip.prototype.getStatus = function (now) {
+        if (now > this.__expired) {
+            return ShipStatus.EXPIRED;
+        } else {
+            return ShipStatus.ASSEMBLING;
+        }
+    };
     ns.ArrivalShip = ArrivalShip;
-    ns.registers("ArrivalShip");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
+    var Class = sys.type.Class;
     var Arrays = sys.type.Arrays;
-    var Dictionary = sys.type.Dictionary;
+    var ShipStatus = ns.port.ShipStatus;
     var ArrivalHall = function () {
         Object.call(this);
         this.__arrivals = [];
-        this.__amap = new Dictionary();
-        this.__aft = new Dictionary();
+        this.__arrival_map = {};
+        this.__finished_times = {};
     };
-    sys.Class(ArrivalHall, Object, null, null);
+    Class(ArrivalHall, Object, null, null);
     ArrivalHall.prototype.assembleArrival = function (income) {
         var sn = income.getSN();
         if (!sn) {
             return income;
         }
-        var time = this.__aft.getValue(sn);
-        if (time && time > 0) {
-            return null;
-        }
-        var task = this.__amap.getValue(sn);
-        if (!task) {
-            task = income.assemble(income);
-            if (!task) {
-                this.__arrivals.push(income);
-                this.__amap.setValue(sn, income);
-                return null;
+        var completed;
+        var cached = this.__arrival_map[sn];
+        if (cached) {
+            completed = cached.assemble(income);
+            if (completed) {
+                Arrays.remove(this.__arrivals, cached);
+                delete this.__arrival_map[sn];
+                this.__finished_times[sn] = new Date().getTime();
             } else {
-                return task;
+                cached.touch(new Date().getTime());
+            }
+        } else {
+            var time = this.__finished_times[sn];
+            if (time && time > 0) {
+                return null;
+            }
+            completed = income.assemble(income);
+            if (!completed) {
+                this.__arrivals.push(income);
+                this.__arrival_map[sn] = income;
             }
         }
-        var completed = task.assemble(income);
-        if (!completed) {
-            task.touch(new Date().getTime());
-            return null;
-        }
-        Arrays.remove(this.__arrivals, task);
-        this.__amap.removeValue(sn);
-        this.__aft.setValue(sn, new Date().getTime());
         return completed;
     };
     ArrivalHall.prototype.purge = function () {
         var now = new Date().getTime();
         var ship;
+        var sn;
         for (var i = this.__arrivals.length - 1; i >= 0; --i) {
             ship = this.__arrivals[i];
-            if (ship.isTimeout(now)) {
+            if (ship.getStatus(now).equals(ShipStatus.EXPIRED)) {
                 this.__arrivals.splice(i, 1);
-                this.__amap.removeValue(ship.getSN());
+                sn = ship.getSN();
+                if (sn) {
+                    delete this.__arrival_map[sn];
+                }
             }
         }
-        var ago = now - 3600;
-        var keys = this.__aft.allKeys();
-        var sn, when;
+        var ago = now - 3600 * 1000;
+        var when;
+        var keys = Object.keys(this.__finished_times);
         for (var j = keys.length - 1; j >= 0; --j) {
             sn = keys[j];
-            when = this.__aft.getValue(sn);
+            when = this.__finished_times[sn];
             if (!when || when < ago) {
-                this.__aft.removeValue(sn);
-                this.__amap.removeValue(sn);
+                delete this.__finished_times[sn];
             }
         }
     };
     ns.ArrivalHall = ArrivalHall;
-    ns.registers("ArrivalHall");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
+    var Class = sys.type.Class;
+    var Enum = sys.type.Enum;
     var Departure = ns.port.Departure;
+    var ShipStatus = ns.port.ShipStatus;
     var DepartureShip = function (priority, maxTries) {
         Object.call(this);
         if (priority === null) {
             priority = 0;
         } else {
-            if (priority instanceof sys.type.Enum) {
+            if (Enum.isEnum(priority)) {
                 priority = priority.valueOf();
             }
         }
@@ -1688,99 +1615,96 @@ if (typeof StarTrek !== "object") {
         this.__tries = maxTries;
         this.__expired = 0;
     };
-    sys.Class(DepartureShip, Object, [Departure], null);
-    DepartureShip.EXPIRES = 120 * 1000;
-    DepartureShip.RETRIES = 2;
-    DepartureShip.DISPOSABLE = -1;
-    DepartureShip.prototype.getPriority = function () {
-        return this.__priority;
-    };
-    DepartureShip.prototype.isNew = function () {
-        return this.__expired === 0;
-    };
-    DepartureShip.prototype.isDisposable = function () {
-        return this.__tries <= 0;
-    };
-    DepartureShip.prototype.isTimeout = function (now) {
-        return this.__tries > 0 && now > this.__expired;
-    };
-    DepartureShip.prototype.isFailed = function (now) {
-        return this.__tries === 0 && now > this.__expired;
-    };
-    DepartureShip.prototype.touch = function (now) {
-        this.__expired = now + DepartureShip.EXPIRES;
-        this.__tries -= 1;
-    };
-    ns.DepartureShip = DepartureShip;
-    ns.registers("DepartureShip");
-})(StarTrek, MONKEY);
-(function (ns, sys) {
-    var Arrays = sys.type.Arrays;
-    var Dictionary = sys.type.Dictionary;
-    var DepartureHall = function () {
-        Object.call(this);
-        this.__priorities = [];
-        this.__fleets = new Dictionary();
-        this.__dmap = new Dictionary();
-        this.__dft = new Dictionary();
-    };
-    sys.Class(DepartureHall, Object, null, null);
-    DepartureHall.prototype.appendDeparture = function (outgo) {
-        var priority = outgo.getPriority();
-        var fleet = this.__fleets.getValue(priority);
-        if (!fleet) {
-            fleet = [];
-            this.__fleets.setValue(priority, fleet);
-            insertPriority(priority, this.__priorities);
-        } else {
-            if (fleet.indexOf(outgo) >= 0) {
-                return false;
-            }
-        }
-        fleet.push(outgo);
-        var sn = outgo.getSN();
-        if (sn && !outgo.isDisposable()) {
-            this.__dmap.setValue(sn, outgo);
-        }
-        return true;
-    };
-    var insertPriority = function (prior, priorities) {
-        var index, value;
-        for (index = 0; index < priorities.length; ++index) {
-            value = priorities[index];
-            if (value === prior) {
-                return;
+    Class(DepartureShip, Object, [Departure], {
+        getPriority: function () {
+            return this.__priority;
+        },
+        touch: function (now) {
+            this.__expired = now + DepartureShip.EXPIRES;
+            this.__tries -= 1;
+        },
+        getStatus: function (now) {
+            var fragments = this.getFragments();
+            if (!fragments || fragments.length === 0) {
+                return ShipStatus.DONE;
             } else {
-                if (value > prior) {
-                    break;
+                if (this.__expired === 0) {
+                    return ShipStatus.NEW;
+                } else {
+                    if (now < this.__expired) {
+                        return ShipStatus.WAITING;
+                    } else {
+                        if (this.__tries > 0) {
+                            return ShipStatus.TIMEOUT;
+                        } else {
+                            return ShipStatus.FAILED;
+                        }
+                    }
                 }
             }
         }
-        Arrays.insert(priorities, index, prior);
+    });
+    DepartureShip.EXPIRES = 120 * 1000;
+    DepartureShip.RETRIES = 2;
+    ns.DepartureShip = DepartureShip;
+})(StarTrek, MONKEY);
+(function (ns, sys) {
+    var Class = sys.type.Class;
+    var Arrays = sys.type.Arrays;
+    var ShipStatus = ns.port.ShipStatus;
+    var DepartureHall = function () {
+        Object.call(this);
+        this.__all_departures = [];
+        this.__new_departures = [];
+        this.__fleets = {};
+        this.__priorities = [];
+        this.__departure_map = {};
+        this.__departure_level = {};
+        this.__finished_times = {};
+    };
+    Class(DepartureHall, Object, null, null);
+    DepartureHall.prototype.addDeparture = function (outgo) {
+        if (this.__all_departures.indexOf(outgo) >= 0) {
+            return false;
+        } else {
+            this.__all_departures.push(outgo);
+        }
+        var priority = outgo.getPriority();
+        var index;
+        for (index = 0; index < this.__new_departures.length; ++index) {
+            if (this.__new_departures[index].getPriority() > priority) {
+                break;
+            }
+        }
+        Arrays.insert(this.__new_departures, index, outgo);
+        return true;
     };
     DepartureHall.prototype.checkResponse = function (response) {
         var sn = response.getSN();
-        var time = this.__dft.getValue(sn);
-        if (!time || time === 0) {
-            var ship = this.__dmap.getValue(sn);
-            if (ship && ship.checkResponse(response)) {
-                removeShip(ship, sn, this.__fleets, this.__dmap);
-                this.__dft.setValue(sn, new Date().getTime());
-                return ship;
-            }
+        var time = this.__finished_times[sn];
+        if (time && time > 0) {
+            return null;
+        }
+        var ship = this.__departure_map[sn];
+        if (ship && ship.checkResponse(response)) {
+            removeShip.call(this, ship, sn);
+            this.__finished_times[sn] = new Date().getTime();
+            return ship;
         }
         return null;
     };
-    var removeShip = function (ship, sn, departureFleets, departureMap) {
-        var prior = ship.getPriority();
-        var fleet = departureFleets.getValue(prior);
+    var removeShip = function (ship, sn) {
+        var priority = this.__departure_level[sn];
+        var fleet = this.__fleets[priority];
         if (fleet) {
             Arrays.remove(fleet, ship);
             if (fleet.length === 0) {
-                departureFleets.removeValue(prior);
+                delete this.__fleets[priority];
             }
         }
-        departureMap.removeValue(sn);
+        delete this.__departure_map[sn];
+        delete this.__departure_level[sn];
+        Arrays.remove(this.__all_departures, ship);
     };
     DepartureHall.prototype.getNextDeparture = function (now) {
         var next = getNextNewDeparture.call(this, now);
@@ -1790,61 +1714,71 @@ if (typeof StarTrek !== "object") {
         return next;
     };
     var getNextNewDeparture = function (now) {
-        var priorityList = new Array(this.__priorities);
-        var prior, sn;
-        var fleet, ship;
-        var i, j;
-        for (i = 0; i < priorityList.length; ++i) {
-            prior = priorityList[i];
-            fleet = this.__fleets.getValue(prior);
-            if (!fleet) {
-                continue;
-            }
-            for (j = 0; j < fleet.length; ++j) {
-                ship = fleet[j];
-                if (ship.isNew()) {
-                    if (ship.isDisposable()) {
-                        fleet.splice(j, 1);
-                        sn = ship.getSN();
-                        if (sn) {
-                            this.__dmap.removeValue(sn);
-                        }
-                    } else {
-                        ship.touch(now);
-                    }
-                    return ship;
+        if (this.__new_departures.length === 0) {
+            return null;
+        }
+        var outgo = this.__new_departures.shift();
+        var sn = outgo.getSN();
+        if (outgo.isImportant() && sn) {
+            var priority = outgo.getPriority();
+            insertShip.call(this, outgo, priority, sn);
+            this.__departure_map[sn] = outgo;
+        } else {
+            Arrays.remove(this.__all_departures, outgo);
+        }
+        outgo.touch(now);
+        return outgo;
+    };
+    var insertShip = function (outgo, priority, sn) {
+        var fleet = this.__fleets[priority];
+        if (!fleet) {
+            fleet = [];
+            this.__fleets[priority] = fleet;
+            insertPriority.call(this, priority);
+        }
+        fleet.push(outgo);
+        this.__departure_level[sn] = priority;
+    };
+    var insertPriority = function (priority) {
+        var index, value;
+        for (index = 0; index < this.__priorities.length; ++index) {
+            value = this.__priorities[index];
+            if (value === priority) {
+                return;
+            } else {
+                if (value > priority) {
+                    break;
                 }
             }
         }
-        return null;
+        Arrays.insert(this.__priorities, index, priority);
     };
     var getNextTimeoutDeparture = function (now) {
         var priorityList = new Array(this.__priorities);
-        var prior, sn;
-        var fleet, ship;
+        var prior;
+        var fleet, ship, sn, status;
         var i, j;
         for (i = 0; i < priorityList.length; ++i) {
             prior = priorityList[i];
-            fleet = this.__fleets.getValue(prior);
+            fleet = this.__fleets[prior];
             if (!fleet) {
                 continue;
             }
             for (j = 0; j < fleet.length; ++j) {
                 ship = fleet[j];
-                if (ship.isTimeout(now)) {
+                sn = ship.getSN();
+                status = ship.getStatus(now);
+                if (status.equals(ShipStatus.TIMEOUT)) {
+                    fleet.splice(j, 1);
+                    insertShip.call(this, ship, prior + 1, sn);
                     ship.touch(now);
-                    if (fleet.length > 1) {
-                        fleet.splice(j, 1);
-                        fleet.push(ship);
-                    }
                     return ship;
                 } else {
-                    if (ship.isFailed(now)) {
+                    if (status.equals(ShipStatus.FAILED)) {
                         fleet.splice(j, 1);
-                        sn = ship.getSN();
-                        if (sn) {
-                            this.__dmap.removeValue(sn);
-                        }
+                        delete this.__departure_map[sn];
+                        delete this.__departure_level[sn];
+                        Arrays.remove(this.__all_departures, ship);
                         return ship;
                     }
                 }
@@ -1853,57 +1787,47 @@ if (typeof StarTrek !== "object") {
         return null;
     };
     DepartureHall.prototype.purge = function () {
-        var failedTasks = [];
         var now = new Date().getTime();
-        var priorityList = new Array(this.__priorities);
         var prior;
-        var fleet, ship;
+        var fleet, ship, sn;
         var i, j;
-        for (i = 0; i < priorityList.length; ++i) {
-            prior = priorityList[i];
-            fleet = this.__fleets.getValue(prior);
+        for (i = this.__priorities.length - 1; i >= 0; --i) {
+            prior = this.__priorities[i];
+            fleet = this.__fleets[prior];
             if (!fleet) {
+                this.__priorities.splice(i, 1);
                 continue;
             }
-            for (j = 0; j < fleet.length; ++j) {
+            for (j = fleet.length - 1; j >= 0; --j) {
                 ship = fleet[j];
-                if (ship.isFailed(now)) {
-                    failedTasks.push(ship);
+                if (ship.getStatus(now).equals(ShipStatus.DONE)) {
+                    fleet.splice(j, 1);
+                    sn = ship.getSN();
+                    delete this.__departure_map[sn];
+                    delete this.__departure_level[sn];
+                    this.__finished_times[sn] = now;
                 }
             }
-            clear.call(this, fleet, failedTasks, prior);
-            failedTasks = [];
+            if (fleet.length === 0) {
+                delete this.__fleets[prior];
+                this.__priorities.splice(i, 1);
+            }
         }
-        var ago = now - 3600;
-        var keys = this.__dft.allKeys();
-        var sn, when;
+        var ago = now - 3600 * 1000;
+        var keys = Object.keys(this.__finished_times);
+        var when;
         for (j = keys.length - 1; j >= 0; --j) {
             sn = keys[j];
-            when = this.__dft.getValue(sn);
+            when = this.__finished_times[sn];
             if (!when || when < ago) {
-                this.__dft.removeValue(sn);
-                this.__dmap.removeValue(sn);
+                delete this.__finished_times[sn];
             }
-        }
-    };
-    var clear = function (fleet, failedTasks, prior) {
-        var sn, ship;
-        for (var index = failedTasks.length - 1; index >= 0; --index) {
-            ship = fleet[index];
-            fleet.splice(index, 1);
-            sn = ship.getSN();
-            if (sn) {
-                this.__dmap.removeValue(sn);
-            }
-        }
-        if (fleet.length === 0) {
-            this.__fleets.removeValue(prior);
         }
     };
     ns.DepartureHall = DepartureHall;
-    ns.registers("DepartureHall");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
+    var Class = sys.type.Class;
     var ArrivalHall = ns.ArrivalHall;
     var DepartureHall = ns.DepartureHall;
     var Dock = function () {
@@ -1911,7 +1835,7 @@ if (typeof StarTrek !== "object") {
         this.__arrivalHall = this.createArrivalHall();
         this.__departureHall = this.createDepartureHall();
     };
-    sys.Class(Dock, Object, null, null);
+    Class(Dock, Object, null, null);
     Dock.prototype.createArrivalHall = function () {
         return new ArrivalHall();
     };
@@ -1921,8 +1845,8 @@ if (typeof StarTrek !== "object") {
     Dock.prototype.assembleArrival = function (income) {
         return this.__arrivalHall.assembleArrival(income);
     };
-    Dock.prototype.appendDeparture = function (outgo) {
-        return this.__departureHall.appendDeparture(outgo);
+    Dock.prototype.addDeparture = function (outgo) {
+        return this.__departureHall.addDeparture(outgo);
     };
     Dock.prototype.checkResponse = function (response) {
         return this.__departureHall.checkResponse(response);
@@ -1935,10 +1859,11 @@ if (typeof StarTrek !== "object") {
         this.__departureHall.purge();
     };
     ns.Dock = Dock;
-    ns.registers("Dock");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
+    var Class = sys.type.Class;
     var AddressPairObject = ns.type.AddressPairObject;
+    var ShipStatus = ns.port.ShipStatus;
     var Docker = ns.port.Docker;
     var DockerStatus = ns.port.DockerStatus;
     var Dock = ns.Dock;
@@ -1952,9 +1877,10 @@ if (typeof StarTrek !== "object") {
         this.__lastOutgo = null;
         this.__lastFragments = [];
     };
-    sys.Class(StarDocker, AddressPairObject, [Docker], null);
+    Class(StarDocker, AddressPairObject, [Docker], null);
     StarDocker.prototype.finalize = function () {
         removeConnection.call(this);
+        this.__dock = null;
     };
     StarDocker.prototype.createDock = function () {
         return new Dock();
@@ -1992,7 +1918,7 @@ if (typeof StarTrek !== "object") {
         }
     };
     StarDocker.prototype.sendShip = function (ship) {
-        return this.__dock.appendDeparture(ship);
+        return this.__dock.addDeparture(ship);
     };
     StarDocker.prototype.processReceived = function (data) {
         var income = this.getArrival(data);
@@ -2009,12 +1935,10 @@ if (typeof StarTrek !== "object") {
         }
     };
     StarDocker.prototype.getArrival = function (data) {
-        ns.assert("implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     StarDocker.prototype.checkArrival = function (income) {
-        ns.assert("implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     StarDocker.prototype.checkResponse = function (income) {
         var linked = this.__dock.checkResponse(income);
@@ -2060,7 +1984,7 @@ if (typeof StarTrek !== "object") {
             if (!outgo) {
                 return false;
             } else {
-                if (outgo.isFailed(now)) {
+                if (outgo.getStatus(now).equals(ShipStatus.FAILED)) {
                     delegate = this.getDelegate();
                     if (delegate) {
                         error = new Error("Request timeout");
@@ -2116,14 +2040,18 @@ if (typeof StarTrek !== "object") {
         return false;
     };
     ns.StarDocker = StarDocker;
-    ns.registers("StarDocker");
 })(StarTrek, MONKEY);
 (function (ns, sys) {
+    var Class = sys.type.Class;
     var AddressPairMap = ns.type.AddressPairMap;
+    var ConnectionDelegate = ns.net.ConnectionDelegate;
+    var ConnectionState = ns.net.ConnectionState;
+    var DockerStatus = ns.port.DockerStatus;
+    var Gate = ns.port.Gate;
     var DockerPool = function () {
         AddressPairMap.call(this);
     };
-    sys.Class(DockerPool, AddressPairMap, null, {
+    Class(DockerPool, AddressPairMap, null, {
         set: function (remote, local, value) {
             var old = this.get(remote, local);
             if (old && old !== value) {
@@ -2144,21 +2072,12 @@ if (typeof StarTrek !== "object") {
             return cached;
         }
     });
-    ns.DockerPool = DockerPool;
-    ns.registers("DockerPool");
-})(StarTrek, MONKEY);
-(function (ns, sys) {
-    var ConnectionDelegate = ns.net.ConnectionDelegate;
-    var ConnectionState = ns.net.ConnectionState;
-    var Gate = ns.port.Gate;
-    var DockerStatus = ns.port.DockerStatus;
-    var DockerPool = ns.DockerPool;
     var StarGate = function (delegate) {
         Object.call(this);
         this.__delegate = delegate;
         this.__dockerPool = this.createDockerPool();
     };
-    sys.Class(StarGate, Object, [Gate, ConnectionDelegate], null);
+    Class(StarGate, Object, [Gate, ConnectionDelegate], null);
     StarGate.prototype.createDockerPool = function () {
         return new DockerPool();
     };
@@ -2180,11 +2099,10 @@ if (typeof StarTrek !== "object") {
         return docker.sendShip(outgo);
     };
     StarGate.prototype.createDocker = function (connection, advanceParties) {
-        ns.assert(false, "implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     StarGate.prototype.allDockers = function () {
-        return this.__dockerPool.allValues();
+        return this.__dockerPool.values();
     };
     StarGate.prototype.getDocker = function (remote, local) {
         return this.__dockerPool.get(remote, local);
@@ -2196,32 +2114,24 @@ if (typeof StarTrek !== "object") {
         this.__dockerPool.remove(remote, local, docker);
     };
     StarGate.prototype.process = function () {
-        try {
-            var dockers = this.allDockers();
-            var count = this.driveDockers(dockers);
-            this.cleanupDockers(dockers);
-            return count > 0;
-        } catch (e) {
-            console.error("StarGate::process()", e);
-        }
+        var dockers = this.allDockers();
+        var count = this.driveDockers(dockers);
+        this.cleanupDockers(dockers);
+        return count > 0;
     };
     StarGate.prototype.driveDockers = function (dockers) {
         var count = 0;
-        for (var index = dockers.length - 1; index >= 0; --index) {
-            try {
-                if (dockers[index].process()) {
-                    ++count;
-                }
-            } catch (e) {
-                console.error("StarGate::driveDockers()", e, dockers[index]);
+        for (var i = dockers.length - 1; i >= 0; --i) {
+            if (dockers[i].process()) {
+                ++count;
             }
         }
         return count;
     };
     StarGate.prototype.cleanupDockers = function (dockers) {
         var worker;
-        for (var index = dockers.length - 1; index >= 0; --index) {
-            worker = dockers[index];
+        for (var i = dockers.length - 1; i >= 0; --i) {
+            worker = dockers[i];
             if (worker.isOpen()) {
                 worker.purge();
             } else {
@@ -2252,7 +2162,7 @@ if (typeof StarTrek !== "object") {
             var s2 = DockerStatus.getStatus(current);
             var changed;
             if (!s1) {
-                changed = !s2;
+                changed = !!s2;
             } else {
                 if (!s2) {
                     changed = true;
@@ -2283,7 +2193,7 @@ if (typeof StarTrek !== "object") {
         }
         var advanceParties = this.cacheAdvanceParty(data, connection);
         worker = this.createDocker(connection, advanceParties);
-        if (worker != null) {
+        if (worker) {
             this.setDocker(
                 worker.getRemoteAddress(),
                 worker.getLocalAddress(),
@@ -2299,12 +2209,10 @@ if (typeof StarTrek !== "object") {
     StarGate.prototype.onConnectionFailed = function (error, data, connection) {};
     StarGate.prototype.onConnectionError = function (error, connection) {};
     StarGate.prototype.cacheAdvanceParty = function (data, connection) {
-        ns.assert("implement me!");
-        return null;
+        throw new Error("NotImplemented");
     };
     StarGate.prototype.clearAdvanceParty = function (connection) {
-        ns.assert("implement me!");
+        throw new Error("NotImplemented");
     };
     ns.StarGate = StarGate;
-    ns.registers("StarGate");
 })(StarTrek, MONKEY);

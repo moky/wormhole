@@ -35,8 +35,10 @@
 (function (ns, sys) {
     'use strict';
 
-    var ChannelChecker = function () {};
-    sys.Interface(ChannelChecker, null);
+    var Interface = sys.type.Interface;
+    var Class = sys.type.Class;
+
+    var ChannelChecker = Interface(null, null);
 
     // 1. check E_AGAIN
     //    the socket will raise 'Resource temporarily unavailable'
@@ -48,8 +50,7 @@
     //    but if timeout was set, it will raise 'timeout' error on timeout,
     //    here we should ignore this exception
     ChannelChecker.prototype.checkError = function (error, sock) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     // 1. check timeout
@@ -57,26 +58,13 @@
     //    but if timeout was set, it will return nothing too, it's normal;
     //    otherwise, we know the connection was lost.
     ChannelChecker.prototype.checkData = function (data, sock) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
-
-    //-------- namespace --------
-    ns.socket.ChannelChecker = ChannelChecker;
-
-    ns.socket.registers('ChannelChecker');
-
-})(StarTrek, MONKEY);
-
-(function (ns, sys) {
-    'use strict';
-
-    var ChannelChecker = ns.socket.ChannelChecker;
 
     var DefaultChecker = function () {
         Object.call(this);
     };
-    sys.Class(DefaultChecker, Object, [ChannelChecker], {
+    Class(DefaultChecker, Object, [ChannelChecker], {
         // Override
         checkError: function (error, sock) {
             // TODO: check 'E_AGAIN' & TimeoutException
@@ -104,7 +92,7 @@
         this.__channel = channel;
         this.__checker = this.createChecker();
     };
-    sys.Class(ChannelController, Object, [ChannelChecker], null);
+    Class(ChannelController, Object, [ChannelChecker], null);
 
     /**
      *  Get the channel
@@ -165,13 +153,12 @@
     //-------- namespace --------
     ns.socket.ChannelController = ChannelController;
 
-    ns.socket.registers('ChannelController');
-
 })(StarTrek, MONKEY);
 
 (function (ns, sys) {
     'use strict';
 
+    var Class = sys.type.Class;
     var SocketReader = ns.socket.SocketReader;
     var SocketWriter = ns.socket.SocketWriter;
     var ChannelController = ns.socket.ChannelController;
@@ -185,7 +172,7 @@
     var ChannelReader = function (channel) {
         ChannelController.call(this, channel)
     };
-    sys.Class(ChannelReader, ChannelController, [SocketReader], {
+    Class(ChannelReader, ChannelController, [SocketReader], {
         // Override
         read: function (maxLen) {
             var sock = this.getSocket();
@@ -224,7 +211,7 @@
     var ChannelWriter = function (channel) {
         ChannelController.call(this, channel)
     };
-    sys.Class(ChannelWriter, ChannelController, [SocketWriter], {
+    Class(ChannelWriter, ChannelController, [SocketWriter], {
         // Override
         write: function (data) {
             var sock = this.getSocket();
@@ -269,8 +256,5 @@
     //-------- namespace --------
     ns.socket.ChannelReader = ChannelReader;
     ns.socket.ChannelWriter = ChannelWriter;
-
-    ns.socket.registers('ChannelReader');
-    ns.socket.registers('ChannelWriter');
 
 })(StarTrek, MONKEY);

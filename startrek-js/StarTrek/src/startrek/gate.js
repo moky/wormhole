@@ -31,17 +31,25 @@
 //
 
 //! require 'type/apm.js'
+//! require 'net/connection.js'
+//! require 'net/state.js'
+//! require 'port/docker.js'
 //! require 'port/gate.js'
 
 (function (ns, sys) {
     'use strict';
 
+    var Class = sys.type.Class;
     var AddressPairMap = ns.type.AddressPairMap;
+    var ConnectionDelegate = ns.net.ConnectionDelegate;
+    var ConnectionState = ns.net.ConnectionState;
+    var DockerStatus = ns.port.DockerStatus;
+    var Gate = ns.port.Gate;
 
     var DockerPool = function () {
         AddressPairMap.call(this);
     };
-    sys.Class(DockerPool, AddressPairMap, null, {
+    Class(DockerPool, AddressPairMap, null, {
         // Override
         set: function (remote, local, value) {
             var old = this.get(remote, local);
@@ -60,22 +68,6 @@
         }
     });
 
-    //-------- namespace --------
-    ns.DockerPool = DockerPool;
-
-    ns.registers('DockerPool');
-
-})(StarTrek, MONKEY);
-
-(function (ns, sys) {
-    'use strict';
-
-    var ConnectionDelegate = ns.net.ConnectionDelegate;
-    var ConnectionState = ns.net.ConnectionState;
-    var Gate = ns.port.Gate;
-    var DockerStatus = ns.port.DockerStatus;
-    var DockerPool = ns.DockerPool;
-
     /**
      *  Base Gate
      *  ~~~~~~~~~
@@ -87,7 +79,7 @@
         this.__delegate = delegate;
         this.__dockerPool = this.createDockerPool();
     };
-    sys.Class(StarGate, Object, [Gate, ConnectionDelegate], null);
+    Class(StarGate, Object, [Gate, ConnectionDelegate], null);
 
     // protected
     StarGate.prototype.createDockerPool = function () {
@@ -130,13 +122,12 @@
      */
     // protected
     StarGate.prototype.createDocker = function (connection, advanceParties) {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     // protected
     StarGate.prototype.allDockers = function () {
-        return this.__dockerPool.allValues();
+        return this.__dockerPool.values();
     };
 
     // protected
@@ -160,28 +151,20 @@
 
     // Override
     StarGate.prototype.process = function () {
-        try {
-            var dockers = this.allDockers();
-            // 1. drive all dockers to process
-            var count = this.driveDockers(dockers);
-            // 2. cleanup closed dockers
-            this.cleanupDockers(dockers);
-            return count > 0;
-        } catch (e) {
-            console.error('StarGate::process()', e);
-        }
+        var dockers = this.allDockers();
+        // 1. drive all dockers to process
+        var count = this.driveDockers(dockers);
+        // 2. cleanup closed dockers
+        this.cleanupDockers(dockers);
+        return count > 0;
     };
 
     // protected
     StarGate.prototype.driveDockers = function (dockers) {
         var count = 0;
-        for (var index = dockers.length - 1; index >= 0; --index) {
-            try {
-                if (dockers[index].process()) {
-                    ++count;  // it's busy
-                }
-            } catch (e) {
-                console.error('StarGate::driveDockers()', e, dockers[index]);
+        for (var i = dockers.length - 1; i >= 0; --i) {
+            if (dockers[i].process()) {
+                ++count;  // it's busy
             }
         }
         return count;
@@ -190,8 +173,8 @@
     // protected
     StarGate.prototype.cleanupDockers = function (dockers) {
         var worker;
-        for (var index = dockers.length - 1; index >= 0; --index) {
-            worker = dockers[index];
+        for (var i = dockers.length - 1; i >= 0; --i) {
+            worker = dockers[i];
             if (worker.isOpen()) {
                 // clear expired tasks
                 worker.purge();
@@ -231,7 +214,7 @@
             // check status
             var changed
             if (!s1) {
-                changed = !s2;
+                changed = !!s2;
             } else if (!s2) {
                 changed = true;
             } else {
@@ -267,11 +250,13 @@
             worker.processReceived(data);
             return;
         }
+
         // cache advance party for this connection
         var advanceParties = this.cacheAdvanceParty(data, connection);
+
         // docker not exists, check the data to decide which docker should be created
         worker = this.createDocker(connection, advanceParties);
-        if (worker != null) {
+        if (worker) {
             // cache docker for (remote, local)
             this.setDocker(worker.getRemoteAddress(), worker.getLocalAddress(), worker);
             // process advance parties one by one
@@ -307,18 +292,15 @@
      */
     // protected
     StarGate.prototype.cacheAdvanceParty = function (data, connection) {
-        ns.assert('implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     // protected
     StarGate.prototype.clearAdvanceParty = function (connection) {
-        ns.assert('implement me!');
+        throw new Error('NotImplemented');
     };
 
     //-------- namespace --------
     ns.StarGate = StarGate;
-
-    ns.registers('StarGate');
 
 })(StarTrek, MONKEY);

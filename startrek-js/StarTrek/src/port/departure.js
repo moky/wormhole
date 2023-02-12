@@ -35,24 +35,25 @@
 (function (ns, sys) {
     'use strict';
 
+    var Interface = sys.type.Interface;
+    var Enum = sys.type.Enum;
     var Ship = ns.port.Ship;
-
-    /**
-     *  Outgoing Ship
-     *  ~~~~~~~~~~~~~
-     */
-    var Departure = function () {};
-    sys.Interface(Departure, [Ship]);
 
     /**
      *  Departure Priority
      *  ~~~~~~~~~~~~~~~~~~
      */
-    var DeparturePriority = sys.type.Enum(null, {
+    var DeparturePriority = Enum(null, {
         URGENT: -1,
         NORMAL:  0,
         SLOWER:  1
     });
+
+    /**
+     *  Outgoing Ship
+     *  ~~~~~~~~~~~~~
+     */
+    var Departure = Interface(null, [Ship]);
 
     /**
      *  Task priority
@@ -60,8 +61,7 @@
      * @return {int} default is 0, smaller is faster
      */
     Departure.prototype.getPriority = function () {
-        ns.assert(false, 'implement me!');
-        return 0;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -70,8 +70,7 @@
      * @return {Uint8Array[]} remaining separated data packages
      */
     Departure.prototype.getFragments = function () {
-        ns.assert(false, 'implement me!');
-        return null;
+        throw new Error('NotImplemented');
     };
 
     /**
@@ -82,70 +81,21 @@
      * @return {boolean} true on task finished
      */
     Departure.prototype.checkResponse = function (response) {
-        ns.assert(false, 'implement me!');
-        return false;
-    };
-
-    //
-    //  task states
-    //
-
-    /**
-     *  Check whether it's a new task
-     *
-     * @return {boolean} true for new task
-     */
-    Departure.prototype.isNew = function () {
-        ns.assert(false, 'implement me!');
-        return false;
+        throw new Error('NotImplemented');
     };
 
     /**
-     *  Check whether it can be removed immediately
+     *  Whether needs to wait for responses
      *
-     * @return {boolean} true for task needs no response
+     * @return false for disposable
      */
-    Departure.prototype.isDisposable = function () {
-        ns.assert(false, 'implement me!');
-        return false;
-    };
-
-    /**
-     *  Check whether task needs retry
-     *
-     * @param {number} now - current time
-     * @return {boolean} true on timeout
-     */
-    Departure.prototype.isTimeout = function (now) {
-        ns.assert(false, 'implement me!');
-        return false;
-    };
-
-    /**
-     *  Check whether task's response(s) missed
-     *
-     * @param {number} now - current time
-     * @return {boolean} true on failed
-     */
-    Departure.prototype.isFailed = function (now) {
-        ns.assert(false, 'implement me!');
-        return false;
-    };
-
-    /**
-     *  Update expired time
-     *
-     * @param {number} now - current time
-     */
-    Departure.prototype.touch = function (now) {
-        ns.assert(false, 'implement me!');
+    Departure.prototype.isImportant = function () {
+        throw new Error('NotImplemented');
     };
 
     Departure.Priority = DeparturePriority;
 
     //-------- namespace --------
     ns.port.Departure = Departure;
-
-    ns.port.registers('Departure');
 
 })(StarTrek, MONKEY);
