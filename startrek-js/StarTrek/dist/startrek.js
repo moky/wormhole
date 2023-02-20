@@ -1754,7 +1754,7 @@ if (typeof StarTrek !== "object") {
         Arrays.insert(this.__priorities, index, priority);
     };
     var getNextTimeoutDeparture = function (now) {
-        var priorityList = new Array(this.__priorities);
+        var priorityList = this.__priorities.slice();
         var prior;
         var fleet, ship, sn, status;
         var i, j;
