@@ -78,7 +78,7 @@
             // }
             return null;
         }
-    })
+    });
 
     /**
      *  Socket Channel Controller
@@ -218,7 +218,7 @@
             var sent = 0;
             var rest = data.length;
             var cnt;
-            while (true) {  // while (sock.isOpen())
+            while (sock.isOpen()) {
                 cnt = this.tryWrite(data, sock);
                 // check send result
                 if (cnt <= 0) {

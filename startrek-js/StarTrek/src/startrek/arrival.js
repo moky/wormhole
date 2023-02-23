@@ -96,7 +96,7 @@
         this.__arrivals = [];        // Set<Arrival>
         this.__arrival_map = {};     // SN => Arrival
         this.__finished_times = {};  // SN => timestamp
-    }
+    };
     Class(ArrivalHall, Object, null, null);
 
     /**

@@ -1096,7 +1096,7 @@ if (typeof StarTrek !== "object") {
             var sent = 0;
             var rest = data.length;
             var cnt;
-            while (true) {
+            while (sock.isOpen()) {
                 cnt = this.tryWrite(data, sock);
                 if (cnt <= 0) {
                     break;

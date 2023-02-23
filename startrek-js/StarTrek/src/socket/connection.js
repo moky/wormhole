@@ -366,7 +366,7 @@
             }
             return channel;
         }
-    })
+    });
 
     //-------- namespace --------
     ns.socket.ActiveConnection = ActiveConnection;

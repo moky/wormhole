@@ -136,7 +136,7 @@
         this.__departure_map = {};   // SN => Departure
         this.__departure_level = {}; // SN => priority
         this.__finished_times = {};  // SN => timestamp
-    }
+    };
     Class(DepartureHall, Object, null, null);
 
     /**
