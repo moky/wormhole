@@ -293,12 +293,12 @@ public class BaseConnection extends AddressPairObject
     //
 
     @Override
-    public void enterState(ConnectionState next, StateMachine ctx) {
+    public void enterState(ConnectionState next, StateMachine ctx, long now) {
 
     }
 
     @Override
-    public void exitState(ConnectionState previous, StateMachine ctx) {
+    public void exitState(ConnectionState previous, StateMachine ctx, long now) {
         ConnectionState current = ctx.getCurrentState();
         // if current == 'ready'
         if (current != null && current.equals(ConnectionState.READY)) {
@@ -306,7 +306,7 @@ public class BaseConnection extends AddressPairObject
             if (previous != null && previous.equals(ConnectionState.PREPARING)) {
                 // connection state changed from 'preparing' to 'ready',
                 // set times to expired soon.
-                long timestamp = System.currentTimeMillis() - (EXPIRES >> 1);
+                long timestamp = now - (EXPIRES >> 1);
                 if (lastSentTime < timestamp) {
                     lastSentTime = timestamp;
                 }
@@ -323,12 +323,12 @@ public class BaseConnection extends AddressPairObject
     }
 
     @Override
-    public void pauseState(ConnectionState current, StateMachine ctx) {
+    public void pauseState(ConnectionState current, StateMachine ctx, long now) {
 
     }
 
     @Override
-    public void resumeState(ConnectionState current, StateMachine ctx) {
+    public void resumeState(ConnectionState current, StateMachine ctx, long now) {
 
     }
 }

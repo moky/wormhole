@@ -102,12 +102,12 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
     }
 
     @Override
-    public void onPause(StateMachine ctx) {
+    public void onPause(StateMachine ctx, long now) {
 
     }
 
     @Override
-    public void onResume(StateMachine ctx) {
+    public void onResume(StateMachine ctx, long now) {
 
     }
 
