@@ -6,11 +6,11 @@ Network Modules
 
 |   Module   | Java SDK | Python SDK |
 |------------|----------|------------|
-| StarTrek   | 0.3.4    | 0.3.8      |
-| TCP        | 0.3.4    | 0.3.8      |
+| StarTrek   | 0.3.7    | 0.4.1      |
+| TCP        | 0.3.7    | 0.4.1      |
 | ByteArray  | 0.1.2    |            |
 | MTP        | 0.1.7    |            |
-| UDP        | 0.3.4    | 0.5.8      |
+| UDP        | 0.3.7    | 0.5.10     |
 | TLV        | 0.1.4    |            |
 | STUN       | 0.1.5    | 0.2.3      |
 | TURN       | 0.1.5    |            |
