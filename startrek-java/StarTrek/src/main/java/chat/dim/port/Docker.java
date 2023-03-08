@@ -111,13 +111,13 @@ public interface Docker extends Processor {
         public static Status getStatus(ConnectionState state) {
             if (state == null) {
                 return ERROR;
-            } else if (state.equals(ConnectionState.READY)
-                    || state.equals(ConnectionState.EXPIRED)
-                    || state.equals(ConnectionState.MAINTAINING)) {
+            } else if (state.equals(ConnectionState.Order.READY)
+                    || state.equals(ConnectionState.Order.EXPIRED)
+                    || state.equals(ConnectionState.Order.MAINTAINING)) {
                 return READY;
-            } else if (state.equals(ConnectionState.PREPARING)) {
+            } else if (state.equals(ConnectionState.Order.PREPARING)) {
                 return PREPARING;
-            } else if (state.equals(ConnectionState.ERROR)) {
+            } else if (state.equals(ConnectionState.Order.ERROR)) {
                 return ERROR;
             } else {
                 return INIT;

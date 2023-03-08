@@ -211,7 +211,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
             }
         }
         // 2. heartbeat when connection expired
-        if (current != null && current.equals(ConnectionState.EXPIRED)) {
+        if (current != null && current.equals(ConnectionState.Order.EXPIRED)) {
             heartbeat(connection);
         }
     }

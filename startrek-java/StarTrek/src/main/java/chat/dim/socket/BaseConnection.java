@@ -301,9 +301,9 @@ public class BaseConnection extends AddressPairObject
     public void exitState(ConnectionState previous, StateMachine ctx, long now) {
         ConnectionState current = ctx.getCurrentState();
         // if current == 'ready'
-        if (current != null && current.equals(ConnectionState.READY)) {
+        if (current != null && current.equals(ConnectionState.Order.READY)) {
             // if previous == 'preparing'
-            if (previous != null && previous.equals(ConnectionState.PREPARING)) {
+            if (previous != null && previous.equals(ConnectionState.Order.PREPARING)) {
                 // connection state changed from 'preparing' to 'ready',
                 // set times to expired soon.
                 long timestamp = now - (EXPIRES >> 1);

@@ -48,19 +48,21 @@ import chat.dim.fsm.State;
  */
 public class ConnectionState extends BaseState<StateMachine, StateTransition> {
 
-    public static final String DEFAULT     = "default";
-    public static final String PREPARING   = "preparing";
-    public static final String READY       = "ready";
-    public static final String MAINTAINING = "maintaining";
-    public static final String EXPIRED     = "expired";
-    public static final String ERROR       = "error";
+    public enum Order {
+        DEFAULT,  // = 0
+        PREPARING,
+        READY,
+        MAINTAINING,
+        EXPIRED,
+        ERROR
+    }
 
-    public final String name;
+    private final String name;
     private long enterTime;
 
-    ConnectionState(String stateName) {
-        super();
-        name = stateName;
+    ConnectionState(Order stateOrder) {
+        super(stateOrder.ordinal());
+        name = stateOrder.name();
         enterTime = 0;
     }
 
@@ -71,15 +73,15 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
                 return true;
             }
             ConnectionState state = (ConnectionState) other;
-            return name.equals(state.name);
-        } else if (other instanceof String) {
-            return name.equals(other);
+            return state.index == index;
+        } else if (other instanceof Order) {
+            return ((Order) other).ordinal() == index;
         } else {
             return false;
         }
     }
-    public boolean equals(String other) {
-        return name.equals(other);
+    public boolean equals(Order other) {
+        return other.ordinal() == index;
     }
 
     @Override
@@ -136,7 +138,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
 
         // Connection not started yet
         ConnectionState getDefaultState() {
-            ConnectionState state = new ConnectionState(ConnectionState.DEFAULT);
+            ConnectionState state = new ConnectionState(ConnectionState.Order.DEFAULT);
             // Default -> Preparing
             state.addTransition(stb.getDefaultPreparingTransition());
             return state;
@@ -144,7 +146,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
 
         // Connection started, preparing to connect/bind
         ConnectionState getPreparingState() {
-            ConnectionState state = new ConnectionState(ConnectionState.PREPARING);
+            ConnectionState state = new ConnectionState(ConnectionState.Order.PREPARING);
             // Preparing -> Ready
             state.addTransition(stb.getPreparingReadyTransition());
             // Preparing -> Default
@@ -154,7 +156,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
 
         // Normal state of connection
         ConnectionState getReadyState() {
-            ConnectionState state = new ConnectionState(ConnectionState.READY);
+            ConnectionState state = new ConnectionState(ConnectionState.Order.READY);
             // Ready -> Expired
             state.addTransition(stb.getReadyExpiredTransition());
             // Ready -> Error
@@ -164,7 +166,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
 
         // Long time no response, need maintaining
         ConnectionState getExpiredState() {
-            ConnectionState state = new ConnectionState(ConnectionState.EXPIRED);
+            ConnectionState state = new ConnectionState(ConnectionState.Order.EXPIRED);
             // Expired -> Maintaining
             state.addTransition(stb.getExpiredMaintainingTransition());
             // Expired -> Error
@@ -174,7 +176,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
 
         // Heartbeat sent, waiting response
         ConnectionState getMaintainingState() {
-            ConnectionState state = new ConnectionState(ConnectionState.MAINTAINING);
+            ConnectionState state = new ConnectionState(ConnectionState.Order.MAINTAINING);
             // Maintaining -> Ready
             state.addTransition(stb.getMaintainingReadyTransition());
             // Maintaining -> Expired
@@ -186,7 +188,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
 
         // Connection lost
         ConnectionState getErrorState() {
-            ConnectionState state = new ConnectionState(ConnectionState.ERROR);
+            ConnectionState state = new ConnectionState(ConnectionState.Order.ERROR);
             // Error -> Default
             state.addTransition(stb.getErrorDefaultTransition());
             return state;

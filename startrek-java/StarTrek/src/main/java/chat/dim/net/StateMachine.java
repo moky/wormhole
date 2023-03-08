@@ -71,7 +71,7 @@ public class StateMachine extends BaseMachine<StateMachine, StateTransition, Con
     private final WeakReference<Connection> connectionRef;
 
     public StateMachine(Connection connection) {
-        super(ConnectionState.DEFAULT);
+        super();
 
         connectionRef = new WeakReference<>(connection);
 
@@ -87,10 +87,6 @@ public class StateMachine extends BaseMachine<StateMachine, StateTransition, Con
 
     protected ConnectionState.Builder createStateBuilder() {
         return new ConnectionState.Builder(new StateTransition.Builder());
-    }
-
-    private void addState(ConnectionState state) {
-        setState(state.name, state);
     }
 
     @Override

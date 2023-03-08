@@ -34,8 +34,8 @@ import chat.dim.fsm.BaseTransition;
 
 abstract class StateTransition extends BaseTransition<StateMachine> {
 
-    StateTransition(String target) {
-        super(target);
+    protected StateTransition(ConnectionState.Order order) {
+        super(order.ordinal());
     }
 
     /**
@@ -46,7 +46,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
 
         // Default -> Preparing
         StateTransition getDefaultPreparingTransition() {
-            return new StateTransition(ConnectionState.PREPARING) {
+            return new StateTransition(ConnectionState.Order.PREPARING) {
                 @Override
                 public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
@@ -58,7 +58,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
 
         // Preparing -> Ready
         StateTransition getPreparingReadyTransition() {
-            return new StateTransition(ConnectionState.READY) {
+            return new StateTransition(ConnectionState.Order.READY) {
                 @Override
                 public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
@@ -70,7 +70,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
 
         // Preparing -> Default
         StateTransition getPreparingDefaultTransition() {
-            return new StateTransition(ConnectionState.DEFAULT) {
+            return new StateTransition(ConnectionState.Order.DEFAULT) {
                 @Override
                 public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
@@ -82,7 +82,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
 
         // Ready -> Expired
         StateTransition getReadyExpiredTransition() {
-            return new StateTransition(ConnectionState.EXPIRED) {
+            return new StateTransition(ConnectionState.Order.EXPIRED) {
                 @Override
                 public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
@@ -99,7 +99,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
 
         // Ready -> Error
         StateTransition getReadyErrorTransition() {
-            return new StateTransition(ConnectionState.ERROR) {
+            return new StateTransition(ConnectionState.Order.ERROR) {
                 @Override
                 public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
@@ -111,7 +111,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
 
         // Expired -> Maintaining
         StateTransition getExpiredMaintainingTransition() {
-            return new StateTransition(ConnectionState.MAINTAINING) {
+            return new StateTransition(ConnectionState.Order.MAINTAINING) {
                 @Override
                 public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
@@ -128,7 +128,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
 
         // Expired -> Error
         StateTransition getExpiredErrorTransition() {
-            return new StateTransition(ConnectionState.ERROR) {
+            return new StateTransition(ConnectionState.Order.ERROR) {
                 @Override
                 public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
@@ -145,7 +145,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
 
         // Maintaining -> Ready
         StateTransition getMaintainingReadyTransition() {
-            return new StateTransition(ConnectionState.READY) {
+            return new StateTransition(ConnectionState.Order.READY) {
                 @Override
                 public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
@@ -162,7 +162,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
 
         // Maintaining -> Expired
         StateTransition getMaintainingExpiredTransition() {
-            return new StateTransition(ConnectionState.EXPIRED) {
+            return new StateTransition(ConnectionState.Order.EXPIRED) {
                 @Override
                 public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
@@ -179,7 +179,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
 
         // Maintaining -> Error
         StateTransition getMaintainingErrorTransition() {
-            return new StateTransition(ConnectionState.ERROR) {
+            return new StateTransition(ConnectionState.Order.ERROR) {
                 @Override
                 public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
@@ -196,7 +196,7 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
 
         // Error -> Default
         StateTransition getErrorDefaultTransition() {
-            return new StateTransition(ConnectionState.DEFAULT) {
+            return new StateTransition(ConnectionState.Order.DEFAULT) {
                 @Override
                 public boolean evaluate(StateMachine ctx, long now) {
                     Connection conn = ctx.getConnection();
