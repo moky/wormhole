@@ -303,9 +303,9 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
         }
         // remove partially sent data of next fragment
         if (sent > 0) {
-            byte[] last = fragments.remove(0);
-            byte[] part = new byte[last.length - sent];
-            System.arraycopy(last, sent, part, 0, last.length - sent);
+            byte[] next = fragments.remove(0);
+            byte[] part = new byte[next.length - sent];
+            System.arraycopy(next, sent, part, 0, next.length - sent);
             fragments.add(0, part);
         }
         // 5. store remaining data

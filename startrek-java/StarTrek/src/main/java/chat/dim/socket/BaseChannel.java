@@ -61,7 +61,7 @@ public abstract class BaseChannel<C extends SelectableChannel>
     private boolean bound = false;
 
     /**
-     *  Create stream channel
+     *  Create channel
      *
      * @param remote      - remote address
      * @param local       - local address
