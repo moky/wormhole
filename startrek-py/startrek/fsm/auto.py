@@ -54,3 +54,15 @@ class AutoMachine(BaseMachine[C, T, S], ABC):
         timer = PrimeMetronome()
         timer.remove_ticker(ticker=self)
         super().stop()
+
+    # Override
+    def pause(self):
+        timer = PrimeMetronome()
+        timer.remove_ticker(ticker=self)
+        super().pause()
+
+    # Override
+    def resume(self):
+        super().resume()
+        timer = PrimeMetronome()
+        timer.add_ticker(ticker=self)

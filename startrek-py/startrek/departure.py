@@ -228,14 +228,15 @@ class DepartureHall:
         return True
 
     def __next_timeout_departure(self, now: float) -> Optional[Departure]:
-        priorities = list(self.__priorities)
+        # no need to copy the list being changed because it will return immediately
+        priorities = self.__priorities  # list(self.__priorities)
         for prior in priorities:
             # 1. get tasks with priority
             fleet = self.__fleets.get(prior)
             if fleet is None:
                 continue
             # 2. seeking timeout task in this priority
-            departures = list(fleet)
+            departures = fleet  # list(fleet)
             for ship in departures:
                 sn = ship.sn
                 status = ship.get_status(now=now)

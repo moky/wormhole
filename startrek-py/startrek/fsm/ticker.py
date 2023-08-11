@@ -53,8 +53,8 @@ class Ticker(ABC):
 
 class Metronome(Runner):
 
-    # at least wait 0.1 second
-    MIN_INTERVAL = 0.1
+    # at least wait 1/60 of a second
+    MIN_INTERVAL = 1.0/60
 
     def __init__(self, interval: float):
         super().__init__()

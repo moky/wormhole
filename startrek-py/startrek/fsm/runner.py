@@ -117,7 +117,7 @@ class Runner(Runnable, Handler, Processor, ABC):
 
     # noinspection PyMethodMayBeStatic
     def _idle(self):
-        time.sleep(0.125)
+        time.sleep(1.0/60)
 
     @abstractmethod
     def process(self) -> bool:
