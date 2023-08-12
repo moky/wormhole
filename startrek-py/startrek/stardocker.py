@@ -205,7 +205,8 @@ class StarDocker(AddressPairObject, Docker, ABC):
 
     # Override
     def purge(self):
-        self.__dock.purge()
+        now = time.time()
+        self.__dock.purge(now=now)
 
     # Override
     def close(self):
@@ -235,7 +236,9 @@ class StarDocker(AddressPairObject, Docker, ABC):
             now = time.time()
             outgo = self._next_departure(now=now)
             if outgo is None:
-                # nothing to do now, return False to let the thread have a rest
+                # nothing to do now, purge docker for cleaning expired tasks
+                # and return False to let the thread have a rest
+                self.purge()
                 return False
             elif outgo.get_status(now=now) == ShipStatus.FAILED:
                 delegate = self.delegate
@@ -289,3 +292,5 @@ class StarDocker(AddressPairObject, Docker, ABC):
         delegate = self.delegate
         if delegate is not None:
             delegate.docker_error(error=error, ship=outgo, docker=self)
+        # task error
+        return False

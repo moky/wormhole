@@ -85,7 +85,7 @@ class ArrivalHall:
             # we consider it to be a ship carrying a whole package here
             return ship
         # 2. check cached ship
-        cached: Arrival = self.__map.get(sn)
+        cached = self.__map.get(sn)
         if cached is None:
             # check whether the task as already finished
             timestamp = self.__finished_times.get(sn)
@@ -116,9 +116,8 @@ class ArrivalHall:
                 self.__finished_times[sn] = time.time()
         return completed
 
-    def purge(self):
+    def purge(self, now: float):
         """ Clear all expired tasks """
-        now = time.time()
         # 1. seeking expired tasks
         arrivals = set(self.__arrivals)
         for ship in arrivals:

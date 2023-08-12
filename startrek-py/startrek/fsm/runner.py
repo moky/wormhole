@@ -82,9 +82,30 @@ class Runner(Runnable, Handler, Processor, ABC):
             - process()
     """
 
-    def __init__(self):
+    # Frames Per Second
+    # ~~~~~~~~~~~~~~~~~
+    # (1) The human eye can process 10-12 still images per second,
+    #     and the dynamic compensation function can also deceive us.
+    # (2) At a frame rate of 12fps or lower, we can quickly distinguish between
+    #     a pile of still images and not animations.
+    # (3) Once the playback rate (frames per second) of the images reaches 16-24 fps,
+    #     our brain will assume that these images are a continuously moving scene
+    #     and will appear like the effect of a movie.
+    # (4) At 24fps, there is a feeling of 'motion blur',
+    #     while at 60fps, the image is the smoothest and cleanest.
+    INTERVAL_SLOW = 1.0/10
+    INTERVAL_NORMAL = 1.0/25
+    INTERVAL_FAST = 1.0/60
+
+    def __init__(self, interval: float):
         super().__init__()
+        assert interval > 0, 'interval error: %s' % interval
+        self.__interval = interval
         self.__running = False
+
+    @property
+    def interval(self) -> float:
+        return self.__interval
 
     @property
     def running(self) -> bool:
@@ -109,15 +130,16 @@ class Runner(Runnable, Handler, Processor, ABC):
     def handle(self):
         while self.running:
             if not self.process():
+                # if nothing to do now, return False here
+                # to let the thread have a rest.
                 self._idle()
 
     # Override
     def finish(self):
         self.__running = False
 
-    # noinspection PyMethodMayBeStatic
     def _idle(self):
-        time.sleep(1.0/60)
+        time.sleep(self.interval)
 
     @abstractmethod
     def process(self) -> bool:

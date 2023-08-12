@@ -57,8 +57,7 @@ class Metronome(Runner):
     MIN_INTERVAL = 1.0/60
 
     def __init__(self, interval: float):
-        super().__init__()
-        self.__interval = interval
+        super().__init__(interval=interval)
         self.__last_time = 0
         self.__daemon = Daemon(target=self.run)
         self.__lock = threading.Lock()
@@ -79,7 +78,7 @@ class Metronome(Runner):
         # 1. check time
         now = time.time()
         elapsed = now - self.__last_time
-        waiting = self.__interval - elapsed
+        waiting = self.interval - elapsed
         if waiting < self.MIN_INTERVAL:
             waiting = self.MIN_INTERVAL
         time.sleep(waiting)
@@ -145,7 +144,7 @@ class Singleton(object):
 class PrimeMetronome:
 
     def __init__(self):
-        metronome = Metronome(interval=0.2)
+        metronome = Metronome(interval=Runner.INTERVAL_SLOW)
         metronome.start()
         self.__metronome = metronome
 

@@ -151,9 +151,6 @@ class StarGate(Gate, ConnectionDelegate, ABC):
             if worker.closed:
                 # remove docker which connection lost
                 self._remove_docker(remote=worker.remote_address, local=worker.local_address, docker=worker)
-            else:
-                # clear expired tasks
-                worker.purge()
 
     def _heartbeat(self, connection: Connection):
         """ Send a heartbeat package('PING') to remote address """

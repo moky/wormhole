@@ -141,9 +141,10 @@ class DepartureHall:
         # check whether this task has already finished
         timestamp = self.__finished_times.get(sn)
         if timestamp is not None and timestamp > 0:
+            # task already finished
             return None
         # check departure task
-        outgo: Departure = self.__map.get(sn, None)
+        outgo = self.__map.get(sn, None)
         if outgo is not None and outgo.check_response(ship=ship):
             # all fragments sent, departure task finished
             # remove it and clear mapping when SN exists
@@ -258,9 +259,8 @@ class DepartureHall:
                     self.__all_departures.discard(ship)
                     return ship
 
-    def purge(self):
+    def purge(self, now: float):
         """ Clear all expired tasks """
-        now = time.time()
         # 1. seeking finished tasks
         priorities = list(self.__priorities)
         for prior in priorities:
@@ -272,12 +272,14 @@ class DepartureHall:
             departures = list(fleet)
             for ship in departures:
                 if ship.get_status(now=now) == ShipStatus.DONE:
-                    # task done
-                    fleet.remove(ship)
+                    # task done, remove if from memory cache
                     sn = ship.sn
                     assert sn is not None, 'Ship SN should not be empty here'
+                    fleet.remove(ship)
+                    # remove mapping by SN
                     self.__map.pop(sn, None)
                     self.__departure_level.pop(sn, None)
+                    self.__all_departures.discard(ship)
                     # mark finished time
                     self.__finished_times[sn] = now
             # remove array when empty
