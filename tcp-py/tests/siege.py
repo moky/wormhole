@@ -71,7 +71,7 @@ class StreamClientHub(ClientHub):
 class Soldier(Runner, DockerDelegate):
 
     def __init__(self, remote: Address, local: Optional[Address] = None):
-        super().__init__()
+        super().__init__(interval=1)
         self.__remote_address = remote
         self.__local_address = local
         self.__gate = TCPGate(delegate=self, daemonic=True)
@@ -165,10 +165,6 @@ class Soldier(Runner, DockerDelegate):
         self.send(data=data)
         return False  # return False to have a rest
 
-    # Override
-    def _idle(self):
-        time.sleep(1)
-
 
 class Sergeant:
 
@@ -217,7 +213,7 @@ class Colonel(Runner):
     TROOPS = 16  # progresses count
 
     def __init__(self, remote: Address, local: Optional[Address] = None):
-        super().__init__()
+        super().__init__(interval=1)
         self.__remote_address = remote
         self.__local_address = local
 
@@ -262,7 +258,7 @@ class Colonel(Runner):
         print('sleeping ...')
         for z in range(16):
             print('%d ..zzZZ' % z)
-            time.sleep(1)
+            time.sleep(self.interval)
         print('wake up.')
         print('====================================================')
         print('== Attack !!!')

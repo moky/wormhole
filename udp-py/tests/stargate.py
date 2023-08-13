@@ -117,7 +117,7 @@ class AutoGate(BaseGate, Runnable, Generic[H], ABC):
             outgoing = super().process()
             return incoming or outgoing
         except Exception as error:
-            print('[TCP] process error: %s' % error)
+            print('[UDP] process error: %s' % error)
             traceback.print_exc()
 
 

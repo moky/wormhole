@@ -34,6 +34,6 @@ setup(
         'Operating System :: OS Independent',
     ],
     install_requires=[
-        'startrek>=0.4.1'
+        'startrek>=0.4.2'
     ]
 )
