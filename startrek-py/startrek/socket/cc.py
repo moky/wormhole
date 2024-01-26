@@ -33,7 +33,7 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional  # , Tuple
 
-from ..types import Address
+from ..types import SocketAddress
 
 from ..net.channel import is_blocking
 
@@ -136,11 +136,11 @@ class Controller(Checker):
         return self.__channel()
 
     @property
-    def remote_address(self) -> Optional[Address]:
+    def remote_address(self) -> Optional[SocketAddress]:
         return self.channel.remote_address
 
     @property
-    def local_address(self) -> Optional[Address]:
+    def local_address(self) -> Optional[SocketAddress]:
         return self.channel.local_address
 
     @property
@@ -182,7 +182,7 @@ class ChannelReader(Controller, SocketReader, ABC):
         return data
 
     # @abstractmethod  # Override
-    # def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[Address]]:
+    # def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
     #     """ receive data via socket, and return it with remote address """
     #     raise NotImplemented
 
@@ -227,6 +227,6 @@ class ChannelWriter(Controller, SocketWriter, ABC):
         return sent
 
     # @abstractmethod  # Override
-    # def send(self, data: bytes, target: Address) -> int:
+    # def send(self, data: bytes, target: SocketAddress) -> int:
     #     """ send data via socket with remote address """
     #     raise NotImplemented

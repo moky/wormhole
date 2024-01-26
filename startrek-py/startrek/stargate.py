@@ -33,7 +33,7 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional, List, Iterable, Union
 
-from .types import Address, AddressPairMap
+from .types import SocketAddress, AddressPairMap
 from .net import Connection, ConnectionDelegate, ConnectionState
 from .port import Departure, Gate
 from .port import Docker, DockerDelegate
@@ -43,14 +43,15 @@ from .port.docker import status_from_state
 class DockerPool(AddressPairMap[Docker]):
 
     # Override
-    def set(self, remote: Optional[Address], local: Optional[Address], item: Optional[Docker]):
+    def set(self, remote: Optional[SocketAddress], local: Optional[SocketAddress], item: Optional[Docker]):
         old = self.get(remote=remote, local=local)
         if old is not None and old is not item:
             self.remove(remote=remote, local=local, item=old)
         super().set(remote=remote, local=local, item=item)
 
     # Override
-    def remove(self, remote: Optional[Address], local: Optional[Address], item: Optional[Docker]) -> Optional[Docker]:
+    def remove(self, remote: Optional[SocketAddress], local: Optional[SocketAddress],
+               item: Optional[Docker]) -> Optional[Docker]:
         cached = super().remove(remote=remote, local=local, item=item)
         if cached is not None:
             if not cached.closed:
@@ -83,13 +84,14 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         return self.__delegate()
 
     # Override
-    def send_data(self, payload: Union[bytes, bytearray], remote: Address, local: Optional[Address]) -> bool:
+    def send_data(self, payload: Union[bytes, bytearray],
+                  remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
         docker = self._get_docker(remote=remote, local=local)
         if not (docker is None or docker.closed):
             return docker.send_data(payload=payload)
 
     # Override
-    def send_ship(self, ship: Departure, remote: Address, local: Optional[Address]) -> bool:
+    def send_ship(self, ship: Departure, remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
         docker = self._get_docker(remote=remote, local=local)
         if not (docker is None or docker.closed):
             return docker.send_ship(ship=ship)
@@ -113,15 +115,15 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         """ get a copy of all dockers """
         return self.__docker_pool.items
 
-    def _get_docker(self, remote: Address, local: Optional[Address]) -> Optional[Docker]:
+    def _get_docker(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
         """ get cached docker """
         return self.__docker_pool.get(remote=remote, local=local)
 
-    def _set_docker(self, remote: Address, local: Optional[Address], docker: Docker):
+    def _set_docker(self, remote: SocketAddress, local: Optional[SocketAddress], docker: Docker):
         """ cache docker """
         self.__docker_pool.set(remote=remote, local=local, item=docker)
 
-    def _remove_docker(self, remote: Address, local: Optional[Address], docker: Optional[Docker]):
+    def _remove_docker(self, remote: SocketAddress, local: Optional[SocketAddress], docker: Optional[Docker]):
         """ remove cached docker """
         self.__docker_pool.remove(remote=remote, local=local, item=docker)
 

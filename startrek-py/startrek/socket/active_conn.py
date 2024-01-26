@@ -31,7 +31,7 @@
 import weakref
 from typing import Optional
 
-from ..types import Address
+from ..types import SocketAddress
 from ..net import Hub, Channel
 
 from .base_conn import BaseConnection
@@ -40,7 +40,7 @@ from .base_conn import BaseConnection
 class ActiveConnection(BaseConnection):
     """ Active connection for client """
 
-    def __init__(self, remote: Address, local: Optional[Address], channel: Optional[Channel], hub: Hub):
+    def __init__(self, remote: SocketAddress, local: Optional[SocketAddress], channel: Optional[Channel], hub: Hub):
         super().__init__(remote=remote, local=local, channel=channel)
         self.__hub_ref = weakref.ref(hub)
 

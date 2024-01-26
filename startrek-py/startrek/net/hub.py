@@ -32,7 +32,7 @@ import socket
 from abc import ABC, abstractmethod
 from typing import Optional, Iterable
 
-from ..types import Address
+from ..types import SocketAddress
 from ..fsm import Processor
 
 from .channel import close_socket
@@ -44,7 +44,7 @@ class Hub(Processor, ABC):
     """ Connections & Channels Container """
 
     @abstractmethod
-    def open(self, remote: Optional[Address], local: Optional[Address]) -> Optional[Channel]:
+    def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         """
         Open a channel with direction (remote, local)
 
@@ -55,7 +55,7 @@ class Hub(Processor, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connect(self, remote: Address, local: Optional[Address] = None) -> Optional[Connection]:
+    def connect(self, remote: SocketAddress, local: Optional[SocketAddress] = None) -> Optional[Connection]:
         """
         Get connection with direction (remote, local)
 
@@ -66,7 +66,7 @@ class Hub(Processor, ABC):
         raise NotImplemented
 
     #
-    #   Local Address
+    #   Local SocketAddress
     #
 
     @classmethod

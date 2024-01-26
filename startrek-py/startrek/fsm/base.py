@@ -38,7 +38,7 @@ from .machine import Transition, State, Machine, Status, Delegate
 
 
 class BaseTransition(Transition[C], ABC):
-    """ Transition with the name of target state """
+    """ Transition with the index of target state """
 
     def __init__(self, target: str):
         super().__init__()

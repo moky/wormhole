@@ -32,7 +32,7 @@ import socket
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple
 
-from ..types import Address, AddressPairObject
+from ..types import SocketAddress, AddressPairObject
 
 from ..net.channel import is_blocking, is_opened, is_connected, is_bound
 from ..net import Channel
@@ -46,7 +46,7 @@ class SocketReader(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[Address]]:
+    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
         """ receive data via socket, and return it with remote address """
         raise NotImplemented
 
@@ -59,14 +59,14 @@ class SocketWriter(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def send(self, data: bytes, target: Address) -> int:
+    def send(self, data: bytes, target: SocketAddress) -> int:
         """ send data via socket with remote address """
         raise NotImplemented
 
 
 class BaseChannel(AddressPairObject, Channel, ABC):
 
-    def __init__(self, remote: Optional[Address], local: Optional[Address], sock: socket.socket):
+    def __init__(self, remote: Optional[SocketAddress], local: Optional[SocketAddress], sock: socket.socket):
         super().__init__(remote=remote, local=local)
         # flags
         self.__blocking = False
@@ -162,11 +162,11 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         return (not self.closed) and (self.connected or self.bound)
 
     @property  # Override
-    def remote_address(self) -> Address:  # (str, int)
+    def remote_address(self) -> SocketAddress:  # (str, int)
         return self._remote
 
     @property  # Override
-    def local_address(self) -> Optional[Address]:  # (str, int)
+    def local_address(self) -> Optional[SocketAddress]:  # (str, int)
         return self._local
 
     def __str__(self) -> str:
@@ -182,7 +182,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
                % (cname, self._remote, self._local, self.__sock, cname, mod)
 
     # Override
-    def bind(self, address: Optional[Address] = None,
+    def bind(self, address: Optional[SocketAddress] = None,
              host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
         if address is None:
             if port > 0:
@@ -201,7 +201,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         return sock
 
     # Override
-    def connect(self, address: Optional[Address] = None,
+    def connect(self, address: Optional[SocketAddress] = None,
                 host: Optional[str] = '127.0.0.1', port: Optional[int] = 0) -> socket.socket:
         if address is None:
             if port > 0:
@@ -252,7 +252,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             raise error
 
     # Override
-    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[Address]]:
+    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
         try:
             return self.reader.receive(max_len=max_len)
         except socket.error as error:
@@ -260,7 +260,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             raise error
 
     # Override
-    def send(self, data: bytes, target: Address) -> int:
+    def send(self, data: bytes, target: SocketAddress) -> int:
         try:
             return self.writer.send(data=data, target=target)
         except socket.error as error:

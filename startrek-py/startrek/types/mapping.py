@@ -32,7 +32,7 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import TypeVar, Generic, Optional, Set, Iterable, MutableMapping
 
-from .pair import Address
+from .pair import SocketAddress
 
 
 K = TypeVar('K')
@@ -188,7 +188,7 @@ class HashKeyPairMap(WeakKeyPairMap[K, V]):
             return item
 
 
-class AddressPairMap(HashKeyPairMap[Address, V]):
+class AddressPairMap(HashKeyPairMap[SocketAddress, V]):
 
     AnyAddress = ('0.0.0.0', 0)
 

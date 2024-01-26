@@ -31,7 +31,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Union
 
-from ..types import Address
+from ..types import SocketAddress
 from ..fsm import Processor
 
 from .ship import Departure
@@ -44,7 +44,8 @@ class Gate(Processor, ABC):
     """
 
     @abstractmethod
-    def send_data(self, payload: Union[bytes, bytearray], remote: Address, local: Optional[Address]) -> bool:
+    def send_data(self, payload: Union[bytes, bytearray],
+                  remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
         """
         Pack data to an outgo ship (with normal priority), and
         append to the waiting queue of docker for remote address
@@ -57,7 +58,8 @@ class Gate(Processor, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def send_ship(self, ship: Departure, remote: Address, local: Optional[Address]) -> bool:
+    def send_ship(self, ship: Departure,
+                  remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
         """
         Append outgo ship (carrying data package, with priority)
         to the waiting queue of docker for remote address

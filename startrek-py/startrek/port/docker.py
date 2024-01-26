@@ -32,7 +32,7 @@ from abc import abstractmethod
 from enum import IntEnum
 from typing import Optional, Union
 
-from ..types import Address
+from ..types import SocketAddress
 from ..fsm import Processor
 from ..net import ConnectionState
 
@@ -94,13 +94,13 @@ class Docker(Processor):
 
     @property
     @abstractmethod
-    def remote_address(self) -> Address:
+    def remote_address(self) -> SocketAddress:
         """ Remote address of connection """
         raise NotImplemented
 
     @property
     @abstractmethod
-    def local_address(self) -> Optional[Address]:
+    def local_address(self) -> Optional[SocketAddress]:
         """ Local address of connection """
         raise NotImplemented
 

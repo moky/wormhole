@@ -33,23 +33,23 @@ from typing import Optional, Union
 
 # Addresses can be either tuples of varying lengths (AF_INET, AF_INET6,
 # AF_NETLINK, AF_TIPC) or strings (AF_UNIX).
-Address = Union[tuple, str]
+SocketAddress = Union[tuple, str]
 # TODO: Most methods allow bytes as address objects
 
 
 class AddressPairObject:
 
-    def __init__(self, remote: Optional[Address], local: Optional[Address]):
+    def __init__(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]):
         super().__init__()
         self._remote = remote
         self._local = local
 
     @property
-    def remote_address(self) -> Optional[Address]:
+    def remote_address(self) -> Optional[SocketAddress]:
         return self._remote
 
     @property
-    def local_address(self) -> Optional[Address]:
+    def local_address(self) -> Optional[SocketAddress]:
         return self._local
 
     def __str__(self) -> str:

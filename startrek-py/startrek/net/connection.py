@@ -31,7 +31,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from ..types import Address
+from ..types import SocketAddress
 from ..fsm import Ticker
 
 
@@ -67,12 +67,12 @@ class Connection(Ticker, ABC):
 
     @property
     @abstractmethod
-    def local_address(self) -> Optional[Address]:  # (str, int)
+    def local_address(self) -> Optional[SocketAddress]:  # (str, int)
         raise NotImplemented
 
     @property
     @abstractmethod
-    def remote_address(self) -> Optional[Address]:  # (str, int)
+    def remote_address(self) -> Optional[SocketAddress]:  # (str, int)
         raise NotImplemented
 
     @property

@@ -33,7 +33,7 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional, List
 
-from .types import Address, AddressPairObject
+from .types import SocketAddress, AddressPairObject
 from .net import Connection
 from .port import Arrival, Departure, ShipStatus
 from .port import Docker, DockerStatus, DockerDelegate
@@ -118,11 +118,11 @@ class StarDocker(AddressPairObject, Docker, ABC):
             return status_from_state(state=conn.state)
 
     @property  # Override
-    def remote_address(self) -> Address:  # (str, int)
+    def remote_address(self) -> SocketAddress:  # (str, int)
         return self._remote
 
     @property  # Override
-    def local_address(self) -> Optional[Address]:  # (str, int)
+    def local_address(self) -> Optional[SocketAddress]:  # (str, int)
         # conn = self._get_connection()
         return self._local  # if conn is None else conn.local_address
 

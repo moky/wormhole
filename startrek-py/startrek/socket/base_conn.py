@@ -33,7 +33,7 @@ import time
 import weakref
 from typing import Optional
 
-from ..types import Address, AddressPairObject
+from ..types import SocketAddress, AddressPairObject
 from ..fsm import Delegate as StateDelegate
 
 from ..net import Channel
@@ -46,7 +46,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     EXPIRES = 16  # seconds
 
-    def __init__(self, remote: Address, local: Optional[Address], channel: Channel):
+    def __init__(self, remote: SocketAddress, local: Optional[SocketAddress], channel: Channel):
         super().__init__(remote=remote, local=local)
         self.__channel_ref = None if channel is None else weakref.ref(channel)
         self.__delegate = None
@@ -131,11 +131,11 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         return (not self.closed) and (self.connected or self.bound)
 
     @property  # Override
-    def remote_address(self) -> Address:  # (str, int)
+    def remote_address(self) -> SocketAddress:  # (str, int)
         return self._remote
 
     @property  # Override
-    def local_address(self) -> Optional[Address]:  # (str, int)
+    def local_address(self) -> Optional[SocketAddress]:  # (str, int)
         # channel = self.channel
         return self._local  # if channel is None else channel.local_address
 
@@ -176,7 +176,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         if delegate is not None:
             delegate.connection_received(data=data, connection=self)
 
-    def _send(self, data: bytes, target: Address) -> int:
+    def _send(self, data: bytes, target: SocketAddress) -> int:
         channel = self.channel
         if channel is None or not channel.alive:
             # raise socket.error('socket channel lost: %s' % channel)
