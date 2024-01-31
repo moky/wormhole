@@ -84,7 +84,7 @@ public interface Docker extends Processor {
     /**
      *  Clear all expired tasks
      */
-    void purge();
+    void purge(long now);
 
     /**
      *  Close connection for this docker

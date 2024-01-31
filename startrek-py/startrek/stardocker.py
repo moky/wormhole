@@ -204,8 +204,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
         return self.__dock.next_departure(now=now)
 
     # Override
-    def purge(self):
-        now = time.time()
+    def purge(self, now: float):
         self.__dock.purge(now=now)
 
     # Override
@@ -225,10 +224,10 @@ class StarDocker(AddressPairObject, Docker, ABC):
             # waiting for connection
             return False
         # 2. get data waiting to be sent out
-        if len(self.__last_fragments) > 0:
-            # get remaining fragments from last outgo task
-            outgo = self.__last_outgo
-            fragments = self.__last_fragments
+        outgo = self.__last_outgo
+        fragments = self.__last_fragments
+        if outgo is not None and len(fragments) > 0:
+            # got remaining fragments from last outgo task
             self.__last_outgo = None
             self.__last_fragments = []
         else:
@@ -236,9 +235,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
             now = time.time()
             outgo = self._next_departure(now=now)
             if outgo is None:
-                # nothing to do now, purge docker for cleaning expired tasks
-                # and return False to let the thread have a rest
-                self.purge()
+                # nothing to do now, return false to let the thread have a rest
                 return False
             elif outgo.get_status(now=now) == ShipStatus.FAILED:
                 delegate = self.delegate

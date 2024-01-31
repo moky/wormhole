@@ -143,7 +143,7 @@ class Docker(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def purge(self):
+    def purge(self, now: float):
         """ Clear all expired tasks """
         raise NotImplemented
 

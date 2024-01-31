@@ -154,10 +154,11 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         return count;
     }
     protected void cleanupDockers(Set<Docker> dockers) {
+        long now = System.currentTimeMillis();
         for (Docker worker : dockers) {
             if (worker.isOpen()) {
                 // clear expired tasks
-                worker.purge();
+                worker.purge(now);
             } else {
                 // remove docker when connection closed
                 removeDocker(worker.getRemoteAddress(), worker.getLocalAddress(), worker);

@@ -105,8 +105,7 @@ public class ArrivalHall {
     /**
      *  Clear all expired tasks
      */
-    public void purge() {
-        long now = System.currentTimeMillis();
+    public void purge(long now) {
         // 1. seeking expired tasks
         Iterator<Arrival> ait = arrivals.iterator();
         Arrival ship;

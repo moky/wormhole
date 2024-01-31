@@ -250,8 +250,7 @@ public class DepartureHall {
     /**
      *  Clear all expired tasks
      */
-    public void purge() {
-        long now = System.currentTimeMillis();
+    public void purge(long now) {
         // 1. seeking finished tasks
         Iterator<Integer> pit = priorities.iterator();
         int prior;

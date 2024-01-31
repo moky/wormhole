@@ -29,6 +29,7 @@
 # ==============================================================================
 
 import socket
+import time
 import weakref
 from abc import ABC, abstractmethod
 from typing import Optional, List, Iterable, Union
@@ -149,10 +150,14 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         return count
 
     def _cleanup_dockers(self, dockers: Iterable[Docker]):
+        now = time.time()
         for worker in dockers:
             if worker.closed:
                 # remove docker which connection lost
                 self._remove_docker(remote=worker.remote_address, local=worker.local_address, docker=worker)
+            else:
+                # clear expired tasks
+                worker.purge(now=now)
 
     def _heartbeat(self, connection: Connection):
         """ Send a heartbeat package('PING') to remote address """

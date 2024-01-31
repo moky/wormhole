@@ -110,8 +110,8 @@ public class Dock {
     /**
      * Clear all expired tasks
      */
-    public void purge() {
-        arrivalHall.purge();
-        departureHall.purge();
+    public void purge(long now) {
+        arrivalHall.purge(now);
+        departureHall.purge(now);
     }
 }

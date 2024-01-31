@@ -94,11 +94,11 @@ public class LockedDock extends Dock {
     }
 
     @Override
-    public void purge() {
+    public void purge(long now) {
         Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            super.purge();
+            super.purge(now);
         } finally {
             writeLock.unlock();
         }

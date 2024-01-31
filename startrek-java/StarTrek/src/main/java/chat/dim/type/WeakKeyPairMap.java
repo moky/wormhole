@@ -113,7 +113,7 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
                 table.put(key2, value);
             }
         } else if (value != null) {
-            table = new WeakHashMap<>();
+            table = new WeakMap<>();
             table.put(key2, value);
             map.put(key1, table);
         }

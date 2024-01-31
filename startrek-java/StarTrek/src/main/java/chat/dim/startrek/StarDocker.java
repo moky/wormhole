@@ -214,8 +214,8 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     }
 
     @Override
-    public void purge() {
-        dock.purge();
+    public void purge(long now) {
+        dock.purge(now);
     }
 
     @Override
@@ -237,12 +237,10 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             return false;
         }
         // 2. get data waiting to be sent out
-        Departure outgo;
-        List<byte[]> fragments;
-        if (lastFragments.size() > 0) {
-            // get remaining fragments from last outgo task
-            outgo = lastOutgo;
-            fragments = lastFragments;
+        Departure outgo = lastOutgo;
+        List<byte[]> fragments = lastFragments;
+        if (outgo != null && fragments.size() > 0) {
+            // got remaining fragments from last outgo task
             lastOutgo = null;
             lastFragments = new ArrayList<>();
         } else {
