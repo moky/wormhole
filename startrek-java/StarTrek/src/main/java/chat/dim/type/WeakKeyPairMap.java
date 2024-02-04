@@ -135,6 +135,13 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
             key2 = local;
         }
         Map<K, V> table = map.get(key1);
-        return table == null ? null : table.remove(key2);
+        if (table == null) {
+            return value;
+        }
+        V old = table.remove(key2);
+        if (table.isEmpty()) {
+            map.remove(key1);
+        }
+        return old == null ? value : old;
     }
 }

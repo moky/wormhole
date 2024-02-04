@@ -30,7 +30,9 @@
  */
 package chat.dim.startrek;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
@@ -51,11 +53,14 @@ public class PlainDocker extends StarDocker {
     }
 
     @Override
-    protected Arrival getArrival(byte[] data) {
-        if (data == null || data.length == 0) {
+    protected List<Arrival> getArrivals(byte[] data) {
+        if (data == null) {
+            assert false : "should not happen";
             return null;
         }
-        return createArrival(data);
+        List<Arrival> ships = new ArrayList<>();
+        ships.add(createArrival(data));
+        return ships;
     }
 
     @Override

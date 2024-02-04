@@ -33,6 +33,7 @@ package chat.dim.startrek;
 import java.io.IOError;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -184,31 +185,41 @@ public abstract class StarGate implements Gate, Connection.Delegate {
 
     @Override
     public void onConnectionStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
+        // convert status
+        Docker.Status s1 = Docker.Status.getStatus(previous);
+        Docker.Status s2 = Docker.Status.getStatus(current);
         // 1. callback when status changed
-        Docker.Delegate delegate = getDelegate();
-        if (delegate != null) {
-            Docker.Status s1 = Docker.Status.getStatus(previous);
-            Docker.Status s2 = Docker.Status.getStatus(current);
-            // check status
-            boolean changed;
-            if (s1 == null) {
-                changed = s2 != null;
-            } else if (s2 == null) {
-                changed = true;
-            } else {
-                changed = !s1.equals(s2);
-            }
-            if (changed) {
-                // callback
-                SocketAddress remote = connection.getRemoteAddress();
-                SocketAddress local = connection.getLocalAddress();
-                Docker docker = getDocker(remote, local);
-                // NOTICE: if the previous state is null, the docker maybe not
-                //         created yet, this situation means the docker status
-                //         not changed too, so no need to callback here.
-                if (docker != null) {
-                    delegate.onDockerStatusChanged(s1, s2, docker);
+        boolean changed;
+        if (s1 == null) {
+            changed = s2 != null;
+        } else if (s2 == null) {
+            changed = true;
+        } else {
+            changed = !s1.equals(s2);
+        }
+        if (changed) {
+            SocketAddress remote = connection.getRemoteAddress();
+            SocketAddress local = connection.getLocalAddress();
+            Docker docker = getDocker(remote, local);
+            if (docker == null) {
+                if (s2 == null || s2.equals(Docker.Status.ERROR)) {
+                    // connection closed and docker removed
+                    return;
                 }
+                docker = createDocker(connection, new ArrayList<>());
+                if (docker == null) {
+                    assert false : "failed to create docker: $remote, $local";
+                    return;
+                } else {
+                    setDocker(remote, local, docker);
+                }
+            }
+            // NOTICE: if the previous state is null, the docker maybe not
+            //         created yet, this situation means the docker status
+            //         not changed too, so no need to callback here.
+            Docker.Delegate delegate = getDelegate();
+            if (delegate != null) {
+                delegate.onDockerStatusChanged(s1, s2, docker);
             }
         }
         // 2. heartbeat when connection expired

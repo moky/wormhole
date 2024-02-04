@@ -30,6 +30,7 @@
  */
 package chat.dim.mtp;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import chat.dim.net.Connection;
@@ -66,7 +67,7 @@ public class PackageDocker extends StarDocker {
     }
 
     @Override
-    protected Arrival getArrival(byte[] data) {
+    protected List<Arrival> getArrivals(byte[] data) {
         Package pkg = parsePackage(data);
         if (pkg == null) {
             return null;
@@ -78,7 +79,9 @@ public class PackageDocker extends StarDocker {
             return null;
         }
          */
-        return createArrival(pkg);
+        List<Arrival> ships = new ArrayList<>();
+        ships.add(createArrival(pkg));
+        return ships;
     }
 
     @Override

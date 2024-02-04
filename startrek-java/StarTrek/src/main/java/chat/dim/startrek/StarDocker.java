@@ -140,31 +140,33 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     @Override
     public void processReceived(byte[] data) {
         // 1. get income ship from received data
-        Arrival income = getArrival(data);
-        if (income == null) {
+        List<Arrival> ships = getArrivals(data);
+        if (ships == null || ships.isEmpty()) {
             // waiting for more data
             return;
         }
-        // 2. check income ship for response
-        income = checkArrival(income);
-        if (income == null) {
-            // waiting for more fragment
-            return;
-        }
-        // 3. callback for processing income ship with completed data package
-        Delegate delegate = getDelegate();
-        if (delegate != null) {
-            delegate.onDockerReceived(income, this);
+        for (Arrival income : ships) {
+            // 2. check income ship for response
+            income = checkArrival(income);
+            if (income == null) {
+                // waiting for more fragment
+                return;
+            }
+            // 3. callback for processing income ship with completed data package
+            Delegate delegate = getDelegate();
+            if (delegate != null) {
+                delegate.onDockerReceived(income, this);
+            }
         }
     }
 
     /**
-     *  Get income Ship from received data
+     *  Get income ships from received data
      *
      * @param data - received data
-     * @return income ship carrying data package/fragment
+     * @return income ships carrying data package/fragments
      */
-    protected abstract Arrival getArrival(byte[] data);
+    protected abstract List<Arrival> getArrivals(byte[] data);
 
     /**
      *  Check income ship for responding

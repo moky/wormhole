@@ -81,6 +81,14 @@ public abstract class ChannelWriter<C extends SelectableChannel>
             //    // remove sent part
             }
         }
-        return sent;
+        // OK
+        if (sent > 0) {
+            return sent;
+        } else  if (cnt < 0) {
+            assert cnt == -1 : "sent error: " + cnt;
+            return -1;
+        } else {
+            return  0;
+        }
     }
 }
