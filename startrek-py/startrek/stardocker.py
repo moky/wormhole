@@ -49,7 +49,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
 
         @abstract methods:
             - heartbeat()
-            - _get_arrival(data)
+            - _get_arrivals(data)
             - _check_arrival(ship)
     """
 
@@ -145,26 +145,28 @@ class StarDocker(AddressPairObject, Docker, ABC):
     # Override
     def process_received(self, data: bytes):
         # 1. get income ship from received data
-        income = self._get_arrival(data=data)
-        if income is None:
+        ships = self._get_arrivals(data=data)
+        if ships is None or len(ships) == 0:
             # waiting for more data
             return None
-        # 2. check income ship for response
-        income = self._check_arrival(ship=income)
-        if income is None:
-            return None
-        # 3. callback for processing income ship with completed data package
-        delegate = self.delegate
-        if delegate is not None:
-            delegate.docker_received(ship=income, docker=self)
+        for income in ships:
+            # 2. check income ship for response
+            income = self._check_arrival(ship=income)
+            if income is None:
+                # waiting for more fragment
+                continue
+            # 3. callback for processing income ship with completed data package
+            delegate = self.delegate
+            if delegate is not None:
+                delegate.docker_received(ship=income, docker=self)
 
     @abstractmethod
-    def _get_arrival(self, data: bytes) -> Optional[Arrival]:
+    def _get_arrivals(self, data: bytes) -> List[Arrival]:
         """
-        Get income ship from received data
+        Get income ships from received data
 
         :param data: received data
-        :return income ship carrying data package/fragment
+        :return income ships carrying data package/fragments
         """
         raise NotImplemented
 

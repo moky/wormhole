@@ -63,6 +63,7 @@ class Client(DockerDelegate):
 
     def start(self):
         self.hub.bind(address=self.local_address)
+        self.hub.connect(remote=self.remote_address)
         self.gate.start()
 
     def stop(self):

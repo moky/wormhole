@@ -30,14 +30,14 @@
 
 from typing import Optional, Tuple
 
-from startrek.types import Address
+from startrek.types import SocketAddress
 from startrek import BaseChannel, ChannelReader, ChannelWriter
 
 
 class StreamChannelReader(ChannelReader):
 
     # Override
-    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[Address]]:
+    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
         data = self.read(max_len=max_len)
         if data is None or len(data) == 0:
             return None, None
@@ -48,7 +48,7 @@ class StreamChannelReader(ChannelReader):
 class StreamChannelWriter(ChannelWriter):
 
     # Override
-    def send(self, data: bytes, target: Address) -> int:
+    def send(self, data: bytes, target: SocketAddress) -> int:
         # TCP channel will be always connected
         # so the target address must be the remote address
         remote = self.remote_address

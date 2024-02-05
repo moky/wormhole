@@ -146,11 +146,12 @@ class WeakKeyPairMap(KeyPairMap[K, V], ABC):
             key1 = remote
             key2 = local
         table = self.__map.get(key1)
-        if table is not None:
-            # del (remote, local)
-            # del (remote, None)
-            # del (None, local)
-            return table.pop(key2, None)
+        if table is None:
+            return item
+        old = table.pop(key2, None)
+        if len(table) == 0:
+            self.__map.pop(key1, None)
+        return item if old is None else old
 
 
 class HashKeyPairMap(WeakKeyPairMap[K, V]):

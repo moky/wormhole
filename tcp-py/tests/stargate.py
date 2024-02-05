@@ -7,10 +7,14 @@ from abc import ABC
 from typing import Generic, TypeVar, Optional, List, Union
 
 from startrek.fsm import Runnable, Daemon
-from startrek.types import Address
-from tcp import Connection, ConnectionState
-from tcp import Docker, DockerDelegate
-from tcp import StarGate, PlainDocker
+from startrek.types import SocketAddress
+from startrek import Channel, Connection, ConnectionState
+from startrek import Hub
+from startrek import Arrival
+from startrek import Docker, DockerDelegate
+from startrek import StarGate
+from tcp import PlainArrival
+from tcp import PlainDocker
 
 
 H = TypeVar('H')
@@ -33,29 +37,17 @@ class BaseGate(StarGate, Generic[H], ABC):
     #
     #   Docker
     #
-    def get_docker(self, remote: Address, local: Optional[Address], advance_party: List[bytes]) -> Docker:
-        docker = self._get_docker(remote=remote, local=local)
-        if docker is None:
-            hub = self.hub
-            # from startrek import Hub
-            # assert isinstance(hub, Hub)
-            conn = hub.connect(remote=remote, local=local)
-            if conn is not None:
-                docker = self._create_docker(connection=conn, advance_party=advance_party)
-                assert docker is not None, 'failed to create docker: %s, %s' % (remote, local)
-                self._set_docker(remote=remote, local=local, docker=docker)
-        return docker
 
     # Override
-    def _get_docker(self, remote: Address, local: Optional[Address]) -> Optional[Docker]:
+    def _get_docker(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
         return super()._get_docker(remote=remote, local=None)
 
     # Override
-    def _set_docker(self, remote: Address, local: Optional[Address], docker: Docker):
+    def _set_docker(self, remote: SocketAddress, local: Optional[SocketAddress], docker: Docker):
         super()._set_docker(remote=remote, local=None, docker=docker)
 
     # Override
-    def _remove_docker(self, remote: Address, local: Optional[Address], docker: Optional[Docker]):
+    def _remove_docker(self, remote: SocketAddress, local: Optional[SocketAddress], docker: Optional[Docker]):
         super()._remove_docker(remote=remote, local=None, docker=docker)
 
     # # Override
@@ -78,12 +70,10 @@ class BaseGate(StarGate, Generic[H], ABC):
         pass
 
 
-class AutoGate(BaseGate, Runnable, Generic[H], ABC):
+class CommonGate(BaseGate, Generic[H], ABC):
 
-    def __init__(self, delegate: DockerDelegate, daemonic: bool = True):
+    def __init__(self, delegate: DockerDelegate):
         super().__init__(delegate=delegate)
-        # running thread
-        self.__daemon = Daemon(target=self.run, daemonic=daemonic)
         self.__running = False
 
     @property
@@ -91,17 +81,55 @@ class AutoGate(BaseGate, Runnable, Generic[H], ABC):
         return self.__running
 
     def start(self):
-        self.stop()
         self.__running = True
-        return self.__daemon.start()
 
     def stop(self):
         self.__running = False
+
+    def get_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        hub = self.hub
+        assert isinstance(hub, Hub), 'gate hub error: %s' % hub
+        return hub.open(remote=remote, local=local)
+
+    def send_response(self, payload: bytes, ship: Arrival,
+                      remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
+        assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
+        docker = self._get_docker(remote=remote, local=local)
+        if docker is not None:
+            return docker.send_data(payload=payload)
+
+    def fetch_docker(self, remote: SocketAddress, local: Optional[SocketAddress], advance_party: List[bytes]) -> Docker:
+        docker = self._get_docker(remote=remote, local=local)
+        if docker is None:  # and advance_party is not None:
+            hub = self.hub
+            assert isinstance(hub, Hub), 'gate hub error: %s' % hub
+            conn = hub.connect(remote=remote, local=local)
+            if conn is not None:
+                docker = self._create_docker(connection=conn, advance_party=advance_party)
+                if docker is None:
+                    assert False, 'failed to create docker: %s, %s' % (remote, local)
+                else:
+                    self._set_docker(remote=remote, local=local, docker=docker)
+        return docker
+
+
+class AutoGate(CommonGate, Runnable, Generic[H], ABC):
+
+    def __init__(self, delegate: DockerDelegate, daemonic: bool = True):
+        super().__init__(delegate=delegate)
+        # running thread
+        self.__daemon = Daemon(target=self.run, daemonic=daemonic)
+
+    def start(self):
+        super().start()
+        return self.__daemon.start()
+
+    def stop(self):
+        super().stop()
         self.__daemon.stop()
 
     # Override
     def run(self):
-        self.__running = True
         while self.running:
             if not self.process():
                 self._idle()
@@ -123,8 +151,8 @@ class AutoGate(BaseGate, Runnable, Generic[H], ABC):
 
 class TCPGate(AutoGate, Generic[H]):
 
-    def send_message(self, payload: bytes, remote: Address, local: Address) -> bool:
-        docker = self.get_docker(remote=remote, local=local, advance_party=[])
+    def send_message(self, payload: bytes, remote: SocketAddress, local: SocketAddress) -> bool:
+        docker = self.fetch_docker(remote=remote, local=local, advance_party=[])
         if docker is not None:
             return docker.send_data(payload=payload)
 

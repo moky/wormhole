@@ -194,7 +194,7 @@ class PackageDeparture(DepartureShip):
 class PackageDocker(StarDocker):
 
     # noinspection PyMethodMayBeStatic
-    def _parse_package(self, data: Optional[bytes]) -> Optional[Package]:
+    def _parse_package(self, data: bytes) -> Optional[Package]:
         if data is not None:  # and len(data) > 0:
             return Package.parse(data=Data(buffer=data))
 
@@ -214,10 +214,12 @@ class PackageDocker(StarDocker):
             return PackageDeparture(pack=pack, priority=priority, max_tries=1)
 
     # Override
-    def _get_arrival(self, data: bytes) -> Optional[Arrival]:
+    def _get_arrivals(self, data: bytes) -> List[Arrival]:
         pack = self._parse_package(data=data)
-        if pack is not None:  # and pack.body.size > 0:
-            return self._create_arrival(pack=pack)
+        if pack is None:
+            return []
+        else:
+            return [self._create_arrival(pack=pack)]
 
     # Override
     def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:

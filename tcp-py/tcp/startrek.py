@@ -139,9 +139,11 @@ class PlainDocker(StarDocker):
         return PlainDeparture(pack=pack, priority=priority)
 
     # Override
-    def _get_arrival(self, data: bytes) -> Optional[Arrival]:
-        if data is not None and len(data) > 0:
-            return self._create_arrival(pack=data)
+    def _get_arrivals(self, data: bytes) -> List[Arrival]:
+        if data is None or len(data) == 0:
+            return []
+        else:
+            return [self._create_arrival(pack=data)]
 
     # Override
     def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:

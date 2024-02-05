@@ -9,7 +9,7 @@ import sys
 import os
 from typing import Optional
 
-from startrek.types import Address
+from startrek.types import SocketAddress
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
@@ -26,21 +26,21 @@ from tests.stargate import TCPGate
 class StreamClientHub(ClientHub):
 
     # Override
-    def _get_connection(self, remote: Address, local: Optional[Address]) -> Optional[Connection]:
+    def _get_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
         return super()._get_connection(remote=remote, local=None)
 
     # Override
-    def _set_connection(self, remote: Address, local: Optional[Address], connection: Connection):
+    def _set_connection(self, remote: SocketAddress, local: Optional[SocketAddress], connection: Connection):
         super()._set_connection(remote=remote, local=None, connection=connection)
 
     # Override
-    def _remove_connection(self, remote: Address, local: Optional[Address], connection: Optional[Connection]):
+    def _remove_connection(self, remote: SocketAddress, local: Optional[SocketAddress], connection: Optional[Connection]):
         super()._remove_connection(remote=remote, local=None, connection=connection)
 
 
 class Client(DockerDelegate):
 
-    def __init__(self, local: Address, remote: Address):
+    def __init__(self, local: SocketAddress, remote: SocketAddress):
         super().__init__()
         self.__local_address = local
         self.__remote_address = remote
@@ -49,18 +49,23 @@ class Client(DockerDelegate):
         self.__gate = gate
 
     @property
-    def local_address(self) -> Address:
+    def local_address(self) -> SocketAddress:
         return self.__local_address
 
     @property
-    def remote_address(self) -> Address:
+    def remote_address(self) -> SocketAddress:
         return self.__remote_address
 
     @property
     def gate(self) -> TCPGate:
         return self.__gate
 
+    @property
+    def hub(self) -> ClientHub:
+        return self.gate.hub
+
     def start(self):
+        self.hub.connect(remote=self.remote_address)
         self.gate.start()
 
     def stop(self):
@@ -123,7 +128,7 @@ CLIENT_HOST = Hub.inet_address()
 CLIENT_PORT = random.choice(range(9900, 9999))
 
 
-def test_send(address: Address):
+def test_send(address: SocketAddress):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
     sock.setblocking(True)

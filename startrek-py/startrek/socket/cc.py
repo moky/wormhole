@@ -224,7 +224,14 @@ class ChannelWriter(Controller, SocketWriter, ABC):
             else:
                 # remove sent part
                 data = data[cnt:]
-        return sent
+        # OK
+        if sent > 0:
+            return sent
+        elif cnt < 0:
+            assert cnt == -1, 'sent error: %d' % cnt
+            return -1
+        else:
+            return 0
 
     # @abstractmethod  # Override
     # def send(self, data: bytes, target: SocketAddress) -> int:

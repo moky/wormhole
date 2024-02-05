@@ -36,7 +36,7 @@ import time
 from typing import Optional
 
 from startrek.fsm import Runner
-from startrek.types import Address
+from startrek.types import SocketAddress
 
 import sys
 import os
@@ -56,21 +56,21 @@ from tests.stargate import TCPGate
 class StreamClientHub(ClientHub):
 
     # Override
-    def _get_connection(self, remote: Address, local: Optional[Address]) -> Optional[Connection]:
+    def _get_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
         return super()._get_connection(remote=remote, local=None)
 
     # Override
-    def _set_connection(self, remote: Address, local: Optional[Address], connection: Connection):
+    def _set_connection(self, remote: SocketAddress, local: Optional[SocketAddress], connection: Connection):
         super()._set_connection(remote=remote, local=None, connection=connection)
 
     # Override
-    def _remove_connection(self, remote: Address, local: Optional[Address], connection: Optional[Connection]):
+    def _remove_connection(self, remote: SocketAddress, local: Optional[SocketAddress], connection: Optional[Connection]):
         super()._remove_connection(remote=remote, local=None, connection=connection)
 
 
 class Soldier(Runner, DockerDelegate):
 
-    def __init__(self, remote: Address, local: Optional[Address] = None):
+    def __init__(self, remote: SocketAddress, local: Optional[SocketAddress] = None):
         super().__init__(interval=1)
         self.__remote_address = remote
         self.__local_address = local
@@ -82,11 +82,11 @@ class Soldier(Runner, DockerDelegate):
         return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
 
     @property
-    def local_address(self) -> Address:
+    def local_address(self) -> SocketAddress:
         return self.__local_address
 
     @property
-    def remote_address(self) -> Address:
+    def remote_address(self) -> SocketAddress:
         return self.__remote_address
 
     @property
@@ -172,7 +172,7 @@ class Sergeant:
 
     UNITS = 10  # threads count
 
-    def __init__(self, remote: Address, local: Optional[Address] = None):
+    def __init__(self, remote: SocketAddress, local: Optional[SocketAddress] = None):
         super().__init__()
         self.__remote_address = remote
         self.__local_address = local
@@ -182,11 +182,11 @@ class Sergeant:
         return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
 
     @property
-    def local_address(self) -> Address:
+    def local_address(self) -> SocketAddress:
         return self.__local_address
 
     @property
-    def remote_address(self) -> Address:
+    def remote_address(self) -> SocketAddress:
         return self.__remote_address
 
     def run(self):
@@ -212,7 +212,7 @@ class Colonel(Runner):
 
     TROOPS = 16  # progresses count
 
-    def __init__(self, remote: Address, local: Optional[Address] = None):
+    def __init__(self, remote: SocketAddress, local: Optional[SocketAddress] = None):
         super().__init__(interval=1)
         self.__remote_address = remote
         self.__local_address = local
@@ -222,11 +222,11 @@ class Colonel(Runner):
         return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
 
     @property
-    def local_address(self) -> Address:
+    def local_address(self) -> SocketAddress:
         return self.__local_address
 
     @property
-    def remote_address(self) -> Address:
+    def remote_address(self) -> SocketAddress:
         return self.__remote_address
 
     def start(self):

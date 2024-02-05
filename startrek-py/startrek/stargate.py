@@ -37,7 +37,7 @@ from typing import Optional, List, Iterable, Union
 from .types import SocketAddress, AddressPairMap
 from .net import Connection, ConnectionDelegate, ConnectionState
 from .port import Departure, Gate
-from .port import Docker, DockerDelegate
+from .port import Docker, DockerStatus, DockerDelegate
 from .port.docker import status_from_state
 
 
@@ -173,21 +173,30 @@ class StarGate(Gate, ConnectionDelegate, ABC):
 
     # Override
     def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
+        # convert status
+        s1 = status_from_state(state=previous)
+        s2 = status_from_state(state=current)
         # 1. callback when status changed
-        delegate = self.delegate
-        if delegate is not None:
-            s1 = status_from_state(state=previous)
-            s2 = status_from_state(state=current)
-            if s1 != s2:
-                # callback
-                remote = connection.remote_address
-                local = connection.local_address
-                docker = self._get_docker(remote=remote, local=local)
-                # NOTICE: if the previous state is null, the docker maybe not
-                #         created yet, this situation means the docker status
-                #         not changed too, so no need to callback here.
-                if docker is not None:
-                    delegate.docker_status_changed(previous=s1, current=s2, docker=docker)
+        if s1 != s2:
+            remote = connection.remote_address
+            local = connection.local_address
+            docker = self._get_docker(remote=remote, local=local)
+            if docker is None:
+                if s2 == DockerStatus.ERROR:
+                    # connection closed and docker removed
+                    return
+                docker = self._create_docker(connection=connection, advance_party=[])
+                if docker is None:
+                    # assert False, 'failed to create docker: %s, %s' % (remote, local)
+                    return
+                else:
+                    self._set_docker(remote=remote, local=local, docker=docker)
+            # NOTICE: if the previous state is null, the docker maybe not
+            #         created yet, this situation means the docker status
+            #         not changed too, so no need to callback here.
+            delegate = self.delegate
+            if delegate is not None:
+                delegate.docker_status_changed(previous=s1, current=s2, docker=docker)
         # 2. heartbeat when connection expired
         if current == ConnectionState.EXPIRED:
             self._heartbeat(connection=connection)

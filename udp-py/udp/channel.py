@@ -31,14 +31,14 @@
 import socket
 from typing import Optional, Tuple
 
-from startrek.types import Address
+from startrek.types import SocketAddress
 from startrek import BaseChannel, ChannelReader, ChannelWriter
 
 
 class PacketChannelReader(ChannelReader):
     """ Datagram Packet Channel Reader """
 
-    def _try_receive(self, max_len: int, sock: socket.socket) -> Tuple[Optional[bytes], Optional[Address]]:
+    def _try_receive(self, max_len: int, sock: socket.socket) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
         try:
             return sock.recvfrom(max_len)
         except socket.error as error:
@@ -50,7 +50,7 @@ class PacketChannelReader(ChannelReader):
                 # connection lost?
                 raise error
 
-    def _receive_from(self, max_len: int, sock: socket.socket) -> Tuple[Optional[bytes], Optional[Address]]:
+    def _receive_from(self, max_len: int, sock: socket.socket) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
         data, remote = self._try_receive(max_len=max_len, sock=sock)
         # check data
         error = self.check_data(data=data, sock=sock)
@@ -62,7 +62,7 @@ class PacketChannelReader(ChannelReader):
             raise error
 
     # Override
-    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[Address]]:
+    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
         remote = self.remote_address
         if remote is None:
             # not connect (UDP)
@@ -75,7 +75,7 @@ class PacketChannelReader(ChannelReader):
 class PacketChannelWriter(ChannelWriter):
     """ Datagram Packet Channel Writer """
 
-    def _try_send(self, data: bytes, target: Address, sock: socket.socket) -> int:
+    def _try_send(self, data: bytes, target: SocketAddress, sock: socket.socket) -> int:
         try:
             return sock.sendto(data, target)
         except socket.error as error:
@@ -88,7 +88,7 @@ class PacketChannelWriter(ChannelWriter):
                 raise error
 
     # Override
-    def send(self, data: bytes, target: Address) -> int:
+    def send(self, data: bytes, target: SocketAddress) -> int:
         remote = self.remote_address
         if remote is None:
             # not connect (UDP)

@@ -8,7 +8,7 @@ import time
 from typing import Optional
 
 from startrek.net.channel import is_opened
-from startrek.types import Address
+from startrek.types import SocketAddress
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
@@ -25,15 +25,15 @@ from tests.stargate import TCPGate
 class StreamServerHub(ServerHub):
 
     # Override
-    def _get_connection(self, remote: Address, local: Optional[Address]) -> Optional[Connection]:
+    def _get_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
         return super()._get_connection(remote=remote, local=None)
 
     # Override
-    def _set_connection(self, remote: Address, local: Optional[Address], connection: Connection):
+    def _set_connection(self, remote: SocketAddress, local: Optional[SocketAddress], connection: Connection):
         super()._set_connection(remote=remote, local=None, connection=connection)
 
     # Override
-    def _remove_connection(self, remote: Address, local: Optional[Address], connection: Optional[Connection]):
+    def _remove_connection(self, remote: SocketAddress, local: Optional[SocketAddress], connection: Optional[Connection]):
         super()._remove_connection(remote=remote, local=None, connection=connection)
 
 
@@ -47,7 +47,7 @@ class Server(DockerDelegate):
         self.__gate = gate
 
     @property
-    def local_address(self) -> Address:
+    def local_address(self) -> SocketAddress:
         return self.__local_address
 
     @property
@@ -63,7 +63,7 @@ class Server(DockerDelegate):
         self.hub.start()
         self.gate.start()
 
-    def send(self, data: bytes, destination: Address) -> bool:
+    def send(self, data: bytes, destination: SocketAddress) -> bool:
         return self.gate.send_message(payload=data, remote=destination, local=self.local_address)
 
     #
@@ -115,7 +115,7 @@ SERVER_HOST = Hub.inet_address()
 SERVER_PORT = 9394
 
 
-def test_receive(address: Address):
+def test_receive(address: SocketAddress):
     master = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     master.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     master.setblocking(True)
