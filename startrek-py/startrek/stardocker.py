@@ -149,6 +149,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
         if ships is None or len(ships) == 0:
             # waiting for more data
             return None
+        delegate = self.delegate
         for income in ships:
             # 2. check income ship for response
             income = self._check_arrival(ship=income)
@@ -156,7 +157,6 @@ class StarDocker(AddressPairObject, Docker, ABC):
                 # waiting for more fragment
                 continue
             # 3. callback for processing income ship with completed data package
-            delegate = self.delegate
             if delegate is not None:
                 delegate.docker_received(ship=income, docker=self)
 

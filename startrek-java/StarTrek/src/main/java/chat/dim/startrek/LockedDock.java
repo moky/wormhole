@@ -41,6 +41,8 @@ public class LockedDock extends Dock {
 
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
+    private long nextPurgeTime = 0;
+
     @Override
     public Arrival assembleArrival(Arrival income) {
         Arrival completed;
@@ -95,6 +97,12 @@ public class LockedDock extends Dock {
 
     @Override
     public void purge(long now) {
+        if (now < nextPurgeTime) {
+            return;
+        } else {
+            // next purge after half a minute
+            nextPurgeTime = now + 30000;
+        }
         Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {

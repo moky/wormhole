@@ -145,15 +145,15 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             // waiting for more data
             return;
         }
+        Delegate delegate = getDelegate();
         for (Arrival income : ships) {
             // 2. check income ship for response
             income = checkArrival(income);
             if (income == null) {
                 // waiting for more fragment
-                return;
+                continue;
             }
             // 3. callback for processing income ship with completed data package
-            Delegate delegate = getDelegate();
             if (delegate != null) {
                 delegate.onDockerReceived(income, this);
             }
