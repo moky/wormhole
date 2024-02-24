@@ -224,7 +224,7 @@ class BaseHub(Hub, ABC):
 
     def _cleanup_channels(self, channels: Iterable[Channel]):
         for sock in channels:
-            if not sock.alive:
+            if sock.closed:
                 # if channel not connected (TCP) and not bound (UDP),
                 # means it's closed, remove it from the hub
                 self._remove_channel(remote=sock.remote_address, local=sock.local_address, channel=sock)

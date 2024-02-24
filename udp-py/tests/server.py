@@ -5,6 +5,8 @@ import sys
 import os
 from typing import Optional
 
+from startrek.types import SocketAddress
+
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
@@ -20,15 +22,16 @@ from tests.stargate import UDPGate
 class PacketServerHub(ServerHub):
 
     # Override
-    def _get_connection(self, remote: tuple, local: Optional[tuple]) -> Optional[Connection]:
+    def _get_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
         return super()._get_connection(remote=remote, local=None)
 
     # Override
-    def _set_connection(self, remote: tuple, local: Optional[tuple], connection: Connection):
+    def _set_connection(self, remote: SocketAddress, local: Optional[SocketAddress], connection: Connection):
         super()._set_connection(remote=remote, local=None, connection=connection)
 
     # Override
-    def _remove_connection(self, remote: tuple, local: Optional[tuple], connection: Optional[Connection]):
+    def _remove_connection(self, remote: SocketAddress, local: Optional[SocketAddress],
+                           connection: Optional[Connection]):
         super()._remove_connection(remote=remote, local=None, connection=connection)
 
 
@@ -42,7 +45,7 @@ class Server(DockerDelegate):
         self.__gate = gate
 
     @property
-    def local_address(self) -> tuple:
+    def local_address(self) -> SocketAddress:
         return self.__local_address
 
     @property
@@ -57,7 +60,7 @@ class Server(DockerDelegate):
         self.hub.bind(address=self.local_address)
         self.gate.start()
 
-    def send(self, data: bytes, destination: tuple):
+    def send(self, data: bytes, destination: SocketAddress):
         self.gate.send_command(body=data, remote=destination, local=self.local_address)
 
     #

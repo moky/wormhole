@@ -2,7 +2,6 @@
 
 import socket
 import time
-import traceback
 from abc import ABC
 from typing import Generic, TypeVar, Optional, List, Union
 
@@ -140,18 +139,15 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
 
     # Override
     def process(self) -> bool:
-        try:
-            incoming = self.hub.process()
-            outgoing = super().process()
-            return incoming or outgoing
-        except Exception as error:
-            print('[TCP] process error: %s' % error)
-            traceback.print_exc()
+        incoming = self.hub.process()
+        outgoing = super().process()
+        return incoming or outgoing
 
 
 class TCPGate(AutoGate, Generic[H]):
 
-    def send_message(self, payload: bytes, remote: SocketAddress, local: SocketAddress) -> bool:
+    def send_message(self, payload: bytes,
+                     remote: SocketAddress, local: SocketAddress) -> bool:
         docker = self.fetch_docker(remote=remote, local=local, advance_party=[])
         if docker is not None:
             return docker.send_data(payload=payload)

@@ -28,9 +28,12 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Tuple
+import socket
+import time
+from typing import Optional, Tuple, Dict
 
 from startrek.types import SocketAddress
+from startrek.net.channel import is_connected
 from startrek import BaseChannel, ChannelReader, ChannelWriter
 
 
@@ -66,3 +69,74 @@ class StreamChannel(BaseChannel):
     # Override
     def _create_writer(self):
         return StreamChannelWriter(channel=self)
+
+    # Override
+    def _set_socket(self, sock: Optional[socket.socket]):
+        if sock is None:
+            _socket_pool.pop(self.remote_address, None)
+        super()._set_socket(sock=sock)
+
+    # Override
+    def disconnect(self) -> Optional[socket.socket]:
+        _socket_pool.pop(self.remote_address, None)
+        return super().disconnect()
+
+
+def create_socket(remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[socket.socket]:
+    now = time.time()
+    # get from pool
+    wrapper = _socket_pool.get(remote)
+    if wrapper is None or wrapper.is_expired(now=now):
+        sock = None
+    else:
+        sock = wrapper.socket
+    # check socket
+    if sock is None:
+        # create a new one and cache it
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        wrapper = _Socket(sock=sock, now=now)
+        _socket_pool[remote] = wrapper
+        try:
+            # preparing
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
+            sock.setblocking(True)
+            # try to bind
+            if local is not None:
+                sock.bind(local)
+            # try to connect
+            sock.connect(remote)
+            sock.setblocking(False)
+            _socket_pool[remote] = wrapper
+        except socket.error as error:
+            _socket_pool.pop(remote, None)
+            print('[TCP] failed to init socket %s -> %s: %s' % (local, remote, error))
+            return None
+    else:
+        # wait for connection
+        expired = now + 8
+        while not is_connected(sock=sock):
+            time.sleep(0.1)
+            if time.time() > expired:
+                break  # timeout
+    return sock
+
+
+class _Socket:
+
+    def __init__(self, sock: socket.socket, now: float):
+        super().__init__()
+        self.__sock = sock
+        self.__expired = now + 128  # expired after 2 minutes
+
+    @property
+    def socket(self) -> socket.socket:
+        return self.__sock
+
+    def is_expired(self, now: float) -> bool:
+        if is_connected(sock=self.__sock):
+            return False
+        else:
+            return now > self.__expired
+
+
+_socket_pool: Dict[SocketAddress, _Socket] = {}

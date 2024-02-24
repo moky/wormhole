@@ -7,7 +7,7 @@ import os
 import time
 from typing import Optional
 
-from startrek.net.channel import is_opened
+from startrek.net.channel import is_closed
 from startrek.types import SocketAddress
 
 curPath = os.path.abspath(os.path.dirname(__file__))
@@ -33,7 +33,8 @@ class StreamServerHub(ServerHub):
         super()._set_connection(remote=remote, local=None, connection=connection)
 
     # Override
-    def _remove_connection(self, remote: SocketAddress, local: Optional[SocketAddress], connection: Optional[Connection]):
+    def _remove_connection(self, remote: SocketAddress, local: Optional[SocketAddress],
+                           connection: Optional[Connection]):
         super()._remove_connection(remote=remote, local=None, connection=connection)
 
 
@@ -129,7 +130,7 @@ def test_receive(address: SocketAddress):
             size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
             print('[TCP] receive buffer size1: %d' % size)
             total = 0
-            while is_opened(sock=sock):
+            while not is_closed(sock=sock):
                 data = sock.recv(1024)
                 cnt = len(data)
                 if cnt > 0:

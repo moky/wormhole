@@ -92,7 +92,8 @@ class ChannelPool(AddressPairMap[Channel]):
         super().set(remote=remote, local=local, item=item)
 
     # Override
-    def remove(self, remote: Optional[SocketAddress], local: Optional[SocketAddress], item: Optional[Channel]) -> Optional[Channel]:
+    def remove(self, remote: Optional[SocketAddress], local: Optional[SocketAddress],
+               item: Optional[Channel]) -> Optional[Channel]:
         cached = super().remove(remote=remote, local=local, item=item)
         if cached is not None:
             if not cached.closed:
@@ -113,7 +114,7 @@ class PacketHub(BaseHub, ABC):
 
     def bind(self, address: SocketAddress = None, host: str = None, port: int = 0):
         if address is None:
-            assert port > 0, 'address error: (%s:%d)' % (host, port)
+            assert host is not None and port > 0, 'address error: (%s:%d)' % (host, port)
             address = (host, port)
         channel = self._get_channel(remote=None, local=address)
         if channel is None:
@@ -130,7 +131,8 @@ class PacketHub(BaseHub, ABC):
     #
 
     # noinspection PyMethodMayBeStatic
-    def _create_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress], sock: socket.socket) -> Channel:
+    def _create_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress],
+                        sock: socket.socket) -> Channel:
         # override for user-customized channel
         return PacketChannel(remote=remote, local=local, sock=sock)
 
@@ -140,7 +142,8 @@ class PacketHub(BaseHub, ABC):
         return self.__channel_pool.items
 
     # Override
-    def _remove_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress], channel: Optional[Channel]):
+    def _remove_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress],
+                        channel: Optional[Channel]):
         """ remove cached channel """
         self.__channel_pool.remove(remote=remote, local=local, item=channel)
 
@@ -162,7 +165,8 @@ class ServerHub(PacketHub):
     """ Datagram Server Hub """
 
     # Override
-    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress], channel: Channel) -> Optional[Connection]:
+    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress],
+                           channel: Channel) -> Optional[Connection]:
         conn = BaseConnection(remote=remote, local=local, channel=channel)
         conn.delegate = self.delegate  # gate
         conn.start()  # start FSM
@@ -173,7 +177,8 @@ class ClientHub(PacketHub):
     """ Datagram Client Hub """
 
     # Override
-    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress], channel: Channel) -> Optional[Connection]:
+    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress],
+                           channel: Channel) -> Optional[Connection]:
         conn = ActiveConnection(remote=remote, local=None, channel=channel, hub=self)
         conn.delegate = self.delegate  # gate
         conn.start()  # start FSM

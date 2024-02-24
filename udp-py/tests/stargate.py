@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import socket
 import time
-import traceback
 from abc import ABC
 from typing import Generic, TypeVar, Optional, List, Union
 
@@ -140,28 +139,27 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
 
     # Override
     def process(self) -> bool:
-        try:
-            incoming = self.hub.process()
-            outgoing = super().process()
-            return incoming or outgoing
-        except Exception as error:
-            print('[UDP] process error: %s' % error)
-            traceback.print_exc()
+        incoming = self.hub.process()
+        outgoing = super().process()
+        return incoming or outgoing
 
 
 class UDPGate(AutoGate, Generic[H]):
 
-    def send_message(self, body: Union[bytes, bytearray], remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
+    def send_message(self, body: Union[bytes, bytearray],
+                     remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
         docker = self.fetch_docker(remote=remote, local=local, advance_party=[])
         if isinstance(docker, PackageDocker):
             return docker.send_message(body=body)
 
-    def send_command(self, body: Union[bytes, bytearray], remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
+    def send_command(self, body: Union[bytes, bytearray],
+                     remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
         docker = self.fetch_docker(remote=remote, local=local, advance_party=[])
         if isinstance(docker, PackageDocker):
             return docker.send_command(body=body)
 
-    def send_package(self, pack: Package, remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
+    def send_package(self, pack: Package,
+                     remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
         docker = self.fetch_docker(remote=remote, local=local, advance_party=[])
         if isinstance(docker, PackageDocker):
             return docker.send_package(pack=pack)

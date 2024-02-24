@@ -64,7 +64,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
 
     def __del__(self):
         # make sure the relative connection is closed
-        self.__remove_connection()
+        self._set_connection(conn=None)
         self.__dock = None
 
     # noinspection PyMethodMayBeStatic
@@ -91,13 +91,18 @@ class StarDocker(AddressPairObject, Docker, ABC):
         if ref is not None:
             return ref()
 
-    def __remove_connection(self):
-        # 1. clear connection reference
+    def _set_connection(self, conn: Optional[Connection]):
+        # 1. replace with new connection
         old = self._get_connection()
-        self.__conn_ref = None
+        self.__conn_ref = None if conn is None else weakref.ref(conn)
         # 2. close old connection
-        if not (old is None or old.closed):
-            old.close()
+        if old is None or old is conn:
+            return
+        try:
+            if not old.closed:
+                old.close()
+        except Exception as error:
+            print('[SOCKET] failed to close connection: %s, %s' % (error, old))
 
     @property  # Override
     def closed(self) -> bool:
@@ -211,7 +216,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
 
     # Override
     def close(self):
-        self.__remove_connection()
+        self._set_connection(conn=None)
         self.__dock = None
 
     #

@@ -34,13 +34,14 @@ from typing import Optional, Iterable
 
 from startrek.types import SocketAddress, AddressPairMap
 from startrek.fsm import Runnable, Daemon
-from startrek.net.channel import is_opened, close_socket, get_local_address
+from startrek.net.channel import close_socket, get_local_address
 from startrek import Channel
 from startrek import Connection, ConnectionDelegate
 from startrek import BaseConnection, ActiveConnection
 from startrek import BaseHub
 
 from .channel import StreamChannel
+from .channel import create_socket
 
 
 class ChannelPool(AddressPairMap[Channel]):
@@ -53,7 +54,8 @@ class ChannelPool(AddressPairMap[Channel]):
         super().set(remote=remote, local=local, item=item)
 
     # Override
-    def remove(self, remote: Optional[SocketAddress], local: Optional[SocketAddress], item: Optional[Channel]) -> Optional[Channel]:
+    def remove(self, remote: Optional[SocketAddress], local: Optional[SocketAddress],
+               item: Optional[Channel]) -> Optional[Channel]:
         cached = super().remove(remote=remote, local=local, item=item)
         if cached is not None:
             if not cached.closed:
@@ -77,7 +79,8 @@ class StreamHub(BaseHub, ABC):
     #
 
     # noinspection PyMethodMayBeStatic
-    def _create_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress], sock: socket.socket) -> Channel:
+    def _create_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress],
+                        sock: socket.socket) -> Channel:
         """ create channel with socket & addresses """
         return StreamChannel(remote=remote, local=local, sock=sock)
 
@@ -87,7 +90,8 @@ class StreamHub(BaseHub, ABC):
         return self.__channel_pool.items
 
     # Override
-    def _remove_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress], channel: Optional[Channel]):
+    def _remove_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress],
+                        channel: Optional[Channel]):
         """ remove cached channel """
         self.__channel_pool.remove(remote=remote, local=local, item=channel)
 
@@ -117,7 +121,8 @@ class ServerHub(StreamHub, Runnable):
         self.__running = False
 
     # Override
-    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress], channel: Channel) -> Optional[Connection]:
+    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress],
+                           channel: Channel) -> Optional[Connection]:
         conn = BaseConnection(remote=remote, local=local, channel=channel)
         conn.delegate = self.delegate  # gate
         conn.start()  # start FSM
@@ -126,6 +131,7 @@ class ServerHub(StreamHub, Runnable):
     def bind(self, address: Optional[SocketAddress] = None, host: Optional[str] = None, port: Optional[int] = 0):
         if address is None:
             if port > 0:
+                assert host is not None, 'host should not be empty'
                 address = (host, port)
             else:
                 address = self.__local
@@ -147,9 +153,8 @@ class ServerHub(StreamHub, Runnable):
         old = self.__master
         self.__master = master
         # 2. close old socket
-        if old is not None and old is not master:
-            if is_opened(sock=old):
-                close_socket(sock=old)
+        if not (old is None or old is master):
+            close_socket(sock=old)
 
     @property
     def local_address(self) -> Optional[SocketAddress]:
@@ -197,7 +202,8 @@ class ClientHub(StreamHub):
     """ Stream Client Hub """
 
     # Override
-    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress], channel: Channel) -> Optional[Connection]:
+    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress],
+                           channel: Channel) -> Optional[Connection]:
         conn = ActiveConnection(remote=remote, local=local, channel=channel, hub=self)
         conn.delegate = self.delegate  # gate
         conn.start()  # start FSM
@@ -206,30 +212,19 @@ class ClientHub(StreamHub):
     # Override
     def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         channel = super().open(remote=remote, local=local)
-        if channel is None:  # and remote is not None:
-            channel = self.__create_socket_channel(remote=remote, local=local)
-            if channel is not None:
-                self._set_channel(remote=channel.remote_address, local=channel.local_address, channel=channel)
-        return channel
-
-    def __create_socket_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
-        # override for user-customized channel
-        try:
-            sock = create_socket(remote=remote, local=local)
-            if local is None:
-                local = get_local_address(sock=sock)
-            return self._create_channel(remote=remote, local=local, sock=sock)
-        except socket.error as error:
-            print('[TCP] failed to create channel %s -> %s: %s' % (local, remote, error))
-
-
-def create_socket(remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[socket.socket]:
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
-    sock.setblocking(True)
-    if local is not None:
-        sock.bind(local)
-    # assert remote is not None
-    sock.connect(remote)
-    sock.setblocking(False)
-    return sock
+        if channel is not None:
+            # channel already exists
+            return channel
+        assert remote is not None, 'remote address should not be empty'
+        # get from socket pool
+        sock = create_socket(remote=remote, local=local)
+        if sock is None:
+            # failed to connect remote address
+            return None
+        elif local is None:
+            local = get_local_address(sock=sock)
+        # create channel with socket
+        channel = self._create_channel(remote=remote, local=local, sock=sock)
+        if channel is not None:
+            self._set_channel(remote=channel.remote_address, local=channel.local_address, channel=channel)
+            return channel

@@ -34,7 +34,8 @@ class StreamClientHub(ClientHub):
         super()._set_connection(remote=remote, local=None, connection=connection)
 
     # Override
-    def _remove_connection(self, remote: SocketAddress, local: Optional[SocketAddress], connection: Optional[Connection]):
+    def _remove_connection(self, remote: SocketAddress, local: Optional[SocketAddress],
+                           connection: Optional[Connection]):
         super()._remove_connection(remote=remote, local=None, connection=connection)
 
 

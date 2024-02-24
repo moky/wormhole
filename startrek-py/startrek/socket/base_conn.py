@@ -46,7 +46,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     EXPIRES = 16  # seconds
 
-    def __init__(self, remote: SocketAddress, local: Optional[SocketAddress], channel: Channel):
+    def __init__(self, remote: SocketAddress, local: Optional[SocketAddress], channel: Optional[Channel]):
         super().__init__(remote=remote, local=local)
         self.__channel_ref = None if channel is None else weakref.ref(channel)
         self.__delegate = None
@@ -57,9 +57,10 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         self.__fsm: Optional[StateMachine] = None
 
     def __del__(self):
+        # make sure the state machine is stopped
+        self._set_state_machine(fsm=None)
         # make sure the relative channel is closed
         self._set_channel(channel=None)
-        self._set_state_machine(fsm=None)
 
     def _get_state_machine(self) -> Optional[StateMachine]:
         return self.__fsm
@@ -102,12 +103,13 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         old = self._get_channel()
         self.__channel_ref = None if channel is None else weakref.ref(channel)
         # 2. close old channel
-        if old is not None and old is not channel:
+        if old is None or old is channel:
+            return
+        try:
             if old.connected:
-                try:
-                    old.disconnect()
-                except socket.error as error:
-                    print('[SOCKET] failed to close channel: %s, %s' % (error, old))
+                old.disconnect()
+        except socket.error as error:
+            print('[SOCKET] failed to close channel: %s, %s' % (error, old))
 
     @property  # Override
     def closed(self) -> bool:
@@ -153,8 +155,10 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     # Override
     def close(self):
-        self._set_channel(channel=None)
+        # stop state machine
         self._set_state_machine(fsm=None)
+        # close channel
+        self._set_channel(channel=None)
 
     def start(self):
         fsm = self._create_state_machine()
@@ -162,8 +166,8 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         self._set_state_machine(fsm=fsm)
 
     def stop(self):
-        self._set_channel(channel=None)
         self._set_state_machine(fsm=None)
+        self._set_channel(channel=None)
 
     #
     #   I/O

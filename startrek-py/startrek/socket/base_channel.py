@@ -34,7 +34,8 @@ from typing import Optional, Tuple
 
 from ..types import SocketAddress, AddressPairObject
 
-from ..net.channel import is_blocking, is_opened, is_connected, is_bound
+from ..net.channel import is_blocking, is_closed, is_connected, is_bound
+from ..net.channel import get_local_address, close_socket
 from ..net import Channel
 
 
@@ -70,7 +71,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         super().__init__(remote=remote, local=local)
         # flags
         self.__blocking = False
-        self.__opened = False
+        # self.__closed = False
         self.__connected = False
         self.__bound = False
         self.__sock = sock
@@ -81,7 +82,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     def __del__(self):
         # make sure the relative socket is removed
-        self.__remove_socket()
+        self._set_socket(sock=None)
         self.__reader = None
         self.__writer = None
 
@@ -105,29 +106,32 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     @property
     def sock(self) -> Optional[socket.socket]:
+        return self._get_socket()
+
+    def _get_socket(self) -> Optional[socket.socket]:
         return self.__sock
 
-    def __remove_socket(self):
-        # 1. clear inner socket
-        sock: socket.socket = self.__sock
-        self.__sock = None
+    def _set_socket(self, sock: Optional[socket.socket]):
+        # 1. replace with new socket
+        old = self.__sock
+        self.__sock = sock
         # 2. refresh flags
         self._refresh_flags()
         # 3. close old socket
-        if sock is not None and is_opened(sock=sock):
-            sock.close()
+        if not (old is None or old is sock):
+            close_socket(sock=old)
 
     def _refresh_flags(self):
         """ refresh flags with inner socket """
-        sock = self.__sock
+        sock = self._get_socket()
         if sock is None:
             self.__blocking = False
-            self.__opened = False
+            # self.__closed = False
             self.__connected = False
             self.__bound = False
         else:
             self.__blocking = is_blocking(sock=sock)
-            self.__opened = is_opened(sock=sock)
+            # self.__closed = is_closed(sock=sock)
             self.__connected = is_connected(sock=sock)
             self.__bound = is_bound(sock=sock)
 
@@ -147,7 +151,9 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     @property  # Override
     def closed(self) -> bool:
-        return not self.__opened
+        # return self.__closed
+        sock = self._get_socket()
+        return sock is None or is_closed(sock=sock)
 
     @property  # Override
     def connected(self) -> bool:
@@ -163,11 +169,18 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     @property  # Override
     def remote_address(self) -> SocketAddress:  # (str, int)
-        return self._remote
+        address = self._remote
+        # TODO: get remote address from the sock
+        return address
 
     @property  # Override
     def local_address(self) -> Optional[SocketAddress]:  # (str, int)
-        return self._local
+        address = self._local
+        if address is None:
+            sock = self._get_socket()
+            if sock is not None:
+                address = self._local = get_local_address(sock=sock)
+        return address
 
     def __str__(self) -> str:
         mod = self.__module__
@@ -186,6 +199,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
              host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
         if address is None:
             if port > 0:
+                assert host is not None, 'host should not be empty'
                 address = (host, port)
             else:
                 address = self._local
@@ -193,11 +207,11 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         sock = self.sock
         if sock is None:
             raise socket.error('cannot bind socket: local=(%s:%d)' % address)
+        # self.__closed = False
+        self.__blocking = is_blocking(sock=sock)
         sock.bind(address)
         self._local = address
         self.__bound = True
-        self.__opened = True
-        self.__blocking = is_blocking(sock=sock)
         return sock
 
     # Override
@@ -205,6 +219,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
                 host: Optional[str] = '127.0.0.1', port: Optional[int] = 0) -> socket.socket:
         if address is None:
             if port > 0:
+                assert host is not None, 'host should not be empty'
                 address = (host, port)
             else:
                 address = self._remote
@@ -212,28 +227,29 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         sock = self.sock
         if sock is None:
             raise socket.error('cannot connect socket: remote=(%s:%d)' % address)
+        # self.__closed = False
+        self.__blocking = is_blocking(sock=sock)
         sock.connect(address)
         self._remote = address
         self.__connected = True
-        self.__opened = True
-        self.__blocking = is_blocking(sock=sock)
         return sock
 
     # Override
     def disconnect(self) -> Optional[socket.socket]:
+        # 1. clear inner socket
         sock = self.__sock
+        self.__sock = None
+        # 2. refresh flags
+        self._refresh_flags()
+        # 3. close connected socket
         if sock is not None and is_connected(sock=sock):
-            try:
-                sock.close()
-                self.__sock = None
-            finally:
-                self._refresh_flags()
+            close_socket(sock=sock)
         return sock
 
     # Override
     def close(self):
         # set socket to None and refresh flags
-        self.__remove_socket()
+        self._set_socket(sock=None)
 
     # Override
     def read(self, max_len: int) -> Optional[bytes]:
