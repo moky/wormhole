@@ -142,9 +142,9 @@ class BaseHub(Hub, ABC):
         self.__connection_pool.set(item=connection, remote=remote, local=local)
 
     def _remove_connection(self, connection: Optional[Connection],
-                           remote: SocketAddress, local: Optional[SocketAddress]):
+                           remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
         """ remove cached connection """
-        self.__connection_pool.remove(item=connection, remote=remote, local=local)
+        return self.__connection_pool.remove(item=connection, remote=remote, local=local)
 
     # Override
     def connect(self, remote: SocketAddress, local: Optional[SocketAddress] = None) -> Optional[Connection]:

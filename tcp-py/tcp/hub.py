@@ -35,7 +35,7 @@ from typing import Optional, Iterable
 
 from startrek.types import SocketAddress, AddressPairMap
 from startrek.fsm import Runnable, Daemon
-from startrek.net.channel import close_socket, get_local_address
+from startrek.net.channel import close_socket
 from startrek import Channel
 from startrek import Connection, ConnectionDelegate
 from startrek import BaseConnection, ActiveConnection
@@ -64,6 +64,7 @@ class ChannelPool(AddressPairMap[Channel]):
             return cached
 
 
+# noinspection PyAbstractClass
 class StreamHub(BaseHub, ABC):
     """ Base Stream Hub """
 
@@ -92,9 +93,9 @@ class StreamHub(BaseHub, ABC):
 
     # Override
     def _remove_channel(self, channel: Optional[Channel],
-                        remote: Optional[SocketAddress], local: Optional[SocketAddress]):
+                        remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         """ remove cached channel """
-        self.__channel_pool.remove(item=channel, remote=remote, local=local)
+        return self.__channel_pool.remove(item=channel, remote=remote, local=local)
 
     def _get_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         """ get cached channel """
@@ -232,8 +233,8 @@ class ClientHub(StreamHub):
             if sock is None:
                 # failed to connect remote address
                 return None
-            elif local is None:
-                local = get_local_address(sock=sock)
+            # elif local is None:
+            #     local = get_local_address(sock=sock)
             # create channel with socket
             channel = self._create_channel(remote=remote, local=local, sock=sock)
             if channel is not None:

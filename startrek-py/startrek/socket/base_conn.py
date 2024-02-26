@@ -135,12 +135,21 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property  # Override
     def remote_address(self) -> SocketAddress:  # (str, int)
-        return self._remote
+        address = self._remote
+        # if address is None:
+        #     channel = self._get_channel()
+        #     if channel is not None:
+        #         address = channel.remote_address
+        return address
 
     @property  # Override
     def local_address(self) -> Optional[SocketAddress]:  # (str, int)
-        # channel = self.channel
-        return self._local  # if channel is None else channel.local_address
+        address = self._local
+        # if address is None:
+        #     channel = self._get_channel()
+        #     if channel is not None:
+        #         address = channel.local_address
+        return address
 
     def __str__(self) -> str:
         mod = self.__module__

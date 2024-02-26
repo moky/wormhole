@@ -101,6 +101,7 @@ class ChannelPool(AddressPairMap[Channel]):
             return cached
 
 
+# noinspection PyAbstractClass
 class PacketHub(BaseHub, ABC):
     """ Base Datagram Hub """
 
@@ -116,7 +117,7 @@ class PacketHub(BaseHub, ABC):
         if address is None:
             assert host is not None and port > 0, 'address error: (%s:%d)' % (host, port)
             address = (host, port)
-        channel = self._get_channel(remote=None, local=address)
+        channel = self.__channel_pool.get(remote=None, local=address)
         if channel is None:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
@@ -124,7 +125,7 @@ class PacketHub(BaseHub, ABC):
             sock.bind(address)
             sock.setblocking(False)
             channel = self._create_channel(remote=None, local=address, sock=sock)
-            self._set_channel(remote=None, local=address, channel=channel)
+            self.__channel_pool.set(item=channel, remote=None, local=address)
 
     #
     #   Channel

@@ -14,7 +14,7 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from tcp import Connection
+from tcp import Channel, Connection
 from tcp import Docker, DockerDelegate, DockerStatus
 from tcp import Hub, ServerHub
 from tcp import Arrival, PlainArrival, Departure, PlainDeparture
@@ -25,17 +25,32 @@ from tests.stargate import TCPGate
 class StreamServerHub(ServerHub):
 
     # Override
+    def _get_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        return super()._get_channel(remote=remote, local=None)
+
+    # Override
+    def _set_channel(self, channel: Channel,
+                     remote: Optional[SocketAddress], local: Optional[SocketAddress]):
+        super()._set_channel(channel=channel, remote=remote, local=None)
+
+    # Override
+    def _remove_channel(self, channel: Optional[Channel],
+                        remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        return super()._remove_channel(channel=channel, remote=remote, local=None)
+
+    # Override
     def _get_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
         return super()._get_connection(remote=remote, local=None)
 
     # Override
-    def _set_connection(self, remote: SocketAddress, local: Optional[SocketAddress], connection: Connection):
-        super()._set_connection(remote=remote, local=None, connection=connection)
+    def _set_connection(self, connection: Connection,
+                        remote: SocketAddress, local: Optional[SocketAddress]):
+        super()._set_connection(connection=connection, remote=remote, local=None)
 
     # Override
-    def _remove_connection(self, remote: SocketAddress, local: Optional[SocketAddress],
-                           connection: Optional[Connection]):
-        super()._remove_connection(remote=remote, local=None, connection=connection)
+    def _remove_connection(self, connection: Optional[Connection],
+                           remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
+        return super()._remove_connection(connection=connection, remote=remote, local=None)
 
 
 class Server(DockerDelegate):

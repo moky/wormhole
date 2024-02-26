@@ -35,7 +35,8 @@ from typing import Optional, Tuple
 from ..types import SocketAddress, AddressPairObject
 
 from ..net.channel import is_blocking, is_closed, is_connected, is_bound
-from ..net.channel import get_local_address, close_socket
+# from ..net.channel import get_remote_address, get_local_address
+from ..net.channel import close_socket
 from ..net import Channel
 
 
@@ -170,29 +171,32 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     @property  # Override
     def remote_address(self) -> SocketAddress:  # (str, int)
         address = self._remote
-        # TODO: get remote address from the sock
+        # if address is None:
+        #     sock = self._get_socket()
+        #     if sock is not None:
+        #         address = get_remote_address(sock=sock)
         return address
 
     @property  # Override
     def local_address(self) -> Optional[SocketAddress]:  # (str, int)
         address = self._local
-        if address is None:
-            sock = self._get_socket()
-            if sock is not None:
-                address = self._local = get_local_address(sock=sock)
+        # if address is None:
+        #     sock = self._get_socket()
+        #     if sock is not None:
+        #         address = get_local_address(sock=sock)
         return address
 
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
         return '<%s remote="%s" local="%s">\n\t%s\n</%s module="%s">'\
-               % (cname, self._remote, self._local, self.__sock, cname, mod)
+               % (cname, self._remote, self._local, self._get_socket(), cname, mod)
 
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
         return '<%s remote="%s" local="%s">\n\t%s\n</%s module="%s">'\
-               % (cname, self._remote, self._local, self.__sock, cname, mod)
+               % (cname, self._remote, self._local, self._get_socket(), cname, mod)
 
     # Override
     def bind(self, address: Optional[SocketAddress] = None,

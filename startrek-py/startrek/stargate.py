@@ -121,13 +121,15 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         """ get cached docker """
         return self.__docker_pool.get(remote=remote, local=local)
 
-    def _set_docker(self, docker: Docker, remote: SocketAddress, local: Optional[SocketAddress]):
+    def _set_docker(self, docker: Docker,
+                    remote: SocketAddress, local: Optional[SocketAddress]):
         """ cache docker """
         self.__docker_pool.set(item=docker, remote=remote, local=local)
 
-    def _remove_docker(self, docker: Optional[Docker], remote: SocketAddress, local: Optional[SocketAddress]):
+    def _remove_docker(self, docker: Optional[Docker],
+                       remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
         """ remove cached docker """
-        self.__docker_pool.remove(item=docker, remote=remote, local=local)
+        return self.__docker_pool.remove(item=docker, remote=remote, local=local)
 
     #
     #   Processor

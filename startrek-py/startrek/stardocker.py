@@ -125,12 +125,21 @@ class StarDocker(AddressPairObject, Docker, ABC):
 
     @property  # Override
     def remote_address(self) -> SocketAddress:  # (str, int)
-        return self._remote
+        address = self._remote
+        # if address is None:
+        #     conn = self._get_connection()
+        #     if conn is not None:
+        #         address = conn.remote_address
+        return address
 
     @property  # Override
     def local_address(self) -> Optional[SocketAddress]:  # (str, int)
-        # conn = self._get_connection()
-        return self._local  # if conn is None else conn.local_address
+        address = self._local
+        # if address is None:
+        #     conn = self._get_connection()
+        #     if conn is not None:
+        #         address = conn.local_address
+        return address
 
     def __str__(self) -> str:
         mod = self.__module__

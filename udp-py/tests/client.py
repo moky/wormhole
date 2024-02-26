@@ -14,7 +14,7 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from udp import Connection
+from udp import Channel, Connection
 from udp import Docker, DockerDelegate, DockerStatus
 from udp import Hub, ClientHub
 from udp import Arrival, PackageArrival, Departure, PackageDeparture
@@ -25,17 +25,35 @@ from tests.stargate import UDPGate
 class PacketClientHub(ClientHub):
 
     # Override
+    def _get_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        channel = super()._get_channel(remote=remote, local=local)
+        if channel is None and remote is not None and local is not None:
+            channel = super()._get_channel(remote=None, local=local)
+        return channel
+
+    # Override
+    def _set_channel(self, channel: Channel,
+                     remote: Optional[SocketAddress], local: Optional[SocketAddress]):
+        super()._set_channel(channel=channel, remote=remote, local=local)
+
+    # Override
+    def _remove_channel(self, channel: Optional[Channel],
+                        remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        return super()._remove_channel(channel=channel, remote=remote, local=local)
+
+    # Override
     def _get_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
         return super()._get_connection(remote=remote, local=None)
 
     # Override
-    def _set_connection(self, remote: SocketAddress, local: Optional[SocketAddress], connection: Connection):
-        super()._set_connection(remote=remote, local=None, connection=connection)
+    def _set_connection(self, connection: Connection,
+                        remote: SocketAddress, local: Optional[SocketAddress]):
+        super()._set_connection(connection=connection, remote=remote, local=None)
 
     # Override
-    def _remove_connection(self, remote: SocketAddress, local: Optional[SocketAddress],
-                           connection: Optional[Connection]):
-        super()._remove_connection(remote=remote, local=None, connection=connection)
+    def _remove_connection(self, connection: Optional[Connection],
+                           remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
+        return super()._remove_connection(connection=connection, remote=remote, local=None)
 
 
 class Client(DockerDelegate):
