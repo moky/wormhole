@@ -53,12 +53,12 @@ class KeyPairMap(Generic[K, V], ABC):
         raise NotImplemented
 
     @abstractmethod
-    def set(self, remote: Optional[K], local: Optional[K], item: Optional[V]):
+    def set(self, item: Optional[V], remote: Optional[K], local: Optional[K]):
         """ Set item by key pair (remote, local) """
         raise NotImplemented
 
     @abstractmethod
-    def remove(self, remote: Optional[K], local: Optional[K], item: Optional[V]) -> Optional[V]:
+    def remove(self, item: Optional[V], remote: Optional[K], local: Optional[K]) -> Optional[V]:
         """ Remove mapping item by key pair (remote, local) """
         raise NotImplemented
 
@@ -109,7 +109,7 @@ class WeakKeyPairMap(KeyPairMap[K, V], ABC):
                     return item
 
     # Override
-    def set(self, remote: Optional[K], local: Optional[K], item: Optional[V]):
+    def set(self, item: Optional[V], remote: Optional[K], local: Optional[K]):
         # create indexes with key pair (remote, local)
         if remote is None:
             assert local is not None, 'local & remote addresses should not empty at the same time'
@@ -133,7 +133,7 @@ class WeakKeyPairMap(KeyPairMap[K, V], ABC):
             self.__map[key1] = table
 
     # Override
-    def remove(self, remote: Optional[K], local: Optional[K], item: Optional[V]) -> Optional[V]:
+    def remove(self, item: Optional[V], remote: Optional[K], local: Optional[K]) -> Optional[V]:
         # remove indexes with key pair (remote, local)
         if remote is None:
             assert local is not None, 'local & remote addresses should not empty at the same time'
@@ -167,7 +167,7 @@ class HashKeyPairMap(WeakKeyPairMap[K, V]):
         return weakref.WeakSet(self.__items)
 
     # Override
-    def set(self, remote: Optional[K], local: Optional[K], item: Optional[V]):
+    def set(self, item: Optional[V], remote: Optional[K], local: Optional[K]):
         if item is not None:
             # the caller may create different values with same pair (remote, local)
             # so here we should try to remove it first to make sure it's clean
@@ -175,12 +175,12 @@ class HashKeyPairMap(WeakKeyPairMap[K, V]):
             # cache it
             self.__items.add(item)
         # create indexes
-        super().set(remote=remote, local=local, item=item)
+        super().set(item=item, remote=remote, local=local)
 
     # Override
-    def remove(self, remote: Optional[K], local: Optional[K], item: Optional[V]) -> Optional[V]:
+    def remove(self, item: Optional[V], remote: Optional[K], local: Optional[K]) -> Optional[V]:
         # remove indexes
-        old = super().remove(remote=remote, local=local, item=item)
+        old = super().remove(item=item, remote=remote, local=local)
         if old is not None:
             self.__items.discard(old)
             return old

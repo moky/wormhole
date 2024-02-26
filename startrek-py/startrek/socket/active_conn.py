@@ -28,7 +28,9 @@
 # SOFTWARE.
 # ==============================================================================
 
+import time
 import weakref
+from threading import Thread
 from typing import Optional
 
 from ..types import SocketAddress
@@ -43,6 +45,7 @@ class ActiveConnection(BaseConnection):
     def __init__(self, remote: SocketAddress, local: Optional[SocketAddress], channel: Optional[Channel], hub: Hub):
         super().__init__(remote=remote, local=local, channel=channel)
         self.__hub_ref = weakref.ref(hub)
+        self.__thread = None
 
     @property
     def hub(self) -> Hub:
@@ -52,15 +55,47 @@ class ActiveConnection(BaseConnection):
     def closed(self) -> bool:
         return self._get_state_machine() is None
 
-    @property  # Override
-    def channel(self) -> Optional[Channel]:
-        sock = self._get_channel()
-        if sock is None or sock.closed:
-            if self._get_state_machine() is None:
-                # closed (not start yet)
-                return None
-            # get new channel via hub
-            sock = self.hub.open(remote=self._remote, local=self._local)
-            # assert sock is not None, 'failed to open channel: %s, %s' % (self._remote, self._local)
-            self._set_channel(channel=sock)
-        return sock
+    # Override
+    def stop(self):
+        self.__stop_bg_thread()
+        super().stop()
+
+    def __stop_bg_thread(self):
+        thread: Thread = self.__thread
+        if thread is not None:
+            self.__thread = None
+            thread.join(timeout=1.0)
+
+    # Override
+    def start(self):
+        super().start()
+        self.__stop_bg_thread()
+        # start a background thread to reconnect
+        thread = Thread(target=self.run, daemon=True)
+        thread.start()
+        self.__thread = thread
+
+    def run(self):
+        last_time = time.time()
+        interval = 16
+        while not self.closed:
+            time.sleep(1.0)
+            # check time interval
+            now = time.time()
+            if now < (last_time + interval):
+                continue
+            last_time = now
+            if interval < 256:
+                interval *= 2
+            # check socket channel
+            sock = self._get_channel()
+            if sock is None or sock.closed:
+                # get new socket channel via hub
+                sock = self.hub.open(remote=self._remote, local=self._local)
+                if sock is not None:
+                    self._set_channel(channel=sock)
+            elif sock.alive:
+                # socket channel is normal
+                interval = 16
+            else:
+                sock.close()

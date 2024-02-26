@@ -147,6 +147,12 @@ class Runner(Runnable, Handler, Processor, ABC):
 
 
 class Daemon:
+    """
+        Daemon Thread
+        ~~~~~~~~~~~~~
+        The main thread won't wait the daemon threads exit
+        when daemonic = True
+    """
 
     def __init__(self, target, daemonic: bool = True):
         super().__init__()

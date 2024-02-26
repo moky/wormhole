@@ -44,16 +44,17 @@ from .port.docker import status_from_state
 class DockerPool(AddressPairMap[Docker]):
 
     # Override
-    def set(self, remote: Optional[SocketAddress], local: Optional[SocketAddress], item: Optional[Docker]):
+    def set(self, item: Optional[Docker],
+            remote: Optional[SocketAddress], local: Optional[SocketAddress]):
         old = self.get(remote=remote, local=local)
         if old is not None and old is not item:
-            self.remove(remote=remote, local=local, item=old)
-        super().set(remote=remote, local=local, item=item)
+            self.remove(item=old, remote=remote, local=local)
+        super().set(item=item, remote=remote, local=local)
 
     # Override
-    def remove(self, remote: Optional[SocketAddress], local: Optional[SocketAddress],
-               item: Optional[Docker]) -> Optional[Docker]:
-        cached = super().remove(remote=remote, local=local, item=item)
+    def remove(self, item: Optional[Docker],
+               remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Docker]:
+        cached = super().remove(item=item, remote=remote, local=local)
         if cached is not None:
             if not cached.closed:
                 cached.close()
@@ -120,13 +121,13 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         """ get cached docker """
         return self.__docker_pool.get(remote=remote, local=local)
 
-    def _set_docker(self, remote: SocketAddress, local: Optional[SocketAddress], docker: Docker):
+    def _set_docker(self, docker: Docker, remote: SocketAddress, local: Optional[SocketAddress]):
         """ cache docker """
-        self.__docker_pool.set(remote=remote, local=local, item=docker)
+        self.__docker_pool.set(item=docker, remote=remote, local=local)
 
-    def _remove_docker(self, remote: SocketAddress, local: Optional[SocketAddress], docker: Optional[Docker]):
+    def _remove_docker(self, docker: Optional[Docker], remote: SocketAddress, local: Optional[SocketAddress]):
         """ remove cached docker """
-        self.__docker_pool.remove(remote=remote, local=local, item=docker)
+        self.__docker_pool.remove(item=docker, remote=remote, local=local)
 
     #
     #   Processor
