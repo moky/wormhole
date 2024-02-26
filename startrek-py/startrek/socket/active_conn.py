@@ -30,10 +30,10 @@
 
 import time
 import weakref
-from threading import Thread
 from typing import Optional
 
 from ..types import SocketAddress
+from ..fsm import Daemon
 from ..net import Hub, Channel
 
 from .base_conn import BaseConnection
@@ -45,35 +45,26 @@ class ActiveConnection(BaseConnection):
     def __init__(self, remote: SocketAddress, local: Optional[SocketAddress], channel: Optional[Channel], hub: Hub):
         super().__init__(remote=remote, local=local, channel=channel)
         self.__hub_ref = weakref.ref(hub)
-        self.__thread = None
+        self.__daemon = Daemon(target=self.run)
 
     @property
     def hub(self) -> Hub:
         return self.__hub_ref()
 
-    @property  # Override
-    def closed(self) -> bool:
-        return self._get_state_machine() is None
-
-    # Override
-    def stop(self):
-        self.__stop_bg_thread()
-        super().stop()
-
-    def __stop_bg_thread(self):
-        thread: Thread = self.__thread
-        if thread is not None:
-            self.__thread = None
-            thread.join(timeout=1.0)
-
     # Override
     def start(self):
         super().start()
-        self.__stop_bg_thread()
-        # start a background thread to reconnect
-        thread = Thread(target=self.run, daemon=True)
-        thread.start()
-        self.__thread = thread
+        self.__daemon.stop()
+        self.__daemon.start()
+
+    # Override
+    def stop(self):
+        self.__daemon.stop()
+        super().stop()
+
+    @property  # Override
+    def closed(self) -> bool:
+        return self._get_state_machine() is None
 
     def run(self):
         last_time = time.time()

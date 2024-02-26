@@ -81,6 +81,7 @@ class Hub(Processor, ABC):
                 return socket.getaddrinfo(host, None)
             except socket.error as error:
                 print('[NET] failed to get address info: %s' % error)
+                # traceback.print_exc()
                 return []
 
     @classmethod

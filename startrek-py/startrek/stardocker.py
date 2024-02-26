@@ -103,6 +103,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
                 old.close()
         except Exception as error:
             print('[SOCKET] failed to close connection: %s, %s' % (error, old))
+            # traceback.print_exc()
 
     @property  # Override
     def closed(self) -> bool:

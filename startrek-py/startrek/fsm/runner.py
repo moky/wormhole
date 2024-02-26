@@ -29,7 +29,6 @@
 # ==============================================================================
 
 import time
-import traceback
 from abc import ABC, abstractmethod
 from threading import Thread
 from typing import Optional
@@ -192,4 +191,4 @@ class Daemon:
             thr.join(timeout=timeout)
         except RuntimeError as error:
             print('[ERROR] failed to join thread: %s, timeout: %d' % (error, timeout))
-            traceback.print_exc()
+            # traceback.print_exc()

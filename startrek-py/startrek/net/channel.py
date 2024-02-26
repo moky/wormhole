@@ -256,3 +256,4 @@ def close_socket(sock: socket.socket):
             sock.close()
     except socket.error as error:
         print('[TCP] failed to close socket: %s, %s' % (error, sock))
+        # traceback.print_exc()

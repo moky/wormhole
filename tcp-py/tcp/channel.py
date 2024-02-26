@@ -83,7 +83,7 @@ def create_socket(remote: SocketAddress, local: Optional[SocketAddress]) -> Opti
         sock.setblocking(False)
         return sock
     except socket.error as error:
-        print('[%s] [TCP] failed to create socket %s -> %s: %s' % (current_time(), local, remote, error))
+        print('[TCP] %s > failed to create socket %s -> %s: %s' % (current_time(), local, remote, error))
 
 
 def current_time() -> str:

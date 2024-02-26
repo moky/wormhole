@@ -110,6 +110,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
                 old.disconnect()
         except socket.error as error:
             print('[SOCKET] failed to close channel: %s, %s' % (error, old))
+            # traceback.print_exc()
 
     @property  # Override
     def closed(self) -> bool:
