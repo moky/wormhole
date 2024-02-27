@@ -42,12 +42,14 @@ class BaseGate(StarGate, Generic[H], ABC):
         return super()._get_docker(remote=remote, local=None)
 
     # Override
-    def _set_docker(self, remote: SocketAddress, local: Optional[SocketAddress], docker: Docker):
-        super()._set_docker(remote=remote, local=None, docker=docker)
+    def _set_docker(self, docker: Docker,
+                    remote: SocketAddress, local: Optional[SocketAddress]):
+        super()._set_docker(docker=docker, remote=remote, local=None)
 
     # Override
-    def _remove_docker(self, remote: SocketAddress, local: Optional[SocketAddress], docker: Optional[Docker]):
-        super()._remove_docker(remote=remote, local=None, docker=docker)
+    def _remove_docker(self, docker: Optional[Docker],
+                       remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
+        return super()._remove_docker(docker=docker, remote=remote, local=None)
 
     # # Override
     # def _heartbeat(self, connection: Connection):
@@ -108,7 +110,7 @@ class CommonGate(BaseGate, Generic[H], ABC):
                 if docker is None:
                     assert False, 'failed to create docker: %s, %s' % (remote, local)
                 else:
-                    self._set_docker(remote=remote, local=local, docker=docker)
+                    self._set_docker(docker=docker, remote=docker.remote_address, local=docker.local_address)
         return docker
 
 

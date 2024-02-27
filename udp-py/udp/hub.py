@@ -144,9 +144,9 @@ class PacketHub(BaseHub, ABC):
 
     # Override
     def _remove_channel(self, channel: Optional[Channel],
-                        remote: Optional[SocketAddress], local: Optional[SocketAddress]):
+                        remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         """ remove cached channel """
-        self.__channel_pool.remove(item=channel, remote=remote, local=local)
+        return self.__channel_pool.remove(item=channel, remote=remote, local=local)
 
     def _get_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         """ get cached channel """

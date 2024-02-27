@@ -198,7 +198,7 @@ class ServerHub(StreamHub, Runnable):
         # override for user-customized channel
         channel = self._create_channel(remote=remote, local=local, sock=sock)
         assert channel is not None, 'failed to create socket channel: %s, remote=%s, local=%s' % (sock, remote, local)
-        self._set_channel(remote=channel.remote_address, local=channel.local_address, channel=channel)
+        self._set_channel(channel=channel, remote=channel.remote_address, local=channel.local_address)
 
 
 class ClientHub(StreamHub):
@@ -238,5 +238,5 @@ class ClientHub(StreamHub):
             # create channel with socket
             channel = self._create_channel(remote=remote, local=local, sock=sock)
             if channel is not None:
-                self._set_channel(remote=channel.remote_address, local=channel.local_address, channel=channel)
+                self._set_channel(channel=channel, remote=channel.remote_address, local=channel.local_address)
                 return channel

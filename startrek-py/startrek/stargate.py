@@ -157,7 +157,7 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         for worker in dockers:
             if worker.closed:
                 # remove docker which connection lost
-                self._remove_docker(remote=worker.remote_address, local=worker.local_address, docker=worker)
+                self._remove_docker(docker=worker, remote=worker.remote_address, local=worker.local_address)
             else:
                 # clear expired tasks
                 worker.purge(now=now)
@@ -193,7 +193,7 @@ class StarGate(Gate, ConnectionDelegate, ABC):
                     # assert False, 'failed to create docker: %s, %s' % (remote, local)
                     return
                 else:
-                    self._set_docker(remote=remote, local=local, docker=docker)
+                    self._set_docker(docker=docker, remote=docker.remote_address, local=docker.local_address)
             # NOTICE: if the previous state is null, the docker maybe not
             #         created yet, this situation means the docker status
             #         not changed too, so no need to callback here.
@@ -221,7 +221,7 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         docker = self._create_docker(connection=connection, advance_party=party)
         if docker is not None:
             # cache docker for (remote, local)
-            self._set_docker(remote=docker.remote_address, local=docker.local_address, docker=docker)
+            self._set_docker(docker=docker, remote=docker.remote_address, local=docker.local_address)
             # process advance parties one by one
             for item in party:
                 docker.process_received(data=item)

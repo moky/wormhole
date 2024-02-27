@@ -100,8 +100,8 @@ class BaseHub(Hub, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def _remove_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress],
-                        channel: Optional[Channel]):
+    def _remove_channel(self, channel: Optional[Channel],
+                        remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         """
         remove socket channel
 
@@ -165,7 +165,7 @@ class BaseHub(Hub, ABC):
         conn = self._create_connection(remote=remote, local=local, channel=channel)
         if conn is not None:
             # cache connection for (remote, local)
-            self._set_connection(remote=conn.remote_address, local=conn.local_address, connection=conn)
+            self._set_connection(connection=conn, remote=conn.remote_address, local=conn.local_address)
             return conn
 
     #
@@ -186,11 +186,11 @@ class BaseHub(Hub, ABC):
             if delegate is None or remote is None:
                 # UDP channel may not connected
                 # so no connection for it
-                self._remove_channel(remote=remote, local=local, channel=channel)
+                self._remove_channel(channel=channel, remote=remote, local=local)
             else:
                 # remove channel and callback with connection
                 conn = self._get_connection(remote=remote, local=local)
-                self._remove_channel(remote=remote, local=local, channel=channel)
+                self._remove_channel(channel=channel, remote=remote, local=local)
                 if conn is not None:
                     delegate.connection_error(error=error, connection=conn)
             return False
@@ -229,7 +229,7 @@ class BaseHub(Hub, ABC):
             if sock.closed:
                 # if channel not connected (TCP) and not bound (UDP),
                 # means it's closed, remove it from the hub
-                self._remove_channel(remote=sock.remote_address, local=sock.local_address, channel=sock)
+                self._remove_channel(channel=sock, remote=sock.remote_address, local=sock.local_address)
 
     def _cleanup_connections(self, connections: Iterable[Connection]):
         # NOTICE: multi connections may share same channel (UDP Hub)
@@ -238,7 +238,7 @@ class BaseHub(Hub, ABC):
                 # if connection closed, remove it from the hub; notice that
                 # ActiveConnection can reconnect, it'll be not connected
                 # but still open, don't remove it in this situation.
-                self._remove_connection(remote=conn.remote_address, local=conn.local_address, connection=conn)
+                self._remove_connection(connection=conn, remote=conn.remote_address, local=conn.local_address)
 
     # Override
     def process(self) -> bool:

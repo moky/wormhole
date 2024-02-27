@@ -60,13 +60,13 @@ class StreamClientHub(ClientHub):
         return super()._get_connection(remote=remote, local=None)
 
     # Override
-    def _set_connection(self, remote: SocketAddress, local: Optional[SocketAddress], connection: Connection):
-        super()._set_connection(remote=remote, local=None, connection=connection)
+    def _set_connection(self, connection: Connection, remote: SocketAddress, local: Optional[SocketAddress]):
+        super()._set_connection(connection=connection, remote=remote, local=None)
 
     # Override
-    def _remove_connection(self, remote: SocketAddress, local: Optional[SocketAddress],
-                           connection: Optional[Connection]):
-        super()._remove_connection(remote=remote, local=None, connection=connection)
+    def _remove_connection(self, connection: Optional[Connection],
+                           remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
+        return super()._remove_connection(connection=connection, remote=remote, local=None)
 
 
 class Soldier(Runner, DockerDelegate):
