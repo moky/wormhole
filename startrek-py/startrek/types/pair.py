@@ -60,7 +60,7 @@ class AddressPairObject:
         cname = self.__class__.__name__
         return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         # same algorithm as Pair::hashCode()
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # remote's hashCode is multiplied by an arbitrary prime number (13)
@@ -77,7 +77,7 @@ class AddressPairObject:
         else:
             return hash(remote) * 13 + hash(local)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if other is None:
             return self._remote is None and self._local is None
         elif other is self:
@@ -85,7 +85,7 @@ class AddressPairObject:
         elif isinstance(other, AddressPairObject):
             return self._remote == other._remote and self._local == other._local
 
-    def __ne__(self, other):
+    def __ne__(self, other) -> bool:
         if other is None:
             return self._remote is not None or self._local is not None
         elif other is self:

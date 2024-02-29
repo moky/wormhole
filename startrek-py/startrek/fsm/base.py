@@ -37,6 +37,7 @@ from .machine import S, C, U, T
 from .machine import Transition, State, Machine, Status, Delegate
 
 
+# noinspection PyAbstractClass
 class BaseTransition(Transition[C], ABC):
     """ Transition with the index of target state """
 
@@ -54,6 +55,7 @@ class BaseTransition(Transition[C], ABC):
     #     raise NotImplemented
 
 
+# noinspection PyAbstractClass
 class BaseState(State[C, T], ABC):
     """ State with transitions """
 

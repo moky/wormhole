@@ -63,6 +63,7 @@ class KeyPairMap(Generic[K, V], ABC):
         raise NotImplemented
 
 
+# noinspection PyAbstractClass
 class WeakKeyPairMap(KeyPairMap[K, V], ABC):
 
     def __init__(self, default: K):
@@ -70,11 +71,11 @@ class WeakKeyPairMap(KeyPairMap[K, V], ABC):
         self.__default = default  # default key
         self.__map: MutableMapping[K, MutableMapping[K, V]] = {}  # (K, K) => V
 
-    @property  # Override
-    def items(self) -> Iterable[V]:
-        # Caveat: the iterator will keep a strong reference to
-        # `item` in WeakSet until it is resumed or closed.
-        return self.__map.items()
+    # @property  # Override
+    # def items(self) -> Iterable[V]:
+    #     # Caveat: the iterator will keep a strong reference to
+    #     # `item` in WeakSet until it is resumed or closed.
+    #     return self.__map.items()
 
     # Override
     def get(self, remote: Optional[K], local: Optional[K]) -> Optional[V]:
@@ -162,9 +163,7 @@ class HashKeyPairMap(WeakKeyPairMap[K, V]):
 
     @property  # Override
     def items(self) -> Iterable[V]:
-        # Caveat: the iterator will keep a strong reference to
-        # `item` in WeakSet until it is resumed or closed.
-        return weakref.WeakSet(self.__items)
+        return self.__items.copy()
 
     # Override
     def set(self, item: Optional[V], remote: Optional[K], local: Optional[K]):
@@ -184,7 +183,7 @@ class HashKeyPairMap(WeakKeyPairMap[K, V]):
         if old is not None:
             self.__items.discard(old)
             return old
-        elif item is not None and item in self.__items:
+        if item is not None and item is not old:
             self.__items.discard(item)
             return item
 

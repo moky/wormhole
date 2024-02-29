@@ -79,8 +79,8 @@ class StarDocker(AddressPairObject, Docker, ABC):
             return ref()
 
     @delegate.setter
-    def delegate(self, handler: DockerDelegate):
-        self.__delegate = None if handler is None else weakref.ref(handler)
+    def delegate(self, keeper: DockerDelegate):
+        self.__delegate = None if keeper is None else weakref.ref(keeper)
 
     @property  # protected
     def connection(self) -> Optional[Connection]:

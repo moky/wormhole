@@ -214,6 +214,7 @@ class Endian(IntEnum):
     LITTLE_ENDIAN = 2  # Host Byte Order
 
 
+# noinspection PyAbstractClass
 class IntegerData(ByteArray, ABC):
 
     @property

@@ -37,6 +37,7 @@ from .port import ShipStatus
 from .port import Arrival
 
 
+# noinspection PyAbstractClass
 class ArrivalShip(Arrival, ABC):
 
     # Arrival task will be expired after 5 minutes if still not completed

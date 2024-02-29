@@ -35,6 +35,7 @@ from .machine import S, C, U, T
 from .base import BaseMachine
 
 
+# noinspection PyAbstractClass
 class AutoMachine(BaseMachine[C, T, S], ABC):
 
     # @property  # Override

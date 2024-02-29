@@ -156,6 +156,7 @@ class Controller(Checker):
         return self.__checker.check_data(data=data, sock=sock)
 
 
+# noinspection PyAbstractClass
 class ChannelReader(Controller, SocketReader, ABC):
 
     def _try_read(self, max_len: int, sock: Optional[socket.socket]) -> Optional[bytes]:
@@ -187,6 +188,7 @@ class ChannelReader(Controller, SocketReader, ABC):
     #     raise NotImplemented
 
 
+# noinspection PyAbstractClass
 class ChannelWriter(Controller, SocketWriter, ABC):
 
     def _try_write(self, data: bytes, sock: socket.socket) -> int:
