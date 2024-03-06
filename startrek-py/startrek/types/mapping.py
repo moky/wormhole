@@ -39,7 +39,7 @@ K = TypeVar('K')
 V = TypeVar('V')
 
 
-class KeyPairMap(Generic[K, V], ABC):
+class PairMap(Generic[K, V], ABC):
 
     @property
     @abstractmethod
@@ -53,7 +53,7 @@ class KeyPairMap(Generic[K, V], ABC):
         raise NotImplemented
 
     @abstractmethod
-    def set(self, item: Optional[V], remote: Optional[K], local: Optional[K]):
+    def set(self, item: Optional[V], remote: Optional[K], local: Optional[K]) -> Optional[V]:
         """ Set item by key pair (remote, local) """
         raise NotImplemented
 
@@ -64,7 +64,7 @@ class KeyPairMap(Generic[K, V], ABC):
 
 
 # noinspection PyAbstractClass
-class WeakKeyPairMap(KeyPairMap[K, V], ABC):
+class AbstractPairMap(PairMap[K, V], ABC):
 
     def __init__(self, default: K):
         super().__init__()
@@ -110,7 +110,7 @@ class WeakKeyPairMap(KeyPairMap[K, V], ABC):
                     return item
 
     # Override
-    def set(self, item: Optional[V], remote: Optional[K], local: Optional[K]):
+    def set(self, item: Optional[V], remote: Optional[K], local: Optional[K]) -> Optional[V]:
         # create indexes with key pair (remote, local)
         if remote is None:
             assert local is not None, 'local & remote addresses should not empty at the same time'
@@ -125,9 +125,11 @@ class WeakKeyPairMap(KeyPairMap[K, V], ABC):
         table = self.__map.get(key1)
         if table is not None:
             if item is not None:
+                old = table.get(key2)
                 table[key2] = item
+                return old
             else:
-                table.pop(key2, None)
+                return table.pop(key2, None)
         elif item is not None:
             table = weakref.WeakValueDictionary()
             table[key2] = item
@@ -155,7 +157,7 @@ class WeakKeyPairMap(KeyPairMap[K, V], ABC):
         return item if old is None else old
 
 
-class HashKeyPairMap(WeakKeyPairMap[K, V]):
+class HashPairMap(AbstractPairMap[K, V]):
 
     def __init__(self, default: K):
         super().__init__(default=default)
@@ -166,7 +168,7 @@ class HashKeyPairMap(WeakKeyPairMap[K, V]):
         return self.__items.copy()
 
     # Override
-    def set(self, item: Optional[V], remote: Optional[K], local: Optional[K]):
+    def set(self, item: Optional[V], remote: Optional[K], local: Optional[K]) -> Optional[V]:
         if item is not None:
             # the caller may create different values with same pair (remote, local)
             # so here we should try to remove it first to make sure it's clean
@@ -174,7 +176,11 @@ class HashKeyPairMap(WeakKeyPairMap[K, V]):
             # cache it
             self.__items.add(item)
         # create indexes
-        super().set(item=item, remote=remote, local=local)
+        old = super().set(item=item, remote=remote, local=local)
+        # clear replaced value
+        if old is not None and old != item:
+            self.__items.discard(old)
+        return old
 
     # Override
     def remove(self, item: Optional[V], remote: Optional[K], local: Optional[K]) -> Optional[V]:
@@ -182,13 +188,14 @@ class HashKeyPairMap(WeakKeyPairMap[K, V]):
         old = super().remove(item=item, remote=remote, local=local)
         if old is not None:
             self.__items.discard(old)
-            return old
-        if item is not None and item is not old:
+            # return old
+        if item is not None and item != old:
             self.__items.discard(item)
-            return item
+            # return item
+        return item if old is None else old
 
 
-class AddressPairMap(HashKeyPairMap[SocketAddress, V]):
+class AddressPairMap(HashPairMap[SocketAddress, V]):
 
     AnyAddress = ('0.0.0.0', 0)
 

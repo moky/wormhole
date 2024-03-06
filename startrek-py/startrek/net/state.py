@@ -30,6 +30,8 @@
 
 import weakref
 from abc import ABC, abstractmethod
+from enum import IntEnum
+from typing import Union
 
 from ..fsm import Context, BaseTransition, BaseState, BaseMachine
 
@@ -67,25 +69,23 @@ from .connection import Connection
 
 
 class StateMachine(BaseMachine, Context):
+    """ Connection State Machine """
 
     def __init__(self, connection: Connection):
-        super().__init__(default=ConnectionState.DEFAULT)
+        super().__init__()
         self.__conn_ref = weakref.ref(connection)
         # init states
         builder = self._create_state_builder()
-        self.__set_state(state=builder.get_default_state())
-        self.__set_state(state=builder.get_preparing_state())
-        self.__set_state(state=builder.get_ready_state())
-        self.__set_state(state=builder.get_expired_state())
-        self.__set_state(state=builder.get_maintaining_state())
-        self.__set_state(state=builder.get_error_state())
+        self.add_state(state=builder.get_default_state())
+        self.add_state(state=builder.get_preparing_state())
+        self.add_state(state=builder.get_ready_state())
+        self.add_state(state=builder.get_expired_state())
+        self.add_state(state=builder.get_maintaining_state())
+        self.add_state(state=builder.get_error_state())
 
     # noinspection PyMethodMayBeStatic
     def _create_state_builder(self):
         return StateBuilder(transition_builder=TransitionBuilder())
-
-    def __set_state(self, state):
-        self.set_state(name=state.name, state=state)
 
     @property  # Override
     def context(self) -> Context:
@@ -96,7 +96,23 @@ class StateMachine(BaseMachine, Context):
         return self.__conn_ref()
 
 
+class StateOrder(IntEnum):
+    """ Connection State Order """
+    INIT = 0  # default
+    PREPARING = 1
+    READY = 2
+    MAINTAINING = 3
+    EXPIRED = 4
+    ERROR = 5
+
+
 class StateTransition(BaseTransition[StateMachine], ABC):
+    """ Connection State Transition """
+
+    def __init__(self, target: Union[int, StateOrder]):
+        if isinstance(target, StateOrder):
+            target = target.value
+        super().__init__(target=target)
 
     @abstractmethod  # Override
     def evaluate(self, ctx: StateMachine, now: float) -> bool:
@@ -118,16 +134,9 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
             ERROR       - long long time no response, connection lost
     """
 
-    DEFAULT = 'default'
-    PREPARING = 'preparing'
-    READY = 'ready'
-    MAINTAINING = 'maintaining'
-    EXPIRED = 'expired'
-    ERROR = 'error'
-
-    def __init__(self, name: str):
-        super().__init__()
-        self.__name = name
+    def __init__(self, order: StateOrder):
+        super().__init__(index=order.value)
+        self.__name = str(order)
         self.__time = 0  # enter time
 
     @property
@@ -148,7 +157,11 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
         if isinstance(other, ConnectionState):
             if self is other:
                 return True
-            return self.__name == other.name
+            return self.index == other.index
+        elif isinstance(other, StateOrder):
+            return self.index == other.value
+        elif isinstance(other, int):
+            return self.index == other
         elif isinstance(other, str):
             return self.__name == other
         else:
@@ -158,7 +171,11 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
         if isinstance(other, ConnectionState):
             if self is other:
                 return False
-            return self.__name != other.name
+            return self.index != other.index
+        elif isinstance(other, StateOrder):
+            return self.index != other.value
+        elif isinstance(other, int):
+            return self.index != other
         elif isinstance(other, str):
             return self.__name != other
         else:
@@ -173,11 +190,11 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
         self.__time = 0
 
     # Override
-    def on_pause(self, ctx: StateMachine):
+    def on_pause(self, ctx: StateMachine, now: float):
         pass
 
     # Override
-    def on_resume(self, ctx: StateMachine):
+    def on_resume(self, ctx: StateMachine, now: float):
         pass
 
 
@@ -219,7 +236,7 @@ class StateBuilder:
     # Connection not started yet
     def get_default_state(self) -> ConnectionState:
         builder = self.__builder
-        state = ConnectionState(name=ConnectionState.DEFAULT)
+        state = ConnectionState(order=StateOrder.INIT)
         # Default -> Preparing
         state.add_transition(transition=builder.get_default_preparing_transition())
         return state
@@ -227,7 +244,7 @@ class StateBuilder:
     # Connection started, preparing to connect/bind
     def get_preparing_state(self) -> ConnectionState:
         builder = self.__builder
-        state = ConnectionState(name=ConnectionState.PREPARING)
+        state = ConnectionState(order=StateOrder.PREPARING)
         # Preparing -> Ready
         state.add_transition(transition=builder.get_preparing_ready_transition())
         # Preparing -> Default
@@ -237,7 +254,7 @@ class StateBuilder:
     # Normal state of connection
     def get_ready_state(self) -> ConnectionState:
         builder = self.__builder
-        state = ConnectionState(name=ConnectionState.READY)
+        state = ConnectionState(order=StateOrder.READY)
         # Ready -> Expired
         state.add_transition(transition=builder.get_ready_expired_transition())
         # Ready -> Error
@@ -247,7 +264,7 @@ class StateBuilder:
     # Long time no response, need maintaining
     def get_expired_state(self) -> ConnectionState:
         builder = self.__builder
-        state = ConnectionState(name=ConnectionState.EXPIRED)
+        state = ConnectionState(order=StateOrder.EXPIRED)
         # Expired -> Maintaining
         state.add_transition(transition=builder.get_expired_maintaining_transition())
         # Expired -> Error
@@ -257,7 +274,7 @@ class StateBuilder:
     # Heartbeat sent, waiting response
     def get_maintaining_state(self) -> ConnectionState:
         builder = self.__builder
-        state = ConnectionState(name=ConnectionState.MAINTAINING)
+        state = ConnectionState(order=StateOrder.MAINTAINING)
         # Maintaining -> Ready
         state.add_transition(transition=builder.get_maintaining_ready_transition())
         # Maintaining -> Expired
@@ -269,7 +286,7 @@ class StateBuilder:
     # Connection lost
     def get_error_state(self) -> ConnectionState:
         builder = self.__builder
-        state = ConnectionState(name=ConnectionState.ERROR)
+        state = ConnectionState(order=StateOrder.ERROR)
         # Error -> Default
         state.add_transition(transition=builder.get_error_default_transition())
         return state
@@ -279,55 +296,55 @@ class TransitionBuilder:
 
     # noinspection PyMethodMayBeStatic
     def get_default_preparing_transition(self):
-        return DefaultPreparingTransition(target=ConnectionState.PREPARING)
+        return DefaultPreparingTransition(target=StateOrder.PREPARING)
 
     # Preparing
 
     # noinspection PyMethodMayBeStatic
     def get_preparing_ready_transition(self):
-        return PreparingReadyTransition(target=ConnectionState.READY)
+        return PreparingReadyTransition(target=StateOrder.READY)
 
     # noinspection PyMethodMayBeStatic
     def get_preparing_default_transition(self):
-        return PreparingDefaultTransition(target=ConnectionState.DEFAULT)
+        return PreparingDefaultTransition(target=StateOrder.INIT)
 
     # Ready
 
     # noinspection PyMethodMayBeStatic
     def get_ready_expired_transition(self):
-        return ReadyExpiredTransition(target=ConnectionState.EXPIRED)
+        return ReadyExpiredTransition(target=StateOrder.EXPIRED)
 
     # noinspection PyMethodMayBeStatic
     def get_ready_error_transition(self):
-        return ReadyErrorTransition(target=ConnectionState.ERROR)
+        return ReadyErrorTransition(target=StateOrder.ERROR)
 
     # Expired
 
     # noinspection PyMethodMayBeStatic
     def get_expired_maintaining_transition(self):
-        return ExpiredMaintainingTransition(target=ConnectionState.MAINTAINING)
+        return ExpiredMaintainingTransition(target=StateOrder.MAINTAINING)
 
     # noinspection PyMethodMayBeStatic
     def get_expired_error_transition(self):
-        return ExpiredErrorTransition(target=ConnectionState.ERROR)
+        return ExpiredErrorTransition(target=StateOrder.ERROR)
 
     # Maintaining
 
     # noinspection PyMethodMayBeStatic
     def get_maintaining_ready_transition(self):
-        return MaintainingReadyTransition(target=ConnectionState.READY)
+        return MaintainingReadyTransition(target=StateOrder.READY)
 
     # noinspection PyMethodMayBeStatic
     def get_maintaining_expired_transition(self):
-        return MaintainingExpiredTransition(target=ConnectionState.EXPIRED)
+        return MaintainingExpiredTransition(target=StateOrder.EXPIRED)
 
     # noinspection PyMethodMayBeStatic
     def get_maintaining_error_transition(self):
-        return MaintainingErrorTransition(target=ConnectionState.ERROR)
+        return MaintainingErrorTransition(target=StateOrder.ERROR)
 
     # noinspection PyMethodMayBeStatic
     def get_error_default_transition(self):
-        return ErrorDefaultTransition(target=ConnectionState.DEFAULT)
+        return ErrorDefaultTransition(target=StateOrder.INIT)
 
 
 #
@@ -473,4 +490,5 @@ class ErrorDefaultTransition(StateTransition):
         current = ctx.current_state
         assert isinstance(current, ConnectionState), 'connection state error: %s' % current
         enter = current.enter_time
-        return 0 < enter < conn.last_received_time
+        assert enter > 0, 'should not happen'
+        return enter < conn.last_received_time

@@ -67,26 +67,6 @@ class PackageArrival(ArrivalShip):
         return self.__head.sn
 
     # Override
-    def __eq__(self, other) -> bool:
-        if isinstance(other, PackageArrival):
-            if other is self:
-                return True
-            return self.__head == other.__head and self.__body == other.__body
-
-    # Override
-    def __ne__(self, other) -> bool:
-        if isinstance(other, PackageArrival):
-            if other is self:
-                return False
-            return self.__head != other.__head or self.__body != other.__body
-        else:
-            return True
-
-    # Override
-    def __hash__(self) -> int:
-        return hash(self.__head) * 13 + hash(self.__body)
-
-    # Override
     def assemble(self, ship):  # -> Optional[PackageArrival]:
         if self.__completed is None and ship is not self:
             packer: Packer = self.__packer
@@ -128,26 +108,6 @@ class PackageDeparture(DepartureShip):
     @property  # Override
     def sn(self) -> TransactionID:
         return self.__head.sn
-
-    # Override
-    def __eq__(self, other) -> bool:
-        if isinstance(other, PackageDeparture):
-            if other is self:
-                return True
-            return self.__head == other.__head and self.__body == other.__body
-
-    # Override
-    def __ne__(self, other) -> bool:
-        if isinstance(other, PackageDeparture):
-            if other is self:
-                return False
-            return self.__head != other.__head or self.__body != other.__body
-        else:
-            return True
-
-    # Override
-    def __hash__(self) -> int:
-        return hash(self.__head) * 13 + hash(self.__body)
 
     @property  # Override
     def fragments(self) -> List[bytes]:

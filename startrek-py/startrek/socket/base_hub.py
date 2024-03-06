@@ -29,6 +29,7 @@
 # ==============================================================================
 
 import socket
+import threading
 import time
 import weakref
 from abc import ABC, abstractmethod
@@ -42,20 +43,25 @@ class ConnectionPool(AddressPairMap[Connection]):
 
     # Override
     def set(self, item: Optional[Connection],
-            remote: Optional[SocketAddress], local: Optional[SocketAddress]):
-        old = self.get(remote=remote, local=local)
-        if old is not None and old is not item:
-            self.remove(item=old, remote=remote, local=local)
-        super().set(item=item, remote=remote, local=local)
+            remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Connection]:
+        # 1. remove cached item
+        cached = super().remove(item=item, remote=remote, local=local)
+        if cached is not None and cached is not item:
+            cached.close()
+        # 2. set new item
+        old = super().set(item=item, remote=remote, local=local)
+        assert old is None, 'should not happen'
+        return cached
 
     # Override
     def remove(self, item: Optional[Connection],
                remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Connection]:
         cached = super().remove(item=item, remote=remote, local=local)
-        if cached is not None:
-            if not cached.closed:
-                cached.close()
-            return cached
+        if cached is not None and cached is not item:
+            cached.close()
+        if item is not None:
+            item.close()
+        return cached
 
 
 class BaseHub(Hub, ABC):
@@ -77,6 +83,7 @@ class BaseHub(Hub, ABC):
         self.__delegate = weakref.ref(delegate)
         self.__connection_pool = self._create_connection_pool()
         self.__last_time_drive_connection = time.time()
+        self.__lock = threading.Lock()
 
     # noinspection PyMethodMayBeStatic
     def _create_connection_pool(self):
@@ -105,9 +112,9 @@ class BaseHub(Hub, ABC):
         """
         remove socket channel
 
+        :param channel: socket channel
         :param remote:  remote address
         :param local:   local address
-        :param channel: socket channel
         """
         raise NotImplemented
 
@@ -116,12 +123,10 @@ class BaseHub(Hub, ABC):
     #
 
     @abstractmethod
-    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress],
-                           channel: Optional[Channel]) -> Optional[Connection]:
+    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Connection:
         """
         create connection with channel channel & addresses
 
-        :param channel: channel channel
         :param remote:  remote address
         :param local:   local address
         :return: None on channel not exists
@@ -132,41 +137,35 @@ class BaseHub(Hub, ABC):
         """ get a copy of all connections """
         return self.__connection_pool.items
 
-    def _get_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
-        """ get cached connection """
-        return self.__connection_pool.get(remote=remote, local=local)
-
-    def _set_connection(self, connection: Connection,
-                        remote: SocketAddress, local: Optional[SocketAddress]):
-        """ cache connection """
-        self.__connection_pool.set(item=connection, remote=remote, local=local)
-
     def _remove_connection(self, connection: Optional[Connection],
                            remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
         """ remove cached connection """
         return self.__connection_pool.remove(item=connection, remote=remote, local=local)
 
+    def _get_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
+        """ get cached connection """
+        return self.__connection_pool.get(remote=remote, local=local)
+
+    def _set_connection(self, connection: Connection,
+                        remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
+        """ cache connection """
+        return self.__connection_pool.set(item=connection, remote=remote, local=local)
+
     # Override
     def connect(self, remote: SocketAddress, local: Optional[SocketAddress] = None) -> Optional[Connection]:
-        conn = self._get_connection(remote=remote, local=local)
-        if conn is not None:
-            # check local address
-            if local is None:
-                return conn
-            address = conn.local_address
-            if address is None or address == local:
-                return conn
-            # local address not matched? ignore this connection
-        # try to open channel with direction (remote, local)
-        channel = self.open(remote=remote, local=local)
-        # if channel is None or channel.closed:
-        #     return None
-        # create with channel
-        conn = self._create_connection(remote=remote, local=local, channel=channel)
-        if conn is not None:
-            # cache connection for (remote, local)
-            self._set_connection(connection=conn, remote=conn.remote_address, local=conn.local_address)
-            return conn
+        # try to get connection
+        with self.__lock:
+            old = self._get_connection(remote=remote, local=local)
+            if old is None:
+                # create & cache connection
+                conn = self._create_connection(remote=remote, local=local)
+                self._set_connection(conn, remote=remote, local=local)
+            else:
+                conn = old
+        if old is None:
+            # try to open channel with direction (remote, local)
+            conn.start(hub=self)
+        return conn
 
     #
     #   Process

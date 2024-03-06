@@ -77,8 +77,17 @@ class Connection(Ticker, ABC):
 
     @property
     @abstractmethod
-    def state(self):  # -> ConnectionState:
+    def state(self):  # -> Optional[ConnectionState]:
         """ Get connection state """
+        raise NotImplemented
+
+    @abstractmethod
+    def start(self, hub):
+        """
+        Get channel from hub
+
+        :param hub: connection hub
+        """
         raise NotImplemented
 
     @abstractmethod

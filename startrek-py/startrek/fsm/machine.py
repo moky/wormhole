@@ -29,7 +29,6 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
-from enum import IntEnum
 from typing import Optional, TypeVar, Generic
 
 from .ticker import Ticker
@@ -86,20 +85,22 @@ class State(ABC, Generic[C, T]):
         raise NotImplemented
 
     @abstractmethod
-    def on_pause(self, ctx: C):
+    def on_pause(self, ctx: C, now: float):
         """
         Called before current state paused
 
-        :param ctx: context (machine)
+        :param ctx:     context (machine)
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
         """
         raise NotImplemented
 
     @abstractmethod
-    def on_resume(self, ctx: C):
+    def on_resume(self, ctx: C, now: float):
         """
         Called after current state resumed
 
-        :param ctx: context (machine)
+        :param ctx:     context (machine)
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
         """
         raise NotImplemented
 
@@ -119,44 +120,48 @@ class Delegate(ABC, Generic[C, T, S]):
     """ State Machine Delegate """
 
     @abstractmethod
-    def enter_state(self, state: S, ctx: C):
+    def enter_state(self, state: Optional[S], ctx: C, now: float):
         """
         Called before enter new state
         (get current state from context)
 
-        :param state: new state
-        :param ctx:   context (machine)
+        :param state:   new state
+        :param ctx:     context (machine)
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
         """
         raise NotImplemented
 
     @abstractmethod
-    def exit_state(self, state: S, ctx: C):
+    def exit_state(self, state: Optional[S], ctx: C, now: float):
         """
         Called after exit old state
         (get current state from context)
 
-        :param state: old state
-        :param ctx:   context (machine)
+        :param state:   old state
+        :param ctx:     context (machine)
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
         """
         raise NotImplemented
 
     @abstractmethod
-    def pause_state(self, state: S, ctx: C):
+    def pause_state(self, state: Optional[S], ctx: C, now: float):
         """
         Called after pause this state
 
-        :param state: current state
-        :param ctx:   context (machine)
+        :param state:   current state
+        :param ctx:     context (machine)
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
         """
         raise NotImplemented
 
     @abstractmethod
-    def resume_state(self, state: S, ctx: C):
+    def resume_state(self, state: Optional[S], ctx: C, now: float):
         """
         Called before resume this state
 
-        :param state: current state
-        :param ctx:   context (machine)
+        :param state:   current state
+        :param ctx:     context (machine)
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
         """
         raise NotImplemented
 
@@ -166,7 +171,7 @@ class Machine(Ticker, ABC, Generic[C, T, S]):
 
     @property
     @abstractmethod
-    def current_state(self) -> S:
+    def current_state(self) -> Optional[S]:
         raise NotImplemented
 
     @abstractmethod
@@ -188,10 +193,3 @@ class Machine(Ticker, ABC, Generic[C, T, S]):
     def resume(self):
         """ Resume machine with current state """
         raise NotImplemented
-
-
-class Status(IntEnum):
-    """ Machine Status """
-    STOPPED = 0
-    RUNNING = 1
-    PAUSED = 2

@@ -53,19 +53,15 @@ class StarDocker(AddressPairObject, Docker, ABC):
             - _check_arrival(ship)
     """
 
-    def __init__(self, connection: Connection):
-        super().__init__(remote=connection.remote_address, local=connection.local_address)
-        self.__conn_ref = weakref.ref(connection)
-        self.__delegate = None
+    def __init__(self, remote: SocketAddress, local: Optional[SocketAddress]):
+        super().__init__(remote=remote, local=local)
         self.__dock = self._create_dock()
+        self.__delegate_ref = None
+        self.__conn_ref = None
+        self.__closed = None
         # remaining data to be sent
         self.__last_outgo: Optional[Departure] = None
         self.__last_fragments: List[bytes] = []
-
-    def __del__(self):
-        # make sure the relative connection is closed
-        self._set_connection(conn=None)
-        self.__dock = None
 
     # noinspection PyMethodMayBeStatic
     def _create_dock(self) -> Dock:
@@ -74,39 +70,47 @@ class StarDocker(AddressPairObject, Docker, ABC):
 
     @property
     def delegate(self) -> Optional[DockerDelegate]:
-        ref = self.__delegate
+        ref = self.__delegate_ref
         if ref is not None:
             return ref()
 
     @delegate.setter
     def delegate(self, keeper: DockerDelegate):
-        self.__delegate = None if keeper is None else weakref.ref(keeper)
+        self.__delegate_ref = None if keeper is None else weakref.ref(keeper)
 
-    @property  # protected
+    #
+    #   Connection
+    #
+
+    @property
     def connection(self) -> Optional[Connection]:
-        return self._get_connection()
-
-    def _get_connection(self) -> Optional[Connection]:
         ref = self.__conn_ref
         if ref is not None:
             return ref()
 
-    def _set_connection(self, conn: Optional[Connection]):
+    # Override
+    def set_connection(self, connection: Optional[Connection]):
         # 1. replace with new connection
-        old = self._get_connection()
-        self.__conn_ref = None if conn is None else weakref.ref(conn)
+        old = self.connection
+        if connection is None:
+            self.__conn_ref = None
+            self.__closed = True
+        else:
+            self.__conn_ref = weakref.ref(connection)
+            self.__closed = False  # connection.closed
         # 2. close old connection
-        if old is None or old is conn:
-            return
-        try:
-            if not old.closed:
-                old.close()
-        except Exception as error:
-            print('[SOCKET] failed to close connection: %s, %s' % (error, old))
-            # traceback.print_exc()
+        if old is not None and old is not connection:
+            old.close()
+
+    #
+    #   Flags
+    #
 
     @property  # Override
     def closed(self) -> bool:
+        if self.__closed is None:
+            # initializing
+            return False
         conn = self.connection
         return conn is None or conn.closed
 
@@ -118,40 +122,20 @@ class StarDocker(AddressPairObject, Docker, ABC):
     @property  # Override
     def status(self) -> DockerStatus:
         conn = self.connection
-        if conn is None:
-            return DockerStatus.ERROR
-        else:
-            return status_from_state(state=conn.state)
-
-    @property  # Override
-    def remote_address(self) -> SocketAddress:  # (str, int)
-        address = self._remote
-        # if address is None:
-        #     conn = self._get_connection()
-        #     if conn is not None:
-        #         address = conn.remote_address
-        return address
-
-    @property  # Override
-    def local_address(self) -> Optional[SocketAddress]:  # (str, int)
-        address = self._local
-        # if address is None:
-        #     conn = self._get_connection()
-        #     if conn is not None:
-        #         address = conn.local_address
-        return address
+        state = None if conn is None else conn.state
+        return status_from_state(state=state)
 
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
         return '<%s: remote=%s, local=%s>\n%s\n</%s module="%s">'\
-               % (cname, self._remote, self._local, self._get_connection(), cname, mod)
+               % (cname, self._remote, self._local, self.connection, cname, mod)
 
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
         return '<%s: remote=%s, local=%s>\n%s\n</%s module="%s">'\
-               % (cname, self._remote, self._local, self._get_connection(), cname, mod)
+               % (cname, self._remote, self._local, self.connection, cname, mod)
 
     # Override
     def send_ship(self, ship: Departure) -> bool:
@@ -195,7 +179,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
         """
         raise NotImplemented
 
-    def _check_response(self, ship: Arrival):  # -> Optional[Departure]:
+    def _check_response(self, ship: Arrival) -> Optional[Departure]:
         """
         Check and remove linked departure ship with same SN (and page index for fragment)
 
@@ -221,13 +205,14 @@ class StarDocker(AddressPairObject, Docker, ABC):
         return self.__dock.next_departure(now=now)
 
     # Override
-    def purge(self, now: float):
-        self.__dock.purge(now=now)
+    def purge(self, now: float = 0) -> int:
+        return self.__dock.purge(now=now)
 
     # Override
     def close(self):
-        self._set_connection(conn=None)
-        self.__dock = None
+        conn = self.connection
+        if conn is not None:
+            conn.close()
 
     #
     #  Processor
@@ -284,7 +269,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
                     sent = 0  # clear counter
             if index < len(fragments):
                 # task failed
-                error = ConnectionError('only %d/%d fragments sent' % (index, len(fragments)))
+                error = ConnectionError('only %d/%d fragments sent.' % (index, len(fragments)))
             else:
                 # task done
                 return True

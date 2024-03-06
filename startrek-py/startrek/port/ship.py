@@ -40,7 +40,7 @@ from typing import Any, List
 """
 
 
-class Priority(IntEnum):
+class DeparturePriority(IntEnum):
     """ Departure Ship Priority """
 
     URGENT = -1
@@ -48,21 +48,21 @@ class Priority(IntEnum):
     SLOWER = 1
 
 
-class Status(IntEnum):
+class ShipStatus(IntEnum):
     """ Ship Status """
-    #
-    #  Arrival Status
-    #
-    ASSEMBLING = 0x00  # waiting for more fragments
-    EXPIRED = 0x01     # failed to received all fragments
     #
     #  Departure Status
     #
-    NEW = 0x10      # not try yet
-    WAITING = 0x11  # sent, waiting for responses
-    TIMEOUT = 0x12  # waiting to send again
-    DONE = 0x13     # all fragments responded (or no need respond)
-    FAILED = 0x14   # tried 3 times and missed response(s)
+    NEW = 0x00      # not try yet
+    WAITING = 0x01  # sent, waiting for responses
+    TIMEOUT = 0x02  # waiting to send again
+    DONE = 0x03     # all fragments responded (or no need respond)
+    FAILED = 0x04   # tried 3 times and missed response(s)
+    #
+    #  Arrival Status
+    #
+    ASSEMBLING = 0x10  # waiting for more fragments
+    EXPIRED = 0x11     # failed to received all fragments
 
 
 class Ship(ABC):
@@ -87,7 +87,7 @@ class Ship(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def get_status(self, now: float) -> Status:
+    def get_status(self, now: float) -> ShipStatus:
         """
         Check ship state
 

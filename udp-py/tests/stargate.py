@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+
 import socket
+import threading
 import time
 from abc import ABC
 from typing import Generic, TypeVar, Optional, List, Union
@@ -19,11 +21,13 @@ from udp import PackageDocker
 H = TypeVar('H')
 
 
-class BaseGate(StarGate, Generic[H], ABC):
+# noinspection PyAbstractClass
+class CommonGate(StarGate, Generic[H], ABC):
 
     def __init__(self, delegate: DockerDelegate):
         super().__init__(delegate=delegate)
         self.__hub: H = None
+        self.__lock = threading.Lock()
 
     @property
     def hub(self) -> H:
@@ -33,29 +37,38 @@ class BaseGate(StarGate, Generic[H], ABC):
     def hub(self, h: H):
         self.__hub = h
 
-    #
-    #   Docker
-    #
+    def fetch_docker(self, remote: SocketAddress, local: Optional[SocketAddress], advance_party: List[bytes]) -> Docker:
+        # try to get docker
+        with self.__lock:
+            old = self._get_docker(remote=remote, local=local)
+            if old is None:  # and advance_party is not None:
+                # create & cache docker
+                worker = self._create_docker(advance_party, remote=remote, local=local)
+                self._set_docker(worker, remote=remote, local=local)
+            else:
+                worker = old
+        if old is None:
+            hub = self.hub
+            assert isinstance(hub, Hub), 'gate hub error: %s' % hub
+            conn = hub.connect(remote=remote, local=local)
+            if conn is None:
+                # assert False, 'failed to get connection: %s -> %s' % (local, remote)
+                self._remove_docker(worker, remote=remote, local=local)
+                worker = None
+            else:
+                worker.set_connection(conn)
+        return worker
 
-    # Override
-    def _get_docker(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
-        return super()._get_docker(remote=remote, local=None)
-
-    # Override
-    def _set_docker(self, docker: Docker,
-                    remote: SocketAddress, local: Optional[SocketAddress]):
-        super()._set_docker(docker=docker, remote=remote, local=None)
-
-    # Override
-    def _remove_docker(self, docker: Optional[Docker],
-                       remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
-        return super()._remove_docker(docker=docker, remote=remote, local=None)
-
-    # # Override
-    # def _heartbeat(self, connection: Connection):
-    #     # let the client to do the job
-    #     if isinstance(connection, ActiveConnection):
-    #         super()._heartbeat(connection=connection)
+    def send_response(self, payload: bytes, ship: Arrival,
+                      remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
+        assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
+        worker = self._get_docker(remote=remote, local=local)
+        if worker is None:
+            return False
+        elif not worker.alive:
+            return False
+        else:
+            return worker.send_data(payload=payload)
 
     # Override
     def _cache_advance_party(self, data: bytes, connection: Connection) -> List[bytes]:
@@ -71,67 +84,26 @@ class BaseGate(StarGate, Generic[H], ABC):
         pass
 
 
-class CommonGate(BaseGate, Generic[H], ABC):
-
-    def __init__(self, delegate: DockerDelegate):
-        super().__init__(delegate=delegate)
-        self.__running = False
-
-    @property
-    def running(self) -> bool:
-        return self.__running
-
-    def start(self):
-        self.__running = True
-
-    def stop(self):
-        self.__running = False
-
-    def get_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
-        hub = self.hub
-        assert isinstance(hub, Hub), 'gate hub error: %s' % hub
-        return hub.open(remote=remote, local=local)
-
-    def send_response(self, payload: bytes, ship: Arrival,
-                      remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
-        assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
-        docker = self._get_docker(remote=remote, local=local)
-        if docker is not None:
-            return docker.send_data(payload=payload)
-
-    def fetch_docker(self, remote: SocketAddress, local: Optional[SocketAddress], advance_party: List[bytes]) -> Docker:
-        docker = self._get_docker(remote=remote, local=local)
-        if docker is None:  # and advance_party is not None:
-            hub = self.hub
-            assert isinstance(hub, Hub), 'gate hub error: %s' % hub
-            conn = hub.connect(remote=remote, local=local)
-            if conn is not None:
-                docker = self._create_docker(connection=conn, advance_party=advance_party)
-                if docker is None:
-                    assert False, 'failed to create docker: %s, %s' % (remote, local)
-                else:
-                    self._set_docker(docker=docker, remote=docker.remote_address, local=docker.local_address)
-        return docker
-
-
+# noinspection PyAbstractClass
 class AutoGate(CommonGate, Runnable, Generic[H], ABC):
 
     def __init__(self, delegate: DockerDelegate, daemonic: bool = True):
         super().__init__(delegate=delegate)
         # running thread
         self.__daemon = Daemon(target=self.run, daemonic=daemonic)
+        self.__running = False
 
     def start(self):
-        super().start()
+        self.__running = True
         return self.__daemon.start()
 
     def stop(self):
-        super().stop()
+        self.__running = False
         self.__daemon.stop()
 
     # Override
     def run(self):
-        while self.running:
+        while self.__running:
             if not self.process():
                 self._idle()
 
@@ -171,9 +143,10 @@ class UDPGate(AutoGate, Generic[H]):
     #
 
     # Override
-    def _create_docker(self, connection: Connection, advance_party: List[bytes]) -> Optional[Docker]:
+    def _create_docker(self, parties: List[bytes],
+                       remote: SocketAddress, local: Optional[SocketAddress]) -> Docker:
         # TODO: check data format before creating docker
-        docker = PackageDocker(connection=connection)
+        docker = PackageDocker(remote=remote, local=local)
         docker.delegate = self.delegate
         return docker
 
@@ -182,7 +155,8 @@ class UDPGate(AutoGate, Generic[H]):
     #
 
     # Override
-    def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
+    def connection_state_changed(self, previous: Optional[ConnectionState], current: Optional[ConnectionState],
+                                 connection: Connection):
         super().connection_state_changed(previous=previous, current=current, connection=connection)
         self.info(msg='connection state changed: %s -> %s, %s' % (previous, current, connection))
 

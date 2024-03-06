@@ -29,6 +29,7 @@
 # ==============================================================================
 
 import socket
+import traceback
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple
 
@@ -249,11 +250,38 @@ def is_closed(sock: socket.socket) -> bool:
     return getattr(sock, '_closed', False)
 
 
-def close_socket(sock: socket.socket):
+def bind_socket(sock: socket.socket, local: SocketAddress) -> bool:
+    """ Bind to local address """
     try:
-        if not is_closed(sock=sock):
-            # sock.shutdown(socket.SHUT_RDWR)
-            sock.close()
+        sock.bind(local)
+        return is_bound(sock=sock)
     except socket.error as error:
-        print('[TCP] failed to close socket: %s, %s' % (error, sock))
-        # traceback.print_exc()
+        print('[Socket] cannot bind to: %s, socket: %s, %s' % (local, sock, error))
+        traceback.print_exc()
+        return False
+
+
+def connect_socket(sock: socket.socket, remote: SocketAddress) -> bool:
+    """ Connect to remote address """
+    try:
+        sock.connect(remote)
+        return is_bound(sock=sock)
+    except socket.error as error:
+        print('[Socket] cannot connect to: %s, socket: %s, %s' % (remote, sock, error))
+        traceback.print_exc()
+        return False
+
+
+def disconnect_socket(sock: socket.socket) -> bool:
+    """ Close socket """
+    if not is_connected(sock=sock):
+        return True
+    try:
+        # TODO: check for UDP socket
+        # sock.shutdown(socket.SHUT_RDWR)
+        sock.close()
+        return is_closed(sock=sock)
+    except socket.error as error:
+        print('[Socket] cannot close socket: %s, %s' % (sock, error))
+        traceback.print_exc()
+        return False

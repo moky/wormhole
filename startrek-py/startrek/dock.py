@@ -103,10 +103,12 @@ class Dock:
         # if needs retry, the caller should append it back
         return self.__departure_hall.next_departure(now=now)
 
-    def purge(self, now: float):
+    def purge(self, now: float = 0):
         """ Clear all expired tasks """
-        self.__arrival_hall.purge(now=now)
-        self.__departure_hall.purge(now=now)
+        count = 0
+        count += self.__arrival_hall.purge(now=now)
+        count += self.__departure_hall.purge(now=now)
+        return count
 
 
 class LockedDock(Dock):
@@ -138,7 +140,7 @@ class LockedDock(Dock):
             return super().next_departure(now=now)
 
     # Override
-    def purge(self, now: float):
+    def purge(self, now: float = 0) -> int:
         if now < self.__next_purge_time:
             return -1
         else:

@@ -55,9 +55,7 @@ class DepartureShip(Departure, ABC):
         # expired time (timestamp in seconds)
         self.__expired = 0
         # how many times to try sending
-        if max_tries is None:
-            max_tries = 1 + self.RETRIES
-        self.__tries = max_tries
+        self.__tries = (1 + self.RETRIES) if max_tries is None else max_tries
 
     @property
     def priority(self) -> int:
@@ -260,8 +258,11 @@ class DepartureHall:
                     self.__all_departures.discard(ship)
                     return ship
 
-    def purge(self, now: float):
+    def purge(self, now: float = 0) -> int:
         """ Clear all expired tasks """
+        if now <= 0:
+            now = time.time()
+        count = 0
         # 1. seeking finished tasks
         priorities = list(self.__priorities)
         for prior in priorities:
@@ -283,6 +284,7 @@ class DepartureHall:
                     self.__all_departures.discard(ship)
                     # mark finished time
                     self.__finished_times[sn] = now
+                    count += 1
             # remove array when empty
             if len(fleet) == 0:
                 self.__fleets.pop(prior, None)
@@ -295,3 +297,4 @@ class DepartureHall:
             if when is None or when < ago:
                 # long time ago
                 self.__finished_times.pop(sn, None)
+        return count

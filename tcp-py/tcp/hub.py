@@ -30,38 +30,43 @@
 
 import socket
 import threading
+import time
 from abc import ABC
 from typing import Optional, Iterable
 
 from startrek.types import SocketAddress, AddressPairMap
 from startrek.fsm import Runnable, Daemon
-from startrek.net.channel import close_socket
 from startrek import Channel
 from startrek import Connection, ConnectionDelegate
 from startrek import BaseConnection, ActiveConnection
 from startrek import BaseHub
 
 from .channel import StreamChannel
-from .channel import create_socket
 
 
 class ChannelPool(AddressPairMap[Channel]):
 
     # Override
-    def set(self, item: Optional[Channel], remote: Optional[SocketAddress], local: Optional[SocketAddress]):
-        old = self.get(remote=remote, local=local)
-        if old is not None and old is not item:
-            self.remove(item=old, remote=remote, local=local)
-        super().set(item=item, remote=remote, local=local)
+    def set(self, item: Optional[Channel],
+            remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        # 1. remove cached item
+        cached = super().remove(item=item, remote=remote, local=local)
+        if cached is not None and cached is not item:
+            cached.close()
+        # 2. set new item
+        old = super().set(item=item, remote=remote, local=local)
+        assert old is None, 'should not happen'
+        return cached
 
     # Override
     def remove(self, item: Optional[Channel],
                remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         cached = super().remove(item=item, remote=remote, local=local)
-        if cached is not None:
-            if not cached.closed:
-                cached.close()
-            return cached
+        if cached is not None and cached is not item:
+            cached.close()
+        if item is not None:
+            item.close()
+        return cached
 
 
 # noinspection PyAbstractClass
@@ -81,10 +86,10 @@ class StreamHub(BaseHub, ABC):
     #
 
     # noinspection PyMethodMayBeStatic
-    def _create_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress],
-                        sock: socket.socket) -> Channel:
+    def _create_channel(self, sock: socket.socket,
+                        remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Channel:
         """ create channel with socket & addresses """
-        return StreamChannel(remote=remote, local=local, sock=sock)
+        return StreamChannel(sock=sock, remote=remote, local=local)
 
     # Override
     def _all_channels(self) -> Iterable[Channel]:
@@ -101,9 +106,10 @@ class StreamHub(BaseHub, ABC):
         """ get cached channel """
         return self.__channel_pool.get(remote=remote, local=local)
 
-    def _set_channel(self, channel: Channel, remote: Optional[SocketAddress], local: Optional[SocketAddress]):
+    def _set_channel(self, channel: Channel,
+                     remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         """ cache channel """
-        self.__channel_pool.set(item=channel, remote=remote, local=local)
+        return self.__channel_pool.set(item=channel, remote=remote, local=local)
 
     # Override
     def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
@@ -123,12 +129,10 @@ class ServerHub(StreamHub, Runnable):
         self.__running = False
 
     # Override
-    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress],
-                           channel: Optional[Channel]) -> Optional[Connection]:
-        assert channel is not None, 'server channel should not be empty: %s -> %s' % (remote, local)
-        conn = BaseConnection(remote=remote, local=local, channel=channel)
+    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
+        conn = BaseConnection(remote=remote, local=local)
         conn.delegate = self.delegate  # gate
-        conn.start()  # start FSM
+        conn.start(hub=self)  # start FSM
         return conn
 
     def bind(self, address: Optional[SocketAddress] = None, host: Optional[str] = None, port: Optional[int] = 0):
@@ -157,7 +161,7 @@ class ServerHub(StreamHub, Runnable):
         self.__master = master
         # 2. close old socket
         if not (old is None or old is master):
-            close_socket(sock=old)
+            old.close()
 
     @property
     def local_address(self) -> Optional[SocketAddress]:
@@ -209,34 +213,51 @@ class ClientHub(StreamHub):
         self.__lock = threading.Lock()
 
     # Override
-    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress],
-                           channel: Optional[Channel]) -> Optional[Connection]:
-        conn = ActiveConnection(remote=remote, local=local, channel=channel, hub=self)
+    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
+        conn = ActiveConnection(remote=remote, local=local)
         conn.delegate = self.delegate  # gate
-        conn.start()  # start FSM
+        conn.start(hub=self)  # start FSM
         return conn
 
     # Override
     def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
-        channel = super().open(remote=remote, local=local)
-        if channel is not None:
-            # channel already exists
-            return channel
-        assert remote is not None, 'remote address should not be empty'
+        assert remote is not None, 'remote address empty: %s, %s' % (remote, local)
+        # try to get channel
         with self.__lock:
-            channel = self._get_channel(remote=remote, local=local)
-            if channel is not None:
-                # channel was created just now
-                return channel
-            # get from socket pool
-            sock = create_socket(remote=remote, local=local)
+            old = self._get_channel(remote=remote, local=local)
+            if old is None:
+                # create channel with socket
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                channel = self._create_channel(sock, remote=remote, local=local)
+                self._set_channel(channel, remote=remote, local=local)
+            else:
+                sock = None
+                channel = old
+        if old is None:
+            # initialize socket
+            sock = _init_socket(sock, remote=remote, local=local)
             if sock is None:
-                # failed to connect remote address
-                return None
-            # elif local is None:
-            #     local = get_local_address(sock=sock)
-            # create channel with socket
-            channel = self._create_channel(remote=remote, local=local, sock=sock)
-            if channel is not None:
-                self._set_channel(channel=channel, remote=channel.remote_address, local=channel.local_address)
-                return channel
+                print('[TCP] failed to prepare socket: %s -> %s' % (local, remote))
+                self._remove_channel(channel, remote=remote, local=local)
+        return channel
+
+
+def _init_socket(sock: socket.socket, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[socket.socket]:
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
+        sock.setblocking(True)
+        # try to bind
+        if local is not None:
+            sock.bind(local)
+        # try to connect
+        sock.connect(remote)
+        sock.setblocking(False)
+        return sock
+    except socket.error as error:
+        print('[TCP] %s > failed to create socket %s -> %s: %s' % (current_time(), local, remote, error))
+
+
+def current_time() -> str:
+    now = time.time()
+    localtime = time.localtime(now)
+    return time.strftime('%Y-%m-%d %H:%M:%S', localtime)

@@ -29,13 +29,13 @@
 # ==============================================================================
 
 from .pair import SocketAddress, AddressPairObject
-from .mapping import KeyPairMap, WeakKeyPairMap, HashKeyPairMap, AddressPairMap
+from .mapping import PairMap, AbstractPairMap, HashPairMap, AddressPairMap
 
 
 __all__ = [
     'SocketAddress',
     'AddressPairObject',
 
-    'KeyPairMap', 'WeakKeyPairMap', 'HashKeyPairMap',
+    'PairMap', 'AbstractPairMap', 'HashPairMap',
     'AddressPairMap',
 ]

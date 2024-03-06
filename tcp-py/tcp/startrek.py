@@ -51,26 +51,6 @@ class PlainArrival(ArrivalShip):
         return None
 
     # Override
-    def __eq__(self, other) -> bool:
-        if isinstance(other, PlainArrival):
-            if other is self:
-                return True
-            return self.__completed == other.__completed
-
-    # Override
-    def __ne__(self, other) -> bool:
-        if isinstance(other, PlainArrival):
-            if other is self:
-                return False
-            return self.__completed != other.__completed
-        else:
-            return True
-
-    # Override
-    def __hash__(self) -> int:
-        return hash(self.__completed)
-
-    # Override
     def assemble(self, ship: Arrival):
         assert self is ship, 'plain arrival error: %s, %s' % (ship, self)
         # plain arrival needs no assembling
@@ -92,26 +72,6 @@ class PlainDeparture(DepartureShip):
     def sn(self):
         # plain ship has no SN
         return None
-
-    # Override
-    def __eq__(self, other) -> bool:
-        if isinstance(other, PlainDeparture):
-            if other is self:
-                return True
-            return self.__completed == other.__completed
-
-    # Override
-    def __ne__(self, other) -> bool:
-        if isinstance(other, PlainDeparture):
-            if other is self:
-                return False
-            return self.__completed != other.__completed
-        else:
-            return True
-
-    # Override
-    def __hash__(self) -> int:
-        return hash(self.__completed)
 
     @property  # Override
     def fragments(self) -> List[bytes]:

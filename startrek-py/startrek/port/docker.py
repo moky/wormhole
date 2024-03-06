@@ -34,12 +34,13 @@ from typing import Optional, Union
 
 from ..types import SocketAddress
 from ..fsm import Processor
-from ..net import ConnectionState
+from ..net import Connection, ConnectionState
+from ..net.state import StateOrder
 
 from .ship import Departure
 
 
-class Status(IntEnum):
+class DockerStatus(IntEnum):
     """ Docker Status """
     ERROR = -1
     INIT = 0
@@ -48,22 +49,24 @@ class Status(IntEnum):
 
 
 READY_STATUS = [
-    ConnectionState.READY,
-    ConnectionState.EXPIRED,
-    ConnectionState.MAINTAINING
+    StateOrder.READY,
+    StateOrder.EXPIRED,
+    StateOrder.MAINTAINING
 ]
 
 
-def status_from_state(state: ConnectionState) -> Status:
+def status_from_state(state: Optional[ConnectionState]) -> DockerStatus:
+    """ Convert connection state to docker status """
     if state is None:
-        return Status.ERROR
-    if state in READY_STATUS:
-        return Status.READY
-    if state == ConnectionState.PREPARING:
-        return Status.PREPARING
-    if state == ConnectionState.ERROR:
-        return Status.ERROR
-    return Status.INIT
+        return DockerStatus.ERROR
+    index = state.index
+    if index in READY_STATUS:
+        return DockerStatus.READY
+    if index == StateOrder.PREPARING:
+        return DockerStatus.PREPARING
+    if index == StateOrder.ERROR:
+        return DockerStatus.ERROR
+    return DockerStatus.INIT
 
 
 class Docker(Processor):
@@ -88,7 +91,7 @@ class Docker(Processor):
 
     @property
     @abstractmethod
-    def status(self) -> Status:
+    def status(self) -> DockerStatus:
         """ Connection state """
         raise NotImplemented
 
@@ -102,6 +105,11 @@ class Docker(Processor):
     @abstractmethod
     def local_address(self) -> Optional[SocketAddress]:
         """ Local address of connection """
+        raise NotImplemented
+
+    @abstractmethod
+    def set_connection(self, connection: Optional[Connection]):
+        """ Set connection for this docker """
         raise NotImplemented
 
     @abstractmethod
@@ -143,7 +151,7 @@ class Docker(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def purge(self, now: float):
+    def purge(self, now: float) -> int:
         """ Clear all expired tasks """
         raise NotImplemented
 

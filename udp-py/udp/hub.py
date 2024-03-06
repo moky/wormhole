@@ -85,20 +85,26 @@ class ChannelPool(AddressPairMap[Channel]):
         # not found
 
     # Override
-    def set(self, item: Optional[Channel], remote: Optional[SocketAddress], local: Optional[SocketAddress]):
-        old = self.get(remote=remote, local=local)
-        if old is not None and old is not item:
-            self.remove(item=old, remote=remote, local=local)
-        super().set(item=item, remote=remote, local=local)
+    def set(self, item: Optional[Channel],
+            remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        # 1. remove cached item
+        cached = super().remove(item=item, remote=remote, local=local)
+        if cached is not None and cached is not item:
+            cached.close()
+        # 2. set new item
+        old = super().set(item=item, remote=remote, local=local)
+        assert old is None, 'should not happen'
+        return cached
 
     # Override
     def remove(self, item: Optional[Channel],
                remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         cached = super().remove(item=item, remote=remote, local=local)
-        if cached is not None:
-            if not cached.closed:
-                cached.close()
-            return cached
+        if cached is not None and cached is not item:
+            cached.close()
+        if item is not None:
+            item.close()
+        return cached
 
 
 # noinspection PyAbstractClass
@@ -132,10 +138,10 @@ class PacketHub(BaseHub, ABC):
     #
 
     # noinspection PyMethodMayBeStatic
-    def _create_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress],
-                        sock: socket.socket) -> Channel:
+    def _create_channel(self, sock: socket.socket,
+                        remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Channel:
         # override for user-customized channel
-        return PacketChannel(remote=remote, local=local, sock=sock)
+        return PacketChannel(sock=sock, remote=remote, local=local)
 
     # Override
     def _all_channels(self) -> Iterable[Channel]:
@@ -152,9 +158,10 @@ class PacketHub(BaseHub, ABC):
         """ get cached channel """
         return self.__channel_pool.get(remote=remote, local=local)
 
-    def _set_channel(self, channel: Channel, remote: Optional[SocketAddress], local: Optional[SocketAddress]):
+    def _set_channel(self, channel: Channel,
+                     remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         """ cache channel """
-        self.__channel_pool.set(item=channel, remote=remote, local=local)
+        return self.__channel_pool.set(item=channel, remote=remote, local=local)
 
     # Override
     def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
@@ -166,12 +173,10 @@ class ServerHub(PacketHub):
     """ Datagram Server Hub """
 
     # Override
-    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress],
-                           channel: Optional[Channel]) -> Optional[Connection]:
-        assert channel is not None, 'server channel should not be empty: %s -> %s' % (remote, local)
-        conn = BaseConnection(remote=remote, local=local, channel=channel)
+    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
+        conn = BaseConnection(remote=remote, local=local)
         conn.delegate = self.delegate  # gate
-        conn.start()  # start FSM
+        conn.start(hub=self)  # start FSM
         return conn
 
 
@@ -179,9 +184,8 @@ class ClientHub(PacketHub):
     """ Datagram Client Hub """
 
     # Override
-    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress],
-                           channel: Optional[Channel]) -> Optional[Connection]:
-        conn = ActiveConnection(remote=remote, local=local, channel=channel, hub=self)
+    def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
+        conn = ActiveConnection(remote=remote, local=local)
         conn.delegate = self.delegate  # gate
-        conn.start()  # start FSM
+        conn.start(hub=self)  # start FSM
         return conn

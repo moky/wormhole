@@ -29,6 +29,7 @@
 # ==============================================================================
 
 import socket
+import threading
 import time
 import weakref
 from abc import ABC, abstractmethod
@@ -36,6 +37,7 @@ from typing import Optional, List, Iterable, Union
 
 from .types import SocketAddress, AddressPairMap
 from .net import Connection, ConnectionDelegate, ConnectionState
+from .net.state import StateOrder
 from .port import Departure, Gate
 from .port import Docker, DockerStatus, DockerDelegate
 from .port.docker import status_from_state
@@ -45,20 +47,25 @@ class DockerPool(AddressPairMap[Docker]):
 
     # Override
     def set(self, item: Optional[Docker],
-            remote: Optional[SocketAddress], local: Optional[SocketAddress]):
-        old = self.get(remote=remote, local=local)
-        if old is not None and old is not item:
-            self.remove(item=old, remote=remote, local=local)
-        super().set(item=item, remote=remote, local=local)
+            remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Docker]:
+        # 1. remove cached item
+        cached = super().remove(item=item, remote=remote, local=local)
+        if cached is not None and cached is not item:
+            cached.close()
+        # 2. set new item
+        old = super().set(item=item, remote=remote, local=local)
+        assert old is None, 'should not happen'
+        return cached
 
     # Override
     def remove(self, item: Optional[Docker],
                remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Docker]:
         cached = super().remove(item=item, remote=remote, local=local)
-        if cached is not None:
-            if not cached.closed:
-                cached.close()
-            return cached
+        if cached is not None and cached is not item:
+            cached.close()
+        if item is not None:
+            item.close()
+        return cached
 
 
 class StarGate(Gate, ConnectionDelegate, ABC):
@@ -67,15 +74,16 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         ~~~~~~~~~
 
         @abstract methods:
-            - _create_docker(connection, advance_party)
+            - _create_docker(advance_party, remote_address, local_address)
             - _cache_advance_party(data, connection)
             - _clear_advance_party(connection)
     """
 
     def __init__(self, delegate: DockerDelegate):
         super().__init__()
-        self.__delegate = weakref.ref(delegate)
+        self.__delegate_ref = weakref.ref(delegate)
         self.__docker_pool = self._create_docker_pool()
+        self.__lock = threading.Lock()
 
     # noinspection PyMethodMayBeStatic
     def _create_docker_pool(self):
@@ -83,32 +91,44 @@ class StarGate(Gate, ConnectionDelegate, ABC):
 
     @property
     def delegate(self) -> Optional[DockerDelegate]:
-        return self.__delegate()
+        return self.__delegate_ref()
 
     # Override
     def send_data(self, payload: Union[bytes, bytearray],
                   remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
-        docker = self._get_docker(remote=remote, local=local)
-        if not (docker is None or docker.closed):
-            return docker.send_data(payload=payload)
+        worker = self._get_docker(remote=remote, local=local)
+        if worker is None:
+            # assert False, 'docker not found: %s -> %s' % (local, remote)
+            return False
+        elif not worker.alive:
+            # assert False, 'docket not alive: %s -> %s' % (local, remote)
+            return False
+        return worker.send_data(payload=payload)
 
     # Override
     def send_ship(self, ship: Departure, remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
-        docker = self._get_docker(remote=remote, local=local)
-        if not (docker is None or docker.closed):
-            return docker.send_ship(ship=ship)
+        worker = self._get_docker(remote=remote, local=local)
+        if worker is None:
+            # assert False, 'docker not found: %s -> %s' % (local, remote)
+            return False
+        elif not worker.alive:
+            # assert False, 'docket not alive: %s -> %s' % (local, remote)
+            return False
+        return worker.send_ship(ship=ship)
 
     #
     #   Docker
     #
 
     @abstractmethod
-    def _create_docker(self, connection: Connection, advance_party: List[bytes]) -> Optional[Docker]:
+    def _create_docker(self, parties: List[bytes],
+                       remote: SocketAddress, local: Optional[SocketAddress]) -> Docker:
         """
         create new docker for received data
 
-        :param connection:    current connection
-        :param advance_party: received data
+        :param parties: advance party
+        :param remote:  remote address
+        :param local:   local address
         :return docker
         """
         raise NotImplemented
@@ -117,19 +137,19 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         """ get a copy of all dockers """
         return self.__docker_pool.items
 
+    def _remove_docker(self, docker: Optional[Docker],
+                       remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
+        """ remove cached docker """
+        return self.__docker_pool.remove(item=docker, remote=remote, local=local)
+
     def _get_docker(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
         """ get cached docker """
         return self.__docker_pool.get(remote=remote, local=local)
 
     def _set_docker(self, docker: Docker,
-                    remote: SocketAddress, local: Optional[SocketAddress]):
+                    remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
         """ cache docker """
-        self.__docker_pool.set(item=docker, remote=remote, local=local)
-
-    def _remove_docker(self, docker: Optional[Docker],
-                       remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
-        """ remove cached docker """
-        return self.__docker_pool.remove(item=docker, remote=remote, local=local)
+        return self.__docker_pool.set(item=docker, remote=remote, local=local)
 
     #
     #   Processor
@@ -166,16 +186,17 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         """ Send a heartbeat package('PING') to remote address """
         remote = connection.remote_address
         local = connection.local_address
-        docker = self._get_docker(remote=remote, local=local)
-        if docker is not None:
-            docker.heartbeat()
+        worker = self._get_docker(remote=remote, local=local)
+        if worker is not None:
+            worker.heartbeat()
 
     #
     #   Connection Delegate
     #
 
     # Override
-    def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
+    def connection_state_changed(self, previous: Optional[ConnectionState], current: Optional[ConnectionState],
+                                 connection: Connection):
         # convert status
         s1 = status_from_state(state=previous)
         s2 = status_from_state(state=current)
@@ -183,50 +204,60 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         if s1 != s2:
             remote = connection.remote_address
             local = connection.local_address
-            docker = self._get_docker(remote=remote, local=local)
-            if docker is None:
-                if s2 == DockerStatus.ERROR:
-                    # connection closed and docker removed
-                    return
-                docker = self._create_docker(connection=connection, advance_party=[])
-                if docker is None:
-                    # assert False, 'failed to create docker: %s, %s' % (remote, local)
-                    return
+            # try to get docker
+            with self.__lock:
+                old = self._get_docker(remote=remote, local=local)
+                if old is None:
+                    if s2 == DockerStatus.ERROR:
+                        # connection closed and docker removed
+                        return
+                    # create & cache docker
+                    worker = self._create_docker([], remote=remote, local=local)
+                    self._set_docker(worker, remote=remote, local=local)
                 else:
-                    self._set_docker(docker=docker, remote=docker.remote_address, local=docker.local_address)
+                    worker = old
+            if old is None:
+                # set connection for this docker
+                worker.set_connection(connection)
             # NOTICE: if the previous state is null, the docker maybe not
             #         created yet, this situation means the docker status
             #         not changed too, so no need to callback here.
             delegate = self.delegate
             if delegate is not None:
-                delegate.docker_status_changed(previous=s1, current=s2, docker=docker)
+                delegate.docker_status_changed(previous=s1, current=s2, docker=worker)
         # 2. heartbeat when connection expired
-        if current == ConnectionState.EXPIRED:
+        index = -1 if current is None else current.index
+        if index == StateOrder.EXPIRED:
             self._heartbeat(connection=connection)
 
     # Override
     def connection_received(self, data: bytes, connection: Connection):
         remote = connection.remote_address
         local = connection.local_address
-        # get docker by (remote, local)
-        docker = self._get_docker(remote=remote, local=local)
-        if docker is not None:
-            # docker exists, call docker.onReceived(data)
-            docker.process_received(data=data)
-            return
-        # cache advance party for this connection
-        party = self._cache_advance_party(data=data, connection=connection)
-        assert party is not None and len(party) > 0, 'advance party error'
-        # docker not exists, check the data to decide which docker should be created
-        docker = self._create_docker(connection=connection, advance_party=party)
-        if docker is not None:
-            # cache docker for (remote, local)
-            self._set_docker(docker=docker, remote=docker.remote_address, local=docker.local_address)
+        # try to get docker
+        with self.__lock:
+            old = self._get_docker(remote=remote, local=local)
+            if old is None:
+                # cache advance party for this connection
+                party = self._cache_advance_party(data=data, connection=connection)
+                assert party is not None and len(party) > 0, 'advance party error'
+                # create & cache docker
+                worker = self._create_docker(party, remote=remote, local=local)
+                self._set_docker(worker, remote=remote, local=local)
+            else:
+                party = []
+                worker = old
+        if old is None:
+            # set connection for this docker
+            worker.set_connection(connection)
             # process advance parties one by one
             for item in party:
-                docker.process_received(data=item)
+                worker.process_received(data=item)
             # remove advance party
             self._clear_advance_party(connection=connection)
+        else:
+            # docker exists, call docker.onReceived(data)
+            worker.process_received(data=data)
 
     @abstractmethod
     def _cache_advance_party(self, data: bytes, connection: Connection) -> List[bytes]:

@@ -40,7 +40,8 @@ from .port import Arrival
 # noinspection PyAbstractClass
 class ArrivalShip(Arrival, ABC):
 
-    # Arrival task will be expired after 5 minutes if still not completed
+    # Arrival task will be expired after 5 minutes
+    # if still not completed
     EXPIRES = 300  # seconds
 
     def __init__(self, now: float = 0):
@@ -89,8 +90,8 @@ class ArrivalHall:
         cached = self.__map.get(sn)
         if cached is None:
             # check whether the task as already finished
-            timestamp = self.__finished_times.get(sn)
-            if timestamp is not None and timestamp > 0:
+            timestamp = self.__finished_times.get(sn, 0)
+            if timestamp > 0:
                 # task already finished
                 return None
             # 3. new arrival, try assembling to check whether a fragment
@@ -117,8 +118,11 @@ class ArrivalHall:
                 self.__finished_times[sn] = time.time()
         return completed
 
-    def purge(self, now: float):
+    def purge(self, now: float = 0) -> int:
         """ Clear all expired tasks """
+        if now <= 0:
+            now = time.time()
+        count = 0
         # 1. seeking expired tasks
         arrivals = set(self.__arrivals)
         for ship in arrivals:
@@ -130,6 +134,7 @@ class ArrivalHall:
                 if sn is not None:
                     self.__map.pop(sn, None)
                     # TODO: callback?
+                count += 1
         # 2. seeking neglected finished times
         ago = now - 3600
         keys = set(self.__finished_times.keys())
@@ -138,3 +143,4 @@ class ArrivalHall:
             if when is None or when < ago:
                 # long time ago
                 self.__finished_times.pop(sn, None)
+        return count

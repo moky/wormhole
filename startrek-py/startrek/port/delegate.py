@@ -31,7 +31,7 @@
 from abc import ABC, abstractmethod
 
 from .ship import Arrival, Departure
-from .docker import Docker, Status
+from .docker import Docker, DockerStatus
 
 
 class DockerDelegate(ABC):
@@ -79,7 +79,7 @@ class DockerDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def docker_status_changed(self, previous: Status, current: Status, docker: Docker):
+    def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
         """
         Callback when connection status changed
 

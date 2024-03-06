@@ -65,8 +65,8 @@
 """
 
 from .ship import Ship, Arrival, Departure
-from .ship import Status as ShipStatus, Priority as DeparturePriority
-from .docker import Docker, Status as DockerStatus
+from .ship import ShipStatus, DeparturePriority
+from .docker import Docker, DockerStatus
 from .delegate import DockerDelegate
 from .gate import Gate
 

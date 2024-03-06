@@ -30,7 +30,7 @@
 
 import socket
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Optional, Union
 
 from .connection import Connection
 from .state import ConnectionState
@@ -40,7 +40,8 @@ class ConnectionDelegate(ABC):
     """ Connection Delegate """
 
     @abstractmethod
-    def connection_state_changed(self, previous: ConnectionState, current: ConnectionState, connection: Connection):
+    def connection_state_changed(self, previous: Optional[ConnectionState], current: Optional[ConnectionState],
+                                 connection: Connection):
         """
         Called when connection status is changed
 

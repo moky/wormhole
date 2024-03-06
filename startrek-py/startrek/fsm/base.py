@@ -31,23 +31,24 @@
 import time
 import weakref
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict
+from enum import IntEnum
+from typing import List, Optional
 
 from .machine import S, C, U, T
-from .machine import Transition, State, Machine, Status, Delegate
+from .machine import Transition, State, Machine, Delegate
 
 
 # noinspection PyAbstractClass
 class BaseTransition(Transition[C], ABC):
     """ Transition with the index of target state """
 
-    def __init__(self, target: str):
+    def __init__(self, target: int):
         super().__init__()
         self.__target = target
 
     @property
-    def target(self) -> str:
-        """ target state name """
+    def target(self) -> int:
+        """ target state index """
         return self.__target
 
     # @abstractmethod  # Override
@@ -59,9 +60,14 @@ class BaseTransition(Transition[C], ABC):
 class BaseState(State[C, T], ABC):
     """ State with transitions """
 
-    def __init__(self):
+    def __init__(self, index: int):
         super().__init__()
+        self.__index = index
         self.__transitions: List[Transition[C]] = []
+
+    @property
+    def index(self) -> int:
+        return self.__index
 
     def add_transition(self, transition: Transition[C]):
         assert transition not in self.__transitions, 'transition exists: %s' % transition
@@ -91,25 +97,31 @@ class BaseState(State[C, T], ABC):
     #     raise NotImplemented
 
 
+class MachineStatus(IntEnum):
+    """ Machine Status """
+    STOPPED = 0
+    RUNNING = 1
+    PAUSED = 2
+
+
 class BaseMachine(Machine[C, T, S], ABC):
 
-    def __init__(self, default: str):
+    def __init__(self):
         super().__init__()
-        self.__default = default           # default state name
-        self.__current = None              # ref(current_state)
-        self.__states: Dict[str, S] = {}   # str(name) => State
-        self.__delegate: Optional[weakref.ReferenceType] = None
-        self.__status: Status = Status.STOPPED
+        self.__states: List[S] = []
+        self.__current = -1  # current state index
+        self.__status = MachineStatus.STOPPED
+        self.__delegate_ref: Optional[weakref.ReferenceType] = None
 
     @property
-    def delegate(self) -> Delegate[C, T, S]:
-        ref = self.__delegate
+    def delegate(self) -> Optional[Delegate[C, T, S]]:
+        ref = self.__delegate_ref
         if ref is not None:
             return ref()
 
     @delegate.setter
     def delegate(self, handler: Delegate[C, T, S]):
-        self.__delegate = None if handler is None else weakref.ref(handler)
+        self.__delegate_ref = None if handler is None else weakref.ref(handler)
 
     @property
     @abstractmethod
@@ -120,29 +132,43 @@ class BaseMachine(Machine[C, T, S], ABC):
     #
     #   States
     #
-    def set_state(self, name: str, state: State[C, T]):
-        self.__states[name] = state
+    def add_state(self, state: BaseState[C, T]) -> Optional[S]:
+        index = state.index
+        assert index >= 0, 'state index error: %d' % index
+        count = len(self.__states)
+        if index < count:
+            # WARNING: return old state that was replaced
+            old = self.__states[index]
+            self.__states[index] = state
+            return old
+        # filling empty spaces
+        spaces = index - count
+        for i in range(spaces):
+            self.__states.append(None)
+        # append the new state to the tail
+        self.__states.append(state)
 
-    def get_state(self, name: str) -> Optional[State[C, T]]:
-        return self.__states.get(name)
+    def get_state(self, index: int) -> Optional[State[C, T]]:
+        return self.__states[index]
 
     @property  # protected
     def default_state(self) -> State[C, T]:
-        return self.__states.get(self.__default)
+        return self.__states[0]
 
     # protected
     def get_target_state(self, transition: BaseTransition[C]) -> State[C, T]:
         # Get target state of this transition
-        return self.__states.get(transition.target)
+        return self.__states[transition.target]
 
     @property  # Override
     def current_state(self) -> Optional[State[C, T]]:
-        ref = self.__current
-        if ref is not None:
-            return ref()
+        index = self.__current
+        if 0 <= index:  # and index < len(self.__states):
+            return self.__states[index]
 
-    def __set_current_state(self, state: State[C, T]):
-        self.__current = None if state is None else weakref.ref(state)
+    @current_state.setter  # private
+    def current_state(self, state: BaseState[C, T]):
+        self.__current = -1 if state is None else state.index
 
     def __change_state(self, state: Optional[State[C, T]], now: float):
         """
@@ -163,13 +189,13 @@ class BaseMachine(Machine[C, T, S], ABC):
         if delegate is not None:
             # prepare for changing current state to the new one,
             # the delegate can get old state via ctx if need
-            delegate.enter_state(state, machine)
+            delegate.enter_state(state, machine, now=now)
         if old is not None:
             old.on_exit(state, machine, now=now)
         #
         #  Change current state
         #
-        self.__set_current_state(state=state)
+        self.current_state = state
         #
         #  Events after state changed
         #
@@ -178,7 +204,7 @@ class BaseMachine(Machine[C, T, S], ABC):
         if delegate is not None:
             # handle after the current state changed,
             # the delegate can get new state via ctx if need
-            delegate.exit_state(old, machine)
+            delegate.exit_state(old, machine, now=now)
         return True
 
     #
@@ -190,52 +216,55 @@ class BaseMachine(Machine[C, T, S], ABC):
         now = time.time()
         ok = self.__change_state(state=self.default_state, now=now)
         assert ok, 'failed to change default state'
-        self.__status = Status.RUNNING
+        self.__status = MachineStatus.RUNNING
 
     # Override
     def stop(self):
-        self.__status = Status.STOPPED
+        self.__status = MachineStatus.STOPPED
         now = time.time()
         self.__change_state(state=None, now=now)  # force current state to None
 
     # Override
     def pause(self):
+        now = time.time()
         machine = self.context
         current = self.current_state
         #
         #  Events before state paused
         #
         if current is not None:
-            current.on_pause(machine)
+            current.on_pause(machine, now=now)
         #
         #  Pause state
         #
-        self.__status = Status.PAUSED
+        self.__status = MachineStatus.PAUSED
         #
         #  Events after state paused
         #
         delegate = self.delegate
         if delegate is not None:
-            delegate.pause_state(current, machine)
+            delegate.pause_state(current, machine, now=now)
 
     # Override
     def resume(self):
+        now = time.time()
         machine = self.context
         current = self.current_state
         #
         #  Events before state resumed
+        #
         delegate = self.delegate
         if delegate is not None:
-            delegate.resume_state(current, machine)
+            delegate.resume_state(current, machine, now=now)
         #
         #  Resume state
         #
-        self.__status = Status.RUNNING
+        self.__status = MachineStatus.RUNNING
         #
         #  Events after state resumed
         #
         if current is not None:
-            current.on_resume(machine)
+            current.on_resume(machine, now=now)
 
     #
     #   Ticker
@@ -245,7 +274,7 @@ class BaseMachine(Machine[C, T, S], ABC):
     def tick(self, now: float, elapsed: float):
         machine = self.context
         current = self.current_state
-        if current is not None and self.__status == Status.RUNNING:
+        if current is not None and self.__status == MachineStatus.RUNNING:
             trans = current.evaluate(machine, now=now)
             if trans is not None:
                 # assert isinstance(trans, BaseTransition), 'transition error: %s' % trans
