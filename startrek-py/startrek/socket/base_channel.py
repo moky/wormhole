@@ -135,13 +135,18 @@ class ChannelWriter(Controller, SocketWriter, ABC):
 
 class BaseChannel(AddressPairObject, Channel, ABC):
 
-    def __init__(self, sock: socket.socket, remote: Optional[SocketAddress], local: Optional[SocketAddress]):
+    def __init__(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]):
         super().__init__(remote=remote, local=local)
         # inner socket
-        self.__sock = sock
+        self.__sock: Optional[socket.socket] = None
+        self.__closed = None
         # create socket reader/writer
         self.__reader = self._create_reader()
         self.__writer = self._create_writer()
+
+    #
+    #   Channel Controller
+    #
 
     @abstractmethod
     def _create_reader(self) -> SocketReader:
@@ -161,45 +166,70 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     def writer(self) -> SocketWriter:
         return self.__writer
 
+    #
+    #   socket
+    #
+
     @property
-    def sock(self) -> socket.socket:
+    def sock(self) -> Optional[socket.socket]:
+        """ inner socket """
         return self.__sock
+
+    def _set_socket(self, sock: Optional[socket.socket]):
+        # 1. replace with new socket
+        old = self.__sock
+        if sock is None:
+            self.__sock = None
+            self.__closed = True
+        else:
+            self.__sock = sock
+            self.__closed = False  # is_closed(sock=sock)
+        # 2. close old socket
+        if old is not None and old is not sock:
+            disconnect_socket(sock=old)
 
     #
     #   Flags
     #
 
     @property  # Override
-    def blocking(self) -> bool:
-        return is_blocking(sock=self.sock)
-
-    @property  # Override
     def closed(self) -> bool:
-        return is_closed(sock=self.sock)
-
-    @property  # Override
-    def connected(self) -> bool:
-        return is_connected(sock=self.sock)
+        if self.__closed is None:
+            # initializing
+            return False
+        sock = self.sock
+        return sock is None or is_closed(sock=sock)
 
     @property  # Override
     def bound(self) -> bool:
-        return is_bound(sock=self.sock)
+        sock = self.sock
+        return sock is not None and is_bound(sock=sock)
+
+    @property  # Override
+    def connected(self) -> bool:
+        sock = self.sock
+        return sock is not None and is_connected(sock=sock)
 
     @property  # Override
     def alive(self) -> bool:
         return (not self.closed) and (self.connected or self.bound)
 
+    @property  # Override
+    def blocking(self) -> bool:
+        sock = self.sock
+        return sock is not None and is_blocking(sock=sock)
+
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s remote="%s" local="%s">\n\t%s\n</%s module="%s">'\
-               % (cname, self._remote, self._local, self.sock, cname, mod)
+        return '<%s remote="%s" local="%s" closed=%d bound=%d connected=%d >\n\t%s\n</%s module="%s">'\
+               % (cname, self._remote, self._local, self.closed, self.bound, self.connected, self.sock, cname, mod)
 
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s remote="%s" local="%s">\n\t%s\n</%s module="%s">'\
-               % (cname, self._remote, self._local, self.sock, cname, mod)
+        return '<%s remote="%s" local="%s" closed=%d bound=%d connected=%d >\n\t%s\n</%s module="%s">'\
+               % (cname, self._remote, self._local, self.closed, self.bound, self.connected, self.sock, cname, mod)
 
     # Override
     def configure_blocking(self, blocking: bool):
@@ -248,7 +278,11 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     # Override
     def close(self):
-        self.disconnect()
+        self._set_socket(sock=None)
+
+    # Override
+    def assign_socket(self, sock: socket.socket):
+        self._set_socket(sock=sock)
 
     # Override
     def read(self, max_len: int) -> Optional[bytes]:

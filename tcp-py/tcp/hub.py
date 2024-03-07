@@ -86,10 +86,9 @@ class StreamHub(BaseHub, ABC):
     #
 
     # noinspection PyMethodMayBeStatic
-    def _create_channel(self, sock: socket.socket,
-                        remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Channel:
+    def _create_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Channel:
         """ create channel with socket & addresses """
-        return StreamChannel(sock=sock, remote=remote, local=local)
+        return StreamChannel(remote=remote, local=local)
 
     # Override
     def _all_channels(self) -> Iterable[Channel]:
@@ -111,11 +110,6 @@ class StreamHub(BaseHub, ABC):
         """ cache channel """
         return self.__channel_pool.set(item=channel, remote=remote, local=local)
 
-    # Override
-    def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
-        assert remote is not None, 'remote address empty: %s, %s' % (remote, local)
-        return self._get_channel(remote=remote, local=local)
-
 
 class ServerHub(StreamHub, Runnable):
     """ Stream Server Hub """
@@ -132,7 +126,6 @@ class ServerHub(StreamHub, Runnable):
     def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
         conn = BaseConnection(remote=remote, local=local)
         conn.delegate = self.delegate  # gate
-        conn.start(hub=self)  # start FSM
         return conn
 
     def bind(self, address: Optional[SocketAddress] = None, host: Optional[str] = None, port: Optional[int] = 0):
@@ -200,9 +193,14 @@ class ServerHub(StreamHub, Runnable):
 
     def _accept(self, remote: SocketAddress, local: SocketAddress, sock: socket.socket):
         # override for user-customized channel
-        channel = self._create_channel(remote=remote, local=local, sock=sock)
-        assert channel is not None, 'failed to create socket channel: %s, remote=%s, local=%s' % (sock, remote, local)
+        channel = self._create_channel(remote=remote, local=local)
+        channel.assign_socket(sock=sock)
         self._set_channel(channel=channel, remote=channel.remote_address, local=channel.local_address)
+
+    # Override
+    def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        assert remote is not None, 'remote address empty: %s, %s' % (remote, local)
+        return self._get_channel(remote=remote, local=local)
 
 
 class ClientHub(StreamHub):
@@ -216,7 +214,6 @@ class ClientHub(StreamHub):
     def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
         conn = ActiveConnection(remote=remote, local=local)
         conn.delegate = self.delegate  # gate
-        conn.start(hub=self)  # start FSM
         return conn
 
     # Override
@@ -227,23 +224,25 @@ class ClientHub(StreamHub):
             old = self._get_channel(remote=remote, local=local)
             if old is None:
                 # create channel with socket
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                channel = self._create_channel(sock, remote=remote, local=local)
+                channel = self._create_channel(remote=remote, local=local)
                 self._set_channel(channel, remote=remote, local=local)
             else:
-                sock = None
                 channel = old
         if old is None:
             # initialize socket
-            sock = _init_socket(sock, remote=remote, local=local)
+            sock = create_socket(remote=remote, local=local)
             if sock is None:
                 print('[TCP] failed to prepare socket: %s -> %s' % (local, remote))
                 self._remove_channel(channel, remote=remote, local=local)
+                channel = None
+            else:
+                channel.assign_socket(sock=sock)
         return channel
 
 
-def _init_socket(sock: socket.socket, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[socket.socket]:
+def create_socket(remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[socket.socket]:
     try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
         sock.setblocking(True)
         # try to bind

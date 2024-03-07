@@ -58,6 +58,10 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         # Finite State Machine
         self.__fsm: Optional[StateMachine] = None
 
+    #
+    #   Connection Event Handler
+    #
+
     @property
     def delegate(self) -> ConnectionDelegate:
         """ Delegate for handling connection events """
@@ -68,6 +72,28 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     @delegate.setter
     def delegate(self, gate: ConnectionDelegate):
         self.__delegate_ref = None if gate is None else weakref.ref(gate)
+
+    #
+    #   State Machine
+    #
+
+    @property  # protected
+    def fsm(self) -> Optional[StateMachine]:
+        return self.__fsm
+
+    # private
+    def _set_state_machine(self, fsm: Optional[StateMachine]):
+        # 1. replace with new machine
+        old = self.__fsm
+        self.__fsm = fsm
+        # 2. stop old machine
+        if old is not None and old is not fsm:
+            old.stop()
+
+    def _create_state_machine(self) -> StateMachine:
+        fsm = StateMachine(connection=self)
+        fsm.delegate = self
+        return fsm
 
     #
     #   Channel
@@ -91,27 +117,6 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         # 2. close old channel
         if old is not None and old is not channel:
             old.close()
-
-    #
-    #   State Machine
-    #
-
-    def _get_state_machine(self) -> Optional[StateMachine]:
-        return self.__fsm
-
-    # private
-    def _set_state_machine(self, fsm: Optional[StateMachine]):
-        # 1. replace with new machine
-        old = self.__fsm
-        self.__fsm = fsm
-        # 2. stop old machine
-        if old is not None and old is not fsm:
-            old.stop()
-
-    def _create_state_machine(self) -> StateMachine:
-        fsm = StateMachine(connection=self)
-        fsm.delegate = self
-        return fsm
 
     #
     #   Flags
@@ -144,13 +149,13 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s: remote=%s, local=%s>\n%s\n</%s module="%s">'\
+        return '<%s remote="%s" local="%s">\n%s\n</%s module="%s">'\
                % (cname, self._remote, self._local, self.channel, cname, mod)
 
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s: remote=%s, local=%s>\n%s\n</%s module="%s">'\
+        return '<%s remote="%s" local="%s">\n%s\n</%s module="%s">'\
                % (cname, self._remote, self._local, self.channel, cname, mod)
 
     # Override
@@ -229,7 +234,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property  # Override
     def state(self) -> Optional[ConnectionState]:
-        fsm = self._get_state_machine()
+        fsm = self.fsm
         if fsm is not None:
             return fsm.current_state
 
@@ -238,7 +243,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         if self.__closed is None:
             # not initialized
             return
-        fsm = self._get_state_machine()
+        fsm = self.fsm
         if fsm is not None:
             # drive state machine forward
             fsm.tick(now=now, elapsed=elapsed)

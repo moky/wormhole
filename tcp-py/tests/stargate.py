@@ -9,6 +9,7 @@ from typing import Generic, TypeVar, Optional, List, Union
 from startrek.fsm import Runnable, Daemon
 from startrek.types import SocketAddress
 from startrek import Connection, ConnectionState
+from startrek import ActiveConnection
 from startrek import Hub
 from startrek import Arrival
 from startrek import Docker, DockerDelegate
@@ -36,6 +37,24 @@ class CommonGate(StarGate, Generic[H], ABC):
     def hub(self, h: H):
         self.__hub = h
 
+    #
+    #   Docker
+    #
+
+    # Override
+    def _get_docker(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
+        return super()._get_docker(remote=remote, local=None)
+
+    # Override
+    def _set_docker(self, docker: Docker,
+                    remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
+        return super()._set_docker(docker=docker, remote=remote, local=None)
+
+    # Override
+    def _remove_docker(self, docker: Optional[Docker],
+                       remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
+        return super()._remove_docker(docker=docker, remote=remote, local=None)
+
     def fetch_docker(self, advance_party: List[bytes], remote: SocketAddress, local: Optional[SocketAddress]) -> Docker:
         # try to get docker
         with self.__lock:
@@ -55,7 +74,7 @@ class CommonGate(StarGate, Generic[H], ABC):
                 self._remove_docker(worker, remote=remote, local=local)
                 worker = None
             else:
-                worker.set_connection(conn)
+                worker.assign_connection(conn)
         return worker
 
     def send_response(self, payload: bytes, ship: Arrival,
@@ -68,6 +87,12 @@ class CommonGate(StarGate, Generic[H], ABC):
             return False
         else:
             return worker.send_data(payload=payload)
+
+    # Override
+    def _heartbeat(self, connection: Connection):
+        # let the client to do the job
+        if isinstance(connection, ActiveConnection):
+            super()._heartbeat(connection=connection)
 
     # Override
     def _cache_advance_party(self, data: bytes, connection: Connection) -> List[bytes]:
@@ -121,7 +146,7 @@ class TCPGate(AutoGate, Generic[H]):
 
     def send_message(self, payload: bytes,
                      remote: SocketAddress, local: SocketAddress) -> bool:
-        docker = self.fetch_docker(remote=remote, local=local, advance_party=[])
+        docker = self.fetch_docker([], remote=remote, local=local)
         if docker is not None:
             return docker.send_data(payload=payload)
 

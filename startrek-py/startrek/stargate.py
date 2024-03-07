@@ -218,7 +218,7 @@ class StarGate(Gate, ConnectionDelegate, ABC):
                     worker = old
             if old is None:
                 # set connection for this docker
-                worker.set_connection(connection)
+                worker.assign_connection(connection)
             # NOTICE: if the previous state is null, the docker maybe not
             #         created yet, this situation means the docker status
             #         not changed too, so no need to callback here.
@@ -249,7 +249,7 @@ class StarGate(Gate, ConnectionDelegate, ABC):
                 worker = old
         if old is None:
             # set connection for this docker
-            worker.set_connection(connection)
+            worker.assign_connection(connection)
             # process advance parties one by one
             for item in party:
                 worker.process_received(data=item)

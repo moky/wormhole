@@ -53,7 +53,7 @@ class ActiveConnection(BaseConnection):
 
     @property  # Override
     def closed(self) -> bool:
-        return self._get_state_machine() is None
+        return self.fsm is None
 
     # Override
     def start(self, hub: Hub):
@@ -86,11 +86,11 @@ class ActiveConnection(BaseConnection):
             if sock is None or sock.closed:
                 # get new socket channel via hub
                 hub = self.hub
-                if hub is None:
-                    # assert False, 'hub lost'
-                    break
+                assert hub is not None, 'hub not found: %s -> %s' % (self.local_address, self.remote_address)
                 sock = self._open_channel(hub=hub)
-                if sock is not None:
+                if sock is None or sock.closed:
+                    print('[Socket] cannot open channel: %s -> %s' % (self.local_address, self.remote_address))
+                else:
                     # connect timeout after 2 minutes
                     expired = now + 128
             elif sock.alive:

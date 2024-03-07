@@ -108,11 +108,6 @@ class Docker(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def set_connection(self, connection: Optional[Connection]):
-        """ Set connection for this docker """
-        raise NotImplemented
-
-    @abstractmethod
     def send_data(self, payload: Union[bytes, bytearray]) -> bool:
         """
         Pack data to an outgo ship (with normal priority), and
@@ -158,4 +153,9 @@ class Docker(Processor):
     @abstractmethod
     def close(self):
         """ Close connection for this docker """
+        raise NotImplemented
+
+    @abstractmethod
+    def assign_connection(self, connection: Connection):
+        """ Set connection for this docker """
         raise NotImplemented

@@ -125,12 +125,13 @@ class PacketHub(BaseHub, ABC):
             address = (host, port)
         channel = self.__channel_pool.get(remote=None, local=address)
         if channel is None:
+            channel = self._create_channel(remote=None, local=address)
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
             sock.setblocking(True)
             sock.bind(address)
             sock.setblocking(False)
-            channel = self._create_channel(remote=None, local=address, sock=sock)
+            channel.assign_socket(sock=sock)
             self.__channel_pool.set(item=channel, remote=None, local=address)
 
     #
@@ -138,10 +139,9 @@ class PacketHub(BaseHub, ABC):
     #
 
     # noinspection PyMethodMayBeStatic
-    def _create_channel(self, sock: socket.socket,
-                        remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Channel:
+    def _create_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Channel:
         # override for user-customized channel
-        return PacketChannel(sock=sock, remote=remote, local=local)
+        return PacketChannel(remote=remote, local=local)
 
     # Override
     def _all_channels(self) -> Iterable[Channel]:
@@ -163,11 +163,6 @@ class PacketHub(BaseHub, ABC):
         """ cache channel """
         return self.__channel_pool.set(item=channel, remote=remote, local=local)
 
-    # Override
-    def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
-        # get channel with direction (remote, local)
-        return self._get_channel(remote=remote, local=local)
-
 
 class ServerHub(PacketHub):
     """ Datagram Server Hub """
@@ -176,8 +171,12 @@ class ServerHub(PacketHub):
     def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
         conn = BaseConnection(remote=remote, local=local)
         conn.delegate = self.delegate  # gate
-        conn.start(hub=self)  # start FSM
         return conn
+
+    # Override
+    def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        # get channel with direction (remote, local)
+        return self._get_channel(remote=remote, local=local)
 
 
 class ClientHub(PacketHub):
@@ -189,3 +188,8 @@ class ClientHub(PacketHub):
         conn.delegate = self.delegate  # gate
         conn.start(hub=self)  # start FSM
         return conn
+
+    # Override
+    def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        # get channel with direction (remote, local)
+        return self._get_channel(remote=remote, local=local)

@@ -82,15 +82,6 @@ class Connection(Ticker, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def start(self, hub):
-        """
-        Get channel from hub
-
-        :param hub: connection hub
-        """
-        raise NotImplemented
-
-    @abstractmethod
     def send(self, data: bytes) -> int:
         """
         Send data
@@ -112,4 +103,9 @@ class Connection(Ticker, ABC):
     @abstractmethod
     def close(self):
         """ Close the connection """
+        raise NotImplemented
+
+    @abstractmethod
+    def start(self, hub):
+        """ Get channel from hub """
         raise NotImplemented

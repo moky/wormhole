@@ -31,7 +31,7 @@
 import threading
 import time
 import traceback
-import weakref
+from weakref import WeakSet
 from abc import ABC, abstractmethod
 from typing import Set
 
@@ -61,7 +61,7 @@ class Metronome(Runner):
         self.__last_time = 0
         self.__daemon = Daemon(target=self.run)
         self.__lock = threading.Lock()
-        self.__tickers = weakref.WeakSet()
+        self.__tickers = WeakSet()
 
     # Override
     def setup(self):
@@ -106,7 +106,7 @@ class Metronome(Runner):
 
     def remove_ticker(self, ticker: Ticker):
         with self.__lock:
-            self.__tickers.remove(ticker)
+            self.__tickers.discard(ticker)
 
     def start(self):
         self.__daemon.start()

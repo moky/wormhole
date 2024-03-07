@@ -68,6 +68,10 @@ class StarDocker(AddressPairObject, Docker, ABC):
         """ Override for user-customized dock """
         return LockedDock()
 
+    #
+    #   Docker Event Handler
+    #
+
     @property
     def delegate(self) -> Optional[DockerDelegate]:
         ref = self.__delegate_ref
@@ -88,18 +92,17 @@ class StarDocker(AddressPairObject, Docker, ABC):
         if ref is not None:
             return ref()
 
-    # Override
-    def set_connection(self, connection: Optional[Connection]):
+    def _set_connection(self, conn: Optional[Connection]):
         # 1. replace with new connection
         old = self.connection
-        if connection is None:
+        if conn is None:
             self.__conn_ref = None
             self.__closed = True
         else:
-            self.__conn_ref = weakref.ref(connection)
+            self.__conn_ref = weakref.ref(conn)
             self.__closed = False  # connection.closed
         # 2. close old connection
-        if old is not None and old is not connection:
+        if old is not None and old is not conn:
             old.close()
 
     #
@@ -128,14 +131,14 @@ class StarDocker(AddressPairObject, Docker, ABC):
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s: remote=%s, local=%s>\n%s\n</%s module="%s">'\
-               % (cname, self._remote, self._local, self.connection, cname, mod)
+        return '<%s remote="%s" local="%s" status="%s">\n%s\n</%s module="%s">'\
+               % (cname, self._remote, self._local, self.status, self.connection, cname, mod)
 
     def __repr__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
-        return '<%s: remote=%s, local=%s>\n%s\n</%s module="%s">'\
-               % (cname, self._remote, self._local, self.connection, cname, mod)
+        return '<%s remote="%s" local="%s" status="%s">\n%s\n</%s module="%s">'\
+               % (cname, self._remote, self._local, self.status, self.connection, cname, mod)
 
     # Override
     def send_ship(self, ship: Departure) -> bool:
@@ -210,9 +213,11 @@ class StarDocker(AddressPairObject, Docker, ABC):
 
     # Override
     def close(self):
-        conn = self.connection
-        if conn is not None:
-            conn.close()
+        self._set_connection(conn=None)
+
+    # Override
+    def assign_connection(self, connection: Connection):
+        self._set_connection(conn=connection)
 
     #
     #  Processor
