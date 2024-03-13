@@ -51,7 +51,6 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         super().__init__(remote=remote, local=local)
         self.__delegate_ref = None
         self.__channel_ref = None
-        self.__closed = None
         # active times
         self.__last_sent_time = 0
         self.__last_received_time = 0
@@ -108,12 +107,10 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     def _set_channel(self, channel: Optional[Channel]):
         # 1. replace with new channel
         old = self.channel
-        if channel is None:
-            self.__channel_ref = None
-            self.__closed = True
-        else:
+        if channel is not None:
             self.__channel_ref = weakref.ref(channel)
-            self.__closed = False  # channel.closed
+        # else:
+        #     self.__channel_ref = None
         # 2. close old channel
         if old is not None and old is not channel:
             old.close()
@@ -124,11 +121,13 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property  # Override
     def closed(self) -> bool:
-        if self.__closed is None:
+        ref = self.__channel_ref
+        if ref is None:
             # initializing
             return False
-        channel = self.channel
-        return channel is None or channel.closed
+        else:
+            channel = ref()
+            return channel is None or channel.closed
 
     @property  # Override
     def bound(self) -> bool:
@@ -176,6 +175,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         self._set_channel(channel=None)
 
     def start(self, hub: Hub):
+        """ Get channel from hub """
         # 1. get channel from hub
         self._open_channel(hub=hub)
         # 2. start state machine
@@ -253,7 +253,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     # Override
     def tick(self, now: float, elapsed: float):
-        if self.__closed is None:
+        if self.__channel_ref is None:
             # not initialized
             return
         fsm = self.fsm

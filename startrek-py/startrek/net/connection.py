@@ -116,8 +116,3 @@ class Connection(Ticker, ABC):
     def close(self):
         """ Close the connection """
         raise NotImplemented
-
-    @abstractmethod
-    def start(self, hub):
-        """ Get channel from hub """
-        raise NotImplemented

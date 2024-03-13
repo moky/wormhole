@@ -34,7 +34,7 @@ from typing import Optional, Union
 
 from ..types import SocketAddress
 from ..fsm import Processor
-from ..net import Connection, ConnectionState
+from ..net import ConnectionState
 from ..net.state import StateOrder
 
 from .ship import Departure
@@ -153,9 +153,4 @@ class Docker(Processor):
     @abstractmethod
     def close(self):
         """ Close connection for this docker """
-        raise NotImplemented
-
-    @abstractmethod
-    def assign_connection(self, connection: Connection):
-        """ Set connection for this docker """
         raise NotImplemented

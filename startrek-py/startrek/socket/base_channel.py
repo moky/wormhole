@@ -140,7 +140,6 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         super().__init__(remote=remote, local=local)
         # inner socket
         self.__sock: Optional[socket.socket] = None
-        self.__closed = None
         # create socket reader/writer
         self.__reader = self._create_reader()
         self.__writer = self._create_writer()
@@ -176,15 +175,14 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         """ inner socket """
         return self.__sock
 
-    def _set_socket(self, sock: Optional[socket.socket]):
+    def set_socket(self, sock: Optional[socket.socket]):
+        """ set inner socket for this channel """
         # 1. replace with new socket
         old = self.__sock
-        if sock is None:
-            self.__sock = None
-            self.__closed = True
-        else:
+        if sock is not None:
             self.__sock = sock
-            self.__closed = False  # is_closed(sock=sock)
+        # else:
+        #     self.__sock = None
         # 2. close old socket
         if old is not None and old is not sock:
             disconnect_socket(sock=old)
@@ -195,11 +193,12 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     @property  # Override
     def closed(self) -> bool:
-        if self.__closed is None:
+        sock = self.__sock
+        if sock is None:
             # initializing
             return False
-        sock = self.sock
-        return sock is None or is_closed(sock=sock)
+        else:
+            return is_closed(sock=sock)
 
     @property  # Override
     def bound(self) -> bool:
@@ -300,11 +299,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     # Override
     def close(self):
-        self._set_socket(sock=None)
-
-    # Override
-    def assign_socket(self, sock: socket.socket):
-        self._set_socket(sock=sock)
+        self.set_socket(sock=None)
 
     # Override
     def read(self, max_len: int) -> Optional[bytes]:

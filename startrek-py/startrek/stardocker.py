@@ -59,7 +59,6 @@ class StarDocker(AddressPairObject, Docker, ABC):
         self.__dock = self._create_dock()
         self.__delegate_ref = None
         self.__conn_ref = None
-        self.__closed = None
         # remaining data to be sent
         self.__last_outgo: Optional[Departure] = None
         self.__last_fragments: List[bytes] = []
@@ -93,15 +92,14 @@ class StarDocker(AddressPairObject, Docker, ABC):
         if ref is not None:
             return ref()
 
-    def _set_connection(self, conn: Optional[Connection]):
+    def set_connection(self, conn: Optional[Connection]):
+        """ set connection for this docker """
         # 1. replace with new connection
         old = self.connection
-        if conn is None:
-            self.__conn_ref = None
-            self.__closed = True
-        else:
+        if conn is not None:
             self.__conn_ref = weakref.ref(conn)
-            self.__closed = False  # connection.closed
+        # else:
+        #     self.__conn_ref = None
         # 2. close old connection
         if old is not None and old is not conn:
             old.close()
@@ -112,11 +110,13 @@ class StarDocker(AddressPairObject, Docker, ABC):
 
     @property  # Override
     def closed(self) -> bool:
-        if self.__closed is None:
+        ref = self.__conn_ref
+        if ref is None:
             # initializing
             return False
-        conn = self.connection
-        return conn is None or conn.closed
+        else:
+            conn = ref()
+            return conn is None or conn.closed
 
     @property  # Override
     def alive(self) -> bool:
@@ -214,11 +214,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
 
     # Override
     def close(self):
-        self._set_connection(conn=None)
-
-    # Override
-    def assign_connection(self, connection: Connection):
-        self._set_connection(conn=connection)
+        self.set_connection(conn=None)
 
     #
     #  Processor

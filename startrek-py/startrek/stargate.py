@@ -41,6 +41,7 @@ from .net.state import StateOrder
 from .port import Departure, Gate
 from .port import Docker, DockerStatus, DockerDelegate
 from .port.docker import status_from_state
+from .stardocker import StarDocker
 
 
 class DockerPool(AddressPairMap[Docker]):
@@ -217,8 +218,9 @@ class StarGate(Gate, ConnectionDelegate, ABC):
                 else:
                     worker = old
             if old is None:
+                assert isinstance(worker, StarDocker), 'docker error: %s, %s' % (remote, worker)
                 # set connection for this docker
-                worker.assign_connection(connection)
+                worker.set_connection(connection)
             # NOTICE: if the previous state is null, the docker maybe not
             #         created yet, this situation means the docker status
             #         not changed too, so no need to callback here.
@@ -248,8 +250,9 @@ class StarGate(Gate, ConnectionDelegate, ABC):
                 party = []
                 worker = old
         if old is None:
+            assert isinstance(worker, StarDocker), 'docker error: %s, %s' % (remote, worker)
             # set connection for this docker
-            worker.assign_connection(connection)
+            worker.set_connection(connection)
             # process advance parties one by one
             for item in party:
                 worker.process_received(data=item)

@@ -73,11 +73,6 @@ class Channel(ABC):
         """ Close the channel """
         raise NotImplemented
 
-    @abstractmethod
-    def assign_socket(self, sock: socket.socket):
-        """ Set socket for this channel """
-        raise NotImplemented
-
     #
     #   Byte Channel
     #
@@ -291,7 +286,7 @@ def connect_socket(sock: socket.socket, remote: SocketAddress) -> bool:
 
 def disconnect_socket(sock: socket.socket) -> bool:
     """ Close socket """
-    if not is_connected(sock=sock):
+    if is_closed(sock=sock) or not is_connected(sock=sock):
         return True
     try:
         # TODO: check for UDP socket

@@ -37,6 +37,7 @@ from typing import Optional, Iterable
 
 from ..types import SocketAddress, AddressPairMap
 from ..net import Hub, Channel, Connection, ConnectionDelegate
+from .base_conn import BaseConnection
 
 
 class ConnectionPool(AddressPairMap[Connection]):
@@ -163,6 +164,7 @@ class BaseHub(Hub, ABC):
             else:
                 conn = old
         if old is None:
+            assert isinstance(conn, BaseConnection), 'connection error: %s, %s' % (remote, conn)
             # try to open channel with direction (remote, local)
             conn.start(hub=self)
         return conn
