@@ -140,6 +140,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         super().__init__(remote=remote, local=local)
         # inner socket
         self.__sock: Optional[socket.socket] = None
+        self.__closed = None
         # create socket reader/writer
         self.__reader = self._create_reader()
         self.__writer = self._create_writer()
@@ -181,8 +182,10 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         old = self.__sock
         if sock is not None:
             self.__sock = sock
-        # else:
-        #     self.__sock = None
+            self.__closed = True
+        else:
+            self.__sock = None
+            self.__closed = False
         # 2. close old socket
         if old is not None and old is not sock:
             disconnect_socket(sock=old)
@@ -193,12 +196,11 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     @property  # Override
     def closed(self) -> bool:
-        sock = self.__sock
-        if sock is None:
+        if self.__closed is None:
             # initializing
             return False
-        else:
-            return is_closed(sock=sock)
+        sock = self.sock
+        return sock is None or is_closed(sock=sock)
 
     @property  # Override
     def bound(self) -> bool:

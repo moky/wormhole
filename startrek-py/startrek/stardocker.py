@@ -110,13 +110,11 @@ class StarDocker(AddressPairObject, Docker, ABC):
 
     @property  # Override
     def closed(self) -> bool:
-        ref = self.__conn_ref
-        if ref is None:
+        if self.__conn_ref is None:
             # initializing
             return False
-        else:
-            conn = ref()
-            return conn is None or conn.closed
+        conn = self.connection
+        return conn is None or conn.closed
 
     @property  # Override
     def alive(self) -> bool:

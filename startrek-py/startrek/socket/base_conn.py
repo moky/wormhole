@@ -121,13 +121,11 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     @property  # Override
     def closed(self) -> bool:
-        ref = self.__channel_ref
-        if ref is None:
+        if self.__channel_ref is None:
             # initializing
             return False
-        else:
-            channel = ref()
-            return channel is None or channel.closed
+        channel = self.channel
+        return channel is None or channel.closed
 
     @property  # Override
     def bound(self) -> bool:
