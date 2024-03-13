@@ -48,6 +48,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
         ~~~~~~~~~~~
 
         @abstract methods:
+            - send_data(payload)
             - heartbeat()
             - _get_arrivals(data)
             - _check_arrival(ship)
@@ -227,8 +228,11 @@ class StarDocker(AddressPairObject, Docker, ABC):
     def process(self) -> bool:
         # 1. get connection which is ready for sending data
         conn = self.connection
-        if conn is None or not conn.alive:
+        if conn is None:
             # waiting for connection
+            return False
+        elif not conn.vacant:
+            # connection is not ready for sending data
             return False
         # 2. get data waiting to be sent out
         outgo = self.__last_outgo
@@ -277,6 +281,15 @@ class StarDocker(AddressPairObject, Docker, ABC):
                 error = ConnectionError('only %d/%d fragments sent.' % (index, len(fragments)))
             else:
                 # task done
+                if outgo.is_important:
+                    # this task needs response,
+                    # so we cannot call 'docker_sent()' immediately
+                    # until the remote responded.
+                    pass
+                else:
+                    delegate = self.delegate
+                    if delegate is not None:
+                        delegate.docker_sent(ship=outgo, docker=self)
                 return True
         except Exception as e:
             # socket error, callback

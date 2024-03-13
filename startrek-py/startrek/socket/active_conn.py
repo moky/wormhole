@@ -82,20 +82,23 @@ class ActiveConnection(BaseConnection):
             #
             #  2. check socket channel
             #
-            sock = self.channel
-            if sock is None or sock.closed:
-                # get new socket channel via hub
-                hub = self.hub
-                assert hub is not None, 'hub not found: %s -> %s' % (self.local_address, self.remote_address)
-                sock = self._open_channel(hub=hub)
+            try:
+                sock = self.channel
                 if sock is None or sock.closed:
-                    print('[Socket] cannot open channel: %s -> %s' % (self.local_address, self.remote_address))
-                else:
-                    # connect timeout after 2 minutes
-                    expired = now + 128
-            elif sock.alive:
-                # socket channel is normal
-                interval = 16
-            elif 0 < expired < now:
-                # connect timeout
-                sock.close()
+                    # get new socket channel via hub
+                    hub = self.hub
+                    assert hub is not None, 'hub not found: %s -> %s' % (self.local_address, self.remote_address)
+                    sock = self._open_channel(hub=hub)
+                    if sock is None or sock.closed:
+                        print('[Socket] cannot open channel: %s -> %s' % (self.local_address, self.remote_address))
+                    else:
+                        # connect timeout after 2 minutes
+                        expired = now + 128
+                elif sock.alive:
+                    # socket channel is normal
+                    interval = 16
+                elif 0 < expired < now:
+                    # connect timeout
+                    sock.close()
+            except Exception as error:
+                print('[Socket] active connection error: %s' % error)

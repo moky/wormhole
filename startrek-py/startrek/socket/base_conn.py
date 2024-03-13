@@ -146,6 +146,16 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         # return channel is not None and channel.alive
         return (not self.closed) and (self.connected or self.bound)
 
+    @property
+    def available(self) -> bool:
+        channel = self.channel
+        return channel is not None and channel.available
+
+    @property
+    def vacant(self) -> bool:
+        channel = self.channel
+        return channel is not None and channel.vacant
+
     def __str__(self) -> str:
         mod = self.__module__
         cname = self.__class__.__name__
@@ -196,10 +206,13 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         if delegate is not None:
             delegate.connection_received(data=data, connection=self)
 
-    def _send(self, data: bytes, target: SocketAddress) -> int:
+    def _send(self, data: bytes, target: Optional[SocketAddress]) -> int:
         channel = self.channel
         if channel is None or not channel.alive:
             # raise socket.error('socket channel lost: %s' % channel)
+            return -1
+        elif target is None:
+            # assert False, 'target address empty'
             return -1
         sent = channel.send(data=data, target=target)
         if sent > 0:

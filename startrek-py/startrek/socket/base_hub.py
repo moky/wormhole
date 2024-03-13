@@ -172,8 +172,8 @@ class BaseHub(Hub, ABC):
     #
 
     def _drive_channel(self, channel: Channel) -> bool:
-        if not channel.alive:
-            # cannot drive closed channel
+        if not channel.available:
+            # channel has no data to receive
             return False
         # try to receive
         try:

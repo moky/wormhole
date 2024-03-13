@@ -28,6 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
+import select
 import socket
 import weakref
 from abc import ABC, abstractmethod
@@ -214,6 +215,26 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     def alive(self) -> bool:
         return (not self.closed) and (self.connected or self.bound)
 
+    @property
+    def available(self) -> bool:
+        if not self.alive:
+            return False
+        sock = self.sock
+        if sock is None:
+            return False
+        ready, _, _ = select.select([sock], [], [], timeout=0)
+        return sock in ready
+
+    @property
+    def vacant(self) -> bool:
+        if not self.alive:
+            return False
+        sock = self.sock
+        if sock is None:
+            return False
+        _, ready, _ = select.select([], [sock], [], timeout=0)
+        return sock in ready
+
     @property  # Override
     def blocking(self) -> bool:
         sock = self.sock
@@ -271,9 +292,10 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     # Override
     def disconnect(self) -> Optional[socket.socket]:
-        sock = self.sock
-        ok = disconnect_socket(sock=sock)
-        assert ok, 'failed to disconnect socket: %s' % sock
+        sock = self.__sock
+        if sock is not None:
+            ok = disconnect_socket(sock=sock)
+            assert ok, 'failed to disconnect socket: %s' % sock
         return sock
 
     # Override

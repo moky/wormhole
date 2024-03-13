@@ -67,6 +67,18 @@ class Connection(Ticker, ABC):
 
     @property
     @abstractmethod
+    def available(self) -> bool:
+        """ ready for reading """
+        raise NotImplemented
+
+    @property
+    @abstractmethod
+    def vacant(self) -> bool:
+        """ ready for writing """
+        raise NotImplemented
+
+    @property
+    @abstractmethod
     def local_address(self) -> Optional[SocketAddress]:  # (str, int)
         raise NotImplemented
 

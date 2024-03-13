@@ -56,6 +56,18 @@ class Channel(ABC):
         """ is_opened() and (is_connected() or is_bound()) """
         raise NotImplemented
 
+    @property
+    @abstractmethod
+    def available(self) -> bool:
+        """ ready for reading """
+        raise NotImplemented
+
+    @property
+    @abstractmethod
+    def vacant(self) -> bool:
+        """ ready for writing """
+        raise NotImplemented
+
     @abstractmethod
     def close(self):
         """ Close the channel """
