@@ -221,7 +221,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         sock = self.sock
         if sock is None:
             return False
-        ready, _, _ = select.select([sock], [], [], timeout=0)
+        ready, _, _ = select.select([sock], [], [], 0)
         return sock in ready
 
     @property
@@ -231,7 +231,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         sock = self.sock
         if sock is None:
             return False
-        _, ready, _ = select.select([], [sock], [], timeout=0)
+        _, ready, _ = select.select([], [sock], [], 0)
         return sock in ready
 
     @property  # Override

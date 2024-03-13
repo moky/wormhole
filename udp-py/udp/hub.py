@@ -33,7 +33,7 @@ from abc import ABC
 from typing import Optional, Iterable
 
 from startrek.types import SocketAddress, AddressPairMap
-from startrek import Channel
+from startrek import Channel, BaseChannel
 from startrek import Connection, ConnectionDelegate
 from startrek import BaseConnection, ActiveConnection
 from startrek import BaseHub
@@ -126,12 +126,14 @@ class PacketHub(BaseHub, ABC):
         channel = self.__channel_pool.get(remote=None, local=address)
         if channel is None:
             channel = self._create_channel(remote=None, local=address)
+            assert isinstance(channel, BaseChannel), 'channel error: %s, %s' % (address, channel)
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
             sock.setblocking(True)
             sock.bind(address)
             sock.setblocking(False)
-            channel.assign_socket(sock=sock)
+            # set socket for this channel
+            channel.set_socket(sock=sock)
             self.__channel_pool.set(item=channel, remote=None, local=address)
 
     #

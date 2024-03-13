@@ -36,7 +36,7 @@ from typing import Optional, Iterable
 
 from startrek.types import SocketAddress, AddressPairMap
 from startrek.fsm import Runnable, Daemon
-from startrek import Channel
+from startrek import Channel, BaseChannel
 from startrek import Connection, ConnectionDelegate
 from startrek import BaseConnection, ActiveConnection
 from startrek import BaseHub
@@ -194,7 +194,9 @@ class ServerHub(StreamHub, Runnable):
     def _accept(self, remote: SocketAddress, local: SocketAddress, sock: socket.socket):
         # override for user-customized channel
         channel = self._create_channel(remote=remote, local=local)
-        channel.assign_socket(sock=sock)
+        assert isinstance(channel, BaseChannel), 'channel error: %s, %s' % (remote, channel)
+        # set socket for this channel
+        channel.set_socket(sock=sock)
         self._set_channel(channel=channel, remote=channel.remote_address, local=channel.local_address)
 
     # Override
@@ -236,7 +238,9 @@ class ClientHub(StreamHub):
                 self._remove_channel(channel, remote=remote, local=local)
                 channel = None
             else:
-                channel.assign_socket(sock=sock)
+                assert isinstance(channel, BaseChannel), 'channel error: %s, %s' % (remote, channel)
+                # set socket for this channel
+                channel.set_socket(sock=sock)
         return channel
 
 
