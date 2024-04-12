@@ -182,10 +182,10 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         old = self.__sock
         if sock is not None:
             self.__sock = sock
-            self.__closed = True
+            self.__closed = False
         else:
             self.__sock = None
-            self.__closed = False
+            self.__closed = True
         # 2. close old socket
         if old is not None and old is not sock:
             disconnect_socket(sock=old)

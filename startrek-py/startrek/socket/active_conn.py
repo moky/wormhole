@@ -67,36 +67,40 @@ class ActiveConnection(BaseConnection):
     def run(self):
         expired = 0
         last_time = 0
-        interval = 16
+        interval = 8
         while not self.closed:
             time.sleep(1.0)
-            #
-            #  1. check time interval
-            #
             now = time.time()
-            if now < (last_time + interval):
-                continue
-            last_time = now
-            if interval < 256:
-                interval *= 2
-            #
-            #  2. check socket channel
-            #
             try:
                 sock = self.channel
                 if sock is None or sock.closed:
+                    # first time to try connecting (last_time == 0)?
+                    # or connection lost, then try to reconnect again.
+                    # check time interval for the trying here
+                    if now < (last_time + interval):
+                        continue
+                    else:
+                        # update last connect time
+                        last_time = now
                     # get new socket channel via hub
                     hub = self.hub
                     assert hub is not None, 'hub not found: %s -> %s' % (self.local_address, self.remote_address)
+                    # try to open a new socket channel from the hub.
+                    # the returned socket channel is opened for connecting,
+                    # but maybe failed,
+                    # so set an expired time to close it after timeout;
+                    # if failed to open a new socket channel,
+                    # then extend the time interval for next trying.
                     sock = self._open_channel(hub=hub)
-                    if sock is None or sock.closed:
-                        print('[Socket] cannot open channel: %s -> %s' % (self.local_address, self.remote_address))
-                    else:
+                    if sock is not None:
                         # connect timeout after 2 minutes
                         expired = now + 128
+                    elif interval < 128:
+                        interval *= 2
                 elif sock.alive:
-                    # socket channel is normal
-                    interval = 16
+                    # socket channel is normal, reset the time interval here.
+                    # this will work when the current connection lost
+                    interval = 8
                 elif 0 < expired < now:
                     # connect timeout
                     sock.close()
