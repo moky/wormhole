@@ -33,23 +33,25 @@ import weakref
 from typing import Optional
 
 from ..types import SocketAddress
-from ..fsm import Daemon
+from ..fsm import Daemon, Runnable
 from ..net import Hub
 
 from .base_conn import BaseConnection
 
 
-class ActiveConnection(BaseConnection):
+class ActiveConnection(BaseConnection, Runnable):
     """ Active connection for client """
 
     def __init__(self, remote: SocketAddress, local: Optional[SocketAddress]):
         super().__init__(remote=remote, local=local)
         self.__hub_ref = None
-        self.__daemon = Daemon(target=self.run)
+        self.__daemon = Daemon(target=self)
 
     @property
-    def hub(self) -> Hub:
-        return self.__hub_ref()
+    def hub(self) -> Optional[Hub]:
+        ref = self.__hub_ref
+        if ref is not None:
+            return ref()
 
     @property  # Override
     def closed(self) -> bool:
@@ -63,7 +65,7 @@ class ActiveConnection(BaseConnection):
         # 2. start a background thread to check channel
         self.__daemon.start()
 
-    # protected
+    # Override
     def run(self):
         expired = 0
         last_time = 0

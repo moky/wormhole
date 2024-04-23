@@ -55,7 +55,7 @@ class DockerPool(AddressPairMap[Docker]):
             cached.close()
         # 2. set new item
         old = super().set(item=item, remote=remote, local=local)
-        assert old is None, 'should not happen'
+        assert old is None, 'should not happen: %s' % old
         return cached
 
     # Override

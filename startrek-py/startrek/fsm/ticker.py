@@ -59,7 +59,7 @@ class Metronome(Runner):
     def __init__(self, interval: float):
         super().__init__(interval=interval)
         self.__last_time = 0
-        self.__daemon = Daemon(target=self.run)
+        self.__daemon = Daemon(target=self)
         self.__lock = threading.Lock()
         self.__tickers = WeakSet()
 
@@ -111,6 +111,7 @@ class Metronome(Runner):
     def start(self):
         self.__daemon.start()
 
+    # Override
     def stop(self):
         super().stop()
         self.__daemon.stop()

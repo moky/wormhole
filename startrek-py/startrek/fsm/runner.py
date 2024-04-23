@@ -29,6 +29,7 @@
 # ==============================================================================
 
 import time
+import weakref
 from abc import ABC, abstractmethod
 from threading import Thread
 from typing import Optional
@@ -153,11 +154,17 @@ class Daemon:
         when daemonic = True
     """
 
-    def __init__(self, target, daemonic: bool = True):
+    def __init__(self, target: Runnable, daemonic: bool = True):
         super().__init__()
-        self.__target = target  # Callable
+        self.__target = weakref.ref(target)  # Callable
         self.__daemon = daemonic
         self.__thread: Optional[Thread] = None
+
+    @property  # private
+    def target(self) -> Optional[Runnable]:
+        ref = self.__target
+        if ref is not None:
+            return ref()
 
     @property
     def alive(self) -> bool:
@@ -167,11 +174,16 @@ class Daemon:
 
     def start(self):
         self.__force_stop()
-        thr = Thread(target=self.__target, daemon=self.__daemon)
-        thr.start()
-        self.__thread = thr
+        target = self.target
+        if target is not None:
+            thr = Thread(target=target.run, daemon=self.__daemon)
+            thr.start()
+            self.__thread = thr
 
     def stop(self):
+        self.__force_stop()
+
+    def __del__(self):
         self.__force_stop()
 
     def __force_stop(self):
@@ -188,7 +200,8 @@ class Daemon:
     @classmethod
     def join(cls, thr: Thread, timeout: float = None):
         try:
-            thr.join(timeout=timeout)
+            if thr.is_alive():
+                thr.join(timeout=timeout)
         except RuntimeError as error:
             print('[ERROR] failed to join thread: %s, timeout: %d' % (error, timeout))
             # traceback.print_exc()

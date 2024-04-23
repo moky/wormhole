@@ -55,7 +55,7 @@ class ChannelPool(AddressPairMap[Channel]):
             cached.close()
         # 2. set new item
         old = super().set(item=item, remote=remote, local=local)
-        assert old is None, 'should not happen'
+        assert old is None, 'should not happen: %s' % old
         return cached
 
     # Override
@@ -119,7 +119,7 @@ class ServerHub(StreamHub, Runnable):
         self.__local = None   # SocketAddress
         self.__master = None  # socket.socket
         # running thread
-        self.__daemon = Daemon(target=self.run, daemonic=daemonic)
+        self.__daemon = Daemon(target=self, daemonic=daemonic)
         self.__running = False
 
     # Override

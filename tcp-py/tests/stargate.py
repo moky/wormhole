@@ -116,7 +116,7 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
     def __init__(self, delegate: DockerDelegate, daemonic: bool = True):
         super().__init__(delegate=delegate)
         # running thread
-        self.__daemon = Daemon(target=self.run, daemonic=daemonic)
+        self.__daemon = Daemon(target=self, daemonic=daemonic)
         self.__running = False
 
     def start(self):
