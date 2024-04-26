@@ -38,6 +38,7 @@ from ..types import SocketAddress, AddressPairObject
 
 from ..net.channel import is_blocking, is_closed, is_connected, is_bound
 from ..net.channel import bind_socket, connect_socket, disconnect_socket
+from ..net.channel import ChannelState
 from ..net import Channel
 
 
@@ -191,8 +192,24 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             disconnect_socket(sock=old)
 
     #
-    #   Flags
+    #   States
     #
+
+    @property
+    def state(self) -> ChannelState:
+        if self.__closed is None:
+            # initializing
+            return ChannelState.INIT
+        sock = self.sock
+        if sock is None or is_closed(sock=sock):
+            # closed
+            return ChannelState.CLOSED
+        elif is_connected(sock=sock) or is_bound(sock=sock):
+            # normal
+            return ChannelState.ALIVE
+        else:
+            # opened
+            return ChannelState.OPEN
 
     @property  # Override
     def closed(self) -> bool:

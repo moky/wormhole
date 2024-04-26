@@ -31,12 +31,27 @@
 import socket
 import traceback
 from abc import ABC, abstractmethod
+from enum import IntEnum
 from typing import Optional, Tuple
 
 from ..types import SocketAddress
 
 
+# protected
+class ChannelState(IntEnum):
+    """ Channel State Order """
+    INIT = 0    # initializing
+    OPEN = 1    # initialized
+    ALIVE = 2   # (not closed) and (connected or bound)
+    CLOSED = 3  # closed
+
+
 class Channel(ABC):
+
+    @property
+    @abstractmethod
+    def state(self) -> ChannelState:
+        raise NotImplemented
 
     @property
     @abstractmethod

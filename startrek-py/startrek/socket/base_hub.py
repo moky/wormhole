@@ -36,6 +36,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Iterable
 
 from ..types import SocketAddress, AddressPairMap
+from ..net.channel import ChannelState
 from ..net import Hub, Channel, Connection, ConnectionDelegate
 from .base_conn import BaseConnection
 
@@ -174,11 +175,17 @@ class BaseHub(Hub, ABC):
     #
 
     def _drive_channel(self, channel: Channel) -> bool:
-        if not channel.available:
-            # channel has no data to receive
+        cs = channel.state
+        if cs == ChannelState.INIT:
+            # preparing
             return False
-        # try to receive
+        elif cs == ChannelState.CLOSED:
+            # finished
+            return False
+        # cs == opened
+        # cs == alive
         try:
+            # try to receive
             data, remote = channel.receive(max_len=self.MSS)
         except socket.error as error:
             remote = channel.remote_address
@@ -195,7 +202,7 @@ class BaseHub(Hub, ABC):
                 if conn is not None:
                     delegate.connection_error(error=error, connection=conn)
             return False
-        if remote is None:
+        if remote is None or data is None or len(data) == 0:
             # received nothing
             return False
         else:
