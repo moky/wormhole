@@ -33,6 +33,7 @@ from abc import ABC
 from typing import Optional, Iterable
 
 from startrek.types import SocketAddress, AddressPairMap
+from startrek.fsm import Runner
 from startrek import Channel, BaseChannel
 from startrek import Connection, ConnectionDelegate
 from startrek import BaseConnection, ActiveConnection
@@ -90,7 +91,7 @@ class ChannelPool(AddressPairMap[Channel]):
         # 1. remove cached item
         cached = super().remove(item=item, remote=remote, local=local)
         if cached is not None and cached is not item:
-            cached.close()
+            Runner.async_run(coro=cached.close())
         # 2. set new item
         old = super().set(item=item, remote=remote, local=local)
         assert old is None, 'should not happen: %s' % old
@@ -101,9 +102,9 @@ class ChannelPool(AddressPairMap[Channel]):
                remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         cached = super().remove(item=item, remote=remote, local=local)
         if cached is not None and cached is not item:
-            cached.close()
+            Runner.async_run(coro=cached.close())
         if item is not None:
-            item.close()
+            Runner.async_run(coro=item.close())
         return cached
 
 
@@ -119,7 +120,7 @@ class PacketHub(BaseHub, ABC):
     def _create_channel_pool(self):
         return ChannelPool()
 
-    def bind(self, address: SocketAddress = None, host: str = None, port: int = 0):
+    async def bind(self, address: SocketAddress = None, host: str = None, port: int = 0):
         if address is None:
             assert host is not None and port > 0, 'address error: (%s:%d)' % (host, port)
             address = (host, port)
@@ -133,7 +134,7 @@ class PacketHub(BaseHub, ABC):
             sock.bind(address)
             sock.setblocking(False)
             # set socket for this channel
-            channel.set_socket(sock=sock)
+            await channel.set_socket(sock=sock)
             self.__channel_pool.set(item=channel, remote=None, local=address)
 
     #
@@ -176,7 +177,7 @@ class ServerHub(PacketHub):
         return conn
 
     # Override
-    def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+    async def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         # get channel with direction (remote, local)
         return self._get_channel(remote=remote, local=local)
 
@@ -188,10 +189,9 @@ class ClientHub(PacketHub):
     def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
         conn = ActiveConnection(remote=remote, local=local)
         conn.delegate = self.delegate  # gate
-        conn.start(hub=self)  # start FSM
         return conn
 
     # Override
-    def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+    async def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         # get channel with direction (remote, local)
         return self._get_channel(remote=remote, local=local)

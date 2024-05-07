@@ -94,7 +94,7 @@ class PacketChannelReader(ChannelReader):
     """ Datagram Packet Channel Reader """
 
     # noinspection PyMethodMayBeStatic
-    def _try_read(self, max_len: int, sock: socket.socket) -> Optional[bytes]:
+    async def _try_read(self, max_len: int, sock: socket.socket) -> Optional[bytes]:
         try:
             return sock.recv(max_len)
         except socket.error as error:
@@ -107,12 +107,12 @@ class PacketChannelReader(ChannelReader):
                 raise error
 
     # Override
-    def read(self, max_len: int) -> Optional[bytes]:
+    async def read(self, max_len: int) -> Optional[bytes]:
         sock = self.sock
         if sock is None or is_closed(sock=sock):
             raise ConnectionError('socket closed')
         # 1. try to read data
-        data = self._try_read(max_len=max_len, sock=sock)
+        data = await self._try_read(max_len=max_len, sock=sock)
         # 2. check data
         error = ChannelChecker.check_data(data=data, sock=sock)
         if error is not None:
@@ -122,7 +122,7 @@ class PacketChannelReader(ChannelReader):
         return data
 
     # noinspection PyMethodMayBeStatic
-    def _try_receive(self, max_len: int, sock: socket.socket) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
+    async def _try_receive(self, max_len: int, sock: socket.socket) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
         try:
             return sock.recvfrom(max_len)
         except socket.error as error:
@@ -134,8 +134,8 @@ class PacketChannelReader(ChannelReader):
                 # connection lost?
                 raise error
 
-    def _receive_from(self, max_len: int, sock: socket.socket) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
-        data, remote = self._try_receive(max_len=max_len, sock=sock)
+    async def _receive_from(self, max_len: int, sock: socket.socket) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
+        data, remote = await self._try_receive(max_len=max_len, sock=sock)
         # check data
         error = ChannelChecker.check_data(data=data, sock=sock)
         if error is None:
@@ -146,21 +146,21 @@ class PacketChannelReader(ChannelReader):
             raise error
 
     # Override
-    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
+    async def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
         remote = self.remote_address
         if remote is None:
             # not connect (UDP)
-            return self._receive_from(max_len=max_len, sock=self.sock)
+            return await self._receive_from(max_len=max_len, sock=self.sock)
         else:
             # connected (TCP/UDP)
-            return self.read(max_len=max_len), remote
+            return await self.read(max_len=max_len), remote
 
 
 class PacketChannelWriter(ChannelWriter):
     """ Datagram Packet Channel Writer """
 
     # noinspection PyMethodMayBeStatic
-    def _try_write(self, data: bytes, sock: socket.socket) -> int:
+    async def _try_write(self, data: bytes, sock: socket.socket) -> int:
         try:
             return sock.send(data)
         except socket.error as error:
@@ -172,7 +172,7 @@ class PacketChannelWriter(ChannelWriter):
             return 0
 
     # Override
-    def write(self, data: bytes) -> int:
+    async def write(self, data: bytes) -> int:
         """ Return the number of bytes sent;
             this may be less than len(data) if the network is busy. """
         sock = self.sock
@@ -183,7 +183,7 @@ class PacketChannelWriter(ChannelWriter):
         rest = len(data)
         # assert rest > 0, 'cannot send empty data'
         while True:  # while is_opened(sock=sock):
-            cnt = self._try_write(data=data, sock=sock)
+            cnt = await self._try_write(data=data, sock=sock)
             # check send result
             if cnt <= 0:
                 # buffer overflow?
@@ -207,7 +207,7 @@ class PacketChannelWriter(ChannelWriter):
             return 0
 
     # noinspection PyMethodMayBeStatic
-    def _try_send(self, data: bytes, target: SocketAddress, sock: socket.socket) -> int:
+    async def _try_send(self, data: bytes, target: SocketAddress, sock: socket.socket) -> int:
         try:
             return sock.sendto(data, target)
         except socket.error as error:
@@ -220,18 +220,18 @@ class PacketChannelWriter(ChannelWriter):
                 raise error
 
     # Override
-    def send(self, data: bytes, target: SocketAddress) -> int:
+    async def send(self, data: bytes, target: SocketAddress) -> int:
         remote = self.remote_address
         if remote is None:
             # not connect (UDP)
             assert target is not None, 'target missed for unbound channel'
-            return self._try_send(data=data, target=target, sock=self.sock)
+            return await self._try_send(data=data, target=target, sock=self.sock)
         else:
             # connected (TCP/UDP)
             remote = self.remote_address
             assert target is None or target == remote, 'target error: %s, remote=%s' % (target, remote)
             # return sock.send(data)
-            return self._try_write(data=data, sock=self.sock)
+            return await self._try_write(data=data, sock=self.sock)
 
 
 class PacketChannel(BaseChannel):

@@ -1,11 +1,13 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import asyncio
 import sys
 import os
 from typing import Optional
 
 from startrek.types import SocketAddress
+from startrek.fsm import Runner
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
@@ -58,7 +60,7 @@ class Server(DockerDelegate):
     def __init__(self, host: str, port: int):
         super().__init__()
         self.__local_address = (host, port)
-        gate = UDPGate(delegate=self, daemonic=False)
+        gate = UDPGate(delegate=self)
         gate.hub = PacketServerHub(delegate=gate)
         self.__gate = gate
 
@@ -74,25 +76,27 @@ class Server(DockerDelegate):
     def hub(self) -> ServerHub:
         return self.gate.hub
 
-    def start(self):
-        self.hub.bind(address=self.local_address)
+    async def start(self):
+        await self.hub.bind(address=self.local_address)
         self.gate.start()
+        while self.gate.running:
+            await Runner.sleep(seconds=2.0)
 
-    def send(self, data: bytes, destination: SocketAddress):
-        self.gate.send_command(body=data, remote=destination, local=self.local_address)
+    async def send(self, data: bytes, destination: SocketAddress) -> bool:
+        return await self.gate.send_command(body=data, remote=destination, local=self.local_address)
 
     #
     #   Docker Delegate
     #
 
     # Override
-    def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
+    async def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
         remote = docker.remote_address
         local = docker.local_address
         UDPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
 
     # Override
-    def docker_received(self, ship: Arrival, docker: Docker):
+    async def docker_received(self, ship: Arrival, docker: Docker):
         assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
         pack = ship.package
         data = pack.body.get_bytes()
@@ -107,22 +111,22 @@ class Server(DockerDelegate):
         self.counter += 1
         UDPGate.info('>>> responding: %s' % text)
         data = text.encode('utf-8')
-        self.send(data=data, destination=source)
+        await self.send(data=data, destination=source)
 
     counter = 0
 
     # Override
-    def docker_sent(self, ship: Departure, docker: Docker):
+    async def docker_sent(self, ship: Departure, docker: Docker):
         assert isinstance(ship, PackageDeparture), 'departure ship error: %s' % ship
         size = ship.package.body.size
         UDPGate.info('message sent: %d byte(s) to %s' % (size, docker.remote_address))
 
     # Override
-    def docker_failed(self, error: IOError, ship: Departure, docker: Docker):
+    async def docker_failed(self, error: IOError, ship: Departure, docker: Docker):
         UDPGate.error('failed to sent: %s, %s' % (error, docker))
 
     # Override
-    def docker_error(self, error: IOError, ship: Departure, docker: Docker):
+    async def docker_error(self, error: IOError, ship: Departure, docker: Docker):
         UDPGate.error('connection error: %s, %s' % (error, docker))
 
 
@@ -137,4 +141,4 @@ if __name__ == '__main__':
 
     g_server = Server(host=SERVER_HOST, port=SERVER_PORT)
 
-    g_server.start()
+    asyncio.run(g_server.start())

@@ -182,7 +182,7 @@ class PackageDocker(StarDocker):
             return [self._create_arrival(pack=pack)]
 
     # Override
-    def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:
+    async def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:
         assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
         pack = ship.package
         if pack is None:
@@ -199,7 +199,7 @@ class PackageDocker(StarDocker):
             # process CommandResponse
             #       'PONG'
             #       'OK'
-            self._check_response(ship=ship)
+            await self._check_response(ship=ship)
             if body == PONG or body == OK:
                 # command responded
                 return None
@@ -211,11 +211,11 @@ class PackageDocker(StarDocker):
             #       '...'
             if body == PING:
                 # PING -> PONG
-                self._respond_command(sn=head.sn, body=PONG)
+                await self._respond_command(sn=head.sn, body=PONG)
                 return None
             else:
                 # respond for Command
-                self._respond_command(sn=head.sn, body=OK)
+                await self._respond_command(sn=head.sn, body=OK)
             # Unknown Command?
             # let the caller to process it
         elif data_type.is_message_response:
@@ -225,7 +225,7 @@ class PackageDocker(StarDocker):
             if body == AGAIN:
                 # TODO: reset retries?
                 return None
-            self._check_response(ship=ship)
+            await self._check_response(ship=ship)
             if body == OK:
                 # message responded
                 return None
@@ -233,7 +233,7 @@ class PackageDocker(StarDocker):
             # let the caller to process it
         else:
             # respond for Message/Fragment
-            self._respond_message(sn=head.sn, pages=head.pages, index=head.index)
+            await self._respond_message(sn=head.sn, pages=head.pages, index=head.index)
             if data_type.is_message_fragment:
                 # assemble MessageFragment with cached fragments to completed Message
                 # let the caller to process the completed message
@@ -252,7 +252,7 @@ class PackageDocker(StarDocker):
         return ship
 
     #
-    #   Sending
+    #   Packing
     #
 
     # noinspection PyMethodMayBeStatic
@@ -271,36 +271,40 @@ class PackageDocker(StarDocker):
     def _create_message_response(self, sn: TransactionID, pages: int, index: int) -> Package:
         return Package.new(data_type=DataType.MESSAGE_RESPONSE, sn=sn, pages=pages, index=index, body=Data(buffer=OK))
 
+    #
+    #   Sending
+    #
+
     # protected
-    def _respond_command(self, sn: TransactionID, body: bytes):
+    async def _respond_command(self, sn: TransactionID, body: bytes) -> bool:
         pack = self._create_command_response(sn=sn, body=body)
-        self.send_package(pack=pack)
+        return await self.send_package(pack=pack)
 
     # protected
-    def _respond_message(self, sn: TransactionID, pages: int, index: int):
+    async def _respond_message(self, sn: TransactionID, pages: int, index: int) -> bool:
         pack = self._create_message_response(sn=sn, pages=pages, index=index)
-        self.send_package(pack=pack)
+        return await self.send_package(pack=pack)
 
-    def send_command(self, body: Union[bytes, bytearray]) -> bool:
+    async def send_command(self, body: Union[bytes, bytearray]) -> bool:
         pack = self._create_command(body=body)
-        return self.send_package(pack=pack, priority=DeparturePriority.SLOWER)
+        return await self.send_package(pack=pack, priority=DeparturePriority.SLOWER)
 
-    def send_message(self, body: Union[bytes, bytearray]) -> bool:
+    async def send_message(self, body: Union[bytes, bytearray]) -> bool:
         pack = self._create_message(body=body)
-        return self.send_package(pack=pack, priority=DeparturePriority.NORMAL)
+        return await self.send_package(pack=pack, priority=DeparturePriority.NORMAL)
 
-    def send_package(self, pack: Package, priority: int = 0) -> bool:
+    async def send_package(self, pack: Package, priority: int = 0) -> bool:
         """ send data package with priority """
         outgo = self._create_departure(pack=pack, priority=priority)
-        return self.send_ship(ship=outgo)
+        return await self.send_ship(ship=outgo)
 
     # Override
-    def send_data(self, payload: Union[bytes, bytearray]) -> bool:
-        return self.send_message(body=payload)
+    async def send_data(self, payload: Union[bytes, bytearray]) -> bool:
+        return await self.send_message(body=payload)
 
     # Override
-    def heartbeat(self):
-        self.send_command(body=PING)
+    async def heartbeat(self):
+        await self.send_command(body=PING)
 
 
 PING = b'PING'

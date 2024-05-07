@@ -11,14 +11,14 @@ from typing import Optional
 from startrek.types import SocketAddress
 from startrek.fsm import Runner
 
+curPath = os.path.abspath(os.path.dirname(__file__))
+rootPath = os.path.split(curPath)[0]
+sys.path.append(rootPath)
+
 from tcp import Channel, Connection
 from tcp import Docker, DockerDelegate, DockerStatus
 from tcp import Hub, ClientHub
 from tcp import Arrival, PlainArrival, Departure, PlainDeparture
-
-curPath = os.path.abspath(os.path.dirname(__file__))
-rootPath = os.path.split(curPath)[0]
-sys.path.append(rootPath)
 
 from tests.stargate import TCPGate
 

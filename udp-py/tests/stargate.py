@@ -6,7 +6,7 @@ import time
 from abc import ABC
 from typing import Generic, TypeVar, Optional, List, Union
 
-from startrek.fsm import Runnable, Daemon
+from startrek.fsm import Runnable, Runner, Daemon
 from startrek.types import SocketAddress
 from startrek import Connection, ConnectionState
 from startrek import ActiveConnection
@@ -14,6 +14,7 @@ from startrek import Hub
 from startrek import Arrival
 from startrek import Docker, DockerDelegate
 from startrek import StarDocker, StarGate
+
 from udp.mtp import Package
 from udp import PackageArrival
 from udp import PackageDocker
@@ -56,7 +57,8 @@ class CommonGate(StarGate, Generic[H], ABC):
                        remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
         return super()._remove_docker(docker=docker, remote=remote, local=None)
 
-    def fetch_docker(self, advance_party: List[bytes], remote: SocketAddress, local: Optional[SocketAddress]) -> Docker:
+    async def fetch_docker(self, advance_party: List[bytes],
+                           remote: SocketAddress, local: Optional[SocketAddress]) -> Docker:
         # try to get docker
         with self.__lock:
             old = self._get_docker(remote=remote, local=local)
@@ -69,7 +71,7 @@ class CommonGate(StarGate, Generic[H], ABC):
         if old is None:
             hub = self.hub
             assert isinstance(hub, Hub), 'gate hub error: %s' % hub
-            conn = hub.connect(remote=remote, local=local)
+            conn = await hub.connect(remote=remote, local=local)
             if conn is None:
                 # assert False, 'failed to get connection: %s -> %s' % (local, remote)
                 self._remove_docker(worker, remote=remote, local=local)
@@ -77,11 +79,11 @@ class CommonGate(StarGate, Generic[H], ABC):
             else:
                 assert isinstance(worker, StarDocker), 'docker error: %s, %s' % (remote, worker)
                 # set connection for this docker
-                worker.set_connection(conn)
+                await worker.set_connection(conn)
         return worker
 
-    def send_response(self, payload: bytes, ship: Arrival,
-                      remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
+    async def send_response(self, payload: bytes, ship: Arrival,
+                            remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
         assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
         worker = self._get_docker(remote=remote, local=local)
         if worker is None:
@@ -89,13 +91,13 @@ class CommonGate(StarGate, Generic[H], ABC):
         elif not worker.alive:
             return False
         else:
-            return worker.send_data(payload=payload)
+            return await worker.send_data(payload=payload)
 
     # Override
-    def _heartbeat(self, connection: Connection):
+    async def _heartbeat(self, connection: Connection):
         # let the client to do the job
         if isinstance(connection, ActiveConnection):
-            super()._heartbeat(connection=connection)
+            await super()._heartbeat(connection=connection)
 
     # Override
     def _cache_advance_party(self, data: bytes, connection: Connection) -> List[bytes]:
@@ -114,13 +116,18 @@ class CommonGate(StarGate, Generic[H], ABC):
 # noinspection PyAbstractClass
 class AutoGate(CommonGate, Runnable, Generic[H], ABC):
 
-    def __init__(self, delegate: DockerDelegate, daemonic: bool = True):
+    def __init__(self, delegate: DockerDelegate):
         super().__init__(delegate=delegate)
         # running thread
-        self.__daemon = Daemon(target=self, daemonic=daemonic)
+        self.__daemon = Daemon(target=self)
         self.__running = False
 
+    @property
+    def running(self) -> bool:
+        return self.__running
+
     def start(self):
+        assert not self.__running, 'auto gate is running: %s' % self
         self.__running = True
         return self.__daemon.start()
 
@@ -129,41 +136,43 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
         self.__daemon.stop()
 
     # Override
-    def run(self):
-        while self.__running:
-            if not self.process():
-                self._idle()
+    async def run(self):
+        while self.running:
+            if await self.process():
+                pass
+            else:
+                await self._idle()
 
     # noinspection PyMethodMayBeStatic
-    def _idle(self):
-        time.sleep(0.125)
+    async def _idle(self):
+        await Runner.sleep(seconds=0.125)
 
     # Override
-    def process(self) -> bool:
-        incoming = self.hub.process()
-        outgoing = super().process()
+    async def process(self) -> bool:
+        incoming = await self.hub.process()
+        outgoing = await super().process()
         return incoming or outgoing
 
 
 class UDPGate(AutoGate, Generic[H]):
 
-    def send_message(self, body: Union[bytes, bytearray],
-                     remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
-        docker = self.fetch_docker([], remote=remote, local=local)
+    async def send_message(self, body: Union[bytes, bytearray],
+                           remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
+        docker = await self.fetch_docker([], remote=remote, local=local)
         if isinstance(docker, PackageDocker):
-            return docker.send_message(body=body)
+            return await docker.send_message(body=body)
 
-    def send_command(self, body: Union[bytes, bytearray],
-                     remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
-        docker = self.fetch_docker([], remote=remote, local=local)
+    async def send_command(self, body: Union[bytes, bytearray],
+                           remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
+        docker = await self.fetch_docker([], remote=remote, local=local)
         if isinstance(docker, PackageDocker):
-            return docker.send_command(body=body)
+            return await docker.send_command(body=body)
 
-    def send_package(self, pack: Package,
-                     remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
-        docker = self.fetch_docker([], remote=remote, local=local)
+    async def send_package(self, pack: Package,
+                           remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
+        docker = await self.fetch_docker([], remote=remote, local=local)
         if isinstance(docker, PackageDocker):
-            return docker.send_package(pack=pack)
+            return await docker.send_package(pack=pack)
 
     #
     #   Docker
@@ -182,18 +191,18 @@ class UDPGate(AutoGate, Generic[H]):
     #
 
     # Override
-    def connection_state_changed(self, previous: Optional[ConnectionState], current: Optional[ConnectionState],
-                                 connection: Connection):
-        super().connection_state_changed(previous=previous, current=current, connection=connection)
+    async def connection_state_changed(self, previous: Optional[ConnectionState], current: Optional[ConnectionState],
+                                       connection: Connection):
+        await super().connection_state_changed(previous=previous, current=current, connection=connection)
         self.info(msg='connection state changed: %s -> %s, %s' % (previous, current, connection))
 
     # Override
-    def connection_failed(self, error: Union[IOError, socket.error], data: bytes, connection: Connection):
-        super().connection_failed(error=error, data=data, connection=connection)
+    async def connection_failed(self, error: Union[IOError, socket.error], data: bytes, connection: Connection):
+        await super().connection_failed(error=error, data=data, connection=connection)
         self.error(msg='connection failed: %s, %s' % (error, connection))
 
     # Override
-    def connection_error(self, error: Union[IOError, socket.error], connection: Connection):
+    async def connection_error(self, error: Union[IOError, socket.error], connection: Connection):
         # if isinstance(error, IOError) and str(error).startswith('failed to send: '):
         self.error(msg='connection error: %s, %s' % (error, connection))
 
