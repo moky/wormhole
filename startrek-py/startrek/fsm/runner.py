@@ -151,9 +151,9 @@ class Runner(Runnable, Handler, Processor, ABC):
         await asyncio.sleep(seconds)
 
     @classmethod
-    def async_run(cls, coro):
+    def async_run(cls, coro) -> asyncio.Task:
         # asyncio.run(main)
-        asyncio.create_task(coro)
+        return asyncio.create_task(coro)
 
 
 class Daemon:
@@ -161,6 +161,7 @@ class Daemon:
     def __init__(self, target: Runnable):
         super().__init__()
         self.__target = weakref.ref(target)
+        self.__task: Optional[asyncio.Task] = None
 
     @property  # private
     def target(self) -> Optional[Runnable]:
@@ -170,5 +171,28 @@ class Daemon:
 
     def start(self):
         target = self.target
-        if target is not None:
-            Runner.async_run(coro=target.run())
+        if target is None:
+            assert False, 'daemon target lost'
+        else:
+            assert self.__task is None, 'daemon task is running: %s, %s' % (self.__task, self.target)
+        task = Runner.async_run(coro=target.run())
+        task.add_done_callback(self._done)
+        self.__task = task
+
+    def _done(self, t):
+        task = self._clean()
+        assert task is None or task == t, 'task error: %s, %s' % (t, task)
+
+    def _clean(self) -> Optional[asyncio.Task]:
+        task = self.__task
+        self.__task = None
+        return task
+
+    def stop(self):
+        task = self._clean()
+        if task is None:
+            pass
+        elif task.done() or task.cancelled():
+            pass
+        else:
+            task.cancel()

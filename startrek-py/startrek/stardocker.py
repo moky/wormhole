@@ -153,7 +153,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
         delegate = self.delegate
         for income in ships:
             # 2. check income ship for response
-            income = self._check_arrival(ship=income)
+            income = await self._check_arrival(ship=income)
             if income is None:
                 # waiting for more fragment
                 continue
@@ -172,7 +172,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:
+    async def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:
         """
         Check income ship for responding
 

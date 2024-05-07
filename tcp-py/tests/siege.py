@@ -30,6 +30,7 @@
 
 """
 
+import asyncio
 import multiprocessing
 import threading
 import time
@@ -38,6 +39,11 @@ from typing import Optional
 from startrek.fsm import Runner
 from startrek.types import SocketAddress
 
+from tcp import Channel, Connection
+from tcp import Docker, DockerDelegate, DockerStatus
+from tcp import Hub, ClientHub
+from tcp import Arrival, PlainArrival, Departure, PlainDeparture
+
 import sys
 import os
 
@@ -45,22 +51,32 @@ curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from tcp import Connection
-from tcp import Docker, DockerDelegate, DockerStatus
-from tcp import Hub, ClientHub
-from tcp import Arrival, PlainArrival, Departure, PlainDeparture
-
 from tests.stargate import TCPGate
 
 
 class StreamClientHub(ClientHub):
 
     # Override
+    def _get_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        return super()._get_channel(remote=remote, local=None)
+
+    # Override
+    def _set_channel(self, channel: Channel,
+                     remote: Optional[SocketAddress], local: Optional[SocketAddress]):
+        super()._set_channel(channel=channel, remote=remote, local=None)
+
+    # Override
+    def _remove_channel(self, channel: Optional[Channel],
+                        remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        return super()._remove_channel(channel=channel, remote=remote, local=None)
+
+    # Override
     def _get_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
         return super()._get_connection(remote=remote, local=None)
 
     # Override
-    def _set_connection(self, connection: Connection, remote: SocketAddress, local: Optional[SocketAddress]):
+    def _set_connection(self, connection: Connection,
+                        remote: SocketAddress, local: Optional[SocketAddress]):
         super()._set_connection(connection=connection, remote=remote, local=None)
 
     # Override
@@ -69,13 +85,18 @@ class StreamClientHub(ClientHub):
         return super()._remove_connection(connection=connection, remote=remote, local=None)
 
 
+def _start_thread_loop(loop: asyncio.AbstractEventLoop):
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+
 class Soldier(Runner, DockerDelegate):
 
     def __init__(self, remote: SocketAddress, local: Optional[SocketAddress] = None):
         super().__init__(interval=1)
         self.__remote_address = remote
         self.__local_address = local
-        self.__gate = TCPGate(delegate=self, daemonic=True)
+        self.__gate = TCPGate(delegate=self)
         self.__time_to_retreat = time.time() + 32
 
     def __str__(self) -> str:
@@ -95,26 +116,28 @@ class Soldier(Runner, DockerDelegate):
         return self.__gate
 
     def start(self) -> threading.Thread:
-        thr = threading.Thread(target=self.run, daemon=True)
+        loop = asyncio.new_event_loop()
+        thr = threading.Thread(target=_start_thread_loop, args=(loop,), daemon=True)
         # thr.daemon = True
         thr.start()
+        asyncio.run_coroutine_threadsafe(self.run(), loop)
         return thr
 
-    def send(self, data: bytes) -> bool:
-        return self.gate.send_message(payload=data, remote=self.remote_address, local=self.local_address)
+    async def send(self, data: bytes) -> bool:
+        return await self.gate.send_message(payload=data, remote=self.remote_address, local=self.local_address)
 
     #
     #   Docker Delegate
     #
 
     # Override
-    def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
+    async def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
         remote = docker.remote_address
         local = docker.local_address
         TCPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
 
     # Override
-    def docker_received(self, ship: Arrival, docker: Docker):
+    async def docker_received(self, ship: Arrival, docker: Docker):
         assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
         data = ship.package
         try:
@@ -126,7 +149,7 @@ class Soldier(Runner, DockerDelegate):
         TCPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
 
     # Override
-    def docker_sent(self, ship: Departure, docker: Docker):
+    async def docker_sent(self, ship: Departure, docker: Docker):
         assert isinstance(ship, PlainDeparture), 'departure ship error: %s' % ship
         data = ship.package
         size = len(data)
@@ -134,11 +157,11 @@ class Soldier(Runner, DockerDelegate):
         TCPGate.info('message sent: %d byte(s) to %s' % (size, destination))
 
     # Override
-    def docker_failed(self, error: IOError, ship: Departure, docker: Docker):
+    async def docker_failed(self, error: IOError, ship: Departure, docker: Docker):
         TCPGate.error('gate error: %s, %s' % (error, docker))
 
     # Override
-    def docker_error(self, error: IOError, ship: Departure, docker: Docker):
+    async def docker_error(self, error: IOError, ship: Departure, docker: Docker):
         TCPGate.error('gate error: %s, %s' % (error, docker))
 
     @property  # Override
@@ -147,23 +170,23 @@ class Soldier(Runner, DockerDelegate):
             return time.time() < self.__time_to_retreat
 
     # Override
-    def setup(self):
-        super().setup()
+    async def setup(self):
+        await super().setup()
         gate = self.gate
         gate.hub = StreamClientHub(delegate=gate)
         gate.start()
 
     # Override
-    def finish(self):
+    async def finish(self):
         gate = self.gate
         gate.stop()
-        super().finish()
+        await super().finish()
 
     # Override
-    def process(self) -> bool:
+    async def process(self) -> bool:
         data = b'Hello world!' * 100
         TCPGate.info('>>> sending to %s: (%d bytes) %s...' % (self.remote_address, len(data), data[:32]))
-        self.send(data=data)
+        await self.send(data=data)
         return False  # return False to have a rest
 
 

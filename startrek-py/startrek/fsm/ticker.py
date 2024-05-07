@@ -117,6 +117,12 @@ class Metronome(Runner):
         # await self.run()
         self.__daemon.start()
 
+    # Override
+    async def stop(self):
+        await super().stop()
+        # await self._idle()
+        await self.sleep(seconds=self.interval * 2)
+        self.__daemon.stop()
 
 #
 #   Singleton for Prime Metronome

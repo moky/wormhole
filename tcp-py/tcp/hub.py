@@ -35,7 +35,7 @@ from abc import ABC
 from typing import Optional, Iterable
 
 from startrek.types import SocketAddress, AddressPairMap
-from startrek.fsm import Runnable, Daemon
+from startrek.fsm import Runnable, Runner, Daemon
 from startrek import Channel, BaseChannel
 from startrek import Connection, ConnectionDelegate
 from startrek import BaseConnection, ActiveConnection
@@ -52,7 +52,7 @@ class ChannelPool(AddressPairMap[Channel]):
         # 1. remove cached item
         cached = super().remove(item=item, remote=remote, local=local)
         if cached is not None and cached is not item:
-            cached.close()
+            Runner.async_run(coro=cached.close())
         # 2. set new item
         old = super().set(item=item, remote=remote, local=local)
         assert old is None, 'should not happen: %s' % old
@@ -63,9 +63,9 @@ class ChannelPool(AddressPairMap[Channel]):
                remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         cached = super().remove(item=item, remote=remote, local=local)
         if cached is not None and cached is not item:
-            cached.close()
+            Runner.async_run(coro=cached.close())
         if item is not None:
-            item.close()
+            Runner.async_run(coro=item.close())
         return cached
 
 
@@ -114,12 +114,12 @@ class StreamHub(BaseHub, ABC):
 class ServerHub(StreamHub, Runnable):
     """ Stream Server Hub """
 
-    def __init__(self, delegate: ConnectionDelegate, daemonic: bool = True):
+    def __init__(self, delegate: ConnectionDelegate):
         super().__init__(delegate=delegate)
         self.__local = None   # SocketAddress
         self.__master = None  # socket.socket
         # running thread
-        self.__daemon = Daemon(target=self, daemonic=daemonic)
+        self.__daemon = Daemon(target=self)
         self.__running = False
 
     # Override
@@ -128,7 +128,7 @@ class ServerHub(StreamHub, Runnable):
         conn.delegate = self.delegate  # gate
         return conn
 
-    def bind(self, address: Optional[SocketAddress] = None, host: Optional[str] = None, port: Optional[int] = 0):
+    async def bind(self, address: Optional[SocketAddress] = None, host: Optional[str] = None, port: Optional[int] = 0):
         if address is None:
             if port > 0:
                 assert host is not None, 'host should not be empty'
@@ -169,7 +169,7 @@ class ServerHub(StreamHub, Runnable):
         return self.__running
 
     def start(self):
-        self.stop()
+        assert not self.__running, 'server hub is running: %s' % self
         self.__running = True
         return self.__daemon.start()
 
@@ -178,29 +178,31 @@ class ServerHub(StreamHub, Runnable):
         self.__daemon.stop()
 
     # Override
-    def run(self):
+    async def run(self):
         self.__running = True
         while self.running:
             try:
                 master = self._get_master()
                 sock, address = master.accept()
-                if sock is not None:
-                    self._accept(remote=address, local=self.local_address, sock=sock)
+                if sock is None:
+                    await Runner.sleep(seconds=Runner.INTERVAL_NORMAL)
+                else:
+                    await self._accept(remote=address, local=self.local_address, sock=sock)
             except socket.error as error:
                 print('[TCP] socket error: %s' % error)
             except Exception as error:
                 print('[TCP] accept error: %s' % error)
 
-    def _accept(self, remote: SocketAddress, local: SocketAddress, sock: socket.socket):
+    async def _accept(self, remote: SocketAddress, local: SocketAddress, sock: socket.socket):
         # override for user-customized channel
         channel = self._create_channel(remote=remote, local=local)
         assert isinstance(channel, BaseChannel), 'channel error: %s, %s' % (remote, channel)
         # set socket for this channel
-        channel.set_socket(sock=sock)
+        await channel.set_socket(sock=sock)
         self._set_channel(channel=channel, remote=channel.remote_address, local=channel.local_address)
 
     # Override
-    def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+    async def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         assert remote is not None, 'remote address empty: %s, %s' % (remote, local)
         return self._get_channel(remote=remote, local=local)
 
@@ -219,7 +221,7 @@ class ClientHub(StreamHub):
         return conn
 
     # Override
-    def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+    async def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         assert remote is not None, 'remote address empty: %s, %s' % (remote, local)
         # try to get channel
         with self.__lock:
@@ -232,7 +234,7 @@ class ClientHub(StreamHub):
                 channel = old
         if old is None:
             # initialize socket
-            sock = create_socket(remote=remote, local=local)
+            sock = await create_socket(remote=remote, local=local)
             if sock is None:
                 print('[TCP] failed to prepare socket: %s -> %s' % (local, remote))
                 self._remove_channel(channel, remote=remote, local=local)
@@ -240,11 +242,11 @@ class ClientHub(StreamHub):
             else:
                 assert isinstance(channel, BaseChannel), 'channel error: %s, %s' % (remote, channel)
                 # set socket for this channel
-                channel.set_socket(sock=sock)
+                await channel.set_socket(sock=sock)
         return channel
 
 
-def create_socket(remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[socket.socket]:
+async def create_socket(remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[socket.socket]:
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)

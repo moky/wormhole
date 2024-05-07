@@ -325,7 +325,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         try:
             return await self.reader.read(max_len=max_len)
         except socket.error as error:
-            self.close()
+            await self.close()
             raise error
 
     # Override
@@ -333,7 +333,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         try:
             return await self.writer.write(data=data)
         except socket.error as error:
-            self.close()
+            await self.close()
             raise error
 
     # Override
@@ -341,7 +341,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         try:
             return await self.reader.receive(max_len=max_len)
         except socket.error as error:
-            self.close()
+            await self.close()
             raise error
 
     # Override
@@ -349,5 +349,5 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         try:
             return await self.writer.send(data=data, target=target)
         except socket.error as error:
-            self.close()
+            await self.close()
             raise error

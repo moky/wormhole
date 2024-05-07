@@ -106,13 +106,13 @@ class PlainDocker(StarDocker):
             return [self._create_arrival(pack=data)]
 
     # Override
-    def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:
+    async def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:
         assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
         data = ship.package
         if len(data) == 4:
             if data == PING:
                 # PING -> PONG
-                self.send(payload=PONG, priority=DeparturePriority.SLOWER)
+                await self.send(payload=PONG, priority=DeparturePriority.SLOWER)
                 return None
             if data == PONG or data == NOOP:
                 # ignore
@@ -123,18 +123,18 @@ class PlainDocker(StarDocker):
     #   Sending
     #
 
-    def send(self, payload: bytes, priority: int) -> bool:
+    async def send(self, payload: bytes, priority: int) -> bool:
         """ sending payload with priority """
         ship = self._create_departure(pack=payload, priority=priority)
-        return self.send_ship(ship=ship)
+        return await self.send_ship(ship=ship)
 
     # Override
-    def send_data(self, payload: Union[bytes, bytearray]) -> bool:
-        return self.send(payload=payload, priority=DeparturePriority.NORMAL)
+    async def send_data(self, payload: Union[bytes, bytearray]) -> bool:
+        return await self.send(payload=payload, priority=DeparturePriority.NORMAL)
 
     # Override
-    def heartbeat(self):
-        self.send(payload=PING, priority=DeparturePriority.SLOWER)
+    async def heartbeat(self):
+        await self.send(payload=PING, priority=DeparturePriority.SLOWER)
 
 
 PING = b'PING'

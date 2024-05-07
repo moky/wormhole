@@ -93,7 +93,7 @@ class ChannelChecker:
 class StreamChannelReader(ChannelReader):
 
     # noinspection PyMethodMayBeStatic
-    def _try_read(self, max_len: int, sock: socket.socket) -> Optional[bytes]:
+    async def _try_read(self, max_len: int, sock: socket.socket) -> Optional[bytes]:
         try:
             return sock.recv(max_len)
         except socket.error as error:
@@ -106,12 +106,12 @@ class StreamChannelReader(ChannelReader):
                 raise error
 
     # Override
-    def read(self, max_len: int) -> Optional[bytes]:
+    async def read(self, max_len: int) -> Optional[bytes]:
         sock = self.sock
         if sock is None or is_closed(sock=sock):
             raise ConnectionError('socket closed')
         # 1. try to read data
-        data = self._try_read(max_len=max_len, sock=sock)
+        data = await self._try_read(max_len=max_len, sock=sock)
         # 2. check data
         error = ChannelChecker.check_data(data=data, sock=sock)
         if error is not None:
@@ -121,8 +121,8 @@ class StreamChannelReader(ChannelReader):
         return data
 
     # Override
-    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
-        data = self.read(max_len=max_len)
+    async def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
+        data = await self.read(max_len=max_len)
         if data is None or len(data) == 0:
             return None, None
         else:
@@ -132,7 +132,7 @@ class StreamChannelReader(ChannelReader):
 class StreamChannelWriter(ChannelWriter):
 
     # noinspection PyMethodMayBeStatic
-    def _try_write(self, data: bytes, sock: socket.socket) -> int:
+    async def _try_write(self, data: bytes, sock: socket.socket) -> int:
         try:
             return sock.send(data)
         except socket.error as error:
@@ -144,7 +144,7 @@ class StreamChannelWriter(ChannelWriter):
             return 0
 
     # Override
-    def write(self, data: bytes) -> int:
+    async def write(self, data: bytes) -> int:
         """ Return the number of bytes sent;
             this may be less than len(data) if the network is busy. """
         sock = self.sock
@@ -155,7 +155,7 @@ class StreamChannelWriter(ChannelWriter):
         rest = len(data)
         # assert rest > 0, 'cannot send empty data'
         while True:  # while is_opened(sock=sock):
-            cnt = self._try_write(data=data, sock=sock)
+            cnt = await self._try_write(data=data, sock=sock)
             # check send result
             if cnt <= 0:
                 # buffer overflow?
@@ -179,12 +179,12 @@ class StreamChannelWriter(ChannelWriter):
             return 0
 
     # Override
-    def send(self, data: bytes, target: SocketAddress) -> int:
+    async def send(self, data: bytes, target: SocketAddress) -> int:
         # TCP channel will be always connected
         # so the target address must be the remote address
         remote = self.remote_address
         assert target is None or target == remote, 'target error: %s, remote=%s' % (target, remote)
-        return self.write(data=data)
+        return await self.write(data=data)
 
 
 class StreamChannel(BaseChannel):
