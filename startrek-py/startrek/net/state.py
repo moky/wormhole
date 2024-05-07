@@ -182,19 +182,19 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
             return True
 
     # Override
-    def on_enter(self, old, ctx: StateMachine, now: float):
+    async def on_enter(self, old, ctx: StateMachine, now: float):
         self.__time = now
 
     # Override
-    def on_exit(self, new, ctx: StateMachine, now: float):
+    async def on_exit(self, new, ctx: StateMachine, now: float):
         self.__time = 0
 
     # Override
-    def on_pause(self, ctx: StateMachine, now: float):
+    async def on_pause(self, ctx: StateMachine, now: float):
         pass
 
     # Override
-    def on_resume(self, ctx: StateMachine, now: float):
+    async def on_resume(self, ctx: StateMachine, now: float):
         pass
 
 

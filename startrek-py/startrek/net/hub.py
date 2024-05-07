@@ -44,7 +44,7 @@ class Hub(Processor, ABC):
     """ Connections & Channels Container """
 
     @abstractmethod
-    def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+    async def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         """
         Open a channel with direction (remote, local)
 
@@ -55,7 +55,7 @@ class Hub(Processor, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connect(self, remote: SocketAddress, local: Optional[SocketAddress] = None) -> Optional[Connection]:
+    async def connect(self, remote: SocketAddress, local: Optional[SocketAddress] = None) -> Optional[Connection]:
         """
         Get connection with direction (remote, local)
 

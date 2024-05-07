@@ -37,7 +37,7 @@ from .docker import Docker, DockerStatus
 class DockerDelegate(ABC):
 
     @abstractmethod
-    def docker_received(self, ship: Arrival, docker: Docker):
+    async def docker_received(self, ship: Arrival, docker: Docker):
         """
         Callback when new package received
 
@@ -47,7 +47,7 @@ class DockerDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def docker_sent(self, ship: Departure, docker: Docker):
+    async def docker_sent(self, ship: Departure, docker: Docker):
         """
         Callback when package sent
 
@@ -57,7 +57,7 @@ class DockerDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def docker_failed(self, error: OSError, ship: Departure, docker: Docker):
+    async def docker_failed(self, error: OSError, ship: Departure, docker: Docker):
         """
         Callback when failed to send package
 
@@ -68,7 +68,7 @@ class DockerDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def docker_error(self, error: OSError, ship: Departure, docker: Docker):
+    async def docker_error(self, error: OSError, ship: Departure, docker: Docker):
         """
         Callback when connection error
 
@@ -79,7 +79,7 @@ class DockerDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
+    async def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
         """
         Callback when connection status changed
 

@@ -84,7 +84,7 @@ class Channel(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def close(self):
+    async def close(self):
         """ Close the channel """
         raise NotImplemented
 
@@ -93,7 +93,7 @@ class Channel(ABC):
     #
 
     @abstractmethod
-    def read(self, max_len: int) -> Optional[bytes]:
+    async def read(self, max_len: int) -> Optional[bytes]:
         """
         Reads a sequence of bytes from this channel into the given buffer.
 
@@ -105,7 +105,7 @@ class Channel(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def write(self, data: bytes) -> int:
+    async def write(self, data: bytes) -> int:
         """
         Writes a sequence of bytes to this channel from the given buffer.
 
@@ -141,8 +141,8 @@ class Channel(ABC):
     #
 
     @abstractmethod
-    def bind(self, address: Optional[SocketAddress] = None,
-             host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
+    async def bind(self, address: Optional[SocketAddress] = None,
+                   host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
         """
         Binds the channel's socket to a local address (host, port).
 
@@ -176,8 +176,8 @@ class Channel(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connect(self, address: Optional[SocketAddress] = None,
-                host: Optional[str] = '127.0.0.1', port: Optional[int] = 0) -> socket.socket:
+    async def connect(self, address: Optional[SocketAddress] = None,
+                      host: Optional[str] = '127.0.0.1', port: Optional[int] = 0) -> socket.socket:
         """
         Connects this channel's socket.
 
@@ -204,7 +204,7 @@ class Channel(ABC):
     #
 
     @abstractmethod
-    def disconnect(self) -> Optional[socket.socket]:
+    async def disconnect(self) -> Optional[socket.socket]:
         """
         Disconnects this channel's socket.
 
@@ -214,7 +214,7 @@ class Channel(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
+    async def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
         """
         Receives a data package via this channel.
 
@@ -225,7 +225,7 @@ class Channel(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def send(self, data: bytes, target: SocketAddress) -> int:
+    async def send(self, data: bytes, target: SocketAddress) -> int:
         """
         Sends a data package via this channel.
 
@@ -277,7 +277,7 @@ def is_closed(sock: socket.socket) -> bool:
     return getattr(sock, '_closed', False)
 
 
-def bind_socket(sock: socket.socket, local: SocketAddress) -> bool:
+async def bind_socket(sock: socket.socket, local: SocketAddress) -> bool:
     """ Bind to local address """
     try:
         sock.bind(local)
@@ -288,18 +288,18 @@ def bind_socket(sock: socket.socket, local: SocketAddress) -> bool:
         return False
 
 
-def connect_socket(sock: socket.socket, remote: SocketAddress) -> bool:
+async def connect_socket(sock: socket.socket, remote: SocketAddress) -> bool:
     """ Connect to remote address """
     try:
         sock.connect(remote)
-        return is_bound(sock=sock)
+        return is_connected(sock=sock)
     except socket.error as error:
         print('[Socket] cannot connect to: %s, socket: %s, %s' % (remote, sock, error))
         traceback.print_exc()
         return False
 
 
-def disconnect_socket(sock: socket.socket) -> bool:
+async def disconnect_socket(sock: socket.socket) -> bool:
     """ Close socket """
     if is_closed(sock=sock) or not is_connected(sock=sock):
         return True
@@ -307,7 +307,7 @@ def disconnect_socket(sock: socket.socket) -> bool:
         # TODO: check for UDP socket
         # sock.shutdown(socket.SHUT_RDWR)
         sock.close()
-        return is_closed(sock=sock)
+        return not is_connected(sock=sock)
     except socket.error as error:
         print('[Socket] cannot close socket: %s, %s' % (sock, error))
         traceback.print_exc()

@@ -35,6 +35,7 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional, Iterable
 
+from ..fsm import Runner
 from ..types import SocketAddress, AddressPairMap
 from ..net.channel import ChannelState
 from ..net import Hub, Channel, Connection, ConnectionDelegate
@@ -49,7 +50,7 @@ class ConnectionPool(AddressPairMap[Connection]):
         # 1. remove cached item
         cached = super().remove(item=item, remote=remote, local=local)
         if cached is not None and cached is not item:
-            cached.close()
+            Runner.async_run(coro=cached.close())
         # 2. set new item
         old = super().set(item=item, remote=remote, local=local)
         assert old is None, 'should not happen: %s' % old
@@ -60,9 +61,9 @@ class ConnectionPool(AddressPairMap[Connection]):
                remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Connection]:
         cached = super().remove(item=item, remote=remote, local=local)
         if cached is not None and cached is not item:
-            cached.close()
+            Runner.async_run(coro=cached.close())
         if item is not None:
-            item.close()
+            Runner.async_run(coro=item.close())
         return cached
 
 
@@ -154,7 +155,7 @@ class BaseHub(Hub, ABC):
         return self.__connection_pool.set(item=connection, remote=remote, local=local)
 
     # Override
-    def connect(self, remote: SocketAddress, local: Optional[SocketAddress] = None) -> Optional[Connection]:
+    async def connect(self, remote: SocketAddress, local: Optional[SocketAddress] = None) -> Optional[Connection]:
         # try to get connection
         with self.__lock:
             old = self._get_connection(remote=remote, local=local)
@@ -167,14 +168,14 @@ class BaseHub(Hub, ABC):
         if old is None:
             assert isinstance(conn, BaseConnection), 'connection error: %s, %s' % (remote, conn)
             # try to open channel with direction (remote, local)
-            conn.start(hub=self)
+            await conn.start(hub=self)
         return conn
 
     #
     #   Process
     #
 
-    def _drive_channel(self, channel: Channel) -> bool:
+    async def _drive_channel(self, channel: Channel) -> bool:
         cs = channel.state
         if cs == ChannelState.INIT:
             # preparing
@@ -186,7 +187,7 @@ class BaseHub(Hub, ABC):
         # cs == alive
         try:
             # try to receive
-            data, remote = channel.receive(max_len=self.MSS)
+            data, remote = await channel.receive(max_len=self.MSS)
         except socket.error as error:
             remote = channel.remote_address
             local = channel.local_address
@@ -200,7 +201,7 @@ class BaseHub(Hub, ABC):
                 conn = self._get_connection(remote=remote, local=local)
                 self._remove_channel(channel=channel, remote=remote, local=local)
                 if conn is not None:
-                    delegate.connection_error(error=error, connection=conn)
+                    await delegate.connection_error(error=error, connection=conn)
             return False
         if remote is None or data is None or len(data) == 0:
             # received nothing
@@ -208,26 +209,26 @@ class BaseHub(Hub, ABC):
         else:
             local = channel.local_address
         # get connection for processing received data
-        conn = self.connect(remote=remote, local=local)
+        conn = await self.connect(remote=remote, local=local)
         if conn is not None:
-            conn.received(data=data)
+            await conn.received(data=data)
         return True
 
-    def _drive_channels(self, channels: Iterable[Channel]) -> int:
+    async def _drive_channels(self, channels: Iterable[Channel]) -> int:
         count = 0
         for sock in channels:
             # drive channel to receive data
-            if self._drive_channel(channel=sock):
+            if await self._drive_channel(channel=sock):
                 count += 1
         return count
 
     # noinspection PyMethodMayBeStatic
-    def _drive_connections(self, connections: Iterable[Connection]):
+    async def _drive_connections(self, connections: Iterable[Connection]):
         now = time.time()
         elapsed = now - self.__last_time_drive_connection
         for conn in connections:
             # drive connection to go on
-            conn.tick(now=now, elapsed=elapsed)
+            await conn.tick(now=now, elapsed=elapsed)
             # NOTICE: let the delegate to decide whether close an error connection
             #         or just remove it.
         self.__last_time_drive_connection = now
@@ -249,13 +250,13 @@ class BaseHub(Hub, ABC):
                 self._remove_connection(connection=conn, remote=conn.remote_address, local=conn.local_address)
 
     # Override
-    def process(self) -> bool:
+    async def process(self) -> bool:
         # 1. drive all channels to receive data
         channels = self._all_channels()
-        count = self._drive_channels(channels=channels)
+        count = await self._drive_channels(channels=channels)
         # 2. drive all connections to move on
         connections = self._all_connections()
-        self._drive_connections(connections=connections)
+        await self._drive_connections(connections=connections)
         # 3. cleanup closed channels and connections
         self._cleanup_channels(channels=channels)
         self._cleanup_connections(connections=connections)

@@ -35,6 +35,7 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional, List, Iterable, Union
 
+from .fsm import Runner
 from .types import SocketAddress, AddressPairMap
 from .net import Connection, ConnectionDelegate, ConnectionState
 from .net.state import StateOrder
@@ -52,7 +53,7 @@ class DockerPool(AddressPairMap[Docker]):
         # 1. remove cached item
         cached = super().remove(item=item, remote=remote, local=local)
         if cached is not None and cached is not item:
-            cached.close()
+            Runner.async_run(coro=cached.close())
         # 2. set new item
         old = super().set(item=item, remote=remote, local=local)
         assert old is None, 'should not happen: %s' % old
@@ -63,9 +64,9 @@ class DockerPool(AddressPairMap[Docker]):
                remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Docker]:
         cached = super().remove(item=item, remote=remote, local=local)
         if cached is not None and cached is not item:
-            cached.close()
+            Runner.async_run(coro=cached.close())
         if item is not None:
-            item.close()
+            Runner.async_run(coro=item.close())
         return cached
 
 
@@ -95,8 +96,8 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         return self.__delegate_ref()
 
     # Override
-    def send_data(self, payload: Union[bytes, bytearray],
-                  remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
+    async def send_data(self, payload: Union[bytes, bytearray],
+                        remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
         worker = self._get_docker(remote=remote, local=local)
         if worker is None:
             # assert False, 'docker not found: %s -> %s' % (local, remote)
@@ -104,10 +105,10 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         elif not worker.alive:
             # assert False, 'docket not alive: %s -> %s' % (local, remote)
             return False
-        return worker.send_data(payload=payload)
+        return await worker.send_data(payload=payload)
 
     # Override
-    def send_ship(self, ship: Departure, remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
+    async def send_ship(self, ship: Departure, remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
         worker = self._get_docker(remote=remote, local=local)
         if worker is None:
             # assert False, 'docker not found: %s -> %s' % (local, remote)
@@ -115,7 +116,7 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         elif not worker.alive:
             # assert False, 'docket not alive: %s -> %s' % (local, remote)
             return False
-        return worker.send_ship(ship=ship)
+        return await worker.send_ship(ship=ship)
 
     #
     #   Docker
@@ -157,19 +158,19 @@ class StarGate(Gate, ConnectionDelegate, ABC):
     #
 
     # Override
-    def process(self) -> bool:
+    async def process(self) -> bool:
         dockers = self._all_dockers()
         # 1. drive all dockers to process
-        count = self._drive_dockers(dockers=dockers)
+        count = await self._drive_dockers(dockers=dockers)
         # 2. cleanup for dockers
         self._cleanup_dockers(dockers=dockers)
         return count > 0
 
     # noinspection PyMethodMayBeStatic
-    def _drive_dockers(self, dockers: Iterable[Docker]) -> int:
+    async def _drive_dockers(self, dockers: Iterable[Docker]) -> int:
         count = 0
         for worker in dockers:
-            if worker.process():
+            if await worker.process():
                 count += 1  # it's busy
         return count
 
@@ -183,21 +184,21 @@ class StarGate(Gate, ConnectionDelegate, ABC):
                 # clear expired tasks
                 worker.purge(now=now)
 
-    def _heartbeat(self, connection: Connection):
+    async def _heartbeat(self, connection: Connection):
         """ Send a heartbeat package('PING') to remote address """
         remote = connection.remote_address
         local = connection.local_address
         worker = self._get_docker(remote=remote, local=local)
         if worker is not None:
-            worker.heartbeat()
+            await worker.heartbeat()
 
     #
     #   Connection Delegate
     #
 
     # Override
-    def connection_state_changed(self, previous: Optional[ConnectionState], current: Optional[ConnectionState],
-                                 connection: Connection):
+    async def connection_state_changed(self, previous: Optional[ConnectionState], current: Optional[ConnectionState],
+                                       connection: Connection):
         # convert status
         s1 = status_from_state(state=previous)
         s2 = status_from_state(state=current)
@@ -220,20 +221,20 @@ class StarGate(Gate, ConnectionDelegate, ABC):
             if old is None:
                 assert isinstance(worker, StarDocker), 'docker error: %s, %s' % (remote, worker)
                 # set connection for this docker
-                worker.set_connection(connection)
+                await worker.set_connection(connection)
             # NOTICE: if the previous state is null, the docker maybe not
             #         created yet, this situation means the docker status
             #         not changed too, so no need to callback here.
             delegate = self.delegate
             if delegate is not None:
-                delegate.docker_status_changed(previous=s1, current=s2, docker=worker)
+                await delegate.docker_status_changed(previous=s1, current=s2, docker=worker)
         # 2. heartbeat when connection expired
         index = -1 if current is None else current.index
         if index == StateOrder.EXPIRED:
-            self._heartbeat(connection=connection)
+            await self._heartbeat(connection=connection)
 
     # Override
-    def connection_received(self, data: bytes, connection: Connection):
+    async def connection_received(self, data: bytes, connection: Connection):
         remote = connection.remote_address
         local = connection.local_address
         # try to get docker
@@ -252,15 +253,15 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         if old is None:
             assert isinstance(worker, StarDocker), 'docker error: %s, %s' % (remote, worker)
             # set connection for this docker
-            worker.set_connection(connection)
+            await worker.set_connection(connection)
             # process advance parties one by one
             for item in party:
-                worker.process_received(data=item)
+                await worker.process_received(data=item)
             # remove advance party
             self._clear_advance_party(connection=connection)
         else:
             # docker exists, call docker.onReceived(data)
-            worker.process_received(data=data)
+            await worker.process_received(data=data)
 
     @abstractmethod
     def _cache_advance_party(self, data: bytes, connection: Connection) -> List[bytes]:
@@ -283,16 +284,16 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         raise NotImplemented
 
     # Override
-    def connection_sent(self, sent: int, data: bytes, connection: Connection):
+    async def connection_sent(self, sent: int, data: bytes, connection: Connection):
         # ignore event for sending success
         pass
 
     # Override
-    def connection_failed(self, error: Union[IOError, socket.error], data: bytes, connection: Connection):
+    async def connection_failed(self, error: Union[IOError, socket.error], data: bytes, connection: Connection):
         # ignore event for sending failed
         pass
 
     # Override
-    def connection_error(self, error: Union[IOError, socket.error], connection: Connection):
+    async def connection_error(self, error: Union[IOError, socket.error], connection: Connection):
         # ignore event for receiving error
         pass

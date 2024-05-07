@@ -28,17 +28,16 @@
 # SOFTWARE.
 # ==============================================================================
 
-import time
+import asyncio
 import weakref
 from abc import ABC, abstractmethod
-from threading import Thread
 from typing import Optional
 
 
 class Processor(ABC):
 
     @abstractmethod
-    def process(self) -> bool:
+    async def process(self) -> bool:
         """
         Do the job
 
@@ -50,17 +49,17 @@ class Processor(ABC):
 class Handler(ABC):
 
     @abstractmethod
-    def setup(self):
+    async def setup(self):
         """ Prepare for Handling """
         raise NotImplemented
     
     @abstractmethod
-    def handle(self):
+    async def handle(self):
         """ Handling run loop """
         raise NotImplemented
 
     @abstractmethod
-    def finish(self):
+    async def finish(self):
         """ Cleanup after handled """
         raise NotImplemented
 
@@ -68,11 +67,12 @@ class Handler(ABC):
 class Runnable(ABC):
 
     @abstractmethod
-    def run(self):
+    async def run(self):
         """ Run in a thread """
         raise NotImplemented
 
 
+# noinspection PyAbstractClass
 class Runner(Runnable, Handler, Processor, ABC):
     """
         Runner
@@ -111,54 +111,56 @@ class Runner(Runnable, Handler, Processor, ABC):
     def running(self) -> bool:
         return self.__running
 
-    def stop(self):
+    async def stop(self):
         self.__running = False
 
     # Override
-    def run(self):
-        self.setup()
+    async def run(self):
+        await self.setup()
         try:
-            self.handle()
+            await self.handle()
         finally:
-            self.finish()
+            await self.finish()
 
     # Override
-    def setup(self):
+    async def setup(self):
         self.__running = True
 
     # Override
-    def handle(self):
-        while self.running:
-            if not self.process():
-                # if nothing to do now, return False here
-                # to let the thread have a rest.
-                self._idle()
-
-    # Override
-    def finish(self):
+    async def finish(self):
         self.__running = False
 
-    def _idle(self):
-        time.sleep(self.interval)
+    # Override
+    async def handle(self):
+        while self.running:
+            if await self.process():
+                # runner is busy, return True to go on.
+                pass
+            else:
+                # if nothing to do now, return False here
+                # to let the thread have a rest.
+                await self._idle()
 
-    @abstractmethod
-    def process(self) -> bool:
-        raise NotImplemented
+    # protected
+    async def _idle(self):
+        await self.sleep(seconds=self.interval)
+        # time.sleep(self.interval)
+
+    @classmethod
+    async def sleep(cls, seconds: float):
+        await asyncio.sleep(seconds)
+
+    @classmethod
+    def async_run(cls, coro):
+        # asyncio.run(main)
+        asyncio.create_task(coro)
 
 
 class Daemon:
-    """
-        Daemon Thread
-        ~~~~~~~~~~~~~
-        The main thread won't wait the daemon threads exit
-        when daemonic = True
-    """
 
-    def __init__(self, target: Runnable, daemonic: bool = True):
+    def __init__(self, target: Runnable):
         super().__init__()
-        self.__target = weakref.ref(target)  # Callable
-        self.__daemon = daemonic
-        self.__thread: Optional[Thread] = None
+        self.__target = weakref.ref(target)
 
     @property  # private
     def target(self) -> Optional[Runnable]:
@@ -166,42 +168,7 @@ class Daemon:
         if ref is not None:
             return ref()
 
-    @property
-    def alive(self) -> bool:
-        thr = self.__thread
-        if thr is not None:
-            return thr.is_alive()
-
     def start(self):
-        self.__force_stop()
         target = self.target
         if target is not None:
-            thr = Thread(target=target.run, daemon=self.__daemon)
-            thr.start()
-            self.__thread = thr
-
-    def stop(self):
-        self.__force_stop()
-
-    def __del__(self):
-        self.__force_stop()
-
-    def __force_stop(self):
-        thr = self.__thread
-        if thr is not None:
-            self.__thread = None
-            self._join(thr=thr)
-
-    def _join(self, thr: Thread):
-        # Waits at most seconds for this thread to die.
-        # A timeout of 0 means to wait forever.
-        self.join(thr=thr, timeout=1.0)
-
-    @classmethod
-    def join(cls, thr: Thread, timeout: float = None):
-        try:
-            if thr.is_alive():
-                thr.join(timeout=timeout)
-        except RuntimeError as error:
-            print('[ERROR] failed to join thread: %s, timeout: %d' % (error, timeout))
-            # traceback.print_exc()
+            Runner.async_run(coro=target.run())

@@ -63,48 +63,6 @@ class State(ABC, Generic[C, T]):
     """ Finite State """
 
     @abstractmethod
-    def on_enter(self, old, ctx: C, now: float):
-        """
-        Called after new state entered
-
-        :param old:     previous state
-        :param ctx:     context (machine)
-        :param now:     current time (seconds from Jan 1, 1970 UTC)
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def on_exit(self, new, ctx: C, now: float):
-        """
-        Called before old state exited
-
-        :param new:     next state
-        :param ctx:     context (machine)
-        :param now:     current time (seconds from Jan 1, 1970 UTC)
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def on_pause(self, ctx: C, now: float):
-        """
-        Called before current state paused
-
-        :param ctx:     context (machine)
-        :param now:     current time (seconds from Jan 1, 1970 UTC)
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def on_resume(self, ctx: C, now: float):
-        """
-        Called after current state resumed
-
-        :param ctx:     context (machine)
-        :param now:     current time (seconds from Jan 1, 1970 UTC)
-        """
-        raise NotImplemented
-
-    @abstractmethod
     def evaluate(self, ctx: C, now: float) -> Optional[T]:
         """
         Called by machine.tick() to evaluate each transitions
@@ -115,12 +73,54 @@ class State(ABC, Generic[C, T]):
         """
         raise NotImplemented
 
+    @abstractmethod
+    async def on_enter(self, old, ctx: C, now: float):
+        """
+        Called after new state entered
+
+        :param old:     previous state
+        :param ctx:     context (machine)
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    async def on_exit(self, new, ctx: C, now: float):
+        """
+        Called before old state exited
+
+        :param new:     next state
+        :param ctx:     context (machine)
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    async def on_pause(self, ctx: C, now: float):
+        """
+        Called before current state paused
+
+        :param ctx:     context (machine)
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
+        """
+        raise NotImplemented
+
+    @abstractmethod
+    async def on_resume(self, ctx: C, now: float):
+        """
+        Called after current state resumed
+
+        :param ctx:     context (machine)
+        :param now:     current time (seconds from Jan 1, 1970 UTC)
+        """
+        raise NotImplemented
+
 
 class Delegate(ABC, Generic[C, T, S]):
     """ State Machine Delegate """
 
     @abstractmethod
-    def enter_state(self, state: Optional[S], ctx: C, now: float):
+    async def enter_state(self, state: Optional[S], ctx: C, now: float):
         """
         Called before enter new state
         (get current state from context)
@@ -132,7 +132,7 @@ class Delegate(ABC, Generic[C, T, S]):
         raise NotImplemented
 
     @abstractmethod
-    def exit_state(self, state: Optional[S], ctx: C, now: float):
+    async def exit_state(self, state: Optional[S], ctx: C, now: float):
         """
         Called after exit old state
         (get current state from context)
@@ -144,7 +144,7 @@ class Delegate(ABC, Generic[C, T, S]):
         raise NotImplemented
 
     @abstractmethod
-    def pause_state(self, state: Optional[S], ctx: C, now: float):
+    async def pause_state(self, state: Optional[S], ctx: C, now: float):
         """
         Called after pause this state
 
@@ -155,7 +155,7 @@ class Delegate(ABC, Generic[C, T, S]):
         raise NotImplemented
 
     @abstractmethod
-    def resume_state(self, state: Optional[S], ctx: C, now: float):
+    async def resume_state(self, state: Optional[S], ctx: C, now: float):
         """
         Called before resume this state
 
@@ -175,21 +175,21 @@ class Machine(Ticker, ABC, Generic[C, T, S]):
         raise NotImplemented
 
     @abstractmethod
-    def start(self):
+    async def start(self):
         """ Change current state to 'default' """
         raise NotImplemented
 
     @abstractmethod
-    def stop(self):
+    async def stop(self):
         """ Change current state to null """
         raise NotImplemented
 
     @abstractmethod
-    def pause(self):
+    async def pause(self):
         """ Pause machine, current state not change """
         raise NotImplemented
 
     @abstractmethod
-    def resume(self):
+    async def resume(self):
         """ Resume machine with current state """
         raise NotImplemented

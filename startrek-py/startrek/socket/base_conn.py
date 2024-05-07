@@ -81,13 +81,13 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         return self.__fsm
 
     # private
-    def _set_state_machine(self, fsm: Optional[StateMachine]):
+    async def _set_state_machine(self, fsm: Optional[StateMachine]):
         # 1. replace with new machine
         old = self.__fsm
         self.__fsm = fsm
         # 2. stop old machine
         if old is not None and old is not fsm:
-            old.stop()
+            await old.stop()
 
     def _create_state_machine(self) -> StateMachine:
         fsm = StateMachine(connection=self)
@@ -104,7 +104,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         if ref is not None:
             return ref()
 
-    def _set_channel(self, channel: Optional[Channel]):
+    async def _set_channel(self, channel: Optional[Channel]):
         # 1. replace with new channel
         old = self.channel
         if channel is not None:
@@ -113,7 +113,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         #     self.__channel_ref = None
         # 2. close old channel
         if old is not None and old is not channel:
-            old.close()
+            await old.close()
 
     #
     #   Flags
@@ -166,31 +166,31 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
                % (cname, self._remote, self._local, self.channel, cname, mod)
 
     # Override
-    def close(self):
+    async def close(self):
         # stop state machine
-        self._set_state_machine(fsm=None)
+        await self._set_state_machine(fsm=None)
         # close channel
-        self._set_channel(channel=None)
+        await self._set_channel(channel=None)
 
-    def start(self, hub: Hub):
+    async def start(self, hub: Hub):
         """ Get channel from hub """
         # 1. get channel from hub
-        self._open_channel(hub=hub)
+        await self._open_channel(hub=hub)
         # 2. start state machine
-        self._start_machine()
+        await self._start_machine()
 
-    def _start_machine(self):
+    async def _start_machine(self):
         fsm = self._create_state_machine()
-        self._set_state_machine(fsm=fsm)
-        fsm.start()
+        await self._set_state_machine(fsm=fsm)
+        await fsm.start()
 
     # protected
-    def _open_channel(self, hub: Hub) -> Optional[Channel]:
-        sock = hub.open(remote=self.remote_address, local=self.local_address)
+    async def _open_channel(self, hub: Hub) -> Optional[Channel]:
+        sock = await hub.open(remote=self.remote_address, local=self.local_address)
         if sock is None:
             assert False, 'failed to open channel: remote=%s, local=%s' % (self.remote_address, self.local_address)
         else:
-            self._set_channel(channel=sock)
+            await self._set_channel(channel=sock)
         return sock
 
     #
@@ -198,13 +198,13 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     #
 
     # Override
-    def received(self, data: bytes):
+    async def received(self, data: bytes):
         self.__last_received_time = time.time()  # update received time
         delegate = self.delegate
         if delegate is not None:
-            delegate.connection_received(data=data, connection=self)
+            await delegate.connection_received(data=data, connection=self)
 
-    def _send(self, data: bytes, target: Optional[SocketAddress]) -> int:
+    async def _send(self, data: bytes, target: Optional[SocketAddress]) -> int:
         channel = self.channel
         if channel is None or not channel.alive:
             # raise socket.error('socket channel lost: %s' % channel)
@@ -212,31 +212,32 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         elif target is None:
             # assert False, 'target address empty'
             return -1
-        sent = channel.send(data=data, target=target)
+        sent = await channel.send(data=data, target=target)
         if sent > 0:
+            # update sent time
             self.__last_sent_time = time.time()
         return sent
 
     # Override
-    def send(self, data: bytes) -> int:
+    async def send(self, data: bytes) -> int:
         # try to send data
         error = None
         sent = -1
         try:
-            sent = self._send(data=data, target=self.remote_address)
+            sent = await self._send(data=data, target=self.remote_address)
             if sent < 0:  # == -1:
                 raise socket.error('failed to send: %d byte(s) to %s' % (len(data), self.remote_address))
         except socket.error as e:
             error = e
             # socket error, close current channel
-            self._set_channel(channel=None)
+            await self._set_channel(channel=None)
         # callback
         delegate = self.delegate
         if delegate is not None:
             if error is None:
-                delegate.connection_sent(sent=sent, data=data, connection=self)
+                await delegate.connection_sent(sent=sent, data=data, connection=self)
             else:
-                delegate.connection_failed(error=error, data=data, connection=self)
+                await delegate.connection_failed(error=error, data=data, connection=self)
         return sent
 
     #
@@ -250,14 +251,14 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             return fsm.current_state
 
     # Override
-    def tick(self, now: float, elapsed: float):
+    async def tick(self, now: float, elapsed: float):
         if self.__channel_ref is None:
             # not initialized
             return
         fsm = self.fsm
         if fsm is not None:
             # drive state machine forward
-            fsm.tick(now=now, elapsed=elapsed)
+            await fsm.tick(now=now, elapsed=elapsed)
 
     #
     #   Timed Connection
@@ -288,11 +289,11 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     #
 
     # Override
-    def enter_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: float):
+    async def enter_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: float):
         pass
 
     # Override
-    def exit_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: float):
+    async def exit_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: float):
         current = ctx.current_state
         if isinstance(current, ConnectionState):
             index = current.index
@@ -314,12 +315,12 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         # callback
         delegate = self.delegate
         if delegate is not None:
-            delegate.connection_state_changed(previous=state, current=current, connection=self)
+            await delegate.connection_state_changed(previous=state, current=current, connection=self)
 
     # Override
-    def pause_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: float):
+    async def pause_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: float):
         pass
 
     # Override
-    def resume_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: float):
+    async def resume_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: float):
         pass

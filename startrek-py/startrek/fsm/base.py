@@ -51,10 +51,6 @@ class BaseTransition(Transition[C], ABC):
         """ target state index """
         return self.__target
 
-    # @abstractmethod  # Override
-    # def evaluate(self, ctx: C, now: float) -> bool:
-    #     raise NotImplemented
-
 
 # noinspection PyAbstractClass
 class BaseState(State[C, T], ABC):
@@ -79,22 +75,6 @@ class BaseState(State[C, T], ABC):
             if trans.evaluate(ctx, now=now):
                 # OK, get target state from this transition
                 return trans
-
-    # @abstractmethod  # Override
-    # def on_enter(self, old, ctx: C, now: float):
-    #     raise NotImplemented
-    #
-    # @abstractmethod  # Override
-    # def on_exit(self, new, ctx: C, now: float):
-    #     raise NotImplemented
-    #
-    # @abstractmethod  # Override
-    # def on_pause(self, ctx: C):
-    #     raise NotImplemented
-    #
-    # @abstractmethod  # Override
-    # def on_resume(self, ctx: C):
-    #     raise NotImplemented
 
 
 class MachineStatus(IntEnum):
@@ -170,7 +150,7 @@ class BaseMachine(Machine[C, T, S], ABC):
     def current_state(self, state: BaseState[C, T]):
         self.__current = -1 if state is None else state.index
 
-    def __change_state(self, state: Optional[State[C, T]], now: float):
+    async def __change_state(self, state: Optional[State[C, T]], now: float):
         """
         Exit current state, and enter new state
 
@@ -189,9 +169,9 @@ class BaseMachine(Machine[C, T, S], ABC):
         if delegate is not None:
             # prepare for changing current state to the new one,
             # the delegate can get old state via ctx if need
-            delegate.enter_state(state, machine, now=now)
+            await delegate.enter_state(state, machine, now=now)
         if old is not None:
-            old.on_exit(state, machine, now=now)
+            await old.on_exit(state, machine, now=now)
         #
         #  Change current state
         #
@@ -200,11 +180,11 @@ class BaseMachine(Machine[C, T, S], ABC):
         #  Events after state changed
         #
         if state is not None:
-            state.on_enter(old, machine, now=now)
+            await state.on_enter(old, machine, now=now)
         if delegate is not None:
             # handle after the current state changed,
             # the delegate can get new state via ctx if need
-            delegate.exit_state(old, machine, now=now)
+            await delegate.exit_state(old, machine, now=now)
         return True
 
     #
@@ -212,20 +192,20 @@ class BaseMachine(Machine[C, T, S], ABC):
     #
 
     # Override
-    def start(self):
+    async def start(self):
         now = time.time()
-        ok = self.__change_state(state=self.default_state, now=now)
+        ok = await self.__change_state(state=self.default_state, now=now)
         assert ok, 'failed to change default state'
         self.__status = MachineStatus.RUNNING
 
     # Override
-    def stop(self):
+    async def stop(self):
         self.__status = MachineStatus.STOPPED
         now = time.time()
-        self.__change_state(state=None, now=now)  # force current state to None
+        await self.__change_state(state=None, now=now)  # force current state to None
 
     # Override
-    def pause(self):
+    async def pause(self):
         now = time.time()
         machine = self.context
         current = self.current_state
@@ -233,7 +213,7 @@ class BaseMachine(Machine[C, T, S], ABC):
         #  Events before state paused
         #
         if current is not None:
-            current.on_pause(machine, now=now)
+            await current.on_pause(machine, now=now)
         #
         #  Pause state
         #
@@ -243,10 +223,10 @@ class BaseMachine(Machine[C, T, S], ABC):
         #
         delegate = self.delegate
         if delegate is not None:
-            delegate.pause_state(current, machine, now=now)
+            await delegate.pause_state(current, machine, now=now)
 
     # Override
-    def resume(self):
+    async def resume(self):
         now = time.time()
         machine = self.context
         current = self.current_state
@@ -255,7 +235,7 @@ class BaseMachine(Machine[C, T, S], ABC):
         #
         delegate = self.delegate
         if delegate is not None:
-            delegate.resume_state(current, machine, now=now)
+            await delegate.resume_state(current, machine, now=now)
         #
         #  Resume state
         #
@@ -264,14 +244,14 @@ class BaseMachine(Machine[C, T, S], ABC):
         #  Events after state resumed
         #
         if current is not None:
-            current.on_resume(machine, now=now)
+            await current.on_resume(machine, now=now)
 
     #
     #   Ticker
     #
 
     # Override
-    def tick(self, now: float, elapsed: float):
+    async def tick(self, now: float, elapsed: float):
         machine = self.context
         current = self.current_state
         if current is not None and self.__status == MachineStatus.RUNNING:
@@ -280,4 +260,4 @@ class BaseMachine(Machine[C, T, S], ABC):
                 # assert isinstance(trans, BaseTransition), 'transition error: %s' % trans
                 target = self.get_target_state(transition=trans)
                 assert target is not None, 'target state error: %s' % trans.target
-                self.__change_state(state=target, now=now)
+                await self.__change_state(state=target, now=now)

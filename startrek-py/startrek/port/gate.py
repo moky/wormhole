@@ -44,8 +44,8 @@ class Gate(Processor, ABC):
     """
 
     @abstractmethod
-    def send_data(self, payload: Union[bytes, bytearray],
-                  remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
+    async def send_data(self, payload: Union[bytes, bytearray],
+                        remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
         """
         Pack data to an outgo ship (with normal priority), and
         append to the waiting queue of docker for remote address
@@ -58,8 +58,8 @@ class Gate(Processor, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def send_ship(self, ship: Departure,
-                  remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
+    async def send_ship(self, ship: Departure,
+                        remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
         """
         Append outgo ship (carrying data package, with priority)
         to the waiting queue of docker for remote address

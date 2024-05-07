@@ -41,7 +41,7 @@ from .runner import Runner, Daemon
 class Ticker(ABC):
 
     @abstractmethod
-    def tick(self, now: float, elapsed: float):
+    async def tick(self, now: float, elapsed: float):
         """
         Drive current thread forward
 
@@ -64,12 +64,12 @@ class Metronome(Runner):
         self.__tickers = WeakSet()
 
     # Override
-    def setup(self):
-        super().setup()
+    async def setup(self):
+        await super().setup()
         self.__last_time = time.time()
 
     # Override
-    def process(self) -> bool:
+    async def process(self) -> bool:
         tickers = self.tickers
         if len(tickers) == 0:
             # nothing to do now,
@@ -81,22 +81,27 @@ class Metronome(Runner):
         waiting = self.interval - elapsed
         if waiting < self.MIN_INTERVAL:
             waiting = self.MIN_INTERVAL
-        time.sleep(waiting)
+        await self.sleep(seconds=waiting)
         now += waiting
         elapsed += waiting
         # 2. drive tickers
         for item in tickers:
             try:
-                item.tick(now=now, elapsed=elapsed)
+                await item.tick(now=now, elapsed=elapsed)
             except Exception as error:
-                print('[Metronome] drive ticker error: %s, %s' % (error, item))
-                traceback.print_exc()
+                await self.on_error(error=error, ticker=item)
         # 3. update last time
         self.__last_time = now
         return True
 
+    # noinspection PyMethodMayBeStatic
+    async def on_error(self, error: Exception, ticker: Ticker):
+        print('[Metronome] drive ticker error: %s, %s' % (error, ticker))
+        traceback.print_exc()
+
     @property  # private
     def tickers(self) -> Set[Ticker]:
+        """ get all tickers """
         with self.__lock:
             return set(self.__tickers)
 
@@ -109,12 +114,8 @@ class Metronome(Runner):
             self.__tickers.discard(ticker)
 
     def start(self):
+        # await self.run()
         self.__daemon.start()
-
-    # Override
-    def stop(self):
-        super().stop()
-        self.__daemon.stop()
 
 
 #
@@ -145,6 +146,7 @@ class Singleton(object):
 class PrimeMetronome:
 
     def __init__(self):
+        super().__init__()
         metronome = Metronome(interval=Runner.INTERVAL_SLOW)
         metronome.start()
         self.__metronome = metronome

@@ -108,7 +108,7 @@ class Docker(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def send_data(self, payload: Union[bytes, bytearray]) -> bool:
+    async def send_data(self, payload: Union[bytes, bytearray]) -> bool:
         """
         Pack data to an outgo ship (with normal priority), and
         append to the waiting queue for sending out
@@ -119,7 +119,7 @@ class Docker(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def send_ship(self, ship: Departure) -> bool:
+    async def send_ship(self, ship: Departure) -> bool:
         """
         Append outgo ship (carrying data package, with priority)
         to the waiting queue for sending out
@@ -130,7 +130,7 @@ class Docker(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def process_received(self, data: bytes):
+    async def process_received(self, data: bytes):
         """
         Called when received data
 
@@ -139,7 +139,7 @@ class Docker(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def heartbeat(self):
+    async def heartbeat(self):
         """
         Send 'PING' for keeping connection alive
         """
@@ -151,6 +151,6 @@ class Docker(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def close(self):
+    async def close(self):
         """ Close connection for this docker """
         raise NotImplemented

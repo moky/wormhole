@@ -94,7 +94,7 @@ class Connection(Ticker, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def send(self, data: bytes) -> int:
+    async def send(self, data: bytes) -> int:
         """
         Send data
 
@@ -104,7 +104,7 @@ class Connection(Ticker, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def received(self, data: bytes):
+    async def received(self, data: bytes):
         """
         Call on received data for processing
 
@@ -113,6 +113,6 @@ class Connection(Ticker, ABC):
         raise NotImplemented
 
     @abstractmethod
-    def close(self):
+    async def close(self):
         """ Close the connection """
         raise NotImplemented

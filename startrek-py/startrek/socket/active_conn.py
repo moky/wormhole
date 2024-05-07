@@ -33,7 +33,7 @@ import weakref
 from typing import Optional
 
 from ..types import SocketAddress
-from ..fsm import Daemon, Runnable
+from ..fsm import Runnable, Runner, Daemon
 from ..net import Hub
 
 from .base_conn import BaseConnection
@@ -47,7 +47,7 @@ class ActiveConnection(BaseConnection, Runnable):
         self.__hub_ref = None
         self.__daemon = Daemon(target=self)
 
-    @property
+    @property  # protected
     def hub(self) -> Optional[Hub]:
         ref = self.__hub_ref
         if ref is not None:
@@ -58,20 +58,21 @@ class ActiveConnection(BaseConnection, Runnable):
         return self.fsm is None
 
     # Override
-    def start(self, hub: Hub):
+    async def start(self, hub: Hub):
         self.__hub_ref = weakref.ref(hub)
         # 1. start state machine
-        self._start_machine()
+        await self._start_machine()
         # 2. start a background thread to check channel
         self.__daemon.start()
+        # await self.run()
 
     # Override
-    def run(self):
+    async def run(self):
         expired = 0
         last_time = 0
         interval = 8
         while not self.closed:
-            time.sleep(1.0)
+            await Runner.sleep(seconds=1.0)
             now = time.time()
             try:
                 sock = self.channel
@@ -93,7 +94,7 @@ class ActiveConnection(BaseConnection, Runnable):
                     # so set an expired time to close it after timeout;
                     # if failed to open a new socket channel,
                     # then extend the time interval for next trying.
-                    sock = self._open_channel(hub=hub)
+                    sock = await self._open_channel(hub=hub)
                     if sock is not None:
                         # connect timeout after 2 minutes
                         expired = now + 128
@@ -105,6 +106,6 @@ class ActiveConnection(BaseConnection, Runnable):
                     interval = 8
                 elif 0 < expired < now:
                     # connect timeout
-                    sock.close()
+                    await sock.close()
             except Exception as error:
                 print('[Socket] active connection error: %s' % error)

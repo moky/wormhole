@@ -40,8 +40,8 @@ class ConnectionDelegate(ABC):
     """ Connection Delegate """
 
     @abstractmethod
-    def connection_state_changed(self, previous: Optional[ConnectionState], current: Optional[ConnectionState],
-                                 connection: Connection):
+    async def connection_state_changed(self, previous: Optional[ConnectionState], current: Optional[ConnectionState],
+                                       connection: Connection):
         """
         Called when connection status is changed
 
@@ -52,7 +52,7 @@ class ConnectionDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connection_received(self, data: bytes, connection: Connection):
+    async def connection_received(self, data: bytes, connection: Connection):
         """
         Called when connection received data
 
@@ -62,7 +62,7 @@ class ConnectionDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connection_sent(self, sent: int, data: bytes, connection: Connection):
+    async def connection_sent(self, sent: int, data: bytes, connection: Connection):
         """
         Called after data sent via the connection
 
@@ -73,7 +73,7 @@ class ConnectionDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connection_failed(self, error: Union[IOError, socket.error], data: bytes, connection: Connection):
+    async def connection_failed(self, error: Union[IOError, socket.error], data: bytes, connection: Connection):
         """
         Called when failed to send data via the connection
 
@@ -84,7 +84,7 @@ class ConnectionDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def connection_error(self, error: Union[IOError, socket.error], connection: Connection):
+    async def connection_error(self, error: Union[IOError, socket.error], connection: Connection):
         """
         Called when connection (receiving) error
 
