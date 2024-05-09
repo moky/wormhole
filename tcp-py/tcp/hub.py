@@ -52,7 +52,7 @@ class ChannelPool(AddressPairMap[Channel]):
         # 1. remove cached item
         cached = super().remove(item=item, remote=remote, local=local)
         if cached is not None and cached is not item:
-            Runner.async_run(coro=cached.close())
+            Runner.async_run(coroutine=cached.close())
         # 2. set new item
         old = super().set(item=item, remote=remote, local=local)
         assert old is None, 'should not happen: %s' % old
@@ -63,9 +63,9 @@ class ChannelPool(AddressPairMap[Channel]):
                remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         cached = super().remove(item=item, remote=remote, local=local)
         if cached is not None and cached is not item:
-            Runner.async_run(coro=cached.close())
+            Runner.async_run(coroutine=cached.close())
         if item is not None:
-            Runner.async_run(coro=item.close())
+            Runner.async_run(coroutine=item.close())
         return cached
 
 
@@ -168,12 +168,12 @@ class ServerHub(StreamHub, Runnable):
     def running(self) -> bool:
         return self.__running
 
-    def start(self):
+    async def start(self):
         assert not self.__running, 'server hub is running: %s' % self
         self.__running = True
         return self.__daemon.start()
 
-    def stop(self):
+    async def stop(self):
         self.__running = False
         self.__daemon.stop()
 

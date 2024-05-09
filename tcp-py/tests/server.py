@@ -79,7 +79,7 @@ class Server(DockerDelegate):
 
     async def start(self):
         await self.hub.bind(address=self.local_address)
-        self.gate.start()
+        await self.gate.start()
         # start hub
         loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
         thr = threading.Thread(target=_start_thread_loop, args=(loop, self.hub), daemon=True)
@@ -183,7 +183,7 @@ if __name__ == '__main__':
 
     g_server = Server(host=SERVER_HOST, port=SERVER_PORT)
 
-    asyncio.run(g_server.start())
+    Runner.sync_run(main=g_server.start())
 
     # test_receive(address=(SERVER_HOST, SERVER_PORT))
 

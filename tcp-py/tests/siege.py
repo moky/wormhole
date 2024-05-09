@@ -174,12 +174,12 @@ class Soldier(Runner, DockerDelegate):
         await super().setup()
         gate = self.gate
         gate.hub = StreamClientHub(delegate=gate)
-        gate.start()
+        await gate.start()
 
     # Override
     async def finish(self):
         gate = self.gate
-        gate.stop()
+        await gate.stop()
         await super().finish()
 
     # Override

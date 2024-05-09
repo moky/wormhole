@@ -1,7 +1,6 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import asyncio
 import random
 import socket
 import sys
@@ -82,10 +81,10 @@ class Client(DockerDelegate):
 
     async def start(self):
         await self.hub.connect(remote=self.remote_address)
-        self.gate.start()
+        await self.gate.start()
 
     async def stop(self):
-        self.gate.stop()
+        await self.gate.stop()
 
     async def send(self, data: bytes) -> bool:
         return await self.gate.send_message(payload=data, remote=self.remote_address, local=self.local_address)
@@ -191,7 +190,7 @@ if __name__ == '__main__':
 
     g_client = Client(local=local_address, remote=server_address)
 
-    asyncio.run(test_client(g_client))
+    Runner.sync_run(main=test_client(g_client))
 
     # test_send(address=server_address)
 

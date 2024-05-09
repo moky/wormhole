@@ -1,9 +1,7 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import asyncio
 import random
-
 import sys
 import os
 from typing import Optional
@@ -86,10 +84,10 @@ class Client(DockerDelegate):
     async def start(self):
         await self.hub.bind(address=self.local_address)
         await self.hub.connect(remote=self.remote_address)
-        self.gate.start()
+        await self.gate.start()
 
     async def stop(self):
-        self.gate.stop()
+        await self.gate.stop()
 
     async def send(self, data: bytes) -> bool:
         ok1 = await self.gate.send_command(body=data, remote=self.remote_address, local=self.local_address)
@@ -165,6 +163,6 @@ if __name__ == '__main__':
 
     g_client = Client(local=local_address, remote=server_address)
 
-    asyncio.run(test_client(g_client))
+    Runner.sync_run(main=test_client(g_client))
 
     UDPGate.info('Terminated.')

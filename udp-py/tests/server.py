@@ -1,7 +1,6 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import asyncio
 import sys
 import os
 from typing import Optional
@@ -78,7 +77,7 @@ class Server(DockerDelegate):
 
     async def start(self):
         await self.hub.bind(address=self.local_address)
-        self.gate.start()
+        await self.gate.start()
         while self.gate.running:
             await Runner.sleep(seconds=2.0)
 
@@ -141,4 +140,4 @@ if __name__ == '__main__':
 
     g_server = Server(host=SERVER_HOST, port=SERVER_PORT)
 
-    asyncio.run(g_server.start())
+    Runner.sync_run(main=g_server.start())

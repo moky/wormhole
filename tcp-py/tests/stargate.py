@@ -125,13 +125,14 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
     def running(self) -> bool:
         return self.__running
 
-    def start(self):
+    async def start(self):
         assert not self.__running, 'auto gate is running: %s' % self
         self.__running = True
         self.__daemon.start()
 
-    def stop(self):
+    async def stop(self):
         self.__running = False
+        await Runner.sleep(seconds=0.25)
         self.__daemon.stop()
 
     # Override
