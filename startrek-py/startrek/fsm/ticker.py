@@ -64,6 +64,23 @@ class Metronome(Runner):
         self.__tickers = WeakSet()
 
     # Override
+    async def start(self):
+        # 1. mark this runner to running
+        await super().start()
+        # 2. start an async task for this runner
+        self.__daemon.start()
+        # await self.run()
+
+    # Override
+    async def stop(self):
+        # 1. mark this runner to stopped
+        await super().stop()
+        # 2. waiting for the runner to stop
+        await self.sleep(seconds=self.interval * 2)
+        # 3. cancel the async task
+        self.__daemon.stop()
+
+    # Override
     async def setup(self):
         await super().setup()
         self.__last_time = time.time()
@@ -89,15 +106,11 @@ class Metronome(Runner):
             try:
                 await item.tick(now=now, elapsed=elapsed)
             except Exception as error:
-                await self.on_error(error=error, ticker=item)
+                print('[Metronome] drive ticker error: %s, %s' % (error, item))
+                traceback.print_exc()
         # 3. update last time
         self.__last_time = now
         return True
-
-    # noinspection PyMethodMayBeStatic
-    async def on_error(self, error: Exception, ticker: Ticker):
-        print('[Metronome] drive ticker error: %s, %s' % (error, ticker))
-        traceback.print_exc()
 
     @property  # private
     def tickers(self) -> Set[Ticker]:
@@ -113,16 +126,6 @@ class Metronome(Runner):
         with self.__lock:
             self.__tickers.discard(ticker)
 
-    def start(self):
-        # await self.run()
-        self.__daemon.start()
-
-    # Override
-    async def stop(self):
-        await super().stop()
-        # await self._idle()
-        await self.sleep(seconds=self.interval * 2)
-        self.__daemon.stop()
 
 #
 #   Singleton for Prime Metronome
@@ -154,7 +157,7 @@ class PrimeMetronome:
     def __init__(self):
         super().__init__()
         metronome = Metronome(interval=Runner.INTERVAL_SLOW)
-        metronome.start()
+        Runner.async_run(coroutine=metronome.start())
         self.__metronome = metronome
 
     def add_ticker(self, ticker: Ticker):

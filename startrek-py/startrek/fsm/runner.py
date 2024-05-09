@@ -68,7 +68,7 @@ class Runnable(ABC):
 
     @abstractmethod
     async def run(self):
-        """ Run in a thread """
+        """ Run in an async task """
         raise NotImplemented
 
 
@@ -111,6 +111,9 @@ class Runner(Runnable, Handler, Processor, ABC):
     def running(self) -> bool:
         return self.__running
 
+    async def start(self):
+        self.__running = True
+
     async def stop(self):
         self.__running = False
 
@@ -124,11 +127,13 @@ class Runner(Runnable, Handler, Processor, ABC):
 
     # Override
     async def setup(self):
-        self.__running = True
+        # TODO: override to prepare before handling
+        pass
 
     # Override
     async def finish(self):
-        self.__running = False
+        # TODO: override to cleanup after handled
+        pass
 
     # Override
     async def handle(self):
@@ -151,9 +156,14 @@ class Runner(Runnable, Handler, Processor, ABC):
         await asyncio.sleep(seconds)
 
     @classmethod
-    def async_run(cls, coro) -> asyncio.Task:
-        # asyncio.run(main)
-        return asyncio.create_task(coro)
+    def sync_run(cls, main):
+        """ Run main coroutine until complete """
+        asyncio.run(main)
+
+    @classmethod
+    def async_run(cls, coroutine) -> asyncio.Task:
+        """ Create an async task to run the coroutine """
+        return asyncio.create_task(coroutine)
 
 
 class Daemon:
@@ -170,25 +180,29 @@ class Daemon:
             return ref()
 
     def start(self):
+        """ Start an async task for running the target """
         target = self.target
         if target is None:
             assert False, 'daemon target lost'
         else:
             assert self.__task is None, 'daemon task is running: %s, %s' % (self.__task, self.target)
-        task = Runner.async_run(coro=target.run())
+        task = Runner.async_run(coroutine=target.run())
         task.add_done_callback(self._done)
         self.__task = task
 
     def _done(self, t):
+        # callback after async task done
         task = self._clean()
         assert task is None or task == t, 'task error: %s, %s' % (t, task)
 
     def _clean(self) -> Optional[asyncio.Task]:
+        # remove async task
         task = self.__task
         self.__task = None
         return task
 
     def stop(self):
+        """ Cancel the async task for running the target """
         task = self._clean()
         if task is None:
             pass

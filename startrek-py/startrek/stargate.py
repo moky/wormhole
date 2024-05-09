@@ -53,7 +53,7 @@ class DockerPool(AddressPairMap[Docker]):
         # 1. remove cached item
         cached = super().remove(item=item, remote=remote, local=local)
         if cached is not None and cached is not item:
-            Runner.async_run(coro=cached.close())
+            Runner.async_run(coroutine=cached.close())
         # 2. set new item
         old = super().set(item=item, remote=remote, local=local)
         assert old is None, 'should not happen: %s' % old
@@ -64,9 +64,9 @@ class DockerPool(AddressPairMap[Docker]):
                remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Docker]:
         cached = super().remove(item=item, remote=remote, local=local)
         if cached is not None and cached is not item:
-            Runner.async_run(coro=cached.close())
+            Runner.async_run(coroutine=cached.close())
         if item is not None:
-            Runner.async_run(coro=item.close())
+            Runner.async_run(coroutine=item.close())
         return cached
 
 
