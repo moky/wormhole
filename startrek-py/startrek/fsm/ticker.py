@@ -35,7 +35,8 @@ from weakref import WeakSet
 from abc import ABC, abstractmethod
 from typing import Set
 
-from .runner import Runner, Daemon
+from .runner import Runner
+from .daemon import DaemonRunner
 
 
 class Ticker(ABC):
@@ -51,7 +52,7 @@ class Ticker(ABC):
         raise NotImplemented
 
 
-class Metronome(Runner):
+class Metronome(DaemonRunner):
 
     # at least wait 1/60 of a second
     MIN_INTERVAL = 1.0/60
@@ -59,26 +60,8 @@ class Metronome(Runner):
     def __init__(self, interval: float):
         super().__init__(interval=interval)
         self.__last_time = 0
-        self.__daemon = Daemon(target=self)
         self.__lock = threading.Lock()
         self.__tickers = WeakSet()
-
-    # Override
-    async def start(self):
-        # 1. mark this runner to running
-        await super().start()
-        # 2. start an async task for this runner
-        self.__daemon.start()
-        # await self.run()
-
-    # Override
-    async def stop(self):
-        # 1. mark this runner to stopped
-        await super().stop()
-        # 2. waiting for the runner to stop
-        await self.sleep(seconds=self.interval * 2)
-        # 3. cancel the async task
-        self.__daemon.stop()
 
     # Override
     async def setup(self):

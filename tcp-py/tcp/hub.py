@@ -118,7 +118,6 @@ class ServerHub(StreamHub, Runnable):
         super().__init__(delegate=delegate)
         self.__local = None   # SocketAddress
         self.__master = None  # socket.socket
-        # running thread
         self.__daemon = Daemon(target=self)
         self.__running = False
 
@@ -170,11 +169,18 @@ class ServerHub(StreamHub, Runnable):
 
     async def start(self):
         assert not self.__running, 'server hub is running: %s' % self
+        # 1. mark this hub to running
         self.__running = True
-        return self.__daemon.start()
+        # 2. start an async task for this hub
+        self.__daemon.start()
+        # await self.run()
 
     async def stop(self):
+        # 1. mark this hub to stopped
         self.__running = False
+        # 2. waiting for the hub to stop
+        await Runner.sleep(seconds=0.25)
+        # 3. cancel the async task
         self.__daemon.stop()
 
     # Override

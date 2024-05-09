@@ -30,7 +30,6 @@
 
 """
 
-import asyncio
 import multiprocessing
 import threading
 import time
@@ -51,6 +50,7 @@ from tcp import Docker, DockerDelegate, DockerStatus
 from tcp import Hub, ClientHub
 from tcp import Arrival, PlainArrival, Departure, PlainDeparture
 
+from tests.runner import Runner as ThreadRunner
 from tests.stargate import TCPGate
 
 
@@ -85,21 +85,20 @@ class StreamClientHub(ClientHub):
         return super()._remove_connection(connection=connection, remote=remote, local=None)
 
 
-def _start_thread_loop(loop: asyncio.AbstractEventLoop):
-    asyncio.set_event_loop(loop)
-    loop.run_forever()
-
-
-class Soldier(Runner, DockerDelegate):
+class Soldier(ThreadRunner, DockerDelegate):
 
     def __init__(self, remote: SocketAddress, local: Optional[SocketAddress] = None):
-        super().__init__(interval=1)
+        super().__init__(interval=1.0)
         self.__remote_address = remote
         self.__local_address = local
         self.__gate = TCPGate(delegate=self)
         self.__time_to_retreat = time.time() + 32
 
     def __str__(self) -> str:
+        cname = self.__class__.__name__
+        return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
+
+    def __repr__(self) -> str:
         cname = self.__class__.__name__
         return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
 
@@ -114,14 +113,6 @@ class Soldier(Runner, DockerDelegate):
     @property
     def gate(self) -> TCPGate:
         return self.__gate
-
-    def start(self) -> threading.Thread:
-        loop = asyncio.new_event_loop()
-        thr = threading.Thread(target=_start_thread_loop, args=(loop,), daemon=True)
-        # thr.daemon = True
-        thr.start()
-        asyncio.run_coroutine_threadsafe(self.run(), loop)
-        return thr
 
     async def send(self, data: bytes) -> bool:
         return await self.gate.send_message(payload=data, remote=self.remote_address, local=self.local_address)
@@ -164,29 +155,41 @@ class Soldier(Runner, DockerDelegate):
     async def docker_error(self, error: IOError, ship: Departure, docker: Docker):
         TCPGate.error('gate error: %s, %s' % (error, docker))
 
+    #
+    #   Runner
+    #
+
     @property  # Override
     def running(self) -> bool:
         if super().running:
             return time.time() < self.__time_to_retreat
 
     # Override
-    async def setup(self):
-        await super().setup()
+    def start(self) -> threading.Thread:
+        super().start()
+        thr = threading.Thread(target=self.run, daemon=True)
+        # thr.daemon = True
+        thr.start()
+        return thr
+
+    # Override
+    def setup(self):
+        super().setup()
         gate = self.gate
         gate.hub = StreamClientHub(delegate=gate)
-        await gate.start()
+        Runner.async_run(coroutine=gate.start())
 
     # Override
-    async def finish(self):
+    def finish(self):
         gate = self.gate
-        await gate.stop()
-        await super().finish()
+        Runner.async_run(coroutine=gate.stop())
+        super().finish()
 
     # Override
-    async def process(self) -> bool:
+    def process(self) -> bool:
         data = b'Hello world!' * 100
         TCPGate.info('>>> sending to %s: (%d bytes) %s...' % (self.remote_address, len(data), data[:32]))
-        await self.send(data=data)
+        Runner.async_run(coroutine=self.send(data=data))
         return False  # return False to have a rest
 
 
@@ -202,6 +205,10 @@ class Sergeant:
         self.__local_address = local
 
     def __str__(self) -> str:
+        cname = self.__class__.__name__
+        return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
+
+    def __repr__(self) -> str:
         cname = self.__class__.__name__
         return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
 
@@ -232,16 +239,20 @@ class Sergeant:
         return pro
 
 
-class Colonel(Runner):
+class Colonel(ThreadRunner):
 
     TROOPS = 16  # progresses count
 
     def __init__(self, remote: SocketAddress, local: Optional[SocketAddress] = None):
-        super().__init__(interval=1)
+        super().__init__(interval=1.0)
         self.__remote_address = remote
         self.__local_address = local
 
     def __str__(self) -> str:
+        cname = self.__class__.__name__
+        return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
+
+    def __repr__(self) -> str:
         cname = self.__class__.__name__
         return '<%s: remote=%s, local=%s />' % (cname, self.remote_address, self.local_address)
 
@@ -253,12 +264,10 @@ class Colonel(Runner):
     def remote_address(self) -> SocketAddress:
         return self.__remote_address
 
-    def start(self):
-        self.run()
-
     # Override
-    def setup(self):
-        super().setup()
+    def start(self):
+        super().start()
+        self.run()
 
     # Override
     def process(self) -> bool:

@@ -117,7 +117,6 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
 
     def __init__(self, delegate: DockerDelegate):
         super().__init__(delegate=delegate)
-        # running thread
         self.__daemon = Daemon(target=self)
         self.__running = False
 
@@ -127,12 +126,18 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
 
     async def start(self):
         assert not self.__running, 'auto gate is running: %s' % self
+        # 1. mark this gate to running
         self.__running = True
+        # 2. start an async task for this gate
         self.__daemon.start()
+        # await self.run()
 
     async def stop(self):
+        # 1. mark this gate to stopped
         self.__running = False
+        # 2. waiting for the gate to stop
         await Runner.sleep(seconds=0.25)
+        # 3. cancel the async task
         self.__daemon.stop()
 
     # Override

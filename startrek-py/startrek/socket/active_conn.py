@@ -62,7 +62,7 @@ class ActiveConnection(BaseConnection, Runnable):
         self.__hub_ref = weakref.ref(hub)
         # 1. start state machine
         await self._start_machine()
-        # 2. start a background thread to check channel
+        # 2. start an async task to check channel
         self.__daemon.start()
         # await self.run()
 

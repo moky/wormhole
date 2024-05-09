@@ -34,7 +34,8 @@
 """
 
 from .ticker import Ticker, Metronome, PrimeMetronome, Singleton
-from .runner import Processor, Handler, Runnable, Runner, Daemon
+from .runner import Processor, Handler, Runnable, Runner
+from .daemon import Daemon, DaemonRunner
 from .machine import Context, Transition, State, Machine, Delegate
 from .base import BaseTransition, BaseState, BaseMachine
 from .auto import AutoMachine
@@ -47,7 +48,8 @@ __all__ = [
 
     'Ticker', 'Metronome', 'PrimeMetronome', 'Singleton',
 
-    'Processor', 'Handler', 'Runnable', 'Runner', 'Daemon',
+    'Processor', 'Handler', 'Runnable', 'Runner',
+    'Daemon', 'DaemonRunner',
 
     'Context', 'Transition', 'State', 'Machine', 'Delegate',
     'BaseTransition', 'BaseState', 'BaseMachine',

@@ -27,15 +27,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ==============================================================================
-
-import asyncio
+import time
 from abc import ABC, abstractmethod
 
 
 class Processor(ABC):
 
     @abstractmethod
-    async def process(self) -> bool:
+    def process(self) -> bool:
         """
         Do the job
 
@@ -47,17 +46,17 @@ class Processor(ABC):
 class Handler(ABC):
 
     @abstractmethod
-    async def setup(self):
+    def setup(self):
         """ Prepare for Handling """
         raise NotImplemented
-    
+
     @abstractmethod
-    async def handle(self):
+    def handle(self):
         """ Handling run loop """
         raise NotImplemented
 
     @abstractmethod
-    async def finish(self):
+    def finish(self):
         """ Cleanup after handled """
         raise NotImplemented
 
@@ -65,7 +64,7 @@ class Handler(ABC):
 class Runnable(ABC):
 
     @abstractmethod
-    async def run(self):
+    def run(self):
         """ Run in an async task """
         raise NotImplemented
 
@@ -77,8 +76,6 @@ class Runner(Runnable, Handler, Processor, ABC):
         ~~~~~~
 
         @abstract methods:
-            - setup()
-            - finish()
             - process()
     """
 
@@ -111,46 +108,41 @@ class Runner(Runnable, Handler, Processor, ABC):
     def running(self) -> bool:
         return self.__running
 
-    async def start(self):
+    def start(self):
         self.__running = True
 
-    async def stop(self):
+    def stop(self):
         self.__running = False
 
     # Override
-    async def run(self):
-        await self.setup()
+    def run(self):
+        self.setup()
         try:
-            await self.handle()
+            self.handle()
         finally:
-            await self.finish()
+            self.finish()
 
     # Override
-    async def handle(self):
+    def setup(self):
+        # TODO: override to prepare before handling
+        pass
+
+    # Override
+    def finish(self):
+        # TODO: override to cleanup after handled
+        pass
+
+    # Override
+    def handle(self):
         while self.running:
-            if await self.process():
+            if self.process():
                 # runner is busy, return True to go on.
                 pass
             else:
                 # if nothing to do now, return False here
                 # to let the thread have a rest.
-                await self._idle()
+                self._idle()
 
     # protected
-    async def _idle(self):
-        await self.sleep(seconds=self.interval)
-        # time.sleep(self.interval)
-
-    @classmethod
-    async def sleep(cls, seconds: float):
-        await asyncio.sleep(seconds)
-
-    @classmethod
-    def sync_run(cls, main):
-        """ Run main coroutine until complete """
-        asyncio.run(main)
-
-    @classmethod
-    def async_run(cls, coroutine) -> asyncio.Task:
-        """ Create an async task to run the coroutine """
-        return asyncio.create_task(coroutine)
+    def _idle(self):
+        time.sleep(self.interval)
