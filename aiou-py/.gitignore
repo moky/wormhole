@@ -1,0 +1,6 @@
+.DS_Store
+/.idea
+/build
+/dist
+/aiou.egg-info
+*.pyc
