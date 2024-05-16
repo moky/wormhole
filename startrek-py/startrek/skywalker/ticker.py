@@ -36,7 +36,6 @@ from abc import ABC, abstractmethod
 from typing import Set
 
 from .runner import Runner
-from .daemon import DaemonRunner
 
 
 class Ticker(ABC):
@@ -52,21 +51,25 @@ class Ticker(ABC):
         raise NotImplemented
 
 
-class Metronome(DaemonRunner):
+class Metronome(Runner):
 
     # at least wait 1/60 of a second
     MIN_INTERVAL = 1.0/60
 
     def __init__(self, interval: float):
         super().__init__(interval=interval)
-        self.__last_time = 0
+        self.__last_time = 0  # last process time
         self.__lock = threading.Lock()
         self.__tickers = WeakSet()
 
     # Override
     async def setup(self):
-        await super().setup()
+        # update process time
         self.__last_time = time.time()
+
+    # Override
+    async def finish(self):
+        pass
 
     # Override
     async def process(self) -> bool:
@@ -140,7 +143,7 @@ class PrimeMetronome:
     def __init__(self):
         super().__init__()
         metronome = Metronome(interval=Runner.INTERVAL_SLOW)
-        Runner.async_run(coroutine=metronome.start())
+        Runner.thread_run(runner=metronome)
         self.__metronome = metronome
 
     def add_ticker(self, ticker: Ticker):

@@ -277,7 +277,7 @@ def is_closed(sock: socket.socket) -> bool:
     return getattr(sock, '_closed', False)
 
 
-async def bind_socket(sock: socket.socket, local: SocketAddress) -> bool:
+def bind_socket(sock: socket.socket, local: SocketAddress) -> bool:
     """ Bind to local address """
     try:
         sock.bind(local)
@@ -288,7 +288,7 @@ async def bind_socket(sock: socket.socket, local: SocketAddress) -> bool:
         return False
 
 
-async def connect_socket(sock: socket.socket, remote: SocketAddress) -> bool:
+def connect_socket(sock: socket.socket, remote: SocketAddress) -> bool:
     """ Connect to remote address """
     try:
         sock.connect(remote)
@@ -299,7 +299,7 @@ async def connect_socket(sock: socket.socket, remote: SocketAddress) -> bool:
         return False
 
 
-async def disconnect_socket(sock: socket.socket) -> bool:
+def disconnect_socket(sock: socket.socket) -> bool:
     """ Close socket """
     if is_closed(sock=sock) or not is_connected(sock=sock):
         return True

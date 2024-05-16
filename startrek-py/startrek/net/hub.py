@@ -33,7 +33,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Iterable
 
 from ..types import SocketAddress
-from ..fsm import Processor
+from ..skywalker import Processor
 
 from .channel import is_closed
 from .channel import Channel

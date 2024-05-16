@@ -31,7 +31,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, TypeVar, Generic
 
-from .ticker import Ticker
+from ..skywalker import Ticker
 
 S = TypeVar('S')  # State
 C = TypeVar('C')  # Context

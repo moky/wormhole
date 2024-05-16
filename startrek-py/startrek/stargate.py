@@ -35,13 +35,15 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional, List, Iterable, Union
 
-from .fsm import Runner
 from .types import SocketAddress, AddressPairMap
+from .skywalker import Runner
+
 from .net import Connection, ConnectionDelegate, ConnectionState
 from .net.state import StateOrder
 from .port import Departure, Gate
 from .port import Docker, DockerStatus, DockerDelegate
 from .port.docker import status_from_state
+
 from .stardocker import StarDocker
 
 

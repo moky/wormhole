@@ -30,6 +30,7 @@
 
 import asyncio
 from abc import ABC, abstractmethod
+from threading import Thread
 
 
 class Processor(ABC):
@@ -154,3 +155,19 @@ class Runner(Runnable, Handler, Processor, ABC):
     def async_run(cls, coroutine) -> asyncio.Task:
         """ Create an async task to run the coroutine """
         return asyncio.create_task(coroutine)
+
+    @classmethod
+    def thread_run(cls, runner) -> Thread:
+        """ Run target in a daemon thread """
+        thr = Thread(target=_bg_runner, args=(runner,), daemon=True)
+        thr.start()
+        return thr
+
+
+def _bg_runner(runner: Runner):
+    Runner.sync_run(main=_bg_start(runner=runner))
+
+
+async def _bg_start(runner: Runner):
+    await runner.start()
+    await runner.run()

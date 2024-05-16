@@ -28,43 +28,26 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import ABC  # , abstractmethod
+from .ticker import Singleton
+from .ticker import Ticker
+from .ticker import Metronome, PrimeMetronome
 
-from ..skywalker import PrimeMetronome
+from .runner import Processor, Handler, Runnable
+from .runner import Runner
 
-from .machine import S, C, U, T
-from .base import BaseMachine
+from .daemon import Daemon
 
 
-# noinspection PyAbstractClass
-class AutoMachine(BaseMachine[C, T, S], ABC):
+__all__ = [
 
-    # @property  # Override
-    # @abstractmethod
-    # def context(self) -> C:
-    #     """ machine itself """
-    #     raise NotImplemented
+    'Singleton',
 
-    # Override
-    async def start(self):
-        await super().start()
-        timer = PrimeMetronome()
-        timer.add_ticker(ticker=self)
+    'Ticker',
+    'Metronome', 'PrimeMetronome',
 
-    # Override
-    async def stop(self):
-        timer = PrimeMetronome()
-        timer.remove_ticker(ticker=self)
-        await super().stop()
+    'Processor', 'Handler', 'Runnable',
+    'Runner',
 
-    # Override
-    async def pause(self):
-        timer = PrimeMetronome()
-        timer.remove_ticker(ticker=self)
-        await super().pause()
+    'Daemon',
 
-    # Override
-    async def resume(self):
-        await super().resume()
-        timer = PrimeMetronome()
-        timer.add_ticker(ticker=self)
+]

@@ -33,7 +33,7 @@ from enum import IntEnum
 from typing import Optional, Union
 
 from ..types import SocketAddress
-from ..fsm import Processor
+from ..skywalker import Processor
 from ..net import ConnectionState
 from ..net.state import StateOrder
 

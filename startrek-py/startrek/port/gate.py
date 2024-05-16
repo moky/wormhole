@@ -32,7 +32,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Union
 
 from ..types import SocketAddress
-from ..fsm import Processor
+from ..skywalker import Processor
 
 from .ship import Departure
 

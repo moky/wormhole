@@ -32,7 +32,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from ..types import SocketAddress
-from ..fsm import Ticker
+from ..skywalker import Ticker
 
 
 class Connection(Ticker, ABC):

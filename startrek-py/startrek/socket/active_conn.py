@@ -33,7 +33,7 @@ import weakref
 from typing import Optional
 
 from ..types import SocketAddress
-from ..fsm import Runnable, Runner, Daemon
+from ..skywalker import Runnable, Runner
 from ..net import Hub
 
 from .base_conn import BaseConnection
@@ -45,7 +45,6 @@ class ActiveConnection(BaseConnection, Runnable):
     def __init__(self, remote: SocketAddress, local: Optional[SocketAddress]):
         super().__init__(remote=remote, local=local)
         self.__hub_ref = None
-        self.__daemon = Daemon(target=self)
 
     @property  # protected
     def hub(self) -> Optional[Hub]:
@@ -63,7 +62,7 @@ class ActiveConnection(BaseConnection, Runnable):
         # 1. start state machine
         await self._start_machine()
         # 2. start an async task to check channel
-        self.__daemon.start()
+        Runner.async_run(coroutine=self.run())
         # await self.run()
 
     # Override
@@ -71,8 +70,10 @@ class ActiveConnection(BaseConnection, Runnable):
         expired = 0
         last_time = 0
         interval = 8
-        while not self.closed:
+        while True:
             await Runner.sleep(seconds=1.0)
+            if self.closed:
+                break
             now = time.time()
             try:
                 sock = self.channel

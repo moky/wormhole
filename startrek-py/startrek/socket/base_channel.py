@@ -97,6 +97,17 @@ class Controller:
         if isinstance(channel, BaseChannel):
             return channel.sock
 
+    # noinspection PyMethodMayBeStatic
+    async def _socket_receive(self, sock: socket.socket, max_len: int) -> Optional[bytes]:
+        # TODO: override for async receiving
+        return sock.recv(max_len)
+
+    # noinspection PyMethodMayBeStatic
+    async def _socket_send(self, sock: socket.socket, data: bytes) -> int:
+        # TODO: override for async sending
+        return sock.send(data)
+        # return sock.sendall(data)
+
 
 # noinspection PyAbstractClass
 class ChannelReader(Controller, SocketReader, ABC):
@@ -107,7 +118,7 @@ class ChannelReader(Controller, SocketReader, ABC):
         if sock is None or is_closed(sock=sock):
             raise ConnectionError('socket closed')
         else:
-            return sock.recv(max_len)
+            return await self._socket_receive(sock=sock, max_len=max_len)
 
     # @abstractmethod  # Override
     # async def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
@@ -122,12 +133,11 @@ class ChannelWriter(Controller, SocketWriter, ABC):
     async def write(self, data: bytes) -> int:
         """ Return the number of bytes sent;
             this may be less than len(data) if the network is busy. """
-        # sent = sock.sendall(data)
         sock = self.sock
         if sock is None or is_closed(sock=sock):
             raise ConnectionError('socket closed')
         else:
-            return sock.send(data)
+            return await self._socket_send(sock=sock, data=data)
 
     # @abstractmethod  # Override
     # async def send(self, data: bytes, target: SocketAddress) -> int:
@@ -189,7 +199,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             self.__closed = True
         # 2. close old socket
         if old is not None and old is not sock:
-            await disconnect_socket(sock=old)
+            await self._disconnect_socket(sock=old)
 
     #
     #   States
@@ -276,6 +286,21 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         sock.setblocking(blocking)
         return sock
 
+    # noinspection PyMethodMayBeStatic
+    async def _bind_socket(self, sock: socket.socket, local: SocketAddress) -> bool:
+        # TODO: override for async binding
+        return bind_socket(sock=sock, local=local)
+
+    # noinspection PyMethodMayBeStatic
+    async def _connect_socket(self, sock: socket.socket, remote: SocketAddress) -> bool:
+        # TODO: override for async connecting
+        return connect_socket(sock=sock, remote=remote)
+
+    # noinspection PyMethodMayBeStatic
+    async def _disconnect_socket(self, sock: socket.socket) -> bool:
+        # TODO: override for async disconnecting
+        return disconnect_socket(sock=sock)
+
     # Override
     async def bind(self, address: Optional[SocketAddress] = None,
                    host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
@@ -287,7 +312,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
                 address = self._local
                 assert address is not None, 'local address not set'
         sock = self.sock
-        ok = await bind_socket(sock=sock, local=address)
+        ok = await self._bind_socket(sock=sock, local=address)
         assert ok, 'failed to bind socket: %s' % str(address)
         self._local = address
         return sock
@@ -303,7 +328,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
                 address = self._remote
                 assert address is not None, 'remote address not set'
         sock = self.sock
-        ok = await connect_socket(sock=sock, remote=address)
+        ok = await self._connect_socket(sock=sock, remote=address)
         assert ok, 'failed to connect socket: %s' % str(address)
         self._remote = address
         return sock
@@ -312,7 +337,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     async def disconnect(self) -> Optional[socket.socket]:
         sock = self.__sock
         if sock is not None:
-            ok = await disconnect_socket(sock=sock)
+            ok = await self._disconnect_socket(sock=sock)
             assert ok, 'failed to disconnect socket: %s' % sock
         return sock
 
