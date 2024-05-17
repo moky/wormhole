@@ -35,8 +35,8 @@ import threading
 import time
 from typing import Optional
 
-from startrek.fsm import Runner
 from startrek.types import SocketAddress
+from startrek.skywalker import Runner
 
 import sys
 import os
@@ -52,6 +52,7 @@ from tcp import Arrival, PlainArrival, Departure, PlainDeparture
 
 from tests.runner import Runner as ThreadRunner
 from tests.stargate import TCPGate
+from tests.stargate import Log
 
 
 class StreamClientHub(ClientHub):
@@ -125,7 +126,7 @@ class Soldier(ThreadRunner, DockerDelegate):
     async def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
         remote = docker.remote_address
         local = docker.local_address
-        TCPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
+        Log.info(msg='!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
 
     # Override
     async def docker_received(self, ship: Arrival, docker: Docker):
@@ -134,10 +135,10 @@ class Soldier(ThreadRunner, DockerDelegate):
         try:
             text = data.decode('utf-8')
         except UnicodeDecodeError as error:
-            TCPGate.error(msg='failed to decode data: %s, %s' % (error, data))
+            Log.error(msg='failed to decode data: %s, %s' % (error, data))
             text = str(data)
         source = docker.remote_address
-        TCPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
+        Log.info(msg='<<< received (%d bytes) from %s: %s' % (len(data), source, text))
 
     # Override
     async def docker_sent(self, ship: Departure, docker: Docker):
@@ -145,15 +146,15 @@ class Soldier(ThreadRunner, DockerDelegate):
         data = ship.package
         size = len(data)
         destination = docker.remote_address
-        TCPGate.info('message sent: %d byte(s) to %s' % (size, destination))
+        Log.info(msg='message sent: %d byte(s) to %s' % (size, destination))
 
     # Override
     async def docker_failed(self, error: IOError, ship: Departure, docker: Docker):
-        TCPGate.error('gate error: %s, %s' % (error, docker))
+        Log.error('gate error: %s, %s' % (error, docker))
 
     # Override
     async def docker_error(self, error: IOError, ship: Departure, docker: Docker):
-        TCPGate.error('gate error: %s, %s' % (error, docker))
+        Log.error('gate error: %s, %s' % (error, docker))
 
     #
     #   Runner
@@ -188,7 +189,7 @@ class Soldier(ThreadRunner, DockerDelegate):
     # Override
     def process(self) -> bool:
         data = b'Hello world!' * 100
-        TCPGate.info('>>> sending to %s: (%d bytes) %s...' % (self.remote_address, len(data), data[:32]))
+        Log.info(msg='>>> sending to %s: (%d bytes) %s...' % (self.remote_address, len(data), data[:32]))
         Runner.async_run(coroutine=self.send(data=data))
         return False  # return False to have a rest
 

@@ -9,20 +9,21 @@ import threading
 import time
 from typing import Optional
 
-from startrek.net.channel import is_closed
 from startrek.types import SocketAddress
-from startrek.fsm import Runner
+from startrek.skywalker import Runner
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
+from tcp.aio import is_closed
 from tcp import Channel, Connection
 from tcp import Docker, DockerDelegate, DockerStatus
 from tcp import Hub, ServerHub
 from tcp import Arrival, PlainArrival, Departure, PlainDeparture
 
 from tests.stargate import TCPGate
+from tests.stargate import Log
 
 
 class StreamServerHub(ServerHub):
@@ -99,7 +100,7 @@ class Server(DockerDelegate):
     async def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
         remote = docker.remote_address
         local = docker.local_address
-        TCPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
+        Log.info(msg='!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
 
     # Override
     async def docker_received(self, ship: Arrival, docker: Docker):
@@ -108,13 +109,13 @@ class Server(DockerDelegate):
         try:
             text = data.decode('utf-8')
         except UnicodeDecodeError as error:
-            TCPGate.error(msg='failed to decode data: %s, %s' % (error, data))
+            Log.error(msg='failed to decode data: %s, %s' % (error, data))
             text = str(data)
         source = docker.remote_address
-        TCPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
+        Log.info(msg='<<< received (%d bytes) from %s: %s' % (len(data), source, text))
         text = '%d# %d byte(s) received' % (self.counter, len(data))
         self.counter += 1
-        TCPGate.info('>>> responding: %s' % text)
+        Log.info(msg='>>> responding: %s' % text)
         data = text.encode('utf-8')
         await self.send(data=data, destination=source)
 
@@ -124,15 +125,15 @@ class Server(DockerDelegate):
     async def docker_sent(self, ship: Departure, docker: Docker):
         assert isinstance(ship, PlainDeparture), 'departure ship error: %s' % ship
         size = len(ship.package)
-        TCPGate.info('message sent: %d byte(s) to %s' % (size, docker.remote_address))
+        Log.info(msg='message sent: %d byte(s) to %s' % (size, docker.remote_address))
 
     # Override
     async def docker_failed(self, error: IOError, ship: Departure, docker: Docker):
-        TCPGate.error('failed to sent: %s, %s' % (error, docker))
+        Log.error('failed to sent: %s, %s' % (error, docker))
 
     # Override
     async def docker_error(self, error: IOError, ship: Departure, docker: Docker):
-        TCPGate.error('connection error: %s, %s' % (error, docker))
+        Log.error('connection error: %s, %s' % (error, docker))
 
 
 def _start_thread_loop(loop: asyncio.AbstractEventLoop, runner: Runner):
@@ -145,7 +146,7 @@ SERVER_HOST = Hub.inet_address()
 SERVER_PORT = 9394
 
 
-def test_receive(address: SocketAddress):
+async def test_receive(address: SocketAddress):
     master = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     master.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     master.setblocking(True)
@@ -157,34 +158,34 @@ def test_receive(address: SocketAddress):
             time.sleep(5)
             # check
             size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
-            print('[TCP] receive buffer size1: %d' % size)
+            Log.info(msg=' receive buffer size1: %d' % size)
             total = 0
-            while not is_closed(sock=sock):
+            while not await is_closed(sock=sock):
                 data = sock.recv(1024)
                 cnt = len(data)
                 if cnt > 0:
-                    print('[TCP] received %d bytes: %s' % (cnt, data))
+                    Log.info(msg=' received %d bytes: %s' % (cnt, data))
                     total += cnt
                 else:
-                    print('[TCP] closed: %s' % str(address))
+                    Log.info(msg=' closed: %s' % str(address))
                     break
-            print('[TCP] total length: %d' % total)
+            Log.info(msg=' total length: %d' % total)
             size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
-            print('[TCP] receive buffer size2: %d' % size)
+            Log.info(msg=' receive buffer size2: %d' % size)
         except socket.error as error:
-            print('[TCP] socket error: %s' % error)
+            Log.info(msg=' socket error: %s' % error)
         except Exception as error:
-            print('[TCP] accept error: %s' % error)
+            Log.info(msg=' accept error: %s' % error)
 
 
 if __name__ == '__main__':
 
-    TCPGate.info('TCP server (%s:%d) starting ...' % (SERVER_HOST, SERVER_PORT))
+    Log.info(msg='TCP server (%s:%d) starting ...' % (SERVER_HOST, SERVER_PORT))
 
     g_server = Server(host=SERVER_HOST, port=SERVER_PORT)
+    crt = g_server.start()
+    # crt = test_receive(address=(SERVER_HOST, SERVER_PORT))
 
-    Runner.sync_run(main=g_server.start())
+    Runner.sync_run(main=crt)
 
-    # test_receive(address=(SERVER_HOST, SERVER_PORT))
-
-    TCPGate.info('TCP server (%s:%d) stopped.' % (SERVER_HOST, SERVER_PORT))
+    Log.info(msg='TCP server (%s:%d) stopped.' % (SERVER_HOST, SERVER_PORT))

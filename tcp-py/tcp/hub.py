@@ -35,12 +35,13 @@ from abc import ABC
 from typing import Optional, Iterable
 
 from startrek.types import SocketAddress, AddressPairMap
-from startrek.fsm import Runnable, Runner, Daemon
+from startrek.skywalker import Runnable, Runner, Daemon
 from startrek import Channel, BaseChannel
 from startrek import Connection, ConnectionDelegate
 from startrek import BaseConnection, ActiveConnection
 from startrek import BaseHub
 
+from .aio import is_blocking
 from .channel import StreamChannel
 
 
@@ -187,14 +188,17 @@ class ServerHub(StreamHub, Runnable):
     async def run(self):
         self.__running = True
         while self.running:
+            master = self._get_master()
             try:
-                master = self._get_master()
                 sock, address = master.accept()
                 if sock is None:
                     await Runner.sleep(seconds=Runner.INTERVAL_NORMAL)
                 else:
                     await self._accept(remote=address, local=self.local_address, sock=sock)
             except socket.error as error:
+                if error.errno == socket.EAGAIN:  # error.strerror == 'Resource temporarily unavailable':
+                    if not await is_blocking(sock=master):
+                        continue
                 print('[TCP] socket error: %s' % error)
             except Exception as error:
                 print('[TCP] accept error: %s' % error)
@@ -204,6 +208,7 @@ class ServerHub(StreamHub, Runnable):
         channel = self._create_channel(remote=remote, local=local)
         assert isinstance(channel, BaseChannel), 'channel error: %s, %s' % (remote, channel)
         # set socket for this channel
+        sock.setblocking(False)
         await channel.set_socket(sock=sock)
         self._set_channel(channel=channel, remote=channel.remote_address, local=channel.local_address)
 

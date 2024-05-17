@@ -6,8 +6,8 @@ import time
 from abc import ABC
 from typing import Generic, TypeVar, Optional, List, Union
 
-from startrek.fsm import Runnable, Runner, Daemon
 from startrek.types import SocketAddress
+from startrek.skywalker import Runnable, Runner, Daemon
 from startrek import Connection, ConnectionState
 from startrek import ActiveConnection
 from startrek import Hub
@@ -144,9 +144,12 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
     async def run(self):
         while self.running:
             if await self.process():
+                # Log.info(msg='processed')
                 pass
             else:
+                # Log.info(msg='nothing to do now')
                 await self._idle()
+        Log.info(msg='auto gate stopped: %s' % self)
 
     # noinspection PyMethodMayBeStatic
     async def _idle(self):
@@ -154,9 +157,12 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
 
     # Override
     async def process(self) -> bool:
-        incoming = await self.hub.process()
-        outgoing = await super().process()
-        return incoming or outgoing
+        try:
+            incoming = await self.hub.process()
+            outgoing = await super().process()
+            return incoming or outgoing
+        except Exception as error:
+            Log.error(msg='process error: %s' % error)
 
 
 class TCPGate(AutoGate, Generic[H]):
@@ -187,17 +193,20 @@ class TCPGate(AutoGate, Generic[H]):
     async def connection_state_changed(self, previous: Optional[ConnectionState], current: Optional[ConnectionState],
                                        connection: Connection):
         await super().connection_state_changed(previous=previous, current=current, connection=connection)
-        self.info(msg='connection state changed: %s -> %s, %s' % (previous, current, connection))
+        Log.info(msg='connection state changed: %s -> %s, %s' % (previous, current, connection))
 
     # Override
     async def connection_failed(self, error: Union[IOError, socket.error], data: bytes, connection: Connection):
         await super().connection_failed(error=error, data=data, connection=connection)
-        self.error(msg='connection failed: %s, %s' % (error, connection))
+        Log.error(msg='connection failed: %s, %s' % (error, connection))
 
     # Override
     async def connection_error(self, error: Union[IOError, socket.error], connection: Connection):
         # if isinstance(error, IOError) and str(error).startswith('failed to send: '):
-        self.error(msg='connection error: %s, %s' % (error, connection))
+        Log.error(msg='connection error: %s, %s' % (error, connection))
+
+
+class Log:
 
     @classmethod
     def info(cls, msg: str):

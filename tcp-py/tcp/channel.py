@@ -32,14 +32,17 @@ import socket
 from typing import Optional, Tuple
 
 from startrek.types import SocketAddress
-from startrek.net.channel import is_blocking, is_closed
 from startrek import BaseChannel, ChannelReader, ChannelWriter
+
+from .aio import is_blocking, is_closed, is_available
+from .aio import socket_send, socket_receive
+from .aio import socket_bind, socket_connect, socket_disconnect
 
 
 class ChannelChecker:
 
     @classmethod
-    def check_error(cls, error: socket.error, sock: socket.socket) -> Optional[socket.error]:
+    async def check_error(cls, error: socket.error, sock: socket.socket) -> Optional[socket.error]:
         """
             Check socket error
 
@@ -58,7 +61,7 @@ class ChannelChecker:
         # or buffer overflow while sending too many bytes,
         # here we should ignore this exception.
         if error.errno == socket.EAGAIN:  # error.strerror == 'Resource temporarily unavailable':
-            if not is_blocking(sock=sock):
+            if not await is_blocking(sock=sock):
                 # ignore it
                 return None
         # in blocking mode, the socket wil wait until sent/received data,
@@ -72,7 +75,7 @@ class ChannelChecker:
         return error
 
     @classmethod
-    def check_data(cls, data: Optional[bytes], sock: socket.socket) -> Optional[socket.error]:
+    async def check_data(cls, data: Optional[bytes], sock: socket.socket) -> Optional[socket.error]:
         """
             Check data received from socket
 
@@ -92,12 +95,25 @@ class ChannelChecker:
 
 class StreamChannelReader(ChannelReader):
 
+    # Override
+    async def _socket_receive(self, sock: socket.socket, max_len: int) -> Optional[bytes]:
+        if await is_closed(sock=sock):
+            raise ConnectionError('socket closed')
+        elif not await is_available(sock=sock):
+            # TODO: check 'broken pipe'
+            return None
+        elif await is_blocking(sock=sock):
+            return await super()._socket_receive(sock=sock, max_len=max_len)
+        else:
+            return await socket_receive(sock=sock, max_len=max_len)
+
     # noinspection PyMethodMayBeStatic
     async def _try_read(self, max_len: int, sock: socket.socket) -> Optional[bytes]:
         try:
-            return sock.recv(max_len)
+            # return sock.recv(max_len)
+            return await self._socket_receive(sock=sock, max_len=max_len)
         except socket.error as error:
-            error = ChannelChecker.check_error(error=error, sock=sock)
+            error = await ChannelChecker.check_error(error=error, sock=sock)
             if error is None:
                 # received nothing
                 return None
@@ -108,12 +124,12 @@ class StreamChannelReader(ChannelReader):
     # Override
     async def read(self, max_len: int) -> Optional[bytes]:
         sock = self.sock
-        if sock is None or is_closed(sock=sock):
-            raise ConnectionError('socket closed')
+        if sock is None:
+            raise ConnectionError('channel not ready')
         # 1. try to read data
         data = await self._try_read(max_len=max_len, sock=sock)
         # 2. check data
-        error = ChannelChecker.check_data(data=data, sock=sock)
+        error = await ChannelChecker.check_data(data=data, sock=sock)
         if error is not None:
             # connection lost!
             raise error
@@ -131,12 +147,25 @@ class StreamChannelReader(ChannelReader):
 
 class StreamChannelWriter(ChannelWriter):
 
+    # Override
+    async def _socket_send(self, sock: socket.socket, data: bytes) -> int:
+        if await is_closed(sock=sock):
+            raise ConnectionError('socket closed')
+        # elif not await is_vacant(sock=sock):
+        #     # TODO: check 'broken pipe'
+        #     return -1
+        elif await is_blocking(sock=sock):
+            return await super()._socket_send(sock=sock, data=data)
+        else:
+            return await socket_send(sock=sock, data=data)
+
     # noinspection PyMethodMayBeStatic
     async def _try_write(self, data: bytes, sock: socket.socket) -> int:
         try:
-            return sock.send(data)
+            # return sock.send(data)
+            return await self._socket_send(sock=sock, data=data)
         except socket.error as error:
-            error = ChannelChecker.check_error(error=error, sock=sock)
+            error = await ChannelChecker.check_error(error=error, sock=sock)
             if error is not None:
                 # connection lost?
                 raise error
@@ -148,8 +177,8 @@ class StreamChannelWriter(ChannelWriter):
         """ Return the number of bytes sent;
             this may be less than len(data) if the network is busy. """
         sock = self.sock
-        if sock is None or is_closed(sock=sock):
-            raise ConnectionError('socket closed')
+        if sock is None:
+            raise ConnectionError('channel not ready')
         # sent = sock.sendall(data)
         sent = 0
         rest = len(data)
@@ -197,3 +226,15 @@ class StreamChannel(BaseChannel):
     # Override
     def _create_writer(self):
         return StreamChannelWriter(channel=self)
+
+    # Override
+    async def _socket_bind(self, sock: socket.socket, local: SocketAddress) -> bool:
+        return await socket_bind(sock=sock, local=local)
+
+    # Override
+    async def _socket_connect(self, sock: socket.socket, remote: SocketAddress) -> bool:
+        return await socket_connect(sock=sock, remote=remote)
+
+    # Override
+    async def _socket_disconnect(self, sock: socket.socket) -> bool:
+        return await socket_disconnect(sock=sock)

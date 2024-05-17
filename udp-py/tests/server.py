@@ -6,7 +6,7 @@ import os
 from typing import Optional
 
 from startrek.types import SocketAddress
-from startrek.fsm import Runner
+from startrek.skywalker import Runner
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
@@ -18,6 +18,7 @@ from udp import Hub, ServerHub
 from udp import Arrival, PackageArrival, Departure, PackageDeparture
 
 from tests.stargate import UDPGate
+from tests.stargate import Log
 
 
 class PacketServerHub(ServerHub):
@@ -92,7 +93,7 @@ class Server(DockerDelegate):
     async def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
         remote = docker.remote_address
         local = docker.local_address
-        UDPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
+        Log.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
 
     # Override
     async def docker_received(self, ship: Arrival, docker: Docker):
@@ -102,13 +103,13 @@ class Server(DockerDelegate):
         try:
             text = data.decode('utf-8')
         except UnicodeDecodeError as error:
-            UDPGate.error(msg='failed to decode data: %s, %s' % (error, data))
+            Log.error(msg='failed to decode data: %s, %s' % (error, data))
             text = str(data)
         source = docker.remote_address
-        UDPGate.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
+        Log.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
         text = '%d# %d byte(s) received' % (self.counter, len(data))
         self.counter += 1
-        UDPGate.info('>>> responding: %s' % text)
+        Log.info('>>> responding: %s' % text)
         data = text.encode('utf-8')
         await self.send(data=data, destination=source)
 
@@ -118,15 +119,15 @@ class Server(DockerDelegate):
     async def docker_sent(self, ship: Departure, docker: Docker):
         assert isinstance(ship, PackageDeparture), 'departure ship error: %s' % ship
         size = ship.package.body.size
-        UDPGate.info('message sent: %d byte(s) to %s' % (size, docker.remote_address))
+        Log.info('message sent: %d byte(s) to %s' % (size, docker.remote_address))
 
     # Override
     async def docker_failed(self, error: IOError, ship: Departure, docker: Docker):
-        UDPGate.error('failed to sent: %s, %s' % (error, docker))
+        Log.error('failed to sent: %s, %s' % (error, docker))
 
     # Override
     async def docker_error(self, error: IOError, ship: Departure, docker: Docker):
-        UDPGate.error('connection error: %s, %s' % (error, docker))
+        Log.error('connection error: %s, %s' % (error, docker))
 
 
 SERVER_HOST = Hub.inet_address()
@@ -136,8 +137,10 @@ SERVER_PORT = 9394
 
 if __name__ == '__main__':
 
-    UDPGate.info('UDP server (%s:%d) starting ...' % (SERVER_HOST, SERVER_PORT))
+    Log.info('UDP server (%s:%d) starting ...' % (SERVER_HOST, SERVER_PORT))
 
     g_server = Server(host=SERVER_HOST, port=SERVER_PORT)
 
     Runner.sync_run(main=g_server.start())
+
+    Log.info(msg='UDP server (%s:%d) stopped.' % (SERVER_HOST, SERVER_PORT))

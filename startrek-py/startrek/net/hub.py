@@ -35,7 +35,7 @@ from typing import Optional, Iterable
 from ..types import SocketAddress
 from ..skywalker import Processor
 
-from .socket import disconnect_socket
+from .socket import socket_disconnect
 from .channel import Channel
 from .connection import Connection
 
@@ -109,5 +109,5 @@ class Hub(Processor, ABC):
             ip = sock.getsockname()[0]
         finally:
             if sock is not None:
-                disconnect_socket(sock=sock)
+                socket_disconnect(sock=sock)
         return ip
