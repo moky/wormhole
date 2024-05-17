@@ -60,18 +60,18 @@
 """
 
 from .hub import Hub
-from .channel import Channel
+from .channel import Channel, ChannelState
 from .connection import Connection
-from .delegate import ConnectionDelegate
 from .state import ConnectionState
+from .delegate import ConnectionDelegate
 
 __all__ = [
 
     'Hub',
 
-    'Channel',
+    'Channel', 'ChannelState',
 
-    'Connection',
+    'Connection', 'ConnectionState',
     'ConnectionDelegate',
-    'ConnectionState',
+
 ]

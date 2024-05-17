@@ -29,7 +29,6 @@
 # ==============================================================================
 
 import socket
-import traceback
 from abc import ABC, abstractmethod
 from enum import IntEnum
 from typing import Optional, Tuple
@@ -239,76 +238,3 @@ class Channel(ABC):
         :raise: socket.error
         """
         raise NotImplemented
-
-
-def get_local_address(sock: socket.socket) -> Optional[SocketAddress]:
-    try:
-        return sock.getsockname()
-    except socket.error:
-        # print('[NET] failed to get local address: %s' % error)
-        return None
-
-
-def get_remote_address(sock: socket.socket) -> Optional[SocketAddress]:
-    try:
-        return sock.getpeername()
-    except socket.error:
-        # print('[NET] failed to get remote address: %s' % error)
-        return None
-
-
-def is_blocking(sock: socket.socket) -> bool:
-    try:
-        return sock.getblocking()
-    except socket.error:
-        # print('[NET] failed to get blocking: %s' % error)
-        return False
-
-
-def is_connected(sock: socket.socket) -> bool:
-    return get_remote_address(sock=sock) is not None
-
-
-def is_bound(sock: socket.socket) -> bool:
-    return get_local_address(sock=sock) is not None
-
-
-def is_closed(sock: socket.socket) -> bool:
-    return getattr(sock, '_closed', False)
-
-
-def bind_socket(sock: socket.socket, local: SocketAddress) -> bool:
-    """ Bind to local address """
-    try:
-        sock.bind(local)
-        return is_bound(sock=sock)
-    except socket.error as error:
-        print('[Socket] cannot bind to: %s, socket: %s, %s' % (local, sock, error))
-        traceback.print_exc()
-        return False
-
-
-def connect_socket(sock: socket.socket, remote: SocketAddress) -> bool:
-    """ Connect to remote address """
-    try:
-        sock.connect(remote)
-        return is_connected(sock=sock)
-    except socket.error as error:
-        print('[Socket] cannot connect to: %s, socket: %s, %s' % (remote, sock, error))
-        traceback.print_exc()
-        return False
-
-
-def disconnect_socket(sock: socket.socket) -> bool:
-    """ Close socket """
-    if is_closed(sock=sock) or not is_connected(sock=sock):
-        return True
-    try:
-        # TODO: check for UDP socket
-        # sock.shutdown(socket.SHUT_RDWR)
-        sock.close()
-        return not is_connected(sock=sock)
-    except socket.error as error:
-        print('[Socket] cannot close socket: %s, %s' % (sock, error))
-        traceback.print_exc()
-        return False

@@ -36,10 +36,9 @@ from typing import Optional, Tuple
 
 from ..types import SocketAddress, AddressPairObject
 
-from ..net.channel import is_blocking, is_closed, is_connected, is_bound
-from ..net.channel import bind_socket, connect_socket, disconnect_socket
-from ..net.channel import ChannelState
-from ..net import Channel
+from ..net.socket import is_blocking, is_closed, is_connected, is_bound
+from ..net.socket import bind_socket, connect_socket, disconnect_socket
+from ..net import Channel, ChannelState
 
 
 class SocketReader(ABC):

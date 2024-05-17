@@ -28,8 +28,9 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .net import Hub, Channel
-from .net import Connection, ConnectionDelegate, ConnectionState
+from .net import Hub
+from .net import Channel, ChannelState
+from .net import Connection, ConnectionState, ConnectionDelegate
 
 from .socket import BaseChannel, ChannelReader, ChannelWriter
 from .socket import BaseHub, BaseConnection, ActiveConnection
@@ -51,8 +52,9 @@ __author__ = 'Albert Moky'
 
 __all__ = [
 
-    'Hub', 'Channel',
-    'Connection', 'ConnectionDelegate', 'ConnectionState',
+    'Hub',
+    'Channel', 'ChannelState',
+    'Connection', 'ConnectionState', 'ConnectionDelegate',
 
     'BaseChannel', 'ChannelReader', 'ChannelWriter',
     'BaseHub', 'BaseConnection', 'ActiveConnection',

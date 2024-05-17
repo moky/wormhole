@@ -38,8 +38,9 @@ from typing import Optional, Iterable
 from ..types import SocketAddress, AddressPairMap
 from ..skywalker import Runner
 
-from ..net.channel import ChannelState
-from ..net import Hub, Channel, Connection, ConnectionDelegate
+from ..net import Hub
+from ..net import Channel, ChannelState
+from ..net import Connection, ConnectionDelegate
 
 from .base_conn import BaseConnection
 
