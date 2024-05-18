@@ -178,19 +178,19 @@ class Soldier(ThreadRunner, DockerDelegate):
         super().setup()
         gate = self.gate
         gate.hub = StreamClientHub(delegate=gate)
-        Runner.async_run(coroutine=gate.start())
+        Runner.async_task(coro=gate.start())
 
     # Override
     def finish(self):
         gate = self.gate
-        Runner.async_run(coroutine=gate.stop())
+        Runner.async_task(coro=gate.stop())
         super().finish()
 
     # Override
     def process(self) -> bool:
         data = b'Hello world!' * 100
         Log.info(msg='>>> sending to %s: (%d bytes) %s...' % (self.remote_address, len(data), data[:32]))
-        Runner.async_run(coroutine=self.send(data=data))
+        Runner.async_task(coro=self.send(data=data))
         return False  # return False to have a rest
 
 

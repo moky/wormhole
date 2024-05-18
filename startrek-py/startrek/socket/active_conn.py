@@ -62,7 +62,7 @@ class ActiveConnection(BaseConnection, Runnable):
         # 1. start state machine
         await self._start_machine()
         # 2. start an async task to check channel
-        Runner.async_run(coroutine=self.run())
+        Runner.async_task(coro=self.run())
         # await self.run()
 
     # Override

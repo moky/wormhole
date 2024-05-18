@@ -65,12 +65,10 @@ class Daemon:
         """ Run the target in background thread """
         self.__force_stop()
         target = self.target
-        if target is None:
-            return False
-        thr = Thread(target=_bg_target, args=(target,), daemon=True)
-        thr.start()
-        self.__thread = thr
-        return True
+        if target is not None:
+            thr = Runner.async_thread(coro=target.run())
+            thr.start()
+            self.__thread = thr
 
     def stop(self):
         """ Stop the background thread """
@@ -100,7 +98,3 @@ class Daemon:
         except RuntimeError as error:
             print('[Daemon] failed to join thread: %s, timeout: %d' % (error, timeout))
             traceback.print_exc()
-
-
-def _bg_target(target: Runnable):
-    Runner.sync_run(main=target.run())

@@ -31,6 +31,7 @@
 import asyncio
 from abc import ABC, abstractmethod
 from threading import Thread
+from typing import Coroutine
 
 
 class Processor(ABC):
@@ -49,12 +50,12 @@ class Handler(ABC):
 
     @abstractmethod
     async def setup(self):
-        """ Prepare for Handling """
+        """ Prepare before Handling """
         raise NotImplemented
     
     @abstractmethod
     async def handle(self):
-        """ Handling run loop """
+        """ Run loop for handling """
         raise NotImplemented
 
     @abstractmethod
@@ -77,9 +78,7 @@ class Runner(Runnable, Handler, Processor, ABC):
         Runner
         ~~~~~~
 
-        @abstract methods:
-            - setup()
-            - finish()
+        @abstract method:
             - process()
     """
 
@@ -127,6 +126,16 @@ class Runner(Runnable, Handler, Processor, ABC):
             await self.finish()
 
     # Override
+    async def setup(self):
+        # TODO: override to prepare before handling
+        pass
+
+    # Override
+    async def finish(self):
+        # TODO: override to cleanup after handled
+        pass
+
+    # Override
     async def handle(self):
         while self.running:
             if await self.process():
@@ -147,27 +156,16 @@ class Runner(Runnable, Handler, Processor, ABC):
         await asyncio.sleep(seconds)
 
     @classmethod
-    def sync_run(cls, main):
+    def sync_run(cls, main: Coroutine):
         """ Run main coroutine until complete """
-        asyncio.run(main)
+        return asyncio.run(main)
 
     @classmethod
-    def async_run(cls, coroutine) -> asyncio.Task:
+    def async_task(cls, coro: Coroutine) -> asyncio.Task:
         """ Create an async task to run the coroutine """
-        return asyncio.create_task(coroutine)
+        return asyncio.create_task(coro)
 
     @classmethod
-    def thread_run(cls, runner) -> Thread:
-        """ Run target in a daemon thread """
-        thr = Thread(target=_bg_runner, args=(runner,), daemon=True)
-        thr.start()
-        return thr
-
-
-def _bg_runner(runner: Runner):
-    Runner.sync_run(main=_bg_start(runner=runner))
-
-
-async def _bg_start(runner: Runner):
-    await runner.start()
-    await runner.run()
+    def async_thread(cls, coro: Coroutine) -> Thread:
+        """ Create a daemon thread to run the coroutine """
+        return Thread(target=cls.sync_run, args=(coro,), daemon=True)

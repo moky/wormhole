@@ -68,10 +68,6 @@ class Metronome(Runner):
         self.__last_time = time.time()
 
     # Override
-    async def finish(self):
-        pass
-
-    # Override
     async def process(self) -> bool:
         tickers = self.tickers
         if len(tickers) == 0:
@@ -143,11 +139,24 @@ class PrimeMetronome:
     def __init__(self):
         super().__init__()
         metronome = Metronome(interval=Runner.INTERVAL_SLOW)
-        Runner.thread_run(runner=metronome)
         self.__metronome = metronome
+        start_runner(runner=metronome)
 
     def add_ticker(self, ticker: Ticker):
-        self.__metronome.add_ticker(ticker=ticker)
+        metronome = self.__metronome
+        metronome.add_ticker(ticker=ticker)
 
     def remove_ticker(self, ticker: Ticker):
-        self.__metronome.remove_ticker(ticker=ticker)
+        metronome = self.__metronome
+        metronome.remove_ticker(ticker=ticker)
+
+
+def start_runner(runner: Runner) -> threading.Thread:
+    thr = Runner.async_thread(coro=_bg_runner(runner=runner))
+    thr.start()
+    return thr
+
+
+async def _bg_runner(runner: Runner):
+    await runner.start()
+    await runner.run()
