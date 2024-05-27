@@ -31,6 +31,9 @@
 from .path import Path
 from .file import File, TextFile, JSONFile
 
+from .redis import RedisConnector
+from .redis_cache import RedisCache
+
 name = "AIOU"
 
 __author__ = 'Albert Moky'
@@ -38,9 +41,8 @@ __author__ = 'Albert Moky'
 __all__ = [
 
     'Path',
+    'File', 'TextFile', 'JSONFile',
 
-    'File',
-    'TextFile',
-    'JSONFile',
+    'RedisConnector', 'RedisCache',
 
 ]
