@@ -28,14 +28,14 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Tuple, List, Dict
+from typing import Optional, Iterable, Tuple, List, Dict
 
 from aioredis import Redis
 
 from .redis import RedisConnector
 
 
-class RedisCache:
+class RedisClient:
     """ Redis Wrapper """
 
     def __init__(self, connector: RedisConnector = None):
@@ -44,6 +44,7 @@ class RedisCache:
 
     @property  # protected
     def connector(self) -> Optional[RedisConnector]:
+        """ connection pool """
         return self.__connector
 
     @property  # protected
@@ -128,12 +129,13 @@ class RedisCache:
             return None
         return await redis.hgetall(name=name)
 
-    async def hkeys(self, name: str) -> List[str]:
+    async def hkeys(self, name: str) -> Iterable[str]:
         """ Return the list of keys within hash name """
         redis = self.redis
         if redis is None:
             return []
-        return await redis.hkeys(name=name)
+        keys = await redis.hkeys(name=name)
+        return [] if keys is None else keys
 
     async def hdel(self, name: str, key: str):
         """ Delete value from hash table with name & key """
@@ -170,12 +172,13 @@ class RedisCache:
         await redis.srem(name, *values)
         return True
 
-    async def smembers(self, name: str) -> List[bytes]:
+    async def smembers(self, name: str) -> Iterable[bytes]:
         """ Get all items of the hash set with name """
         redis = self.redis
         if redis is None:
-            return []
-        return await redis.smembers(name=name)
+            return set()
+        members = await redis.smembers(name=name)
+        return set() if members is None else members
 
     #
     #   Ordered Set
@@ -210,7 +213,8 @@ class RedisCache:
         redis = self.redis
         if redis is None:
             return []
-        return await redis.zrange(name=name, start=start, end=end, desc=desc)
+        items = await redis.zrange(name=name, start=start, end=end, desc=desc)
+        return [] if items is None else items
 
     async def zcard(self, name: str) -> int:
         """ Get length of the ordered set with name """

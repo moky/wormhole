@@ -99,16 +99,11 @@ def create_redis_pool(username: Optional[str], password: Optional[str],
 
 def build_redis_url(username: Optional[str], password: Optional[str],
                     host: str, port: int, db: int) -> str:
-    # username + password
-    if username is None and password is None:
-        up = None
-    elif username is None:
-        up = ':%s' % password
-    elif password is None:
-        up = username
-    else:
-        up = '%s:%s' % (username, password)
     # redis://[[username]:[password]]@localhost:6379/0
-    if up is None:
+    if password is not None:
+        assert username is not None, 'Redis params error: "%s" (%s:%d)' % (password, host, port)
+        return 'redis://%s:%s@%s:%d/%d' % (username, password, host, port, db)
+    elif username is not None:
+        return 'redis://%s@%s:%d/%d' % (username, host, port, db)
+    else:
         return 'redis://%s:%d/%d' % (host, port, db)
-    return 'redis://%s@%s:%d/%d' % (up, host, port, db)

@@ -28,11 +28,16 @@
 # SOFTWARE.
 # ==============================================================================
 
+from aioredis import Redis
+
 from .path import Path
 from .file import File, TextFile, JSONFile
 
 from .redis import RedisConnector
-from .redis_cache import RedisCache
+from .redisc import RedisClient
+
+from .cache import CacheHolder, CachePool, CacheManager
+
 
 name = "AIOU"
 
@@ -43,6 +48,9 @@ __all__ = [
     'Path',
     'File', 'TextFile', 'JSONFile',
 
-    'RedisConnector', 'RedisCache',
+    'Redis',
+    'RedisConnector', 'RedisClient',
+
+    'CacheHolder', 'CachePool', 'CacheManager',
 
 ]
