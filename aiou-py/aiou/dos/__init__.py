@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   AIOU: Async I/O Utils
+#   Async File System
 #
 #                                Written in 2024 by Moky <albert.moky@gmail.com>
 #
@@ -28,25 +28,14 @@
 # SOFTWARE.
 # ==============================================================================
 
-from aioredis import Redis
-
-from .dos import Path
-from .dos import File, TextFile, JSONFile
-
-from .redis import RedisConnector, RedisClient
-
-
-name = "AIOU"
-
-__author__ = 'Albert Moky'
+from .path import Path
+from .file import File, TextFile, JSONFile
 
 
 __all__ = [
 
     'Path',
-    'File', 'TextFile', 'JSONFile',
 
-    'Redis',
-    'RedisConnector', 'RedisClient',
+    'File', 'TextFile', 'JSONFile',
 
 ]

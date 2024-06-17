@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   AIOU: Async I/O Utils
+#   Async File System
 #
 #                                Written in 2024 by Moky <albert.moky@gmail.com>
 #
@@ -75,7 +75,7 @@ class File:
                 return True
 
     async def append(self, data: bytes) -> bool:
-        if not Path.exists(path=self.__path):
+        if not await Path.exists(path=self.__path):
             # new file
             return await self.write(data)
         # append

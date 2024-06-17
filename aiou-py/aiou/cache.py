@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   AIOU: Async I/O Utils
+#   Memory Cache
 #
 #                                Written in 2024 by Moky <albert.moky@gmail.com>
 #

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   AIOU: Async I/O Utils
+#   Async Redis
 #
 #                                Written in 2024 by Moky <albert.moky@gmail.com>
 #
@@ -32,7 +32,7 @@ from typing import Optional, Iterable, Tuple, List, Dict
 
 from aioredis import Redis
 
-from .redis import RedisConnector
+from .connector import RedisConnector
 
 
 class RedisClient:
