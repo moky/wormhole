@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   AIOU: Async I/O Utils
+#   Async HTTP
 #
 #                                Written in 2024 by Moky <albert.moky@gmail.com>
 #
@@ -28,33 +28,17 @@
 # SOFTWARE.
 # ==============================================================================
 
-from aioredis import Redis
-
-from .dos import Path
-from .dos import File, TextFile, JSONFile
-
-from .redis import RedisConnector, RedisClient
-
-from .http import HttpResponse
-from .http import HttpSession
-from .http import HttpClient, CachedClient
-
-
-name = "AIOU"
-
-__author__ = 'Albert Moky'
+from .session import HttpResponse
+from .session import HttpSession
+from .client import HttpClient
+from .client import CachedClient
 
 
 __all__ = [
 
-    'Path',
-    'File', 'TextFile', 'JSONFile',
-
-    'Redis',
-    'RedisConnector', 'RedisClient',
-
     'HttpResponse',
     'HttpSession',
-    'HttpClient', 'CachedClient',
+    'HttpClient',
+    'CachedClient',
 
 ]
