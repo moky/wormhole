@@ -38,7 +38,7 @@ from .connector import RedisConnector
 class RedisClient:
     """ Redis Wrapper """
 
-    def __init__(self, connector: RedisConnector = None):
+    def __init__(self, connector: Optional[RedisConnector]):
         super().__init__()
         self.__connector = connector
 

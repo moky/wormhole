@@ -28,6 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
+import threading
 from typing import Optional, Dict
 
 from aioredis import Redis, ConnectionPool
@@ -38,24 +39,10 @@ class RedisConnector:
 
     def __init__(self, host: str = 'localhost', port: int = 6379, username: str = None, password: str = None):
         super().__init__()
-        self.__host = host
-        self.__port = port
+        self.__host = 'localhost' if host is None else host
+        self.__port = 6379 if port is None else port
         self.__username = username
         self.__password = password
-        # pools
-        self.__dbs: Dict[int, Redis] = {
-            # 0 - default
-            # 1
-            # 2
-            # 3
-            # 4
-            # 5
-            # 6
-            # 7
-            # 8
-            # 9
-            # ...
-        }
 
     @property
     def host(self) -> str:
@@ -74,12 +61,29 @@ class RedisConnector:
         return self.__password
 
     def get_redis(self, db: int) -> Redis:
-        redis = self.__dbs.get(db)
+        if not hasattr(local_data, 'aiou_redis_pool'):
+            local_data.aiou_redis_pool: Dict[int, Redis] = {
+                # 0 - default
+                # 1
+                # 2
+                # 3
+                # 4
+                # 5
+                # 6
+                # 7
+                # 8
+                # 9
+                # ...
+            }
+        redis = local_data.aiou_redis_pool.get(db)
         if redis is None:
             redis = create_redis(username=self.username, password=self.password,
                                  host=self.host, port=self.port, db=db)
-            self.__dbs[db] = redis
+            local_data.aiou_redis_pool[db] = redis
         return redis
+
+
+local_data = threading.local()
 
 
 #

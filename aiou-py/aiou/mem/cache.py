@@ -114,6 +114,8 @@ class CachePool(Generic[K, V]):
     def update(self, key: K, holder: CacheHolder[V] = None,
                value: V = None, life_span: float = 3600, now: float = None) -> CacheHolder[V]:
         """ update: key -> holder(value) """
+        if life_span is None:
+            life_span = 3600
         if holder is None:
             holder = CacheHolder(value=value, life_span=life_span, now=now)
         self.__holders[key] = holder

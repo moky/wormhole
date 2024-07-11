@@ -98,6 +98,8 @@ class TextFile:
         return self.__file.path
 
     async def read(self, encoding: str = 'utf-8') -> Optional[str]:
+        if encoding is None or len(encoding) == 0:
+            encoding = 'utf-8'
         if self.__text is not None:
             # get data from cache
             return self.__text
@@ -115,6 +117,8 @@ class TextFile:
         return text
 
     async def write(self, text: str, encoding: str = 'utf-8') -> bool:
+        if encoding is None or len(encoding) == 0:
+            encoding = 'utf-8'
         # 1. encode text string
         data = text.encode(encoding)
         if data is None:
@@ -129,6 +133,8 @@ class TextFile:
             self.__text = None
 
     async def append(self, text: str, encoding: str = 'utf-8') -> bool:
+        if encoding is None or len(encoding) == 0:
+            encoding = 'utf-8'
         self.__text = None
         data = text.encode(encoding)
         return await self.__file.append(data)
