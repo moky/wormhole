@@ -28,11 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
-from aioredis import Redis
-
 from .dos import Path
 from .dos import File, TextFile, JSONFile
 
+from .redis import Redis
 from .redis import RedisConnector, RedisClient
 
 from .http import HttpResponse
@@ -58,46 +57,3 @@ __all__ = [
     'HttpClient', 'CachedClient',
 
 ]
-
-
-"""
-    Patch 1
-    ~~~~~~~
-    TypeError: Instance and class checks can only be used with @runtime_checkable protocols
-    
-    
-    python3.7/site-packages/aioredis/connection.py:572
-    
-        ConnectCallbackProtocol._is_runtime_protocol = True
-        AsyncConnectCallbackProtocol._is_runtime_protocol = True
-   
-   
-    python3.7/site-packages/aioredis/client.py:638
-    
-        ResponseCallbackProtocol._is_runtime_protocol = True
-        AsyncResponseCallbackProtocol._is_runtime_protocol = True
-
-
-    python3.7/site-packages/aioredis/client.py:4301
-
-        PubsubWorkerExceptionHandler._is_runtime_protocol = True
-        AsyncPubsubWorkerExceptionHandler._is_runtime_protocol = True
-
-"""
-
-"""
-    Patch 2
-    ~~~~~~~
-    TypeError: Plain typing.NoReturn is not valid as type argument
-    
-    
-    python3.7/site-packages/aioredis/lock.py:6
-    
-        NoReturn = None
-        
-        
-    python3.7/site-packages/aioredis/client.py:30
-    
-        NoReturn = None
-    
-"""

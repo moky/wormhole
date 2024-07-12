@@ -30,9 +30,50 @@
 
 from typing import Optional, Iterable, Tuple, List, Dict
 
-from aioredis import Redis
+from redis import Redis
 
-from .connector import RedisConnector
+
+class RedisConnector:
+    """ Connection Pool for Redis """
+
+    def __init__(self, host: str = 'localhost', port: int = 6379, username: str = None, password: str = None):
+        super().__init__()
+        self.__host = 'localhost' if host is None else host
+        self.__port = 6379 if port is None else port
+        self.__username = username
+        self.__password = password
+        # connection pool
+        self.__dbs: Dict[int, Redis] = {}
+
+    @property
+    def host(self) -> str:
+        return self.__host
+
+    @property
+    def port(self) -> int:
+        return self.__port
+
+    @property
+    def username(self) -> Optional[str]:
+        return self.__username
+
+    @property
+    def password(self) -> Optional[str]:
+        return self.__password
+
+    def connect(self, db: int) -> Optional[Redis]:
+        if db < 0:  # or db > 16:
+            return None
+        redis = self.__dbs.get(db)
+        if redis is None:
+            self.__dbs[db] = redis = self._create_redis(db=db)
+        return redis
+
+    def _create_redis(self, db: int) -> Redis:
+        return Redis(host=self.host, port=self.port,
+                     username=self.username, password=self.password,
+                     db=db,
+                     encoding='utf-8', decode_responses=False)
 
 
 class RedisClient:
@@ -52,7 +93,7 @@ class RedisClient:
         """ override to get redis by db/table name """
         connector = self.connector
         if connector is not None:
-            return connector.get_redis(db=0)
+            return connector.connect(db=0)
 
     #
     #   Key -> Value
@@ -63,7 +104,7 @@ class RedisClient:
         redis = self.redis
         if redis is None:
             return False
-        await redis.set(name=name, value=value, ex=expires)
+        redis.set(name=name, value=value, ex=expires)
         return True
 
     async def get(self, name: str) -> Optional[bytes]:
@@ -71,21 +112,21 @@ class RedisClient:
         redis = self.redis
         if redis is None:
             return None
-        return await redis.get(name=name)
+        return redis.get(name=name)
 
     async def exists(self, *names) -> bool:
         """ Check whether value exists with name """
         redis = self.redis
         if redis is None:
             return False
-        return await redis.exists(*names)
+        return redis.exists(*names)
 
     async def delete(self, *names):
         """ Remove value with name """
         redis = self.redis
         if redis is None:
             return False
-        await redis.delete(*names)
+        redis.delete(*names)
         return True
 
     async def expire(self, name: str, time: int) -> bool:
@@ -93,7 +134,7 @@ class RedisClient:
         redis = self.redis
         if redis is None:
             return False
-        await redis.expire(name=name, time=time)
+        redis.expire(name=name, time=time)
         return True
 
     async def scan(self, cursor: int, match: str, count: int) -> Tuple[int, Optional[List[bytes]]]:
@@ -101,7 +142,7 @@ class RedisClient:
         redis = self.redis
         if redis is None:
             return 0, None
-        return await redis.scan(cursor=cursor, match=match, count=count)
+        return redis.scan(cursor=cursor, match=match, count=count)
 
     #
     #   Hash Mapping
@@ -112,7 +153,7 @@ class RedisClient:
         redis = self.redis
         if redis is None:
             return False
-        await redis.hset(name=name, key=key, value=value)
+        redis.hset(name=name, key=key, value=value)
         return True
 
     async def hget(self, name: str, key: str) -> Optional[bytes]:
@@ -120,21 +161,21 @@ class RedisClient:
         redis = self.redis
         if redis is None:
             return None
-        return await redis.hget(name=name, key=key)
+        return redis.hget(name=name, key=key)
 
     async def hgetall(self, name: str) -> Optional[Dict[bytes, bytes]]:
         """ Get all items from the hash table with name """
         redis = self.redis
         if redis is None:
             return None
-        return await redis.hgetall(name=name)
+        return redis.hgetall(name=name)
 
     async def hkeys(self, name: str) -> Iterable[str]:
         """ Return the list of keys within hash name """
         redis = self.redis
         if redis is None:
             return []
-        keys = await redis.hkeys(name=name)
+        keys = redis.hkeys(name=name)
         return [] if keys is None else keys
 
     async def hdel(self, name: str, key: str):
@@ -142,7 +183,7 @@ class RedisClient:
         redis = self.redis
         if redis is None:
             return False
-        await redis.hdel(name, key)
+        redis.hdel(name, key)
         return True
 
     #
@@ -154,7 +195,7 @@ class RedisClient:
         redis = self.redis
         if redis is None:
             return False
-        await redis.sadd(name, *values)
+        redis.sadd(name, *values)
         return True
 
     async def spop(self, name: str, count: Optional[int] = None):
@@ -162,14 +203,14 @@ class RedisClient:
         redis = self.redis
         if redis is None:
             return None
-        return await redis.spop(name=name, count=count)
+        return redis.spop(name=name, count=count)
 
     async def srem(self, name: str, *values):
         """ Remove values from the hash set with name """
         redis = self.redis
         if redis is None:
             return False
-        await redis.srem(name, *values)
+        redis.srem(name, *values)
         return True
 
     async def smembers(self, name: str) -> Iterable[bytes]:
@@ -177,7 +218,7 @@ class RedisClient:
         redis = self.redis
         if redis is None:
             return set()
-        members = await redis.smembers(name=name)
+        members = redis.smembers(name=name)
         return set() if members is None else members
 
     #
@@ -189,7 +230,7 @@ class RedisClient:
         redis = self.redis
         if redis is None:
             return False
-        await redis.zadd(name=name, mapping=mapping)
+        redis.zadd(name=name, mapping=mapping)
         return True
 
     async def zrem(self, name: str, *values):
@@ -197,7 +238,7 @@ class RedisClient:
         redis = self.redis
         if redis is None:
             return False
-        await redis.zrem(name, *values)
+        redis.zrem(name, *values)
         return True
 
     async def zremrangebyscore(self, name: str, min_score: int, max_score: int):
@@ -205,7 +246,7 @@ class RedisClient:
         redis = self.redis
         if redis is None:
             return False
-        await redis.zremrangebyscore(name=name, min=min_score, max=max_score)
+        redis.zremrangebyscore(name=name, min=min_score, max=max_score)
         return True
 
     async def zrange(self, name: str, start: int = 0, end: int = -1, desc: bool = False) -> List[bytes]:
@@ -213,7 +254,7 @@ class RedisClient:
         redis = self.redis
         if redis is None:
             return []
-        items = await redis.zrange(name=name, start=start, end=end, desc=desc)
+        items = redis.zrange(name=name, start=start, end=end, desc=desc)
         return [] if items is None else items
 
     async def zcard(self, name: str) -> int:
@@ -221,4 +262,4 @@ class RedisClient:
         redis = self.redis
         if redis is None:
             return 0
-        return await redis.zcard(name=name)
+        return redis.zcard(name=name)

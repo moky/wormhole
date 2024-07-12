@@ -12,7 +12,7 @@ import io
 
 from setuptools import setup, find_packages
 
-__version__ = '0.2.2'
+__version__ = '0.3.0'
 __author__ = 'Albert Moky'
 __contact__ = 'albert.moky@gmail.com'
 
@@ -36,12 +36,10 @@ setup(
         'Operating System :: OS Independent',
     ],
     install_requires=[
-        'aiofiles',  # 23.2.1
 
-        # 'hiredis',            # 2.3.2
-        # 'async-timeout',      # 4.0.2
-        # 'typing-extensions',  # 4.4.0
-        'aioredis',             # 2.0.1
+        'aiofiles',         # 23.2.1
+
+        'redis',            # 3.5.3
 
         # 'async-timeout',  # 4.0.2
         # 'attrs',          # 23.2.0
@@ -49,5 +47,6 @@ setup(
         'yarl',             # 1.9.4
         # 'frozenlist',     # 1.3.3
         'aiohttp',          # 3.8.6
+
     ]
 )

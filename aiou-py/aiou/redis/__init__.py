@@ -28,11 +28,14 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .connector import RedisConnector
+from .client import Redis
+from .client import RedisConnector
 from .client import RedisClient
 
 
 __all__ = [
+
+    'Redis',
 
     'RedisConnector',
     'RedisClient',
