@@ -484,11 +484,13 @@ class ErrorDefaultTransition(StateTransition):
         conn = ctx.connection
         if conn is None or not conn.alive:
             return False
-        assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
-        # connection still alive, and
-        # can receive data during this state
-        current = ctx.current_state
-        assert isinstance(current, ConnectionState), 'connection state error: %s' % current
-        enter = current.enter_time
-        assert enter > 0, 'should not happen'
-        return enter < conn.last_received_time
+        else:
+            return True
+        # assert isinstance(conn, TimedConnection), 'connection error: %s' % conn
+        # # connection still alive, and
+        # # can receive data during this state
+        # current = ctx.current_state
+        # assert isinstance(current, ConnectionState), 'connection state error: %s' % current
+        # enter = current.enter_time
+        # assert enter > 0, 'should not happen'
+        # return enter < conn.last_received_time

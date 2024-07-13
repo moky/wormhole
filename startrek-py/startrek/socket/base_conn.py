@@ -316,6 +316,10 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         delegate = self.delegate
         if delegate is not None:
             await delegate.connection_state_changed(previous=state, current=current, connection=self)
+        # if current == 'error'
+        if index == StateOrder.ERROR:
+            # remove channel when error
+            await self._set_channel(channel=None)
 
     # Override
     async def pause_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: float):

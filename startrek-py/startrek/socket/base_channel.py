@@ -101,14 +101,14 @@ class Controller:
     async def _socket_receive(self, sock: socket.socket, max_len: int) -> Optional[bytes]:
         # TODO: override for async receiving
         # return sock.recv(max_len)
-        return socket_receive(sock=sock, max_len=max_len)
+        return await socket_receive(sock=sock, max_len=max_len)
 
     # noinspection PyMethodMayBeStatic
     async def _socket_send(self, sock: socket.socket, data: bytes) -> int:
         # TODO: override for async sending
         # return sock.send(data)
         # return sock.sendall(data)
-        return socket_send(sock=sock, data=data)
+        return await socket_send(sock=sock, data=data)
 
 
 # noinspection PyAbstractClass
@@ -297,17 +297,17 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     # noinspection PyMethodMayBeStatic
     async def _socket_bind(self, sock: socket.socket, local: SocketAddress) -> bool:
         # TODO: override for async binding
-        return socket_bind(sock=sock, local=local)
+        return await socket_bind(sock=sock, local=local)
 
     # noinspection PyMethodMayBeStatic
     async def _socket_connect(self, sock: socket.socket, remote: SocketAddress) -> bool:
         # TODO: override for async connecting
-        return socket_connect(sock=sock, remote=remote)
+        return await socket_connect(sock=sock, remote=remote)
 
     # noinspection PyMethodMayBeStatic
     async def _socket_disconnect(self, sock: socket.socket) -> bool:
         # TODO: override for async disconnecting
-        return socket_disconnect(sock=sock)
+        return await socket_disconnect(sock=sock)
 
     # Override
     async def bind(self, address: Optional[SocketAddress] = None,

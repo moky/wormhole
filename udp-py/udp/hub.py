@@ -33,7 +33,6 @@ from abc import ABC
 from typing import Optional, Iterable
 
 from startrek.types import SocketAddress, AddressPairMap
-from startrek.skywalker import Runner
 from startrek import Channel, BaseChannel
 from startrek import Connection, ConnectionDelegate
 from startrek import BaseConnection, ActiveConnection
@@ -88,24 +87,23 @@ class ChannelPool(AddressPairMap[Channel]):
     # Override
     def set(self, item: Optional[Channel],
             remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
-        # 1. remove cached item
+        # remove cached item first
         cached = super().remove(item=item, remote=remote, local=local)
-        if cached is not None and cached is not item:
-            Runner.async_task(coro=cached.close())
-        # 2. set new item
+        # if cached is not None and cached is not item:
+        #     Runner.async_task(coro=cached.close())
         old = super().set(item=item, remote=remote, local=local)
         assert old is None, 'should not happen: %s' % old
         return cached
 
-    # Override
-    def remove(self, item: Optional[Channel],
-               remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
-        cached = super().remove(item=item, remote=remote, local=local)
-        if cached is not None and cached is not item:
-            Runner.async_task(coro=cached.close())
-        if item is not None:
-            Runner.async_task(coro=item.close())
-        return cached
+    # # Override
+    # def remove(self, item: Optional[Channel],
+    #            remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+    #     cached = super().remove(item=item, remote=remote, local=local)
+    #     if cached is not None and cached is not item:
+    #         Runner.async_task(coro=cached.close())
+    #     if item is not None:
+    #         Runner.async_task(coro=item.close())
+    #     return cached
 
 
 # noinspection PyAbstractClass
@@ -129,7 +127,9 @@ class PacketHub(BaseHub, ABC):
             channel = self._create_channel(remote=None, local=address)
             assert isinstance(channel, BaseChannel), 'channel error: %s, %s' % (address, channel)
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+            # sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
             sock.setblocking(True)
             sock.bind(address)
             sock.setblocking(False)

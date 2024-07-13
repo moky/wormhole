@@ -29,82 +29,18 @@
 # ==============================================================================
 
 import asyncio
-import select
 import socket
 import traceback
 from typing import Optional
 
 from startrek.types import SocketAddress
+from startrek.net.socket import is_blocking, is_bound, is_connected, is_closed
 
 
 """
     Async Socket I/O
     ~~~~~~~~~~~~~~~~
 """
-
-
-async def get_local_address(sock: socket.socket) -> Optional[SocketAddress]:
-    try:
-        # TODO: async api
-        return sock.getsockname()
-    except socket.error:
-        # print('[NET] failed to get local address: %s' % error)
-        return None
-
-
-async def get_remote_address(sock: socket.socket) -> Optional[SocketAddress]:
-    try:
-        # TODO: async api
-        return sock.getpeername()
-    except socket.error:
-        # print('[NET] failed to get remote address: %s' % error)
-        return None
-
-
-#
-#   Flags
-#
-
-
-async def is_blocking(sock: socket.socket) -> bool:
-    try:
-        # TODO: async api
-        return sock.getblocking()
-    except socket.error:
-        # print('[NET] failed to get blocking: %s' % error)
-        return False
-
-
-async def is_bound(sock: socket.socket) -> bool:
-    local = await get_local_address(sock=sock)
-    return local is not None
-
-
-async def is_connected(sock: socket.socket) -> bool:
-    remote = await get_remote_address(sock=sock)
-    return remote is not None
-
-
-async def is_closed(sock: socket.socket) -> bool:
-    # TODO: async api
-    return getattr(sock, '_closed', False)
-
-
-async def is_available(sock: socket.socket) -> bool:
-    """ Ready for reading """
-    ready, _, _ = select.select([sock], [], [], 0)
-    return sock in ready
-
-
-async def is_vacant(sock: socket.socket) -> bool:
-    """ Ready for writing """
-    _, ready, _ = select.select([], [sock], [], 0)
-    return sock in ready
-
-
-#
-#   Flags
-#
 
 
 async def socket_send(sock: socket.socket, data: bytes) -> int:
@@ -127,7 +63,7 @@ async def socket_bind(sock: socket.socket, local: SocketAddress) -> bool:
     try:
         # TODO: async api
         sock.bind(local)
-        return await is_bound(sock=sock)
+        return is_bound(sock=sock)
     except socket.error as error:
         print('[Socket] cannot bind to: %s, socket: %s, %s' % (local, sock, error))
         traceback.print_exc()
@@ -137,12 +73,12 @@ async def socket_bind(sock: socket.socket, local: SocketAddress) -> bool:
 async def socket_connect(sock: socket.socket, remote: SocketAddress) -> bool:
     """ Connect to remote address """
     try:
-        if await is_blocking(sock=sock):
+        if is_blocking(sock=sock):
             sock.connect(remote)
         else:
             loop = asyncio.get_event_loop()
             await loop.sock_connect(sock, remote)
-        return await is_connected(sock=sock)
+        return is_connected(sock=sock)
     except socket.error as error:
         print('[Socket] cannot connect to: %s, socket: %s, %s' % (remote, sock, error))
         traceback.print_exc()
@@ -151,14 +87,14 @@ async def socket_connect(sock: socket.socket, remote: SocketAddress) -> bool:
 
 async def socket_disconnect(sock: socket.socket) -> bool:
     """ Close socket """
-    if await is_closed(sock=sock) or not await is_connected(sock=sock):
+    if is_closed(sock=sock) or not is_connected(sock=sock):
         return True
     try:
         # TODO: check for UDP socket
         # sock.shutdown(socket.SHUT_RDWR)
         # TODO: async api
         sock.close()
-        return not await is_connected(sock=sock)
+        return not is_connected(sock=sock)
     except socket.error as error:
         print('[Socket] cannot close socket: %s, %s' % (sock, error))
         traceback.print_exc()

@@ -36,7 +36,6 @@ from abc import ABC, abstractmethod
 from typing import Optional, Iterable
 
 from ..types import SocketAddress, AddressPairMap
-from ..skywalker import Runner
 
 from ..net import Hub
 from ..net import Channel, ChannelState
@@ -50,24 +49,23 @@ class ConnectionPool(AddressPairMap[Connection]):
     # Override
     def set(self, item: Optional[Connection],
             remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Connection]:
-        # 1. remove cached item
+        # remove cached item first
         cached = super().remove(item=item, remote=remote, local=local)
-        if cached is not None and cached is not item:
-            Runner.async_task(coro=cached.close())
-        # 2. set new item
+        # if cached is not None and cached is not item:
+        #     Runner.async_task(coro=cached.close())
         old = super().set(item=item, remote=remote, local=local)
         assert old is None, 'should not happen: %s' % old
         return cached
 
-    # Override
-    def remove(self, item: Optional[Connection],
-               remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Connection]:
-        cached = super().remove(item=item, remote=remote, local=local)
-        if cached is not None and cached is not item:
-            Runner.async_task(coro=cached.close())
-        if item is not None:
-            Runner.async_task(coro=item.close())
-        return cached
+    # # Override
+    # def remove(self, item: Optional[Connection],
+    #            remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Connection]:
+    #     cached = super().remove(item=item, remote=remote, local=local)
+    #     if cached is not None and cached is not item:
+    #         Runner.async_task(coro=cached.close())
+    #     if item is not None:
+    #         Runner.async_task(coro=item.close())
+    #     return cached
 
 
 class BaseHub(Hub, ABC):
@@ -165,7 +163,9 @@ class BaseHub(Hub, ABC):
             if old is None:
                 # create & cache connection
                 conn = self._create_connection(remote=remote, local=local)
-                self._set_connection(conn, remote=remote, local=local)
+                cached = self._set_connection(conn, remote=remote, local=local)
+                if cached is not None and cached is not conn:
+                    await cached.close()
             else:
                 conn = old
         if old is None:
@@ -205,6 +205,7 @@ class BaseHub(Hub, ABC):
                 self._remove_channel(channel=channel, remote=remote, local=local)
                 if conn is not None:
                     await delegate.connection_error(error=error, connection=conn)
+            await channel.close()
             return False
         if remote is None or data is None or len(data) == 0:
             # received nothing

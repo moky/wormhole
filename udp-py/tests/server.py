@@ -46,8 +46,8 @@ class PacketServerHub(ServerHub):
 
     # Override
     def _set_connection(self, connection: Connection,
-                        remote: SocketAddress, local: Optional[SocketAddress]):
-        super()._set_connection(connection=connection, remote=remote, local=None)
+                        remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
+        return super()._set_connection(connection=connection, remote=remote, local=None)
 
     # Override
     def _remove_connection(self, connection: Optional[Connection],

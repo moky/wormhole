@@ -109,5 +109,5 @@ class Hub(Processor, ABC):
             ip = sock.getsockname()[0]
         finally:
             if sock is not None:
-                socket_disconnect(sock=sock)
+                sock.close()
         return ip

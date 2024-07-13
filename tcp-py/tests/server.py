@@ -48,8 +48,8 @@ class StreamServerHub(ServerHub):
 
     # Override
     def _set_connection(self, connection: Connection,
-                        remote: SocketAddress, local: Optional[SocketAddress]):
-        super()._set_connection(connection=connection, remote=remote, local=None)
+                        remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
+        return super()._set_connection(connection=connection, remote=remote, local=None)
 
     # Override
     def _remove_connection(self, connection: Optional[Connection],
@@ -160,7 +160,7 @@ async def test_receive(address: SocketAddress):
             size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
             Log.info(msg=' receive buffer size1: %d' % size)
             total = 0
-            while not await is_closed(sock=sock):
+            while not is_closed(sock=sock):
                 data = sock.recv(1024)
                 cnt = len(data)
                 if cnt > 0:

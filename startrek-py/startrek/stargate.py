@@ -36,7 +36,6 @@ from abc import ABC, abstractmethod
 from typing import Optional, List, Iterable, Union
 
 from .types import SocketAddress, AddressPairMap
-from .skywalker import Runner
 
 from .net import Connection, ConnectionDelegate, ConnectionState
 from .net.state import StateOrder
@@ -52,24 +51,23 @@ class DockerPool(AddressPairMap[Docker]):
     # Override
     def set(self, item: Optional[Docker],
             remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Docker]:
-        # 1. remove cached item
+        # remove cached item first
         cached = super().remove(item=item, remote=remote, local=local)
-        if cached is not None and cached is not item:
-            Runner.async_task(coro=cached.close())
-        # 2. set new item
+        # if cached is not None and cached is not item:
+        #     Runner.async_task(coro=cached.close())
         old = super().set(item=item, remote=remote, local=local)
         assert old is None, 'should not happen: %s' % old
         return cached
 
-    # Override
-    def remove(self, item: Optional[Docker],
-               remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Docker]:
-        cached = super().remove(item=item, remote=remote, local=local)
-        if cached is not None and cached is not item:
-            Runner.async_task(coro=cached.close())
-        if item is not None:
-            Runner.async_task(coro=item.close())
-        return cached
+    # # Override
+    # def remove(self, item: Optional[Docker],
+    #            remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Docker]:
+    #     cached = super().remove(item=item, remote=remote, local=local)
+    #     if cached is not None and cached is not item:
+    #         Runner.async_task(coro=cached.close())
+    #     if item is not None:
+    #         Runner.async_task(coro=item.close())
+    #     return cached
 
 
 class StarGate(Gate, ConnectionDelegate, ABC):
@@ -217,7 +215,9 @@ class StarGate(Gate, ConnectionDelegate, ABC):
                         return
                     # create & cache docker
                     worker = self._create_docker([], remote=remote, local=local)
-                    self._set_docker(worker, remote=remote, local=local)
+                    cached = self._set_docker(worker, remote=remote, local=local)
+                    if cached is not None and cached is not worker:
+                        await cached.close()
                 else:
                     worker = old
             if old is None:
@@ -248,7 +248,9 @@ class StarGate(Gate, ConnectionDelegate, ABC):
                 assert party is not None and len(party) > 0, 'advance party error'
                 # create & cache docker
                 worker = self._create_docker(party, remote=remote, local=local)
-                self._set_docker(worker, remote=remote, local=local)
+                cached = self._set_docker(worker, remote=remote, local=local)
+                if cached is not None and cached is not worker:
+                    await cached.close()
             else:
                 party = []
                 worker = old

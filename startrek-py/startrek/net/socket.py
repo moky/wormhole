@@ -36,12 +36,6 @@ from typing import Optional
 from ..types import SocketAddress
 
 
-"""
-    Sync Socket I/O
-    ~~~~~~~~~~~~~~~
-"""
-
-
 def get_local_address(sock: socket.socket) -> Optional[SocketAddress]:
     try:
         return sock.getsockname()
@@ -95,22 +89,23 @@ def is_vacant(sock: socket.socket) -> bool:
     return sock in ready
 
 
-#
-#   Socket Operations
-#
+"""
+    Async Socket I/O
+    ~~~~~~~~~~~~~~~~
+"""
 
 
-def socket_send(sock: socket.socket, data: bytes) -> int:
+async def socket_send(sock: socket.socket, data: bytes) -> int:
     """ Send data """
     return sock.send(data)
 
 
-def socket_receive(sock: socket.socket, max_len: int) -> Optional[bytes]:
+async def socket_receive(sock: socket.socket, max_len: int) -> Optional[bytes]:
     """ Receive data """
     return sock.recv(max_len)
 
 
-def socket_bind(sock: socket.socket, local: SocketAddress) -> bool:
+async def socket_bind(sock: socket.socket, local: SocketAddress) -> bool:
     """ Bind to local address """
     try:
         sock.bind(local)
@@ -121,7 +116,7 @@ def socket_bind(sock: socket.socket, local: SocketAddress) -> bool:
         return False
 
 
-def socket_connect(sock: socket.socket, remote: SocketAddress) -> bool:
+async def socket_connect(sock: socket.socket, remote: SocketAddress) -> bool:
     """ Connect to remote address """
     try:
         sock.connect(remote)
@@ -132,7 +127,7 @@ def socket_connect(sock: socket.socket, remote: SocketAddress) -> bool:
         return False
 
 
-def socket_disconnect(sock: socket.socket) -> bool:
+async def socket_disconnect(sock: socket.socket) -> bool:
     """ Close socket """
     if is_closed(sock=sock) or not is_connected(sock=sock):
         return True

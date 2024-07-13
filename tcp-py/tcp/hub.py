@@ -50,24 +50,23 @@ class ChannelPool(AddressPairMap[Channel]):
     # Override
     def set(self, item: Optional[Channel],
             remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
-        # 1. remove cached item
+        # remove cached item first
         cached = super().remove(item=item, remote=remote, local=local)
-        if cached is not None and cached is not item:
-            Runner.async_task(coro=cached.close())
-        # 2. set new item
+        # if cached is not None and cached is not item:
+        #     Runner.async_task(coro=cached.close())
         old = super().set(item=item, remote=remote, local=local)
         assert old is None, 'should not happen: %s' % old
         return cached
 
-    # Override
-    def remove(self, item: Optional[Channel],
-               remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
-        cached = super().remove(item=item, remote=remote, local=local)
-        if cached is not None and cached is not item:
-            Runner.async_task(coro=cached.close())
-        if item is not None:
-            Runner.async_task(coro=item.close())
-        return cached
+    # # Override
+    # def remove(self, item: Optional[Channel],
+    #            remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+    #     cached = super().remove(item=item, remote=remote, local=local)
+    #     if cached is not None and cached is not item:
+    #         Runner.async_task(coro=cached.close())
+    #     if item is not None:
+    #         Runner.async_task(coro=item.close())
+    #     return cached
 
 
 # noinspection PyAbstractClass
@@ -137,7 +136,8 @@ class ServerHub(StreamHub, Runnable):
                 address = self.__local
                 assert address is not None, 'local address not set'
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         sock.setblocking(True)
         sock.bind(address)
         sock.listen(1)
@@ -197,7 +197,7 @@ class ServerHub(StreamHub, Runnable):
                     await self._accept(remote=address, local=self.local_address, sock=sock)
             except socket.error as error:
                 if error.errno == socket.EAGAIN:  # error.strerror == 'Resource temporarily unavailable':
-                    if not await is_blocking(sock=master):
+                    if not is_blocking(sock=master):
                         continue
                 print('[TCP] socket error: %s' % error)
             except Exception as error:
@@ -210,7 +210,9 @@ class ServerHub(StreamHub, Runnable):
         # set socket for this channel
         sock.setblocking(False)
         await channel.set_socket(sock=sock)
-        self._set_channel(channel=channel, remote=channel.remote_address, local=channel.local_address)
+        cached = self._set_channel(channel, remote=channel.remote_address, local=channel.local_address)
+        if cached is not None and cached is not channel:
+            await cached.close()
 
     # Override
     async def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
@@ -240,7 +242,9 @@ class ClientHub(StreamHub):
             if old is None:
                 # create channel with socket
                 channel = self._create_channel(remote=remote, local=local)
-                self._set_channel(channel, remote=remote, local=local)
+                cached = self._set_channel(channel, remote=remote, local=local)
+                if cached is not None and cached is not channel:
+                    await cached.close()
             else:
                 channel = old
         if old is None:
@@ -260,10 +264,11 @@ class ClientHub(StreamHub):
 async def create_socket(remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[socket.socket]:
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
+        # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
         sock.setblocking(True)
         # try to bind
         if local is not None:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.bind(local)
         # try to connect
         sock.connect(remote)

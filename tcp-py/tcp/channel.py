@@ -32,9 +32,10 @@ import socket
 from typing import Optional, Tuple
 
 from startrek.types import SocketAddress
+from startrek.net.socket import is_available
 from startrek import BaseChannel, ChannelReader, ChannelWriter
 
-from .aio import is_blocking, is_closed, is_available
+from .aio import is_blocking, is_closed
 from .aio import socket_send, socket_receive
 from .aio import socket_bind, socket_connect, socket_disconnect
 
@@ -61,7 +62,7 @@ class ChannelChecker:
         # or buffer overflow while sending too many bytes,
         # here we should ignore this exception.
         if error.errno == socket.EAGAIN:  # error.strerror == 'Resource temporarily unavailable':
-            if not await is_blocking(sock=sock):
+            if not is_blocking(sock=sock):
                 # ignore it
                 return None
         # in blocking mode, the socket wil wait until sent/received data,
@@ -97,12 +98,12 @@ class StreamChannelReader(ChannelReader):
 
     # Override
     async def _socket_receive(self, sock: socket.socket, max_len: int) -> Optional[bytes]:
-        if await is_closed(sock=sock):
+        if is_closed(sock=sock):
             raise ConnectionError('socket closed')
-        elif not await is_available(sock=sock):
+        elif not is_available(sock=sock):
             # TODO: check 'broken pipe'
             return None
-        elif await is_blocking(sock=sock):
+        elif is_blocking(sock=sock):
             return await super()._socket_receive(sock=sock, max_len=max_len)
         else:
             return await socket_receive(sock=sock, max_len=max_len)
@@ -149,12 +150,12 @@ class StreamChannelWriter(ChannelWriter):
 
     # Override
     async def _socket_send(self, sock: socket.socket, data: bytes) -> int:
-        if await is_closed(sock=sock):
+        if is_closed(sock=sock):
             raise ConnectionError('socket closed')
-        # elif not await is_vacant(sock=sock):
+        # elif not is_vacant(sock=sock):
         #     # TODO: check 'broken pipe'
         #     return -1
-        elif await is_blocking(sock=sock):
+        elif is_blocking(sock=sock):
             return await super()._socket_send(sock=sock, data=data)
         else:
             return await socket_send(sock=sock, data=data)
