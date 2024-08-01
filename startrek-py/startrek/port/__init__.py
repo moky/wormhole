@@ -33,7 +33,7 @@
     Architecture
     ~~~~~~~~~~~~
 
-                Docker Delegate   Docker Delegate   Docker Delegate
+                Porter Delegate   Porter Delegate   Porter Delegate
                        ^                 ^               ^
                        :                 :               :
           ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~
@@ -43,7 +43,7 @@
             ||         :      Gate       :               :         ||
             ||         :                 :               :         ||
             ||  +------------+    +------------+   +------------+  ||
-            ||  |   docker   |    |   docker   |   |   docker   |  ||
+            ||  |   porter   |    |   porter   |   |   porter   |  ||
             +===+------------+====+------------+===+------------+===+
             ||  | connection |    | connection |   | connection |  ||
             ||  +------------+    +------------+   +------------+  ||
@@ -66,8 +66,8 @@
 
 from .ship import Ship, Arrival, Departure
 from .ship import ShipStatus, DeparturePriority
-from .docker import Docker, DockerStatus
-from .delegate import DockerDelegate
+from .docker import Porter, PorterStatus
+from .delegate import PorterDelegate
 from .gate import Gate
 
 __all__ = [
@@ -75,8 +75,8 @@ __all__ = [
     'Ship', 'Arrival', 'Departure',
     'ShipStatus', 'DeparturePriority',
 
-    'Docker',
-    'DockerStatus', 'DockerDelegate',
+    'Porter',
+    'PorterStatus', 'PorterDelegate',
 
     'Gate',
 ]

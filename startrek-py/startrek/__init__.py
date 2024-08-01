@@ -37,13 +37,13 @@ from .socket import BaseHub, BaseConnection, ActiveConnection
 
 from .port import Ship, Arrival, Departure
 from .port import ShipStatus, DeparturePriority
-from .port import Docker, DockerStatus, DockerDelegate
+from .port import Porter, PorterStatus, PorterDelegate
 from .port import Gate
 
 from .arrival import ArrivalShip, ArrivalHall
 from .departure import DepartureShip, DepartureHall
 from .dock import Dock, LockedDock
-from .stardocker import StarDocker
+from .stardocker import StarPorter
 from .stargate import StarGate
 
 name = "StarTrek"
@@ -61,10 +61,10 @@ __all__ = [
 
     'Ship', 'Arrival', 'Departure',
     'ShipStatus', 'DeparturePriority',
-    'Docker', 'DockerStatus', 'DockerDelegate',
+    'Porter', 'PorterStatus', 'PorterDelegate',
     'Gate',
 
     'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
     'Dock', 'LockedDock',
-    'StarDocker', 'StarGate',
+    'StarPorter', 'StarGate',
 ]

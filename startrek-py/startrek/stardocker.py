@@ -36,13 +36,13 @@ from typing import Optional, List
 from .types import SocketAddress, AddressPairObject
 from .net import Connection
 from .port import Arrival, Departure, ShipStatus
-from .port import Docker, DockerStatus, DockerDelegate
+from .port import Porter, PorterStatus, PorterDelegate
 from .port.docker import status_from_state
 
 from .dock import Dock, LockedDock
 
 
-class StarDocker(AddressPairObject, Docker, ABC):
+class StarPorter(AddressPairObject, Porter, ABC):
     """
         Star Docker
         ~~~~~~~~~~~
@@ -73,13 +73,13 @@ class StarDocker(AddressPairObject, Docker, ABC):
     #
 
     @property
-    def delegate(self) -> Optional[DockerDelegate]:
+    def delegate(self) -> Optional[PorterDelegate]:
         ref = self.__delegate_ref
         if ref is not None:
             return ref()
 
     @delegate.setter
-    def delegate(self, keeper: DockerDelegate):
+    def delegate(self, keeper: PorterDelegate):
         self.__delegate_ref = None if keeper is None else weakref.ref(keeper)
 
     #
@@ -122,7 +122,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
         return conn is not None and conn.alive
 
     @property  # Override
-    def status(self) -> DockerStatus:
+    def status(self) -> PorterStatus:
         conn = self.connection
         state = None if conn is None else conn.state
         return status_from_state(state=state)
@@ -159,7 +159,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
                 continue
             # 3. callback for processing income ship with completed data package
             if delegate is not None:
-                await delegate.docker_received(ship=income, docker=self)
+                await delegate.porter_received(ship=income, porter=self)
 
     @abstractmethod
     def _get_arrivals(self, data: bytes) -> List[Arrival]:
@@ -195,7 +195,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
         # all fragments responded, task finished
         delegate = self.delegate
         if delegate is not None:
-            await delegate.docker_sent(ship=linked, docker=self)
+            await delegate.porter_sent(ship=linked, porter=self)
         return linked
 
     def _assemble_arrival(self, ship: Arrival) -> Optional[Arrival]:
@@ -247,7 +247,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
                 if delegate is not None:
                     # callback for mission failed
                     error = TimeoutError('Request timeout')
-                    await delegate.docker_failed(error=error, ship=outgo, docker=self)
+                    await delegate.porter_failed(error=error, ship=outgo, porter=self)
                 # task timeout, return True to process next one
                 return True
             else:
@@ -277,13 +277,13 @@ class StarDocker(AddressPairObject, Docker, ABC):
                 # task done
                 if outgo.is_important:
                     # this task needs response,
-                    # so we cannot call 'docker_sent()' immediately
+                    # so we cannot call 'porter_sent()' immediately
                     # until the remote responded.
                     pass
                 else:
                     delegate = self.delegate
                     if delegate is not None:
-                        await delegate.docker_sent(ship=outgo, docker=self)
+                        await delegate.porter_sent(ship=outgo, porter=self)
                 return True
         except Exception as e:
             # socket error, callback
@@ -302,7 +302,7 @@ class StarDocker(AddressPairObject, Docker, ABC):
         # 6. callback for error
         delegate = self.delegate
         if delegate is not None:
-            # await delegate.docker_failed(error=error, ship=outgo, docker=self)
-            await delegate.docker_error(error=error, ship=outgo, docker=self)
+            # await delegate.porter_failed(error=error, ship=outgo, porter=self)
+            await delegate.porter_error(error=error, ship=outgo, porter=self)
         # task error
         return False

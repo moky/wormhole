@@ -31,60 +31,60 @@
 from abc import ABC, abstractmethod
 
 from .ship import Arrival, Departure
-from .docker import Docker, DockerStatus
+from .docker import Porter, PorterStatus
 
 
-class DockerDelegate(ABC):
+class PorterDelegate(ABC):
 
     @abstractmethod
-    async def docker_received(self, ship: Arrival, docker: Docker):
+    async def porter_received(self, ship: Arrival, porter: Porter):
         """
         Callback when new package received
 
         :param ship:    income data package container
-        :param docker:  connection docker
+        :param porter:  connection docker
         """
         raise NotImplemented
 
     @abstractmethod
-    async def docker_sent(self, ship: Departure, docker: Docker):
+    async def porter_sent(self, ship: Departure, porter: Porter):
         """
         Callback when package sent
 
         :param ship:    outgo data package container
-        :param docker:  connection connection
+        :param porter:  connection docker
         """
         raise NotImplemented
 
     @abstractmethod
-    async def docker_failed(self, error: OSError, ship: Departure, docker: Docker):
+    async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
         """
         Callback when failed to send package
 
         :param error:   error message
         :param ship:    outgo data package container
-        :param docker:  connection docker
+        :param porter:  connection docker
         """
         raise NotImplemented
 
     @abstractmethod
-    async def docker_error(self, error: OSError, ship: Departure, docker: Docker):
+    async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
         """
         Callback when connection error
 
         :param error:   error message
         :param ship:    outgo data package container
-        :param docker:  connection docker
+        :param porter:  connection docker
         """
         raise NotImplemented
 
     @abstractmethod
-    async def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
+    async def porter_status_changed(self, previous: PorterStatus, current: PorterStatus, porter: Porter):
         """
         Callback when connection status changed
 
         :param previous: old status
         :param current:  new status
-        :param docker:   connection docker
+        :param porter:   connection docker
         """
         raise NotImplemented

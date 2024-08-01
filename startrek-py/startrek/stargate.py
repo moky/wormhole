@@ -33,24 +33,24 @@ import threading
 import time
 import weakref
 from abc import ABC, abstractmethod
-from typing import Optional, List, Iterable, Union
+from typing import Optional, Iterable, Union
 
 from .types import SocketAddress, AddressPairMap
 
 from .net import Connection, ConnectionDelegate, ConnectionState
 from .net.state import StateOrder
 from .port import Departure, Gate
-from .port import Docker, DockerStatus, DockerDelegate
+from .port import Porter, PorterStatus, PorterDelegate
 from .port.docker import status_from_state
 
-from .stardocker import StarDocker
+from .stardocker import StarPorter
 
 
-class DockerPool(AddressPairMap[Docker]):
+class PorterPool(AddressPairMap[Porter]):
 
     # Override
-    def set(self, item: Optional[Docker],
-            remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Docker]:
+    def set(self, item: Optional[Porter],
+            remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Porter]:
         # remove cached item first
         cached = super().remove(item=item, remote=remote, local=local)
         # if cached is not None and cached is not item:
@@ -60,8 +60,8 @@ class DockerPool(AddressPairMap[Docker]):
         return cached
 
     # # Override
-    # def remove(self, item: Optional[Docker],
-    #            remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Docker]:
+    # def remove(self, item: Optional[Porter],
+    #            remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Porter]:
     #     cached = super().remove(item=item, remote=remote, local=local)
     #     if cached is not None and cached is not item:
     #         Runner.async_task(coro=cached.close())
@@ -76,82 +76,101 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         ~~~~~~~~~
 
         @abstract methods:
-            - _create_docker(advance_party, remote_address, local_address)
-            - _cache_advance_party(data, connection)
-            - _clear_advance_party(connection)
+            - _create_porter(remote_address, local_address)
     """
 
-    def __init__(self, delegate: DockerDelegate):
+    def __init__(self, delegate: PorterDelegate):
         super().__init__()
         self.__delegate_ref = weakref.ref(delegate)
-        self.__docker_pool = self._create_docker_pool()
+        self.__porter_pool = self._create_porter_pool()
         self.__lock = threading.Lock()
 
     # noinspection PyMethodMayBeStatic
-    def _create_docker_pool(self):
-        return DockerPool()
+    def _create_porter_pool(self):
+        return PorterPool()
 
     @property
-    def delegate(self) -> Optional[DockerDelegate]:
+    def delegate(self) -> Optional[PorterDelegate]:
         return self.__delegate_ref()
 
     # Override
     async def send_data(self, payload: Union[bytes, bytearray],
                         remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
-        worker = self._get_docker(remote=remote, local=local)
-        if worker is None:
+        docker = self._get_porter(remote=remote, local=local)
+        if docker is None:
             # assert False, 'docker not found: %s -> %s' % (local, remote)
             return False
-        elif not worker.alive:
+        elif not docker.alive:
             # assert False, 'docket not alive: %s -> %s' % (local, remote)
             return False
-        return await worker.send_data(payload=payload)
+        return await docker.send_data(payload=payload)
 
     # Override
     async def send_ship(self, ship: Departure, remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
-        worker = self._get_docker(remote=remote, local=local)
-        if worker is None:
+        docker = self._get_porter(remote=remote, local=local)
+        if docker is None:
             # assert False, 'docker not found: %s -> %s' % (local, remote)
             return False
-        elif not worker.alive:
+        elif not docker.alive:
             # assert False, 'docket not alive: %s -> %s' % (local, remote)
             return False
-        return await worker.send_ship(ship=ship)
+        return await docker.send_ship(ship=ship)
 
     #
     #   Docker
     #
 
     @abstractmethod
-    def _create_docker(self, parties: List[bytes],
-                       remote: SocketAddress, local: Optional[SocketAddress]) -> Docker:
+    def _create_porter(self,  remote: SocketAddress, local: Optional[SocketAddress]) -> Porter:
         """
         create new docker for received data
 
-        :param parties: advance party
         :param remote:  remote address
         :param local:   local address
         :return docker
         """
         raise NotImplemented
 
-    def _all_dockers(self) -> Iterable[Docker]:
+    def _all_porters(self) -> Iterable[Porter]:
         """ get a copy of all dockers """
-        return self.__docker_pool.items
+        return self.__porter_pool.items
 
-    def _remove_docker(self, docker: Optional[Docker],
-                       remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
+    def _remove_porter(self, porter: Optional[Porter],
+                       remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Porter]:
         """ remove cached docker """
-        return self.__docker_pool.remove(item=docker, remote=remote, local=local)
+        return self.__porter_pool.remove(item=porter, remote=remote, local=local)
 
-    def _get_docker(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
+    def _get_porter(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Porter]:
         """ get cached docker """
-        return self.__docker_pool.get(remote=remote, local=local)
+        return self.__porter_pool.get(remote=remote, local=local)
 
-    def _set_docker(self, docker: Docker,
-                    remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Docker]:
+    def _set_porter(self, porter: Porter,
+                    remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Porter]:
         """ cache docker """
-        return self.__docker_pool.set(item=docker, remote=remote, local=local)
+        return self.__porter_pool.set(item=porter, remote=remote, local=local)
+
+    async def _dock(self, connection: Connection, create_porter: bool) -> Optional[Porter]:
+        """ get docker with connection """
+        remote = connection.remote_address
+        local = connection.local_address
+        # try to get docker
+        with self.__lock:
+            old = self._get_porter(remote=remote, local=local)
+            if old is None:
+                if not create_porter:
+                    return None
+                # create & cache docker
+                docker = self._create_porter(remote=remote, local=local)
+                cached = self._set_porter(docker, remote=remote, local=local)
+                if cached is not None and cached is not docker:
+                    await cached.close()
+            else:
+                docker = old
+        if old is None:
+            assert isinstance(docker, StarPorter), 'docker error: %s, %s' % (remote, docker)
+            # set connection for this docker
+            await docker.set_connection(connection)
+        return docker
 
     #
     #   Processor
@@ -159,38 +178,38 @@ class StarGate(Gate, ConnectionDelegate, ABC):
 
     # Override
     async def process(self) -> bool:
-        dockers = self._all_dockers()
+        dockers = self._all_porters()
         # 1. drive all dockers to process
-        count = await self._drive_dockers(dockers=dockers)
+        count = await self._drive_porters(porters=dockers)
         # 2. cleanup for dockers
-        self._cleanup_dockers(dockers=dockers)
+        self._cleanup_porters(porters=dockers)
         return count > 0
 
     # noinspection PyMethodMayBeStatic
-    async def _drive_dockers(self, dockers: Iterable[Docker]) -> int:
+    async def _drive_porters(self, porters: Iterable[Porter]) -> int:
         count = 0
-        for worker in dockers:
-            if await worker.process():
+        for docker in porters:
+            if await docker.process():
                 count += 1  # it's busy
         return count
 
-    def _cleanup_dockers(self, dockers: Iterable[Docker]):
+    def _cleanup_porters(self, porters: Iterable[Porter]):
         now = time.time()
-        for worker in dockers:
-            if worker.closed:
+        for docker in porters:
+            if docker.closed:
                 # remove docker which connection lost
-                self._remove_docker(docker=worker, remote=worker.remote_address, local=worker.local_address)
+                self._remove_porter(porter=docker, remote=docker.remote_address, local=docker.local_address)
             else:
                 # clear expired tasks
-                worker.purge(now=now)
+                docker.purge(now=now)
 
     async def _heartbeat(self, connection: Connection):
         """ Send a heartbeat package('PING') to remote address """
         remote = connection.remote_address
         local = connection.local_address
-        worker = self._get_docker(remote=remote, local=local)
-        if worker is not None:
-            await worker.heartbeat()
+        docker = self._get_porter(remote=remote, local=local)
+        if docker is not None:
+            await docker.heartbeat()
 
     #
     #   Connection Delegate
@@ -202,34 +221,16 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         # convert status
         s1 = status_from_state(state=previous)
         s2 = status_from_state(state=current)
+        delegate = self.delegate
         # 1. callback when status changed
-        if s1 != s2:
-            remote = connection.remote_address
-            local = connection.local_address
-            # try to get docker
-            with self.__lock:
-                old = self._get_docker(remote=remote, local=local)
-                if old is None:
-                    if s2 == DockerStatus.ERROR:
-                        # connection closed and docker removed
-                        return
-                    # create & cache docker
-                    worker = self._create_docker([], remote=remote, local=local)
-                    cached = self._set_docker(worker, remote=remote, local=local)
-                    if cached is not None and cached is not worker:
-                        await cached.close()
-                else:
-                    worker = old
-            if old is None:
-                assert isinstance(worker, StarDocker), 'docker error: %s, %s' % (remote, worker)
-                # set connection for this docker
-                await worker.set_connection(connection)
-            # NOTICE: if the previous state is null, the docker maybe not
-            #         created yet, this situation means the docker status
-            #         not changed too, so no need to callback here.
-            delegate = self.delegate
-            if delegate is not None:
-                await delegate.docker_status_changed(previous=s1, current=s2, docker=worker)
+        if s1 != s2 and delegate is not None:
+            not_finished = s2 != PorterStatus.ERROR
+            docker = await self._dock(connection=connection, create_porter=not_finished)
+            if docker is None:
+                # connection closed and docker removed
+                return
+            # callback for docker status
+            await delegate.porter_status_changed(previous=s1, current=s2, porter=docker)
         # 2. heartbeat when connection expired
         index = -1 if current is None else current.index
         if index == StateOrder.EXPIRED:
@@ -237,55 +238,11 @@ class StarGate(Gate, ConnectionDelegate, ABC):
 
     # Override
     async def connection_received(self, data: bytes, connection: Connection):
-        remote = connection.remote_address
-        local = connection.local_address
-        # try to get docker
-        with self.__lock:
-            old = self._get_docker(remote=remote, local=local)
-            if old is None:
-                # cache advance party for this connection
-                party = self._cache_advance_party(data=data, connection=connection)
-                assert party is not None and len(party) > 0, 'advance party error'
-                # create & cache docker
-                worker = self._create_docker(party, remote=remote, local=local)
-                cached = self._set_docker(worker, remote=remote, local=local)
-                if cached is not None and cached is not worker:
-                    await cached.close()
-            else:
-                party = []
-                worker = old
-        if old is None:
-            assert isinstance(worker, StarDocker), 'docker error: %s, %s' % (remote, worker)
-            # set connection for this docker
-            await worker.set_connection(connection)
-            # process advance parties one by one
-            for item in party:
-                await worker.process_received(data=item)
-            # remove advance party
-            self._clear_advance_party(connection=connection)
+        docker = await self._dock(connection=connection, create_porter=True)
+        if docker is None:
+            assert False, 'failed to create docker: %s' % connection
         else:
-            # docker exists, call docker.onReceived(data)
-            await worker.process_received(data=data)
-
-    @abstractmethod
-    def _cache_advance_party(self, data: bytes, connection: Connection) -> List[bytes]:
-        """
-        Cache the advance party before decide which docker to use
-
-        :param data:        received data
-        :param connection:  current connection
-        :return all cached data
-        """
-        raise NotImplemented
-
-    @abstractmethod
-    def _clear_advance_party(self, connection: Connection):
-        """
-        Clear all advance parties after docker created
-
-        :param connection:  current connection
-        """
-        raise NotImplemented
+            await docker.process_received(data=data)
 
     # Override
     async def connection_sent(self, sent: int, data: bytes, connection: Connection):

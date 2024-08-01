@@ -40,7 +40,7 @@ from ..net.state import StateOrder
 from .ship import Departure
 
 
-class DockerStatus(IntEnum):
+class PorterStatus(IntEnum):
     """ Docker Status """
     ERROR = -1
     INIT = 0
@@ -55,23 +55,23 @@ READY_STATUS = [
 ]
 
 
-def status_from_state(state: Optional[ConnectionState]) -> DockerStatus:
+def status_from_state(state: Optional[ConnectionState]) -> PorterStatus:
     """ Convert connection state to docker status """
     if state is None:
-        return DockerStatus.ERROR
+        return PorterStatus.ERROR
     index = state.index
     if index in READY_STATUS:
-        return DockerStatus.READY
+        return PorterStatus.READY
     if index == StateOrder.PREPARING:
-        return DockerStatus.PREPARING
+        return PorterStatus.PREPARING
     if index == StateOrder.ERROR:
-        return DockerStatus.ERROR
-    return DockerStatus.INIT
+        return PorterStatus.ERROR
+    return PorterStatus.INIT
 
 
-class Docker(Processor):
+class Porter(Processor):
     """
-        Star Worker
+        Star Docker
         ~~~~~~~~~~~
 
         Processor for Star Ships
@@ -91,7 +91,7 @@ class Docker(Processor):
 
     @property
     @abstractmethod
-    def status(self) -> DockerStatus:
+    def status(self) -> PorterStatus:
         """ Connection state """
         raise NotImplemented
 
