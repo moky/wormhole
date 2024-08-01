@@ -32,7 +32,7 @@ from typing import List, Optional, Union
 
 from startrek import Arrival, ArrivalShip
 from startrek import Departure, DepartureShip, DeparturePriority
-from startrek import StarDocker
+from startrek import StarPorter
 
 from .ba import Data
 from .mtp import DataType, TransactionID, Package, Packer
@@ -151,7 +151,7 @@ class PackageDeparture(DepartureShip):
         return head.is_message
 
 
-class PackageDocker(StarDocker):
+class PackagePorter(StarPorter):
 
     # noinspection PyMethodMayBeStatic
     def _parse_package(self, data: bytes) -> Optional[Package]:

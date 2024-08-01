@@ -34,11 +34,11 @@ from startrek import BaseChannel, ChannelReader, ChannelWriter
 from startrek import BaseHub, BaseConnection, ActiveConnection
 
 from startrek import Ship, Arrival, Departure, ShipStatus, DeparturePriority
-from startrek import Docker, DockerStatus, DockerDelegate, Gate
+from startrek import Porter, PorterStatus, PorterDelegate, Gate
 from startrek import ArrivalShip, ArrivalHall, DepartureShip, DepartureHall
-from startrek import Dock, LockedDock, StarDocker, StarGate
+from startrek import Dock, LockedDock, StarPorter, StarGate
 
-from .startrek import PackageArrival, PackageDeparture, PackageDocker
+from .startrek import PackageArrival, PackageDeparture, PackagePorter
 from .channel import PacketChannel, PacketChannelReader, PacketChannelWriter
 from .hub import PacketHub, ServerHub, ClientHub
 
@@ -57,14 +57,14 @@ __all__ = [
     'BaseHub', 'BaseConnection', 'ActiveConnection',
 
     'Ship', 'Arrival', 'Departure', 'ShipStatus', 'DeparturePriority',
-    'Docker', 'DockerStatus', 'DockerDelegate', 'Gate',
+    'Porter', 'PorterStatus', 'PorterDelegate', 'Gate',
     'ArrivalShip', 'ArrivalHall', 'DepartureShip', 'DepartureHall',
-    'Dock', 'LockedDock', 'StarDocker', 'StarGate',
+    'Dock', 'LockedDock', 'StarPorter', 'StarGate',
 
     #
     #   UDP
     #
-    'PackageArrival', 'PackageDeparture', 'PackageDocker',
+    'PackageArrival', 'PackageDeparture', 'PackagePorter',
     'PacketChannel', 'PacketChannelReader', 'PacketChannelWriter',
     'PacketHub', 'ServerHub', 'ClientHub',
 ]

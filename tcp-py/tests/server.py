@@ -18,7 +18,7 @@ sys.path.append(rootPath)
 
 from tcp.aio import is_closed
 from tcp import Channel, Connection
-from tcp import Docker, DockerDelegate, DockerStatus
+from tcp import Porter, PorterDelegate, PorterStatus
 from tcp import Hub, ServerHub
 from tcp import Arrival, PlainArrival, Departure, PlainDeparture
 
@@ -57,7 +57,7 @@ class StreamServerHub(ServerHub):
         return super()._remove_connection(connection=connection, remote=remote, local=None)
 
 
-class Server(DockerDelegate):
+class Server(PorterDelegate):
 
     def __init__(self, host: str, port: int):
         super().__init__()
@@ -97,13 +97,13 @@ class Server(DockerDelegate):
     #
 
     # Override
-    async def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
-        remote = docker.remote_address
-        local = docker.local_address
+    async def porter_status_changed(self, previous: PorterStatus, current: PorterStatus, porter: Porter):
+        remote = porter.remote_address
+        local = porter.local_address
         Log.info(msg='!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
 
     # Override
-    async def docker_received(self, ship: Arrival, docker: Docker):
+    async def porter_received(self, ship: Arrival, porter: Porter):
         assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
         data = ship.package
         try:
@@ -111,7 +111,7 @@ class Server(DockerDelegate):
         except UnicodeDecodeError as error:
             Log.error(msg='failed to decode data: %s, %s' % (error, data))
             text = str(data)
-        source = docker.remote_address
+        source = porter.remote_address
         Log.info(msg='<<< received (%d bytes) from %s: %s' % (len(data), source, text))
         text = '%d# %d byte(s) received' % (self.counter, len(data))
         self.counter += 1
@@ -122,18 +122,19 @@ class Server(DockerDelegate):
     counter = 0
 
     # Override
-    async def docker_sent(self, ship: Departure, docker: Docker):
+    async def porter_sent(self, ship: Departure, porter: Porter):
         assert isinstance(ship, PlainDeparture), 'departure ship error: %s' % ship
         size = len(ship.package)
-        Log.info(msg='message sent: %d byte(s) to %s' % (size, docker.remote_address))
+        Log.info(msg='message sent: %d byte(s) to %s' % (size, porter.remote_address))
 
     # Override
-    async def docker_failed(self, error: IOError, ship: Departure, docker: Docker):
-        Log.error('failed to sent: %s, %s' % (error, docker))
+    async def porter_failed(self, error: IOError, ship: Departure, porter: Porter):
+        Log.error(msg='failed to sent: %s, %s' % (error, porter))
 
     # Override
-    async def docker_error(self, error: IOError, ship: Departure, docker: Docker):
-        Log.error('connection error: %s, %s' % (error, docker))
+    async def porter_error(self, error: IOError, ship: Departure, porter: Porter):
+        Log.error(msg='connection error: %s, %s' % (error, porter))
+        await porter.close()
 
 
 def _start_thread_loop(loop: asyncio.AbstractEventLoop, runner: Runner):

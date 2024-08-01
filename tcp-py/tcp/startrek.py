@@ -32,7 +32,7 @@ from typing import List, Optional, Union
 
 from startrek import Arrival, ArrivalShip
 from startrek import DepartureShip, DeparturePriority
-from startrek import StarDocker
+from startrek import StarPorter
 
 
 class PlainArrival(ArrivalShip):
@@ -88,7 +88,7 @@ class PlainDeparture(DepartureShip):
         return False
 
 
-class PlainDocker(StarDocker):
+class PlainPorter(StarPorter):
 
     # noinspection PyMethodMayBeStatic
     def _create_arrival(self, pack: bytes) -> Arrival:

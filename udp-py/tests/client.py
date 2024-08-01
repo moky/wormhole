@@ -14,7 +14,7 @@ rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
 from udp import Channel, Connection
-from udp import Docker, DockerDelegate, DockerStatus
+from udp import Porter, PorterDelegate, PorterStatus
 from udp import Hub, ClientHub
 from udp import Arrival, PackageArrival, Departure, PackageDeparture
 
@@ -56,7 +56,7 @@ class PacketClientHub(ClientHub):
         return super()._remove_connection(connection=connection, remote=remote, local=None)
 
 
-class Client(Runnable, DockerDelegate):
+class Client(Runnable, PorterDelegate):
 
     def __init__(self, local: SocketAddress, remote: SocketAddress):
         super().__init__()
@@ -96,7 +96,7 @@ class Client(Runnable, DockerDelegate):
         # test send
         for i in range(16):
             data = b'%d sheep:%s' % (i, text)
-            Log.info('>>> sending (%d bytes): %s' % (len(data), data))
+            Log.info(msg='>>> sending (%d bytes): %s' % (len(data), data))
             await self.send(data=data)
             await Runner.sleep(seconds=2)
         Log.info(msg='>>> finished.')
@@ -111,13 +111,13 @@ class Client(Runnable, DockerDelegate):
     #
 
     # Override
-    async def docker_status_changed(self, previous: DockerStatus, current: DockerStatus, docker: Docker):
-        remote = docker.remote_address
-        local = docker.local_address
-        Log.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
+    async def porter_status_changed(self, previous: PorterStatus, current: PorterStatus, porter: Porter):
+        remote = porter.remote_address
+        local = porter.local_address
+        Log.info(msg='!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
 
     # Override
-    async def docker_received(self, ship: Arrival, docker: Docker):
+    async def porter_received(self, ship: Arrival, porter: Porter):
         assert isinstance(ship, PackageArrival), 'arrival ship error: %s' % ship
         pack = ship.package
         data = pack.body.get_bytes()
@@ -126,22 +126,22 @@ class Client(Runnable, DockerDelegate):
         except UnicodeDecodeError as error:
             Log.error(msg='failed to decode data: %s, %s' % (error, data))
             text = str(data)
-        source = docker.remote_address
-        Log.info('<<< received (%d bytes) from %s: %s' % (len(data), source, text))
+        source = porter.remote_address
+        Log.info(msg='<<< received (%d bytes) from %s: %s' % (len(data), source, text))
 
     # Override
-    async def docker_sent(self, ship: Departure, docker: Docker):
+    async def porter_sent(self, ship: Departure, porter: Porter):
         assert isinstance(ship, PackageDeparture), 'departure ship error: %s' % ship
         size = ship.package.body.size
-        Log.info('message sent: %d byte(s) to %s' % (size, docker.remote_address))
+        Log.info(msg='message sent: %d byte(s) to %s' % (size, porter.remote_address))
 
     # Override
-    async def docker_failed(self, error: IOError, ship: Departure, docker: Docker):
-        Log.error('failed to sent: %s, %s' % (error, docker))
+    async def porter_failed(self, error: IOError, ship: Departure, porter: Porter):
+        Log.error(msg='failed to sent: %s, %s' % (error, porter))
 
     # Override
-    async def docker_error(self, error: IOError, ship: Departure, docker: Docker):
-        Log.error('connection error: %s, %s' % (error, docker))
+    async def porter_error(self, error: IOError, ship: Departure, porter: Porter):
+        Log.error(msg='connection error: %s, %s' % (error, porter))
 
 
 SERVER_HOST = Hub.inet_address()
@@ -162,11 +162,11 @@ async def test_client(local_address: SocketAddress, remote_address: SocketAddres
 async def main():
     local_address = (CLIENT_HOST, CLIENT_PORT)
     server_address = (SERVER_HOST, SERVER_PORT)
-    Log.info('Connecting UDP server (%s -> %s) ...' % (local_address, server_address))
+    Log.info(msg='Connecting UDP server (%s -> %s) ...' % (local_address, server_address))
 
     await test_client(local_address=local_address, remote_address=server_address)
 
-    Log.info('Terminated.')
+    Log.info(msg='Terminated.')
 
 
 if __name__ == '__main__':
