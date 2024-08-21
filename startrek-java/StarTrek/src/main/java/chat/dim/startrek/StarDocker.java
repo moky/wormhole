@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import chat.dim.net.Connection;
@@ -211,12 +212,12 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
      * @param now - current time
      * @return next new or timeout task
      */
-    protected Departure getNextDeparture(long now) {
+    protected Departure getNextDeparture(Date now) {
         return dock.getNextDeparture(now);
     }
 
     @Override
-    public void purge(long now) {
+    public void purge(Date now) {
         dock.purge(now);
     }
 
@@ -247,7 +248,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             lastFragments = new ArrayList<>();
         } else {
             // get next outgo task
-            long now = System.currentTimeMillis();
+            Date now = new Date();
             outgo = getNextDeparture(now);
             if (outgo == null) {
                 // nothing to do now, return false to let the thread have a rest

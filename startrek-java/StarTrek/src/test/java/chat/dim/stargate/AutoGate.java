@@ -48,7 +48,7 @@ public abstract class AutoGate<H extends Hub>
     }
 
     protected void idle() {
-        Runner.idle(128);
+        Runner.sleep(128);
     }
 
     @Override

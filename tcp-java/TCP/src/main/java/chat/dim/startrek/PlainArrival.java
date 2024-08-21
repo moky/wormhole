@@ -31,6 +31,7 @@
 package chat.dim.startrek;
 
 import java.util.Arrays;
+import java.util.Date;
 
 import chat.dim.port.Arrival;
 
@@ -38,12 +39,12 @@ public class PlainArrival extends ArrivalShip {
 
     private final byte[] completed;
 
-    public PlainArrival(byte[] pack, long now) {
+    public PlainArrival(byte[] pack, Date now) {
         super(now);
         completed = pack;
     }
     public PlainArrival(byte[] pack) {
-        this(pack, System.currentTimeMillis());
+        this(pack, new Date());
     }
 
     public byte[] getPackage() {

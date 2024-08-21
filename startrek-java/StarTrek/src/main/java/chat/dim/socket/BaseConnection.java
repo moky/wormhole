@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.util.Date;
 
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
@@ -51,8 +52,8 @@ public class BaseConnection extends AddressPairObject
     private WeakReference<Channel> channelRef;
     private WeakReference<Delegate> delegateRef;
 
-    private long lastSentTime;
-    private long lastReceivedTime;
+    private Date lastSentTime;
+    private Date lastReceivedTime;
 
     private StateMachine fsm;
 
@@ -63,8 +64,8 @@ public class BaseConnection extends AddressPairObject
         delegateRef = new WeakReference<>(null);
 
         // active times
-        lastSentTime = 0;
-        lastReceivedTime = 0;
+        lastSentTime = null;
+        lastReceivedTime = null;
 
         // connection state machine
         fsm = null;
@@ -188,7 +189,7 @@ public class BaseConnection extends AddressPairObject
 
     @Override
     public void onReceived(byte[] data) {
-        lastReceivedTime = System.currentTimeMillis();  // update received time
+        lastReceivedTime = new Date();  // update received time
         Delegate delegate = getDelegate();
         if (delegate != null) {
             delegate.onConnectionReceived(data, this);
@@ -204,7 +205,7 @@ public class BaseConnection extends AddressPairObject
         int sent = sock.send(src, destination);
         if (sent > 0) {
             // update sent time
-            lastSentTime = System.currentTimeMillis();
+            lastSentTime = new Date();
         }
         return sent;
     }
@@ -254,7 +255,7 @@ public class BaseConnection extends AddressPairObject
     }
 
     @Override
-    public void tick(long now, long delta) {
+    public void tick(Date now, long delta) {
         StateMachine machine = getStateMachine();
         if (machine != null) {
             machine.tick(now, delta);
@@ -266,26 +267,41 @@ public class BaseConnection extends AddressPairObject
     //
 
     @Override
-    public long getLastSentTime() {
+    public Date getLastSentTime() {
         return lastSentTime;
     }
 
     @Override
-    public long getLastReceivedTime() {
+    public Date getLastReceivedTime() {
         return lastReceivedTime;
     }
 
     @Override
-    public boolean isSentRecently(long now) {
-        return now <= lastSentTime + EXPIRES;
+    public boolean isSentRecently(Date now) {
+        Date last = lastSentTime;
+        if (last == null) {
+            return false;
+        }
+        assert now != null : "should not happen";
+        return now.getTime() <= last.getTime() + EXPIRES;
     }
     @Override
-    public boolean isReceivedRecently(long now) {
-        return now <= lastReceivedTime + EXPIRES;
+    public boolean isReceivedRecently(Date now) {
+        Date last = lastReceivedTime;
+        if (last == null) {
+            return false;
+        }
+        assert now != null : "should not happen";
+        return now.getTime() <= last.getTime() + EXPIRES;
     }
     @Override
-    public boolean isNotReceivedLongTimeAgo(long now) {
-        return now > lastReceivedTime + (EXPIRES << 3);
+    public boolean isNotReceivedLongTimeAgo(Date now) {
+        Date last = lastReceivedTime;
+        if (last == null) {
+            return true;
+        }
+        assert now != null : "should not happen";
+        return now.getTime() > last.getTime() + (EXPIRES << 3);
     }
 
     //
@@ -293,12 +309,12 @@ public class BaseConnection extends AddressPairObject
     //
 
     @Override
-    public void enterState(ConnectionState next, StateMachine ctx, long now) {
+    public void enterState(ConnectionState next, StateMachine ctx, Date now) {
 
     }
 
     @Override
-    public void exitState(ConnectionState previous, StateMachine ctx, long now) {
+    public void exitState(ConnectionState previous, StateMachine ctx, Date now) {
         ConnectionState current = ctx.getCurrentState();
         // if current == 'ready'
         if (current != null && current.equals(ConnectionState.Order.READY)) {
@@ -306,12 +322,16 @@ public class BaseConnection extends AddressPairObject
             if (previous != null && previous.equals(ConnectionState.Order.PREPARING)) {
                 // connection state changed from 'preparing' to 'ready',
                 // set times to expired soon.
-                long timestamp = now - (EXPIRES >> 1);
-                if (lastSentTime < timestamp) {
-                    lastSentTime = timestamp;
+                assert now != null : "should not happen";
+                Date last;
+                long timestamp = now.getTime() - (EXPIRES >> 1);
+                last = lastSentTime;
+                if (last == null || last.getTime() < timestamp) {
+                    lastSentTime = new Date(timestamp);
                 }
-                if (lastReceivedTime < timestamp) {
-                    lastReceivedTime = timestamp;
+                last = lastReceivedTime;
+                if (last == null || last.getTime() < timestamp) {
+                    lastReceivedTime = new Date(timestamp);
                 }
             }
         }
@@ -323,12 +343,12 @@ public class BaseConnection extends AddressPairObject
     }
 
     @Override
-    public void pauseState(ConnectionState current, StateMachine ctx, long now) {
+    public void pauseState(ConnectionState current, StateMachine ctx, Date now) {
 
     }
 
     @Override
-    public void resumeState(ConnectionState current, StateMachine ctx, long now) {
+    public void resumeState(ConnectionState current, StateMachine ctx, Date now) {
 
     }
 }

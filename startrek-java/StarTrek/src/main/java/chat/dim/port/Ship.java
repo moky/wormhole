@@ -30,6 +30,8 @@
  */
 package chat.dim.port;
 
+import java.util.Date;
+
 /**
  *  Star Ship
  *  ~~~~~~~~~
@@ -50,7 +52,7 @@ public interface Ship {
      *
      * @param now - current time
      */
-    void touch(long now);
+    void touch(Date now);
 
     /**
      *  Check ship state
@@ -58,7 +60,7 @@ public interface Ship {
      * @param now - current time
      * @return current status
      */
-    Status getStatus(long now);
+    Status getStatus(Date now);
 
     enum Status {
         //

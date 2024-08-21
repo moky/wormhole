@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.util.Date;
 import java.util.Set;
 
 import chat.dim.net.Channel;
@@ -237,11 +238,11 @@ public abstract class BaseHub implements Hub {
         }
     }
 
-    private long last = System.currentTimeMillis();
+    private Date last = new Date();
 
     protected void driveConnections(Set<Connection> connections) {
-        long now = System.currentTimeMillis();
-        long delta = now - last;
+        Date now = new Date();
+        long delta = now.getTime() - last.getTime();
         for (Connection conn : connections) {
             // drive connection to go on
             conn.tick(now, delta);

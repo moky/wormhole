@@ -32,6 +32,7 @@ package chat.dim.port;
 
 import java.io.IOError;
 import java.net.SocketAddress;
+import java.util.Date;
 
 import chat.dim.net.ConnectionState;
 import chat.dim.skywalker.Processor;
@@ -84,7 +85,7 @@ public interface Docker extends Processor {
     /**
      *  Clear all expired tasks
      */
-    void purge(long now);
+    void purge(Date now);
 
     /**
      *  Close connection for this docker

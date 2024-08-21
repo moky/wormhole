@@ -34,6 +34,7 @@ import java.io.IOError;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
@@ -155,7 +156,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         return count;
     }
     protected void cleanupDockers(Set<Docker> dockers) {
-        long now = System.currentTimeMillis();
+        Date now = new Date();
         for (Docker worker : dockers) {
             if (worker.isOpen()) {
                 // clear expired tasks

@@ -30,6 +30,8 @@
  */
 package chat.dim.net;
 
+import java.util.Date;
+
 import chat.dim.fsm.BaseState;
 import chat.dim.fsm.State;
 
@@ -58,12 +60,12 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
     }
 
     private final String name;
-    private long enterTime;
+    private Date enterTime;
 
     ConnectionState(Order stateOrder) {
         super(stateOrder.ordinal());
         name = stateOrder.name();
-        enterTime = 0;
+        enterTime = null;
     }
 
     @Override
@@ -89,27 +91,27 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
         return name;
     }
 
-    public long getEnterTime() {
+    public Date getEnterTime() {
         return enterTime;
     }
 
     @Override
-    public void onEnter(State<StateMachine, StateTransition> previous, StateMachine ctx, long now) {
+    public void onEnter(State<StateMachine, StateTransition> previous, StateMachine ctx, Date now) {
         enterTime = now;
     }
 
     @Override
-    public void onExit(State<StateMachine, StateTransition> next, StateMachine ctx, long now) {
-        enterTime = 0;
+    public void onExit(State<StateMachine, StateTransition> next, StateMachine ctx, Date now) {
+        enterTime = null;
     }
 
     @Override
-    public void onPause(StateMachine ctx, long now) {
+    public void onPause(StateMachine ctx, Date now) {
 
     }
 
     @Override
-    public void onResume(StateMachine ctx, long now) {
+    public void onResume(StateMachine ctx, Date now) {
 
     }
 

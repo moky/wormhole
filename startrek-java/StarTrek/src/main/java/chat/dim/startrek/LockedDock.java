@@ -30,6 +30,7 @@
  */
 package chat.dim.startrek;
 
+import java.util.Date;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -41,7 +42,7 @@ public class LockedDock extends Dock {
 
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
-    private long nextPurgeTime = 0;
+    private Date nextPurgeTime = null;
 
     @Override
     public Arrival assembleArrival(Arrival income) {
@@ -83,7 +84,7 @@ public class LockedDock extends Dock {
     }
 
     @Override
-    public Departure getNextDeparture(long now) {
+    public Departure getNextDeparture(Date now) {
         Departure next;
         Lock writeLock = lock.writeLock();
         writeLock.lock();
@@ -96,12 +97,13 @@ public class LockedDock extends Dock {
     }
 
     @Override
-    public void purge(long now) {
-        if (now < nextPurgeTime) {
+    public void purge(Date now) {
+        Date next = nextPurgeTime;
+        if (next != null && next.after(now)) {
             return;
         } else {
             // next purge after half a minute
-            nextPurgeTime = now + 30000;
+            nextPurgeTime = new Date(now.getTime() + 30000);
         }
         Lock writeLock = lock.writeLock();
         writeLock.lock();

@@ -34,8 +34,11 @@ public abstract class BaseGate<H extends Hub>
         if (docker == null) {
             Connection conn = getHub().connect(remote, local);
             if (conn != null) {
-                docker = createDocker(conn, data);
-                assert docker != null : "failed to create docker: " + remote + ", " + local;
+                docker = getDocker(remote, local);
+                if (docker == null) {
+                    docker = createDocker(conn, data);
+                    assert docker != null : "failed to create docker: " + remote + ", " + local;
+                }
                 setDocker(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
             }
         }

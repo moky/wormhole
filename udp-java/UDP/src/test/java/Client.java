@@ -109,7 +109,7 @@ public class Client implements Docker.Delegate {
 
         String text;
         byte[] data;
-        Runner.idle(5000);
+        Runner.sleep(5000);
 
         for (int index = 0; index < 16; ++index) {
             text = index + " sheep:" + content;
@@ -117,10 +117,10 @@ public class Client implements Docker.Delegate {
             UDPGate.info(">>> sending (" + data.length + " bytes): ");
             UDPGate.info(text);
             send(data);
-            Runner.idle(2000);
+            Runner.sleep(2000);
         }
 
-        Runner.idle(60000);
+        Runner.sleep(60000);
     }
 
     static String HOST;

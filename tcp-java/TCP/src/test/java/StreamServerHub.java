@@ -1,6 +1,7 @@
 
 import java.net.SocketAddress;
 
+import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.tcp.ServerHub;
 
@@ -8,6 +9,21 @@ class StreamServerHub extends ServerHub {
 
     public StreamServerHub(Connection.Delegate delegate) {
         super(delegate);
+    }
+
+    @Override
+    protected Channel getChannel(SocketAddress remote, SocketAddress local) {
+        return super.getChannel(remote, null);
+    }
+
+    @Override
+    protected void setChannel(SocketAddress remote, SocketAddress local, Channel channel) {
+        super.setChannel(remote, null, channel);
+    }
+
+    @Override
+    protected void removeChannel(SocketAddress remote, SocketAddress local, Channel channel) {
+        super.removeChannel(remote, null, channel);
     }
 
     @Override
@@ -24,4 +40,5 @@ class StreamServerHub extends ServerHub {
     protected void removeConnection(SocketAddress remote, SocketAddress local, Connection conn) {
         super.removeConnection(remote, null, conn);
     }
+
 }

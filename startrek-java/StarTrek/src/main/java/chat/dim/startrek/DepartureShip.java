@@ -30,6 +30,7 @@
  */
 package chat.dim.startrek;
 
+import java.util.Date;
 import java.util.List;
 
 import chat.dim.port.Departure;
@@ -69,16 +70,16 @@ public abstract class DepartureShip implements Departure {
     }
 
     @Override
-    public void touch(long now) {
+    public void touch(Date now) {
         assert tries > 0 : "touch error, tries=" + tries;
         // decrease counter
         --tries;
         // update retried time
-        expired = now + EXPIRES;
+        expired = now.getTime() + EXPIRES;
     }
 
     @Override
-    public Status getStatus(long now) {
+    public Status getStatus(Date now) {
         List<byte[]> fragments = getFragments();
         if (fragments == null || fragments.size() == 0) {
             return Status.DONE;
@@ -86,7 +87,7 @@ public abstract class DepartureShip implements Departure {
             return Status.NEW;
         //} else if (!isImportant()) {
         //    return Status.DONE;
-        } else if (now < expired) {
+        } else if (now.getTime() < expired) {
             return Status.WAITING;
         } else if (tries > 0) {
             return Status.TIMEOUT;

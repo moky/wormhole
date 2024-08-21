@@ -13,6 +13,7 @@ import chat.dim.port.Docker;
 import chat.dim.stargate.TCPGate;
 import chat.dim.startrek.PlainArrival;
 import chat.dim.tcp.ServerHub;
+import chat.dim.utils.Log;
 
 public class Server implements Docker.Delegate {
 
@@ -53,7 +54,7 @@ public class Server implements Docker.Delegate {
     public void onDockerStatusChanged(Docker.Status previous, Docker.Status current, Docker docker) {
         SocketAddress remote = docker.getRemoteAddress();
         SocketAddress local = docker.getLocalAddress();
-        TCPGate.info("!!! connection (" + remote + ", " + local + ") state changed: " + previous + " -> " + current);
+        Log.info("!!! connection (" + remote + ", " + local + ") state changed: " + previous + " -> " + current);
     }
 
     @Override
@@ -62,10 +63,10 @@ public class Server implements Docker.Delegate {
         byte[] data = ((PlainArrival) income).getPackage();
         String text = new String(data, StandardCharsets.UTF_8);
         SocketAddress source = docker.getRemoteAddress();
-        TCPGate.info("<<< received (" + data.length + " bytes) from " + source + ": " + text);
+        Log.info("<<< received (" + data.length + " bytes) from " + source + ": " + text);
         text = (counter++) + "# " + data.length + " byte(s) received";
         data = text.getBytes(StandardCharsets.UTF_8);
-        TCPGate.info(">>> responding: " + text);
+        Log.info(">>> responding: " + text);
         send(data, source);
     }
     static int counter = 0;
@@ -78,12 +79,12 @@ public class Server implements Docker.Delegate {
 
     @Override
     public void onDockerFailed(IOError error, Departure departure, Docker docker) {
-        TCPGate.error(error.getMessage());
+        Log.error(error.getMessage());
     }
 
     @Override
     public void onDockerError(IOError error, Departure departure, Docker docker) {
-        TCPGate.error(error.getMessage());
+        Log.error(error.getMessage());
     }
 
     static String HOST;
@@ -102,7 +103,7 @@ public class Server implements Docker.Delegate {
     public static void main(String[] args) throws IOException {
 
         SocketAddress local = new InetSocketAddress(HOST, PORT);
-        TCPGate.info("Starting TCP server (" + local + ") ...");
+        Log.info("Starting TCP server (" + local + ") ...");
 
         server = new Server(local);
 

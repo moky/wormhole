@@ -31,6 +31,7 @@
 package chat.dim.startrek;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -62,7 +63,7 @@ public class DepartureHall {
 
     // index
     private final Map<Object, Departure> departureMap = new WeakMap<>();      // SN => ship
-    private final Map<Object, Long> departureFinished = new HashMap<>();      // SN => timestamp
+    private final Map<Object, Date> departureFinished = new HashMap<>();      // SN => timestamp
     private final Map<Object, Integer> departureLevel = new WeakHashMap<>();  // SN => priority
 
     /**
@@ -102,8 +103,8 @@ public class DepartureHall {
         Object sn = response.getSN();
         assert sn != null : "Ship SN not found: " + response;
         // check whether this task has already finished
-        Long time = departureFinished.get(sn);
-        if (time != null && time > 0) {
+        Date time = departureFinished.get(sn);
+        if (time != null) {
             return null;
         }
         // check departure
@@ -113,7 +114,7 @@ public class DepartureHall {
             // remove it and clear mapping when SN exists
             removeShip(ship, sn);
             // mark finished time
-            departureFinished.put(sn, System.currentTimeMillis());
+            departureFinished.put(sn, new Date());
             return ship;
         }
         return null;
@@ -140,7 +141,7 @@ public class DepartureHall {
      * @param now - current time
      * @return departure task
      */
-    public Departure getNextDeparture(long now) {
+    public Departure getNextDeparture(Date now) {
         // task.expired == 0
         Departure next = getNextNewDeparture(now);
         if (next == null) {
@@ -149,7 +150,7 @@ public class DepartureHall {
         }
         return next;
     }
-    private Departure getNextNewDeparture(long now) {
+    private Departure getNextNewDeparture(Date now) {
         if (newDepartures.size() == 0) {
             return null;
         }
@@ -204,7 +205,7 @@ public class DepartureHall {
         // insert new value before the bigger one
         priorities.add(index, priority);
     }
-    private Departure getNextTimeoutDeparture(long now) {
+    private Departure getNextTimeoutDeparture(Date now) {
         List<Departure> fleet;
         Iterator<Departure> dit;
         Departure ship;
@@ -250,7 +251,7 @@ public class DepartureHall {
     /**
      *  Clear all expired tasks
      */
-    public void purge(long now) {
+    public void purge(Date now) {
         // 1. seeking finished tasks
         Iterator<Integer> pit = priorities.iterator();
         int prior;
@@ -287,14 +288,14 @@ public class DepartureHall {
             }
         }
         // 2. seeking neglected finished times
-        Iterator<Map.Entry<Object, Long>> mit = departureFinished.entrySet().iterator();
-        long ago = now - 3600 * 1000;
-        Map.Entry<Object, Long> entry;
-        Long when;
+        Iterator<Map.Entry<Object, Date>> mit = departureFinished.entrySet().iterator();
+        long ago = now.getTime() - 3600 * 1000;
+        Map.Entry<Object, Date> entry;
+        Date when;
         while (mit.hasNext()) {
             entry = mit.next();
             when = entry.getValue();
-            if (when == null || when < ago) {
+            if (when == null || when.getTime() < ago) {
                 // long time ago
                 mit.remove();
             }

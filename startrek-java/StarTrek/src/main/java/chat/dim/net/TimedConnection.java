@@ -30,18 +30,20 @@
  */
 package chat.dim.net;
 
+import java.util.Date;
+
 /**
  *  Connection with sent/received time
  */
 public interface TimedConnection {
 
-    long getLastSentTime();
+    Date getLastSentTime();
 
-    long getLastReceivedTime();
+    Date getLastReceivedTime();
 
-    boolean isSentRecently(long now);
+    boolean isSentRecently(Date now);
 
-    boolean isReceivedRecently(long now);
+    boolean isReceivedRecently(Date now);
 
-    boolean isNotReceivedLongTimeAgo(long now);
+    boolean isNotReceivedLongTimeAgo(Date now);
 }

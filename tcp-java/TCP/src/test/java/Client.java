@@ -14,6 +14,7 @@ import chat.dim.skywalker.Runner;
 import chat.dim.stargate.TCPGate;
 import chat.dim.startrek.PlainArrival;
 import chat.dim.tcp.ClientHub;
+import chat.dim.utils.Log;
 
 public class Client implements Docker.Delegate {
 
@@ -55,7 +56,7 @@ public class Client implements Docker.Delegate {
     public void onDockerStatusChanged(Docker.Status previous, Docker.Status current, Docker docker) {
         SocketAddress remote = docker.getRemoteAddress();
         SocketAddress local = docker.getLocalAddress();
-        TCPGate.info("!!! connection (" + remote + ", " + local + ") state changed: " + previous + " -> " + current);
+        Log.info("!!! connection (" + remote + ", " + local + ") state changed: " + previous + " -> " + current);
     }
 
     @Override
@@ -64,7 +65,7 @@ public class Client implements Docker.Delegate {
         byte[] data = ((PlainArrival) income).getPackage();
         String text = new String(data, StandardCharsets.UTF_8);
         SocketAddress source = docker.getRemoteAddress();
-        TCPGate.info("<<< received (" + data.length + " bytes) from " + source + ": " + text);
+        Log.info("<<< received (" + data.length + " bytes) from " + source + ": " + text);
     }
 
     @Override
@@ -75,12 +76,12 @@ public class Client implements Docker.Delegate {
 
     @Override
     public void onDockerFailed(IOError error, Departure departure, Docker docker) {
-        TCPGate.error(error.getMessage());
+        Log.error(error.getMessage());
     }
 
     @Override
     public void onDockerError(IOError error, Departure departure, Docker docker) {
-        TCPGate.error(error.getMessage());
+        Log.error(error.getMessage());
     }
 
     void test() {
@@ -96,13 +97,13 @@ public class Client implements Docker.Delegate {
         for (int index = 0; index < 16; ++index) {
             text = index + " sheep:" + content;
             data = text.getBytes();
-            TCPGate.info(">>> sending (" + data.length + " bytes): ");
-            TCPGate.info(text);
+            Log.info(">>> sending (" + data.length + " bytes): ");
+            Log.info(text);
             send(data);
-            Runner.idle(2000);
+            Runner.sleep(2000);
         }
 
-        Runner.idle(60000);
+        Runner.sleep(60000);
     }
 
     static String HOST;
@@ -122,7 +123,7 @@ public class Client implements Docker.Delegate {
 
         SocketAddress local = new InetSocketAddress(Client.HOST, Client.PORT);
         SocketAddress remote = new InetSocketAddress(Server.HOST, Server.PORT);
-        TCPGate.info("Connecting TCP server (" + local + "->" + remote + ") ...");
+        Log.info("Connecting TCP server (" + local + "->" + remote + ") ...");
 
         Client client = new Client(local, remote);
 
@@ -130,6 +131,6 @@ public class Client implements Docker.Delegate {
         client.test();
         client.stop();
 
-        TCPGate.info("Terminated.");
+        Log.info("Terminated.");
     }
 }

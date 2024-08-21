@@ -30,6 +30,8 @@
  */
 package chat.dim.startrek;
 
+import java.util.Date;
+
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 
@@ -101,7 +103,7 @@ public class Dock {
      * @param now - current time
      * @return departure task
      */
-    public Departure getNextDeparture(long now) {
+    public Departure getNextDeparture(Date now) {
         // this will be remove from the queue,
         // if needs retry, the caller should append it back
         return departureHall.getNextDeparture(now);
@@ -110,7 +112,7 @@ public class Dock {
     /**
      * Clear all expired tasks
      */
-    public void purge(long now) {
+    public void purge(Date now) {
         arrivalHall.purge(now);
         departureHall.purge(now);
     }

@@ -30,6 +30,7 @@
  */
 package chat.dim.startrek;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -48,7 +49,7 @@ public class ArrivalHall {
 
     private final Set<Arrival> arrivals = new HashSet<>();
     private final Map<Object, Arrival> arrivalMap = new WeakMap<>();    // SN => ship
-    private final Map<Object, Long> arrivalFinished = new HashMap<>();  // SN => timestamp
+    private final Map<Object, Date> arrivalFinished = new HashMap<>();  // SN => timestamp
 
     /**
      *  Check received ship for completed package
@@ -69,8 +70,8 @@ public class ArrivalHall {
         Arrival cached = arrivalMap.get(sn);
         if (cached == null) {
             // check whether the task has already finished
-            Long time = arrivalFinished.get(sn);
-            if (time != null && time > 0) {
+            Date time = arrivalFinished.get(sn);
+            if (time != null) {
                 // task already finished
                 return null;
             }
@@ -90,13 +91,13 @@ public class ArrivalHall {
             if (completed == null) {
                 // it's not completed yet, update expired time
                 // and wait for more fragments.
-                cached.touch(System.currentTimeMillis());
+                cached.touch(new Date());
             } else {
                 // all fragments received, remove cached ship
                 arrivals.remove(cached);
                 arrivalMap.remove(sn);
                 // mark finished time
-                arrivalFinished.put(sn, System.currentTimeMillis());
+                arrivalFinished.put(sn, new Date());
             }
         }
         return completed;
@@ -105,7 +106,7 @@ public class ArrivalHall {
     /**
      *  Clear all expired tasks
      */
-    public void purge(long now) {
+    public void purge(Date now) {
         // 1. seeking expired tasks
         Iterator<Arrival> ait = arrivals.iterator();
         Arrival ship;
@@ -124,14 +125,14 @@ public class ArrivalHall {
             }
         }
         // 2. seeking neglected finished times
-        Iterator<Map.Entry<Object, Long>> mit = arrivalFinished.entrySet().iterator();
-        long ago = now - 3600 * 1000;
-        Map.Entry<Object, Long> entry;
-        Long when;
+        Iterator<Map.Entry<Object, Date>> mit = arrivalFinished.entrySet().iterator();
+        long ago = now.getTime() - 3600 * 1000;
+        Map.Entry<Object, Date> entry;
+        Date when;
         while (mit.hasNext()) {
             entry = mit.next();
             when = entry.getValue();
-            if (when == null || when < ago) {
+            if (when == null || when.getTime() < ago) {
                 // long time ago
                 mit.remove();
             }
