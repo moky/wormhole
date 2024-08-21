@@ -38,12 +38,12 @@ import chat.dim.net.ConnectionState;
 import chat.dim.skywalker.Processor;
 
 /**
- *  Star Worker
+ *  Star Docker
  *  ~~~~~~~~~~~
  *
  *  Processor for Star Ships
  */
-public interface Docker extends Processor {
+public interface Porter extends Processor {
 
     boolean isOpen();    // connection.isOpen()
     boolean isAlive();   // connection.isAlive()
@@ -136,43 +136,45 @@ public interface Docker extends Processor {
          *  Callback when new package received
          *
          * @param arrival     - income data package container
-         * @param docker      - connection docker
+         * @param porter      - connection docker
          */
-        void onDockerReceived(Arrival arrival, Docker docker);
+        void onPorterReceived(Arrival arrival, Porter porter);
 
         /**
          *  Callback when package sent
          *
          * @param departure   - outgo data package container
-         * @param docker      - connection docker
+         * @param porter      - connection docker
          */
-        void onDockerSent(Departure departure, Docker docker);
+        void onPorterSent(Departure departure, Porter porter);
 
         /**
          *  Callback when failed to send package
          *
          * @param error       - error message
          * @param departure   - outgo data package container
-         * @param docker      - connection docker
+         * @param porter      - connection docker
          */
-        void onDockerFailed(IOError error, Departure departure, Docker docker);
+        void onPorterFailed(IOError error, Departure departure, Porter porter);
 
         /**
          *  Callback when connection error
          *
          * @param error       - error message
          * @param departure   - outgo data package container
-         * @param docker      - connection docker
+         * @param porter      - connection docker
          */
-        void onDockerError(IOError error, Departure departure, Docker docker);
+        void onPorterError(IOError error, Departure departure, Porter porter);
 
         /**
          *  Callback when connection status changed
          *
          * @param previous    - old status
          * @param current     - new status
-         * @param docker      - connection docker
+         * @param porter      - connection docker
          */
-        void onDockerStatusChanged(Status previous, Status current, Docker docker);
+        void onPorterStatusChanged(Status previous, Status current, Porter porter);
+
     }
+
 }

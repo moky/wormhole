@@ -50,10 +50,28 @@ import java.nio.channels.WritableByteChannel;
 
 public interface Channel extends ByteChannel {
 
+    /**
+     *  Channel State Order
+     *  ~~~~~~~~~~~~~~~~~~~
+     */
+    enum Status {
+        INIT,    // initializing
+        OPEN,    // initialized
+        ALIVE,   // (not closed) and (connected or bound)
+        CLOSED,  // closed
+    }
+    // channel state order
+    Status getStatus();
+
     //boolean isOpen();
     boolean isBound();
 
     boolean isAlive();  // isOpen() && (isConnected() || isBound())
+
+    /// ready for reading
+    boolean isAvailable();  // isAlive
+    /// ready for writing
+    boolean isVacant();     // isAlive
 
     //void close() throws IOException;
 
@@ -430,4 +448,5 @@ public interface Channel extends ByteChannel {
      *          If some other I/O error occurs
      */
     int send(ByteBuffer src, SocketAddress target) throws IOException;
+
 }

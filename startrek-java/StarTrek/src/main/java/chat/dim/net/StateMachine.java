@@ -35,7 +35,7 @@ import java.lang.ref.WeakReference;
 import chat.dim.fsm.BaseMachine;
 import chat.dim.fsm.Context;
 
-/**
+/*
  *    Finite States
  *    ~~~~~~~~~~~~~
  *
@@ -64,6 +64,11 @@ import chat.dim.fsm.Context;
  *             ||               || ------------------------> ||             ||
  *             \\===============//       (Received)          \\=============//
  *
+ */
+
+/**
+ *  Connection State Machine
+ *  ~~~~~~~~~~~~~~~~~~~~~~~~
  */
 public class StateMachine extends BaseMachine<StateMachine, StateTransition, ConnectionState>
         implements Context {

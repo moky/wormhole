@@ -33,6 +33,7 @@ package chat.dim.startrek;
 import java.io.IOError;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.net.SocketAddress;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -41,26 +42,30 @@ import java.util.List;
 import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
-import chat.dim.port.Docker;
+import chat.dim.port.Porter;
 import chat.dim.port.Ship;
 import chat.dim.type.AddressPairObject;
 
-public abstract class StarDocker extends AddressPairObject implements Docker {
-
-    private final WeakReference<Connection> connectionRef;
-    private WeakReference<Delegate> delegateRef;
+/**
+ *  Star Docker
+ *  ~~~~~~~~~~~
+ */
+public abstract class StarPorter extends AddressPairObject implements Porter {
 
     private Dock dock;
+
+    private WeakReference<Delegate> delegateRef;
+    private WeakReference<Connection> connectionRef;
 
     // remaining data to be sent
     private Departure lastOutgo;
     private List<byte[]> lastFragments;
 
-    protected StarDocker(Connection conn) {
-        super(conn.getRemoteAddress(), conn.getLocalAddress());
-        connectionRef = new WeakReference<>(conn);
-        delegateRef = new WeakReference<>(null);
+    protected StarPorter(SocketAddress remote, SocketAddress local) {
+        super(remote, local);
         dock = createDock();
+        delegateRef = null;
+        connectionRef = null;
         // remaining data to be sent
         lastOutgo = null;
         lastFragments = new ArrayList<>();
@@ -69,7 +74,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     @Override
     protected void finalize() throws Throwable {
         // make sure the relative connection is closed
-        removeConnection();
+        setConnection(null);
         dock = null;
         super.finalize();
     }
@@ -80,30 +85,49 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     }
 
     // delegate for handling docker events
-    public void setDelegate(Delegate delegate) {
-        delegateRef = new WeakReference<>(delegate);
+    public void setDelegate(Delegate keeper) {
+        delegateRef = keeper == null ? null : new WeakReference<>(keeper);
     }
     protected Delegate getDelegate() {
-        return delegateRef.get();
+        WeakReference<Delegate> ref = delegateRef;
+        return ref == null ? null : ref.get();
     }
 
+    //
+    //  Connection
+    //
+
     protected Connection getConnection() {
-        return connectionRef.get();
+        WeakReference<Connection> ref = connectionRef;
+        return ref == null ? null : ref.get();
     }
-    private void removeConnection() {
-        // 1. clear connection reference
-        Connection old = connectionRef.get();
-        connectionRef.clear();
+    protected void setConnection(Connection conn) {
+        // 1. replace with new connection
+        Connection old = getConnection();
+        if (conn != null) {
+            connectionRef = new WeakReference<>(conn);
+        } else {
+            connectionRef.clear();
+            // connectionRef = null;
+        }
         // 2. close old connection
-        if (old != null && old.isOpen()) {
+        if (old != null && old != conn) {
             old.close();
         }
     }
 
+    //
+    //  Flags
+    //
+
     @Override
     public boolean isOpen() {
+        if (connectionRef == null) {
+            // initializing
+            return true;
+        }
         Connection conn = getConnection();
-        return conn != null && conn.isOpen();
+        return conn == null || conn.isOpen();
     }
 
     @Override
@@ -115,7 +139,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     @Override
     public Status getStatus() {
         Connection conn = getConnection();
-        return conn == null ? Status.ERROR : Status.getStatus(conn.getState());
+        return Status.getStatus(conn == null ? null : conn.getState());
     }
 
     /*/
@@ -130,7 +154,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
     public String toString() {
         String cname = getClass().getName();
         return "<" + cname + " remote=\"" + getRemoteAddress() + "\" local=\"" + getLocalAddress() + "\">\n\t"
-                + connectionRef.get() + "\n</" + cname + ">";
+                + getConnection() + "\n</" + cname + ">";
     }
 
     @Override
@@ -146,7 +170,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             // waiting for more data
             return;
         }
-        Delegate delegate = getDelegate();
+        Delegate keeper = getDelegate();
         for (Arrival income : ships) {
             // 2. check income ship for response
             income = checkArrival(income);
@@ -155,8 +179,8 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
                 continue;
             }
             // 3. callback for processing income ship with completed data package
-            if (delegate != null) {
-                delegate.onDockerReceived(income, this);
+            if (keeper != null) {
+                keeper.onPorterReceived(income, this);
             }
         }
     }
@@ -182,18 +206,19 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
      *
      * @param income - income ship with SN
      */
-    protected void checkResponse(Arrival income) {
+    protected Departure checkResponse(Arrival income) {
         // check response for linked departure ship (same SN)
         Departure linked = dock.checkResponse(income);
         if (linked == null) {
             // linked departure task not found, or not finished yet
-            return;
+            return null;
         }
         // all fragments responded, task finished
-        Delegate delegate = getDelegate();
-        if (delegate != null) {
-            delegate.onDockerSent(linked, this);
+        Delegate keeper = getDelegate();
+        if (keeper != null) {
+            keeper.onPorterSent(linked, this);
         }
+        return linked;
     }
 
     /**
@@ -223,8 +248,7 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
 
     @Override
     public void close() {
-        removeConnection();
-        dock = null;
+        setConnection(null);
     }
 
     //
@@ -233,13 +257,20 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
 
     @Override
     public boolean process() {
-        // 1. get connection which is ready for sending data
+        //
+        //  1. get connection which is ready for sending data
+        //
         Connection conn = getConnection();
-        if (conn == null || !conn.isAlive()) {
-            // connection not ready now
+        if (conn == null) {
+            // waiting for connection
+            return false;
+        } else if (!conn.isVacant()) {
+            // connection is not ready for sending data
             return false;
         }
-        // 2. get data waiting to be sent out
+        //
+        //  2. get data waiting to be sent out
+        //
         Departure outgo = lastOutgo;
         List<byte[]> fragments = lastFragments;
         if (outgo != null && fragments.size() > 0) {
@@ -254,25 +285,27 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
                 // nothing to do now, return false to let the thread have a rest
                 return false;
             } else if (outgo.getStatus(now).equals(Ship.Status.FAILED)) {
-                Delegate delegate = getDelegate();
-                if (delegate != null) {
+                Delegate keeper = getDelegate();
+                if (keeper != null) {
                     // callback for mission failed
                     IOException e = new SocketException("Request timeout");
-                    delegate.onDockerFailed(new IOError(e), outgo, this);
+                    keeper.onPorterFailed(new IOError(e), outgo, this);
                 }
                 // task timeout, return true to process next one
                 return true;
             } else {
                 // get fragments from outgo task
                 fragments = outgo.getFragments();
-                if (fragments.size() == 0) {
+                if (fragments == null || fragments.size() == 0) {
                     // all fragments of this task have been sent already
                     // return true to process next one
                     return true;
                 }
             }
         }
-        // 3. process fragments of outgo task
+        //
+        //  3. process fragments of outgo task
+        //
         IOError error;
         int index = 0, sent = 0;
         try {
@@ -292,13 +325,23 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
                 throw new SocketException("only " + index + "/" + fragments.size() + " fragments sent.");
             } else {
                 // task done
+                Delegate keeper = getDelegate();
+                if (outgo.isImportant()) {
+                    // this task needs response,
+                    // so we cannot call 'onPorterSent()' immediately
+                    // until the remote responded
+                } else if (keeper != null) {
+                    keeper.onPorterSent(outgo, this);
+                }
                 return true;
             }
         } catch (IOException e) {
             // socket error, callback
             error = new IOError(e);
         }
-        // 4. remove sent fragments
+        //
+        //  4. remove sent fragments
+        //
         for (; index > 0; --index) {
             fragments.remove(0);
         }
@@ -309,15 +352,20 @@ public abstract class StarDocker extends AddressPairObject implements Docker {
             System.arraycopy(next, sent, part, 0, next.length - sent);
             fragments.add(0, part);
         }
-        // 5. store remaining data
+        //
+        //  5. store remaining data
+        //
         lastOutgo = outgo;
         lastFragments = fragments;
-        // 6. callback for error
-        Delegate delegate = getDelegate();
-        if (delegate != null) {
-            //delegate.onDockerFailed(error, outgo, this);
-            delegate.onDockerError(error, outgo, this);
+        //
+        //  6. callback for error
+        //
+        Delegate keeper = getDelegate();
+        if (keeper != null) {
+            // keeper.onPorterFailed(error, outgo, this);
+            keeper.onPorterError(error, outgo, this);
         }
         return false;
     }
+
 }

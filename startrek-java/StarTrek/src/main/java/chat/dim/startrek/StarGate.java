@@ -33,63 +33,80 @@ package chat.dim.startrek;
 import java.io.IOError;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
-import java.util.Set;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.port.Departure;
-import chat.dim.port.Docker;
 import chat.dim.port.Gate;
+import chat.dim.port.Porter;
 import chat.dim.type.AddressPairMap;
 
-class DockerPool extends AddressPairMap<Docker> {
+class PorterPool extends AddressPairMap<Porter> {
 
     @Override
-    public void set(SocketAddress remote, SocketAddress local, Docker value) {
-        Docker old = get(remote, local);
-        if (old != null && old != value) {
-            remove(remote, local, old);
+    public Porter set(SocketAddress remote, SocketAddress local, Porter value) {
+        // remove cached item
+        Porter cached = super.remove(remote, local, value);
+        /*/
+        if (cached != null && cached != value) {
+            cached.close();
         }
-        super.set(remote, local, value);
+        /*/
+        Porter old = super.set(remote, local, value);
+        assert old != null : "should not happen";
+        return cached;
     }
 
+    /*/
     @Override
-    public Docker remove(SocketAddress remote, SocketAddress local, Docker value) {
-        Docker cached = super.remove(remote, local, value);
-        if (cached != null && cached.isOpen()) {
+    public Porter remove(SocketAddress remote, SocketAddress local, Porter value) {
+        Porter cached = super.remove(remote, local, value);
+        if (cached != null && cached != value) {
             cached.close();
+        }
+        if (value != null) {
+            value.close();
         }
         return cached;
     }
+    /*/
+
 }
 
 public abstract class StarGate implements Gate, Connection.Delegate {
 
-    private final AddressPairMap<Docker> dockerPool;
-    private final WeakReference<Docker.Delegate> delegateRef;
+    private final WeakReference<Porter.Delegate> delegateRef;
+    private final AddressPairMap<Porter> porterPool;
+    private final ReadWriteLock lock;
 
-    protected StarGate(Docker.Delegate delegate) {
+    protected StarGate(Porter.Delegate keeper) {
         super();
-        delegateRef = new WeakReference<>(delegate);
-        dockerPool = createDockerPool();
+        delegateRef = new WeakReference<>(keeper);
+        porterPool = createPorterPool();
+        lock = new ReentrantReadWriteLock();
     }
 
-    protected AddressPairMap<Docker> createDockerPool() {
-        return new DockerPool();
+    protected AddressPairMap<Porter> createPorterPool() {
+        return new PorterPool();
     }
 
     // delegate for handling docker events
-    protected Docker.Delegate getDelegate() {
+    protected Porter.Delegate getDelegate() {
         return delegateRef.get();
     }
 
     @Override
     public boolean sendData(byte[] payload, SocketAddress remote, SocketAddress local) {
-        Docker docker = getDocker(remote, local);
-        if (docker == null || !docker.isOpen()) {
+        Porter docker = getPorter(remote, local);
+        if (docker == null) {
+            assert false : "docker not found: " + local + " -> " + remote;
+            return false;
+        } else if (!docker.isAlive()) {
+            assert false : "docker not alive: " + local + " -> " + remote;
             return false;
         }
         return docker.sendData(payload);
@@ -97,8 +114,12 @@ public abstract class StarGate implements Gate, Connection.Delegate {
 
     @Override
     public boolean sendShip(Departure outgo, SocketAddress remote, SocketAddress local) {
-        Docker docker = getDocker(remote, local);
-        if (docker == null || !docker.isOpen()) {
+        Porter docker = getPorter(remote, local);
+        if (docker == null) {
+            assert false : "docker not found: " + local + " -> " + remote;
+            return false;
+        } else if (!docker.isAlive()) {
+            assert false : "docker not alive: " + local + " -> " + remote;
             return false;
         }
         return docker.sendShip(outgo);
@@ -111,26 +132,71 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     /**
      *  Create new docker for received data
      *
-     * @param conn   - current connection
-     * @param data   - advance party
+     * @param remote - remote address
+     * @param local  - local address
      * @return docker
      */
-    protected abstract Docker createDocker(Connection conn, List<byte[]> data);
+    protected abstract Porter createPorter(SocketAddress remote, SocketAddress local);
 
-    protected Set<Docker> allDockers() {
-        return dockerPool.allValues();
+    protected Iterable<Porter> allPorters() {
+        return porterPool.allValues();
     }
 
-    protected Docker getDocker(SocketAddress remote, SocketAddress local) {
-        return dockerPool.get(remote, local);
+    protected Porter getPorter(SocketAddress remote, SocketAddress local) {
+        return porterPool.get(remote, local);
     }
 
-    protected void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
-        dockerPool.set(remote, local, docker);
+    protected Porter setPorter(SocketAddress remote, SocketAddress local, Porter porter) {
+        return porterPool.set(remote, local, porter);
     }
 
-    protected void removeDocker(SocketAddress remote, SocketAddress local, Docker docker) {
-        dockerPool.remove(remote, local, docker);
+    protected Porter removePorter(SocketAddress remote, SocketAddress local, Porter porter) {
+        return porterPool.remove(remote, local, porter);
+    }
+
+    protected Porter dock(Connection conn, boolean newPorter) {
+        //
+        //  0. pre-checking
+        //
+        SocketAddress remote = conn.getRemoteAddress();
+        SocketAddress local = conn.getLocalAddress();
+        if (remote == null) {
+            assert false : "remote address should not empty";
+            return null;
+        }
+        Porter docker = getPorter(remote, local);
+        if (docker != null) {
+            return docker;
+        }
+        //
+        //  1. lock to check
+        //
+        Lock writeLock = lock.writeLock();
+        writeLock.lock();
+        try {
+            // check again
+            docker = getPorter(remote, local);
+            if (docker != null || !newPorter) {
+                return docker;
+            }
+            // docker not exists, create new docker
+            docker = createPorter(remote, local);
+            Porter cached = setPorter(remote, local, docker);
+            if (cached != null && cached != docker) {
+                cached.close();
+            }
+        } finally {
+            writeLock.unlock();
+        }
+        //
+        //  2. set connection for this docker
+        //
+        if (docker instanceof StarPorter) {
+            ((StarPorter) docker).setConnection(conn);
+        } else {
+            assert false : "docker error: " + remote + ", " + docker;
+        }
+        return docker;
     }
 
     //
@@ -139,31 +205,35 @@ public abstract class StarGate implements Gate, Connection.Delegate {
 
     @Override
     public boolean process() {
-        Set<Docker> dockers = allDockers();
+        Iterable<Porter> dockers = allPorters();
         // 1. drive all dockers to process
-        int count = driveDockers(dockers);
+        int count = drivePorters(dockers);
         // 2. cleanup for dockers
-        cleanupDockers(dockers);
+        cleanupPorters(dockers);
         return count > 0;
     }
-    protected int driveDockers(Set<Docker> dockers) {
+    protected int drivePorters(Iterable<Porter> porters) {
         int count = 0;
-        for (Docker worker : dockers) {
-            if (worker.process()) {
+        for (Porter docker : porters) {
+            if (docker.process()) {
                 ++count;  // it's busy
             }
         }
         return count;
     }
-    protected void cleanupDockers(Set<Docker> dockers) {
+    protected void cleanupPorters(Iterable<Porter> porters) {
         Date now = new Date();
-        for (Docker worker : dockers) {
-            if (worker.isOpen()) {
+        Porter cached;
+        for (Porter docker : porters) {
+            if (docker.isOpen()) {
                 // clear expired tasks
-                worker.purge(now);
+                docker.purge(now);
             } else {
                 // remove docker when connection closed
-                removeDocker(worker.getRemoteAddress(), worker.getLocalAddress(), worker);
+                cached = removePorter(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
+                if (cached != null && cached != docker) {
+                    cached.close();
+                }
             }
         }
     }
@@ -174,9 +244,9 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     protected void heartbeat(Connection connection) {
         SocketAddress remote = connection.getRemoteAddress();
         SocketAddress local = connection.getLocalAddress();
-        Docker worker = getDocker(remote, local);
-        if (worker != null) {
-            worker.heartbeat();
+        Porter docker = getPorter(remote, local);
+        if (docker != null) {
+            docker.heartbeat();
         }
     }
 
@@ -187,8 +257,8 @@ public abstract class StarGate implements Gate, Connection.Delegate {
     @Override
     public void onConnectionStateChanged(ConnectionState previous, ConnectionState current, Connection connection) {
         // convert status
-        Docker.Status s1 = Docker.Status.getStatus(previous);
-        Docker.Status s2 = Docker.Status.getStatus(current);
+        Porter.Status s1 = Porter.Status.getStatus(previous);
+        Porter.Status s2 = Porter.Status.getStatus(current);
         // 1. callback when status changed
         boolean changed;
         if (s1 == null) {
@@ -199,28 +269,16 @@ public abstract class StarGate implements Gate, Connection.Delegate {
             changed = !s1.equals(s2);
         }
         if (changed) {
-            SocketAddress remote = connection.getRemoteAddress();
-            SocketAddress local = connection.getLocalAddress();
-            Docker docker = getDocker(remote, local);
+            boolean finished = s2 != null && s2.equals(Porter.Status.ERROR);
+            Porter docker = dock(connection, !finished);
             if (docker == null) {
-                if (s2 == null || s2.equals(Docker.Status.ERROR)) {
-                    // connection closed and docker removed
-                    return;
-                }
-                docker = createDocker(connection, new ArrayList<>());
-                if (docker == null) {
-                    assert false : "failed to create docker: $remote, $local";
-                    return;
-                } else {
-                    setDocker(remote, local, docker);
-                }
+                // connection closed and docker removed
+                return;
             }
-            // NOTICE: if the previous state is null, the docker maybe not
-            //         created yet, this situation means the docker status
-            //         not changed too, so no need to callback here.
-            Docker.Delegate delegate = getDelegate();
-            if (delegate != null) {
-                delegate.onDockerStatusChanged(s1, s2, docker);
+            // callback for docker status
+            Porter.Delegate keeper = getDelegate();
+            if (keeper != null) {
+                keeper.onPorterStatusChanged(s1, s2, docker);
             }
         }
         // 2. heartbeat when connection expired
@@ -231,37 +289,13 @@ public abstract class StarGate implements Gate, Connection.Delegate {
 
     @Override
     public void onConnectionReceived(byte[] data, Connection connection) {
-        SocketAddress remote = connection.getRemoteAddress();
-        SocketAddress local = connection.getLocalAddress();
-        // get docker by (remote, local)
-        Docker worker = getDocker(remote, local);
-        if (worker != null) {
-            // docker exists, call docker.onReceived(data);
-            worker.processReceived(data);
-            return;
-        }
-
-        // cache advance party for this connection
-        List<byte[]> advanceParty = cacheAdvanceParty(data, connection);
-        assert advanceParty != null && advanceParty.size() > 0 : "advance party error";
-
-        // docker not exists, check the data to decide which docker should be created
-        worker = createDocker(connection, advanceParty);
-        if (worker != null) {
-            // cache docker for (remote, local)
-            setDocker(worker.getRemoteAddress(), worker.getLocalAddress(), worker);
-            // process advance parties one by one
-            for (byte[] part : advanceParty) {
-                worker.processReceived(part);
-            }
-            // remove advance party
-            clearAdvanceParty(connection);
+        Porter docker = dock(connection, true);
+        if (docker == null) {
+            assert false : "failed to create docker: " + connection;
+        } else {
+            docker.processReceived(data);
         }
     }
-
-    // cache the advance party before decide which docker to use
-    protected abstract List<byte[]> cacheAdvanceParty(byte[] data, Connection connection);
-    protected abstract void clearAdvanceParty(Connection connection);
 
     @Override
     public void onConnectionSent(int sent, byte[] data, Connection connection) {

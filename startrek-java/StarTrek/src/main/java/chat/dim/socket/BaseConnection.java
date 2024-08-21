@@ -40,6 +40,7 @@ import java.util.Date;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
+import chat.dim.net.Hub;
 import chat.dim.net.StateMachine;
 import chat.dim.net.TimedConnection;
 import chat.dim.type.AddressPairObject;
@@ -49,26 +50,19 @@ public class BaseConnection extends AddressPairObject
 
     public static long EXPIRES = 16 * 1000;  // 16 seconds
 
-    private WeakReference<Channel> channelRef;
-    private WeakReference<Delegate> delegateRef;
+    private WeakReference<Delegate> delegateRef = null;
 
-    private Date lastSentTime;
-    private Date lastReceivedTime;
+    private WeakReference<Channel> channelRef = null;
 
-    private StateMachine fsm;
+    // active times
+    private Date lastSentTime = null;
+    private Date lastReceivedTime = null;
 
-    public BaseConnection(SocketAddress remote, SocketAddress local, Channel sock) {
+    // connection state machine
+    private StateMachine fsm = null;
+
+    public BaseConnection(SocketAddress remote, SocketAddress local) {
         super(remote, local);
-
-        channelRef = new WeakReference<>(sock);
-        delegateRef = new WeakReference<>(null);
-
-        // active times
-        lastSentTime = null;
-        lastReceivedTime = null;
-
-        // connection state machine
-        fsm = null;
     }
 
     @Override
@@ -79,7 +73,19 @@ public class BaseConnection extends AddressPairObject
         super.finalize();
     }
 
-    // connection state machine
+    // delegate for handling connection events
+    public void setDelegate(Delegate gate) {
+        delegateRef = gate == null ? null : new WeakReference<>(gate);
+    }
+    protected Delegate getDelegate() {
+        WeakReference<Delegate> ref = delegateRef;
+        return ref == null ? null : ref.get();
+    }
+
+    //
+    //  State Machine
+    //
+
     protected StateMachine getStateMachine() {
         return fsm;
     }
@@ -98,38 +104,41 @@ public class BaseConnection extends AddressPairObject
         return machine;
     }
 
-    // delegate for handling connection events
-    public void setDelegate(Delegate delegate) {
-        delegateRef = new WeakReference<>(delegate);
-    }
-    protected Delegate getDelegate() {
-        return delegateRef.get();
-    }
+    //
+    //  Channel
+    //
 
-    // socket channel
     protected Channel getChannel() {
-        return channelRef.get();
+        WeakReference<Channel> ref = channelRef;
+        return ref == null ? null : ref.get();
     }
-    protected void setChannel(Channel newChannel) {
+    protected void setChannel(Channel sock) {
         // 1. replace with new channel
-        Channel oldChannel = channelRef.get();
-        channelRef = new WeakReference<>(newChannel);
+        Channel old = getChannel();
+        if (sock != null) {
+            channelRef = new WeakReference<>(sock);
+        } else {
+            channelRef.clear();
+            // channelRef = null;
+        }
         // 2. close old channel
-        if (oldChannel != null && oldChannel != newChannel) {
-            if (oldChannel.isConnected()) {
-                try {
-                    oldChannel.disconnect();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+        if (old != null && old != sock) {
+            try {
+                old.close();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
     }
 
     @Override
     public boolean isOpen() {
+        if (channelRef == null) {
+            // initializing
+            return true;
+        }
         Channel sock = getChannel();
-        return sock != null && sock.isOpen();
+        return sock == null || sock.isOpen();
     }
 
     @Override
@@ -151,6 +160,18 @@ public class BaseConnection extends AddressPairObject
         return isOpen() && (isConnected() || isBound());
     }
 
+    @Override
+    public boolean isAvailable() {
+        Channel sock = getChannel();
+        return sock != null && sock.isAvailable();
+    }
+
+    @Override
+    public boolean isVacant() {
+        Channel sock = getChannel();
+        return sock != null && sock.isVacant();
+    }
+
     /*/
     @Override
     public SocketAddress getLocalAddress() {
@@ -163,24 +184,39 @@ public class BaseConnection extends AddressPairObject
     public String toString() {
         String cname = getClass().getName();
         return "<" + cname + " remote=\"" + getRemoteAddress() + "\" local=\"" + getLocalAddress() + "\">\n\t"
-                + channelRef.get() + "\n</" + cname + ">";
+                + getChannel() + "\n</" + cname + ">";
     }
 
     @Override
     public void close() {
-        setChannel(null);
+        // stop state machine
         setStateMachine(null);
+        // close channel
+        setChannel(null);
     }
 
-    public void start() {
+    // Get channel from hub
+    public void start(Hub hub) {
+        // 1. get channel from hub
+        openChannel(hub);
+        // 2. start state machine
+        startMachine();
+    }
+
+    protected void startMachine() {
         StateMachine machine = createStateMachine();
-        machine.start();
         setStateMachine(machine);
+        machine.start();
     }
 
-    public void stop() {
-        setChannel(null);
-        setStateMachine(null);
+    protected Channel openChannel(Hub hub) {
+        Channel sock = hub.open(remoteAddress, localAddress);
+        if (sock == null) {
+            assert false : "failed to open channel: remote=" + remoteAddress + ", local=" + localAddress;
+        } else {
+            setChannel(sock);
+        }
+        return sock;
     }
 
     //
@@ -199,7 +235,10 @@ public class BaseConnection extends AddressPairObject
     protected int send(ByteBuffer src, SocketAddress destination) throws IOException {
         Channel sock = getChannel();
         if (sock == null || !sock.isAlive()) {
-            //throw new IOException("socket channel lost: " + sock);
+            assert false : "socket channel lost: " + sock;
+            return -1;
+        } else if (destination == null) {
+            assert false : "remote address should not empty";
             return -1;
         }
         int sent = sock.send(src, destination);
@@ -256,8 +295,13 @@ public class BaseConnection extends AddressPairObject
 
     @Override
     public void tick(Date now, long delta) {
+        if (channelRef == null) {
+            // not initialized
+            return;
+        }
         StateMachine machine = getStateMachine();
         if (machine != null) {
+            // drive state machine forward
             machine.tick(now, delta);
         }
     }
@@ -323,15 +367,14 @@ public class BaseConnection extends AddressPairObject
                 // connection state changed from 'preparing' to 'ready',
                 // set times to expired soon.
                 assert now != null : "should not happen";
-                Date last;
-                long timestamp = now.getTime() - (EXPIRES >> 1);
-                last = lastSentTime;
-                if (last == null || last.getTime() < timestamp) {
-                    lastSentTime = new Date(timestamp);
+                long soon = now.getTime() - (EXPIRES >> 1);
+                Date st = lastSentTime;
+                if (st == null || st.getTime() < soon) {
+                    lastSentTime = new Date(soon);
                 }
-                last = lastReceivedTime;
-                if (last == null || last.getTime() < timestamp) {
-                    lastReceivedTime = new Date(timestamp);
+                Date rt = lastReceivedTime;
+                if (rt == null || rt.getTime() < soon) {
+                    lastReceivedTime = new Date(soon);
                 }
             }
         }
@@ -339,6 +382,11 @@ public class BaseConnection extends AddressPairObject
         Delegate delegate = getDelegate();
         if (delegate != null) {
             delegate.onConnectionStateChanged(previous, current, this);
+        }
+        // if current == 'error'
+        if (current != null && current.equals(ConnectionState.Order.ERROR)) {
+            // remove channel when error
+            setChannel(null);
         }
     }
 
@@ -351,4 +399,5 @@ public class BaseConnection extends AddressPairObject
     public void resumeState(ConnectionState current, StateMachine ctx, Date now) {
 
     }
+
 }

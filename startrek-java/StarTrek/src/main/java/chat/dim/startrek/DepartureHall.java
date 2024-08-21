@@ -211,7 +211,7 @@ public class DepartureHall {
         Departure ship;
         Ship.Status status;
         Object sn;
-        List<Integer> priorityList = new ArrayList<>(priorities);
+        List<Integer> priorityList = new ArrayList<>(priorities);  // copy
         for (int priority : priorityList) {
             // 1. get tasks with priority
             fleet = departureFleets.get(priority);
@@ -252,6 +252,9 @@ public class DepartureHall {
      *  Clear all expired tasks
      */
     public void purge(Date now) {
+        if (now == null) {
+            now = new Date();
+        }
         // 1. seeking finished tasks
         Iterator<Integer> pit = priorities.iterator();
         int prior;
@@ -301,4 +304,5 @@ public class DepartureHall {
             }
         }
     }
+
 }

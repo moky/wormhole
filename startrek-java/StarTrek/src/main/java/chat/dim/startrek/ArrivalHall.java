@@ -81,7 +81,7 @@ public class ArrivalHall {
                 // it's a fragment, waiting for more fragments
                 arrivals.add(income);
                 arrivalMap.put(sn, income);
-                //income.touch(System.currentTimeMillis());
+                //income.touch(new Date());
             }
             // else, it's a completed package
         } else {
@@ -107,6 +107,9 @@ public class ArrivalHall {
      *  Clear all expired tasks
      */
     public void purge(Date now) {
+        if (now == null) {
+            now = new Date();
+        }
         // 1. seeking expired tasks
         Iterator<Arrival> ait = arrivals.iterator();
         Arrival ship;
@@ -138,4 +141,5 @@ public class ArrivalHall {
             }
         }
     }
+
 }

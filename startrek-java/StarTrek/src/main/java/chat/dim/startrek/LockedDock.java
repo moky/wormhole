@@ -98,6 +98,9 @@ public class LockedDock extends Dock {
 
     @Override
     public void purge(Date now) {
+        if (now == null) {
+            now = new Date();
+        }
         Date next = nextPurgeTime;
         if (next != null && next.after(now)) {
             return;
@@ -113,4 +116,5 @@ public class LockedDock extends Dock {
             writeLock.unlock();
         }
     }
+
 }

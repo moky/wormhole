@@ -33,7 +33,7 @@ package chat.dim.port;
 /*
  *  Architecture:
  *
- *              Docker Delegate   Docker Delegate   Docker Delegate
+ *              Porter Delegate   Porter Delegate   Porter Delegate
  *                     ^                 ^               ^
  *                     :                 :               :
  *        ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~
@@ -43,7 +43,7 @@ package chat.dim.port;
  *          ||         :      Gate       :               :         ||
  *          ||         :                 :               :         ||
  *          ||  +------------+    +------------+   +------------+  ||
- *          ||  |   docker   |    |   docker   |   |   docker   |  ||
+ *          ||  |   porter   |    |   porter   |   |   porter   |  ||
  *          +===+------------+====+------------+===+------------+===+
  *          ||  | connection |    | connection |   | connection |  ||
  *          ||  +------------+    +------------+   +------------+  ||
@@ -95,4 +95,5 @@ public interface Gate extends Processor {
      * @return false on error
      */
     boolean sendShip(Departure outgo, SocketAddress remote, SocketAddress local);
+
 }

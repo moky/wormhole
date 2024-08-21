@@ -43,32 +43,11 @@ public abstract class ChannelReader<C extends SelectableChannel>
         super(channel);
     }
 
-    protected int tryRead(ByteBuffer dst, C sock) throws IOException {
-        try {
-            return ((ReadableByteChannel) sock).read(dst);
-        } catch (IOException e) {
-            e = checkError(e, sock);
-            if (e != null) {
-                // connection lost?
-                throw e;
-            }
-            // received nothing
-            return -1;
-        }
-    }
-
     @Override
     public int read(ByteBuffer dst) throws IOException {
         C sock = getSocket();
         assert sock instanceof ReadableByteChannel : "socket error, cannot read data: " + sock;
-        int cnt = tryRead(dst, sock);
-        // check data
-        IOException error = checkData(dst, cnt, sock);
-        if (error != null) {
-            // connection lost!
-            throw error;
-        }
-        // OK
-        return cnt;
+        return receivePackage(sock, dst);
     }
+
 }

@@ -62,6 +62,10 @@ public interface Ship {
      */
     Status getStatus(Date now);
 
+    /**
+     *  Ship Status
+     *  ~~~~~~~~~~~
+     */
     enum Status {
         //
         //  Arrival Status
@@ -84,4 +88,5 @@ public interface Ship {
             value = state;
         }
     }
+
 }

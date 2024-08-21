@@ -47,7 +47,7 @@ public class HashKeyPairMap<K, V> extends WeakKeyPairMap<K, V> {
     }
 
     @Override
-    public void set(K remote, K local, V value) {
+    public V set(K remote, K local, V value) {
         if (value != null) {
             // the caller may create different values with same pair (remote, local)
             // so here we should try to remove it first to make sure it's clean
@@ -56,7 +56,12 @@ public class HashKeyPairMap<K, V> extends WeakKeyPairMap<K, V> {
             cachedValues.add(value);
         }
         // create indexes
-        super.set(remote, local, value);
+        V old = super.set(remote, local, value);
+        // clear replaced value
+        if (old != null && old != value) {
+            cachedValues.remove(old);
+        }
+        return old;
     }
 
     @Override
@@ -72,4 +77,5 @@ public class HashKeyPairMap<K, V> extends WeakKeyPairMap<K, V> {
         }
         return old == null ? value : old;
     }
+
 }

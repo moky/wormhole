@@ -33,9 +33,11 @@ package chat.dim.socket;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectableChannel;
+
+import chat.dim.net.SocketHelper;
 
 /**
  *  Socket Channel Controller
@@ -43,15 +45,13 @@ import java.nio.channels.SelectableChannel;
  *
  *  Reader, Writer, ErrorChecker
  */
-abstract class ChannelController<C extends SelectableChannel> implements ChannelChecker<C> {
+abstract class ChannelController<C extends SelectableChannel> {
 
     private final WeakReference<BaseChannel<C>> channelRef;
-    private final ChannelChecker<C> checker;
 
     protected ChannelController(BaseChannel<C> channel) {
         super();
         channelRef = new WeakReference<>(channel);
-        checker = createChecker();
     }
 
     public BaseChannel<C> getChannel() {
@@ -59,46 +59,61 @@ abstract class ChannelController<C extends SelectableChannel> implements Channel
     }
 
     public SocketAddress getRemoteAddress() {
-        return getChannel().getRemoteAddress();
+        BaseChannel<C> sock = getChannel();
+        return sock == null ? null : sock.getRemoteAddress();
     }
     public SocketAddress getLocalAddress() {
-        return getChannel().getLocalAddress();
+        BaseChannel<C> sock = getChannel();
+        return sock == null ? null : sock.getLocalAddress();
     }
 
     public C getSocket() {
-        return getChannel().getSocketChannel();
+        BaseChannel<C> sock = getChannel();
+        return sock == null ? null : sock.getSocketChannel();
     }
 
-    //
-    //  Checker
-    //
-
-    @Override
-    public IOException checkError(IOException error, C sock) {
-        return checker.checkError(error, sock);
+    // TODO: override for receiving
+    protected int receivePackage(SelectableChannel sock, ByteBuffer dst) throws IOException {
+        if (sock == null || !sock.isOpen()) {
+            throw new SocketException();
+        }
+        return SocketHelper.socketReceive(sock, dst);
     }
 
-    @Override
-    public IOException checkData(ByteBuffer buf, int len, C sock) {
-        return checker.checkData(buf, len, sock);
-    }
-
-    protected ChannelChecker<C> createChecker() {
-        return new ChannelChecker<C>() {
-            @Override
-            public IOException checkError(IOException error, C sock) {
-                // TODO: check 'E_AGAIN' & TimeoutException
-                return error;
+    // TODO: override for sending
+    protected int sendAll(SelectableChannel sock, ByteBuffer src) throws IOException {
+        if (sock == null || !sock.isOpen()) {
+            throw new SocketException();
+        }
+        int sent = 0;
+        int rest = src.position();
+        int cnt;
+        while (true) {  // while (sock.isOpen())
+            cnt = SocketHelper.socketSend(sock, src);
+            // check send result
+            if (cnt <= 0) {
+                // buffer overflow?
+                break;
             }
-
-            @Override
-            public IOException checkData(ByteBuffer buf, int len, C sock) {
-                // TODO: check Timeout for received nothing
-                if (len == -1) {
-                    return new ClosedChannelException();
-                }
-                return null;
+            // something sent, check remaining data
+            sent += cnt;
+            rest -= cnt;
+            if (rest <= 0) {
+                // done!
+                break;
+            //} else {
+            //    // remove sent part
             }
-        };
+        }
+        // OK
+        if (sent > 0) {
+            return sent;
+        } else  if (cnt < 0) {
+            assert cnt == -1 : "sent error: " + cnt;
+            return -1;
+        } else {
+            return  0;
+        }
     }
+
 }

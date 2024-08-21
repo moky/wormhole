@@ -68,6 +68,10 @@ public interface Departure extends Ship {
      */
     int getPriority();
 
+    /**
+     *  Departure Priority
+     *  ~~~~~~~~~~~~~~~~~~
+     */
     enum Priority {
         URGENT (-1),
         NORMAL ( 0),
@@ -79,4 +83,5 @@ public interface Departure extends Ship {
             value = prior;
         }
     }
+
 }

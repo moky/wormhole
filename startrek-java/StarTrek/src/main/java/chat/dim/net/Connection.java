@@ -46,6 +46,11 @@ public interface Connection extends Ticker {
 
     boolean isAlive();  // isOpen() && (isConnected() || isBound())
 
+    /// ready for reading
+    boolean isAvailable();  // isAlive
+    /// ready for writing
+    boolean isVacant();     // isAlive
+
     SocketAddress getLocalAddress();
     SocketAddress getRemoteAddress();
 
@@ -125,4 +130,5 @@ public interface Connection extends Ticker {
          */
         void onConnectionError(IOError error, Connection connection);
     }
+
 }

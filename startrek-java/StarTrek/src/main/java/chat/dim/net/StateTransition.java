@@ -34,6 +34,10 @@ import java.util.Date;
 
 import chat.dim.fsm.BaseTransition;
 
+/**
+ *  Connection State Transition
+ *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
 abstract class StateTransition extends BaseTransition<StateMachine> {
 
     protected StateTransition(ConnectionState.Order order) {
@@ -41,8 +45,8 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
     }
 
     /**
-     *  Transition Builder
-     *  ~~~~~~~~~~~~~~~~~~
+     *  Connection State Transition Builder
+     *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
      */
     static class Builder {
 
@@ -211,10 +215,15 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
                     ConnectionState current = ctx.getCurrentState();
                     Date enter = current.getEnterTime();
                     Date last = timed.getLastReceivedTime();
-                    return enter != null && last != null && enter.before(last);
+                    if (enter == null) {
+                        assert false : "should not happen";
+                        return true;
+                    }
+                    return last != null && enter.before(last);
                     //return 0 < enter && enter < timed.getLastReceivedTime();
                 }
             };
         }
     }
+
 }

@@ -1,7 +1,7 @@
 package chat.dim.stargate;
 
 import chat.dim.net.Hub;
-import chat.dim.port.Docker;
+import chat.dim.port.Porter;
 import chat.dim.skywalker.Runner;
 import chat.dim.threading.Daemon;
 
@@ -12,7 +12,7 @@ public abstract class AutoGate<H extends Hub>
     private final Daemon daemon;
     private boolean running;
 
-    public AutoGate(Docker.Delegate delegate, boolean isDaemon) {
+    public AutoGate(Porter.Delegate delegate, boolean isDaemon) {
         super(delegate);
         daemon = new Daemon(this, isDaemon);
         running = false;
@@ -27,8 +27,10 @@ public abstract class AutoGate<H extends Hub>
     }
 
     public void start() {
-        stop();
-        running = true;
+        if (isRunning()) {
+            stop();
+            idle();
+        }
         daemon.start();
     }
 
@@ -41,7 +43,13 @@ public abstract class AutoGate<H extends Hub>
     public void run() {
         running = true;
         while (isRunning()) {
-            if (!process()) {
+            if (process()) {
+                // process() return true,
+                // means this thread is busy,
+                // so process next task immediately
+            } else {
+                // nothing to do now,
+                // have a rest ^_^
                 idle();
             }
         }
@@ -57,4 +65,5 @@ public abstract class AutoGate<H extends Hub>
         boolean outgoing = super.process();
         return incoming || outgoing;
     }
+
 }

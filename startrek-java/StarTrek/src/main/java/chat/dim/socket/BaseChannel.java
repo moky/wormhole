@@ -35,12 +35,11 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
-import java.nio.channels.DatagramChannel;
 import java.nio.channels.NetworkChannel;
 import java.nio.channels.SelectableChannel;
-import java.nio.channels.SocketChannel;
 
 import chat.dim.net.Channel;
+import chat.dim.net.SocketHelper;
 import chat.dim.type.AddressPairObject;
 
 public abstract class BaseChannel<C extends SelectableChannel>
@@ -53,12 +52,10 @@ public abstract class BaseChannel<C extends SelectableChannel>
 
     // inner socket
     private C impl;
-
-    // flags
-    private boolean blocking = false;
-    private boolean opened = false;
-    private boolean connected = false;
-    private boolean bound = false;
+    private int flag;  // closed flag
+                       //   -1: initialized
+                       //    0: false
+                       //    1: true
 
     /**
      *  Create channel
@@ -66,18 +63,18 @@ public abstract class BaseChannel<C extends SelectableChannel>
      * @param remote      - remote address
      * @param local       - local address
      */
-    protected BaseChannel(SocketAddress remote, SocketAddress local, C sock) {
+    protected BaseChannel(SocketAddress remote, SocketAddress local) {
         super(remote, local);
         reader = createReader();
         writer = createWriter();
-        impl = sock;
-        refreshFlags();
+        impl = null;
+        flag = -1;
     }
 
     @Override
     protected void finalize() throws Throwable {
         // make sure the relative socket is removed
-        removeSocketChannel();
+        setSocketChannel(null);
         super.finalize();
     }
 
@@ -91,89 +88,76 @@ public abstract class BaseChannel<C extends SelectableChannel>
      */
     protected abstract SocketWriter createWriter();
 
-    /**
-     *  Refresh flags with inner socket
-     */
-    protected void refreshFlags() {
-        C sock = impl;
-        // update channel status
-        if (sock == null) {
-            blocking = false;
-            opened = false;
-            connected = false;
-            bound = false;
-        } else {
-            blocking = sock.isBlocking();
-            opened = sock.isOpen();
-            connected = isConnected(sock);
-            bound = isBound(sock);
-        }
-    }
+    //
+    //  Socket
+    //
 
     public C getSocketChannel() {
         return impl;
     }
-    private void removeSocketChannel() throws IOException {
-        // 1. clear inner channel
+
+    /**
+     *  Set inner socket for this channel
+     */
+    public void setSocketChannel(C sock) {
+        // 1. replace with new socket
         C old = impl;
-        impl = null;
-        // 2. refresh flags
-        refreshFlags();
-        // 3. close old channel
-        if (old != null && old.isOpen()) {
-            old.close();
+        if (sock != null) {
+            impl = sock;
+            flag = 0;
+        } else {
+            impl = null;
+            flag = 1;
+        }
+        // 2. close old socket
+        if (old != null && old != sock) {
+            SocketHelper.socketDisconnect(old);
         }
     }
 
-    private static boolean isConnected(SelectableChannel channel) {
-        if (channel instanceof SocketChannel) {
-            return ((SocketChannel) channel).isConnected();
-        } else if (channel instanceof DatagramChannel) {
-            return ((DatagramChannel) channel).isConnected();
-        } else {
-            return false;
-        }
-    }
-
-    private static boolean isBound(SelectableChannel channel) {
-        if (channel instanceof SocketChannel) {
-            return ((SocketChannel) channel).socket().isBound();
-        } else if (channel instanceof DatagramChannel) {
-            return ((DatagramChannel) channel).socket().isBound();
-        } else {
-            return false;
-        }
-    }
+    //
+    //  States
+    //
 
     @Override
-    public SelectableChannel configureBlocking(boolean block) throws IOException {
-        C sock = getSocketChannel();
-        if (sock == null) {
-            throw new SocketException("socket closed");
+    public Status getStatus() {
+        if (flag < 0) {
+            // initializing
+            return Status.INIT;
         }
-        sock.configureBlocking(block);
-        blocking = block;
-        return sock;
-    }
-
-    @Override
-    public boolean isBlocking() {
-        return blocking;
+        C sock = impl;
+        if (sock == null || !SocketHelper.socketIsOpen(sock)) {
+            // closed
+            return Status.CLOSED;
+        } else if (SocketHelper.socketIsConnected(sock) || SocketHelper.socketIsBound(sock)) {
+            // normal
+            return Status.ALIVE;
+        } else {
+            // opened
+            return Status.OPEN;
+        }
     }
 
     @Override
     public boolean isOpen() {
-        return opened;
-    }
-
-    @Override
-    public boolean isConnected() {
-        return connected;
+        if (flag < 0) {
+            // initializing, it is not 'closed'
+            return true;
+        }
+        C sock = impl;
+        return sock != null && SocketHelper.socketIsOpen(sock);
     }
 
     @Override
     public boolean isBound() {
-        return bound;
+        C sock = impl;
+        return sock != null && SocketHelper.socketIsBound(sock);
+    }
+
+    @Override
+    public boolean isConnected() {
+        C sock = impl;
+        return sock != null && SocketHelper.socketIsConnected(sock);
     }
 
     @Override
@@ -182,10 +166,78 @@ public abstract class BaseChannel<C extends SelectableChannel>
     }
 
     @Override
+    public boolean isAvailable() {
+        C sock = impl;
+        if (sock != null && SocketHelper.socketIsOpen(sock)) {
+            if (SocketHelper.socketIsConnected(sock) || SocketHelper.socketIsBound(sock)) {
+                // alive, check reading buffer
+                return checkAvailable(sock);
+            }
+        }
+        return false;
+    }
+
+    protected boolean checkAvailable(C sock) {
+        return SocketHelper.socketIsAvailable(sock);
+    }
+
+    @Override
+    public boolean isVacant() {
+        C sock = impl;
+        if (sock != null && SocketHelper.socketIsOpen(sock)) {
+            if (SocketHelper.socketIsConnected(sock) || SocketHelper.socketIsBound(sock)) {
+                // alive, check writing buffer
+                return checkVacant(sock);
+            }
+        }
+        return false;
+    }
+
+    protected boolean checkVacant(C sock) {
+        return SocketHelper.socketIsVacant(sock);
+    }
+
+    @Override
+    public boolean isBlocking() {
+        C sock = impl;
+        return sock != null && SocketHelper.socketIsBlocking(sock);
+    }
+
+    @Override
+    public SelectableChannel configureBlocking(boolean block) throws IOException {
+        C sock = getSocketChannel();
+        if (sock != null) {
+            sock.configureBlocking(block);
+        }
+        return sock;
+    }
+
+    @Override
     public String toString() {
         String cname = getClass().getName();
-        return "<" + cname + " remote=\"" + getRemoteAddress() + "\" local=\"" + getLocalAddress() + "\">\n\t"
+        return "<" + cname + " remote=\"" + getRemoteAddress() + "\" local=\"" + getLocalAddress() + "\"" +
+                " closed=" + (!isOpen()) + " bound=" + isBound() + " connected=" + isConnected() + ">\n\t"
                 + impl + "\n</" + cname + ">";
+    }
+
+    protected boolean bind(C sock, SocketAddress local) {
+        if (sock instanceof NetworkChannel) {
+            return SocketHelper.socketBind((NetworkChannel) sock, local);
+        }
+        assert false : "socket error: " + sock;
+        return false;
+    }
+
+    protected boolean connect(C sock, SocketAddress remote) {
+        if (sock instanceof NetworkChannel) {
+            return SocketHelper.socketConnect((NetworkChannel) sock, remote);
+        }
+        assert false : "socket error: " + sock;
+        return false;
+    }
+
+    protected boolean disconnect(C sock) {
+        return SocketHelper.socketDisconnect(sock);
     }
 
     @Override
@@ -195,15 +247,12 @@ public abstract class BaseChannel<C extends SelectableChannel>
             assert local != null : "local address not set";
         }
         C sock = getSocketChannel();
-        if (sock == null) {
-            throw new SocketException("socket closed");
+        boolean ok = sock != null && bind(sock, local);
+        if (!ok) {
+            throw new SocketException("failed to bind socket: " + local);
         }
-        NetworkChannel nc = ((NetworkChannel) sock).bind(local);
         localAddress = local;
-        bound = true;
-        opened = true;
-        blocking = sock.isBlocking();
-        return nc;
+        return (NetworkChannel) sock;
     }
 
     @Override
@@ -213,45 +262,28 @@ public abstract class BaseChannel<C extends SelectableChannel>
             assert remote != null : "remote address not set";
         }
         C sock = getSocketChannel();
-        if (sock == null) {
-            throw new SocketException("socket closed");
-        }
-        if (sock instanceof SocketChannel) {
-            ((SocketChannel) sock).connect(remote);
-        } else if (sock instanceof DatagramChannel) {
-            ((DatagramChannel) sock).connect(remote);
-        } else {
-            throw new SocketException("unknown datagram channel: " + sock);
+        boolean ok = sock != null && connect(sock, remote);
+        if (!ok) {
+            throw new SocketException("failed to connect socket: " + remote);
         }
         remoteAddress = remote;
-        connected = true;
-        opened = true;
-        blocking = sock.isBlocking();
         return (NetworkChannel) sock;
     }
 
     @Override
     public ByteChannel disconnect() throws IOException {
         C sock = impl;
-        if (sock instanceof DatagramChannel) {
-            DatagramChannel udp = (DatagramChannel) sock;
-            if (udp.isConnected()) {
-                try {
-                    return udp.disconnect();
-                } finally {
-                    refreshFlags();
-                }
-            }
-        } else {
-            removeSocketChannel();
+        boolean ok = sock == null || disconnect(sock);
+        if (!ok) {
+            throw new SocketException("failed to disconnect socket: " + sock);
         }
+        // remoteAddress = null;
         return sock instanceof ByteChannel ? (ByteChannel) sock : null;
     }
 
     @Override
     public void close() throws IOException {
-        // close inner socket and refresh flags
-        removeSocketChannel();
+        setSocketChannel(null);
     }
 
     //
@@ -297,4 +329,5 @@ public abstract class BaseChannel<C extends SelectableChannel>
             throw e;
         }
     }
+
 }

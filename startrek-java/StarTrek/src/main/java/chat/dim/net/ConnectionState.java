@@ -50,6 +50,10 @@ import chat.dim.fsm.State;
  */
 public class ConnectionState extends BaseState<StateMachine, StateTransition> {
 
+    /**
+     *  Connection State Order
+     *  ~~~~~~~~~~~~~~~~~~~~~~
+     */
     public enum Order {
         DEFAULT,  // = 0
         PREPARING,
@@ -126,8 +130,8 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
     }
 
     /**
-     *  State Builder
-     *  ~~~~~~~~~~~~~
+     *  Connection State Builder
+     *  ~~~~~~~~~~~~~~~~~~~~~~~~
      */
     static class Builder {
 
@@ -196,4 +200,5 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
             return state;
         }
     }
+
 }

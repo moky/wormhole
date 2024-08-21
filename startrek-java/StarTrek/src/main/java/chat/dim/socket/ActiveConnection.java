@@ -35,21 +35,27 @@ import java.net.SocketAddress;
 
 import chat.dim.net.Channel;
 import chat.dim.net.Hub;
+import chat.dim.skywalker.Runner;
+import chat.dim.threading.Daemon;
 
 /**
  * Active connection for client
  */
-public final class ActiveConnection extends BaseConnection {
+public final class ActiveConnection extends BaseConnection implements Runnable {
 
-    private final WeakReference<Hub> hubRef;
+    private final Daemon daemon;
 
-    public ActiveConnection(SocketAddress remote, SocketAddress local, Channel sock, Hub hub) {
-        super(remote, local, sock);
-        hubRef = new WeakReference<>(hub);
+    private WeakReference<Hub> hubRef;
+
+    public ActiveConnection(SocketAddress remote, SocketAddress local) {
+        super(remote, local);
+        daemon = new Daemon(this);
+        hubRef = null;
     }
 
     private Hub getHub() {
-        return hubRef.get();
+        WeakReference<Hub> ref = hubRef;
+        return ref == null ? null : ref.get();
     }
 
     @Override
@@ -58,18 +64,72 @@ public final class ActiveConnection extends BaseConnection {
     }
 
     @Override
-    protected Channel getChannel() {
-        Channel sock = super.getChannel();
-        if (sock == null || !sock.isOpen()) {
-            if (getStateMachine() == null) {
-                // closed (not start yet)
-                return null;
-            }
-            // get new channel via hub
-            sock = getHub().open(remoteAddress, localAddress);
-            //assert sock != null : "failed to open channel: " + remoteAddress + ", " + localAddress;
-            setChannel(sock);
-        }
-        return sock;
+    public void start(Hub hub) {
+        assert hub != null : "start hub can not be empty";
+        hubRef = new WeakReference<>(hub);
+        // 1. start state machine
+        startMachine();
+        // 2. start a background thread to check channel
+        daemon.start();
     }
+
+    @Override
+    public void run() {
+        long expired = 0;
+        long lastTime = 0;
+        long interval = 8000;
+        long now;
+        Channel sock;
+        while (true) {
+            Runner.sleep(1000);
+            if (!isOpen()) {
+                break;
+            }
+            now = System.currentTimeMillis();
+            try {
+                sock = getChannel();
+                if (sock == null || !sock.isOpen()) {
+                    // first time to try connecting (lastTime == 0)?
+                    // or connection lost, then try to reconnect again.
+                    // check time interval for the trying here
+                    if (now < lastTime + interval) {
+                        continue;
+                    } else {
+                        // update last connect time
+                        lastTime = now;
+                    }
+                    // get new socket channel via hub
+                    Hub hub = getHub();
+                    if (hub == null) {
+                        assert false : "hub not found: " + getLocalAddress() + " -> " + getRemoteAddress();
+                        break;
+                    }
+                    // try to open a new socket channel from the hub.
+                    // the returned socket channel is opened for connecting,
+                    // but maybe failed,
+                    // so set an expired time to close it after timeout;
+                    // if failed to open a new socket channel,
+                    // then extend the time interval for next trying.
+                    sock = openChannel(hub);
+                    if (sock != null) {
+                        // connect timeout after 2 minutes
+                        expired = now + 128000;
+                    } else if (interval < 128000) {
+                        interval <<= 1;
+                    }
+                } else if (sock.isAlive()) {
+                    // socket channel is normal, reset the time interval here.
+                    // this will work when the current connection lost
+                    interval = 8000;
+                } else if (0 < expired && expired < now) {
+                    // connect timeout
+                    sock.close();
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+        // connection exists
+    }
+
 }

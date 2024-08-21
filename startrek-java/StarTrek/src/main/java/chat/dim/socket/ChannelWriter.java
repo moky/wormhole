@@ -43,52 +43,10 @@ public abstract class ChannelWriter<C extends SelectableChannel>
         super(channel);
     }
 
-    protected int tryWrite(ByteBuffer buf, C sock) throws IOException {
-        try {
-            return ((WritableByteChannel) sock).write(buf);
-        } catch (IOException e) {
-            e = checkError(e, sock);
-            if (e != null) {
-                // connection lost?
-                throw e;
-            }
-            // buffer overflow!
-            return 0;
-        }
-    }
-
     @Override
     public int write(ByteBuffer src) throws IOException {
         C sock = getSocket();
         assert sock instanceof WritableByteChannel : "socket error, cannot write data: " + src.position() + " byte(s)";
-        int sent = 0;
-        int rest = src.position();
-        int cnt;
-        while (true) {  // while (sock.isOpen())
-            cnt = tryWrite(src, sock);
-            // check send result
-            if (cnt <= 0) {
-                // buffer overflow?
-                break;
-            }
-            // something sent, check remaining data
-            sent += cnt;
-            rest -= cnt;
-            if (rest <= 0) {
-                // done!
-                break;
-            //} else {
-            //    // remove sent part
-            }
-        }
-        // OK
-        if (sent > 0) {
-            return sent;
-        } else  if (cnt < 0) {
-            assert cnt == -1 : "sent error: " + cnt;
-            return -1;
-        } else {
-            return  0;
-        }
+        return sendAll(sock, src);
     }
 }

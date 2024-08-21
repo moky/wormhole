@@ -91,7 +91,7 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
     }
 
     @Override
-    public void set(K remote, K local, V value) {
+    public V set(K remote, K local, V value) {
         // create indexes with key pair (remote, local)
         K key1, key2;
         if (remote == null) {
@@ -108,15 +108,16 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
         Map<K, V> table = map.get(key1);
         if (table != null) {
             if (value == null) {
-                table.remove(key2);
+                return table.remove(key2);
             } else {
-                table.put(key2, value);
+                return table.put(key2, value);
             }
         } else if (value != null) {
             table = new WeakMap<>();
             table.put(key2, value);
             map.put(key1, table);
         }
+        return null;
     }
 
     @Override
@@ -144,4 +145,5 @@ public abstract class WeakKeyPairMap<K, V> implements KeyPairMap<K, V> {
         }
         return old == null ? value : old;
     }
+
 }

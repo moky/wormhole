@@ -56,8 +56,9 @@ public interface KeyPairMap<K, V> {
      * @param remote - remote address
      * @param local  - local address
      * @param value  - mapping value
+     * @return replaced value
      */
-    void set(K remote, K local, V value);
+    V set(K remote, K local, V value);
 
     /**
      *  Remove mapping by key pair (remote, local)

@@ -36,7 +36,9 @@ import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Date;
-import java.util.Set;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
@@ -46,22 +48,33 @@ import chat.dim.type.AddressPairMap;
 class ConnectionPool extends AddressPairMap<Connection> {
 
     @Override
-    public void set(SocketAddress remote, SocketAddress local, Connection value) {
-        Connection old = get(remote, local);
-        if (old != null && old != value) {
-            remove(remote, local, old);
+    public Connection set(SocketAddress remote, SocketAddress local, Connection value) {
+        // remove cached item
+        Connection cached = super.remove(remote, local, value);
+        /*/
+        if (cached != null && cached != value) {
+            cached.close();
         }
-        super.set(remote, local, value);
+        /*/
+        Connection old = super.set(remote, local, value);
+        assert old != null : "should not happen";
+        return cached;
     }
 
+    /*/
     @Override
     public Connection remove(SocketAddress remote, SocketAddress local, Connection value) {
         Connection cached = super.remove(remote, local, value);
-        if (cached != null && cached.isOpen()) {
+        if (cached != null && cached != value) {
             cached.close();
+        }
+        if (value != null) {
+            value.close();
         }
         return cached;
     }
+    /*/
+
 }
 
 public abstract class BaseHub implements Hub {
@@ -77,13 +90,15 @@ public abstract class BaseHub implements Hub {
      */
     public static int MSS = 1472;  // 1500 - 20 - 8
 
-    private final AddressPairMap<Connection> connectionPool;
     private final WeakReference<Connection.Delegate> delegateRef;
+    private final AddressPairMap<Connection> connectionPool;
+    private final ReadWriteLock lock;
 
-    protected BaseHub(Connection.Delegate delegate) {
+    protected BaseHub(Connection.Delegate gate) {
         super();
-        delegateRef = new WeakReference<>(delegate);
+        delegateRef = new WeakReference<>(gate);
         connectionPool = createConnectionPool();
+        lock = new ReentrantReadWriteLock();
     }
 
     protected AddressPairMap<Connection> createConnectionPool() {
@@ -104,7 +119,7 @@ public abstract class BaseHub implements Hub {
      *
      * @return copy of channels
      */
-    protected abstract Set<Channel> allChannels();
+    protected abstract Iterable<Channel> allChannels();
 
     /**
      *  Remove socket channel
@@ -113,7 +128,7 @@ public abstract class BaseHub implements Hub {
      * @param local  - local address
      * @param channel - socket channel
      */
-    protected abstract void removeChannel(SocketAddress remote, SocketAddress local, Channel channel);
+    protected abstract Channel removeChannel(SocketAddress remote, SocketAddress local, Channel channel);
 
     //
     //  Connection
@@ -122,28 +137,30 @@ public abstract class BaseHub implements Hub {
     /**
      *  Create connection with sock channel & addresses
      *
-     * @param sock   - socket channel
      * @param remote - remote address
      * @param local  - local address
      * @return null on channel not exists
      */
-    protected abstract Connection createConnection(SocketAddress remote, SocketAddress local, Channel sock);
+    protected abstract Connection createConnection(SocketAddress remote, SocketAddress local);
 
-    protected Set<Connection> allConnections() {
+    protected Iterable<Connection> allConnections() {
         return connectionPool.allValues();
     }
     protected Connection getConnection(SocketAddress remote, SocketAddress local) {
         return connectionPool.get(remote, local);
     }
-    protected void setConnection(SocketAddress remote, SocketAddress local, Connection conn) {
-        connectionPool.set(remote, local, conn);
+    protected Connection setConnection(SocketAddress remote, SocketAddress local, Connection conn) {
+        return connectionPool.set(remote, local, conn);
     }
-    protected void removeConnection(SocketAddress remote, SocketAddress local, Connection conn) {
-        connectionPool.remove(remote, local, conn);
+    protected Connection removeConnection(SocketAddress remote, SocketAddress local, Connection conn) {
+        return connectionPool.remove(remote, local, conn);
     }
 
     @Override
     public Connection connect(SocketAddress remote, SocketAddress local) {
+        //
+        //  0. pre-checking
+        //
         Connection conn = getConnection(remote, local);
         if (conn != null) {
             // check local address
@@ -154,18 +171,47 @@ public abstract class BaseHub implements Hub {
             if (address == null || address.equals(local)) {
                 return conn;
             }
-            // local address not matched? ignore this connection
         }
-        // try to open channel with direction (remote, local)
-        Channel sock = open(remote, local);
-        if (sock == null || !sock.isOpen()) {
-            return null;
+        //
+        //  1. lock to check
+        //
+        Lock writeLock = lock.writeLock();
+        writeLock.lock();
+        try {
+            // check again
+            conn = getConnection(remote, local);
+            if (conn != null) {
+                // check local address
+                if (local == null) {
+                    return conn;
+                }
+                SocketAddress address = conn.getLocalAddress();
+                if (address == null || address.equals(local)) {
+                    return conn;
+                }
+            }
+            // connection not exists, or local address not matched,
+            // create new connection
+            conn = createConnection(remote, local);
+            if (local == null) {
+                local = conn.getLocalAddress();
+            }
+            // cache the connection
+            Connection cached = setConnection(remote, local, conn);
+            if (cached != null && cached != conn) {
+                cached.close();
+            }
+        } finally {
+            writeLock.unlock();
         }
-        // create with channel
-        conn = createConnection(remote, local, sock);
-        if (conn != null) {
-            // NOTICE: local address in the connection may be set to None
-            setConnection(conn.getRemoteAddress(), conn.getLocalAddress(), conn);
+        //
+        //  2. start the new connection
+        //
+        if (conn instanceof BaseConnection) {
+            // try to open channel with direction (remote, local)
+            ((BaseConnection) conn).start(this);
+        } else {
+            assert false : "connection error: " + remote + ", " + conn;
         }
         return conn;
     }
@@ -174,41 +220,72 @@ public abstract class BaseHub implements Hub {
     //  Process
     //
 
+    protected void closeChannel(Channel sock) {
+        try {
+            if (sock.isOpen()) {
+                sock.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
     protected boolean driveChannel(Channel sock) {
-        if (!sock.isAlive()) {
-            // cannot drive closed channel
+        //
+        //  0. check channel state
+        //
+        Channel.Status cs = sock.getStatus();
+        if (Channel.Status.INIT.equals(cs)) {
+            // preparing
+            return false;
+        } else if (Channel.Status.CLOSED.equals(cs)) {
+            // finished
             return false;
         }
+        // cs == opened
+        // cs == alive
         ByteBuffer buffer = ByteBuffer.allocate(MSS);
         SocketAddress remote;
-        // try to receive
+        SocketAddress local;
+        //
+        //  1. try to receive
+        //
         try {
             remote = sock.receive(buffer);
-        } catch (IOException e) {
+        } catch (IOException ex) {
             //e.printStackTrace();
             remote = sock.getRemoteAddress();
-            SocketAddress local = sock.getLocalAddress();
-            Connection.Delegate delegate = getDelegate();
-            if (delegate == null || remote == null) {
+            local = sock.getLocalAddress();
+            Connection.Delegate gate = getDelegate();
+            Channel cached;
+            if (gate == null || remote == null) {
                 // UDP channel may not connected,
                 // so no connection for it
-                removeChannel(remote, local, sock);
+                cached = removeChannel(remote, local, sock);
             } else {
                 // remove channel and callback with connection
                 Connection conn = getConnection(remote, local);
-                removeChannel(remote, local, sock);
+                cached = removeChannel(remote, local, sock);
                 if (conn != null) {
-                    delegate.onConnectionError(new IOError(e), conn);
+                    gate.onConnectionError(new IOError(ex), conn);
                 }
             }
+            // close removed/error channels
+            if (cached != null && cached != sock) {
+                closeChannel(cached);
+            }
+            closeChannel(sock);
             return false;
         }
         if (remote == null) {
             // received nothing
             return false;
+        } else {
+            assert buffer.position() > 0 : "data should not empty: " + remote;
+            local = sock.getLocalAddress();
         }
-        SocketAddress local = sock.getLocalAddress();
-        // get connection for processing received data
+        //
+        //  2. get connection for processing received data
+        //
         Connection conn = connect(remote, local);
         if (conn != null) {
             byte[] data = new byte[buffer.position()];
@@ -218,7 +295,7 @@ public abstract class BaseHub implements Hub {
         }
         return true;
     }
-    protected int driveChannels(Set<Channel> channels) {
+    protected int driveChannels(Iterable<Channel> channels) {
         int count = 0;
         for (Channel sock : channels) {
             // drive channel to receive data
@@ -228,19 +305,23 @@ public abstract class BaseHub implements Hub {
         }
         return count;
     }
-    protected void cleanupChannels(Set<Channel> channels) {
+    protected void cleanupChannels(Iterable<Channel> channels) {
+        Channel cached;
         for (Channel sock : channels) {
-            if (!sock.isAlive()) {
+            if (!sock.isOpen()) {
                 // if channel not connected (TCP) and not bound (UDP),
                 // means it's closed, remove it from the hub
-                removeChannel(sock.getRemoteAddress(), sock.getLocalAddress(), sock);
+                cached = removeChannel(sock.getRemoteAddress(), sock.getLocalAddress(), sock);
+                if (cached != null && cached != sock) {
+                    closeChannel(cached);
+                }
             }
         }
     }
 
     private Date last = new Date();
 
-    protected void driveConnections(Set<Connection> connections) {
+    protected void driveConnections(Iterable<Connection> connections) {
         Date now = new Date();
         long delta = now.getTime() - last.getTime();
         for (Connection conn : connections) {
@@ -251,13 +332,17 @@ public abstract class BaseHub implements Hub {
         }
         last = now;
     }
-    protected void cleanupConnections(Set<Connection> connections) {
+    protected void cleanupConnections(Iterable<Connection> connections) {
+        Connection cached;
         for (Connection conn : connections) {
             if (!conn.isOpen()) {
                 // if connection closed, remove it from the hub; notice that
                 // ActiveConnection can reconnect, it'll be not connected
                 // but still open, don't remove it in this situation.
-                removeConnection(conn.getRemoteAddress(), conn.getLocalAddress(), conn);
+                cached = removeConnection(conn.getRemoteAddress(), conn.getLocalAddress(), conn);
+                if (cached != null && cached != conn) {
+                    cached.close();
+                }
             }
         }
     }
@@ -265,14 +350,15 @@ public abstract class BaseHub implements Hub {
     @Override
     public boolean process() {
         // 1. drive all channels to receive data
-        Set<Channel> channels = allChannels();
+        Iterable<Channel> channels = allChannels();
         int count = driveChannels(channels);
         // 2. drive all connections to move on
-        Set<Connection> connections = allConnections();
+        Iterable<Connection> connections = allConnections();
         driveConnections(connections);
         // 3. cleanup closed channels and connections
         cleanupChannels(channels);
         cleanupConnections(connections);
         return count > 0;
     }
+
 }
