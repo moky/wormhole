@@ -30,20 +30,20 @@
  */
 package chat.dim.mtp;
 
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
-import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
-import chat.dim.startrek.StarDocker;
+import chat.dim.startrek.StarPorter;
 import chat.dim.type.ByteArray;
 import chat.dim.type.Data;
 
-public class PackageDocker extends StarDocker {
+public class PackagePorter extends StarPorter {
 
-    public PackageDocker(Connection conn) {
-        super(conn);
+    public PackagePorter(SocketAddress remote, SocketAddress local) {
+        super(remote, local);
     }
 
     protected Package parsePackage(byte[] data) {
@@ -224,4 +224,5 @@ public class PackageDocker extends StarDocker {
     protected static final byte[] NOOP = {'N', 'O', 'O', 'P'};
     protected static final byte[] OK = {'O', 'K'};
     protected static final byte[] AGAIN = {'A', 'G', 'A', 'I', 'N'};
+
 }

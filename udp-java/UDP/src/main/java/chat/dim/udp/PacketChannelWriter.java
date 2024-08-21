@@ -35,6 +35,7 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 
+import chat.dim.net.SocketHelper;
 import chat.dim.socket.BaseChannel;
 import chat.dim.socket.ChannelWriter;
 
@@ -48,19 +49,8 @@ public class PacketChannelWriter extends ChannelWriter<DatagramChannel> {
     //  Send
     //
 
-    protected int trySend(ByteBuffer src, SocketAddress target, DatagramChannel sock) throws IOException {
-        try {
-            return sock.send(src, target);
-        } catch (IOException e) {
-            e = checkError(e, sock);
-            if (e == null) {
-                // buffer overflow!
-                return -1;
-            } else {
-                // connection lost?
-                throw e;
-            }
-        }
+    protected int sendTo(ByteBuffer src, SocketAddress target, DatagramChannel sock) throws IOException {
+        return sock.send(src, target);
     }
 
     @Override
@@ -71,11 +61,11 @@ public class PacketChannelWriter extends ChannelWriter<DatagramChannel> {
             // connected (TCP/UDP)
             SocketAddress remote = getRemoteAddress();
             assert target == null || target.equals(remote) : "target error: " + target + ", remote=" + remote;
-            return tryWrite(src, sock);
+            return SocketHelper.socketSend(sock, src);
         } else {
             // not connect (UDP)
             assert target != null : "target missed for unbound channel";
-            return trySend(src, target, sock);
+            return sendTo(src, target, sock);
         }
     }
 }

@@ -30,18 +30,18 @@
  */
 package chat.dim.startrek;
 
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import chat.dim.net.Connection;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 
-public class PlainDocker extends StarDocker {
+public class PlainPorter extends StarPorter {
 
-    public PlainDocker(Connection conn) {
-        super(conn);
+    public PlainPorter(SocketAddress remote, SocketAddress local) {
+        super(remote, local);
     }
 
     protected Arrival createArrival(byte[] pack) {
@@ -104,4 +104,5 @@ public class PlainDocker extends StarDocker {
     static final byte[] PONG = {'P', 'O', 'N', 'G'};
     static final byte[] NOOP = {'N', 'O', 'O', 'P'};
     //static final byte[] OK = {'O', 'K'};
+
 }

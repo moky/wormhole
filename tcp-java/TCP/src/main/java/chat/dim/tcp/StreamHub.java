@@ -30,10 +30,7 @@
  */
 package chat.dim.tcp;
 
-import java.io.IOException;
 import java.net.SocketAddress;
-import java.nio.channels.SocketChannel;
-import java.util.Set;
 
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
@@ -43,34 +40,53 @@ import chat.dim.type.AddressPairMap;
 class ChannelPool extends AddressPairMap<Channel> {
 
     @Override
-    public void set(SocketAddress remote, SocketAddress local, Channel value) {
-        Channel old = get(remote, local);
-        if (old != null && old != value) {
-            remove(remote, local, old);
+    public Channel set(SocketAddress remote, SocketAddress local, Channel value) {
+        // remove cached item
+        Channel cached = super.remove(remote, local, value);
+        /*/
+        if (cached != null && cached != value) {
+            cached.close();
         }
-        super.set(remote, local, value);
+        /*/
+        Channel old = super.set(remote, local, value);
+        assert old != null : "should not happen";
+        return cached;
     }
 
+    /*/
     @Override
     public Channel remove(SocketAddress remote, SocketAddress local, Channel value) {
         Channel cached = super.remove(remote, local, value);
-        if (cached != null && cached.isOpen()) {
+        if (cached != null && cached != value) {
             try {
                 cached.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+        if (value != null) {
+            try {
+                value.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
         return cached;
     }
+    /*/
+
 }
 
+/**
+ *  Base Stream Hub
+ *  ~~~~~~~~~~~~~~~
+ */
 public abstract class StreamHub extends BaseHub {
 
     private final AddressPairMap<Channel> channelPool;
 
-    protected StreamHub(Connection.Delegate delegate) {
-        super(delegate);
+    protected StreamHub(Connection.Delegate gate) {
+        super(gate);
         channelPool = createChannelPool();
     }
 
@@ -85,17 +101,16 @@ public abstract class StreamHub extends BaseHub {
     /**
      *  Create channel with socket & addresses
      *
-     * @param sock   - socket
      * @param remote - remote address
      * @param local  - local address
      * @return null on socket error
      */
-    protected Channel createChannel(SocketAddress remote, SocketAddress local, SocketChannel sock) {
-        return new StreamChannel(remote, local, sock);
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) {
+        return new StreamChannel(remote, local);
     }
 
     @Override
-    protected Set<Channel> allChannels() {
+    protected Iterable<Channel> allChannels() {
         return channelPool.allValues();
     }
 
@@ -103,19 +118,13 @@ public abstract class StreamHub extends BaseHub {
         return channelPool.get(remote, local);
     }
 
-    protected void setChannel(SocketAddress remote, SocketAddress local, Channel channel) {
-        channelPool.set(remote, local, channel);
+    protected Channel setChannel(SocketAddress remote, SocketAddress local, Channel channel) {
+        return channelPool.set(remote, local, channel);
     }
 
     @Override
-    protected void removeChannel(SocketAddress remote, SocketAddress local, Channel channel) {
-        channelPool.remove(remote, local, channel);
+    protected Channel removeChannel(SocketAddress remote, SocketAddress local, Channel channel) {
+        return channelPool.remove(remote, local, channel);
     }
 
-    @Override
-    public Channel open(SocketAddress remote, SocketAddress local) {
-        assert remote != null : "remote address empty";
-        // get channel connected to remote address
-        return getChannel(remote, local);
-    }
 }

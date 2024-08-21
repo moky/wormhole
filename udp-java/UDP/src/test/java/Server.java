@@ -12,11 +12,12 @@ import chat.dim.mtp.PackageDeparture;
 import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
-import chat.dim.port.Docker;
+import chat.dim.port.Porter;
 import chat.dim.stargate.UDPGate;
 import chat.dim.udp.ServerHub;
+import chat.dim.utils.Log;
 
-public class Server implements Docker.Delegate {
+public class Server implements Porter.Delegate {
 
     private final SocketAddress localAddress;
 
@@ -51,14 +52,14 @@ public class Server implements Docker.Delegate {
     //
 
     @Override
-    public void onDockerStatusChanged(Docker.Status previous, Docker.Status current, Docker docker) {
+    public void onPorterStatusChanged(Porter.Status previous, Porter.Status current, Porter docker) {
         SocketAddress remote = docker.getRemoteAddress();
         SocketAddress local = docker.getLocalAddress();
-        UDPGate.info("!!! connection (" + remote + ", " + local + ") state changed: " + previous + " -> " + current);
+        Log.info("!!! connection (" + remote + ", " + local + ") state changed: " + previous + " -> " + current);
     }
 
     @Override
-    public void onDockerReceived(Arrival income, Docker docker) {
+    public void onPorterReceived(Arrival income, Porter docker) {
         assert income instanceof PackageArrival : "arrival ship error: " + income;
         Package pack = ((PackageArrival) income).getPackage();
         int headLen = pack.head.getSize();
@@ -66,17 +67,17 @@ public class Server implements Docker.Delegate {
         byte[] payload = pack.body.getBytes();
         String text = new String(payload, StandardCharsets.UTF_8);
         SocketAddress source = docker.getRemoteAddress();
-        UDPGate.info("<<< received (" + headLen + " + " + bodyLen + " bytes) from " + source + ": " + text);
+        Log.info("<<< received (" + headLen + " + " + bodyLen + " bytes) from " + source + ": " + text);
 
         text = (counter++) + "# " + payload.length + " byte(s) received";
         byte[] data = text.getBytes(StandardCharsets.UTF_8);
-        UDPGate.info(">>> responding: " + text);
+        Log.info(">>> responding: " + text);
         send(data, source);
     }
     static int counter = 0;
 
     @Override
-    public void onDockerSent(Departure departure, Docker docker) {
+    public void onPorterSent(Departure departure, Porter docker) {
         assert departure instanceof PackageDeparture : "departure ship error: " + departure;
         Package pack = ((PackageDeparture) departure).getPackage();
         int bodyLen = pack.head.bodyLength;
@@ -84,17 +85,17 @@ public class Server implements Docker.Delegate {
             bodyLen = pack.body.getSize();
         }
         SocketAddress destination = docker.getRemoteAddress();
-        UDPGate.info("message sent: " + bodyLen + " byte(s) to " + destination);
+        Log.info("message sent: " + bodyLen + " byte(s) to " + destination);
     }
 
     @Override
-    public void onDockerFailed(IOError error, Departure departure, Docker docker) {
-        UDPGate.error(error.getMessage());
+    public void onPorterFailed(IOError error, Departure departure, Porter docker) {
+        Log.error(error.getMessage());
     }
 
     @Override
-    public void onDockerError(IOError error, Departure departure, Docker docker) {
-        UDPGate.error(error.getMessage());
+    public void onPorterError(IOError error, Departure departure, Porter docker) {
+        Log.error(error.getMessage());
     }
 
     static String HOST;
@@ -113,7 +114,7 @@ public class Server implements Docker.Delegate {
     public static void main(String[] args) throws IOException {
 
         SocketAddress local = new InetSocketAddress(HOST, PORT);
-        UDPGate.info("Starting UDP server (" + local + ") ...");
+        Log.info("Starting UDP server (" + local + ") ...");
 
         server = new Server(local);
 

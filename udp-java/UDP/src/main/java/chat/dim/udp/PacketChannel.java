@@ -39,8 +39,8 @@ import chat.dim.socket.SocketWriter;
 
 public class PacketChannel extends BaseChannel<DatagramChannel> {
 
-    public PacketChannel(SocketAddress remote, SocketAddress local, DatagramChannel sock) {
-        super(remote, local, sock);
+    public PacketChannel(SocketAddress remote, SocketAddress local) {
+        super(remote, local);
     }
 
     @Override
@@ -52,4 +52,5 @@ public class PacketChannel extends BaseChannel<DatagramChannel> {
     protected SocketWriter createWriter() {
         return new PacketChannelWriter(this);
     }
+
 }

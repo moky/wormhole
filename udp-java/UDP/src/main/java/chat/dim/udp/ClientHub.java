@@ -32,7 +32,6 @@ package chat.dim.udp;
 
 import java.net.SocketAddress;
 
-import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.socket.ActiveConnection;
 import chat.dim.socket.BaseConnection;
@@ -44,10 +43,10 @@ public class ClientHub extends PacketHub {
     }
 
     @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local, Channel sock) {
-        BaseConnection conn = new ActiveConnection(remote, null, sock, this);
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
+        BaseConnection conn = new ActiveConnection(remote, null);
         conn.setDelegate(getDelegate());  // gate
-        conn.start();  // start FSM
         return conn;
     }
+
 }

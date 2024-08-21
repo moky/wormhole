@@ -37,9 +37,15 @@ import java.nio.channels.SocketChannel;
 
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
+import chat.dim.skywalker.Runner;
+import chat.dim.socket.BaseChannel;
 import chat.dim.socket.BaseConnection;
 import chat.dim.threading.Daemon;
 
+/**
+ *  Stream Server Hub
+ *  ~~~~~~~~~~~~~~~~~
+ */
 public class ServerHub extends StreamHub implements Runnable {
 
     private SocketAddress localAddress = null;
@@ -48,20 +54,19 @@ public class ServerHub extends StreamHub implements Runnable {
     private final Daemon daemon;
     private boolean running;
 
-    public ServerHub(Connection.Delegate delegate, boolean isDaemon) {
-        super(delegate);
+    public ServerHub(Connection.Delegate gate, boolean isDaemon) {
+        super(gate);
         daemon = new Daemon(this, isDaemon);
         running = false;
     }
-    public ServerHub(Connection.Delegate delegate) {
-        this(delegate, true);
+    public ServerHub(Connection.Delegate gate) {
+        this(gate, true);
     }
 
     @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local, Channel sock) {
-        BaseConnection conn = new BaseConnection(remote, local, sock);
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
+        BaseConnection conn = new BaseConnection(remote, local);
         conn.setDelegate(getDelegate());  // gate
-        conn.start();  // start FSM
         return conn;
     }
 
@@ -79,6 +84,9 @@ public class ServerHub extends StreamHub implements Runnable {
         localAddress = local;
     }
 
+    protected ServerSocketChannel getMaster() {
+        return master;
+    }
     protected void setMaster(ServerSocketChannel channel) {
         // 1. replace with new channel
         ServerSocketChannel old = master;
@@ -95,6 +103,14 @@ public class ServerHub extends StreamHub implements Runnable {
         }
     }
 
+    public SocketAddress getLocalAddress() {
+        return localAddress;
+    }
+
+    //
+    //  Threading
+    //
+
     public boolean isRunning() {
         return running;
     }
@@ -107,18 +123,27 @@ public class ServerHub extends StreamHub implements Runnable {
 
     public void stop() {
         running = false;
+        Runner.sleep(256);
         daemon.stop();
     }
 
     @Override
     public void run() {
+        ServerSocketChannel srv;
         SocketChannel sock;
         running = true;
         while (isRunning()) {
+            srv = getMaster();
+            if (srv == null) {
+                assert false : "master socket not found";
+                break;
+            }
             try {
-                sock = master.accept();
-                if (sock != null) {
-                    accept(sock.getRemoteAddress(), localAddress, sock);
+                sock = srv.accept();
+                if (sock == null) {
+                    Runner.sleep(Runner.INTERVAL_NORMAL);
+                } else {
+                    accept(sock.getRemoteAddress(), getLocalAddress(), sock);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -128,8 +153,35 @@ public class ServerHub extends StreamHub implements Runnable {
 
     // override for user-customized channel
     protected void accept(SocketAddress remote, SocketAddress local, SocketChannel sock) {
-        Channel channel = createChannel(remote, local, sock);
-        assert channel != null : "failed to create socket channel: " + sock + ", remote=" + remote + ", local=" + local;
-        setChannel(channel.getRemoteAddress(), channel.getLocalAddress(), channel);
+        // create new channel
+        Channel channel = createChannel(remote, local);
+        if (local == null) {
+            local = channel.getLocalAddress();
+        }
+        try {
+            sock.configureBlocking(false);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        // set socket
+        if (channel instanceof BaseChannel) {
+            //noinspection unchecked
+            ((BaseChannel<SocketChannel>) channel).setSocketChannel(sock);
+        } else {
+            assert false : "failed to create socket channel: " + sock + ", remote=" + remote + ", local=" + local;
+        }
+        // cache the channel
+        Channel cached = setChannel(remote, local, channel);
+        if (cached != null && cached != channel) {
+            closeChannel(cached);
+        }
     }
+
+    @Override
+    public Channel open(SocketAddress remote, SocketAddress local) {
+        assert remote != null : "remote address empty";
+        // get channel connected to remote address
+        return getChannel(remote, local);
+    }
+
 }

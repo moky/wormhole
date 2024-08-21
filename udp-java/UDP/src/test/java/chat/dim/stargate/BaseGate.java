@@ -1,12 +1,12 @@
 package chat.dim.stargate;
 
 import java.net.SocketAddress;
-import java.util.ArrayList;
-import java.util.List;
 
 import chat.dim.net.Connection;
 import chat.dim.net.Hub;
-import chat.dim.port.Docker;
+import chat.dim.port.Arrival;
+import chat.dim.port.Porter;
+import chat.dim.socket.ActiveConnection;
 import chat.dim.startrek.StarGate;
 
 public abstract class BaseGate<H extends Hub>
@@ -14,8 +14,8 @@ public abstract class BaseGate<H extends Hub>
 
     private H hub = null;
 
-    protected BaseGate(Docker.Delegate delegate) {
-        super(delegate);
+    protected BaseGate(Porter.Delegate keeper) {
+        super(keeper);
     }
 
     public H getHub() {
@@ -29,35 +29,42 @@ public abstract class BaseGate<H extends Hub>
     //  Docker
     //
 
-    public Docker getDocker(SocketAddress remote, SocketAddress local, List<byte[]> data) {
-        Docker docker = getDocker(remote, local);
-        if (docker == null) {
-            Connection conn = getHub().connect(remote, local);
-            if (conn != null) {
-                docker = createDocker(conn, data);
-                assert docker != null : "failed to create docker: " + remote + ", " + local;
-                setDocker(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
-            }
+    @Override
+    protected Porter getPorter(SocketAddress remote, SocketAddress local) {
+        return super.getPorter(remote, null);
+    }
+
+    @Override
+    protected Porter setPorter(SocketAddress remote, SocketAddress local, Porter docker) {
+        return super.setPorter(remote, null, docker);
+    }
+
+    @Override
+    protected Porter removePorter(SocketAddress remote, SocketAddress local, Porter docker) {
+        return super.removePorter(remote, null, docker);
+    }
+
+    public Porter fetchPorter(SocketAddress remote, SocketAddress local) {
+        // get connection from hub
+        Connection conn = getHub().connect(remote, local);
+        if (conn == null) {
+            assert false : "failed to get connection: " + local + " -> " + remote;
+            return null;
         }
-        return docker;
+        // connected, get docker with this connection
+        return dock(conn, true);
     }
 
-    @Override
-    protected Docker getDocker(SocketAddress remote, SocketAddress local) {
-        return super.getDocker(remote, null);
+    public boolean sendResponse(byte[] payload, Arrival ship, SocketAddress remote, SocketAddress local) {
+        Porter docker = getPorter(remote, local);
+        if (docker == null) {
+            return false;
+        } else if (!docker.isAlive()) {
+            return false;
+        }
+        return docker.sendData(payload);
     }
 
-    @Override
-    protected void setDocker(SocketAddress remote, SocketAddress local, Docker docker) {
-        super.setDocker(remote, null, docker);
-    }
-
-    @Override
-    protected void removeDocker(SocketAddress remote, SocketAddress local, Docker docker) {
-        super.removeDocker(remote, null, docker);
-    }
-
-    /*/
     @Override
     protected void heartbeat(Connection connection) {
         // let the client to do the job
@@ -65,20 +72,5 @@ public abstract class BaseGate<H extends Hub>
             super.heartbeat(connection);
         }
     }
-    /*/
 
-    @Override
-    protected List<byte[]> cacheAdvanceParty(byte[] data, Connection connection) {
-        // TODO: cache the advance party before decide which docker to use
-        List<byte[]> array = new ArrayList<>();
-        if (data != null) {
-            array.add(data);
-        }
-        return array;
-    }
-
-    @Override
-    protected void clearAdvanceParty(Connection connection) {
-        // TODO: remove advance party for this connection
-    }
 }

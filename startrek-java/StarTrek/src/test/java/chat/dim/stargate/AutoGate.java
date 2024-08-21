@@ -47,11 +47,11 @@ public abstract class AutoGate<H extends Hub>
                 // process() return true,
                 // means this thread is busy,
                 // so process next task immediately
-            } else {
-                // nothing to do now,
-                // have a rest ^_^
-                idle();
+                continue;
             }
+            // nothing to do now,
+            // have a rest ^_^
+            idle();
         }
     }
 

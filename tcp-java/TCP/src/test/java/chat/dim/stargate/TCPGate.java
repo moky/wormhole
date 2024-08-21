@@ -2,27 +2,27 @@ package chat.dim.stargate;
 
 import java.io.IOError;
 import java.net.SocketAddress;
-import java.util.List;
 
 import chat.dim.net.Connection;
 import chat.dim.net.ConnectionState;
 import chat.dim.net.Hub;
-import chat.dim.port.Docker;
-import chat.dim.startrek.PlainDocker;
+import chat.dim.port.Porter;
+import chat.dim.startrek.PlainPorter;
 import chat.dim.utils.Log;
 
-public class TCPGate<H extends Hub> extends AutoGate<H> {
+public class TCPGate<H extends Hub>
+        extends AutoGate<H> {
 
-    public TCPGate(Docker.Delegate delegate, boolean isDaemon) {
-        super(delegate, isDaemon);
+    public TCPGate(Porter.Delegate keeper, boolean isDaemon) {
+        super(keeper, isDaemon);
     }
 
     public boolean sendMessage(byte[] payload, SocketAddress remote, SocketAddress local) {
-        Docker worker = getDocker(remote, local, null);
-        if (worker == null || !worker.isOpen()) {
+        Porter docker = fetchPorter(remote, local);
+        if (docker == null) {
             return false;
         }
-        return worker.sendData(payload);
+        return docker.sendData(payload);
     }
 
     //
@@ -30,9 +30,9 @@ public class TCPGate<H extends Hub> extends AutoGate<H> {
     //
 
     @Override
-    protected Docker createDocker(Connection conn, List<byte[]> data) {
+    protected Porter createPorter(SocketAddress remote, SocketAddress local) {
         // TODO: check data format before creating docker
-        PlainDocker docker = new PlainDocker(conn);
+        PlainPorter docker = new PlainPorter(remote, local);
         docker.setDelegate(getDelegate());
         return docker;
     }

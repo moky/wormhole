@@ -39,8 +39,8 @@ import chat.dim.socket.SocketWriter;
 
 public class StreamChannel extends BaseChannel<SocketChannel> {
 
-    public StreamChannel(SocketAddress remote, SocketAddress local, SocketChannel sock) {
-        super(remote, local, sock);
+    public StreamChannel(SocketAddress remote, SocketAddress local) {
+        super(remote, local);
     }
 
     @Override
@@ -52,4 +52,5 @@ public class StreamChannel extends BaseChannel<SocketChannel> {
     protected SocketWriter createWriter() {
         return new StreamChannelWriter(this);
     }
+
 }

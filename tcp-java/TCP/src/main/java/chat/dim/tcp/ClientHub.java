@@ -37,56 +37,81 @@ import java.nio.channels.SocketChannel;
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.socket.ActiveConnection;
+import chat.dim.socket.BaseChannel;
 
+/**
+ *  Stream Client Hub
+ *  ~~~~~~~~~~~~~~~~~
+ */
 public class ClientHub extends StreamHub {
 
-    public ClientHub(Connection.Delegate delegate) {
-        super(delegate);
+    public ClientHub(Connection.Delegate gate) {
+        super(gate);
     }
 
     @Override
-    protected Connection createConnection(SocketAddress remote, SocketAddress local, Channel sock) {
-        ActiveConnection conn = new ActiveConnection(remote, local, sock, this);
+    protected Connection createConnection(SocketAddress remote, SocketAddress local) {
+        ActiveConnection conn = new ActiveConnection(remote, local);
         conn.setDelegate(getDelegate());  // gate
-        conn.start();  // start FSM
         return conn;
     }
 
     @Override
     public Channel open(SocketAddress remote, SocketAddress local) {
-        Channel channel = super.open(remote, local);
-        if (channel == null/* && remote != null*/) {
-            channel = createSocketChannel(remote, local);
-            if (channel != null) {
-                setChannel(channel.getRemoteAddress(), channel.getLocalAddress(), channel);
+        if (remote == null) {
+            assert false : "remote address empty";
+            return null;
+        }
+        //
+        //  1. check channel
+        //
+        Channel channel = getChannel(remote, local);
+        if (channel != null) {
+            return channel;
+        }
+        // channel not exists, create new one
+        channel = createChannel(remote, local);
+        if (local == null) {
+            local = channel.getLocalAddress();
+        }
+        // cache the channel
+        Channel cached = setChannel(remote, local, channel);
+        if (cached != null && cached != channel) {
+            closeChannel(cached);
+        }
+        //
+        //  2. create socket
+        //
+        if (channel instanceof BaseChannel) {
+            SocketChannel socket = createSocket(remote, local);
+            if (socket == null) {
+                // assert false : "failed to prepare socket: " + local + " -> " + remote;
+                removeChannel(remote, local, channel);
+                channel = null;
+            } else {
+                //noinspection unchecked
+                ((BaseChannel<SocketChannel>) channel).setSocketChannel(socket);
             }
         }
         return channel;
     }
 
-    private Channel createSocketChannel(SocketAddress remote, SocketAddress local) {
+    private static SocketChannel createSocket(SocketAddress remote, SocketAddress local) {
         try {
-            SocketChannel sock = createSocket(remote, local);
-            if (local == null) {
-                local = sock.getLocalAddress();
+            SocketChannel sock = SocketChannel.open();
+            sock.configureBlocking(true);
+            if (local != null) {
+                sock.socket().setReuseAddress(false);
+                sock.bind(local);
             }
-            return createChannel(remote, local, sock);
+            assert remote != null : "remote address empty";
+            sock.connect(remote);
+            sock.configureBlocking(false);
+            return sock;
         } catch (IOException e) {
             e.printStackTrace();
         }
         return null;
     }
 
-    private static SocketChannel createSocket(SocketAddress remote, SocketAddress local) throws IOException {
-        SocketChannel sock = SocketChannel.open();
-        sock.configureBlocking(true);
-        sock.socket().setReuseAddress(false);
-        if (local != null) {
-            sock.bind(local);
-        }
-        assert remote != null : "remote address empty";
-        sock.connect(remote);
-        sock.configureBlocking(false);
-        return sock;
-    }
 }

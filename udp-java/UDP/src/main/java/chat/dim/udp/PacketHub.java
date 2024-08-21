@@ -91,34 +91,53 @@ class ChannelPool extends AddressPairMap<Channel> {
     }
 
     @Override
-    public void set(SocketAddress remote, SocketAddress local, Channel value) {
-        Channel old = get(remote, local);
-        if (old != null && old != value) {
-            remove(remote, local, old);
+    public Channel set(SocketAddress remote, SocketAddress local, Channel value) {
+        // remove cached item
+        Channel cached = super.remove(remote, local, value);
+        /*/
+        if (cached != null && cached != value) {
+            cached.close();
         }
-        super.set(remote, local, value);
+        /*/
+        Channel old = super.set(remote, local, value);
+        assert old != null : "should not happen";
+        return cached;
     }
 
+    /*/
     @Override
     public Channel remove(SocketAddress remote, SocketAddress local, Channel value) {
         Channel cached = super.remove(remote, local, value);
-        if (cached != null && cached.isOpen()) {
+        if (cached != null && cached != value) {
             try {
                 cached.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+        if (value != null) {
+            try {
+                value.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
         return cached;
     }
+    /*/
+
 }
 
+/**
+ *  Base Datagram Hub
+ *  ~~~~~~~~~~~~~~~~~
+ */
 public abstract class PacketHub extends BaseHub {
 
     private final AddressPairMap<Channel> channelPool;
 
-    protected PacketHub(Connection.Delegate delegate) {
-        super(delegate);
+    protected PacketHub(Connection.Delegate gate) {
+        super(gate);
         channelPool = createChannelPool();
     }
 
@@ -134,8 +153,14 @@ public abstract class PacketHub extends BaseHub {
             udp.socket().setReuseAddress(true);
             udp.socket().bind(local);
             udp.configureBlocking(false);
-            Channel channel = createChannel(null, local, udp);
-            setChannel(null, local, channel);
+            Channel channel = createChannel(null, local);
+            if (channel instanceof PacketChannel) {
+                ((PacketChannel) channel).setSocketChannel(udp);
+            }
+            Channel cached = setChannel(null, local, channel);
+            if (cached != null && cached != channel) {
+                cached.close();
+            }
         }
     }
 
@@ -146,17 +171,16 @@ public abstract class PacketHub extends BaseHub {
     /**
      *  Create channel with socket & address
      *
-     * @param sock   - socket
      * @param remote - remote address
      * @param local  - local address
      * @return null on socket error
      */
-    protected Channel createChannel(SocketAddress remote, SocketAddress local, DatagramChannel sock) {
-        return new PacketChannel(remote, local, sock);
+    protected Channel createChannel(SocketAddress remote, SocketAddress local) {
+        return new PacketChannel(remote, local);
     }
 
     @Override
-    protected Set<Channel> allChannels() {
+    protected Iterable<Channel> allChannels() {
         return channelPool.allValues();
     }
 
@@ -164,13 +188,13 @@ public abstract class PacketHub extends BaseHub {
         return channelPool.get(remote, local);
     }
 
-    protected void setChannel(SocketAddress remote, SocketAddress local, Channel channel) {
-        channelPool.set(remote, local, channel);
+    protected Channel setChannel(SocketAddress remote, SocketAddress local, Channel channel) {
+        return channelPool.set(remote, local, channel);
     }
 
     @Override
-    protected void removeChannel(SocketAddress remote, SocketAddress local, Channel channel) {
-        channelPool.remove(remote, local, channel);
+    protected Channel removeChannel(SocketAddress remote, SocketAddress local, Channel channel) {
+        return channelPool.remove(remote, local, channel);
     }
 
     @Override
@@ -179,4 +203,5 @@ public abstract class PacketHub extends BaseHub {
         // get channel with direction (remote, local)
         return getChannel(remote, local);
     }
+
 }

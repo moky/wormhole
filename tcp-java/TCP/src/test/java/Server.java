@@ -9,13 +9,13 @@ import java.nio.charset.StandardCharsets;
 import chat.dim.net.Hub;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
-import chat.dim.port.Docker;
+import chat.dim.port.Porter;
 import chat.dim.stargate.TCPGate;
 import chat.dim.startrek.PlainArrival;
 import chat.dim.tcp.ServerHub;
 import chat.dim.utils.Log;
 
-public class Server implements Docker.Delegate {
+public class Server implements Porter.Delegate {
 
     private final SocketAddress localAddress;
 
@@ -51,18 +51,18 @@ public class Server implements Docker.Delegate {
     //
 
     @Override
-    public void onDockerStatusChanged(Docker.Status previous, Docker.Status current, Docker docker) {
-        SocketAddress remote = docker.getRemoteAddress();
-        SocketAddress local = docker.getLocalAddress();
+    public void onPorterStatusChanged(Porter.Status previous, Porter.Status current, Porter porter) {
+        SocketAddress remote = porter.getRemoteAddress();
+        SocketAddress local = porter.getLocalAddress();
         Log.info("!!! connection (" + remote + ", " + local + ") state changed: " + previous + " -> " + current);
     }
 
     @Override
-    public void onDockerReceived(Arrival income, Docker docker) {
+    public void onPorterReceived(Arrival income, Porter porter) {
         assert income instanceof PlainArrival : "arrival ship error: " + income;
         byte[] data = ((PlainArrival) income).getPackage();
         String text = new String(data, StandardCharsets.UTF_8);
-        SocketAddress source = docker.getRemoteAddress();
+        SocketAddress source = porter.getRemoteAddress();
         Log.info("<<< received (" + data.length + " bytes) from " + source + ": " + text);
         text = (counter++) + "# " + data.length + " byte(s) received";
         data = text.getBytes(StandardCharsets.UTF_8);
@@ -72,18 +72,18 @@ public class Server implements Docker.Delegate {
     static int counter = 0;
 
     @Override
-    public void onDockerSent(Departure departure, Docker docker) {
+    public void onPorterSent(Departure departure, Porter porter) {
         // plain departure has no response,
         // we would not know whether the task is success here
     }
 
     @Override
-    public void onDockerFailed(IOError error, Departure departure, Docker docker) {
+    public void onPorterFailed(IOError error, Departure departure, Porter porter) {
         Log.error(error.getMessage());
     }
 
     @Override
-    public void onDockerError(IOError error, Departure departure, Docker docker) {
+    public void onPorterError(IOError error, Departure departure, Porter porter) {
         Log.error(error.getMessage());
     }
 
@@ -109,4 +109,5 @@ public class Server implements Docker.Delegate {
 
         server.start();
     }
+
 }
