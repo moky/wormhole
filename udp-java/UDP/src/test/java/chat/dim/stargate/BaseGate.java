@@ -35,13 +35,13 @@ public abstract class BaseGate<H extends Hub>
     }
 
     @Override
-    protected Porter setPorter(SocketAddress remote, SocketAddress local, Porter docker) {
-        return super.setPorter(remote, null, docker);
+    protected Porter setPorter(SocketAddress remote, SocketAddress local, Porter porter) {
+        return super.setPorter(remote, null, porter);
     }
 
     @Override
-    protected Porter removePorter(SocketAddress remote, SocketAddress local, Porter docker) {
-        return super.removePorter(remote, null, docker);
+    protected Porter removePorter(SocketAddress remote, SocketAddress local, Porter porter) {
+        return super.removePorter(remote, null, porter);
     }
 
     public Porter fetchPorter(SocketAddress remote, SocketAddress local) {

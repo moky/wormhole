@@ -30,14 +30,9 @@
  */
 package chat.dim.socket;
 
-import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
-import java.net.SocketException;
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
-
-import chat.dim.net.SocketHelper;
 
 /**
  *  Socket Channel Controller
@@ -45,7 +40,7 @@ import chat.dim.net.SocketHelper;
  *
  *  Reader, Writer, ErrorChecker
  */
-abstract class ChannelController<C extends SelectableChannel> {
+public abstract class ChannelController<C extends SelectableChannel> {
 
     private final WeakReference<BaseChannel<C>> channelRef;
 
@@ -70,50 +65,6 @@ abstract class ChannelController<C extends SelectableChannel> {
     public C getSocket() {
         BaseChannel<C> sock = getChannel();
         return sock == null ? null : sock.getSocketChannel();
-    }
-
-    // TODO: override for receiving
-    protected int receivePackage(SelectableChannel sock, ByteBuffer dst) throws IOException {
-        if (sock == null || !sock.isOpen()) {
-            throw new SocketException();
-        }
-        return SocketHelper.socketReceive(sock, dst);
-    }
-
-    // TODO: override for sending
-    protected int sendAll(SelectableChannel sock, ByteBuffer src) throws IOException {
-        if (sock == null || !sock.isOpen()) {
-            throw new SocketException();
-        }
-        int sent = 0;
-        int rest = src.position();
-        int cnt;
-        while (true) {  // while (sock.isOpen())
-            cnt = SocketHelper.socketSend(sock, src);
-            // check send result
-            if (cnt <= 0) {
-                // buffer overflow?
-                break;
-            }
-            // something sent, check remaining data
-            sent += cnt;
-            rest -= cnt;
-            if (rest <= 0) {
-                // done!
-                break;
-            //} else {
-            //    // remove sent part
-            }
-        }
-        // OK
-        if (sent > 0) {
-            return sent;
-        } else  if (cnt < 0) {
-            assert cnt == -1 : "sent error: " + cnt;
-            return -1;
-        } else {
-            return  0;
-        }
     }
 
 }

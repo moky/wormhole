@@ -32,40 +32,44 @@ package chat.dim.udp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 
-import chat.dim.net.SocketHelper;
 import chat.dim.socket.BaseChannel;
-import chat.dim.socket.ChannelWriter;
+import chat.dim.socket.ChannelController;
+import chat.dim.socket.SocketWriter;
 
-public class PacketChannelWriter extends ChannelWriter<DatagramChannel> {
+public class PacketChannelWriter extends ChannelController<DatagramChannel> implements SocketWriter {
 
-    protected PacketChannelWriter(BaseChannel<DatagramChannel> channel) {
+    public PacketChannelWriter(BaseChannel<DatagramChannel> channel) {
         super(channel);
     }
 
-    //
-    //  Send
-    //
-
-    protected int sendTo(ByteBuffer src, SocketAddress target, DatagramChannel sock) throws IOException {
-        return sock.send(src, target);
+    @Override
+    public int write(ByteBuffer src) throws IOException {
+        DatagramChannel sock = getSocket();
+        if (sock == null || !sock.isOpen()) {
+            throw new SocketException();
+        }
+        return sock.write(src);
     }
 
     @Override
     public int send(ByteBuffer src, SocketAddress target) throws IOException {
         DatagramChannel sock = getSocket();
-        assert sock != null : "socket lost, cannot send data: " + src.position() + " byte(s)";
-        if (sock.isConnected()) {
+        if (sock == null || !sock.isOpen()) {
+            throw new SocketException();
+        } else if (sock.isConnected()) {
             // connected (TCP/UDP)
             SocketAddress remote = getRemoteAddress();
             assert target == null || target.equals(remote) : "target error: " + target + ", remote=" + remote;
-            return SocketHelper.socketSend(sock, src);
+            return sock.write(src);
         } else {
             // not connect (UDP)
             assert target != null : "target missed for unbound channel";
-            return sendTo(src, target, sock);
+            return sock.send(src, target);
         }
     }
+
 }

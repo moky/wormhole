@@ -62,43 +62,43 @@ public class Client implements Porter.Delegate {
     //
 
     @Override
-    public void onPorterStatusChanged(Porter.Status previous, Porter.Status current, Porter docker) {
-        SocketAddress remote = docker.getRemoteAddress();
-        SocketAddress local = docker.getLocalAddress();
+    public void onPorterStatusChanged(Porter.Status previous, Porter.Status current, Porter porter) {
+        SocketAddress remote = porter.getRemoteAddress();
+        SocketAddress local = porter.getLocalAddress();
         Log.info("!!! connection (" + remote + ", " + local + ") state changed: " + previous + " -> " + current);
     }
 
     @Override
-    public void onPorterReceived(Arrival income, Porter docker) {
+    public void onPorterReceived(Arrival income, Porter porter) {
         assert income instanceof PackageArrival : "arrival ship error: " + income;
         Package pack = ((PackageArrival) income).getPackage();
         int headLen = pack.head.getSize();
         int bodyLen = pack.body.getSize();
         byte[] payload = pack.body.getBytes();
         String text = new String(payload, StandardCharsets.UTF_8);
-        SocketAddress source = docker.getRemoteAddress();
+        SocketAddress source = porter.getRemoteAddress();
         Log.info("<<< received (" + headLen + " + " + bodyLen + " bytes) from " + source + ": " + text);
     }
 
     @Override
-    public void onPorterSent(Departure outgo, Porter docker) {
+    public void onPorterSent(Departure outgo, Porter porter) {
         assert outgo instanceof PackageDeparture : "departure ship error: " + outgo;
         Package pack = ((PackageDeparture) outgo).getPackage();
         int bodyLen = pack.head.bodyLength;
         if (bodyLen == -1) {
             bodyLen = pack.body.getSize();
         }
-        SocketAddress destination = docker.getRemoteAddress();
+        SocketAddress destination = porter.getRemoteAddress();
         Log.info("message sent: " + bodyLen + " byte(s) to " + destination);
     }
 
     @Override
-    public void onPorterFailed(IOError error, Departure departure, Porter docker) {
+    public void onPorterFailed(IOError error, Departure departure, Porter porter) {
         Log.error(error.getMessage());
     }
 
     @Override
-    public void onPorterError(IOError error, Departure departure, Porter docker) {
+    public void onPorterError(IOError error, Departure departure, Porter porter) {
         Log.error(error.getMessage());
     }
 

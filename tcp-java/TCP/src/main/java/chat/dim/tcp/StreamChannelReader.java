@@ -32,20 +32,37 @@ package chat.dim.tcp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 import chat.dim.socket.BaseChannel;
-import chat.dim.socket.ChannelReader;
+import chat.dim.socket.ChannelController;
+import chat.dim.socket.SocketReader;
 
-public class StreamChannelReader extends ChannelReader<SocketChannel> {
+public class StreamChannelReader extends ChannelController<SocketChannel> implements SocketReader {
 
-    protected StreamChannelReader(BaseChannel<SocketChannel> channel) {
+    public StreamChannelReader(BaseChannel<SocketChannel> channel) {
         super(channel);
     }
 
     @Override
-    public SocketAddress receive(ByteBuffer dst) throws IOException {
-        return read(dst) > 0 ? getRemoteAddress() : null;
+    public int read(ByteBuffer dst) throws IOException {
+        SocketChannel sock = getSocket();
+        if (sock == null || !sock.isOpen()) {
+            throw new SocketException();
+        }
+        return sock.read(dst);
     }
+
+    @Override
+    public SocketAddress receive(ByteBuffer dst) throws IOException {
+        SocketChannel sock = getSocket();
+        if (sock == null || !sock.isOpen()) {
+            throw new SocketException();
+        } else {
+            return sock.read(dst) > 0 ? getRemoteAddress() : null;
+        }
+    }
+
 }

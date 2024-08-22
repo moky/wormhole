@@ -32,13 +32,10 @@ package chat.dim.net;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.NetworkChannel;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
-import java.nio.channels.WritableByteChannel;
 
 public interface SocketHelper {
 
@@ -118,6 +115,7 @@ public interface SocketHelper {
      *  Ready for reading
      */
     static boolean socketIsAvailable(SelectableChannel sock) {
+        assert sock != null : "socket channel empty";
         // TODO: check reading buffer
         return true;
     }
@@ -126,6 +124,7 @@ public interface SocketHelper {
      *  Ready for writing
      */
     static boolean socketIsVacant(SelectableChannel sock) {
+        assert sock != null : "socket channel empty";
         // TODO: check writing buffer
         return true;
     }
@@ -134,24 +133,6 @@ public interface SocketHelper {
     //
     //  Async Socket I/O
     //
-
-    static int socketSend(SelectableChannel sock, ByteBuffer src) throws IOException {
-        if (sock instanceof WritableByteChannel) {
-            return ((WritableByteChannel) sock).write(src);
-        } else {
-            assert false : "unknown socket channel: " + sock;
-            return -1;
-        }
-    }
-
-    static int socketReceive(SelectableChannel sock, ByteBuffer dst) throws IOException {
-        if (sock instanceof ReadableByteChannel) {
-            return ((ReadableByteChannel) sock).read(dst);
-        } else {
-            assert false : "unknown socket channel: " + sock;
-            return -1;
-        }
-    }
 
     static boolean socketBind(NetworkChannel sock, SocketAddress local) {
         try {

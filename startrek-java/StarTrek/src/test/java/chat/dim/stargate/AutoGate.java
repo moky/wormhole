@@ -12,8 +12,8 @@ public abstract class AutoGate<H extends Hub>
     private final Daemon daemon;
     private boolean running;
 
-    public AutoGate(Porter.Delegate delegate, boolean isDaemon) {
-        super(delegate);
+    public AutoGate(Porter.Delegate keeper, boolean isDaemon) {
+        super(keeper);
         daemon = new Daemon(this, isDaemon);
         running = false;
     }

@@ -32,44 +32,40 @@ package chat.dim.udp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 
 import chat.dim.socket.BaseChannel;
-import chat.dim.socket.ChannelReader;
+import chat.dim.socket.ChannelController;
+import chat.dim.socket.SocketReader;
 
-public class PacketChannelReader extends ChannelReader<DatagramChannel> {
+public class PacketChannelReader extends ChannelController<DatagramChannel> implements SocketReader {
 
-    protected PacketChannelReader(BaseChannel<DatagramChannel> channel) {
+    public PacketChannelReader(BaseChannel<DatagramChannel> channel) {
         super(channel);
     }
 
-    //
-    //  Receive
-    //
-
-    protected SocketAddress receiveFrom(ByteBuffer dst, DatagramChannel sock) throws IOException {
-        SocketAddress remote = sock.receive(dst);
-        int cnt = dst.position();
-        if (cnt < 0) {
-            // connection lost?
-            throw new ClosedChannelException();
+    @Override
+    public int read(ByteBuffer dst) throws IOException {
+        DatagramChannel sock = getSocket();
+        if (sock == null || !sock.isOpen()) {
+            throw new SocketException();
         }
-        // OK
-        return remote;
+        return sock.read(dst);
     }
 
     @Override
     public SocketAddress receive(ByteBuffer dst) throws IOException {
         DatagramChannel sock = getSocket();
-        assert sock != null : "socket lost, cannot receive data.";
-        if (sock.isConnected()) {
+        if (sock == null || !sock.isOpen()) {
+            throw new SocketException();
+        } else if (sock.isConnected()) {
             // connected (TCP/UDP)
-            return read(dst) > 0 ? getRemoteAddress() : null;
+            return sock.read(dst) > 0 ? getRemoteAddress() : null;
         } else {
             // not connect (UDP)
-            return receiveFrom(dst, sock);
+            return sock.receive(dst);
         }
     }
 
