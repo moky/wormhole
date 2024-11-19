@@ -38,14 +38,14 @@
 
     var Class = sys.type.Class;
     var InetSocketAddress = ns.type.InetSocketAddress;
-    var HashKeyPairMap = ns.type.HashKeyPairMap;
+    var HashPairMap = ns.type.HashPairMap;
 
     var AnyAddress = new InetSocketAddress('0.0.0.0', 0);
 
     var AddressPairMap = function () {
-        HashKeyPairMap.call(this, AnyAddress);
+        HashPairMap.call(this, AnyAddress);
     };
-    Class(AddressPairMap, HashKeyPairMap, null, null);
+    Class(AddressPairMap, HashPairMap, null, null);
 
     AddressPairMap.AnyAddress = AnyAddress;
 
@@ -85,8 +85,9 @@
     // Override
     AddressPairObject.prototype.equals = function (other) {
         if (!other) {
-            return !this.remoteAddress && !this.localAddress;
+            return this.isEmpty();
         } else if (other === this) {
+            // same object
             return true;
         } else if (other instanceof AddressPairObject) {
             return address_equals(other.getRemoteAddress(), this.remoteAddress) &&
@@ -94,6 +95,11 @@
         } else {
             return false;
         }
+    };
+
+    // Override
+    AddressPairObject.prototype.isEmpty = function () {
+        return !(this.remoteAddress || this.localAddress);
     };
 
     // Override
@@ -106,11 +112,16 @@
         return desc.call(this);
     };
 
-    var address_equals = function (address1, address2) {
-        if (address1) {
-            return address1.equals(address2);
+    var address_equals = function (a, b) {
+        if (!a) {
+            return !b;
+        } else if (!b) {
+            return false;
+        } else if (a === b) {
+            // same object
+            return true;
         } else {
-            return !address2;
+            return a.equals(b);
         }
     };
 

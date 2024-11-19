@@ -37,16 +37,18 @@
 
     var Interface = sys.type.Interface;
 
-    var KeyPairMap = Interface(null, null);
+    /**
+     *  Key Pair Map
+     *  ~~~~~~~~~~~~
+     */
+    var PairMap = Interface(null, null);
 
     /**
      *  Get all mapped values
      *
      * @return {[]} all values
      */
-    KeyPairMap.prototype.values = function () {
-        throw new Error('NotImplemented');
-    };
+    PairMap.prototype.items = function () {};
 
     /**
      *  Get value by key pair (remote, local)
@@ -55,9 +57,7 @@
      * @param {SocketAddress} local  - local address
      * @return {*} mapped value
      */
-    KeyPairMap.prototype.get = function (remote, local) {
-        throw new Error('NotImplemented');
-    };
+    PairMap.prototype.get = function (remote, local) {};
 
     /**
      *  Set value by key pair (remote, local)
@@ -66,9 +66,7 @@
      * @param {SocketAddress} local  - local address
      * @param {*} value  - mapping value
      */
-    KeyPairMap.prototype.set = function (remote, local, value) {
-        throw new Error('NotImplemented');
-    };
+    PairMap.prototype.set = function (remote, local, value) {};
 
     /**
      *  Remove mapping by key pair (remote, local)
@@ -78,11 +76,9 @@
      * @param {*} value  - mapped value (Optional)
      * @return {*} removed value
      */
-    KeyPairMap.prototype.remove = function (remote, local, value) {
-        throw new Error('NotImplemented');
-    };
+    PairMap.prototype.remove = function (remote, local, value) {};
 
     //-------- namespace --------
-    ns.type.KeyPairMap = KeyPairMap;
+    ns.type.PairMap = PairMap;
 
 })(StarTrek, MONKEY);

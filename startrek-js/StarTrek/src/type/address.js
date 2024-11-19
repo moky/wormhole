@@ -42,13 +42,9 @@
 
     var SocketAddress = Interface(null, [Stringer]);
 
-    SocketAddress.prototype.getHost = function () {
-        throw new Error('NotImplemented');
-    };
+    SocketAddress.prototype.getHost = function () {};
 
-    SocketAddress.prototype.getPort = function () {
-        throw new Error('NotImplemented');
-    };
+    SocketAddress.prototype.getPort = function () {};
 
     /**
      *  IP Socket Address
