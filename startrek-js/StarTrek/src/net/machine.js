@@ -30,7 +30,10 @@
 // =============================================================================
 //
 
-/**
+//! require 'state.js'
+//! require 'transition.js'
+
+/*
  *    Finite States:
  *
  *             //===============\\          (Start)          //=============\\
@@ -58,42 +61,37 @@
  *             ||               || ------------------------> ||             ||
  *             \\===============//       (Received)          \\=============//
  */
-
-//! require 'state.js'
-//! require 'transition.js'
-
 (function (ns, fsm, sys) {
     'use strict';
 
-    var Class = sys.type.Class;
-    var Context = fsm.Context;
+    var Class       = sys.type.Class;
+    var Context     = fsm.Context;
     var BaseMachine = fsm.BaseMachine;
-    var ConnectionState = ns.net.ConnectionState;
-    var StateBuilder = ns.net.StateBuilder;
-    var TransitionBuilder = ns.net.TransitionBuilder;
 
     /**
      *  Connection State Machine
+     *  ~~~~~~~~~~~~~~~~~~~~~~~~
      *
-     * @param {Connection} connection
+     * @param {Connection|*} connection
      */
     var StateMachine = function (connection) {
-        BaseMachine.call(this, ConnectionState.DEFAULT);
+        BaseMachine.call(this);
         this.__connection = connection;
         // init states
         var builder = this.createStateBuilder();
-        add_state(this, builder.getDefaultState());
-        add_state(this, builder.getPreparingState());
-        add_state(this, builder.getReadyState());
-        add_state(this, builder.getExpiredState());
-        add_state(this, builder.getMaintainingState());
-        add_state(this, builder.getErrorState());
+        this.addState(this, builder.getDefaultState());
+        this.addState(this, builder.getPreparingState());
+        this.addState(this, builder.getReadyState());
+        this.addState(this, builder.getExpiredState());
+        this.addState(this, builder.getMaintainingState());
+        this.addState(this, builder.getErrorState());
     };
     Class(StateMachine, BaseMachine, [Context], null);
 
     // protected
     StateMachine.prototype.createStateBuilder = function () {
-        return new StateBuilder(new TransitionBuilder());
+        var stb = new ns.net.ConnectionStateTransitionBuilder();
+        return new ns.net.ConnectionStateBuilder(stb);
     };
 
     // protected
@@ -105,12 +103,8 @@
     StateMachine.prototype.getContext = function () {
         return this;
     };
-    
-    var add_state = function (machine, state) {
-        machine.setState(state.getName(), state);
-    };
 
     //-------- namespace --------
-    ns.net.StateMachine = StateMachine;
+    ns.net.ConnectionStateMachine = StateMachine;
 
 })(StarTrek, FiniteStateMachine, MONKEY);

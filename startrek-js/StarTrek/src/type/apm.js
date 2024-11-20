@@ -38,7 +38,7 @@
 
     var Class = sys.type.Class;
     var InetSocketAddress = ns.type.InetSocketAddress;
-    var HashPairMap = ns.type.HashPairMap;
+    var HashPairMap       = ns.type.HashPairMap;
 
     var AnyAddress = new InetSocketAddress('0.0.0.0', 0);
 
@@ -57,7 +57,7 @@
 (function (ns, sys) {
     'use strict';
 
-    var Class = sys.type.Class;
+    var Class      = sys.type.Class;
     var BaseObject = sys.type.BaseObject;
 
     /**

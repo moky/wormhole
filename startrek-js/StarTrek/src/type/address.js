@@ -35,9 +35,9 @@
 (function (ns, sys) {
     'use strict';
 
-    var Interface = sys.type.Interface;
-    var Class = sys.type.Class;
-    var Stringer = sys.type.Stringer;
+    var Interface      = sys.type.Interface;
+    var Class          = sys.type.Class;
+    var Stringer       = sys.type.Stringer;
     var ConstantString = sys.type.ConstantString;
 
     var SocketAddress = Interface(null, [Stringer]);

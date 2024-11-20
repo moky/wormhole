@@ -30,55 +30,61 @@
 // =============================================================================
 //
 
-//! require 'channel.js'
+//! require 'net/channel.js'
 
 (function (ns, sys) {
     'use strict';
 
     var Interface = sys.type.Interface;
-    var Class = sys.type.Class;
 
-    var ChannelChecker = Interface(null, null);
+    var SocketReader = Interface(null, null);
 
-    // 1. check E_AGAIN
-    //    the socket will raise 'Resource temporarily unavailable'
-    //    when received nothing in non-blocking mode,
-    //    or buffer overflow while sending too many bytes,
-    //    here we should ignore this exception.
-    // 2. check timeout
-    //    in blocking mode, the socket will wait until send/received data,
-    //    but if timeout was set, it will raise 'timeout' error on timeout,
-    //    here we should ignore this exception
-    ChannelChecker.prototype.checkError = function (error, sock) {
-        throw new Error('NotImplemented');
-    };
+    /**
+     *  Read data from socket
+     *
+     * @param {uint} maxLen - max length of received data
+     * @return {Uint8Array} received data
+     */
+    SocketReader.prototype.read = function (maxLen) {};
 
-    // 1. check timeout
-    //    in blocking mode, the socket will wait until received something,
-    //    but if timeout was set, it will return nothing too, it's normal;
-    //    otherwise, we know the connection was lost.
-    ChannelChecker.prototype.checkData = function (data, sock) {
-        throw new Error('NotImplemented');
-    };
+    /**
+     *  Receive data from socket
+     *
+     * @param {uint} maxLen - max length of received data
+     * @return {Uint8Array} received data
+     */
+    SocketReader.prototype.receive = function (maxLen) {};
 
-    var DefaultChecker = function () {
-        Object.call(this);
-    };
-    Class(DefaultChecker, Object, [ChannelChecker], {
-        // Override
-        checkError: function (error, sock) {
-            // TODO: check 'E_AGAIN' & TimeoutException
-            return error;
-        },
-        // Override
-        checkData: function (data, sock) {
-            // TODO: check Timeout for received nothing
-            // if (!data) {
-            //     return new Error('channel closed');
-            // }
-            return null;
-        }
-    });
+    var SocketWriter = Interface(null, null);
+
+    /**
+     *  Write data into socket
+     *
+     * @param {Uint8Array} src - data to be wrote
+     * @return {int} -1 on error
+     */
+    SocketWriter.prototype.write = function (src) {};
+
+    /**
+     *  Send data via socket with remote address
+     *
+     * @param {Uint8Array} src       - data to send
+     * @param {SocketAddress} target - remote address
+     * @return {int} sent length, -1 on error
+     */
+    SocketWriter.prototype.send = function (src, target) {};
+
+    //-------- namespace --------
+    ns.socket.SocketReader = SocketReader;
+    ns.socket.SocketWriter = SocketWriter;
+
+})(StarTrek, MONKEY);
+
+(function (ns, sys) {
+    'use strict';
+
+    var Class        = sys.type.Class;
+    var SocketHelper = ns.net.SocketHelper;
 
     /**
      *  Socket Channel Controller
@@ -90,9 +96,8 @@
     var ChannelController = function (channel) {
         Object.call(this);
         this.__channel = channel;
-        this.__checker = this.createChecker();
     };
-    Class(ChannelController, Object, [ChannelChecker], null);
+    Class(ChannelController, Object, null, null);
 
     /**
      *  Get the channel
@@ -110,7 +115,7 @@
      */
     ChannelController.prototype.getRemoteAddress = function () {
         var channel = this.getChannel();
-        return channel.getRemoteAddress();
+        return !channel ? null : channel.getRemoteAddress();
     };
 
     /**
@@ -120,7 +125,7 @@
      */
     ChannelController.prototype.getLocalAddress = function () {
         var channel = this.getChannel();
-        return channel.getLocalAddress();
+        return !channel ? null : channel.getLocalAddress();
     };
 
     /**
@@ -130,24 +135,41 @@
      */
     ChannelController.prototype.getSocket = function () {
         var channel = this.getChannel();
-        return channel.getSocket();
+        return !channel ? null : channel.getSocket();
     };
 
-    //
-    //  Checker
-    //
-    ChannelController.prototype.createChecker = function () {
-        return new DefaultChecker();
-    };
-
-    // Override
-    ChannelController.prototype.checkError = function (error, sock) {
-        return this.__checker.checkError(error, sock);
+    // protected
+    ChannelController.prototype.receivePackage = function (sock, maxLen) {
+        // TODO: override for async receiving
+        return SocketHelper.socketReceive(sock, maxLen);
     };
 
     // Override
-    ChannelController.prototype.checkData = function (data, sock) {
-        return this.__checker.checkData(data, sock);
+    ChannelController.prototype.sendAll = function (sock, data) {
+        // TODO: override for async sending
+        return SocketHelper.socketSend(sock, data);
+        // var sent = 0;
+        // var rest = data.length;
+        // var cnt;
+        // while (sock.isOpen()) {
+        //     cnt = sock.write(data);
+        //     // check send result
+        //     if (cnt <= 0) {
+        //         // buffer overflow?
+        //         break;
+        //     }
+        //     // something sent, check remaining data
+        //     sent += cnt;
+        //     rest -= cnt;
+        //     if (rest <= 0) {
+        //         // done!
+        //         break;
+        //     } else {
+        //         // remove sent part
+        //         data = data.subarray(cnt);
+        //     }
+        // }
+        // return sent;
     };
 
     //-------- namespace --------
@@ -159,8 +181,8 @@
     'use strict';
 
     var Class = sys.type.Class;
-    var SocketReader = ns.socket.SocketReader;
-    var SocketWriter = ns.socket.SocketWriter;
+    var SocketReader      = ns.socket.SocketReader;
+    var SocketWriter      = ns.socket.SocketWriter;
     var ChannelController = ns.socket.ChannelController;
 
     /**
@@ -173,31 +195,14 @@
         ChannelController.call(this, channel)
     };
     Class(ChannelReader, ChannelController, [SocketReader], {
+
         // Override
         read: function (maxLen) {
             var sock = this.getSocket();
-            var data = this.tryRead(maxLen, sock);
-            // check data
-            var error = this.checkData(data, sock);
-            if (error) {
-                // connection lost
-                throw error;
-            }
-            // OK
-            return data;
-        },
-        // protected
-        tryRead: function (maxLen, sock) {
-            try {
-                return sock.read(maxLen);
-            } catch (e) {
-                e = this.checkError(e, sock);
-                if (e) {
-                    // connection lost?
-                    throw e;
-                }
-                // received nothing
-                return null;
+            if (sock && sock.isOpen()) {
+                return this.receivePackage(sock, maxLen);
+            } else {
+                throw new Error('channel closed');
             }
         }
     });
@@ -212,43 +217,14 @@
         ChannelController.call(this, channel)
     };
     Class(ChannelWriter, ChannelController, [SocketWriter], {
+
         // Override
         write: function (data) {
             var sock = this.getSocket();
-            var sent = 0;
-            var rest = data.length;
-            var cnt;
-            while (sock.isOpen()) {
-                cnt = this.tryWrite(data, sock);
-                // check send result
-                if (cnt <= 0) {
-                    // buffer overflow?
-                    break;
-                }
-                // something sent, check remaining data
-                sent += cnt;
-                rest -= cnt;
-                if (rest <= 0) {
-                    // done!
-                    break;
-                } else {
-                    // remove sent part
-                    data = data.subarray(cnt);
-                }
-            }
-        },
-        // protected
-        tryWrite: function (data, sock) {
-            try {
-                return sock.write(data);
-            } catch (e) {
-                e = this.checkError(e, sock);
-                if (e) {
-                    // connection lost?
-                    throw e;
-                }
-                // buffer overflow!
-                return 0;
+            if (sock && sock.isOpen()) {
+                return this.sendAll(sock, data)
+            } else {
+                throw new Error('channel closed');
             }
         }
     });

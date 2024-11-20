@@ -31,63 +31,7 @@
 //
 
 //! require 'type/apm.js'
-//! require 'net/channel.js'
-
-(function (ns, sys) {
-    'use strict';
-
-    var Interface = sys.type.Interface;
-
-    var SocketReader = Interface(null, null);
-
-    /**
-     *  Read data from socket
-     *
-     * @param {uint} maxLen - max length of received data
-     * @return {Uint8Array} received data
-     */
-    SocketReader.prototype.read = function (maxLen) {
-        throw new Error('NotImplemented');
-    };
-
-    /**
-     *  Receive data from socket
-     *
-     * @param {uint} maxLen - max length of received data
-     * @return {Uint8Array} received data
-     */
-    SocketReader.prototype.receive = function (maxLen) {
-        throw new Error('NotImplemented');
-    };
-
-    var SocketWriter = Interface(null, null);
-
-    /**
-     *  Write data into socket
-     *
-     * @param {Uint8Array} src - data to be wrote
-     * @return {int} -1 on error
-     */
-    SocketWriter.prototype.write = function (src) {
-        throw new Error('NotImplemented');
-    };
-
-    /**
-     *  Send data via socket with remote address
-     *
-     * @param {Uint8Array} src       - data to send
-     * @param {SocketAddress} target - remote address
-     * @return {int} sent length, -1 on error
-     */
-    SocketWriter.prototype.send = function (src, target) {
-        throw new Error('NotImplemented');
-    };
-
-    //-------- namespace --------
-    ns.socket.SocketReader = SocketReader;
-    ns.socket.SocketWriter = SocketWriter;
-
-})(StarTrek, MONKEY);
+//! require 'controller.js'
 
 /**
  *  WebSocket Wrapper
@@ -121,7 +65,9 @@
 
     var Class = sys.type.Class;
     var AddressPairObject = ns.type.AddressPairObject;
-    var Channel = ns.net.Channel;
+    var Channel           = ns.net.Channel;
+    var ChannelStateOrder = ns.net.ChannelStateOrder;
+    var SocketHelper      = ns.net.SocketHelper;
 
     /**
      *  Base Channel
@@ -129,112 +75,116 @@
      *
      * @param {SocketAddress} remote - remote address
      * @param {SocketAddress} local  - local address
-     * @param {WebSocket|*} sock     - WebSocket wrapper
      */
-    var BaseChannel = function (remote, local, sock) {
+    var BaseChannel = function (remote, local) {
         AddressPairObject.call(this, remote, local);
-        this.__sock = sock;
-        // socket reader/writer
+        // SocketReader, SocketWriter
         this.__reader = this.createReader();
         this.__writer = this.createWriter();
-        // flags
-        this.__blocking = false;
-        this.__opened = false;
-        this.__connected = false;
-        this.__bound = false;
-        this.refreshFlags();
+        // inner socket
+        this.__sock = null;  // WebSocket wrapper
+        this.__closed = -1;  // 0: false, 1: true
     };
-    Class(BaseChannel, AddressPairObject, [Channel], null);
+    Class(BaseChannel, AddressPairObject, [Channel], {
 
-    // destroy()
-    BaseChannel.prototype.finalize = function () {
-        // make sure the relative socket is removed
-        removeSocketChannel.call(this);
-        // super.finalize();
-    };
-
-    /**
-     *  Create socket reader
-     */
-    // protected
-    BaseChannel.prototype.createReader = function () {
-        throw new Error('NotImplemented');
-    };
-
-    /**
-     *  Create socket writer
-     */
-    // protected
-    BaseChannel.prototype.createWriter = function () {
-        throw new Error('NotImplemented');
-    };
-
-    /**
-     *  Refresh flags with inner socket
-     */
-    // protected
-    BaseChannel.prototype.refreshFlags = function () {
-        var sock = this.__sock;
-        if (sock) {
-            this.__blocking = sock.isBlocking();
-            this.__opened = sock.isOpen();
-            this.__connected = sock.isConnected();
-            this.__bound = sock.isBound();
-        } else {
-            this.__blocking = false;
-            this.__opened = false;
-            this.__connected = false;
-            this.__bound = false;
+        // Override
+        toString: function () {
+            var clazz     = this.getClassName();
+            var remote    = this.getRemoteAddress();
+            var local     = this.getLocalAddress();
+            var closed   = !this.isOpen();
+            var bound     = this.isBound();
+            var connected = this.isConnected();
+            var sock      = this.getSocket();
+            return '<' + clazz + ' remote="' + remote + '" local="' + local + '"' +
+                ' closed=' + closed + ' bound=' + bound + ' connected=' + connected + '>\n\t' +
+                sock + '\n</' + clazz + '>';
         }
+    });
+
+    // create socket reader & writer
+    BaseChannel.prototype.createReader = function () {};
+    BaseChannel.prototype.createWriter = function () {};
+    // protected
+    BaseChannel.prototype.getReader = function () {
+        return this.__reader;
+    };
+    BaseChannel.prototype.getWriter = function () {
+        return this.__writer;
     };
 
-    /**
-     *  Get inner socket
-     *
-     * @return {WebSocket|*} WebSocket wrapper
-     */
+    //
+    //  Socket
+    //
+
     BaseChannel.prototype.getSocket = function () {
         return this.__sock;
     };
 
-    var removeSocketChannel = function () {
-        // 1. clear inner channel
+    /**
+     *  Set inner socket for this channel
+     *
+     * @param {WebSocket} sock
+     */
+    BaseChannel.prototype.setSocket = function (sock) {
+        // 1. replace with new socket
         var old = this.__sock;
-        this.__sock = null;
-        // 2. refresh flags
-        this.refreshFlags();
-        // 3. close old channel
-        if (old && old.isOpen()) {
-            old.clone();
+        if (sock) {
+            this.__sock = sock;
+            this.__closed = 0;
+        } else {
+            this.__sock = null;
+            this.__closed = 1;
+        }
+        // 2. close old socket
+        if (old && old !== sock) {
+            SocketHelper.socketDisconnect(old);
+        }
+    };
+
+    //
+    //  States
+    //
+
+    // Override
+    BaseChannel.prototype.getState = function () {
+        if (this.__closed < 0) {
+            // initializing
+            return ChannelStateOrder.INIT;
+        }
+        var sock = this.getSocket();
+        if (!sock || SocketHelper.socketIsClosed(sock)) {
+            // closed
+            return ChannelStateOrder.CLOSED;
+        } else if (SocketHelper.socketIsConnected(sock) || SocketHelper.socketIsBound(sock)) {
+            // normal
+            return ChannelStateOrder.ALIVE;
+        } else {
+            // opened
+            return ChannelStateOrder.OPEN;
         }
     };
 
     // Override
-    BaseChannel.prototype.configureBlocking = function (block) {
-        var sock = this.getSocket();
-        sock.configureBlocking(block);
-        this.__blocking = block;
-        return sock;
-    };
-
-    // Override
-    BaseChannel.prototype.isBlocking = function () {
-        return this.__blocking;
-    };
-
-    // Override
     BaseChannel.prototype.isOpen = function () {
-        return this.__opened;
-    };
-
-    // Override
-    BaseChannel.prototype.isConnected = function () {
-        return this.__connected;
+        if (this.__closed < 0) {
+            // initializing
+            return true;
+        }
+        var sock = this.getSocket();
+        return sock && !SocketHelper.socketIsClosed(sock);
     };
 
     // Override
     BaseChannel.prototype.isBound = function () {
-        return this.__bound;
+        var sock = this.getSocket();
+        return sock && SocketHelper.socketIsBound(sock);
+    };
+
+    // Override
+    BaseChannel.prototype.isConnected = function () {
+        var sock = this.getSocket();
+        return sock && SocketHelper.socketIsConnected(sock);
     };
 
     // Override
@@ -243,54 +193,111 @@
     };
 
     // Override
-    BaseChannel.prototype.bind = function (local) {
-        if (!local) {
-            local = this.localAddress;
-        }
+    BaseChannel.prototype.isAvailable = function () {
         var sock = this.getSocket();
-        var nc = sock.bind(local);
+        if (!sock || SocketHelper.socketIsClosed(sock)) {
+            return false;
+        } else if (SocketHelper.socketIsConnected(sock) || SocketHelper.socketIsBound(sock)) {
+            // alive, check reading buffer
+            return this.checkAvailable(sock);
+        } else {
+            return false;
+        }
+    };
+
+    // protected
+    BaseChannel.prototype.checkAvailable = function (sock) {
+        return SocketHelper.socketIsAvailable(sock);
+    };
+
+    // Override
+    BaseChannel.prototype.isVacant = function () {
+        var sock = this.getSocket();
+        if (!sock || SocketHelper.socketIsClosed(sock)) {
+            return false;
+        } else if (SocketHelper.socketIsConnected(sock) || SocketHelper.socketIsBound(sock)) {
+            // alive, check writing buffer
+            return this.checkVacant(sock);
+        } else {
+            return false;
+        }
+    };
+
+    // protected
+    BaseChannel.prototype.checkVacant = function (sock) {
+        return SocketHelper.socketIsVacant(sock);
+    };
+
+    // Override
+    BaseChannel.prototype.isBlocking = function () {
+        var sock = this.getSocket();
+        return sock && SocketHelper.socketIsBlocking(sock);
+    };
+
+    // Override
+    BaseChannel.prototype.configureBlocking = function (block) {
+        var sock = this.getSocket();
+        sock.configureBlocking(block);
+        return sock;
+    };
+
+    // protected
+    BaseChannel.prototype.doBind = function (sock, local) {
+        return SocketHelper.socketBind(sock, local);
+    };
+
+    // protected
+    BaseChannel.prototype.doConnect = function (sock, remote) {
+        return SocketHelper.socketConnect(sock, remote);
+    };
+
+    // protected
+    BaseChannel.prototype.doDisconnect = function (sock) {
+        return SocketHelper.socketDisconnect(sock);
+    };
+
+    // Override
+    BaseChannel.prototype.bind = function (local) {
+        var sock = this.getSocket();
+        if (sock) {
+            this.doBind(sock, local);
+        }
         this.localAddress = local;
-        this.__bound = true;
-        this.__opened = true;
-        this.__blocking = sock.isBlocking();
-        return nc;
+        return sock;
     };
 
     // Override
     BaseChannel.prototype.connect = function (remote) {
-        if (!remote) {
-            remote = this.remoteAddress;
-        }
         var sock = this.getSocket();
-        sock.connect(remote);
+        if (sock) {
+            this.doConnect(sock, remote);
+        }
         this.remoteAddress = remote;
-        this.__connected = true;
-        this.__opened = true;
-        this.__blocking = sock.isBlocking();
         return sock;
     };
 
     // Override
     BaseChannel.prototype.disconnect = function () {
-        var sock = this.__sock;
-        removeSocketChannel.call(this);
+        var sock = this.getSocket();
+        if (sock) {
+            this.doDisconnect(sock);
+        }
         return sock;
     };
 
     // Override
     BaseChannel.prototype.close = function () {
-        // close inner socket and refresh flags
-        removeSocketChannel.call(this);
+        this.setSocket(null);
     };
 
     //
-    //  Input/Output
+    //  Reading, Writing
     //
 
     // Override
     BaseChannel.prototype.read = function (maxLen) {
         try {
-            return this.__reader.read(maxLen);
+            return this.getReader().read(maxLen);
         } catch (e) {
             this.close();
             throw e;
@@ -300,7 +307,7 @@
     // Override
     BaseChannel.prototype.write = function (src) {
         try {
-            return this.__writer.write(src);
+            return this.getWriter().write(src);
         } catch (e) {
             this.close();
             throw e;
@@ -310,7 +317,7 @@
     // Override
     BaseChannel.prototype.receive = function (maxLen) {
         try {
-            return this.__reader.receive(maxLen);
+            return this.getReader().receive(maxLen);
         } catch (e) {
             this.close();
             throw e;
@@ -320,7 +327,7 @@
     // Override
     BaseChannel.prototype.send = function (src, target) {
         try {
-            return this.__writer.send(src, target);
+            return this.getWriter().send(src, target);
         } catch (e) {
             this.close();
             throw e;

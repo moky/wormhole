@@ -36,25 +36,35 @@
     'use strict';
 
     var Interface = sys.type.Interface;
+    var Enum      = sys.type.Enum;
+
+    // protected
+    var ChannelStateOrder = Enum(null, {
+        INIT:   0,  // initializing
+        OPEN:   1,  // initialized
+        ALIVE:  2,  // (not closed) and (connected or bound)
+        CLOSED: 3   // closed
+    });
 
     var Channel = Interface(null, null);
 
-    Channel.prototype.isOpen = function () {
-        throw new Error('NotImplemented');
-    };
+    // Channel State Order
+    Channel.prototype.getState = function () {};
 
-    Channel.prototype.isBound = function () {
-        throw new Error('NotImplemented');
-    };
+    Channel.prototype.isOpen = function () {};
 
-    Channel.prototype.isAlive = function () {
-        // return this.isOpen() && (this.isConnected() || this.isBound());
-        throw new Error('NotImplemented');
-    };
+    Channel.prototype.isBound = function () {};
 
-    Channel.prototype.close = function () {
-        throw new Error('NotImplemented');
-    };
+    // this.isOpen() && (this.isConnected() || this.isBound());
+    Channel.prototype.isAlive = function () {};
+
+    // ready for reading
+    Channel.prototype.isAvailable = function () {};  // isAlive
+
+    // ready for writing
+    Channel.prototype.isVacant = function () {};  // isAlive
+
+    Channel.prototype.close = function () {};
 
 
     /*================================================*\
@@ -67,9 +77,7 @@
      * @param {uint} maxLen - max length of received data
      * @return {Uint8Array} received data
      */
-    Channel.prototype.read = function (maxLen) {
-        throw new Error('NotImplemented');
-    };
+    Channel.prototype.read = function (maxLen) {};
 
 
     /*================================================*\
@@ -82,9 +90,7 @@
      * @param {Uint8Array} src - data to be wrote
      * @return {int} -1 on error
      */
-    Channel.prototype.write = function (src) {
-        throw new Error('NotImplemented');
-    };
+    Channel.prototype.write = function (src) {};
 
 
     /*================================================*\
@@ -97,9 +103,7 @@
      * @param {boolean} block
      * @return {WebSocket|*} the inner SelectableChannel
      */
-    Channel.prototype.configureBlocking = function (block) {
-        throw new Error('NotImplemented');
-    };
+    Channel.prototype.configureBlocking = function (block) {};
 
     /**
      *  Tells whether or not every I/O operation on this channel will block
@@ -107,9 +111,7 @@
      *
      * @return {boolean} true when this channel is in blocking mode
      */
-    Channel.prototype.isBlocking = function () {
-        throw new Error('NotImplemented');
-    };
+    Channel.prototype.isBlocking = function () {};
 
 
     /*================================================*\
@@ -122,18 +124,14 @@
      * @param {SocketAddress} local
      * @return {WebSocket|*} the inner NetworkChannel
      */
-    Channel.prototype.bind = function (local) {
-        throw new Error('NotImplemented');
-    };
+    Channel.prototype.bind = function (local) {};
 
     /**
      *  Get local address that this channel's socket is bound to.
      *
      * @return {SocketAddress} local address
      */
-    Channel.prototype.getLocalAddress = function () {
-        throw new Error('NotImplemented');
-    };
+    Channel.prototype.getLocalAddress = function () {};
 
 
     /*================================================*\
@@ -145,9 +143,7 @@
      *
      * @return {boolean}
      */
-    Channel.prototype.isConnected = function () {
-        throw new Error('NotImplemented');
-    };
+    Channel.prototype.isConnected = function () {};
 
     /**
      *  Connect to remote address
@@ -155,18 +151,14 @@
      * @param {SocketAddress} remote - remote address
      * @return {WebSocket|*} the inner NetworkChannel; null on failed
      */
-    Channel.prototype.connect = function (remote) {
-        throw new Error('NotImplemented');
-    };
+    Channel.prototype.connect = function (remote) {};
 
     /**
      *  Get remote address to which this channel's socket is connected.
      *
      * @return {SocketAddress} remote address
      */
-    Channel.prototype.getRemoteAddress = function () {
-        throw new Error('NotImplemented');
-    };
+    Channel.prototype.getRemoteAddress = function () {};
 
 
     /*================================================*\
@@ -178,9 +170,7 @@
      *
      * @return {WebSocket|*} the inner ByteChannel
      */
-    Channel.prototype.disconnect = function () {
-        throw new Error('NotImplemented');
-    };
+    Channel.prototype.disconnect = function () {};
 
     /**
      *  Receives a datagram via this channel.
@@ -188,9 +178,7 @@
      * @param {uint} maxLen
      * @return {Uint8Array} received data package
      */
-    Channel.prototype.receive = function (maxLen) {
-        throw new Error('NotImplemented');
-    };
+    Channel.prototype.receive = function (maxLen) {};
 
     /**
      *  Sends a datagram via this channel.
@@ -199,11 +187,83 @@
      * @param {SocketAddress} target - remote address
      * @return {int} the number of bytes sent, -1 on error
      */
-    Channel.prototype.send = function (src, target) {
-        throw new Error('NotImplemented');
-    };
+    Channel.prototype.send = function (src, target) {};
 
     //-------- namespace --------
-    ns.net.Channel = Channel;
+    ns.net.Channel           = Channel;
+    ns.net.ChannelStateOrder = ChannelStateOrder;
 
-})(StarTrek, MONKEY);
+})(StarTrek);
+
+(function (ns) {
+    'use strict';
+
+    //-------- namespace --------
+    ns.net.SocketHelper = {
+
+        //
+        //  Socket Channels
+        //
+
+        socketGetLocalAddress: function (sock) {
+            return sock.localAddress;
+        },
+        socketGetRemoteAddress: function (sock) {
+            return sock.remoteAddress;
+        },
+
+        //
+        //  Flags
+        //
+
+        socketIsBlocking: function (sock) {
+            return sock.isBlocking();
+        },
+        socketIsConnected: function (sock) {
+            return sock.readyState === WebSocket.OPEN;
+        },
+        socketIsBound: function (sock) {
+            return sock.localAddress !== null;
+        },
+        socketIsClosed: function (sock) {
+            return sock.readyState === WebSocket.CLOSED;
+        },
+
+        // Ready for reading
+        socketIsAvailable: function (sock) {
+            // TODO: check reading buffer
+            return sock.readyState === WebSocket.OPEN;
+        },
+        // Ready for writing
+        socketIsVacant: function (sock) {
+            // TODO: check writing buffer
+            return sock.readyState === WebSocket.OPEN;
+        },
+
+        //
+        //  Async Socket I/O
+        //
+
+        socketSend: function (sock, data) {
+            return sock.write(data);
+        },
+        socketReceive: function (sock, maxLen) {
+            return sock.read(maxLen);
+        },
+
+        // Bind to local address
+        socketBind: function (sock, local) {
+            return sock.bind(local);
+        },
+        // Connect to remote address
+        socketConnect: function (sock, remote) {
+            return sock.connect(remote);
+        },
+
+        //  Close socket
+        socketDisconnect: function (sock) {
+            return sock.close();
+        }
+    }
+
+})(StarTrek);

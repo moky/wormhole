@@ -37,7 +37,18 @@
     'use strict';
 
     var Class = sys.type.Class;
+    var Enum  = sys.type.Enum;
+
     var BaseState = fsm.BaseState;
+
+    var StateOrder = Enum(null, {
+        DEFAULT:     0,  // Init
+        PREPARING:   1,
+        READY:       2,
+        MAINTAINING: 3,
+        EXPIRED:     4,
+        ERROR:       5
+    });
 
     /**
      *  Connection State
@@ -51,69 +62,64 @@
      *      MAINTAINING - sent 'PING', waiting for response
      *      ERROR       - long long time no response, connection lost
      *
-     * @param {String} name
+     * @param {Enum} order
      */
-    var ConnectionState = function (name) {
-        BaseState.call(this);
-        this.__name = name;
-        this.__enterTime = 0;  // timestamp (milliseconds)
+    var ConnectionState = function (order) {
+        BaseState.call(this, order.valueOf());
+        this.__name = order.getName();
+        this.__enterTime = null;  // Date
     };
-    Class(ConnectionState, BaseState, null, null);
+    Class(ConnectionState, BaseState, null, {
 
-    ConnectionState.DEFAULT     = 'default';
-    ConnectionState.PREPARING   = 'preparing';
-    ConnectionState.READY       = 'ready';
-    ConnectionState.MAINTAINING = 'maintaining';
-    ConnectionState.EXPIRED     = 'expired';
-    ConnectionState.ERROR       = 'error';
+        getName: function () {
+            return this.__name;
+        },
 
-    // Override
-    ConnectionState.prototype.equals = function (other) {
-        if (this === other) {
-            return true;
-        } else if (!other) {
-            return false;
-        } else if (other instanceof ConnectionState) {
-            return this.__name === other.toString();
-        } else {
-            return this.__name === other;
+        getEnterTime: function () {
+            return this.__enterTime;
+        },
+
+        // Override
+        toString: function () {
+            return this.__name;
+        },
+
+        // Override
+        valueOf: function () {
+            return this.__name;
+        },
+
+        // Override
+        equals: function (other) {
+            if (other instanceof ConnectionState) {
+                if (other === this) {
+                    // same object
+                    return true;
+                }
+                other = other.getIndex();
+            } else if (other instanceof StateOrder) {
+                other = other.valueOf();
+            }
+            return this.getIndex() === other;
         }
-    };
+    });
 
     // Override
-    ConnectionState.prototype.valueOf = function () {
-        return this.__name;
-    };
-
-    // Override
-    ConnectionState.prototype.toString = function () {
-        return this.__name;
-    };
-
-    ConnectionState.prototype.getName = function () {
-        return this.__name;
-    };
-
-    ConnectionState.prototype.getEnterTime = function () {
-        return this.__enterTime;
-    };
-
-    // Override
-    ConnectionState.prototype.onEnter = function (previous, machine, now) {
+    ConnectionState.prototype.onEnter = function (previous, ctx, now) {
         this.__enterTime = now;
     };
 
     // Override
-    ConnectionState.prototype.onExit = function (next, machine, now) {
-        this.__enterTime = 0;
+    ConnectionState.prototype.onExit = function (next, ctx, now) {
+        this.__enterTime = null;
     };
 
     // Override
-    ConnectionState.prototype.onPause = function (machine) {
+    ConnectionState.prototype.onPause = function (ctx, now) {
     };
 
     // Override
-    ConnectionState.prototype.onResume = function (machine) {
+    ConnectionState.prototype.onResume = function (ctx, now) {
     };
 
     /**
@@ -135,14 +141,14 @@
     Class(StateBuilder, Object, null, {
         // Connection not started yet
         getDefaultState: function () {
-            var state = getNamedState(ConnectionState.DEFAULT);
+            var state = new ConnectionState(StateOrder.DEFAULT);
             // Default -> Preparing
             state.addTransition(this.builder.getDefaultPreparingTransition());
             return state;
         },
         // Connection started, preparing to connect/bind
         getPreparingState: function () {
-            var state = getNamedState(ConnectionState.PREPARING);
+            var state = new ConnectionState(StateOrder.PREPARING);
             // Preparing -> Ready
             state.addTransition(this.builder.getPreparingReadyTransition());
             // Preparing -> Default
@@ -151,7 +157,7 @@
         },
         // Normal state of connection
         getReadyState: function () {
-            var state = getNamedState(ConnectionState.READY);
+            var state = new ConnectionState(StateOrder.READY);
             // Ready -> Expired
             state.addTransition(this.builder.getReadyExpiredTransition());
             // Ready -> Error
@@ -160,7 +166,7 @@
         },
         // Long time no response, need maintaining
         getExpiredState: function () {
-            var state = getNamedState(ConnectionState.EXPIRED);
+            var state = new ConnectionState(StateOrder.EXPIRED);
             // Expired -> Maintaining
             state.addTransition(this.builder.getExpiredMaintainingTransition());
             // Expired -> Error
@@ -169,7 +175,7 @@
         },
         // Heartbeat sent, waiting response
         getMaintainingState: function () {
-            var state = getNamedState(ConnectionState.MAINTAINING);
+            var state = new ConnectionState(StateOrder.MAINTAINING);
             // Maintaining -> Ready
             state.addTransition(this.builder.getMaintainingReadyTransition());
             // Maintaining -> Expired
@@ -180,18 +186,16 @@
         },
         // Connection lost
         getErrorState: function () {
-            var state = getNamedState(ConnectionState.ERROR);
+            var state = new ConnectionState(StateOrder.ERROR);
             // Error -> Default
             state.addTransition(this.builder.getErrorDefaultTransition());
             return state;
         }
     });
-    var getNamedState = function (name) {
-        return new ConnectionState(name);
-    };
 
     //-------- namespace --------
-    ns.net.ConnectionState = ConnectionState;
-    ns.net.StateBuilder = StateBuilder;
+    ns.net.ConnectionState        = ConnectionState;
+    ns.net.ConnectionStateBuilder = StateBuilder;
+    ns.net.ConnectionStateOrder   = StateOrder;
 
 })(StarTrek, FiniteStateMachine, MONKEY);

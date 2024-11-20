@@ -44,39 +44,31 @@
     //  Flags
     //
 
-    Connection.prototype.isOpen = function () {
-        throw new Error('NotImplemented');
-    };
+    Connection.prototype.isOpen = function () {};
 
-    Connection.prototype.isBound = function () {
-        throw new Error('NotImplemented');
-    };
+    Connection.prototype.isBound = function () {};
 
-    Connection.prototype.isConnected = function () {
-        throw new Error('NotImplemented');
-    };
+    Connection.prototype.isConnected = function () {};
 
-    Connection.prototype.isAlive = function () {
-        // return this.isOpen() && (this.isConnected() || this.isBound());
-        throw new Error('NotImplemented');
-    };
+    // this.isOpen() && (this.isConnected() || this.isBound());
+    Connection.prototype.isAlive = function () {};
 
-    Connection.prototype.getLocalAddress = function () {
-        throw new Error('NotImplemented');
-    };
+    // ready for reading
+    Connection.prototype.isAvailable = function () {};  // isAlive
 
-    Connection.prototype.getRemoteAddress = function () {
-        throw new Error('NotImplemented');
-    };
+    // ready for writing
+    Connection.prototype.isVacant = function () {};  // isAlive
+
+    Connection.prototype.getLocalAddress = function () {};
+
+    Connection.prototype.getRemoteAddress = function () {};
 
     /**
      *  Get connection state
      *
      * @return {ConnectionState}
      */
-    Connection.prototype.getState = function () {
-        throw new Error('NotImplemented');
-    };
+    Connection.prototype.getState = function () {};
 
     /**
      *  Send data
@@ -84,25 +76,19 @@
      * @param {Uint8Array} data - outgo data package
      * @return {int} count of bytes sent, -1 on error
      */
-    Connection.prototype.send = function (data) {
-        throw new Error('NotImplemented');
-    };
+    Connection.prototype.sendData = function (data) {};
 
     /**
      *  Process received data
      *
      * @param {Uint8Array} data - received data
      */
-    Connection.prototype.onReceived = function (data) {
-        throw new Error('NotImplemented');
-    };
+    Connection.prototype.onReceivedData = function (data) {};
 
     /**
      *  Close the connection
      */
-    Connection.prototype.close = function () {
-        throw new Error('NotImplemented');
-    };
+    Connection.prototype.close = function () {};
 
     //-------- namespace --------
     ns.net.Connection = Connection;
@@ -127,9 +113,7 @@
      * @param {ConnectionState} current  - new state
      * @param {Connection} connection    - current connection
      */
-    ConnectionDelegate.prototype.onConnectionStateChanged = function (previous, current, connection) {
-        throw new Error('NotImplemented');
-    };
+    ConnectionDelegate.prototype.onConnectionStateChanged = function (previous, current, connection) {};
 
     /**
      *  Called when connection received data
@@ -137,9 +121,7 @@
      * @param {Uint8Array} data       - received data package
      * @param {Connection} connection - current connection
      */
-    ConnectionDelegate.prototype.onConnectionReceived = function (data, connection) {
-        throw new Error('NotImplemented');
-    };
+    ConnectionDelegate.prototype.onConnectionReceived = function (data, connection) {};
 
     /**
      *  Called after data sent via the connection
@@ -148,9 +130,7 @@
      * @param {Uint8Array} data       - outgo data package
      * @param {Connection} connection - current connection
      */
-    ConnectionDelegate.prototype.onConnectionSent = function (sent, data, connection) {
-        throw new Error('NotImplemented');
-    };
+    ConnectionDelegate.prototype.onConnectionSent = function (sent, data, connection) {};
 
     /**
      *  Called when failed to send data via the connection
@@ -159,9 +139,7 @@
      * @param {Uint8Array} data       - outgo data package
      * @param {Connection} connection - current connection
      */
-    ConnectionDelegate.prototype.onConnectionFailed = function (error, data, connection) {
-        throw new Error('NotImplemented');
-    };
+    ConnectionDelegate.prototype.onConnectionFailed = function (error, data, connection) {};
 
     /**
      *  Called when connection (receiving) error
@@ -169,9 +147,7 @@
      * @param {Error} error           - error message
      * @param {Connection} connection - current connection
      */
-    ConnectionDelegate.prototype.onConnectionError = function (error, connection) {
-        throw new Error('NotImplemented');
-    };
+    ConnectionDelegate.prototype.onConnectionError = function (error, connection) {};
 
     //-------- namespace --------
     ns.net.ConnectionDelegate = ConnectionDelegate;
@@ -185,25 +161,40 @@
 
     var TimedConnection = Interface(null, null);
 
-    TimedConnection.prototype.getLastSentTime = function () {
-        throw new Error('NotImplemented');
-    };
+    /**
+     *  Get last time to send data
+     *
+     * @return {Date}
+     */
+    TimedConnection.prototype.getLastSentTime = function () {};
 
-    TimedConnection.prototype.getLastReceivedTime = function () {
-        throw new Error('NotImplemented');
-    };
+    /**
+     *  Get last time to receive data
+     *
+     * @return {Date}
+     */
+    TimedConnection.prototype.getLastReceivedTime = function () {};
 
-    TimedConnection.prototype.isSentRecently = function () {
-        throw new Error('NotImplemented');
-    };
+    /**
+     *  Check whether data sent recently
+     *
+     * @param {Date} now
+     */
+    TimedConnection.prototype.isSentRecently = function (now) {};
 
-    TimedConnection.prototype.isReceivedRecently = function () {
-        throw new Error('NotImplemented');
-    };
+    /**
+     *  Check whether data received recently
+     *
+     * @param {Date} now
+     */
+    TimedConnection.prototype.isReceivedRecently = function (now) {};
 
-    TimedConnection.prototype.isNotReceivedLongTimeAgo = function () {
-        throw new Error('NotImplemented');
-    };
+    /**
+     *  Check whether data not received long time ago
+     *
+     * @param {Date} now
+     */
+    TimedConnection.prototype.isNotReceivedLongTimeAgo = function (now) {};
 
     //-------- namespace --------
     ns.net.TimedConnection = TimedConnection;

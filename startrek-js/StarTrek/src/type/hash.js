@@ -52,6 +52,11 @@
     Class(HashPairMap, AbstractPairMap, null, null);
 
     // Override
+    HashPairMap.prototype.items = function () {
+        return this.__items;
+    };
+
+    // Override
     HashPairMap.prototype.set = function (remote, local, value) {
         if (value) {
             // the caller may create different values with same pair (remote, local)

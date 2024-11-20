@@ -30,7 +30,7 @@
 // =============================================================================
 //
 
-/**
+/*
  *  Architecture:
  *
  *                 Connection        Connection      Connection
@@ -80,9 +80,7 @@
      * @param {SocketAddress} local  - local address
      * @return {Channel} null on socket closed
      */
-    Hub.prototype.open = function (remote, local) {
-        throw new Error('NotImplemented');
-    };
+    Hub.prototype.open = function (remote, local) {};
 
     /**
      *  Get connection with direction (remote, local)
@@ -91,9 +89,7 @@
      * @param {SocketAddress} local  - local address
      * @return {Connection} null on connection not found
      */
-    Hub.prototype.connect = function (remote, local) {
-        throw new Error('NotImplemented');
-    };
+    Hub.prototype.connect = function (remote, local) {};
 
     //-------- namespace --------
     ns.net.Hub = Hub;
