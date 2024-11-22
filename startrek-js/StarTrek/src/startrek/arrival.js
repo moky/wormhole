@@ -35,22 +35,22 @@
 (function (ns, sys) {
     'use strict';
 
-    var Class = sys.type.Class;
-    var Arrival = ns.port.Arrival;
+    var Class      = sys.type.Class;
+    var Arrival    = ns.port.Arrival;
     var ShipStatus = ns.port.ShipStatus;
 
     /**
      *  Arrival Ship
      *  ~~~~~~~~~~~~
      *
-     * @param {number} now
+     * @param {Date} now
      */
     var ArrivalShip = function (now) {
         Object.call(this);
         if (!now) {
-            now = (new Date()).getTime();
+            now = new Date();
         }
-        this.__expired = now + ArrivalShip.EXPIRED;
+        this.__expired = now.getTime() + ArrivalShip.EXPIRED;
     };
     Class(ArrivalShip, Object, [Arrival], null);
 
@@ -63,12 +63,12 @@
     // Override
     ArrivalShip.prototype.touch = function (now) {
         // update expired time
-        this.__expired = now + ArrivalShip.EXPIRES;
+        this.__expired = now.getTime() + ArrivalShip.EXPIRES;
     };
 
     // Override
     ArrivalShip.prototype.getStatus = function (now) {
-        if (now > this.__expired) {
+        if (now.getTime() > this.__expired) {
             return ShipStatus.EXPIRED;
         } else {
             return ShipStatus.ASSEMBLING;
@@ -83,8 +83,8 @@
 (function (ns, sys) {
     'use strict';
 
-    var Class = sys.type.Class;
-    var Arrays = sys.type.Arrays;
+    var Class      = sys.type.Class;
+    var Arrays     = sys.type.Arrays;
     var ShipStatus = ns.port.ShipStatus;
 
     /**
@@ -95,7 +95,7 @@
         Object.call(this);
         this.__arrivals = [];        // Set<Arrival>
         this.__arrival_map = {};     // SN => Arrival
-        this.__finished_times = {};  // SN => timestamp
+        this.__finished_times = {};  // SN => Date
     };
     Class(ArrivalHall, Object, null, null);
 
@@ -114,7 +114,7 @@
             return income;
         }
         // 2. check cached ship
-        var completed;
+        var completed;  // Arrival
         var cached = this.__arrival_map[sn];
         if (cached) {
             // 3. cached ship found, try assembling (insert as fragment)
@@ -125,16 +125,16 @@
                 Arrays.remove(this.__arrivals, cached);
                 delete this.__arrival_map[sn];
                 // mark finished time
-                this.__finished_times[sn] = (new Date()).getTime();
+                this.__finished_times[sn] = new Date();
             } else {
                 // it's not completed yet, update expired time
                 // and wait for more fragments.
-                cached.touch((new Date()).getTime());
+                cached.touch(new Date());
             }
         } else {
             // check whether the task has already finished
             var time = this.__finished_times[sn];
-            if (time && time > 0) {
+            if (time) {
                 // task already finished
                 return null;
             }
@@ -144,7 +144,7 @@
                 // it's a fragment, waiting for more fragments
                 this.__arrivals.push(income);
                 this.__arrival_map[sn] = income;
-                //income.touch((new Date()).getDate());
+                //income.touch(new Date());
             }
             // else, it's a completed package
         }
@@ -154,14 +154,17 @@
     /**
      *  Clear all expired tasks
      */
-    ArrivalHall.prototype.purge = function () {
-        var now = (new Date()).getTime();
+    ArrivalHall.prototype.purge = function (now) {
+        if (!now) {
+            now = new Date();
+        }
+        var count = 0;
         // 1. seeking expired tasks
         var ship;
         var sn;
         for (var i = this.__arrivals.length - 1; i >= 0; --i) {
             ship = this.__arrivals[i];
-            if (ship.getStatus(now).equals(ShipStatus.EXPIRED)) {
+            if (ship.getStatus(now) === ShipStatus.EXPIRED) {
                 // task expired
                 this.__arrivals.splice(i, 1);
                 // remove mapping with SN
@@ -170,22 +173,24 @@
                     delete this.__arrival_map[sn];
                     // TODO: callback?
                 }
+                ++count;
             }
         }
         // 2. seeking neglected finished times
-        var ago = now - 3600 * 1000;
-        var when;
+        var ago = now.getTime() - 3600 * 1000;
+        var when;  // Date
         var keys = Object.keys(this.__finished_times);
         for (var j = keys.length - 1; j >= 0; --j) {
             sn = keys[j];
             when = this.__finished_times[sn];
-            if (!when || when < ago) {
+            if (!when || when.getTime() < ago) {
                 // long time ago
                 delete this.__finished_times[sn];
                 // // remove mapping with SN
                 // delete this.__arrival_map[sn];
             }
         }
+        return count;
     };
 
     //-------- namespace --------

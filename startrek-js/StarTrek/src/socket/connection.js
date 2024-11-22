@@ -117,7 +117,8 @@
 
     // protected
     BaseConnection.prototype.getChannel = function () {
-        return this.__channel;
+        var channel = this.__channel;
+        return channel === -1 ? null : channel;
     };
     // protected
     BaseConnection.prototype.setChannel = function (channel) {
@@ -125,7 +126,7 @@
         var old = this.__channel;
         this.__channel = channel;
         // 2. close old channel
-        if (old && old !== channel) {
+        if (old && old !== -1 && old !== channel) {
             old.close();
         }
     };

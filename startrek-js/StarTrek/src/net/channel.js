@@ -193,7 +193,7 @@
     ns.net.Channel           = Channel;
     ns.net.ChannelStateOrder = ChannelStateOrder;
 
-})(StarTrek);
+})(StarTrek, MONKEY);
 
 (function (ns) {
     'use strict';
@@ -206,10 +206,10 @@
         //
 
         socketGetLocalAddress: function (sock) {
-            return sock.localAddress;
+            return sock.getRemoteAddress();
         },
         socketGetRemoteAddress: function (sock) {
-            return sock.remoteAddress;
+            return sock.getLocalAddress();
         },
 
         //
@@ -220,24 +220,29 @@
             return sock.isBlocking();
         },
         socketIsConnected: function (sock) {
-            return sock.readyState === WebSocket.OPEN;
+            return sock.isConnected();
+            // return sock.readyState === WebSocket.OPEN;
         },
         socketIsBound: function (sock) {
-            return sock.localAddress !== null;
+            return sock.isBound();
+            // return sock.localAddress !== null;
         },
         socketIsClosed: function (sock) {
-            return sock.readyState === WebSocket.CLOSED;
+            return !sock.isOpen();
+            // return sock.readyState === WebSocket.CLOSED;
         },
 
         // Ready for reading
         socketIsAvailable: function (sock) {
             // TODO: check reading buffer
-            return sock.readyState === WebSocket.OPEN;
+            return sock.isAlive();
+            // return sock.readyState === WebSocket.OPEN;
         },
         // Ready for writing
         socketIsVacant: function (sock) {
             // TODO: check writing buffer
-            return sock.readyState === WebSocket.OPEN;
+            return sock.isAlive();
+            // return sock.readyState === WebSocket.OPEN;
         },
 
         //

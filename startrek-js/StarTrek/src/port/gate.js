@@ -30,10 +30,10 @@
 // =============================================================================
 //
 
-/**
+/*
  *  Architecture:
  *
- *              Docker Delegate   Docker Delegate   Docker Delegate
+ *              Porter Delegate   Porter Delegate   Porter Delegate
  *                     ^                 ^               ^
  *                     :                 :               :
  *        ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~ ~:~ ~ ~ ~ ~ ~ ~
@@ -43,7 +43,7 @@
  *          ||         :      Gate       :               :         ||
  *          ||         :                 :               :         ||
  *          ||  +------------+    +------------+   +------------+  ||
- *          ||  |   docker   |    |   docker   |   |   docker   |  ||
+ *          ||  |   porter   |    |   porter   |   |   porter   |  ||
  *          +===+------------+====+------------+===+------------+===+
  *          ||  | connection |    | connection |   | connection |  ||
  *          ||  +------------+    +------------+   +------------+  ||
@@ -88,9 +88,7 @@
      * @param {SocketAddress} local  - local address
      * @return {boolean} false on error
      */
-    Gate.prototype.sendData = function (payload, remote, local) {
-        throw new Error('NotImplemented');
-    };
+    Gate.prototype.sendData = function (payload, remote, local) {};
 
     /**
      *  Append outgo ship (carrying data package, with priority)
@@ -101,9 +99,7 @@
      * @param {SocketAddress} local  - local address
      * @return {boolean} false on error
      */
-    Gate.prototype.sendShip = function (outgo, remote, local) {
-        throw new Error('NotImplemented');
-    };
+    Gate.prototype.sendShip = function (outgo, remote, local) {};
 
     //-------- namespace --------
     ns.port.Gate = Gate;

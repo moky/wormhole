@@ -36,8 +36,8 @@
 (function (ns, sys) {
     'use strict';
 
-    var Class = sys.type.Class;
-    var ArrivalHall = ns.ArrivalHall;
+    var Class         = sys.type.Class;
+    var ArrivalHall   = ns.ArrivalHall;
     var DepartureHall = ns.DepartureHall;
 
     var Dock = function () {
@@ -106,9 +106,11 @@
     /**
      * Clear all expired tasks
      */
-    Dock.prototype.purge = function () {
-        this.__arrivalHall.purge();
-        this.__departureHall.purge();
+    Dock.prototype.purge = function (now) {
+        var count = 0;
+        count += this.__arrivalHall.purge(now);
+        count += this.__departureHall.purge(now);
+        return count;
     };
 
     //-------- namespace --------

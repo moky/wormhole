@@ -39,51 +39,59 @@
 (function (ns, sys) {
     'use strict';
 
-    var Class = sys.type.Class;
-    var AddressPairMap = ns.type.AddressPairMap;
-    var ConnectionDelegate = ns.net.ConnectionDelegate;
-    var ConnectionState = ns.net.ConnectionState;
-    var DockerStatus = ns.port.DockerStatus;
-    var Gate = ns.port.Gate;
+    var Class                = sys.type.Class;
+    var AddressPairMap       = ns.type.AddressPairMap;
+    var ConnectionDelegate   = ns.net.ConnectionDelegate;
+    var ConnectionStateOrder = ns.net.ConnectionStateOrder;
+    var PorterStatus         = ns.port.PorterStatus;
+    var Gate                 = ns.port.Gate;
+    var StarPorter           = ns.StarPorter;
 
-    var DockerPool = function () {
+    var PorterPool = function () {
         AddressPairMap.call(this);
     };
-    Class(DockerPool, AddressPairMap, null, {
+    Class(PorterPool, AddressPairMap, null, {
+
         // Override
         set: function (remote, local, value) {
-            var old = this.get(remote, local);
-            if (old && old !== value) {
-                this.remove(remote, local, old);
-            }
-            AddressPairMap.prototype.set.call(this, remote, local, value);
-        },
-        // Override
-        remove: function (remote, local, value) {
+            // remove cached item
             var cached = AddressPairMap.prototype.remove.call(this, remote, local, value);
-            if (cached && cached.isOpen()) {
-                cached.close();
-            }
+            // if (cached && cached !== value) {
+            //     cached.close();
+            // }
+            AddressPairMap.prototype.set.call(this, remote, local, value);
             return cached;
         }
+
+        // // Override
+        // remove: function (remote, local, value) {
+        //     var cached = AddressPairMap.prototype.remove.call(this, remote, local, value);
+        //     if (cached && cached !== value) {
+        //         cached.close();
+        //     }
+        //     if (value) {
+        //         value.close();
+        //     }
+        //     return cached;
+        // }
     });
 
     /**
-     *  Base Gate
-     *  ~~~~~~~~~
+     *  Base Star Gate
+     *  ~~~~~~~~~~~~~~
      *
-     * @param {DockerDelegate} delegate
+     * @param {PorterDelegate} keeper
      */
-    var StarGate = function (delegate) {
+    var StarGate = function (keeper) {
         Object.call(this);
-        this.__delegate = delegate;
-        this.__dockerPool = this.createDockerPool();
+        this.__delegate = keeper;
+        this.__porterPool = this.createPorterPool();
     };
     Class(StarGate, Object, [Gate, ConnectionDelegate], null);
 
     // protected
-    StarGate.prototype.createDockerPool = function () {
-        return new DockerPool();
+    StarGate.prototype.createPorterPool = function () {
+        return new PorterPool();
     };
 
     // protected: delegate for handling docker events
@@ -93,8 +101,12 @@
 
     // Override
     StarGate.prototype.sendData = function (payload, remote, local) {
-        var docker = this.getDocker(remote, local);
-        if (!docker || !docker.isOpen()) {
+        var docker = this.getPorter(remote, local);
+        if (!docker) {
+            // docker not found
+            return false;
+        } else if (!docker.isAlive()) {
+            // docker not alive
             return false;
         }
         return docker.sendData(payload);
@@ -102,8 +114,12 @@
 
     // Override
     StarGate.prototype.sendShip = function (outgo, remote, local) {
-        var docker = this.getDocker(remote, local);
-        if (!docker || !docker.isOpen()) {
+        var docker = this.getPorter(remote, local);
+        if (!docker) {
+            // docker not found
+            return false;
+        } else if (!docker.isAlive()) {
+            // docker not alive
             return false;
         }
         return docker.sendShip(outgo);
@@ -116,33 +132,59 @@
     /**
      *  Create new docker for received data
      *
-     * @param {Connection} connection   - current connection
-     * @param {Uint8Array[]} advanceParties   - advance party
-     * @return {Docker} docker
+     * @param {SocketAddress} remote
+     * @param {SocketAddress} local
+     * @return {Porter} docker
      */
     // protected
-    StarGate.prototype.createDocker = function (connection, advanceParties) {
-        throw new Error('NotImplemented');
+    StarGate.prototype.createPorter = function (remote, local) {};
+
+    // protected
+    StarGate.prototype.allPorters = function () {
+        return this.__porterPool.items();
     };
 
     // protected
-    StarGate.prototype.allDockers = function () {
-        return this.__dockerPool.values();
+    StarGate.prototype.getPorter = function (remote, local) {
+        return this.__porterPool.get(remote, local);
     };
 
     // protected
-    StarGate.prototype.getDocker = function (remote, local) {
-        return this.__dockerPool.get(remote, local);
+    StarGate.prototype.setPorter = function (remote, local, porter) {
+        return this.__porterPool.set(remote, local, porter);
     };
 
     // protected
-    StarGate.prototype.setDocker = function (remote, local, docker) {
-        this.__dockerPool.set(remote, local, docker);
+    StarGate.prototype.removePorter = function (remote, local, porter) {
+        return this.__porterPool.remove(remote, local, porter);
     };
 
     // protected
-    StarGate.prototype.removeDocker = function (remote, local, docker) {
-        this.__dockerPool.remove(remote, local, docker);
+    StarGate.prototype.dock = function (connection, shouldCreatePorter) {
+        var remote = connection.getRemoteAddress();
+        var local = connection.getLocalAddress();
+        if (!remote) {
+            // remote address should not empty
+            return null;
+        }
+        var docker;
+        // try to get docker
+        var old = this.getPorter(remote, local);
+        if (!old && shouldCreatePorter) {
+            // create & cache docker
+            docker = this.createPorter(remote, local);
+            var cached = this.setPorter(remote, local, docker);
+            if (cached && cached !== docker) {
+                cached.close();
+            }
+        } else {
+            docker = old;
+        }
+        if (!old && docker instanceof StarPorter) {
+            // set connection for this docker
+            docker.setConnection(connection);
+        }
+        return docker;
     };
 
     //
@@ -151,19 +193,19 @@
 
     // Override
     StarGate.prototype.process = function () {
-        var dockers = this.allDockers();
+        var dockers = this.allPorters();
         // 1. drive all dockers to process
-        var count = this.driveDockers(dockers);
+        var count = this.drivePorters(dockers);
         // 2. cleanup closed dockers
-        this.cleanupDockers(dockers);
+        this.cleanupPorters(dockers);
         return count > 0;
     };
 
     // protected
-    StarGate.prototype.driveDockers = function (dockers) {
+    StarGate.prototype.drivePorters = function (porters) {
         var count = 0;
-        for (var i = dockers.length - 1; i >= 0; --i) {
-            if (dockers[i].process()) {
+        for (var i = porters.length - 1; i >= 0; --i) {
+            if (porters[i].process()) {
                 ++count;  // it's busy
             }
         }
@@ -171,16 +213,23 @@
     };
 
     // protected
-    StarGate.prototype.cleanupDockers = function (dockers) {
-        var worker;
-        for (var i = dockers.length - 1; i >= 0; --i) {
-            worker = dockers[i];
-            if (worker.isOpen()) {
+    StarGate.prototype.cleanupPorters = function (porters) {
+        var now = new Date();
+        var cached, docker;  // Porter
+        var remote, local;   // SocketAddress
+        for (var i = porters.length - 1; i >= 0; --i) {
+            docker = porters[i];
+            if (docker.isOpen()) {
                 // clear expired tasks
-                worker.purge();
+                docker.purge(now);
             } else {
                 // remove docker when connection closed
-                this.removeDocker(worker.getRemoteAddress(), worker.getLocalAddress(), worker);
+                remote = docker.getRemoteAddress();
+                local = docker.getLocalAddress();
+                cached = this.removePorter(remote, local, docker);
+                if (cached && cached !== docker) {
+                    cached.close();
+                }
             }
         }
     };
@@ -194,9 +243,9 @@
     StarGate.prototype.heartbeat = function (connection) {
         var remote = connection.getRemoteAddress();
         var local = connection.getLocalAddress();
-        var worker = this.getDocker(remote, local);
-        if (worker) {
-            worker.heartbeat();
+        var docker = this.getPorter(remote, local);
+        if (docker) {
+            docker.heartbeat();
         }
     };
 
@@ -206,65 +255,35 @@
 
     // Override
     StarGate.prototype.onConnectionStateChanged = function (previous, current, connection) {
+        // convert status
+        var s1 = PorterStatus.getStatus(previous);
+        var s2 = PorterStatus.getStatus(current);
         // 1. callback when status changed
-        var delegate = this.getDelegate();
-        if (delegate) {
-            var s1 = DockerStatus.getStatus(previous);
-            var s2 = DockerStatus.getStatus(current);
-            // check status
-            var changed
-            if (!s1) {
-                changed = !!s2;
-            } else if (!s2) {
-                changed = true;
-            } else {
-                changed = !s1.equals(s2);
+        if (s1 !== s2) {
+            var notFinished = s2 !== PorterStatus.ERROR;
+            var docker = this.dock(connection, notFinished);
+            if (!docker) {
+                // connection closed and docker removed
+                return;
             }
-            if (changed) {
-                // callback
-                var remote = connection.getRemoteAddress();
-                var local = connection.getLocalAddress();
-                var docker = this.getDocker(remote, local);
-                // NOTICE: if the previous state is null, the docker maybe not
-                //         created yet, this situation means the docker status
-                //         not changed too, so no need to callback here.
-                if (docker != null) {
-                    delegate.onDockerStatusChanged(s1, s2, docker);
-                }
+            // callback for docker status
+            var keeper = this.getDelegate();
+            if (keeper) {
+                keeper.onPorterStatusChanged(s1, s2, docker);
             }
         }
         // 2. heartbeat when connection expired
-        if (current && current.equals(ConnectionState.EXPIRED)) {
+        var index = !current ? -1 : current.getIndex();
+        if (index === ConnectionStateOrder.EXPIRED.valueOf()) {
             this.heartbeat(connection);
         }
     };
 
     // Override
     StarGate.prototype.onConnectionReceived = function (data, connection) {
-        var remote = connection.getRemoteAddress();
-        var local = connection.getLocalAddress();
-        // get docker by (remote, local)
-        var worker = this.getDocker(remote, local);
-        if (worker) {
-            // docker exists, call docker.onReceived(data);
-            worker.processReceived(data);
-            return;
-        }
-
-        // cache advance party for this connection
-        var advanceParties = this.cacheAdvanceParty(data, connection);
-
-        // docker not exists, check the data to decide which docker should be created
-        worker = this.createDocker(connection, advanceParties);
-        if (worker) {
-            // cache docker for (remote, local)
-            this.setDocker(worker.getRemoteAddress(), worker.getLocalAddress(), worker);
-            // process advance parties one by one
-            for (var i = 0; i < advanceParties.length; ++i) {
-                worker.processReceived(advanceParties[i]);
-            }
-            // remove advance party
-            this.clearAdvanceParty(connection);
+        var docker = this.dock(connection, true);
+        if (docker) {
+            docker.processReceived(data);
         }
     };
 
@@ -281,23 +300,6 @@
     // Override
     StarGate.prototype.onConnectionError = function (error, connection) {
         // ignore event for sending success
-    };
-
-    /**
-     *  Cache the advance party before decide which docker to use
-     *
-     * @param {Uint8Array} data
-     * @param {Connection} connection
-     * @return {Uint8Array[]}
-     */
-    // protected
-    StarGate.prototype.cacheAdvanceParty = function (data, connection) {
-        throw new Error('NotImplemented');
-    };
-
-    // protected
-    StarGate.prototype.clearAdvanceParty = function (connection) {
-        throw new Error('NotImplemented');
     };
 
     //-------- namespace --------

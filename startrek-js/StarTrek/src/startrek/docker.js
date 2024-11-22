@@ -38,122 +38,130 @@
 (function (ns, sys) {
     'use strict';
 
-    var Class = sys.type.Class;
+    var Class             = sys.type.Class;
     var AddressPairObject = ns.type.AddressPairObject;
-    var ShipStatus = ns.port.ShipStatus;
-    var Docker = ns.port.Docker;
-    var DockerStatus = ns.port.DockerStatus;
-    var Dock = ns.Dock;
+    var ShipStatus        = ns.port.ShipStatus;
+    var Porter            = ns.port.Porter;
+    var PorterStatus      = ns.port.PorterStatus;
+    var Dock              = ns.Dock;
 
     /**
-     *  Base Docker
+     *  Base Star Docker
      *
-     * @param {Connection} connection
+     * @param {SocketAddress} remote
+     * @param {SocketAddress} local
      */
-    var StarDocker = function (connection) {
-        var remote = connection.getRemoteAddress();
-        var local = connection.getLocalAddress();
+    var StarPorter = function (remote, local) {
         AddressPairObject.call(this, remote, local);
-        this.__conn = connection;        // Connection
-        this.__delegate = null;          // DockerDelegate
         this.__dock = this.createDock();
-        this.__lastOutgo = null;         // Departure
-        this.__lastFragments = [];       // Uint8Array[]
+        this.__conn = -1;           // Connection
+        this.__lastOutgo = null;    // Departure
+        this.__lastFragments = [];  // Uint8Array[]
+        this.__delegate = null;     // PorterDelegate
     };
-    Class(StarDocker, AddressPairObject, [Docker], null);
+    Class(StarPorter, AddressPairObject, [Porter], {
 
-    StarDocker.prototype.finalize = function () {
-        // make sure the relative connection is closed
-        removeConnection.call(this);
-        this.__dock = null;
-        // super.finalize();
-    };
+        // Override
+        toString: function () {
+            var clazz   = this.getClassName();
+            var remote  = this.getRemoteAddress();
+            var local   = this.getLocalAddress();
+            var conn = this.getConnection();
+            return '<' + clazz + ' remote="' + remote + '" local="' + local + '">\n\t' +
+                conn + '\n</' + clazz + '>';
+        }
+    });
 
     // protected: override for user-customized dock
-    StarDocker.prototype.createDock = function () {
+    StarPorter.prototype.createDock = function () {
         return new Dock();
     };
 
     // protected
-    StarDocker.prototype.getDelegate = function () {
+    StarPorter.prototype.getDelegate = function () {
         return this.__delegate;
     };
     // public: delegate for handling docker events
-    StarDocker.prototype.setDelegate = function (delegate) {
-        this.__delegate = delegate;
+    StarPorter.prototype.setDelegate = function (keeper) {
+        this.__delegate = keeper;
     };
 
-    // protected
-    StarDocker.prototype.getConnection = function () {
-        return this.__conn;
+    //
+    //  Connection
+    //
+
+    StarPorter.prototype.getConnection = function () {
+        var conn = this.__conn;
+        return conn === -1 ? null : conn;
     };
-    var removeConnection = function () {
-        // 1. clear connection reference
+    // protected
+    StarPorter.prototype.setConnection = function (conn) {
+        // 1. replace with new connection
         var old = this.__conn;
-        this.__conn = null;
+        this.__conn = conn;
         // 2. close old connection
-        if (old && old.isOpen()) {
+        if (old && old !== -1 && old !== conn) {
             old.close();
         }
     };
 
+    //
+    //  Flags
+    //
+
     // Override
-    StarDocker.prototype.isOpen = function () {
-        var conn = this.getConnection();
+    StarPorter.prototype.isOpen = function () {
+        var conn = this.__conn;
+        if (conn === -1) {
+            // initializing
+            return false;
+        }
         return conn && conn.isOpen();
     };
 
     // Override
-    StarDocker.prototype.isAlive = function () {
+    StarPorter.prototype.isAlive = function () {
         var conn = this.getConnection();
         return conn && conn.isAlive();
     };
 
     // Override
-    StarDocker.prototype.getStatus = function () {
+    StarPorter.prototype.getStatus = function () {
         var conn = this.getConnection();
         if (conn) {
-            return DockerStatus.getStatus(conn.getState());
+            return PorterStatus.getStatus(conn.getState());
         } else {
-            return DockerStatus.ERROR;
+            return PorterStatus.ERROR;
         }
     };
 
-    /*/
     // Override
-    StarDocker.prototype.getLocalAddress = function () {
-        var conn = this.getConnection();
-        if (conn) {
-            return conn.getLocalAddress();
-        } else {
-            return this.localAddress;
-        }
-    };
-    /*/
-
-    // Override
-    StarDocker.prototype.sendShip = function (ship) {
+    StarPorter.prototype.sendShip = function (ship) {
         return this.__dock.addDeparture(ship);
     };
 
     // Override
-    StarDocker.prototype.processReceived = function (data) {
+    StarPorter.prototype.processReceived = function (data) {
         // 1. get income ship from received data
-        var income = this.getArrival(data);
-        if (!income) {
+        var incomeShips = this.getArrivals(data);
+        if (!incomeShips || incomeShips.length === 0) {
             // waiting for more data
             return;
         }
-        // 2. check income ship for response
-        income = this.checkArrival(income);
-        if (!income) {
-            // waiting for more fragment
-            return;
-        }
-        // 3. callback for processing income ship with completed data package
-        var delegate = this.getDelegate();
-        if (delegate) {
-            delegate.onDockerReceived(income, this);
+        var keeper = this.getDelegate();
+        var income, ship;  // Arrival
+        for (var i = 0; i < incomeShips.length; ++i) {
+            ship = incomeShips[i];
+            // 2. check income ship for response
+            income = this.checkArrival(ship);
+            if (!income) {
+                // waiting for more fragment
+                continue;
+            }
+            // 3. callback for processing income ship with completed data package
+            if (keeper) {
+                keeper.onPorterReceived(income, this);
+            }
         }
     };
 
@@ -161,12 +169,10 @@
      *  Get income Ship from received data
      *
      * @param {Uint8Array} data - received data
-     * @return {Arrival|Ship} income ship carrying data package/fragment
+     * @return {Arrival[]} income ships carrying data package/fragment
      */
     // protected
-    StarDocker.prototype.getArrival = function (data) {
-        throw new Error('NotImplemented');
-    };
+    StarPorter.prototype.getArrivals = function (data) {};
 
     /**
      *  Check income ship for responding
@@ -175,9 +181,7 @@
      * @return {Arrival|Ship} income ship carrying completed data package
      */
     // protected
-    StarDocker.prototype.checkArrival = function (income) {
-        throw new Error('NotImplemented');
-    };
+    StarPorter.prototype.checkArrival = function (income) {};
 
     /**
      *  Check and remove linked departure ship with same SN (and page index for fragment)
@@ -186,7 +190,7 @@
      * @return {Departure|Ship} linked outgo ship
      */
     // protected
-    StarDocker.prototype.checkResponse = function (income) {
+    StarPorter.prototype.checkResponse = function (income) {
         // check response for linked departure ship (same SN)
         var linked = this.__dock.checkResponse(income);
         if (!linked) {
@@ -194,9 +198,9 @@
             return null;
         }
         // all fragments responded, task finished
-        var delegate = this.getDelegate();
-        if (delegate) {
-            delegate.onDockerSent(linked, this);
+        var keeper = this.getDelegate();
+        if (keeper) {
+            keeper.onPorterSent(linked, this);
         }
         return linked;
     };
@@ -208,32 +212,31 @@
      * @return {Arrival|Ship} ship carrying completed data package
      */
     // protected
-    StarDocker.prototype.assembleArrival = function (income) {
+    StarPorter.prototype.assembleArrival = function (income) {
         return this.__dock.assembleArrival(income);
     };
 
     /**
      *  Get outgo Ship from waiting queue
      *
-     * @param {number} now - current time
+     * @param {Date} now - current time
      * @return {Departure|Ship} next new or timeout task
      */
     // protected
-    StarDocker.prototype.getNextDeparture = function (now) {
+    StarPorter.prototype.getNextDeparture = function (now) {
         // this will be remove from the queue,
         // if needs retry, the caller should append it back
         return this.__dock.getNextDeparture(now);
     };
 
     // Override
-    StarDocker.prototype.purge = function () {
-        this.__dock.purge();
+    StarPorter.prototype.purge = function (now) {
+        this.__dock.purge(now);
     };
 
     // Override
-    StarDocker.prototype.close = function () {
-        removeConnection.call(this);
-        this.__dock = null;
+    StarPorter.prototype.close = function () {
+        this.setConnection(null);
     };
 
     //
@@ -241,37 +244,37 @@
     //
 
     // Override
-    StarDocker.prototype.process = function () {
+    StarPorter.prototype.process = function () {
         // 1. get connection with is ready for sending dadta
         var conn = this.getConnection();
-        if (!conn || !conn.isAlive()) {
-            // connection not ready now
+        if (!conn) {
+            // waiting for connection
+            return false;
+        } else if (!conn.isVacant()) {
+            // connection is not ready for sending data
             return false;
         }
-        var delegate;
-        var error;
+        var keeper = this.getDelegate();
+        var error;  // Error
         // 2. get data waiting to be sent out
-        var outgo;     // Departure
-        var fragments; // Uint8Array[]
-        if (this.__lastFragments.length > 0) {
-            // get remaining fragments from last outgo task
-            outgo = this.__lastOutgo;
-            fragments = this.__lastFragments;
+        var outgo = this.__lastOutgo;
+        var fragments = this.__lastFragments;
+        if (outgo && fragments.length > 0) {
+            // got remaining fragments from last outgo task
             this.__lastOutgo = null;
             this.__lastFragments = [];
         } else {
             // get next outgo task
-            var now = (new Date()).getTime();
+            var now = new Date();
             outgo = this.getNextDeparture(now);
             if (!outgo) {
                 // nothing to do now, return false to let the thread have a rest
                 return false;
-            } else if (outgo.getStatus(now).equals(ShipStatus.FAILED)) {
-                delegate = this.getDelegate();
-                if (delegate) {
+            } else if (outgo.getStatus(now) === ShipStatus.FAILED) {
+                if (keeper) {
                     // callback for mission failed
                     error = new Error('Request timeout');
-                    delegate.onDockerFailed(error, outgo, this);
+                    keeper.onPorterFailed(error, outgo, this);
                 }
                 // task timeout, return true to process next one
                 return true;
@@ -292,7 +295,7 @@
             var fra;
             for (var i = 0; i < fragments.length; ++i) {
                 fra = fragments[i];
-                sent = conn.send(fra);
+                sent = conn.sendData(fra);
                 if (sent < fra.length) {
                     // buffer overflow?
                     break;
@@ -306,6 +309,13 @@
                 error = new Error('only ' + index + '/' + fragments.length + ' fragments sent.');
             } else {
                 // task done
+                if (outgo.isImportant()) {
+                    // this task needs response,
+                    // so we cannot call 'onPorterSent()' immediately
+                    // until the remote responded
+                } else if (keeper) {
+                    keeper.onPorterSent(outgo, this);
+                }
                 return true;
             }
         } catch (e) {
@@ -326,15 +336,14 @@
         this.__lastOutgo = outgo;
         this.__lastFragments = fragments;
         // 6. callback for error
-        delegate = this.getDelegate();
-        if (delegate) {
-            // delegate.onDockerFailed(error, outgo, this);
-            delegate.onDockerError(error, outgo, this);
+        if (keeper) {
+            // keeper.onPorterFailed(error, outgo, this);
+            keeper.onPorterError(error, outgo, this);
         }
         return false;
     };
 
     //-------- namespace --------
-    ns.StarDocker = StarDocker;
+    ns.StarPorter = StarPorter;
 
 })(StarTrek, MONKEY);

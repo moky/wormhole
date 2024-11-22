@@ -35,9 +35,8 @@
 (function (ns, fsm, sys) {
     'use strict';
 
-    var Class = sys.type.Class;
+    var Class          = sys.type.Class;
     var BaseTransition = fsm.BaseTransition;
-    var ConnectionState = ns.net.ConnectionState;
     var StateOrder      = ns.net.ConnectionStateOrder;
 
     /**
@@ -48,7 +47,7 @@
      * @constructor
      */
     var StateTransition = function (order, evaluate) {
-        BaseTransition.call(this, order.valueOf);
+        BaseTransition.call(this, order.valueOf());
         this.__evaluate = evaluate;
     };
     Class(StateTransition, BaseTransition, null, null);

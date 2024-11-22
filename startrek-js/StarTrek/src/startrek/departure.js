@@ -35,9 +35,9 @@
 (function (ns, sys) {
     'use strict';
 
-    var Class = sys.type.Class;
-    var Enum = sys.type.Enum;
-    var Departure = ns.port.Departure;
+    var Class      = sys.type.Class;
+    var Enum       = sys.type.Enum;
+    var Departure  = ns.port.Departure;
     var ShipStatus = ns.port.ShipStatus;
 
     /**
@@ -71,21 +71,22 @@
         // Override
         touch: function (now) {
             // update retried time
-            this.__expired = now + DepartureShip.EXPIRES;
+            this.__expired = now.getTime() + DepartureShip.EXPIRES;
             // decrease counter
             this.__tries -= 1;
         },
 
         // Override
         getStatus: function (now) {
+            var expired = this.__expired;
             var fragments = this.getFragments();
             if (!fragments || fragments.length === 0) {
                 return ShipStatus.DONE;
-            } else if (this.__expired === 0) {
+            } else if (expired === 0) {
                 return ShipStatus.NEW;
             //} else if (!this.isImportant()) {
             //    return ShipStatus.DONE;
-            } else if (now < this.__expired) {
+            } else if (now.getTime() < expired) {
                 return ShipStatus.WAITING;
             } else if (this.__tries > 0) {
                 return ShipStatus.TIMEOUT;
@@ -115,8 +116,8 @@
 (function (ns, sys) {
     'use strict';
 
-    var Class = sys.type.Class;
-    var Arrays = sys.type.Arrays;
+    var Class      = sys.type.Class;
+    var Arrays     = sys.type.Arrays;
     var ShipStatus = ns.port.ShipStatus;
 
     /**
@@ -135,7 +136,7 @@
         // index
         this.__departure_map = {};   // SN => Departure
         this.__departure_level = {}; // SN => priority
-        this.__finished_times = {};  // SN => timestamp
+        this.__finished_times = {};  // SN => Date
     };
     Class(DepartureHall, Object, null, null);
 
@@ -154,11 +155,13 @@
         }
         // 2. insert to the sorted queue
         var priority = outgo.getPriority();
-        var index;
-        for (index = 0; index < this.__new_departures.length; ++index) {
-            if (this.__new_departures[index].getPriority() > priority) {
+        var index = this.__new_departures.length;
+        while (index > 0) {
+            --index;
+            if (this.__new_departures[index].getPriority() <= priority) {
                 // take the place before first ship
                 // which priority is greater then this one.
+                ++index;  // insert after
                 break;
             }
         }
@@ -176,7 +179,7 @@
         var sn = response.getSN();
         // check whether this task has already finished
         var time = this.__finished_times[sn];
-        if (time && time > 0) {
+        if (time) {
             return null;
         }
         // check departure
@@ -186,13 +189,16 @@
             // remove it and clear mapping when SN exists
             removeShip.call(this, ship, sn);
             // mark finished time
-            this.__finished_times[sn] = (new Date()).getTime();
+            this.__finished_times[sn] = new Date();
             return ship;
         }
         return null;
     };
     var removeShip = function (ship, sn) {
         var priority = this.__departure_level[sn];
+        if (!priority) {
+            priority = 0;
+        }
         var fleet = this.__fleets[priority];
         if (fleet) {
             Arrays.remove(fleet, ship);
@@ -210,7 +216,7 @@
     /**
      *  Get next new/timeout task
      *
-     * @param {number} now - current time
+     * @param {Date} now - current time
      * @return {Departure|Ship} departure task
      */
     DepartureHall.prototype.getNextDeparture = function (now) {
@@ -277,23 +283,28 @@
         Arrays.insert(this.__priorities, index, priority);
     };
     var getNextTimeoutDeparture = function (now) {
-        var priorityList = this.__priorities.slice();
-        var prior;
-        var fleet, ship, sn, status;
+        var priorityList = this.__priorities.slice();  // copy
+        var departures;  // List<Departure>
+        var fleet;       // List<Departure>
+        var ship;        // Departure
+        var status;      // ShipStatus;
+        var sn;
+        var prior;       // int
         var i, j;
         for (i = 0; i < priorityList.length; ++i) {
-            // 1. get tasks with priority
             prior = priorityList[i];
+            // 1. get tasks with priority
             fleet = this.__fleets[prior];
             if (!fleet) {
                 continue;
             }
             // 2. seeking timeout task in this priority
-            for (j = 0; j < fleet.length; ++j) {
-                ship = fleet[j];
+            departures = fleet.slice();
+            for (j = 0; j < departures.length; ++j) {
+                ship = departures[j];
                 sn = ship.getSN();
                 status = ship.getStatus(now);
-                if (status.equals(ShipStatus.TIMEOUT)) {
+                if (status === ShipStatus.TIMEOUT) {
                     // response timeout, needs retry now.
                     // move to next priority
                     fleet.splice(j, 1);
@@ -301,7 +312,7 @@
                     // update expired time
                     ship.touch(now);
                     return ship;
-                } else if (status.equals(ShipStatus.FAILED)) {
+                } else if (status === ShipStatus.FAILED) {
                     // try too many times and still missing response,
                     // task failed, remove this ship.
                     fleet.splice(j, 1);
@@ -316,15 +327,22 @@
         return null;
     };
 
-    DepartureHall.prototype.purge = function () {
-        var now = (new Date()).getTime();
+    DepartureHall.prototype.purge = function (now) {
+        if (!now) {
+            now = new Date();
+        }
+        var count = 0;
         // 1. seeking finished tasks
-        var prior;
-        var fleet, ship, sn;
+        var priorityList = this.__priorities.slice();  // copy
+        var departures;  // List<Departure>
+        var fleet;       // List<Departure>
+        var ship;        // Departure
+        var sn;
+        var prior;       // int
         var i, j;
-        for (i = this.__priorities.length - 1; i >= 0; --i) {
+        for (i = priorityList.length - 1; i >= 0; --i) {
+            prior = priorityList[i];
             // get tasks with priority
-            prior = this.__priorities[i];
             fleet = this.__fleets[prior];
             if (!fleet) {
                 // this priority is empty
@@ -332,9 +350,10 @@
                 continue;
             }
             // seeking expired tasks in this priority
-            for (j = fleet.length - 1; j >= 0; --j) {
-                ship = fleet[j];
-                if (ship.getStatus(now).equals(ShipStatus.DONE)) {
+            departures = fleet.slice();  // copy
+            for (j = departures.length - 1; j >= 0; --j) {
+                ship = departures[j];
+                if (ship.getStatus(now) === ShipStatus.DONE) {
                     // task done
                     fleet.splice(j, 1);
                     sn = ship.getSN();
@@ -342,6 +361,7 @@
                     delete this.__departure_level[sn];
                     // mark finished time
                     this.__finished_times[sn] = now;
+                    ++count;
                 }
             }
             // remove array when empty
@@ -351,19 +371,20 @@
             }
         }
         // 3. seeking neglected finished times
-        var ago = now - 3600 * 1000;
+        var ago = now.getTime() - 3600 * 1000;
         var keys = Object.keys(this.__finished_times);
-        var when;
+        var when;  // Date
         for (j = keys.length - 1; j >= 0; --j) {
             sn = keys[j];
             when = this.__finished_times[sn];
-            if (!when || when < ago) {
+            if (!when || when.getTime() < ago) {
                 // long time ago
                 delete this.__finished_times[sn];
                 // // remove mapping with SN
                 // delete this.__departure_map[sn];
             }
         }
+        return count;
     };
 
     //-------- namespace --------

@@ -79,12 +79,12 @@
         this.__connection = connection;
         // init states
         var builder = this.createStateBuilder();
-        this.addState(this, builder.getDefaultState());
-        this.addState(this, builder.getPreparingState());
-        this.addState(this, builder.getReadyState());
-        this.addState(this, builder.getExpiredState());
-        this.addState(this, builder.getMaintainingState());
-        this.addState(this, builder.getErrorState());
+        this.addState(builder.getDefaultState());
+        this.addState(builder.getPreparingState());
+        this.addState(builder.getReadyState());
+        this.addState(builder.getExpiredState());
+        this.addState(builder.getMaintainingState());
+        this.addState(builder.getErrorState());
     };
     Class(StateMachine, BaseMachine, [Context], null);
 

@@ -40,35 +40,20 @@
     var Processor = fsm.skywalker.Processor;
 
     /**
-     *  Star Worker
+     *  Star Docker
      *  ~~~~~~~~~~~
      *
      *  Processor for Star Ships
      */
-    var Docker = Interface(null, [Processor]);
+    var Porter = Interface(null, [Processor]);
 
-    // connection.isOpen()
-    Docker.prototype.isOpen = function () {
-        throw new Error('NotImplemented');
-    };
+    Porter.prototype.isOpen = function () {};     // connection.isOpen()
+    Porter.prototype.isAlive = function () {};    // connection.isAlive()
 
-    // connection.isAlive()
-    Docker.prototype.isAlive = function () {
-        throw new Error('NotImplemented');
-    };
+    Porter.prototype.getStatus = function () {};  // connection.getState()
 
-    // connection.getState()
-    Docker.prototype.getStatus = function () {
-        throw new Error('NotImplemented');
-    };
-
-    Docker.prototype.getRemoteAddress = function () {
-        throw new Error('NotImplemented');
-    };
-
-    Docker.prototype.getLocalAddress = function () {
-        throw new Error('NotImplemented');
-    };
+    Porter.prototype.getRemoteAddress = function () {};
+    Porter.prototype.getLocalAddress = function () {};
 
     /**
      *  Pack data to an outgo ship (with normal priority), and
@@ -77,9 +62,7 @@
      * @param {Uint8Array} payload - data to be sent
      * @return {boolean} false on error
      */
-    Docker.prototype.sendData = function (payload) {
-        throw new Error('NotImplemented');
-    };
+    Porter.prototype.sendData = function (payload) {};
 
     /**
      *  Append outgo ship (carrying data package, with priority)
@@ -88,55 +71,48 @@
      * @param {Departure} ship - outgo ship carrying data package/fragment
      * @return {boolean} false on duplicated
      */
-    Docker.prototype.sendShip = function (ship) {
-        throw new Error('NotImplemented');
-    };
+    Porter.prototype.sendShip = function (ship) {};
 
     /**
      *  Called when received data
      *
      * @param {Uint8Array} data - received data package
      */
-    Docker.prototype.processReceived = function (data) {
-        throw new Error('NotImplemented');
-    };
+    Porter.prototype.processReceived = function (data) {};
 
     /**
      *  Send 'PING' for keeping connection alive
      */
-    Docker.prototype.heartbeat = function () {
-        throw new Error('NotImplemented');
-    };
+    Porter.prototype.heartbeat = function () {};
 
     /**
      *  Clear all expired tasks
+     *
+     * @param {Date} now
      */
-    Docker.prototype.purge = function () {
-        throw new Error('NotImplemented');
-    };
+    Porter.prototype.purge = function (now) {};
 
     /**
      *  Close connection for this docker
      */
-    Docker.prototype.close = function () {
-        throw new Error('NotImplemented');
-    };
+    Porter.prototype.close = function () {};
 
     //-------- namespace --------
-    ns.port.Docker = Docker;
+    ns.port.Porter = Porter;
 
 })(StarTrek, FiniteStateMachine, MONKEY);
 
 (function (ns, sys) {
     'use strict';
 
-    var Enum = sys.type.Enum;
+    var Enum       = sys.type.Enum;
+    var StateOrder = ns.net.ConnectionStateOrder;
 
     /**
      *  Docker Status
      *  ~~~~~~~~~~~~~
      */
-    var DockerStatus = Enum(null, {
+    var PorterStatus = Enum(null, {
         ERROR:    -1,
         INIT:      0,
         PREPARING: 1,
@@ -146,28 +122,29 @@
     /**
      *  Convert
      *
-     * @param {ConnectionState} state
-     * @return {DockerStatus}
+     * @param {ConnectionState|BaseState} state
+     * @return {PorterStatus}
      */
-    DockerStatus.getStatus = function (state) {
-        var ConnectionState = ns.net.ConnectionState;
+    PorterStatus.getStatus = function (state) {
         if (!state) {
-            return DockerStatus.ERROR;
-        } else if (state.equals(ConnectionState.READY)
-            || state.equals(ConnectionState.EXPIRED)
-            || state.equals(ConnectionState.MAINTAINING)) {
-            return DockerStatus.READY;
-        } else if (state.equals(ConnectionState.PREPARING)) {
-            return DockerStatus.PREPARING;
-        } else if (state.equals(ConnectionState.ERROR)) {
-            return DockerStatus.ERROR;
+            return PorterStatus.ERROR;
+        }
+        var index = state.getIndex();
+        if (StateOrder.READY.equals(index) ||
+            StateOrder.EXPIRED.equals(index) ||
+            StateOrder.MAINTAINING.equals(index)) {
+            return PorterStatus.READY;
+        } else if (StateOrder.PREPARING.equals(index)) {
+            return PorterStatus.PREPARING;
+        } else if (StateOrder.ERROR.equals(index)) {
+            return PorterStatus.ERROR;
         } else {
-            return DockerStatus.INIT;
+            return PorterStatus.INIT;
         }
     };
 
     //-------- namespace --------
-    ns.port.DockerStatus = DockerStatus;
+    ns.port.PorterStatus = PorterStatus;
 
 })(StarTrek, MONKEY);
 
@@ -180,62 +157,52 @@
      *  Docker Delegate
      *  ~~~~~~~~~~~~~~~
      */
-    var DockerDelegate = Interface(null, null);
+    var PorterDelegate = Interface(null, null);
 
     /**
      *  Callback when new package received
      *
-     * @param {Arrival} arrival     - income data package container
-     * @param {Docker} docker       - connection docker
+     * @param {Arrival} arrival - income data package container
+     * @param {Porter} porter   - connection docker
      */
-    DockerDelegate.prototype.onDockerReceived = function (arrival, docker) {
-        throw new Error('NotImplemented');
-    };
+    PorterDelegate.prototype.onPorterReceived = function (arrival, porter) {};
 
     /**
      *  Callback when package sent
      *
      * @param {Departure} departure - outgo data package container
-     * @param {Docker} docker       - connection docker
+     * @param {Porter} porter       - connection docker
      */
-    DockerDelegate.prototype.onDockerSent = function (departure, docker) {
-        throw new Error('NotImplemented');
-    };
+    PorterDelegate.prototype.onPorterSent = function (departure, porter) {};
 
     /**
      *  Callback when failed to send package
      *
      * @param {Error} error         - error message
      * @param {Departure} departure - outgo data package container
-     * @param {Docker} docker       - connection docker
+     * @param {Porter} porter       - connection docker
      */
-    DockerDelegate.prototype.onDockerFailed = function (error, departure, docker) {
-        throw new Error('NotImplemented');
-    };
+    PorterDelegate.prototype.onPorterFailed = function (error, departure, porter) {};
 
     /**
      *  Callback when connection error
      *
      * @param {Error} error         - error message
      * @param {Departure} departure - outgo data package container
-     * @param {Docker} docker       - connection docker
+     * @param {Porter} porter       - connection docker
      */
-    DockerDelegate.prototype.onDockerError = function (error, departure, docker) {
-        throw new Error('NotImplemented');
-    };
+    PorterDelegate.prototype.onPorterError = function (error, departure, porter) {};
 
     /**
      *  Callback when connection status changed
      *
-     * @param {DockerStatus} previous    - old status
-     * @param {DockerStatus} current     - new status
-     * @param {Docker} docker      - connection docker
+     * @param {PorterStatus} previous - old status
+     * @param {PorterStatus} current  - new status
+     * @param {Porter} porter         - connection docker
      */
-    DockerDelegate.prototype.onDockerStatusChanged = function (previous, current, docker) {
-        throw new Error('NotImplemented');
-    };
+    PorterDelegate.prototype.onPorterStatusChanged = function (previous, current, porter) {};
 
     //-------- namespace --------
-    ns.port.DockerDelegate = DockerDelegate;
+    ns.port.PorterDelegate = PorterDelegate;
 
 })(StarTrek, MONKEY);
