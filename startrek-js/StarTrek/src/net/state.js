@@ -41,7 +41,7 @@
 
     var BaseState = fsm.BaseState;
 
-    var StateOrder = Enum(null, {
+    var StateOrder = Enum('ConnectionState', {
         DEFAULT:     0,  // Init
         PREPARING:   1,
         READY:       2,
@@ -62,10 +62,10 @@
      *      MAINTAINING - sent 'PING', waiting for response
      *      ERROR       - long long time no response, connection lost
      *
-     * @param {Enum} order
+     * @param {ConnectionStateOrder} order
      */
     var ConnectionState = function (order) {
-        BaseState.call(this, order.valueOf());
+        BaseState.call(this, Enum.getInt(order));
         this.__name = order.getName();
         this.__enterTime = null;  // Date
     };
@@ -98,7 +98,7 @@
                 }
                 other = other.getIndex();
             } else if (other instanceof StateOrder) {
-                other = other.valueOf();
+                other = other.getValue();
             }
             return this.getIndex() === other;
         }

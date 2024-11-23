@@ -51,8 +51,8 @@
         Object.call(this);
         if (priority === null) {
             priority = 0;
-        } else if (Enum.isEnum(priority)) {
-            priority = priority.valueOf();
+        } else {
+            priority = Enum.getInt(priority);
         }
         if (maxTries === null) {
             maxTries = 1 + DepartureShip.RETRIES;

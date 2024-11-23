@@ -39,7 +39,7 @@
     var Enum      = sys.type.Enum;
 
     // protected
-    var ChannelStateOrder = Enum(null, {
+    var ChannelStateOrder = Enum('ChannelState', {
         INIT:   0,  // initializing
         OPEN:   1,  // initialized
         ALIVE:  2,  // (not closed) and (connected or bound)

@@ -112,7 +112,7 @@
      *  Docker Status
      *  ~~~~~~~~~~~~~
      */
-    var PorterStatus = Enum(null, {
+    var PorterStatus = Enum('PorterStatus', {
         ERROR:    -1,
         INIT:      0,
         PREPARING: 1,

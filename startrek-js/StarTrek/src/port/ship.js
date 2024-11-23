@@ -38,7 +38,7 @@
     var Interface = sys.type.Interface;
     var Enum      = sys.type.Enum;
 
-    var ShipStatus = Enum(null, {
+    var ShipStatus = Enum('ShipStatus', {
         //
         //  Arrival Status
         //
@@ -127,7 +127,7 @@
      *  Departure Priority
      *  ~~~~~~~~~~~~~~~~~~
      */
-    var DeparturePriority = Enum(null, {
+    var DeparturePriority = Enum('Priority', {
         URGENT: -1,
         NORMAL:  0,
         SLOWER:  1

@@ -36,18 +36,18 @@
     'use strict';
 
     var Class          = sys.type.Class;
+    var Enum           = sys.type.Enum;
     var BaseTransition = fsm.BaseTransition;
-    var StateOrder      = ns.net.ConnectionStateOrder;
+    var StateOrder     = ns.net.ConnectionStateOrder;
 
     /**
      *  Connection State Transition
      *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~
      * @param {ConnectionStateOrder} order
-     * @param evaluate
-     * @constructor
+     * @param {Function} evaluate
      */
     var StateTransition = function (order, evaluate) {
-        BaseTransition.call(this, order.valueOf());
+        BaseTransition.call(this, Enum.getInt(order));
         this.__evaluate = evaluate;
     };
     Class(StateTransition, BaseTransition, null, null);

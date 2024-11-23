@@ -274,7 +274,7 @@
         }
         // 2. heartbeat when connection expired
         var index = !current ? -1 : current.getIndex();
-        if (index === ConnectionStateOrder.EXPIRED.valueOf()) {
+        if (ConnectionStateOrder.EXPIRED.equals(index)) {
             this.heartbeat(connection);
         }
     };
