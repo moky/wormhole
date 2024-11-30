@@ -37,6 +37,7 @@
 
     var Class      = sys.type.Class;
     var Enum       = sys.type.Enum;
+    var BaseObject = sys.type.BaseObject;
     var Departure  = ns.port.Departure;
     var ShipStatus = ns.port.ShipStatus;
 
@@ -48,7 +49,7 @@
      * @param {int|null} maxTries
      */
     var DepartureShip = function (priority, maxTries) {
-        Object.call(this);
+        BaseObject.call(this);
         if (priority === null) {
             priority = 0;
         } else {
@@ -61,7 +62,7 @@
         this.__tries = maxTries;
         this.__expired = 0;          // timestamp in milliseconds
     };
-    Class(DepartureShip, Object, [Departure], {
+    Class(DepartureShip, BaseObject, [Departure], {
 
         // Override
         getPriority: function () {
@@ -118,6 +119,7 @@
 
     var Class      = sys.type.Class;
     var Arrays     = sys.type.Arrays;
+    var HashSet    = sys.type.HashSet;
     var ShipStatus = ns.port.ShipStatus;
 
     /**
@@ -127,16 +129,16 @@
     var DepartureHall = function () {
         Object.call(this);
         // all departure ships
-        this.__all_departures = [];  // Set<Departure>
+        this.__all_departures = new HashSet();  // WeakSet<Departure>
         // new ships waiting to send out
-        this.__new_departures = [];  // List<Departure>
+        this.__new_departures = [];             // List<Departure>
         // ships waiting for responses
-        this.__fleets = {};          // int(prior) => List<Departure>
-        this.__priorities = [];      // List<int>
+        this.__fleets = {};                     // int(prior) => List<Departure>
+        this.__priorities = [];                 // List<int>
         // index
-        this.__departure_map = {};   // SN => Departure
-        this.__departure_level = {}; // SN => priority
-        this.__finished_times = {};  // SN => Date
+        this.__departure_map = {};              // SN => Departure
+        this.__departure_level = {};            // SN => priority
+        this.__finished_times = {};             // SN => Date
     };
     Class(DepartureHall, Object, null, null);
 
@@ -148,10 +150,10 @@
      */
     DepartureHall.prototype.addDeparture = function (outgo) {
         // 1. check duplicated
-        if (this.__all_departures.indexOf(outgo) >= 0) {
+        if (this.__all_departures.contains(outgo)) {
             return false;
         } else {
-            this.__all_departures.push(outgo);
+            this.__all_departures.add(outgo);
         }
         // 2. insert to the sorted queue
         var priority = outgo.getPriority();
@@ -210,7 +212,7 @@
         // remove mapping by SN
         delete this.__departure_map[sn];
         delete this.__departure_level[sn];
-        Arrays.remove(this.__all_departures, ship);
+        this.__all_departures.remove(ship);
     };
 
     /**
@@ -245,7 +247,7 @@
         } else {
             // disposable ship needs no response,
             // remove it immediately
-            Arrays.remove(this.__all_departures, outgo);
+            this.__all_departures.remove(outgo);
         }
         // update expired time
         outgo.touch(now);
@@ -319,7 +321,7 @@
                     // remove mapping by SN
                     delete this.__departure_map[sn];
                     delete this.__departure_level[sn];
-                    Arrays.remove(this.__all_departures, ship);
+                    this.__all_departures.remove(ship);
                     return ship;
                 }
             }

@@ -330,13 +330,13 @@
     //
 
     // Override
-    BaseConnection.prototype.enterState = function (next, machine) {
+    BaseConnection.prototype.enterState = function (next, ctx, now) {
         // override to process this event
     };
 
     // Override
-    BaseConnection.prototype.exitState = function (previous, machine) {
-        var current = machine.getCurrentState();
+    BaseConnection.prototype.exitState = function (previous, ctx, now) {
+        var current = ctx.getCurrentState();
         var currentIndex = !current ? -1 : current.getIndex();
         // if current === 'ready'
         if (StateOrder.READY.equals(currentIndex)) {
@@ -371,12 +371,12 @@
     };
 
     // Override
-    BaseConnection.prototype.pauseState = function (current, machine) {
+    BaseConnection.prototype.pauseState = function (current, ctx, now) {
         // override to process this event
     };
 
     // Override
-    BaseConnection.prototype.resumeState = function (current, machine) {
+    BaseConnection.prototype.resumeState = function (current, ctx, now) {
         // override to process this event
     };
 
@@ -491,7 +491,11 @@
                     channel.close();
                 }
             } catch (e) {
-                console.error('ActiveConnection Error', e, this);
+                // console.error('ActiveConnection Error', e, this);
+                var delegate = this.getDelegate();
+                if (delegate) {
+                    delegate.onConnectionError(e, this);
+                }
             }
             return true; // continue
         }

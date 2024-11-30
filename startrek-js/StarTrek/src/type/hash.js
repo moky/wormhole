@@ -36,8 +36,9 @@
     'use strict';
 
     var Interface = sys.type.Interface;
-    var IObject   = sys.type.Object;
     var Class     = sys.type.Class;
+    var IObject   = sys.type.Object;
+    var HashSet   = sys.type.HashSet;
 
     var AbstractPairMap = ns.type.AbstractPairMap;
 
@@ -47,13 +48,13 @@
      */
     var HashPairMap = function (any) {
         AbstractPairMap.call(this, any);
-        this.__items = [];  // Set
+        this.__items = new HashSet();  // Set
     };
     Class(HashPairMap, AbstractPairMap, null, null);
 
     // Override
     HashPairMap.prototype.items = function () {
-        return this.__items;
+        return this.__items.toArray();  // copy
     };
 
     // Override
@@ -61,15 +62,15 @@
         if (value) {
             // the caller may create different values with same pair (remote, local)
             // so here we should try to remove it first to make sure it's clean
-            remove_item(this.__items, value);
+            this.__items.remove(value);
             // cache it
-            this.__items.push(value);
+            this.__items.add(value);
         }
         // create indexes with key pair (remote, local)
         var old = AbstractPairMap.prototype.set.call(this, remote, local, value);
         // clear replaced value
         if (old && !object_equals(old, value)) {
-            remove_item(this.__items, old);
+            this.__items.remove(old);
         }
         return old;
     };
@@ -79,11 +80,11 @@
         // remove indexes with key pair (remote, local)
         var old = AbstractPairMap.prototype.remove.call(this, remote, local, value);
         if (old) {
-            remove_item(this.__items, old);
+            this.__items.remove(old);
         }
         // clear cached value
         if (value && !object_equals(value, old)) {
-            remove_item(this.__items, value);
+            this.__items.remove(value);
         }
         return old ? old : value;
     };
@@ -102,14 +103,6 @@
             return b.equals(a);
         } else {
             return false;
-        }
-    };
-
-    var remove_item = function (array, item) {
-        for (var index = array.length - 1; index >= 0; --index) {
-            if (object_equals(array[index], item)) {
-                array.splice(index, 1);
-            }
         }
     };
 

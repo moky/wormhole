@@ -36,6 +36,7 @@
     'use strict';
 
     var Class      = sys.type.Class;
+    var BaseObject = sys.type.BaseObject;
     var Arrival    = ns.port.Arrival;
     var ShipStatus = ns.port.ShipStatus;
 
@@ -46,13 +47,13 @@
      * @param {Date} now
      */
     var ArrivalShip = function (now) {
-        Object.call(this);
+        BaseObject.call(this);
         if (!now) {
             now = new Date();
         }
         this.__expired = now.getTime() + ArrivalShip.EXPIRED;
     };
-    Class(ArrivalShip, Object, [Arrival], null);
+    Class(ArrivalShip, BaseObject, [Arrival], null);
 
     /**
      *  Arrival task will be expired after 5 minutes
@@ -84,7 +85,7 @@
     'use strict';
 
     var Class      = sys.type.Class;
-    var Arrays     = sys.type.Arrays;
+    var HashSet    = sys.type.HashSet;
     var ShipStatus = ns.port.ShipStatus;
 
     /**
@@ -93,9 +94,9 @@
      */
     var ArrivalHall = function () {
         Object.call(this);
-        this.__arrivals = [];        // Set<Arrival>
-        this.__arrival_map = {};     // SN => Arrival
-        this.__finished_times = {};  // SN => Date
+        this.__arrivals = new HashSet();  // Set<Arrival>
+        this.__arrival_map = {};          // SN => Arrival
+        this.__finished_times = {};       // SN => Date
     };
     Class(ArrivalHall, Object, null, null);
 
@@ -122,7 +123,7 @@
             completed = cached.assemble(income);
             if (completed) {
                 // all fragments received, remove cached ship
-                Arrays.remove(this.__arrivals, cached);
+                this.__arrivals.remove(cached);
                 delete this.__arrival_map[sn];
                 // mark finished time
                 this.__finished_times[sn] = new Date();
@@ -142,7 +143,7 @@
             completed = income.assemble(income);
             if (!completed) {
                 // it's a fragment, waiting for more fragments
-                this.__arrivals.push(income);
+                this.__arrivals.add(income);
                 this.__arrival_map[sn] = income;
                 //income.touch(new Date());
             }
@@ -162,11 +163,10 @@
         // 1. seeking expired tasks
         var ship;
         var sn;
-        for (var i = this.__arrivals.length - 1; i >= 0; --i) {
-            ship = this.__arrivals[i];
+        var arrivals = this.__arrivals.toArray();  // copy
+        for (var i = arrivals.length - 1; i >= 0; --i) {
+            ship = arrivals[i];
             if (ship.getStatus(now) === ShipStatus.EXPIRED) {
-                // task expired
-                this.__arrivals.splice(i, 1);
                 // remove mapping with SN
                 sn = ship.getSN();
                 if (sn) {
@@ -174,6 +174,8 @@
                     // TODO: callback?
                 }
                 ++count;
+                // task expired
+                this.__arrivals.remove(ship);
             }
         }
         // 2. seeking neglected finished times
