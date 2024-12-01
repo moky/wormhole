@@ -200,7 +200,7 @@
                 channel.close();
             }
         } catch (e) {
-            console.error(this, 'close channel error', e, this);
+            // console.error(this, 'close channel error', e, this);
         }
     };
 

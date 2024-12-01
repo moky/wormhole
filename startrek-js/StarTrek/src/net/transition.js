@@ -187,7 +187,7 @@
                 return last && enter.getTime() < last.getTime();
             });
         }
-    })
+    });
 
     //-------- namespace --------
     ns.net.ConnectionStateTransition        = StateTransition;
