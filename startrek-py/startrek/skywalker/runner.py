@@ -111,8 +111,8 @@ class Runner(Runnable, Handler, Processor, ABC):
     def running(self) -> bool:
         return self.__running
 
-    async def start(self):
-        self.__running = True
+    # async def start(self):
+    #     self.__running = True
 
     async def stop(self):
         self.__running = False
@@ -127,23 +127,23 @@ class Runner(Runnable, Handler, Processor, ABC):
 
     # Override
     async def setup(self):
-        # TODO: override to prepare before handling
-        pass
+        self.__running = True
 
     # Override
     async def finish(self):
-        # TODO: override to cleanup after handled
-        pass
+        self.__running = False
 
     # Override
     async def handle(self):
         while self.running:
             if await self.process():
-                # runner is busy, return True to go on.
+                # process() return true,
+                # means this thread is busy,
+                # so process next task immediately
                 pass
             else:
-                # if nothing to do now, return False here
-                # to let the thread have a rest.
+                # nothing to do now,
+                # have a rest ^_^
                 await self._idle()
 
     # protected
@@ -166,6 +166,6 @@ class Runner(Runnable, Handler, Processor, ABC):
         return asyncio.create_task(coro)
 
     @classmethod
-    def async_thread(cls, coro: Coroutine) -> Thread:
+    def async_thread(cls, coro: Coroutine, daemonic: bool = True) -> Thread:
         """ Create a daemon thread to run the coroutine """
-        return Thread(target=cls.sync_run, args=(coro,), daemon=True)
+        return Thread(target=cls.sync_run, args=(coro,), daemon=daemonic)

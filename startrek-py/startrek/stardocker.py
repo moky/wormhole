@@ -151,9 +151,9 @@ class StarPorter(AddressPairObject, Porter, ABC):
             # waiting for more data
             return None
         delegate = self.delegate
-        for income in ships:
+        for item in ships:
             # 2. check income ship for response
-            income = await self._check_arrival(ship=income)
+            income = await self._check_arrival(ship=item)
             if income is None:
                 # waiting for more fragment
                 continue
@@ -220,7 +220,9 @@ class StarPorter(AddressPairObject, Porter, ABC):
 
     # Override
     async def process(self) -> bool:
-        # 1. get connection which is ready for sending data
+        #
+        #  1. get connection which is ready for sending data
+        #
         conn = self.connection
         if conn is None:
             # waiting for connection
@@ -228,7 +230,9 @@ class StarPorter(AddressPairObject, Porter, ABC):
         elif not conn.vacant:
             # connection is not ready for sending data
             return False
-        # 2. get data waiting to be sent out
+        #
+        #  2. get data waiting to be sent out
+        #
         outgo = self.__last_outgo
         fragments = self.__last_fragments
         if outgo is not None and len(fragments) > 0:
@@ -257,12 +261,14 @@ class StarPorter(AddressPairObject, Porter, ABC):
                     # all fragments of this task have been sent already
                     # return True to process next one
                     return True
-        # 3. process fragments of outgo task
+        #
+        #  3. process fragments of outgo task
+        #
         index = 0
         sent = 0
         try:
             for fra in fragments:
-                sent = await conn.send(data=fra)
+                sent = await conn.send_data(data=fra)
                 if sent < len(fra):
                     # buffer overflow?
                     break
@@ -288,7 +294,9 @@ class StarPorter(AddressPairObject, Porter, ABC):
         except Exception as e:
             # socket error, callback
             error = e
-        # 4. remove sent fragments
+        #
+        #  4. remove sent fragments
+        #
         while index > 0:
             fragments.pop(0)
             index -= 1
@@ -296,10 +304,14 @@ class StarPorter(AddressPairObject, Porter, ABC):
         if sent > 0:
             last = fragments.pop(0)
             fragments.insert(0, last[sent:])
-        # 5. store remaining data
+        #
+        #  5. store remaining data
+        #
         self.__last_outgo = outgo
         self.__last_fragments = fragments
-        # 6. callback for error
+        #
+        #  6. callback for error
+        #
         delegate = self.delegate
         if delegate is not None:
             # await delegate.porter_failed(error=error, ship=outgo, porter=self)

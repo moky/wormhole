@@ -207,7 +207,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     #   States
     #
 
-    @property
+    @property  # Override
     def state(self) -> ChannelState:
         if self.__closed is None:
             # initializing

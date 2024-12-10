@@ -149,27 +149,45 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         """ cache docker """
         return self.__porter_pool.set(item=porter, remote=remote, local=local)
 
-    async def _dock(self, connection: Connection, create_porter: bool) -> Optional[Porter]:
+    async def _dock(self, connection: Connection, new_porter: bool) -> Optional[Porter]:
         """ get docker with connection """
+        #
+        #  0. pre-checking
+        #
         remote = connection.remote_address
         local = connection.local_address
-        # try to get docker
+        docker = self._get_porter(remote=remote, local=local)
+        if docker is not None:
+            return docker
+        #
+        #  1. lock to check
+        #
         with self.__lock:
-            old = self._get_porter(remote=remote, local=local)
-            if old is None:
-                if not create_porter:
-                    return None
-                # create & cache docker
-                docker = self._create_porter(remote=remote, local=local)
-                cached = self._set_porter(docker, remote=remote, local=local)
-                if cached is not None and cached is not docker:
-                    await cached.close()
-            else:
-                docker = old
-        if old is None:
-            assert isinstance(docker, StarPorter), 'docker error: %s, %s' % (remote, docker)
-            # set connection for this docker
+            # check again
+            docker = self._get_porter(remote=remote, local=local)
+            if docker is not None:
+                # found
+                return docker
+            elif not new_porter:
+                # no need to create new porter
+                return None
+            # docker not exists, create new docker
+            docker = self._create_porter(remote=remote, local=local)
+            cached = self._set_porter(docker, remote=remote, local=local)
+        #
+        #  2. close old docker
+        #
+        if cached is None or cached is docker:
+            pass
+        else:
+            await cached.close()
+        #
+        #  3. set connection for this docker
+        #
+        if isinstance(docker, StarPorter):
             await docker.set_connection(connection)
+        else:
+            assert False, 'docker error: %s, %s' % (remote, docker)
         return docker
 
     #
@@ -182,7 +200,7 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         # 1. drive all dockers to process
         count = await self._drive_porters(porters=dockers)
         # 2. cleanup for dockers
-        self._cleanup_porters(porters=dockers)
+        await self._cleanup_porters(porters=dockers)
         return count > 0
 
     # noinspection PyMethodMayBeStatic
@@ -193,15 +211,20 @@ class StarGate(Gate, ConnectionDelegate, ABC):
                 count += 1  # it's busy
         return count
 
-    def _cleanup_porters(self, porters: Iterable[Porter]):
+    async def _cleanup_porters(self, porters: Iterable[Porter]):
         now = time.time()
         for docker in porters:
-            if docker.closed:
-                # remove docker which connection lost
-                self._remove_porter(porter=docker, remote=docker.remote_address, local=docker.local_address)
-            else:
+            if not docker.closed:
+                # docker connected,
                 # clear expired tasks
                 docker.purge(now=now)
+                continue
+            # remove docker when connection closed
+            cached = self._remove_porter(porter=docker, remote=docker.remote_address, local=docker.local_address)
+            if cached is None or cached is docker:
+                pass
+            else:
+                await cached.close()
 
     async def _heartbeat(self, connection: Connection):
         """ Send a heartbeat package('PING') to remote address """
@@ -221,24 +244,29 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         # convert status
         s1 = status_from_state(state=previous)
         s2 = status_from_state(state=current)
-        delegate = self.delegate
-        # 1. callback when status changed
-        if s1 != s2 and delegate is not None:
+        #
+        #  1. callback when status changed
+        #
+        if s1 != s2:
             not_finished = s2 != PorterStatus.ERROR
-            docker = await self._dock(connection=connection, create_porter=not_finished)
+            docker = await self._dock(connection=connection, new_porter=not_finished)
             if docker is None:
                 # connection closed and docker removed
                 return
             # callback for docker status
-            await delegate.porter_status_changed(previous=s1, current=s2, porter=docker)
-        # 2. heartbeat when connection expired
+            delegate = self.delegate
+            if delegate is not None:
+                await delegate.porter_status_changed(previous=s1, current=s2, porter=docker)
+        #
+        #  2. heartbeat when connection expired
+        #
         index = -1 if current is None else current.index
         if index == StateOrder.EXPIRED:
             await self._heartbeat(connection=connection)
 
     # Override
     async def connection_received(self, data: bytes, connection: Connection):
-        docker = await self._dock(connection=connection, create_porter=True)
+        docker = await self._dock(connection=connection, new_porter=True)
         if docker is None:
             assert False, 'failed to create docker: %s' % connection
         else:

@@ -157,6 +157,7 @@ class BaseHub(Hub, ABC):
 
     # Override
     async def connect(self, remote: SocketAddress, local: Optional[SocketAddress] = None) -> Optional[Connection]:
+        # TODO: pre-checking
         # try to get connection
         with self.__lock:
             old = self._get_connection(remote=remote, local=local)
@@ -215,7 +216,7 @@ class BaseHub(Hub, ABC):
         # get connection for processing received data
         conn = await self.connect(remote=remote, local=local)
         if conn is not None:
-            await conn.received(data=data)
+            await conn.received_data(data=data)
         return True
 
     async def _drive_channels(self, channels: Iterable[Channel]) -> int:
@@ -237,21 +238,29 @@ class BaseHub(Hub, ABC):
             #         or just remove it.
         self.__last_time_drive_connection = now
 
-    def _cleanup_channels(self, channels: Iterable[Channel]):
+    async def _cleanup_channels(self, channels: Iterable[Channel]):
         for sock in channels:
             if sock.closed:
                 # if channel not connected (TCP) and not bound (UDP),
                 # means it's closed, remove it from the hub
-                self._remove_channel(channel=sock, remote=sock.remote_address, local=sock.local_address)
+                cached = self._remove_channel(channel=sock, remote=sock.remote_address, local=sock.local_address)
+                if cached is None or cached is sock:
+                    pass
+                else:
+                    await cached.close()
 
-    def _cleanup_connections(self, connections: Iterable[Connection]):
+    async def _cleanup_connections(self, connections: Iterable[Connection]):
         # NOTICE: multi connections may share same channel (UDP Hub)
         for conn in connections:
             if conn.closed:
                 # if connection closed, remove it from the hub; notice that
                 # ActiveConnection can reconnect, it'll be not connected
                 # but still open, don't remove it in this situation.
-                self._remove_connection(connection=conn, remote=conn.remote_address, local=conn.local_address)
+                cached = self._remove_connection(connection=conn, remote=conn.remote_address, local=conn.local_address)
+                if cached is None or cached is conn:
+                    pass
+                else:
+                    await cached.close()
 
     # Override
     async def process(self) -> bool:
@@ -262,6 +271,6 @@ class BaseHub(Hub, ABC):
         connections = self._all_connections()
         await self._drive_connections(connections=connections)
         # 3. cleanup closed channels and connections
-        self._cleanup_channels(channels=channels)
-        self._cleanup_connections(connections=connections)
+        await self._cleanup_channels(channels=channels)
+        await self._cleanup_connections(connections=connections)
         return count > 0

@@ -153,7 +153,7 @@ class DepartureHall:
             return outgo
 
     def __remove_ship(self, ship: Departure, sn):
-        priority = self.__departure_level.get(sn)
+        priority = self.__departure_level.get(sn, 0)
         fleet = self.__fleets.get(priority)
         if fleet is not None and ship in fleet:
             fleet.remove(ship)

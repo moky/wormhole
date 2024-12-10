@@ -103,7 +103,7 @@ class BaseMachine(Machine[C, T, S], ABC):
     def delegate(self, handler: Delegate[C, T, S]):
         self.__delegate_ref = None if handler is None else weakref.ref(handler)
 
-    @property
+    @property  # protected
     @abstractmethod
     def context(self) -> C:
         """ machine itself """

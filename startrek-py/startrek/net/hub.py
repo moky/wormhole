@@ -35,7 +35,6 @@ from typing import Optional, Iterable
 from ..types import SocketAddress
 from ..skywalker import Processor
 
-from .socket import socket_disconnect
 from .channel import Channel
 from .connection import Connection
 

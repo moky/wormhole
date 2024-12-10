@@ -94,7 +94,7 @@ class Connection(Ticker, ABC):
         raise NotImplemented
 
     @abstractmethod
-    async def send(self, data: bytes) -> int:
+    async def send_data(self, data: bytes) -> int:
         """
         Send data
 
@@ -104,7 +104,7 @@ class Connection(Ticker, ABC):
         raise NotImplemented
 
     @abstractmethod
-    async def received(self, data: bytes):
+    async def received_data(self, data: bytes):
         """
         Call on received data for processing
 
@@ -115,4 +115,29 @@ class Connection(Ticker, ABC):
     @abstractmethod
     async def close(self):
         """ Close the connection """
+        raise NotImplemented
+
+
+class TimedConnection(ABC):
+
+    @property
+    @abstractmethod
+    def last_sent_time(self) -> float:
+        raise NotImplemented
+
+    @property
+    @abstractmethod
+    def last_received_time(self) -> float:
+        raise NotImplemented
+
+    @abstractmethod
+    def is_sent_recently(self, now: float) -> bool:
+        raise NotImplemented
+
+    @abstractmethod
+    def is_received_recently(self, now: float) -> bool:
+        raise NotImplemented
+
+    @abstractmethod
+    def is_not_received_long_time_ago(self, now: float) -> bool:
         raise NotImplemented

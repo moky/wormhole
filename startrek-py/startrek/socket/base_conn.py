@@ -40,7 +40,8 @@ from ..net import Hub
 from ..net import Channel
 from ..net import Connection, ConnectionState
 from ..net import ConnectionDelegate
-from ..net.state import StateMachine, StateOrder, TimedConnection
+from ..net.state import StateMachine, StateOrder
+from ..net.connection import TimedConnection
 
 
 class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelegate):
@@ -198,7 +199,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     #
 
     # Override
-    async def received(self, data: bytes):
+    async def received_data(self, data: bytes):
         self.__last_received_time = time.time()  # update received time
         delegate = self.delegate
         if delegate is not None:
@@ -219,7 +220,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         return sent
 
     # Override
-    async def send(self, data: bytes) -> int:
+    async def send_data(self, data: bytes) -> int:
         # try to send data
         error = None
         sent = -1

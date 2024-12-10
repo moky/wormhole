@@ -110,3 +110,4 @@ class ActiveConnection(BaseConnection, Runnable):
                     await sock.close()
             except Exception as error:
                 print('[Socket] active connection error: %s' % error)
+        print('[Socket] active connection exists: %s' % self.remote_address)

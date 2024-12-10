@@ -36,6 +36,7 @@ from abc import ABC, abstractmethod
 from typing import Set
 
 from .runner import Runner
+from .daemon import Daemon
 
 
 class Ticker(ABC):
@@ -54,16 +55,45 @@ class Ticker(ABC):
 class Metronome(Runner):
 
     # at least wait 1/60 of a second
-    MIN_INTERVAL = 1.0/60
+    MIN_INTERVAL = 1.0/60  # ~16ms
 
     def __init__(self, interval: float):
         super().__init__(interval=interval)
+        self.__daemon = Daemon(target=self)
         self.__last_time = 0  # last process time
         self.__lock = threading.Lock()
         self.__tickers = WeakSet()
 
+    @property  # private
+    def tickers(self) -> Set[Ticker]:
+        """ get all tickers """
+        with self.__lock:
+            return set(self.__tickers)
+
+    def add_ticker(self, ticker: Ticker):
+        with self.__lock:
+            self.__tickers.add(ticker)
+
+    def remove_ticker(self, ticker: Ticker):
+        with self.__lock:
+            self.__tickers.discard(ticker)
+
+    def start(self):
+        if self.running:
+            # await self.stop()
+            # await self._idle()
+            return False
+        # start the daemon
+        return self.__daemon.start()
+
+    # Override
+    async def stop(self):
+        await super().stop()
+        self.__daemon.stop()
+
     # Override
     async def setup(self):
+        await super().setup()
         # update process time
         self.__last_time = time.time()
 
@@ -93,20 +123,6 @@ class Metronome(Runner):
         # 3. update last time
         self.__last_time = now
         return True
-
-    @property  # private
-    def tickers(self) -> Set[Ticker]:
-        """ get all tickers """
-        with self.__lock:
-            return set(self.__tickers)
-
-    def add_ticker(self, ticker: Ticker):
-        with self.__lock:
-            self.__tickers.add(ticker)
-
-    def remove_ticker(self, ticker: Ticker):
-        with self.__lock:
-            self.__tickers.discard(ticker)
 
 
 #
@@ -139,8 +155,9 @@ class PrimeMetronome:
     def __init__(self):
         super().__init__()
         metronome = Metronome(interval=Runner.INTERVAL_SLOW)
+        metronome.start()
         self.__metronome = metronome
-        start_runner(runner=metronome)
+        # start_runner(runner=metronome)
 
     def add_ticker(self, ticker: Ticker):
         metronome = self.__metronome
@@ -151,12 +168,12 @@ class PrimeMetronome:
         metronome.remove_ticker(ticker=ticker)
 
 
-def start_runner(runner: Runner) -> threading.Thread:
-    thr = Runner.async_thread(coro=_bg_runner(runner=runner))
-    thr.start()
-    return thr
-
-
-async def _bg_runner(runner: Runner):
-    await runner.start()
-    await runner.run()
+# def start_runner(runner: Runner) -> threading.Thread:
+#     thr = Runner.async_thread(coro=_bg_runner(runner=runner))
+#     thr.start()
+#     return thr
+#
+#
+# async def _bg_runner(runner: Runner):
+#     # await runner.start()
+#     await runner.run()

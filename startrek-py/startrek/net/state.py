@@ -35,7 +35,7 @@ from typing import Union
 
 from ..fsm import Context, BaseTransition, BaseState, BaseMachine
 
-from .connection import Connection
+from .connection import Connection, TimedConnection
 
 
 """
@@ -196,31 +196,6 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
     # Override
     async def on_resume(self, ctx: StateMachine, now: float):
         pass
-
-
-class TimedConnection(ABC):
-
-    @property
-    @abstractmethod
-    def last_sent_time(self) -> float:
-        raise NotImplemented
-
-    @property
-    @abstractmethod
-    def last_received_time(self) -> float:
-        raise NotImplemented
-
-    @abstractmethod
-    def is_sent_recently(self, now: float) -> bool:
-        raise NotImplemented
-
-    @abstractmethod
-    def is_received_recently(self, now: float) -> bool:
-        raise NotImplemented
-
-    @abstractmethod
-    def is_not_received_long_time_ago(self, now: float) -> bool:
-        raise NotImplemented
 
 
 #
@@ -490,7 +465,8 @@ class ErrorDefaultTransition(StateTransition):
         # # connection still alive, and
         # # can receive data during this state
         # current = ctx.current_state
-        # assert isinstance(current, ConnectionState), 'connection state error: %s' % current
+        # if not isinstance(current, ConnectionState):
+        #     assert current is None, 'current state error: %s' % current
+        #     return True
         # enter = current.enter_time
-        # assert enter > 0, 'should not happen'
         # return enter < conn.last_received_time

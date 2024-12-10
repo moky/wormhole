@@ -65,10 +65,13 @@ class Daemon:
         """ Run the target in background thread """
         self.__force_stop()
         target = self.target
-        if target is not None:
-            thr = Runner.async_thread(coro=target.run())
-            thr.start()
-            self.__thread = thr
+        if target is None:
+            # target lost?
+            return False
+        thr = Runner.async_thread(coro=target.run(), daemonic=True)
+        thr.start()
+        self.__thread = thr
+        return True
 
     def stop(self):
         """ Stop the background thread """
