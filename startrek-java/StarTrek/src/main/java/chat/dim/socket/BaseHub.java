@@ -44,6 +44,7 @@ import chat.dim.net.Channel;
 import chat.dim.net.Connection;
 import chat.dim.net.Hub;
 import chat.dim.type.AddressPairMap;
+import chat.dim.type.Duration;
 
 class ConnectionPool extends AddressPairMap<Connection> {
 
@@ -323,7 +324,7 @@ public abstract class BaseHub implements Hub {
 
     protected void driveConnections(Iterable<Connection> connections) {
         Date now = new Date();
-        long delta = now.getTime() - last.getTime();
+        Duration delta = Duration.between(last, now);
         for (Connection conn : connections) {
             // drive connection to go on
             conn.tick(now, delta);

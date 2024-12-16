@@ -44,6 +44,7 @@ import chat.dim.net.Hub;
 import chat.dim.net.StateMachine;
 import chat.dim.net.TimedConnection;
 import chat.dim.type.AddressPairObject;
+import chat.dim.type.Duration;
 
 public class BaseConnection extends AddressPairObject
         implements Connection, TimedConnection, ConnectionState.Delegate {
@@ -294,7 +295,7 @@ public class BaseConnection extends AddressPairObject
     }
 
     @Override
-    public void tick(Date now, long delta) {
+    public void tick(Date now, Duration delta) {
         if (channelRef == null) {
             // not initialized
             return;

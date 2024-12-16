@@ -168,6 +168,7 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         if (docker != null) {
             return docker;
         }
+        Porter cached;
         //
         //  1. lock to check
         //
@@ -176,20 +177,27 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         try {
             // check again
             docker = getPorter(remote, local);
-            if (docker != null || !newPorter) {
+            if (docker != null) {
+                // found
                 return docker;
+            } else if (!newPorter) {
+                // no need to create new docker
+                return null;
             }
             // docker not exists, create new docker
             docker = createPorter(remote, local);
-            Porter cached = setPorter(remote, local, docker);
-            if (cached != null && cached != docker) {
-                cached.close();
-            }
+            cached = setPorter(remote, local, docker);
         } finally {
             writeLock.unlock();
         }
         //
-        //  2. set connection for this docker
+        //  2. close old docker
+        //
+        if (cached != null && cached != docker) {
+            cached.close();
+        }
+        //
+        //  3. set connection for this docker
         //
         if (docker instanceof StarPorter) {
             ((StarPorter) docker).setConnection(conn);
@@ -226,14 +234,15 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         Porter cached;
         for (Porter docker : porters) {
             if (docker.isOpen()) {
+                // docker connected,
                 // clear expired tasks
                 docker.purge(now);
-            } else {
-                // remove docker when connection closed
-                cached = removePorter(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
-                if (cached != null && cached != docker) {
-                    cached.close();
-                }
+                continue;
+            }
+            // remove docker when connection closed
+            cached = removePorter(docker.getRemoteAddress(), docker.getLocalAddress(), docker);
+            if (cached != null && cached != docker) {
+                cached.close();
             }
         }
     }
@@ -259,7 +268,9 @@ public abstract class StarGate implements Gate, Connection.Delegate {
         // convert status
         Porter.Status s1 = Porter.Status.getStatus(previous);
         Porter.Status s2 = Porter.Status.getStatus(current);
-        // 1. callback when status changed
+        //
+        //  1. callback when status changed
+        //
         boolean changed;
         if (s1 == null) {
             changed = s2 != null;
@@ -281,7 +292,9 @@ public abstract class StarGate implements Gate, Connection.Delegate {
                 keeper.onPorterStatusChanged(s1, s2, docker);
             }
         }
-        // 2. heartbeat when connection expired
+        //
+        //  2. heartbeat when connection expired
+        //
         if (current != null && current.equals(ConnectionState.Order.EXPIRED)) {
             heartbeat(connection);
         }

@@ -73,6 +73,11 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
     }
 
     @Override
+    public String toString() {
+        return name;
+    }
+
+    @Override
     public boolean equals(Object other) {
         if (other instanceof ConnectionState) {
             if (this == other) {
@@ -91,8 +96,8 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
     }
 
     @Override
-    public String toString() {
-        return name;
+    public int hashCode() {
+        return index;
     }
 
     public Date getEnterTime() {
