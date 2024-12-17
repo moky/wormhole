@@ -64,7 +64,7 @@ public abstract class ChannelController<C extends SelectableChannel> {
 
     public C getSocket() {
         BaseChannel<C> sock = getChannel();
-        return sock == null ? null : sock.getSocketChannel();
+        return sock == null ? null : sock.getSocket();
     }
 
 }

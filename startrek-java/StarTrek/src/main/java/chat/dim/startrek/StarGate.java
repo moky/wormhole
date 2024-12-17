@@ -57,7 +57,7 @@ class PorterPool extends AddressPairMap<Porter> {
         }
         /*/
         Porter old = super.set(remote, local, value);
-        assert old != null : "should not happen";
+        assert old == null : "should not happen";
         return cached;
     }
 

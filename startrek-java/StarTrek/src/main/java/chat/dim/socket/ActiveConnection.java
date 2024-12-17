@@ -30,6 +30,7 @@
  */
 package chat.dim.socket;
 
+import java.io.IOError;
 import java.lang.ref.WeakReference;
 import java.net.SocketAddress;
 
@@ -126,10 +127,15 @@ public final class ActiveConnection extends BaseConnection implements Runnable {
                     sock.close();
                 }
             } catch (Exception ex) {
-                ex.printStackTrace();
+                //ex.printStackTrace();
+                Delegate delegate = getDelegate();
+                if (delegate != null) {
+                    delegate.onConnectionError(new IOError(ex), this);
+                }
             }
         }
         // connection exists
+        System.out.println("[Socket] active connection exits: " + remoteAddress);
     }
 
 }

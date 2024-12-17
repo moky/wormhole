@@ -152,6 +152,7 @@ public class ServerHub extends StreamHub implements Runnable {
     }
 
     // override for user-customized channel
+    @SuppressWarnings("unchecked")
     protected void accept(SocketAddress remote, SocketAddress local, SocketChannel sock) {
         // create new channel
         Channel channel = createChannel(remote, local);
@@ -165,8 +166,7 @@ public class ServerHub extends StreamHub implements Runnable {
         }
         // set socket
         if (channel instanceof BaseChannel) {
-            //noinspection unchecked
-            ((BaseChannel<SocketChannel>) channel).setSocketChannel(sock);
+            ((BaseChannel<SocketChannel>) channel).setSocket(sock);
         } else {
             assert false : "failed to create socket channel: " + sock + ", remote=" + remote + ", local=" + local;
         }

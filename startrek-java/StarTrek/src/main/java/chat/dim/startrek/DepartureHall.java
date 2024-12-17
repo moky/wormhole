@@ -42,6 +42,7 @@ import java.util.WeakHashMap;
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
 import chat.dim.port.Ship;
+import chat.dim.type.Duration;
 import chat.dim.type.WeakMap;
 import chat.dim.type.WeakSet;
 
@@ -81,8 +82,8 @@ public class DepartureHall {
         }
         // 2. insert to the sorted queue
         int priority = outgo.getPriority();
-        int index;
-        for (index = 0; index < newDepartures.size(); ++index) {
+        int index = 0;
+        for (; index < newDepartures.size(); ++index) {
             if (newDepartures.get(index).getPriority() > priority) {
                 // take the place before first ship
                 // which priority is greater then this one.
@@ -187,10 +188,9 @@ public class DepartureHall {
         departureLevel.put(sn, priority);
     }
     private void insertPriority(int priority) {
-        int total = priorities.size();
         int index = 0, value;
         // seeking position for new priority
-        for (; index < total; ++index) {
+        for (; index < priorities.size(); ++index) {
             value = priorities.get(index);
             if (value == priority) {
                 // duplicated
@@ -219,6 +219,7 @@ public class DepartureHall {
                 continue;
             }
             // 2. seeking timeout task in this priority
+            //fleet = new ArrayList<>(fleet);  // copy
             dit = fleet.iterator();
             while (dit.hasNext()) {
                 ship = dit.next();
@@ -251,10 +252,11 @@ public class DepartureHall {
     /**
      *  Clear all expired tasks
      */
-    public void purge(Date now) {
+    public int purge(Date now) {
         if (now == null) {
             now = new Date();
         }
+        int count = 0;
         // 1. seeking finished tasks
         Iterator<Integer> pit = priorities.iterator();
         int prior;
@@ -282,6 +284,7 @@ public class DepartureHall {
                     departureLevel.remove(sn);
                     // mark finished time
                     departureFinished.put(sn, now);
+                    ++count;
                 }
             }
             // remove array when empty
@@ -291,18 +294,19 @@ public class DepartureHall {
             }
         }
         // 2. seeking neglected finished times
+        Date ago = Duration.ofHours(1).subtractFrom(now);
         Iterator<Map.Entry<Object, Date>> mit = departureFinished.entrySet().iterator();
-        long ago = now.getTime() - 3600 * 1000;
         Map.Entry<Object, Date> entry;
         Date when;
         while (mit.hasNext()) {
             entry = mit.next();
             when = entry.getValue();
-            if (when == null || when.getTime() < ago) {
+            if (when == null || when.before(ago)) {
                 // long time ago
                 mit.remove();
             }
         }
+        return count;
     }
 
 }

@@ -155,7 +155,7 @@ public abstract class PacketHub extends BaseHub {
             udp.configureBlocking(false);
             Channel channel = createChannel(null, local);
             if (channel instanceof PacketChannel) {
-                ((PacketChannel) channel).setSocketChannel(udp);
+                ((PacketChannel) channel).setSocket(udp);
             }
             Channel cached = setChannel(null, local, channel);
             if (cached != null && cached != channel) {

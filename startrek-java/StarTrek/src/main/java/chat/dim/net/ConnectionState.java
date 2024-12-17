@@ -48,14 +48,14 @@ import chat.dim.fsm.State;
  *      MAINTAINING - sent 'PING', waiting for response
  *      ERROR       - long long time no response, connection lost
  */
-public class ConnectionState extends BaseState<StateMachine, StateTransition> {
+public class ConnectionState extends BaseState<ConnectionStateMachine, ConnectionStateTransition> {
 
     /**
      *  Connection State Order
      *  ~~~~~~~~~~~~~~~~~~~~~~
      */
     public enum Order {
-        DEFAULT,  // = 0
+        DEFAULT,  // init
         PREPARING,
         READY,
         MAINTAINING,
@@ -63,7 +63,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
         ERROR
     }
 
-    private final String name;
+    public final String name;
     private Date enterTime;
 
     ConnectionState(Order stateOrder) {
@@ -105,22 +105,22 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
     }
 
     @Override
-    public void onEnter(State<StateMachine, StateTransition> previous, StateMachine ctx, Date now) {
+    public void onEnter(State<ConnectionStateMachine, ConnectionStateTransition> previous, ConnectionStateMachine ctx, Date now) {
         enterTime = now;
     }
 
     @Override
-    public void onExit(State<StateMachine, StateTransition> next, StateMachine ctx, Date now) {
+    public void onExit(State<ConnectionStateMachine, ConnectionStateTransition> next, ConnectionStateMachine ctx, Date now) {
         enterTime = null;
     }
 
     @Override
-    public void onPause(StateMachine ctx, Date now) {
+    public void onPause(ConnectionStateMachine ctx, Date now) {
 
     }
 
     @Override
-    public void onResume(StateMachine ctx, Date now) {
+    public void onResume(ConnectionStateMachine ctx, Date now) {
 
     }
 
@@ -130,7 +130,7 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
      *
      *  callback when connection state changed
      */
-    public interface Delegate extends chat.dim.fsm.Delegate<StateMachine, StateTransition, ConnectionState> {
+    public interface Delegate extends chat.dim.fsm.Delegate<ConnectionStateMachine, ConnectionStateTransition, ConnectionState> {
 
     }
 
@@ -140,9 +140,9 @@ public class ConnectionState extends BaseState<StateMachine, StateTransition> {
      */
     static class Builder {
 
-        private final StateTransition.Builder stb;
+        private final ConnectionStateTransition.Builder stb;
 
-        Builder(StateTransition.Builder builder) {
+        Builder(ConnectionStateTransition.Builder builder) {
             super();
             stb = builder;
         }

@@ -33,6 +33,7 @@ package chat.dim.startrek;
 import java.util.Date;
 
 import chat.dim.port.Arrival;
+import chat.dim.type.Duration;
 
 public abstract class ArrivalShip implements Arrival {
 
@@ -40,14 +41,15 @@ public abstract class ArrivalShip implements Arrival {
      *  Arrival task will be expired after 5 minutes
      *  if still not completed.
      */
-    public static long EXPIRES = 300 * 1000; // milliseconds
+    public static Duration EXPIRES = Duration.ofMinutes(5);
 
     // expired time (timestamp in milliseconds)
-    private long expired;
+    private Date expired;
 
     protected ArrivalShip(Date now) {
         super();
-        expired = now.getTime() + EXPIRES;
+        assert now != null : "date time error";
+        expired = EXPIRES.addTo(now);
     }
     protected ArrivalShip() {
         this(new Date());
@@ -55,16 +57,19 @@ public abstract class ArrivalShip implements Arrival {
 
     @Override
     public void touch(Date now) {
+        assert now != null : "date time error";
         // update expired time
-        expired = now.getTime() + EXPIRES;
+        expired = EXPIRES.addTo(now);
     }
 
     @Override
     public Status getStatus(Date now) {
-        if (now.getTime() > expired) {
+        assert now != null : "date time error";
+        if (now.after(expired)) {
             return Status.EXPIRED;
         } else {
             return Status.ASSEMBLING;
         }
     }
+
 }

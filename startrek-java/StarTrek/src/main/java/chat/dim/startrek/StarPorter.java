@@ -171,9 +171,10 @@ public abstract class StarPorter extends AddressPairObject implements Porter {
             return;
         }
         Delegate keeper = getDelegate();
-        for (Arrival income : ships) {
+        Arrival income;
+        for (Arrival item : ships) {
             // 2. check income ship for response
-            income = checkArrival(income);
+            income = checkArrival(item);
             if (income == null) {
                 // waiting for more fragment
                 continue;
@@ -242,8 +243,8 @@ public abstract class StarPorter extends AddressPairObject implements Porter {
     }
 
     @Override
-    public void purge(Date now) {
-        dock.purge(now);
+    public int purge(Date now) {
+        return dock.purge(now);
     }
 
     @Override
@@ -310,7 +311,7 @@ public abstract class StarPorter extends AddressPairObject implements Porter {
         int index = 0, sent = 0;
         try {
             for (byte[] fra : fragments) {
-                sent = conn.send(fra);
+                sent = conn.sendData(fra);
                 if (sent < fra.length) {
                     // buffer overflow?
                     break;
@@ -330,6 +331,7 @@ public abstract class StarPorter extends AddressPairObject implements Porter {
                     // this task needs response,
                     // so we cannot call 'onPorterSent()' immediately
                     // until the remote responded
+                    assert outgo.getSN() != null;
                 } else if (keeper != null) {
                     keeper.onPorterSent(outgo, this);
                 }

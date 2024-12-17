@@ -37,6 +37,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import chat.dim.port.Arrival;
 import chat.dim.port.Departure;
+import chat.dim.type.Duration;
 
 public class LockedDock extends Dock {
 
@@ -97,24 +98,28 @@ public class LockedDock extends Dock {
     }
 
     @Override
-    public void purge(Date now) {
+    public int purge(Date now) {
         if (now == null) {
             now = new Date();
         }
         Date next = nextPurgeTime;
         if (next != null && next.after(now)) {
-            return;
+            return -1 ;
         } else {
             // next purge after half a minute
-            nextPurgeTime = new Date(now.getTime() + 30000);
+            nextPurgeTime = halfMinute.addTo(now);
         }
+        int count;
         Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            super.purge(now);
+            count = super.purge(now);
         } finally {
             writeLock.unlock();
         }
+        return count;
     }
+
+    static final Duration halfMinute = Duration.ofSeconds(30);
 
 }

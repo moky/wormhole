@@ -112,8 +112,10 @@ public class Dock {
     /**
      * Clear all expired tasks
      */
-    public void purge(Date now) {
-        arrivalHall.purge(now);
-        departureHall.purge(now);
+    public int purge(Date now) {
+        int count = 0;
+        count += arrivalHall.purge(now);
+        count += departureHall.purge(now);
+        return count;
     }
 }

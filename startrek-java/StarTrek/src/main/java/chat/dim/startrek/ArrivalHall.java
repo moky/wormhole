@@ -39,6 +39,7 @@ import java.util.Set;
 
 import chat.dim.port.Arrival;
 import chat.dim.port.Ship;
+import chat.dim.type.Duration;
 import chat.dim.type.WeakMap;
 
 /**
@@ -106,10 +107,11 @@ public class ArrivalHall {
     /**
      *  Clear all expired tasks
      */
-    public void purge(Date now) {
+    public int purge(Date now) {
         if (now == null) {
             now = new Date();
         }
+        int count = 0;
         // 1. seeking expired tasks
         Iterator<Arrival> ait = arrivals.iterator();
         Arrival ship;
@@ -125,21 +127,23 @@ public class ArrivalHall {
                     arrivalMap.remove(sn);
                     // TODO: callback?
                 }
+                ++count;
             }
         }
         // 2. seeking neglected finished times
+        Date ago = Duration.ofHours(1).subtractFrom(now);
         Iterator<Map.Entry<Object, Date>> mit = arrivalFinished.entrySet().iterator();
-        long ago = now.getTime() - 3600 * 1000;
         Map.Entry<Object, Date> entry;
         Date when;
         while (mit.hasNext()) {
             entry = mit.next();
             when = entry.getValue();
-            if (when == null || when.getTime() < ago) {
+            if (when == null || when.before(ago)) {
                 // long time ago
                 mit.remove();
             }
         }
+        return count;
     }
 
 }

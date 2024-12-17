@@ -56,6 +56,7 @@ public class ClientHub extends StreamHub {
         return conn;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public Channel open(SocketAddress remote, SocketAddress local) {
         if (remote == null) {
@@ -89,8 +90,7 @@ public class ClientHub extends StreamHub {
                 removeChannel(remote, local, channel);
                 channel = null;
             } else {
-                //noinspection unchecked
-                ((BaseChannel<SocketChannel>) channel).setSocketChannel(socket);
+                ((BaseChannel<SocketChannel>) channel).setSocket(socket);
             }
         }
         return channel;

@@ -70,12 +70,12 @@ import chat.dim.fsm.Context;
  *  Connection State Machine
  *  ~~~~~~~~~~~~~~~~~~~~~~~~
  */
-public class StateMachine extends BaseMachine<StateMachine, StateTransition, ConnectionState>
+public class ConnectionStateMachine extends BaseMachine<ConnectionStateMachine, ConnectionStateTransition, ConnectionState>
         implements Context {
 
     private final WeakReference<Connection> connectionRef;
 
-    public StateMachine(Connection connection) {
+    public ConnectionStateMachine(Connection connection) {
         super();
 
         connectionRef = new WeakReference<>(connection);
@@ -91,11 +91,11 @@ public class StateMachine extends BaseMachine<StateMachine, StateTransition, Con
     }
 
     protected ConnectionState.Builder createStateBuilder() {
-        return new ConnectionState.Builder(new StateTransition.Builder());
+        return new ConnectionState.Builder(new ConnectionStateTransition.Builder());
     }
 
     @Override
-    protected StateMachine getContext() {
+    protected ConnectionStateMachine getContext() {
         return this;
     }
 

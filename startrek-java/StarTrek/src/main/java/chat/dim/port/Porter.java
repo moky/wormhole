@@ -47,6 +47,7 @@ public interface Porter extends Processor {
 
     boolean isOpen();    // connection.isOpen()
     boolean isAlive();   // connection.isAlive()
+
     Status getStatus();  // connection.getState()
 
     SocketAddress getRemoteAddress();
@@ -85,7 +86,7 @@ public interface Porter extends Processor {
     /**
      *  Clear all expired tasks
      */
-    void purge(Date now);
+    int purge(Date now);
 
     /**
      *  Close connection for this docker
@@ -98,10 +99,10 @@ public interface Porter extends Processor {
      */
     enum Status {
 
-        ERROR    (-1),
         INIT      (0),
         PREPARING (1),
-        READY     (2);
+        READY     (2),
+        ERROR    (-1);
 
         public final int value;
 

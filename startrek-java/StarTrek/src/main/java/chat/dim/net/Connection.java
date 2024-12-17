@@ -67,14 +67,14 @@ public interface Connection extends Ticker {
      * @param data        - outgo data package
      * @return count of bytes sent, probably zero when it's non-blocking mode
      */
-    int send(byte[] data);
+    int sendData(byte[] data);
 
     /**
      *  Process received data
      *
      * @param data   - received data
      */
-    void onReceived(byte[] data);
+    void onReceivedData(byte[] data);
 
     /**
      *  Close the connection

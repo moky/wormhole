@@ -74,7 +74,7 @@ public abstract class BaseChannel<C extends SelectableChannel>
     @Override
     protected void finalize() throws Throwable {
         // make sure the relative socket is removed
-        setSocketChannel(null);
+        setSocket(null);
         super.finalize();
     }
 
@@ -92,14 +92,14 @@ public abstract class BaseChannel<C extends SelectableChannel>
     //  Socket
     //
 
-    public C getSocketChannel() {
+    public C getSocket() {
         return impl;
     }
 
     /**
      *  Set inner socket for this channel
      */
-    public void setSocketChannel(C sock) {
+    public void setSocket(C sock) {
         // 1. replace with new socket
         C old = impl;
         if (sock != null) {
@@ -168,11 +168,11 @@ public abstract class BaseChannel<C extends SelectableChannel>
     @Override
     public boolean isAvailable() {
         C sock = impl;
-        if (sock != null && SocketHelper.socketIsOpen(sock)) {
-            if (SocketHelper.socketIsConnected(sock) || SocketHelper.socketIsBound(sock)) {
-                // alive, check reading buffer
-                return checkAvailable(sock);
-            }
+        if (sock == null || !SocketHelper.socketIsOpen(sock)) {
+            return false;
+        } else if (SocketHelper.socketIsConnected(sock) || SocketHelper.socketIsBound(sock)) {
+            // alive, check reading buffer
+            return checkAvailable(sock);
         }
         return false;
     }
@@ -184,11 +184,11 @@ public abstract class BaseChannel<C extends SelectableChannel>
     @Override
     public boolean isVacant() {
         C sock = impl;
-        if (sock != null && SocketHelper.socketIsOpen(sock)) {
-            if (SocketHelper.socketIsConnected(sock) || SocketHelper.socketIsBound(sock)) {
-                // alive, check writing buffer
-                return checkVacant(sock);
-            }
+        if (sock == null || !SocketHelper.socketIsOpen(sock)) {
+            return false;
+        } else if (SocketHelper.socketIsConnected(sock) || SocketHelper.socketIsBound(sock)) {
+            // alive, check writing buffer
+            return checkVacant(sock);
         }
         return false;
     }
@@ -204,20 +204,20 @@ public abstract class BaseChannel<C extends SelectableChannel>
     }
 
     @Override
-    public SelectableChannel configureBlocking(boolean block) throws IOException {
-        C sock = getSocketChannel();
-        if (sock != null) {
-            sock.configureBlocking(block);
-        }
-        return sock;
-    }
-
-    @Override
     public String toString() {
         String cname = getClass().getName();
         return "<" + cname + " remote=\"" + getRemoteAddress() + "\" local=\"" + getLocalAddress() + "\"" +
                 " closed=" + (!isOpen()) + " bound=" + isBound() + " connected=" + isConnected() + ">\n\t"
                 + impl + "\n</" + cname + ">";
+    }
+
+    @Override
+    public SelectableChannel configureBlocking(boolean block) throws IOException {
+        C sock = getSocket();
+        if (sock != null) {
+            sock.configureBlocking(block);
+        }
+        return sock;
     }
 
     protected boolean bind(C sock, SocketAddress local) {
@@ -246,7 +246,7 @@ public abstract class BaseChannel<C extends SelectableChannel>
             local = localAddress;
             assert local != null : "local address not set";
         }
-        C sock = getSocketChannel();
+        C sock = getSocket();
         boolean ok = sock != null && bind(sock, local);
         if (!ok) {
             throw new SocketException("failed to bind socket: " + local);
@@ -261,7 +261,7 @@ public abstract class BaseChannel<C extends SelectableChannel>
             remote = remoteAddress;
             assert remote != null : "remote address not set";
         }
-        C sock = getSocketChannel();
+        C sock = getSocket();
         boolean ok = sock != null && connect(sock, remote);
         if (!ok) {
             throw new SocketException("failed to connect socket: " + remote);
@@ -283,7 +283,7 @@ public abstract class BaseChannel<C extends SelectableChannel>
 
     @Override
     public void close() throws IOException {
-        setSocketChannel(null);
+        setSocket(null);
     }
 
     //

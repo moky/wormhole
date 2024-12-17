@@ -58,7 +58,7 @@ class ConnectionPool extends AddressPairMap<Connection> {
         }
         /*/
         Connection old = super.set(remote, local, value);
-        assert old != null : "should not happen";
+        assert old == null : "should not happen";
         return cached;
     }
 
@@ -292,7 +292,7 @@ public abstract class BaseHub implements Hub {
             byte[] data = new byte[buffer.position()];
             buffer.flip();
             buffer.get(data);
-            conn.onReceived(data);
+            conn.onReceivedData(data);
         }
         return true;
     }

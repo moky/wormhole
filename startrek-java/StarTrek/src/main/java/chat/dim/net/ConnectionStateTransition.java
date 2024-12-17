@@ -38,9 +38,9 @@ import chat.dim.fsm.BaseTransition;
  *  Connection State Transition
  *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-abstract class StateTransition extends BaseTransition<StateMachine> {
+public abstract class ConnectionStateTransition extends BaseTransition<ConnectionStateMachine> {
 
-    protected StateTransition(ConnectionState.Order order) {
+    protected ConnectionStateTransition(ConnectionState.Order order) {
         super(order.ordinal());
     }
 
@@ -51,10 +51,10 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
     static class Builder {
 
         // Default -> Preparing
-        StateTransition getDefaultPreparingTransition() {
-            return new StateTransition(ConnectionState.Order.PREPARING) {
+        ConnectionStateTransition getDefaultPreparingTransition() {
+            return new ConnectionStateTransition(ConnectionState.Order.PREPARING) {
                 @Override
-                public boolean evaluate(StateMachine ctx, Date now) {
+                public boolean evaluate(ConnectionStateMachine ctx, Date now) {
                     Connection conn = ctx.getConnection();
                     // connection started? change state to 'preparing'
                     return conn != null && conn.isOpen();
@@ -63,10 +63,10 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         }
 
         // Preparing -> Ready
-        StateTransition getPreparingReadyTransition() {
-            return new StateTransition(ConnectionState.Order.READY) {
+        ConnectionStateTransition getPreparingReadyTransition() {
+            return new ConnectionStateTransition(ConnectionState.Order.READY) {
                 @Override
-                public boolean evaluate(StateMachine ctx, Date now) {
+                public boolean evaluate(ConnectionStateMachine ctx, Date now) {
                     Connection conn = ctx.getConnection();
                     // connected or bound, change state to 'ready'
                     return conn != null && conn.isAlive();
@@ -75,10 +75,10 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         }
 
         // Preparing -> Default
-        StateTransition getPreparingDefaultTransition() {
-            return new StateTransition(ConnectionState.Order.DEFAULT) {
+        ConnectionStateTransition getPreparingDefaultTransition() {
+            return new ConnectionStateTransition(ConnectionState.Order.DEFAULT) {
                 @Override
-                public boolean evaluate(StateMachine ctx, Date now) {
+                public boolean evaluate(ConnectionStateMachine ctx, Date now) {
                     Connection conn = ctx.getConnection();
                     // connection stopped, change state to 'not_connect'
                     return conn == null || !conn.isOpen();
@@ -87,10 +87,10 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         }
 
         // Ready -> Expired
-        StateTransition getReadyExpiredTransition() {
-            return new StateTransition(ConnectionState.Order.EXPIRED) {
+        ConnectionStateTransition getReadyExpiredTransition() {
+            return new ConnectionStateTransition(ConnectionState.Order.EXPIRED) {
                 @Override
-                public boolean evaluate(StateMachine ctx, Date now) {
+                public boolean evaluate(ConnectionStateMachine ctx, Date now) {
                     Connection conn = ctx.getConnection();
                     if (conn == null || !conn.isAlive()) {
                         return false;
@@ -104,10 +104,10 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         }
 
         // Ready -> Error
-        StateTransition getReadyErrorTransition() {
-            return new StateTransition(ConnectionState.Order.ERROR) {
+        ConnectionStateTransition getReadyErrorTransition() {
+            return new ConnectionStateTransition(ConnectionState.Order.ERROR) {
                 @Override
-                public boolean evaluate(StateMachine ctx, Date now) {
+                public boolean evaluate(ConnectionStateMachine ctx, Date now) {
                     Connection conn = ctx.getConnection();
                     // connection lost, change state to 'error'
                     return conn == null || !conn.isAlive();
@@ -116,10 +116,10 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         }
 
         // Expired -> Maintaining
-        StateTransition getExpiredMaintainingTransition() {
-            return new StateTransition(ConnectionState.Order.MAINTAINING) {
+        ConnectionStateTransition getExpiredMaintainingTransition() {
+            return new ConnectionStateTransition(ConnectionState.Order.MAINTAINING) {
                 @Override
-                public boolean evaluate(StateMachine ctx, Date now) {
+                public boolean evaluate(ConnectionStateMachine ctx, Date now) {
                     Connection conn = ctx.getConnection();
                     if (conn == null || !conn.isAlive()) {
                         return false;
@@ -133,10 +133,10 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         }
 
         // Expired -> Error
-        StateTransition getExpiredErrorTransition() {
-            return new StateTransition(ConnectionState.Order.ERROR) {
+        ConnectionStateTransition getExpiredErrorTransition() {
+            return new ConnectionStateTransition(ConnectionState.Order.ERROR) {
                 @Override
-                public boolean evaluate(StateMachine ctx, Date now) {
+                public boolean evaluate(ConnectionStateMachine ctx, Date now) {
                     Connection conn = ctx.getConnection();
                     if (conn == null || !conn.isAlive()) {
                         return true;
@@ -150,10 +150,10 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         }
 
         // Maintaining -> Ready
-        StateTransition getMaintainingReadyTransition() {
-            return new StateTransition(ConnectionState.Order.READY) {
+        ConnectionStateTransition getMaintainingReadyTransition() {
+            return new ConnectionStateTransition(ConnectionState.Order.READY) {
                 @Override
-                public boolean evaluate(StateMachine ctx, Date now) {
+                public boolean evaluate(ConnectionStateMachine ctx, Date now) {
                     Connection conn = ctx.getConnection();
                     if (conn == null || !conn.isAlive()) {
                         return false;
@@ -167,10 +167,10 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         }
 
         // Maintaining -> Expired
-        StateTransition getMaintainingExpiredTransition() {
-            return new StateTransition(ConnectionState.Order.EXPIRED) {
+        ConnectionStateTransition getMaintainingExpiredTransition() {
+            return new ConnectionStateTransition(ConnectionState.Order.EXPIRED) {
                 @Override
-                public boolean evaluate(StateMachine ctx, Date now) {
+                public boolean evaluate(ConnectionStateMachine ctx, Date now) {
                     Connection conn = ctx.getConnection();
                     if (conn == null || !conn.isAlive()) {
                         return false;
@@ -184,10 +184,10 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         }
 
         // Maintaining -> Error
-        StateTransition getMaintainingErrorTransition() {
-            return new StateTransition(ConnectionState.Order.ERROR) {
+        ConnectionStateTransition getMaintainingErrorTransition() {
+            return new ConnectionStateTransition(ConnectionState.Order.ERROR) {
                 @Override
-                public boolean evaluate(StateMachine ctx, Date now) {
+                public boolean evaluate(ConnectionStateMachine ctx, Date now) {
                     Connection conn = ctx.getConnection();
                     if (conn == null || !conn.isAlive()) {
                         return true;
@@ -201,10 +201,10 @@ abstract class StateTransition extends BaseTransition<StateMachine> {
         }
 
         // Error -> Default
-        StateTransition getErrorDefaultTransition() {
-            return new StateTransition(ConnectionState.Order.DEFAULT) {
+        ConnectionStateTransition getErrorDefaultTransition() {
+            return new ConnectionStateTransition(ConnectionState.Order.DEFAULT) {
                 @Override
-                public boolean evaluate(StateMachine ctx, Date now) {
+                public boolean evaluate(ConnectionStateMachine ctx, Date now) {
                     Connection conn = ctx.getConnection();
                     if (conn == null || !conn.isAlive()) {
                         return false;

@@ -34,6 +34,7 @@ import java.util.Date;
 import java.util.List;
 
 import chat.dim.port.Departure;
+import chat.dim.type.Duration;
 
 public abstract class DepartureShip implements Departure {
 
@@ -41,7 +42,7 @@ public abstract class DepartureShip implements Departure {
      *  Departure task will be expired after 2 minutes
      *  if no response received.
      */
-    public static long EXPIRES = 120 * 1000; // milliseconds
+    public static Duration EXPIRES = Duration.ofMinutes(2);
 
     /**
      *  Important departure task will be retried 2 times
@@ -49,8 +50,8 @@ public abstract class DepartureShip implements Departure {
      */
     public static int RETRIES = 2;
 
-    // expired time (timestamp in milliseconds)
-    private long expired;
+    // expired time
+    private Date expired;
 
     // how many times to try sending
     private int tries;
@@ -62,7 +63,7 @@ public abstract class DepartureShip implements Departure {
         super();
         assert maxTries != 0 : "max tries should not be 0";
         priority = prior;
-        expired = 0;
+        expired = null;
         tries = maxTries;
     }
     protected DepartureShip() {
@@ -75,19 +76,20 @@ public abstract class DepartureShip implements Departure {
         // decrease counter
         --tries;
         // update retried time
-        expired = now.getTime() + EXPIRES;
+        expired = EXPIRES.addTo(now);
     }
 
     @Override
     public Status getStatus(Date now) {
+        Date exp = expired;
         List<byte[]> fragments = getFragments();
         if (fragments == null || fragments.size() == 0) {
             return Status.DONE;
-        } else if (expired == 0) {
+        } else if (exp == null) {
             return Status.NEW;
         //} else if (!isImportant()) {
         //    return Status.DONE;
-        } else if (now.getTime() < expired) {
+        } else if (now.before(exp)) {
             return Status.WAITING;
         } else if (tries > 0) {
             return Status.TIMEOUT;
@@ -100,4 +102,5 @@ public abstract class DepartureShip implements Departure {
     public int getPriority() {
         return priority;
     }
+
 }
