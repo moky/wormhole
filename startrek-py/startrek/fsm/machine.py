@@ -31,6 +31,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, TypeVar, Generic
 
+from ..types import Timestamp
 from ..skywalker import Ticker
 
 S = TypeVar('S')  # State
@@ -48,7 +49,7 @@ class Transition(ABC, Generic[C]):
     """ State Transition """
 
     @abstractmethod
-    def evaluate(self, ctx: C, now: float) -> bool:
+    def evaluate(self, ctx: C, now: Timestamp) -> bool:
         """
         Evaluate the current state
 
@@ -63,7 +64,7 @@ class State(ABC, Generic[C, T]):
     """ Finite State """
 
     @abstractmethod
-    def evaluate(self, ctx: C, now: float) -> Optional[T]:
+    def evaluate(self, ctx: C, now: Timestamp) -> Optional[T]:
         """
         Called by machine.tick() to evaluate each transitions
 
@@ -74,7 +75,7 @@ class State(ABC, Generic[C, T]):
         raise NotImplemented
 
     @abstractmethod
-    async def on_enter(self, old, ctx: C, now: float):
+    async def on_enter(self, old, ctx: C, now: Timestamp):
         """
         Called after new state entered
 
@@ -85,7 +86,7 @@ class State(ABC, Generic[C, T]):
         raise NotImplemented
 
     @abstractmethod
-    async def on_exit(self, new, ctx: C, now: float):
+    async def on_exit(self, new, ctx: C, now: Timestamp):
         """
         Called before old state exited
 
@@ -96,7 +97,7 @@ class State(ABC, Generic[C, T]):
         raise NotImplemented
 
     @abstractmethod
-    async def on_pause(self, ctx: C, now: float):
+    async def on_pause(self, ctx: C, now: Timestamp):
         """
         Called before current state paused
 
@@ -106,7 +107,7 @@ class State(ABC, Generic[C, T]):
         raise NotImplemented
 
     @abstractmethod
-    async def on_resume(self, ctx: C, now: float):
+    async def on_resume(self, ctx: C, now: Timestamp):
         """
         Called after current state resumed
 
@@ -120,7 +121,7 @@ class Delegate(ABC, Generic[C, T, S]):
     """ State Machine Delegate """
 
     @abstractmethod
-    async def enter_state(self, state: Optional[S], ctx: C, now: float):
+    async def enter_state(self, state: Optional[S], ctx: C, now: Timestamp):
         """
         Called before enter new state
         (get current state from context)
@@ -132,7 +133,7 @@ class Delegate(ABC, Generic[C, T, S]):
         raise NotImplemented
 
     @abstractmethod
-    async def exit_state(self, state: Optional[S], ctx: C, now: float):
+    async def exit_state(self, state: Optional[S], ctx: C, now: Timestamp):
         """
         Called after exit old state
         (get current state from context)
@@ -144,7 +145,7 @@ class Delegate(ABC, Generic[C, T, S]):
         raise NotImplemented
 
     @abstractmethod
-    async def pause_state(self, state: Optional[S], ctx: C, now: float):
+    async def pause_state(self, state: Optional[S], ctx: C, now: Timestamp):
         """
         Called after pause this state
 
@@ -155,7 +156,7 @@ class Delegate(ABC, Generic[C, T, S]):
         raise NotImplemented
 
     @abstractmethod
-    async def resume_state(self, state: Optional[S], ctx: C, now: float):
+    async def resume_state(self, state: Optional[S], ctx: C, now: Timestamp):
         """
         Called before resume this state
 
@@ -175,21 +176,21 @@ class Machine(Ticker, ABC, Generic[C, T, S]):
         raise NotImplemented
 
     @abstractmethod
-    async def start(self):
+    async def start(self) -> bool:
         """ Change current state to 'default' """
         raise NotImplemented
 
     @abstractmethod
-    async def stop(self):
+    async def stop(self) -> bool:
         """ Change current state to null """
         raise NotImplemented
 
     @abstractmethod
-    async def pause(self):
+    async def pause(self) -> bool:
         """ Pause machine, current state not change """
         raise NotImplemented
 
     @abstractmethod
-    async def resume(self):
+    async def resume(self) -> bool:
         """ Resume machine with current state """
         raise NotImplemented

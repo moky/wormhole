@@ -46,25 +46,27 @@ class AutoMachine(BaseMachine[C, T, S], ABC):
     #     raise NotImplemented
 
     # Override
-    async def start(self):
-        await super().start()
+    async def start(self) -> bool:
+        ok = await super().start()
         timer = PrimeMetronome()
         timer.add_ticker(ticker=self)
+        return ok
 
     # Override
-    async def stop(self):
+    async def stop(self) -> bool:
         timer = PrimeMetronome()
         timer.remove_ticker(ticker=self)
-        await super().stop()
+        return await super().stop()
 
     # Override
-    async def pause(self):
+    async def pause(self) -> bool:
         timer = PrimeMetronome()
         timer.remove_ticker(ticker=self)
-        await super().pause()
+        return await super().pause()
 
     # Override
-    async def resume(self):
-        await super().resume()
+    async def resume(self) -> bool:
+        ok = await super().resume()
         timer = PrimeMetronome()
         timer.add_ticker(ticker=self)
+        return ok

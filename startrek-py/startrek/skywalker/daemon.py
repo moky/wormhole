@@ -33,6 +33,8 @@ import weakref
 from threading import Thread
 from typing import Optional
 
+from ..types import Duration
+
 from .runner import Runnable, Runner
 
 
@@ -93,7 +95,7 @@ class Daemon:
         self.join(thr=thr, timeout=2.0)
 
     @classmethod
-    def join(cls, thr: Thread, timeout: float = None):
+    def join(cls, thr: Thread, timeout: Duration = None):
         """ Stop the thread """
         try:
             if thr.is_alive():

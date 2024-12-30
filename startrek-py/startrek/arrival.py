@@ -33,6 +33,8 @@ import weakref
 from abc import ABC
 from typing import Optional, Any, Set, Dict, MutableMapping
 
+from .types import Timestamp
+
 from .port import ShipStatus
 from .port import Arrival
 
@@ -44,7 +46,7 @@ class ArrivalShip(Arrival, ABC):
     # if still not completed
     EXPIRES = 300  # seconds
 
-    def __init__(self, now: float = 0):
+    def __init__(self, now: Timestamp = 0):
         super().__init__()
         # last received time (timestamp in seconds)
         if now <= 0:
@@ -52,12 +54,12 @@ class ArrivalShip(Arrival, ABC):
         self.__expired = now + self.EXPIRES
 
     # Override
-    def touch(self, now: float):
+    def touch(self, now: Timestamp):
         # update expired time
         self.__expired = now + self.EXPIRES
 
     # Override
-    def get_status(self, now: float) -> ShipStatus:
+    def get_status(self, now: Timestamp) -> ShipStatus:
         if now > self.__expired:
             return ShipStatus.EXPIRED
         else:
@@ -71,7 +73,7 @@ class ArrivalHall:
         super().__init__()
         self.__arrivals: Set[Arrival] = set()
         self.__map: MutableMapping[Any, Arrival] = weakref.WeakValueDictionary()  # sn => Arrival
-        self.__finished_times: Dict[Any, float] = {}                              # sn => timestamp
+        self.__finished_times: Dict[Any, Timestamp] = {}                          # sn => timestamp
 
     def assemble_arrival(self, ship: Arrival) -> Optional[Arrival]:
         """
@@ -118,7 +120,7 @@ class ArrivalHall:
                 self.__finished_times[sn] = time.time()
         return completed
 
-    def purge(self, now: float = 0) -> int:
+    def purge(self, now: Timestamp = 0) -> int:
         """ Clear all expired tasks """
         if now <= 0:
             now = time.time()

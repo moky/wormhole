@@ -60,7 +60,7 @@
 """
 
 from .hub import Hub
-from .channel import Channel, ChannelState
+from .channel import Channel, ChannelStatus
 from .connection import Connection
 from .state import ConnectionState
 from .delegate import ConnectionDelegate
@@ -69,7 +69,7 @@ __all__ = [
 
     'Hub',
 
-    'Channel', 'ChannelState',
+    'Channel', 'ChannelStatus',
 
     'Connection', 'ConnectionState',
     'ConnectionDelegate',

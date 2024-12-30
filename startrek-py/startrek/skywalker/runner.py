@@ -33,6 +33,8 @@ from abc import ABC, abstractmethod
 from threading import Thread
 from typing import Coroutine
 
+from ..types import Duration
+
 
 class Processor(ABC):
 
@@ -97,14 +99,14 @@ class Runner(Runnable, Handler, Processor, ABC):
     INTERVAL_NORMAL = 1.0/25
     INTERVAL_FAST = 1.0/60
 
-    def __init__(self, interval: float):
+    def __init__(self, interval: Duration):
         super().__init__()
         assert interval > 0, 'interval error: %s' % interval
         self.__interval = interval
         self.__running = False
 
     @property
-    def interval(self) -> float:
+    def interval(self) -> Duration:
         return self.__interval
 
     @property
@@ -152,7 +154,7 @@ class Runner(Runnable, Handler, Processor, ABC):
         # time.sleep(self.interval)
 
     @classmethod
-    async def sleep(cls, seconds: float):
+    async def sleep(cls, seconds: Duration):
         await asyncio.sleep(seconds)
 
     @classmethod

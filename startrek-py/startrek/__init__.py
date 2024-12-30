@@ -29,10 +29,10 @@
 # ==============================================================================
 
 from .net import Hub
-from .net import Channel, ChannelState
+from .net import Channel, ChannelStatus
 from .net import Connection, ConnectionState, ConnectionDelegate
 
-from .socket import BaseChannel, ChannelReader, ChannelWriter
+from .socket import BaseChannel
 from .socket import BaseHub, BaseConnection, ActiveConnection
 
 from .port import Ship, Arrival, Departure
@@ -53,10 +53,10 @@ __author__ = 'Albert Moky'
 __all__ = [
 
     'Hub',
-    'Channel', 'ChannelState',
+    'Channel', 'ChannelStatus',
     'Connection', 'ConnectionState', 'ConnectionDelegate',
 
-    'BaseChannel', 'ChannelReader', 'ChannelWriter',
+    'BaseChannel',
     'BaseHub', 'BaseConnection', 'ActiveConnection',
 
     'Ship', 'Arrival', 'Departure',

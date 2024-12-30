@@ -33,6 +33,7 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional, List
 
+from .types import Timestamp
 from .types import SocketAddress, AddressPairObject
 from .net import Connection
 from .port import Arrival, Departure, ShipStatus
@@ -202,12 +203,12 @@ class StarPorter(AddressPairObject, Porter, ABC):
         """ Check received ship for completed package """
         return self.__dock.assemble_arrival(ship=ship)
 
-    def _next_departure(self, now: float) -> Optional[Departure]:
+    def _next_departure(self, now: Timestamp) -> Optional[Departure]:
         """ Get outgo ship from waiting queue """
         return self.__dock.next_departure(now=now)
 
     # Override
-    def purge(self, now: float = 0) -> int:
+    def purge(self, now: Timestamp = 0) -> int:
         return self.__dock.purge(now=now)
 
     # Override

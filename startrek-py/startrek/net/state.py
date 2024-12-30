@@ -33,6 +33,7 @@ from abc import ABC, abstractmethod
 from enum import IntEnum
 from typing import Union
 
+from ..types import Timestamp
 from ..fsm import Context, BaseTransition, BaseState, BaseMachine
 
 from .connection import Connection, TimedConnection
@@ -115,7 +116,7 @@ class StateTransition(BaseTransition[StateMachine], ABC):
         super().__init__(target=target)
 
     @abstractmethod  # Override
-    def evaluate(self, ctx: StateMachine, now: float) -> bool:
+    def evaluate(self, ctx: StateMachine, now: Timestamp) -> bool:
         raise NotImplemented
 
 
@@ -144,7 +145,7 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
         return self.__name
 
     @property
-    def enter_time(self) -> float:
+    def enter_time(self) -> Timestamp:
         return self.__time
 
     def __str__(self) -> str:
@@ -182,19 +183,19 @@ class ConnectionState(BaseState[StateMachine, StateTransition]):
             return True
 
     # Override
-    async def on_enter(self, old, ctx: StateMachine, now: float):
+    async def on_enter(self, old, ctx: StateMachine, now: Timestamp):
         self.__time = now
 
     # Override
-    async def on_exit(self, new, ctx: StateMachine, now: float):
+    async def on_exit(self, new, ctx: StateMachine, now: Timestamp):
         self.__time = 0
 
     # Override
-    async def on_pause(self, ctx: StateMachine, now: float):
+    async def on_pause(self, ctx: StateMachine, now: Timestamp):
         pass
 
     # Override
-    async def on_resume(self, ctx: StateMachine, now: float):
+    async def on_resume(self, ctx: StateMachine, now: Timestamp):
         pass
 
 
@@ -330,7 +331,7 @@ class DefaultPreparingTransition(StateTransition):
     """ Default -> Preparing """
 
     # Override
-    def evaluate(self, ctx: StateMachine, now: float) -> bool:
+    def evaluate(self, ctx: StateMachine, now: Timestamp) -> bool:
         conn = ctx.connection
         # connection started? change state to 'preparing'
         return not (conn is None or conn.closed)
@@ -340,7 +341,7 @@ class PreparingReadyTransition(StateTransition):
     """ Preparing -> Ready """
 
     # Override
-    def evaluate(self, ctx: StateMachine, now: float) -> bool:
+    def evaluate(self, ctx: StateMachine, now: Timestamp) -> bool:
         conn = ctx.connection
         # connected or bound, change state to 'ready'
         return conn is not None and conn.alive
@@ -350,7 +351,7 @@ class PreparingDefaultTransition(StateTransition):
     """ Preparing -> Default """
 
     # Override
-    def evaluate(self, ctx: StateMachine, now: float) -> bool:
+    def evaluate(self, ctx: StateMachine, now: Timestamp) -> bool:
         conn = ctx.connection
         # connection stopped, change state to 'not_connect'
         return conn is None or conn.closed
@@ -360,7 +361,7 @@ class ReadyExpiredTransition(StateTransition):
     """ Ready -> Expired """
 
     # Override
-    def evaluate(self, ctx: StateMachine, now: float) -> bool:
+    def evaluate(self, ctx: StateMachine, now: Timestamp) -> bool:
         conn = ctx.connection
         if conn is None or not conn.alive:
             return False
@@ -374,7 +375,7 @@ class ReadyErrorTransition(StateTransition):
     """ Ready -> Error """
 
     # Override
-    def evaluate(self, ctx: StateMachine, now: float) -> bool:
+    def evaluate(self, ctx: StateMachine, now: Timestamp) -> bool:
         conn = ctx.connection
         # connection lost, change state to 'error
         return conn is None or not conn.alive
@@ -384,7 +385,7 @@ class ExpiredMaintainingTransition(StateTransition):
     """ Expired -> Maintaining """
 
     # Override
-    def evaluate(self, ctx: StateMachine, now: float) -> bool:
+    def evaluate(self, ctx: StateMachine, now: Timestamp) -> bool:
         conn = ctx.connection
         if conn is None or not conn.alive:
             return False
@@ -398,7 +399,7 @@ class ExpiredErrorTransition(StateTransition):
     """ Expired -> Error """
 
     # Override
-    def evaluate(self, ctx: StateMachine, now: float) -> bool:
+    def evaluate(self, ctx: StateMachine, now: Timestamp) -> bool:
         conn = ctx.connection
         if conn is None or not conn.alive:
             return True
@@ -412,7 +413,7 @@ class MaintainingReadyTransition(StateTransition):
     """ Maintaining -> Ready """
 
     # Override
-    def evaluate(self, ctx: StateMachine, now: float) -> bool:
+    def evaluate(self, ctx: StateMachine, now: Timestamp) -> bool:
         conn = ctx.connection
         if conn is None or not conn.alive:
             return False
@@ -426,7 +427,7 @@ class MaintainingExpiredTransition(StateTransition):
     """ Maintaining -> Expired """
 
     # Override
-    def evaluate(self, ctx: StateMachine, now: float) -> bool:
+    def evaluate(self, ctx: StateMachine, now: Timestamp) -> bool:
         conn = ctx.connection
         if conn is None or not conn.alive:
             return False
@@ -440,7 +441,7 @@ class MaintainingErrorTransition(StateTransition):
     """ Maintaining -> Error """
 
     # Override
-    def evaluate(self, ctx: StateMachine, now: float) -> bool:
+    def evaluate(self, ctx: StateMachine, now: Timestamp) -> bool:
         conn = ctx.connection
         # connection lost, change state to 'error'
         if conn is None or not conn.alive:
@@ -455,7 +456,7 @@ class ErrorDefaultTransition(StateTransition):
     """ Error -> Default """
 
     # Override
-    def evaluate(self, ctx: StateMachine, now: float) -> bool:
+    def evaluate(self, ctx: StateMachine, now: Timestamp) -> bool:
         conn = ctx.connection
         if conn is None or not conn.alive:
             return False

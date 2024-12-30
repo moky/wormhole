@@ -33,6 +33,8 @@ import weakref
 from abc import ABC
 from typing import Optional, Any, List, Dict, MutableMapping
 
+from .types import Timestamp
+
 from .port import ShipStatus
 from .port import Arrival, Departure
 
@@ -62,7 +64,7 @@ class DepartureShip(Departure, ABC):
         return self.__priority
 
     # Override
-    def touch(self, now: float):
+    def touch(self, now: Timestamp):
         assert self.__tries > 0, 'touch error, tries=%d' % self.__tries
         # decrease counter
         self.__tries -= 1
@@ -70,7 +72,7 @@ class DepartureShip(Departure, ABC):
         self.__expired = now + self.EXPIRES
 
     # Override
-    def get_status(self, now: float) -> ShipStatus:
+    def get_status(self, now: Timestamp) -> ShipStatus:
         fragments = self.fragments
         if fragments is None or len(fragments) == 0:
             return ShipStatus.DONE
@@ -100,7 +102,7 @@ class DepartureHall:
         self.__priorities: List[int] = []
         # index
         self.__map: MutableMapping[Any, Departure] = weakref.WeakValueDictionary()  # SN => ship
-        self.__finished_times: Dict[Any, float] = {}                                # SN => timestamp
+        self.__finished_times: Dict[Any, Timestamp] = {}                            # SN => timestamp
         self.__departure_level: Dict[Any, int] = {}                                 # SN => priority
 
     def add_departure(self, ship: Departure) -> bool:
@@ -165,7 +167,7 @@ class DepartureHall:
         self.__departure_level.pop(sn, None)
         self.__all_departures.discard(ship)
 
-    def next_departure(self, now: float) -> Optional[Departure]:
+    def next_departure(self, now: Timestamp) -> Optional[Departure]:
         """
         Get next new/timeout task
 
@@ -179,7 +181,7 @@ class DepartureHall:
             task = self.__next_timeout_departure(now=now)
         return task
 
-    def __next_new_departure(self, now: float) -> Optional[Departure]:
+    def __next_new_departure(self, now: Timestamp) -> Optional[Departure]:
         if len(self.__new_departures) > 0:
             # get first ship
             outgo = self.__new_departures.pop(0)
@@ -227,7 +229,7 @@ class DepartureHall:
         self.__priorities.insert(index, priority)
         return True
 
-    def __next_timeout_departure(self, now: float) -> Optional[Departure]:
+    def __next_timeout_departure(self, now: Timestamp) -> Optional[Departure]:
         # no need to copy the list being changed because it will return immediately
         priorities = self.__priorities  # list(self.__priorities)
         for prior in priorities:
@@ -258,7 +260,7 @@ class DepartureHall:
                     self.__all_departures.discard(ship)
                     return ship
 
-    def purge(self, now: float = 0) -> int:
+    def purge(self, now: Timestamp = 0) -> int:
         """ Clear all expired tasks """
         if now <= 0:
             now = time.time()

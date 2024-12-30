@@ -33,6 +33,7 @@ import time
 import weakref
 from typing import Optional
 
+from ..types import Timestamp, Duration
 from ..types import SocketAddress, AddressPairObject
 from ..fsm import Delegate as StateDelegate
 
@@ -45,8 +46,6 @@ from ..net.connection import TimedConnection
 
 
 class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelegate):
-
-    EXPIRES = 16  # seconds
 
     def __init__(self, remote: SocketAddress, local: Optional[SocketAddress]):
         super().__init__(remote=remote, local=local)
@@ -63,7 +62,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     #
 
     @property
-    def delegate(self) -> ConnectionDelegate:
+    def delegate(self) -> Optional[ConnectionDelegate]:
         """ Delegate for handling connection events """
         ref = self.__delegate_ref
         if ref is not None:
@@ -114,7 +113,10 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         #     self.__channel_ref = None
         # 2. close old channel
         if old is not None and old is not channel:
-            await old.close()
+            try:
+                await old.close()
+            except Exception as error:
+                print('[Socket] connection error: %s, %s' % (error, old))
 
     #
     #   Flags
@@ -252,7 +254,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             return fsm.current_state
 
     # Override
-    async def tick(self, now: float, elapsed: float):
+    async def tick(self, now: Timestamp, elapsed: Duration):
         if self.__channel_ref is None:
             # not initialized
             return
@@ -266,23 +268,23 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     #
 
     @property  # Override
-    def last_sent_time(self) -> float:
+    def last_sent_time(self) -> Timestamp:
         return self.__last_sent_time
 
     @property  # Override
-    def last_received_time(self) -> float:
+    def last_received_time(self) -> Timestamp:
         return self.__last_received_time
 
     # Override
-    def is_sent_recently(self, now: float) -> bool:
+    def is_sent_recently(self, now: Timestamp) -> bool:
         return now <= self.__last_sent_time + self.EXPIRES
 
     # Override
-    def is_received_recently(self, now: float) -> bool:
+    def is_received_recently(self, now: Timestamp) -> bool:
         return now <= self.__last_received_time + self.EXPIRES
 
     # Override
-    def is_not_received_long_time_ago(self, now: float) -> bool:
+    def is_not_received_long_time_ago(self, now: Timestamp) -> bool:
         return now > self.__last_received_time + (self.EXPIRES << 3)
 
     #
@@ -290,11 +292,11 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     #
 
     # Override
-    async def enter_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: float):
+    async def enter_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: Timestamp):
         pass
 
     # Override
-    async def exit_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: float):
+    async def exit_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: Timestamp):
         current = ctx.current_state
         if isinstance(current, ConnectionState):
             index = current.index
@@ -323,9 +325,9 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             await self._set_channel(channel=None)
 
     # Override
-    async def pause_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: float):
+    async def pause_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: Timestamp):
         pass
 
     # Override
-    async def resume_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: float):
+    async def resume_state(self, state: Optional[ConnectionState], ctx: StateMachine, now: Timestamp):
         pass

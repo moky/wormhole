@@ -38,7 +38,7 @@ from typing import Optional, Iterable
 from ..types import SocketAddress, AddressPairMap
 
 from ..net import Hub
-from ..net import Channel, ChannelState
+from ..net import Channel, ChannelStatus
 from ..net import Connection, ConnectionDelegate
 
 from .base_conn import BaseConnection
@@ -157,34 +157,70 @@ class BaseHub(Hub, ABC):
 
     # Override
     async def connect(self, remote: SocketAddress, local: Optional[SocketAddress] = None) -> Optional[Connection]:
-        # TODO: pre-checking
-        # try to get connection
+        #
+        #  0. pre-checking
+        #
+        conn = self._get_connection(remote=remote, local=local)
+        if conn is not None:
+            # check local address
+            if local is None:
+                return conn
+            address = conn.local_address
+            if address is None or address == local:
+                return conn
+        #
+        #  1. lock to check
+        #
         with self.__lock:
-            old = self._get_connection(remote=remote, local=local)
-            if old is None:
-                # create & cache connection
-                conn = self._create_connection(remote=remote, local=local)
-                cached = self._set_connection(conn, remote=remote, local=local)
-                if cached is not None and cached is not conn:
-                    await cached.close()
-            else:
-                conn = old
-        if old is None:
-            assert isinstance(conn, BaseConnection), 'connection error: %s, %s' % (remote, conn)
+            # check again
+            conn = self._get_connection(remote=remote, local=local)
+            if conn is not None:
+                # check local address
+                if local is None:
+                    return conn
+                address = conn.local_address
+                if address is None or address == local:
+                    return conn
+            # connection not exists, or local address not matched,
+            # create new connection
+            conn = self._create_connection(remote=remote, local=local)
+            if local is None:
+                local = conn.local_address
+            # cache the connection
+            cached = self._set_connection(conn, remote=remote, local=local)
+        #
+        #  2. close old connection
+        #
+        if cached is not None and cached is not conn:
+            await cached.close()
+        #
+        #  3. start the new connection
+        #
+        if isinstance(conn, BaseConnection):
             # try to open channel with direction (remote, local)
             await conn.start(hub=self)
+        else:
+            assert False, 'connection error: %s, %s' % (remote, conn)
         return conn
 
     #
     #   Process
     #
 
+    # noinspection PyMethodMayBeStatic
+    async def _close_channel(self, channel: Channel):
+        try:
+            if not channel.closed:
+                await channel.close()
+        except Exception as error:
+            print('[Socket] channel error: %s, %s' % (error, channel))
+
     async def _drive_channel(self, channel: Channel) -> bool:
-        cs = channel.state
-        if cs == ChannelState.INIT:
+        cs = channel.status
+        if cs == ChannelStatus.INIT:
             # preparing
             return False
-        elif cs == ChannelState.CLOSED:
+        elif cs == ChannelStatus.CLOSED:
             # finished
             return False
         # cs == opened
@@ -199,14 +235,19 @@ class BaseHub(Hub, ABC):
             if delegate is None or remote is None:
                 # UDP channel may not connected
                 # so no connection for it
-                self._remove_channel(channel=channel, remote=remote, local=local)
+                cached = self._remove_channel(channel=channel, remote=remote, local=local)
             else:
                 # remove channel and callback with connection
                 conn = self._get_connection(remote=remote, local=local)
-                self._remove_channel(channel=channel, remote=remote, local=local)
+                cached = self._remove_channel(channel=channel, remote=remote, local=local)
                 if conn is not None:
                     await delegate.connection_error(error=error, connection=conn)
-            await channel.close()
+            # close removed/error channels
+            if cached is None or cached is Channel:
+                pass
+            else:
+                await self._close_channel(channel=cached)
+            await self._close_channel(channel=channel)
             return False
         if remote is None or data is None or len(data) == 0:
             # received nothing
@@ -247,7 +288,7 @@ class BaseHub(Hub, ABC):
                 if cached is None or cached is sock:
                     pass
                 else:
-                    await cached.close()
+                    await self._close_channel(channel=cached)
 
     async def _cleanup_connections(self, connections: Iterable[Connection]):
         # NOTICE: multi connections may share same channel (UDP Hub)

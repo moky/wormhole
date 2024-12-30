@@ -38,8 +38,7 @@ from ..types import SocketAddress, AddressPairObject
 from ..net.socket import is_blocking, is_closed, is_connected, is_bound
 from ..net.socket import is_available, is_vacant
 from ..net.socket import socket_bind, socket_connect, socket_disconnect
-from ..net.socket import socket_send, socket_receive
-from ..net import Channel, ChannelState
+from ..net import Channel, ChannelStatus
 
 
 class SocketReader(ABC):
@@ -96,55 +95,6 @@ class Controller:
         channel = self.channel
         if isinstance(channel, BaseChannel):
             return channel.sock
-
-    # noinspection PyMethodMayBeStatic
-    async def _socket_receive(self, sock: socket.socket, max_len: int) -> Optional[bytes]:
-        # TODO: override for async receiving
-        # return sock.recv(max_len)
-        return await socket_receive(sock=sock, max_len=max_len)
-
-    # noinspection PyMethodMayBeStatic
-    async def _socket_send(self, sock: socket.socket, data: bytes) -> int:
-        # TODO: override for async sending
-        # return sock.send(data)
-        # return sock.sendall(data)
-        return await socket_send(sock=sock, data=data)
-
-
-# noinspection PyAbstractClass
-class ChannelReader(Controller, SocketReader, ABC):
-
-    # Override
-    async def read(self, max_len: int) -> Optional[bytes]:
-        sock = self.sock
-        if sock is None or is_closed(sock=sock):
-            raise ConnectionError('socket closed')
-        else:
-            return await self._socket_receive(sock=sock, max_len=max_len)
-
-    # @abstractmethod  # Override
-    # async def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
-    #     """ receive data via socket, and return it with remote address """
-    #     raise NotImplemented
-
-
-# noinspection PyAbstractClass
-class ChannelWriter(Controller, SocketWriter, ABC):
-
-    # Override
-    async def write(self, data: bytes) -> int:
-        """ Return the number of bytes sent;
-            this may be less than len(data) if the network is busy. """
-        sock = self.sock
-        if sock is None or is_closed(sock=sock):
-            raise ConnectionError('socket closed')
-        else:
-            return await self._socket_send(sock=sock, data=data)
-
-    # @abstractmethod  # Override
-    # async def send(self, data: bytes, target: SocketAddress) -> int:
-    #     """ send data via socket with remote address """
-    #     raise NotImplemented
 
 
 class BaseChannel(AddressPairObject, Channel, ABC):
@@ -208,20 +158,20 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     #
 
     @property  # Override
-    def state(self) -> ChannelState:
+    def status(self) -> ChannelStatus:
         if self.__closed is None:
             # initializing
-            return ChannelState.INIT
+            return ChannelStatus.INIT
         sock = self.sock
         if sock is None or is_closed(sock=sock):
             # closed
-            return ChannelState.CLOSED
+            return ChannelStatus.CLOSED
         elif is_connected(sock=sock) or is_bound(sock=sock):
             # normal
-            return ChannelState.ALIVE
+            return ChannelStatus.ALIVE
         else:
             # opened
-            return ChannelState.OPEN
+            return ChannelStatus.OPEN
 
     @property  # Override
     def closed(self) -> bool:

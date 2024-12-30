@@ -31,6 +31,8 @@
 import threading
 from typing import Optional
 
+from .types import Timestamp
+
 from .arrival import Arrival, ArrivalHall
 from .departure import Departure, DepartureHall
 
@@ -92,7 +94,7 @@ class Dock:
         # remove package/fragment if matched (check page index for fragments too)
         return self.__departure_hall.check_response(ship=ship)
 
-    def next_departure(self, now: float) -> Optional[Departure]:
+    def next_departure(self, now: Timestamp) -> Optional[Departure]:
         """
         Get next new/timeout task
 
@@ -103,7 +105,7 @@ class Dock:
         # if needs retry, the caller should append it back
         return self.__departure_hall.next_departure(now=now)
 
-    def purge(self, now: float = 0):
+    def purge(self, now: Timestamp = 0):
         """ Clear all expired tasks """
         count = 0
         count += self.__arrival_hall.purge(now=now)
@@ -135,12 +137,12 @@ class LockedDock(Dock):
             return super().check_response(ship=ship)
 
     # Override
-    def next_departure(self, now: float) -> Optional[Departure]:
+    def next_departure(self, now: Timestamp) -> Optional[Departure]:
         with self.__lock:
             return super().next_departure(now=now)
 
     # Override
-    def purge(self, now: float = 0) -> int:
+    def purge(self, now: Timestamp = 0) -> int:
         if now < self.__next_purge_time:
             return -1
         else:

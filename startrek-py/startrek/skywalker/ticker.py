@@ -35,6 +35,8 @@ from weakref import WeakSet
 from abc import ABC, abstractmethod
 from typing import Set
 
+from ..types import Timestamp, Duration
+
 from .runner import Runner
 from .daemon import Daemon
 
@@ -42,7 +44,7 @@ from .daemon import Daemon
 class Ticker(ABC):
 
     @abstractmethod
-    async def tick(self, now: float, elapsed: float):
+    async def tick(self, now: Timestamp, elapsed: Duration):
         """
         Drive current thread forward
 
@@ -57,7 +59,7 @@ class Metronome(Runner):
     # at least wait 1/60 of a second
     MIN_INTERVAL = 1.0/60  # ~16ms
 
-    def __init__(self, interval: float):
+    def __init__(self, interval: Duration):
         super().__init__(interval=interval)
         self.__daemon = Daemon(target=self)
         self.__last_time = 0  # last process time

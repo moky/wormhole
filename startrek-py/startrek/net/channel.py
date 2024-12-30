@@ -37,7 +37,7 @@ from ..types import SocketAddress
 
 
 # protected
-class ChannelState(IntEnum):
+class ChannelStatus(IntEnum):
     """ Channel State Order """
     INIT = 0    # initializing
     OPEN = 1    # initialized
@@ -49,7 +49,7 @@ class Channel(ABC):
 
     @property
     @abstractmethod
-    def state(self) -> ChannelState:
+    def status(self) -> ChannelStatus:
         raise NotImplemented
 
     @property

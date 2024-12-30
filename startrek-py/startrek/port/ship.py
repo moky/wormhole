@@ -32,6 +32,9 @@ from abc import ABC, abstractmethod
 from enum import IntEnum
 from typing import Any, List
 
+from ..types import Timestamp
+
+
 """
     Star Ship
     ~~~~~~~~~
@@ -78,7 +81,7 @@ class Ship(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def touch(self, now: float):
+    def touch(self, now: Timestamp):
         """
         Update expired time
 
@@ -87,7 +90,7 @@ class Ship(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def get_status(self, now: float) -> ShipStatus:
+    def get_status(self, now: Timestamp) -> ShipStatus:
         """
         Check ship state
 

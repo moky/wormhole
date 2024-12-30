@@ -34,6 +34,8 @@ from abc import ABC, abstractmethod
 from enum import IntEnum
 from typing import List, Optional
 
+from ..types import Timestamp, Duration
+
 from .machine import S, C, U, T
 from .machine import Transition, State, Machine, Delegate
 
@@ -70,7 +72,7 @@ class BaseState(State[C, T], ABC):
         self.__transitions.append(transition)
 
     # Override
-    def evaluate(self, ctx: C, now: float) -> Optional[T]:
+    def evaluate(self, ctx: C, now: Timestamp) -> Optional[T]:
         for trans in self.__transitions:
             if trans.evaluate(ctx, now=now):
                 # OK, get target state from this transition
@@ -132,7 +134,7 @@ class BaseMachine(Machine[C, T, S], ABC):
         return self.__states[index]
 
     @property  # protected
-    def default_state(self) -> State[C, T]:
+    def default_state(self) -> Optional[State[C, T]]:
         return self.__states[0]
 
     # protected
@@ -150,7 +152,7 @@ class BaseMachine(Machine[C, T, S], ABC):
     def current_state(self, state: BaseState[C, T]):
         self.__current = -1 if state is None else state.index
 
-    async def __change_state(self, state: Optional[State[C, T]], now: float):
+    async def __change_state(self, state: Optional[State[C, T]], now: Timestamp) -> bool:
         """
         Exit current state, and enter new state
 
@@ -192,20 +194,33 @@ class BaseMachine(Machine[C, T, S], ABC):
     #
 
     # Override
-    async def start(self):
+    async def start(self) -> bool:
+        if self.__status != MachineStatus.STOPPED:
+            # running or paused
+            # cannot start again
+            return False
         now = time.time()
         ok = await self.__change_state(state=self.default_state, now=now)
-        assert ok, 'failed to change default state'
+        # assert ok, 'failed to change default state'
         self.__status = MachineStatus.RUNNING
+        return ok
 
     # Override
-    async def stop(self):
+    async def stop(self) -> bool:
+        if self.__status == MachineStatus.STOPPED:
+            # stopped,
+            # cannot stop again
+            return False
         self.__status = MachineStatus.STOPPED
         now = time.time()
-        await self.__change_state(state=None, now=now)  # force current state to None
+        return await self.__change_state(state=None, now=now)  # force current state to None
 
     # Override
-    async def pause(self):
+    async def pause(self) -> bool:
+        if self.__status != MachineStatus.RUNNING:
+            # paused or stopped,
+            # cannot pause now
+            return False
         now = time.time()
         machine = self.context
         current = self.current_state
@@ -224,9 +239,14 @@ class BaseMachine(Machine[C, T, S], ABC):
         delegate = self.delegate
         if delegate is not None:
             await delegate.pause_state(current, machine, now=now)
+        return True
 
     # Override
-    async def resume(self):
+    async def resume(self) -> bool:
+        if self.__status != MachineStatus.PAUSED:
+            # running or stopped,
+            # cannot resume now
+            return False
         now = time.time()
         machine = self.context
         current = self.current_state
@@ -245,16 +265,21 @@ class BaseMachine(Machine[C, T, S], ABC):
         #
         if current is not None:
             await current.on_resume(machine, now=now)
+        return True
 
     #
     #   Ticker
     #
 
     # Override
-    async def tick(self, now: float, elapsed: float):
-        machine = self.context
+    async def tick(self, now: Timestamp, elapsed: Duration):
+        if self.__status != MachineStatus.RUNNING:
+            # paused or stopped,
+            # cannot evaluate the transitions of current state
+            return
         current = self.current_state
-        if current is not None and self.__status == MachineStatus.RUNNING:
+        if current is not None:
+            machine = self.context
             trans = current.evaluate(machine, now=now)
             if trans is not None:
                 # assert isinstance(trans, BaseTransition), 'transition error: %s' % trans

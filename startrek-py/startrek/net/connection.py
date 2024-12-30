@@ -31,7 +31,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from ..types import SocketAddress
+from ..types import SocketAddress, Timestamp
 from ..skywalker import Ticker
 
 
@@ -120,24 +120,26 @@ class Connection(Ticker, ABC):
 
 class TimedConnection(ABC):
 
-    @property
-    @abstractmethod
-    def last_sent_time(self) -> float:
-        raise NotImplemented
+    EXPIRES = 16  # seconds
 
     @property
     @abstractmethod
-    def last_received_time(self) -> float:
+    def last_sent_time(self) -> Timestamp:
+        raise NotImplemented
+
+    @property
+    @abstractmethod
+    def last_received_time(self) -> Timestamp:
         raise NotImplemented
 
     @abstractmethod
-    def is_sent_recently(self, now: float) -> bool:
+    def is_sent_recently(self, now: Timestamp) -> bool:
         raise NotImplemented
 
     @abstractmethod
-    def is_received_recently(self, now: float) -> bool:
+    def is_received_recently(self, now: Timestamp) -> bool:
         raise NotImplemented
 
     @abstractmethod
-    def is_not_received_long_time_ago(self, now: float) -> bool:
+    def is_not_received_long_time_ago(self, now: Timestamp) -> bool:
         raise NotImplemented
