@@ -114,7 +114,7 @@ class Client(Runnable, PorterDelegate):
     # Override
     async def porter_received(self, ship: Arrival, porter: Porter):
         assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
-        data = ship.package
+        data = ship.payload
         try:
             text = data.decode('utf-8')
         except UnicodeDecodeError as error:
@@ -126,7 +126,7 @@ class Client(Runnable, PorterDelegate):
     # Override
     async def porter_sent(self, ship: Departure, porter: Porter):
         assert isinstance(ship, PlainDeparture), 'departure ship error: %s' % ship
-        size = len(ship.package)
+        size = len(ship.payload)
         Log.info(msg='message sent: %d byte(s) to %s' % (size, porter.remote_address))
 
     # Override

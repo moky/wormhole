@@ -37,12 +37,12 @@ from startrek import StarPorter
 
 class PlainArrival(ArrivalShip):
 
-    def __init__(self, pack: bytes, now: float = 0):
+    def __init__(self, payload: bytes, now: float = 0):
         super().__init__(now=now)
-        self.__completed = pack
+        self.__completed = payload
 
     @property
-    def package(self) -> bytes:
+    def payload(self) -> bytes:
         return self.__completed
 
     @property  # Override
@@ -59,13 +59,13 @@ class PlainArrival(ArrivalShip):
 
 class PlainDeparture(DepartureShip):
 
-    def __init__(self, pack: bytes, priority: int = 0):
+    def __init__(self, payload: bytes, priority: int = 0):
         super().__init__(priority=priority, max_tries=1)
-        self.__completed = pack
-        self.__fragments = [pack]
+        self.__completed = payload
+        self.__fragments = [payload]
 
     @property
-    def package(self) -> bytes:
+    def payload(self) -> bytes:
         return self.__completed
 
     @property  # Override
@@ -91,24 +91,24 @@ class PlainDeparture(DepartureShip):
 class PlainPorter(StarPorter):
 
     # noinspection PyMethodMayBeStatic
-    def _create_arrival(self, pack: bytes) -> Arrival:
-        return PlainArrival(pack=pack)
+    def _create_arrival(self, payload: bytes) -> Arrival:
+        return PlainArrival(payload=payload)
 
     # noinspection PyMethodMayBeStatic
-    def _create_departure(self, pack: bytes, priority: int):
-        return PlainDeparture(pack=pack, priority=priority)
+    def _create_departure(self, payload: bytes, priority: int):
+        return PlainDeparture(payload=payload, priority=priority)
 
     # Override
     def _get_arrivals(self, data: bytes) -> List[Arrival]:
         if data is None or len(data) == 0:
             return []
         else:
-            return [self._create_arrival(pack=data)]
+            return [self._create_arrival(payload=data)]
 
     # Override
     async def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:
         assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
-        data = ship.package
+        data = ship.payload
         if len(data) == 4:
             if data == PING:
                 # PING -> PONG
@@ -125,7 +125,7 @@ class PlainPorter(StarPorter):
 
     async def send(self, payload: bytes, priority: int) -> bool:
         """ sending payload with priority """
-        ship = self._create_departure(pack=payload, priority=priority)
+        ship = self._create_departure(payload=payload, priority=priority)
         return await self.send_ship(ship=ship)
 
     # Override

@@ -131,7 +131,7 @@ class Soldier(ThreadRunner, PorterDelegate):
     # Override
     async def porter_received(self, ship: Arrival, porter: Porter):
         assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
-        data = ship.package
+        data = ship.payload
         try:
             text = data.decode('utf-8')
         except UnicodeDecodeError as error:
@@ -143,7 +143,7 @@ class Soldier(ThreadRunner, PorterDelegate):
     # Override
     async def porter_sent(self, ship: Departure, porter: Porter):
         assert isinstance(ship, PlainDeparture), 'departure ship error: %s' % ship
-        data = ship.package
+        data = ship.payload
         size = len(data)
         destination = porter.remote_address
         Log.info(msg='message sent: %d byte(s) to %s' % (size, destination))
@@ -167,7 +167,7 @@ class Soldier(ThreadRunner, PorterDelegate):
 
     # Override
     def start(self) -> threading.Thread:
-        super().start()
+        # super().start()
         thr = threading.Thread(target=self.run, daemon=True)
         # thr.daemon = True
         thr.start()
@@ -267,7 +267,7 @@ class Colonel(ThreadRunner):
 
     # Override
     def start(self):
-        super().start()
+        # super().start()
         self.run()
 
     # Override

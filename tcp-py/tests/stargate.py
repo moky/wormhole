@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import socket
-import threading
 import time
 from abc import ABC
 from typing import Generic, TypeVar, Optional, Union
@@ -13,7 +12,7 @@ from startrek import ActiveConnection
 from startrek import Hub
 from startrek import Arrival
 from startrek import Porter, PorterDelegate
-from startrek import StarPorter, StarGate
+from startrek import StarGate
 
 from tcp import PlainArrival
 from tcp import PlainPorter
@@ -28,7 +27,6 @@ class CommonGate(StarGate, Generic[H], ABC):
     def __init__(self, delegate: PorterDelegate):
         super().__init__(delegate=delegate)
         self.__hub: H = None
-        self.__lock = threading.Lock()
 
     @property
     def hub(self) -> H:
@@ -56,29 +54,15 @@ class CommonGate(StarGate, Generic[H], ABC):
                        remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Porter]:
         return super()._remove_porter(porter=porter, remote=remote, local=None)
 
-    async def fetch_porter(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Porter:
-        # try to get docker
-        with self.__lock:
-            old = self._get_porter(remote=remote, local=local)
-            if old is None:
-                # create & cache docker
-                worker = self._create_porter(remote=remote, local=local)
-                self._set_porter(worker, remote=remote, local=local)
-            else:
-                worker = old
-        if old is None:
-            hub = self.hub
-            assert isinstance(hub, Hub), 'gate hub error: %s' % hub
-            conn = await hub.connect(remote=remote, local=local)
-            if conn is None:
-                # assert False, 'failed to get connection: %s -> %s' % (local, remote)
-                self._remove_porter(worker, remote=remote, local=local)
-                worker = None
-            else:
-                assert isinstance(worker, StarPorter), 'docker error: %s, %s' % (remote, worker)
-                # set connection for this docker
-                await worker.set_connection(conn)
-        return worker
+    async def fetch_porter(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Porter]:
+        # get connection from hub
+        hub = self.hub
+        assert isinstance(hub, Hub), 'gate hub error: %s' % hub
+        conn = await hub.connect(remote=remote, local=local)
+        if conn is not None:
+            # connected, get docker with this connection
+            return await self._dock(connection=conn, new_porter=True)
+        assert False, 'failed to get connection: %s -> %s' % (local, remote)
 
     async def send_response(self, payload: bytes, ship: Arrival,
                             remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
@@ -111,12 +95,15 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
         return self.__running
 
     async def start(self):
-        assert not self.__running, 'auto gate is running: %s' % self
+        if self.running:
+            assert False, 'auto gate is running: %s' % self
+            # return False
         # 1. mark this gate to running
         self.__running = True
         # 2. start an async task for this gate
         self.__daemon.start()
         # await self.run()
+        return True
 
     async def stop(self):
         # 1. mark this gate to stopped
@@ -128,12 +115,28 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
 
     # Override
     async def run(self):
+        await self.setup()
+        try:
+            await self.handle()
+        finally:
+            await self.finish()
+
+    async def setup(self):
+        self.__running = True
+
+    async def finish(self):
+        self.__running = False
+
+    async def handle(self):
         while self.running:
             if await self.process():
-                # Log.info(msg='processed')
+                # process() return true,
+                # means this thread is busy,
+                # so process next task immediately
                 pass
             else:
-                # Log.info(msg='nothing to do now')
+                # nothing to do now,
+                # have a rest ^_^
                 await self._idle()
         Log.info(msg='auto gate stopped: %s' % self)
 
@@ -197,10 +200,12 @@ class Log:
     def info(cls, msg: str):
         now = time.time()
         prefix = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now))
-        print('[%s] %s' % (prefix, msg))
+        print('[%s]         | %s' % (prefix, msg))
         pass
 
     @classmethod
     def error(cls, msg: str):
-        print('[ERROR] ', msg)
+        now = time.time()
+        prefix = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now))
+        print('[%s]  ERROR  | %s' % (prefix, msg))
         pass

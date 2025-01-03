@@ -33,7 +33,8 @@ from typing import Optional, Tuple
 
 from startrek.types import SocketAddress
 from startrek.net.socket import is_available
-from startrek import BaseChannel, ChannelReader, ChannelWriter
+from startrek.socket import Controller, SocketReader, SocketWriter
+from startrek import BaseChannel
 
 from .aio import is_blocking, is_closed
 from .aio import socket_send, socket_receive
@@ -94,21 +95,20 @@ class ChannelChecker:
                 return socket.error('remote peer reset socket %s' % sock)
 
 
-class StreamChannelReader(ChannelReader):
+class StreamChannelReader(Controller, SocketReader):
 
-    # Override
+    # noinspection PyMethodMayBeStatic
     async def _socket_receive(self, sock: socket.socket, max_len: int) -> Optional[bytes]:
         if is_closed(sock=sock):
             raise ConnectionError('socket closed')
         elif not is_available(sock=sock):
             # TODO: check 'broken pipe'
             return None
-        elif is_blocking(sock=sock):
-            return await super()._socket_receive(sock=sock, max_len=max_len)
+        # elif is_blocking(sock=sock):
+        #     return sock.recv(max_len)
         else:
             return await socket_receive(sock=sock, max_len=max_len)
 
-    # noinspection PyMethodMayBeStatic
     async def _try_read(self, max_len: int, sock: socket.socket) -> Optional[bytes]:
         try:
             # return sock.recv(max_len)
@@ -146,21 +146,20 @@ class StreamChannelReader(ChannelReader):
             return data, self.remote_address
 
 
-class StreamChannelWriter(ChannelWriter):
+class StreamChannelWriter(Controller, SocketWriter):
 
-    # Override
+    # noinspection PyMethodMayBeStatic
     async def _socket_send(self, sock: socket.socket, data: bytes) -> int:
         if is_closed(sock=sock):
             raise ConnectionError('socket closed')
         # elif not is_vacant(sock=sock):
         #     # TODO: check 'broken pipe'
         #     return -1
-        elif is_blocking(sock=sock):
-            return await super()._socket_send(sock=sock, data=data)
+        # elif is_blocking(sock=sock):
+        #     return sock.send(data)
         else:
             return await socket_send(sock=sock, data=data)
 
-    # noinspection PyMethodMayBeStatic
     async def _try_write(self, data: bytes, sock: socket.socket) -> int:
         try:
             # return sock.send(data)
