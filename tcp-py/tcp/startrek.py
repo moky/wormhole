@@ -28,10 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from startrek import Arrival, ArrivalShip
-from startrek import DepartureShip, DeparturePriority
+from startrek import Departure, DepartureShip, DeparturePriority
 from startrek import StarPorter
 
 
@@ -40,6 +40,16 @@ class PlainArrival(ArrivalShip):
     def __init__(self, payload: bytes, now: float = 0):
         super().__init__(now=now)
         self.__completed = payload
+
+    def __str__(self) -> str:
+        cname = self.__class__.__name__
+        size = len(self.__completed)
+        return '<%s: size=%d />' % (cname, size)
+
+    def __repr__(self) -> str:
+        cname = self.__class__.__name__
+        size = len(self.__completed)
+        return '<%s: size=%d />' % (cname, size)
 
     @property
     def payload(self) -> bytes:
@@ -59,10 +69,21 @@ class PlainArrival(ArrivalShip):
 
 class PlainDeparture(DepartureShip):
 
-    def __init__(self, payload: bytes, priority: int = 0):
+    def __init__(self, payload: bytes, priority: int = 0, needs_respond: bool = False):
         super().__init__(priority=priority, max_tries=1)
         self.__completed = payload
         self.__fragments = [payload]
+        self.__important = needs_respond
+
+    def __str__(self) -> str:
+        cname = self.__class__.__name__
+        size = len(self.__completed)
+        return '<%s: size=%d />' % (cname, size)
+
+    def __repr__(self) -> str:
+        cname = self.__class__.__name__
+        size = len(self.__completed)
+        return '<%s: size=%d />' % (cname, size)
 
     @property
     def payload(self) -> bytes:
@@ -85,7 +106,7 @@ class PlainDeparture(DepartureShip):
     @property  # Override
     def is_important(self) -> bool:
         # plain departure no needs response
-        return False
+        return self.__important
 
 
 class PlainPorter(StarPorter):
@@ -95,8 +116,8 @@ class PlainPorter(StarPorter):
         return PlainArrival(payload=payload)
 
     # noinspection PyMethodMayBeStatic
-    def _create_departure(self, payload: bytes, priority: int):
-        return PlainDeparture(payload=payload, priority=priority)
+    def _create_departure(self, payload: bytes, priority: int, needs_respond: bool) -> Departure:
+        return PlainDeparture(payload=payload, priority=priority, needs_respond=needs_respond)
 
     # Override
     def _get_arrivals(self, data: bytes) -> List[Arrival]:
@@ -112,7 +133,7 @@ class PlainPorter(StarPorter):
         if len(data) == 4:
             if data == PING:
                 # PING -> PONG
-                await self.send(payload=PONG, priority=DeparturePriority.SLOWER)
+                await self.respond(payload=PONG)
                 return None
             if data == PONG or data == NOOP:
                 # ignore
@@ -123,18 +144,27 @@ class PlainPorter(StarPorter):
     #   Sending
     #
 
+    async def respond(self, payload: bytes) -> bool:
+        """ sending response """
+        priority = DeparturePriority.SLOWER.value
+        ship = self._create_departure(payload=payload, priority=priority, needs_respond=False)
+        return await self.send_ship(ship=ship)
+
     async def send(self, payload: bytes, priority: int) -> bool:
         """ sending payload with priority """
-        ship = self._create_departure(payload=payload, priority=priority)
+        ship = self._create_departure(payload=payload, priority=priority, needs_respond=True)
         return await self.send_ship(ship=ship)
 
     # Override
-    async def send_data(self, payload: Union[bytes, bytearray]) -> bool:
-        return await self.send(payload=payload, priority=DeparturePriority.NORMAL)
+    async def send_data(self, payload: bytes) -> bool:
+        priority = DeparturePriority.NORMAL.value
+        return await self.send(payload=payload, priority=priority)
 
     # Override
     async def heartbeat(self):
-        await self.send(payload=PING, priority=DeparturePriority.SLOWER)
+        priority = DeparturePriority.SLOWER.value
+        ship = self._create_departure(payload=PING, priority=priority, needs_respond=False)
+        await self.send_ship(ship=ship)
 
 
 PING = b'PING'

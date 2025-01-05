@@ -29,7 +29,7 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
-from typing import Optional, Union
+from typing import Optional
 
 from ..types import SocketAddress
 from ..skywalker import Processor
@@ -44,7 +44,7 @@ class Gate(Processor, ABC):
     """
 
     @abstractmethod
-    async def send_data(self, payload: Union[bytes, bytearray],
+    async def send_data(self, payload: bytes,
                         remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
         """
         Pack data to an outgo ship (with normal priority), and

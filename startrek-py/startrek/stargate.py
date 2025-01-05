@@ -94,7 +94,7 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         return self.__delegate_ref()
 
     # Override
-    async def send_data(self, payload: Union[bytes, bytearray],
+    async def send_data(self, payload: bytes,
                         remote: SocketAddress, local: Optional[SocketAddress]) -> bool:
         docker = self._get_porter(remote=remote, local=local)
         if docker is None:

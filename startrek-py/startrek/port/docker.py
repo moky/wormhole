@@ -30,8 +30,9 @@
 
 from abc import abstractmethod
 from enum import IntEnum
-from typing import Optional, Union
+from typing import Optional
 
+from ..types import Timestamp
 from ..types import SocketAddress
 from ..skywalker import Processor
 from ..net import ConnectionState
@@ -108,7 +109,7 @@ class Porter(Processor):
         raise NotImplemented
 
     @abstractmethod
-    async def send_data(self, payload: Union[bytes, bytearray]) -> bool:
+    async def send_data(self, payload: bytes) -> bool:
         """
         Pack data to an outgo ship (with normal priority), and
         append to the waiting queue for sending out
@@ -146,7 +147,7 @@ class Porter(Processor):
         raise NotImplemented
 
     @abstractmethod
-    def purge(self, now: float) -> int:
+    def purge(self, now: Timestamp) -> int:
         """ Clear all expired tasks """
         raise NotImplemented
 

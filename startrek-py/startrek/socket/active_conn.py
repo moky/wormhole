@@ -112,6 +112,6 @@ class ActiveConnection(BaseConnection, Runnable):
                 print('[Socket] active connection error: %s' % error)
                 delegate = self.delegate
                 if delegate is not None:
-                    delegate.connection_error(error=IOError(error), connection=self)
+                    await delegate.connection_error(error=IOError(error), connection=self)
         # connection exists
         print('[Socket] active connection exists: %s' % self.remote_address)

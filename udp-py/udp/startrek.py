@@ -52,6 +52,16 @@ class PackageArrival(ArrivalShip):
             self.__packer = None
             self.__completed = pack
 
+    def __str__(self) -> str:
+        cname = self.__class__.__name__
+        size = len(self.__completed)
+        return '<%s: size=%d />' % (cname, size)
+
+    def __repr__(self) -> str:
+        cname = self.__class__.__name__
+        size = len(self.__completed)
+        return '<%s: size=%d />' % (cname, size)
+
     @property
     def package(self) -> Optional[Package]:
         return self.__completed
@@ -100,6 +110,16 @@ class PackageDeparture(DepartureShip):
             return Packer.split(package=pack)
         else:
             return [pack]
+
+    def __str__(self) -> str:
+        cname = self.__class__.__name__
+        size = len(self.__completed)
+        return '<%s: size=%d />' % (cname, size)
+
+    def __repr__(self) -> str:
+        cname = self.__class__.__name__
+        size = len(self.__completed)
+        return '<%s: size=%d />' % (cname, size)
 
     @property
     def package(self) -> Package:
@@ -299,7 +319,7 @@ class PackagePorter(StarPorter):
         return await self.send_ship(ship=outgo)
 
     # Override
-    async def send_data(self, payload: Union[bytes, bytearray]) -> bool:
+    async def send_data(self, payload: bytes) -> bool:
         return await self.send_message(body=payload)
 
     # Override
