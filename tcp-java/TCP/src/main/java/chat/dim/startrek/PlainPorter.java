@@ -48,8 +48,8 @@ public class PlainPorter extends StarPorter {
         return new PlainArrival(pack);
     }
 
-    protected Departure createDeparture(byte[] pack, int priority) {
-        return new PlainDeparture(pack, priority);
+    protected Departure createDeparture(byte[] pack, int priority, boolean needsRespond) {
+        return new PlainDeparture(pack, priority, needsRespond);
     }
 
     @Override
@@ -70,7 +70,8 @@ public class PlainPorter extends StarPorter {
         if (data.length == 4) {
             if (Arrays.equals(data, PING)) {
                 // PING -> PONG
-                send(PONG, Departure.Priority.SLOWER.value);
+                boolean ok = respond(PONG);
+                assert ok : "failed to respond";
                 return null;
             } else if (Arrays.equals(data, PONG)
                     || Arrays.equals(data, NOOP)) {
@@ -85,19 +86,27 @@ public class PlainPorter extends StarPorter {
     //  Sending
     //
 
+    public boolean respond(byte[] payload) {
+        // sending response
+        int priority = Departure.Priority.SLOWER.value;
+        return sendShip(createDeparture(payload, priority, false));
+    }
+
     public boolean send(byte[] payload, int priority) {
         // sending payload with priority
-        return sendShip(createDeparture(payload, priority));
+        return sendShip(createDeparture(payload, priority, true));
     }
 
     @Override
     public boolean sendData(byte[] payload) {
-        return send(payload, Departure.Priority.NORMAL.value);
+        int priority = Departure.Priority.NORMAL.value;
+        return send(payload, priority);
     }
 
     @Override
     public void heartbeat() {
-        send(PING, Departure.Priority.SLOWER.value);
+        int priority = Departure.Priority.SLOWER.value;
+        sendShip(createDeparture(PING, priority, false));
     }
 
     static final byte[] PING = {'P', 'I', 'N', 'G'};

@@ -62,6 +62,12 @@ public class PackageArrival extends ArrivalShip {
         this(pack, new Date());
     }
 
+    @Override
+    public String toString() {
+        String cname = getClass().getName();
+        return "<" + cname + " size=" + completed.getSize() + " />";
+    }
+
     public Package getPackage() {
         return completed;
     }

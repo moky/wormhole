@@ -39,12 +39,20 @@ public class PlainDeparture extends DepartureShip {
 
     private final byte[] completed;
     private final List<byte[]> fragments;
+    private final boolean important;
 
-    public PlainDeparture(byte[] pack, int prior) {
+    public PlainDeparture(byte[] pack, int prior, boolean needsRespond) {
         super(prior, 1);
         completed = pack;
         fragments = new ArrayList<>();
         fragments.add(pack);
+        important = needsRespond;
+    }
+
+    @Override
+    public String toString() {
+        String cname = getClass().getName();
+        return "<" + cname + " size=" + completed.length + " />";
     }
 
     public byte[] getPayload() {
@@ -71,6 +79,6 @@ public class PlainDeparture extends DepartureShip {
     @Override
     public boolean isImportant() {
         // plain departure no needs response
-        return false;
+        return important;
     }
 }

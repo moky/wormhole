@@ -47,6 +47,12 @@ public class PlainArrival extends ArrivalShip {
         completed = pack;
     }
 
+    @Override
+    public String toString() {
+        String cname = getClass().getName();
+        return "<" + cname + " size=" + completed.length + " />";
+    }
+
     public byte[] getPayload() {
         return completed;
     }

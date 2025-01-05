@@ -60,6 +60,12 @@ public class PackageDeparture extends DepartureShip {
         this(pack, prior, 1 + RETRIES);
     }
 
+    @Override
+    public String toString() {
+        String cname = getClass().getName();
+        return "<" + cname + " size=" + completed.getSize() + " />";
+    }
+
     protected List<Package> split(Package pack) {
         if (pack.isMessage()) {
             return Packer.split(pack);
