@@ -49,8 +49,6 @@ import chat.dim.type.Duration;
 public class BaseConnection extends AddressPairObject
         implements Connection, TimedConnection, ConnectionState.Delegate {
 
-    public static Duration EXPIRES = Duration.ofSeconds(16);
-
     private WeakReference<Delegate> delegateRef = null;
 
     private WeakReference<Channel> channelRef = null;
@@ -144,7 +142,7 @@ public class BaseConnection extends AddressPairObject
             return true;
         }
         Channel sock = getChannel();
-        return sock == null || sock.isOpen();
+        return sock != null && sock.isOpen();
     }
 
     @Override

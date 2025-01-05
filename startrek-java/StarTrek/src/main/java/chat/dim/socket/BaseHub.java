@@ -93,13 +93,13 @@ public abstract class BaseHub implements Hub {
 
     private final WeakReference<Connection.Delegate> delegateRef;
     private final AddressPairMap<Connection> connectionPool;
-    private final ReadWriteLock lock;
+    private final ReadWriteLock connectionLock;
 
     protected BaseHub(Connection.Delegate gate) {
         super();
         delegateRef = new WeakReference<>(gate);
         connectionPool = createConnectionPool();
-        lock = new ReentrantReadWriteLock();
+        connectionLock = new ReentrantReadWriteLock();
     }
 
     protected AddressPairMap<Connection> createConnectionPool() {
@@ -159,6 +159,10 @@ public abstract class BaseHub implements Hub {
 
     @Override
     public Connection connect(SocketAddress remote, SocketAddress local) {
+        if (remote == null) {
+            assert false : "remote address empty";
+            return null;
+        }
         //
         //  0. pre-checking
         //
@@ -173,10 +177,11 @@ public abstract class BaseHub implements Hub {
                 return conn;
             }
         }
+        Connection cached;
         //
         //  1. lock to check
         //
-        Lock writeLock = lock.writeLock();
+        Lock writeLock = connectionLock.writeLock();
         writeLock.lock();
         try {
             // check again
@@ -198,15 +203,18 @@ public abstract class BaseHub implements Hub {
                 local = conn.getLocalAddress();
             }
             // cache the connection
-            Connection cached = setConnection(remote, local, conn);
-            if (cached != null && cached != conn) {
-                cached.close();
-            }
+            cached = setConnection(remote, local, conn);
         } finally {
             writeLock.unlock();
         }
         //
-        //  2. start the new connection
+        //  2. close old connection
+        //
+        if (cached != null && cached != conn) {
+            cached.close();
+        }
+        //
+        //  3. start the new connection
         //
         if (conn instanceof BaseConnection) {
             // try to open channel with direction (remote, local)

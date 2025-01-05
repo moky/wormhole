@@ -30,10 +30,13 @@
  */
 package chat.dim.tcp;
 
+import java.io.IOException;
 import java.net.SocketAddress;
+import java.nio.channels.SocketChannel;
 
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
+import chat.dim.socket.BaseChannel;
 import chat.dim.socket.BaseHub;
 import chat.dim.type.AddressPairMap;
 
@@ -49,7 +52,7 @@ class ChannelPool extends AddressPairMap<Channel> {
         }
         /*/
         Channel old = super.set(remote, local, value);
-        assert old != null : "should not happen";
+        assert old == null : "should not happen";
         return cached;
     }
 
@@ -125,6 +128,14 @@ public abstract class StreamHub extends BaseHub {
     @Override
     protected Channel removeChannel(SocketAddress remote, SocketAddress local, Channel channel) {
         return channelPool.remove(remote, local, channel);
+    }
+
+    protected static void setSocket(SocketChannel socket, BaseChannel<SocketChannel> channel) {
+        try {
+            channel.setSocket(socket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }

@@ -62,7 +62,7 @@ public class Client implements Porter.Delegate {
     @Override
     public void onPorterReceived(Arrival income, Porter porter) {
         assert income instanceof PlainArrival : "arrival ship error: " + income;
-        byte[] data = ((PlainArrival) income).getPackage();
+        byte[] data = ((PlainArrival) income).getPayload();
         String text = new String(data, StandardCharsets.UTF_8);
         SocketAddress source = porter.getRemoteAddress();
         Log.info("<<< received (" + data.length + " bytes) from " + source + ": " + text);

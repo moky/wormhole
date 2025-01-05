@@ -153,22 +153,22 @@ public class ServerHub extends StreamHub implements Runnable {
 
     // override for user-customized channel
     @SuppressWarnings("unchecked")
-    protected void accept(SocketAddress remote, SocketAddress local, SocketChannel sock) {
+    protected void accept(SocketAddress remote, SocketAddress local, SocketChannel socket) {
         // create new channel
         Channel channel = createChannel(remote, local);
         if (local == null) {
             local = channel.getLocalAddress();
         }
         try {
-            sock.configureBlocking(false);
+            socket.configureBlocking(false);
         } catch (IOException e) {
             e.printStackTrace();
         }
         // set socket
         if (channel instanceof BaseChannel) {
-            ((BaseChannel<SocketChannel>) channel).setSocket(sock);
+            setSocket(socket, (BaseChannel<SocketChannel>) channel);
         } else {
-            assert false : "failed to create socket channel: " + sock + ", remote=" + remote + ", local=" + local;
+            assert false : "failed to create socket channel: " + socket + ", remote=" + remote + ", local=" + local;
         }
         // cache the channel
         Channel cached = setChannel(remote, local, channel);

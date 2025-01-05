@@ -32,10 +32,14 @@ package chat.dim.net;
 
 import java.util.Date;
 
+import chat.dim.type.Duration;
+
 /**
  *  Connection with sent/received time
  */
 public interface TimedConnection {
+
+    Duration EXPIRES = Duration.ofSeconds(16);
 
     Date getLastSentTime();
 

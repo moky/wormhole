@@ -52,7 +52,8 @@ public abstract class ArrivalShip implements Arrival {
         expired = EXPIRES.addTo(now);
     }
     protected ArrivalShip() {
-        this(new Date());
+        super();
+        expired = EXPIRES.addTo(new Date());
     }
 
     @Override

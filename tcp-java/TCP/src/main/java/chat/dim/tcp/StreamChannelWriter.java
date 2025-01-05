@@ -32,8 +32,8 @@ package chat.dim.tcp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
 
@@ -84,21 +84,17 @@ public class StreamChannelWriter extends ChannelController<SocketChannel> implem
     public int write(ByteBuffer src) throws IOException {
         SocketChannel sock = getSocket();
         if (sock == null || !sock.isOpen()) {
-            throw new SocketException();
+            throw new ClosedChannelException();
         }
         return sendAll(sock, src);
     }
 
     @Override
     public int send(ByteBuffer src, SocketAddress target) throws IOException {
-        SocketChannel sock = getSocket();
-        if (sock == null || !sock.isOpen()) {
-            throw new SocketException();
-        }
         // TCP channel will be always connected
         // so the target address must be the remote address
-        SocketAddress remote = getRemoteAddress();
-        assert target == null || target.equals(remote) : "target error: " + target + ", remote=" + remote;
+        assert target == null || target.equals(getRemoteAddress()) :
+                "target error: " + target + ", remote=" + getRemoteAddress();
         return write(src);
     }
 

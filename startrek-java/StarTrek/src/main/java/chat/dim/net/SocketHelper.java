@@ -134,61 +134,46 @@ public interface SocketHelper {
     //  Async Socket I/O
     //
 
-    static boolean socketBind(NetworkChannel sock, SocketAddress local) {
-        try {
-            sock.bind(local);
-            return sock instanceof SelectableChannel && socketIsBound((SelectableChannel) sock);
-        } catch (IOException e) {
-            e.printStackTrace();
+    static boolean socketBind(NetworkChannel sock, SocketAddress local) throws IOException {
+        sock.bind(local);
+        return sock instanceof SelectableChannel && socketIsBound((SelectableChannel) sock);
+    }
+
+    static boolean socketConnect(NetworkChannel sock, SocketAddress remote) throws IOException {
+        if (sock instanceof SocketChannel) {
+            // TCP
+            SocketChannel tcp = (SocketChannel) sock;
+            return tcp.connect(remote);
+        } else if (sock instanceof DatagramChannel) {
+            // UDP
+            DatagramChannel udp = (DatagramChannel) sock;
+            udp.connect(remote);
+            return udp.isConnected();
         }
+        assert false : "unknown socket channel: " + sock;
         return false;
     }
 
-    static boolean socketConnect(NetworkChannel sock, SocketAddress remote) {
-        try {
-            if (sock instanceof SocketChannel) {
-                // TCP
-                SocketChannel tcp = (SocketChannel) sock;
-                return tcp.connect(remote);
-            } else if (sock instanceof DatagramChannel) {
-                // UDP
-                DatagramChannel udp = (DatagramChannel) sock;
-                udp.connect(remote);
-                return udp.isConnected();
+    static boolean socketDisconnect(SelectableChannel sock) throws IOException {
+        if (sock instanceof SocketChannel) {
+            // TCP
+            SocketChannel tcp = (SocketChannel) sock;
+            if (tcp.isOpen()) {
+                tcp.close();
+                return !tcp.isOpen();
             } else {
-                assert false : "unknown socket channel: " + sock;
+                // already closed
+                return true;
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-
-    static boolean socketDisconnect(SelectableChannel sock) {
-        try {
-            if (sock instanceof SocketChannel) {
-                // TCP
-                SocketChannel tcp = (SocketChannel) sock;
-                if (tcp.isOpen()) {
-                    tcp.close();
-                    return !tcp.isOpen();
-                } else {
-                    // already closed
-                    return true;
-                }
-            } else if (sock instanceof DatagramChannel) {
-                // UDP
-                DatagramChannel udp = (DatagramChannel) sock;
-                if (udp.isConnected()) {
-                    udp.disconnect();
-                }
-                return !udp.isConnected();
-            } else {
-                assert false : "unknown socket channel: " + sock;
+        } else if (sock instanceof DatagramChannel) {
+            // UDP
+            DatagramChannel udp = (DatagramChannel) sock;
+            if (udp.isConnected()) {
+                udp.disconnect();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+            return !udp.isConnected();
         }
+        assert false : "unknown socket channel: " + sock;
         return false;
     }
 

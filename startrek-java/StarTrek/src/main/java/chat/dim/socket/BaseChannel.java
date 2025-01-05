@@ -68,7 +68,10 @@ public abstract class BaseChannel<C extends SelectableChannel>
         reader = createReader();
         writer = createWriter();
         impl = null;
-        flag = -1;
+        flag = -1;  // closed flag
+                    //      -1: initializing
+                    //       0: open
+                    //       1: closed
     }
 
     @Override
@@ -99,7 +102,7 @@ public abstract class BaseChannel<C extends SelectableChannel>
     /**
      *  Set inner socket for this channel
      */
-    public void setSocket(C sock) {
+    public void setSocket(C sock) throws IOException {
         // 1. replace with new socket
         C old = impl;
         if (sock != null) {
@@ -220,7 +223,8 @@ public abstract class BaseChannel<C extends SelectableChannel>
         return sock;
     }
 
-    protected boolean bind(C sock, SocketAddress local) {
+    // doBind
+    protected boolean bind(C sock, SocketAddress local) throws IOException {
         if (sock instanceof NetworkChannel) {
             return SocketHelper.socketBind((NetworkChannel) sock, local);
         }
@@ -228,7 +232,8 @@ public abstract class BaseChannel<C extends SelectableChannel>
         return false;
     }
 
-    protected boolean connect(C sock, SocketAddress remote) {
+    // doConnect
+    protected boolean connect(C sock, SocketAddress remote) throws IOException {
         if (sock instanceof NetworkChannel) {
             return SocketHelper.socketConnect((NetworkChannel) sock, remote);
         }
@@ -236,7 +241,8 @@ public abstract class BaseChannel<C extends SelectableChannel>
         return false;
     }
 
-    protected boolean disconnect(C sock) {
+    // doDisconnect
+    protected boolean disconnect(C sock) throws IOException {
         return SocketHelper.socketDisconnect(sock);
     }
 

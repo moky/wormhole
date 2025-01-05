@@ -32,8 +32,8 @@ package chat.dim.udp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 
 import chat.dim.socket.BaseChannel;
@@ -50,7 +50,7 @@ public class PacketChannelWriter extends ChannelController<DatagramChannel> impl
     public int write(ByteBuffer src) throws IOException {
         DatagramChannel sock = getSocket();
         if (sock == null || !sock.isOpen()) {
-            throw new SocketException();
+            throw new ClosedChannelException();
         }
         return sock.write(src);
     }
@@ -59,7 +59,7 @@ public class PacketChannelWriter extends ChannelController<DatagramChannel> impl
     public int send(ByteBuffer src, SocketAddress target) throws IOException {
         DatagramChannel sock = getSocket();
         if (sock == null || !sock.isOpen()) {
-            throw new SocketException();
+            throw new ClosedChannelException();
         } else if (sock.isConnected()) {
             // connected (TCP/UDP)
             SocketAddress remote = getRemoteAddress();

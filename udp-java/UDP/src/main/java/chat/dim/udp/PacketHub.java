@@ -100,7 +100,7 @@ class ChannelPool extends AddressPairMap<Channel> {
         }
         /*/
         Channel old = super.set(remote, local, value);
-        assert old != null : "should not happen";
+        assert old == null : "should not happen";
         return cached;
     }
 

@@ -32,8 +32,8 @@ package chat.dim.tcp;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
 
 import chat.dim.socket.BaseChannel;
@@ -50,19 +50,20 @@ public class StreamChannelReader extends ChannelController<SocketChannel> implem
     public int read(ByteBuffer dst) throws IOException {
         SocketChannel sock = getSocket();
         if (sock == null || !sock.isOpen()) {
-            throw new SocketException();
+            throw new ClosedChannelException();
         }
         return sock.read(dst);
     }
 
     @Override
     public SocketAddress receive(ByteBuffer dst) throws IOException {
-        SocketChannel sock = getSocket();
-        if (sock == null || !sock.isOpen()) {
-            throw new SocketException();
-        } else {
-            return sock.read(dst) > 0 ? getRemoteAddress() : null;
+        int cnt = read(dst);
+        if (cnt <= 0) {
+            return null;
         }
+        SocketAddress remote = getRemoteAddress();
+        assert remote != null : "should not happen: " + cnt;
+        return remote;
     }
 
 }

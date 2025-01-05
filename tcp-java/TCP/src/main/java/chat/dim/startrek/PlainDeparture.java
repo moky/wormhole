@@ -31,7 +31,6 @@
 package chat.dim.startrek;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import chat.dim.port.Arrival;
@@ -48,7 +47,7 @@ public class PlainDeparture extends DepartureShip {
         fragments.add(pack);
     }
 
-    public byte[] getPackage() {
+    public byte[] getPayload() {
         return completed;
     }
 
@@ -56,23 +55,6 @@ public class PlainDeparture extends DepartureShip {
     public Object getSN() {
         // plain ship has no SN
         return null;
-    }
-
-    @Override
-    public boolean equals(Object other) {
-        if (super.equals(other)) {
-            return true;
-        } else if (other instanceof PlainDeparture) {
-            PlainDeparture ship = (PlainDeparture) other;
-            return Arrays.equals(completed, ship.completed);
-        } else {
-            return false;
-        }
-    }
-
-    @Override
-    public int hashCode() {
-        return Arrays.hashCode(completed);
     }
 
     @Override

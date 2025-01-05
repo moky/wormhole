@@ -33,6 +33,9 @@ package chat.dim.tcp;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import chat.dim.net.Channel;
 import chat.dim.net.Connection;
@@ -45,8 +48,11 @@ import chat.dim.socket.BaseChannel;
  */
 public class ClientHub extends StreamHub {
 
+    private final ReadWriteLock channelLock;
+
     public ClientHub(Connection.Delegate gate) {
         super(gate);
+        channelLock = new ReentrantReadWriteLock();
     }
 
     @Override
@@ -64,34 +70,66 @@ public class ClientHub extends StreamHub {
             return null;
         }
         //
-        //  1. check channel
+        //  0. pre-checking
         //
         Channel channel = getChannel(remote, local);
         if (channel != null) {
-            return channel;
-        }
-        // channel not exists, create new one
-        channel = createChannel(remote, local);
-        if (local == null) {
-            local = channel.getLocalAddress();
-        }
-        // cache the channel
-        Channel cached = setChannel(remote, local, channel);
-        if (cached != null && cached != channel) {
-            closeChannel(cached);
+            // check local address
+            if (local == null) {
+                return channel;
+            }
+            SocketAddress address = channel.getLocalAddress();
+            if (address == null || address == local) {
+                return channel;
+            }
         }
         //
-        //  2. create socket
+        //  1. lock to check
+        //
+        Lock writeLock = channelLock.writeLock();
+        writeLock.lock();
+        try {
+            // check again
+            channel = getChannel(remote, local);
+            if (channel != null) {
+                // check local address
+                if (local == null) {
+                    return channel;
+                }
+                SocketAddress address = channel.getLocalAddress();
+                if (address == null || address == local) {
+                    return channel;
+                }
+            }
+            // channel not exists, or local address not matched,
+            // create new channel
+            channel = createChannel(remote, local);
+            if (local == null) {
+                local = channel.getLocalAddress();
+            }
+            // cache the channel
+            Channel cached = setChannel(remote, local, channel);
+            if (cached != null && cached != channel) {
+                closeChannel(cached);
+            }
+        } finally {
+            writeLock.unlock();
+        }
+        //
+        //  2. create socket for this channel
         //
         if (channel instanceof BaseChannel) {
             SocketChannel socket = createSocket(remote, local);
             if (socket == null) {
-                // assert false : "failed to prepare socket: " + local + " -> " + remote;
+                 assert false : "failed to prepare socket: " + local + " -> " + remote;
                 removeChannel(remote, local, channel);
                 channel = null;
             } else {
-                ((BaseChannel<SocketChannel>) channel).setSocket(socket);
+                // set socket for this channel
+                setSocket(socket, (BaseChannel<SocketChannel>) channel);
             }
+        } else {
+            assert false : "channel error: " + remote + ", " + channel;
         }
         return channel;
     }

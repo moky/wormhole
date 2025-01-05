@@ -62,12 +62,15 @@ public abstract class DepartureShip implements Departure {
     protected DepartureShip(int prior, int maxTries) {
         super();
         assert maxTries != 0 : "max tries should not be 0";
+        tries = maxTries;
         priority = prior;
         expired = null;
-        tries = maxTries;
     }
     protected DepartureShip() {
-        this(0, 1 + RETRIES);
+        super();
+        tries = 1 + RETRIES;
+        priority = 0;
+        expired = null;
     }
 
     @Override

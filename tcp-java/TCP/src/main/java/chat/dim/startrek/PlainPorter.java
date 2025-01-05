@@ -66,7 +66,7 @@ public class PlainPorter extends StarPorter {
     @Override
     protected Arrival checkArrival(Arrival income) {
         assert income instanceof PlainArrival : "arrival ship error: " + income;
-        byte[] data = ((PlainArrival) income).getPackage();
+        byte[] data = ((PlainArrival) income).getPayload();
         if (data.length == 4) {
             if (Arrays.equals(data, PING)) {
                 // PING -> PONG

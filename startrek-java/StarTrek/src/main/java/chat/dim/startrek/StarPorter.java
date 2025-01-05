@@ -127,7 +127,7 @@ public abstract class StarPorter extends AddressPairObject implements Porter {
             return true;
         }
         Connection conn = getConnection();
-        return conn == null || conn.isOpen();
+        return conn != null && conn.isOpen();
     }
 
     @Override
