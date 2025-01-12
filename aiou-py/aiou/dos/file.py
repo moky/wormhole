@@ -28,12 +28,109 @@
 # SOFTWARE.
 # ==============================================================================
 
+import asyncio
 import json
+import multiprocessing
 from typing import Optional, Union, List, Dict
 
 import aiofiles
 
 from .path import Path
+
+
+class BinaryAccess:
+
+    async def read(self, path: str) -> Optional[bytes]:
+        async with aiofiles.open(path, mode='rb') as file:
+            return await file.read()
+
+    async def write(self, data: bytes, path: str) -> int:
+        async with aiofiles.open(path, mode='wb') as file:
+            return await file.write(data)
+
+    async def append(self, data: bytes, path: str) -> int:
+        async with aiofiles.open(path, mode='ab') as file:
+            return await file.write(data)
+
+
+class LockedAccess(BinaryAccess):
+
+    def __init__(self, lock):
+        super().__init__()
+        self.__lock = lock
+
+    # Override
+    async def read(self, path: str) -> Optional[bytes]:
+        with self.__lock:
+            return await super().read(path=path)
+
+    # Override
+    async def write(self, data: bytes, path: str) -> int:
+        with self.__lock:
+            return await super().write(data=data, path=path)
+
+    # Override
+    async def append(self, data: bytes, path: str) -> int:
+        with self.__lock:
+            return await super().append(data=data, path=path)
+
+
+class SafelyAccess:
+
+    def __init__(self, access: BinaryAccess):
+        super().__init__()
+        self.__dos = access
+
+    async def read(self, path: str) -> Optional[bytes]:
+        try:
+            return await self.__dos.read(path=path)
+        except Exception as error:
+            print('[DOS] reading file error: %s, path=%s' % (error, path))
+
+    async def write(self, data: bytes, path: str) -> int:
+        try:
+            return await self.__dos.write(data=data, path=path)
+        except Exception as error:
+            size = 0 if data is None else len(data)
+            print('[DOS] writing file error: %s, %d byte(s), path=%s' % (error, size, path))
+
+    async def append(self, data: bytes, path: str) -> int:
+        try:
+            return await self.__dos.append(data=data, path=path)
+        except Exception as error:
+            size = 0 if data is None else len(data)
+            print('[DOS] appending file error: %s, %d byte(s), path=%s' % (error, size, path))
+
+
+class FileHelper:
+
+    LOCK_1 = asyncio.Lock()
+    LOCK_2 = multiprocessing.Lock()
+
+    lock = None
+    # lock = LOCK_1
+    # lock = LOCK_2
+
+    safely = False
+
+    @classmethod
+    def get_access(cls):
+        access = BinaryAccess()
+        #
+        #  locked to access
+        #
+        file_lock = cls.lock
+        if file_lock is not None:
+            access = LockedAccess(lock=file_lock)
+        #
+        #  try ... catch
+        #
+        if cls.safely:
+            access = SafelyAccess(access=access)
+        #
+        #  OK
+        #
+        return access
 
 
 class File:
@@ -59,8 +156,8 @@ class File:
             # the path is not a file
             raise IOError('%s is not a file' % self.__path)
         # read
-        async with aiofiles.open(self.__path, mode='rb') as file:
-            self.__data = await file.read()
+        dos = FileHelper.get_access()
+        self.__data = await dos.read(path=self.__path)
         return self.__data
 
     async def write(self, data: bytes) -> bool:
@@ -68,22 +165,28 @@ class File:
         if not await Path.make_dirs(directory=directory):
             return False
         # write
-        async with aiofiles.open(self.__path, mode='wb') as file:
-            if len(data) == await file.write(data):
-                # OK, update cache
-                self.__data = data
-                return True
+        dos = FileHelper.get_access()
+        cnt = await dos.write(data=data, path=self.__path)
+        if len(data) != cnt:
+            print('[DOS] failed to write file: %d/%d, %s' % (cnt, len(data), self.__path))
+            return False
+        # OK, update cache
+        self.__data = data
+        return True
 
     async def append(self, data: bytes) -> bool:
         if not await Path.exists(path=self.__path):
             # new file
             return await self.write(data)
         # append
-        async with aiofiles.open(self.__path, mode='ab') as file:
-            if len(data) == await file.write(data):
-                # OK, erase cache for next update
-                self.__data = None
-                return True
+        dos = FileHelper.get_access()
+        cnt = await dos.append(data=data, path=self.__path)
+        if len(data) != cnt:
+            print('[DOS] failed to append file: %d/%d, %s' % (cnt, len(data), self.__path))
+            return False
+        # OK, erase cache for next update
+        self.__data = None
+        return True
 
 
 class TextFile:
