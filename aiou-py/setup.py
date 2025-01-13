@@ -12,7 +12,7 @@ import io
 
 from setuptools import setup, find_packages
 
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 __author__ = 'Albert Moky'
 __contact__ = 'albert.moky@gmail.com'
 

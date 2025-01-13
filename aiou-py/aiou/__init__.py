@@ -30,6 +30,7 @@
 
 from .dos import Path
 from .dos import File, TextFile, JSONFile
+from .dos import SyncAccess, AsyncAccess, LockedAccess, SafelyAccess
 
 from .redis import Redis
 from .redis import RedisConnector, RedisClient
@@ -37,6 +38,8 @@ from .redis import RedisConnector, RedisClient
 from .http import HttpResponse
 from .http import HttpSession
 from .http import HttpClient, CachedClient
+
+from .mem import CacheHolder, CachePool, CacheManager
 
 
 name = "AIOU"
@@ -48,6 +51,7 @@ __all__ = [
 
     'Path',
     'File', 'TextFile', 'JSONFile',
+    'SyncAccess', 'AsyncAccess', 'LockedAccess', 'SafelyAccess',
 
     'Redis',
     'RedisConnector', 'RedisClient',
@@ -55,5 +59,9 @@ __all__ = [
     'HttpResponse',
     'HttpSession',
     'HttpClient', 'CachedClient',
+
+    'CacheHolder',
+    'CachePool',
+    'CacheManager',
 
 ]

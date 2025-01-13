@@ -31,11 +31,21 @@
 from .path import Path
 from .file import File, TextFile, JSONFile
 
+from .access import BinaryAccess
+from .access import SyncAccess, AsyncAccess
+from .access import LockedAccess, SafelyAccess
+# from .access import FileHelper
+
 
 __all__ = [
 
     'Path',
 
     'File', 'TextFile', 'JSONFile',
+
+    'BinaryAccess',
+    'SyncAccess', 'AsyncAccess',
+    'LockedAccess', 'SafelyAccess',
+    # 'FileHelper',
 
 ]
