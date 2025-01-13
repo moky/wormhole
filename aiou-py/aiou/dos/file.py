@@ -58,8 +58,7 @@ class File:
             # the path is not a file
             raise IOError('%s is not a file' % self.__path)
         # read
-        dos = FileHelper.get_access()
-        self.__data = await dos.read(path=self.__path)
+        self.__data = await FileHelper.read(path=self.__path)
         return self.__data
 
     async def write(self, data: bytes) -> bool:
@@ -67,8 +66,7 @@ class File:
         if not await Path.make_dirs(directory=directory):
             return False
         # write
-        dos = FileHelper.get_access()
-        cnt = await dos.write(data=data, path=self.__path)
+        cnt = await FileHelper.write(data=data, path=self.__path)
         if len(data) != cnt:
             print('[DOS] failed to write file: %d/%d, %s' % (cnt, len(data), self.__path))
             return False
@@ -81,8 +79,7 @@ class File:
             # new file
             return await self.write(data)
         # append
-        dos = FileHelper.get_access()
-        cnt = await dos.append(data=data, path=self.__path)
+        cnt = await FileHelper.append(data=data, path=self.__path)
         if len(data) != cnt:
             print('[DOS] failed to append file: %d/%d, %s' % (cnt, len(data), self.__path))
             return False

@@ -33,8 +33,10 @@ from .file import File, TextFile, JSONFile
 
 from .access import BinaryAccess
 from .access import SyncAccess, AsyncAccess
-from .access import LockedAccess, SafelyAccess
-# from .access import FileHelper
+from .access import SyncLockedAccess, AsyncLockedAccess
+from .access import SafelyAccess
+
+from .access import LockFactory, FileHelper
 
 
 __all__ = [
@@ -45,7 +47,9 @@ __all__ = [
 
     'BinaryAccess',
     'SyncAccess', 'AsyncAccess',
-    'LockedAccess', 'SafelyAccess',
-    # 'FileHelper',
+    'SyncLockedAccess', 'AsyncLockedAccess',
+    'SafelyAccess',
+
+    'LockFactory', 'FileHelper',
 
 ]

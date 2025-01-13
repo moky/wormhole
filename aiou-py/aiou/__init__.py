@@ -30,7 +30,10 @@
 
 from .dos import Path
 from .dos import File, TextFile, JSONFile
-from .dos import SyncAccess, AsyncAccess, LockedAccess, SafelyAccess
+
+from .dos import BinaryAccess, SyncAccess, AsyncAccess
+from .dos import SyncLockedAccess, AsyncLockedAccess, SafelyAccess
+# from .dos import LockFactory, FileHelper
 
 from .redis import Redis
 from .redis import RedisConnector, RedisClient
@@ -51,15 +54,27 @@ __all__ = [
 
     'Path',
     'File', 'TextFile', 'JSONFile',
-    'SyncAccess', 'AsyncAccess', 'LockedAccess', 'SafelyAccess',
 
-    'Redis',
-    'RedisConnector', 'RedisClient',
+    'BinaryAccess', 'SyncAccess', 'AsyncAccess',
+    'SyncLockedAccess', 'AsyncLockedAccess', 'SafelyAccess',
+    # 'LockFactory', 'FileHelper',
 
+    #
+    #  HTTP
+    #
     'HttpResponse',
     'HttpSession',
     'HttpClient', 'CachedClient',
 
+    #
+    #  Redis
+    #
+    'Redis',
+    'RedisConnector', 'RedisClient',
+
+    #
+    #  Memory Cache
+    #
     'CacheHolder',
     'CachePool',
     'CacheManager',

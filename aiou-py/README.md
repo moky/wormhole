@@ -17,7 +17,8 @@
 
 * SyncAccess
 * AsyncAccess
-* LockedAccess
+* SyncLockedAccess
+* AsyncLockedAccess
 * SafelyAccess
 * File
 * TextFile
