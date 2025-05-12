@@ -43,9 +43,11 @@ class BinaryAccess(ABC):
     async def read(self, path: str) -> Optional[bytes]:
         raise NotImplemented
 
+    @abstractmethod
     async def write(self, data: bytes, path: str) -> int:
         raise NotImplemented
 
+    @abstractmethod
     async def append(self, data: bytes, path: str) -> int:
         raise NotImplemented
 

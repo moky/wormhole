@@ -28,6 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
+from abc import ABC, abstractmethod
 from typing import Optional, Iterable, Tuple, List, Dict
 
 from redis import Redis
@@ -76,17 +77,14 @@ class RedisConnector:
                      encoding='utf-8', decode_responses=False)
 
 
-class RedisClient:
+class RedisClient(ABC):
     """ Redis Wrapper """
 
-    def __init__(self, connector: Optional[RedisConnector]):
-        super().__init__()
-        self.__connector = connector
-
     @property  # protected
+    @abstractmethod
     def connector(self) -> Optional[RedisConnector]:
         """ connection pool """
-        return self.__connector
+        raise NotImplemented
 
     @property  # protected
     def redis(self) -> Optional[Redis]:
