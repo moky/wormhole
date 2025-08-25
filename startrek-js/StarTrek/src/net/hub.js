@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -59,19 +59,12 @@
  *                  Remote Peer     Remote Peer     Remote Peer
  */
 
-//! require 'namespace.js'
-
-(function (ns, fsm, sys) {
-    'use strict';
-
-    var Interface = sys.type.Interface;
-    var Processor = fsm.skywalker.Processor;
-
     /**
      *  Connections & Channels Container
      *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
      */
-    var Hub = Interface(null, [Processor]);
+    st.net.Hub = Interface(null, [Processor]);
+    var Hub = st.net.Hub;
 
     /**
      *  Get opened channel with direction (remote, local)
@@ -90,8 +83,3 @@
      * @return {Connection} null on connection not found
      */
     Hub.prototype.connect = function (remote, local) {};
-
-    //-------- namespace --------
-    ns.net.Hub = Hub;
-
-})(StarTrek, FiniteStateMachine, MONKEY);

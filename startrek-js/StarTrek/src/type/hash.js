@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -32,24 +32,16 @@
 
 //! require 'abstract.js'
 
-(function (ns, sys) {
-    'use strict';
-
-    var Interface = sys.type.Interface;
-    var Class     = sys.type.Class;
-    var IObject   = sys.type.Object;
-    var HashSet   = sys.type.HashSet;
-
-    var AbstractPairMap = ns.type.AbstractPairMap;
-
     /**
      *  Hash Key Pair Map
      *  ~~~~~~~~~~~~~~~~~
      */
-    var HashPairMap = function (any) {
+    st.type.HashPairMap = function (any) {
         AbstractPairMap.call(this, any);
         this.__items = new HashSet();  // Set
     };
+    var HashPairMap = st.type.HashPairMap;
+
     Class(HashPairMap, AbstractPairMap, null, null);
 
     // Override
@@ -105,8 +97,3 @@
             return false;
         }
     };
-
-    //-------- namespace --------
-    ns.type.HashPairMap = HashPairMap;
-
-})(StarTrek, MONKEY);

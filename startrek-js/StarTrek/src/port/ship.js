@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -32,28 +32,25 @@
 
 //! require 'namespace.js'
 
-(function (ns, sys) {
-    'use strict';
-
-    var Interface = sys.type.Interface;
-    var Enum      = sys.type.Enum;
-
-    var ShipStatus = Enum('ShipStatus', {
-        //
-        //  Arrival Status
-        //
-        ASSEMBLING: (0x00),  // waiting for more fragments
-        EXPIRED:    (0x01),  // failed to received all fragments
+    st.port.ShipStatus = Enum('ShipStatus', {
 
         //
         //  Departure Status
         //
-        NEW:        (0x10),  // not try yet
-        WAITING:    (0x11),  // sent, waiting for responses
-        TIMEOUT:    (0x12),  // waiting to send again
-        DONE:       (0x13),  // all fragments responded (or no need respond)
-        FAILED:     (0x14)   // tried 3 times and missed response(s)
+        NEW:        (0x00),  // not try yet
+        WAITING:    (0x01),  // sent, waiting for responses
+        TIMEOUT:    (0x02),  // waiting to send again
+        DONE:       (0x03),  // all fragments responded (or no need respond)
+        FAILED:     (0x04),  // tried 3 times and missed response(s)
+
+        //
+        //  Arrival Status
+        //
+        ASSEMBLING: (0x10),  // waiting for more fragments
+        EXPIRED:    (0x11)   // failed to received all fragments
     });
+    var ShipStatus = st.port.ShipStatus;
+
 
     /**
      *  Star Ship
@@ -61,7 +58,8 @@
      *
      *  Container carrying data package
      */
-    var Ship = Interface(null, null);
+    st.port.Ship = Interface(null, null);
+    var Ship = st.port.Ship;
 
     /**
      *  Get ID for this Ship
@@ -85,23 +83,13 @@
      */
     Ship.prototype.getStatus = function (now) {};
 
-    //-------- namespace --------
-    ns.port.Ship = Ship;
-    ns.port.ShipStatus = ShipStatus;
-
-})(StarTrek, MONKEY);
-
-(function (ns, sys) {
-    'use strict';
-
-    var Interface = sys.type.Interface;
-    var Ship      = ns.port.Ship;
 
     /**
      *  Incoming Ship
      *  ~~~~~~~~~~~~~
      */
-    var Arrival = Interface(null, [Ship]);
+    st.port.Arrival = Interface(null, [Ship]);
+    var Arrival = st.port.Arrival;
 
     /**
      *  Data package can be sent as separated batches
@@ -111,33 +99,23 @@
      */
     Arrival.prototype.assemble = function (income) {};
 
-    //-------- namespace --------
-    ns.port.Arrival = Arrival;
-
-})(StarTrek, MONKEY);
-
-(function (ns, sys) {
-    'use strict';
-
-    var Interface = sys.type.Interface;
-    var Enum      = sys.type.Enum;
-    var Ship      = ns.port.Ship;
 
     /**
      *  Departure Priority
      *  ~~~~~~~~~~~~~~~~~~
      */
-    var DeparturePriority = Enum('Priority', {
+    var DeparturePriority = {
         URGENT: -1,
         NORMAL:  0,
         SLOWER:  1
-    });
+    };
 
     /**
      *  Outgoing Ship
      *  ~~~~~~~~~~~~~
      */
-    var Departure = Interface(null, [Ship]);
+    st.port.Departure = Interface(null, [Ship]);
+    var Departure = st.port.Departure;
 
     /**
      *  Task priority
@@ -170,8 +148,3 @@
     Departure.prototype.isImportant = function () {};
 
     Departure.Priority = DeparturePriority;
-
-    //-------- namespace --------
-    ns.port.Departure = Departure;
-
-})(StarTrek, MONKEY);

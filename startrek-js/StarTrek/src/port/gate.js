@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -67,17 +67,12 @@
 //! require <fsm.js>
 //! require 'namespace.js'
 
-(function (ns, fsm, sys) {
-    'use strict';
-
-    var Interface = sys.type.Interface;
-    var Processor = fsm.skywalker.Processor;
-
     /**
      *  Star Gate
      *  ~~~~~~~~~
      */
-    var Gate = Interface(null, [Processor]);
+    st.port.Gate = Interface(null, [Processor]);
+    var Gate = st.port.Gate;
 
     /**
      *  Pack data to an outgo ship (with normal priority), and
@@ -100,8 +95,3 @@
      * @return {boolean} false on error
      */
     Gate.prototype.sendShip = function (outgo, remote, local) {};
-
-    //-------- namespace --------
-    ns.port.Gate = Gate;
-
-})(StarTrek, FiniteStateMachine, MONKEY);

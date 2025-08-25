@@ -33,17 +33,11 @@
 //! require 'type/apm.js'
 //! require 'net/hub.js'
 
-(function (ns, sys) {
-    'use strict';
-
-    var Class = sys.type.Class;
-    var AddressPairMap = ns.type.AddressPairMap;
-    var StateOrder     = ns.net.ChannelStateOrder;
-    var Hub            = ns.net.Hub;
-
-    var ConnectionPool = function () {
+    st.socket.ConnectionPool = function () {
         AddressPairMap.call(this);
     };
+    var ConnectionPool = st.socket.ConnectionPool;
+
     Class(ConnectionPool, AddressPairMap, null, {
 
         // Override
@@ -76,14 +70,16 @@
      *
      * @param {ConnectionDelegate} gate
      */
-    var BaseHub = function (gate) {
-        Object.call(this);
+    st.socket.BaseHub = function (gate) {
+        BaseObject.call(this);
         this.__delegate = gate;
         this.__connPool = this.createConnectionPool();
         // last time drove connections
-        this.__last = (new Date()).getTime();
+        this.__last = new Date();
     };
-    Class(BaseHub, Object, [Hub], null);
+    var BaseHub = st.socket.BaseHub;
+
+    Class(BaseHub, BaseObject, [Hub], null);
 
     // protected
     BaseHub.prototype.createConnectionPool = function () {
@@ -168,21 +164,36 @@
 
     // Override
     BaseHub.prototype.connect = function (remote, local) {
-        // TODO: check local address
-        var conn;
-        // try to get connection
-        var old = this.getConnection(remote, local);
-        if (!old) {
-            // create & cache connection
-            conn = this.createConnection(remote, local);
-            var cached = this.setConnection(remote, local, conn);
-            if (cached && cached !== conn) {
-                cached.close();
+        //
+        //  0. pre-checking
+        //
+        var conn = this.getConnection(remote, local);
+        if (conn) {
+            // check local address
+            if (!local) {
+                return conn;
             }
-        } else {
-            conn = old;
+            var address = conn.getLocalAddress();
+            if (!address || address.equals(local)) {
+                return conn;
+            }
         }
-        if (!old/* && conn instanceof BaseConnection*/) {
+        //
+        //  1. create new connection & cache it
+        //
+        conn = this.createConnection(remote, local);
+        if (!local) {
+            local = conn.getLocalAddress();
+        }
+        // cache the connection
+        var cached = this.setConnection(remote, local, conn);
+        if (cached && cached !== conn) {
+            cached.close();
+        }
+        //
+        //  2. start the new connection
+        //
+        if (conn instanceof BaseConnection) {
             // try to open channel with direction (remote, local)
             conn.start(this);
         }
@@ -206,6 +217,9 @@
 
     // protected
     BaseHub.prototype.driveChannel = function (channel) {
+        //
+        //  0. check channel state
+        //
         var cs = channel.getState();
         if (StateOrder.INIT.equals(cs)) {
             // preparing
@@ -217,13 +231,19 @@
         // cs == opened
         // cs == alive
         var conn;
-        var remote = channel.getRemoteAddress();
-        var local = channel.getLocalAddress();
+        var remote;
+        var local;
         var data;           // Uint8Array
-        // try to receive
+        //
+        //  1. try to receive
+        //
         try {
-            data = channel.receive(BaseHub.MSS);
+            var pair = channel.receive(BaseHub.MSS);
+            data = pair.a;
+            remote = pair.b;
         } catch (e) {
+            remote = channel.getRemoteAddress();
+            local = channel.getLocalAddress();
             var gate = this.getDelegate();
             var cached;
             if (!gate || !remote) {
@@ -244,11 +264,15 @@
             this.closeChannel(channel);
             return false;
         }
-        if (!data/* || data.length === 0*/) {
+        if (!remote || !data/* || data.length === 0*/) {
             // received nothing
             return false;
+        } else {
+            local = channel.getLocalAddress();
         }
-        // get connection for processing received data
+        //
+        //  2. get connection for processing received data
+        //
         conn = this.connect(remote, local);
         if (conn) {
             conn.onReceivedData(data);
@@ -290,14 +314,14 @@
     // protected
     BaseHub.prototype.driveConnections = function (connections) {
         var now = new Date();
-        var elapsed = now.getTime() - this.__last;
+        var elapsed = Duration.between(this.__last, now);
         for (var i = connections.length - 1; i >= 0; --i) {
             // drive connection to go on
             connections[i].tick(now, elapsed);
             // NOTICE: let the delegate to decide whether close an error connection
             //         or just remove it.
         }
-        this.__last = now.getTime();
+        this.__last = now;
     };
 
     // protected
@@ -333,8 +357,3 @@
         this.cleanupConnections(connections);
         return count > 0;
     };
-
-    //-------- namespace --------
-    ns.socket.BaseHub = BaseHub;
-
-})(StarTrek, MONKEY);

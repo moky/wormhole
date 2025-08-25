@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -32,12 +32,8 @@
 
 //! require 'net/channel.js'
 
-(function (ns, sys) {
-    'use strict';
-
-    var Interface = sys.type.Interface;
-
-    var SocketReader = Interface(null, null);
+    st.socket.SocketReader = Interface(null, null);
+    var SocketReader = st.socket.SocketReader;
 
     /**
      *  Read data from socket
@@ -48,14 +44,16 @@
     SocketReader.prototype.read = function (maxLen) {};
 
     /**
-     *  Receive data from socket
+     *  Receive data via socket, and return remote address
      *
      * @param {uint} maxLen - max length of received data
-     * @return {Uint8Array} received data
+     * @return {Pair<Uint8Array, SocketAddress>} data & remote address
      */
     SocketReader.prototype.receive = function (maxLen) {};
 
-    var SocketWriter = Interface(null, null);
+
+    st.socket.SocketWriter = Interface(null, null);
+    var SocketWriter = st.socket.SocketWriter;
 
     /**
      *  Write data into socket
@@ -74,17 +72,6 @@
      */
     SocketWriter.prototype.send = function (src, target) {};
 
-    //-------- namespace --------
-    ns.socket.SocketReader = SocketReader;
-    ns.socket.SocketWriter = SocketWriter;
-
-})(StarTrek, MONKEY);
-
-(function (ns, sys) {
-    'use strict';
-
-    var Class        = sys.type.Class;
-    var SocketHelper = ns.net.SocketHelper;
 
     /**
      *  Socket Channel Controller
@@ -93,16 +80,18 @@
      *
      * @param {BaseChannel} channel
      */
-    var ChannelController = function (channel) {
-        Object.call(this);
+    st.socket.ChannelController = function (channel) {
+        BaseObject.call(this);
         this.__channel = channel;
     };
-    Class(ChannelController, Object, null, null);
+    var ChannelController = st.socket.ChannelController
+
+    Class(ChannelController, BaseObject, null, null);
 
     /**
      *  Get the channel
      *
-     * @return {BaseChannel|Channel}
+     * @return {BaseChannel|st.net.Channel}
      */
     ChannelController.prototype.getChannel = function () {
         return this.__channel;
@@ -137,100 +126,3 @@
         var channel = this.getChannel();
         return !channel ? null : channel.getSocket();
     };
-
-    // protected
-    ChannelController.prototype.receivePackage = function (sock, maxLen) {
-        // TODO: override for async receiving
-        return SocketHelper.socketReceive(sock, maxLen);
-    };
-
-    // Override
-    ChannelController.prototype.sendAll = function (sock, data) {
-        // TODO: override for async sending
-        return SocketHelper.socketSend(sock, data);
-        // var sent = 0;
-        // var rest = data.length;
-        // var cnt;
-        // while (sock.isOpen()) {
-        //     cnt = sock.write(data);
-        //     // check send result
-        //     if (cnt <= 0) {
-        //         // buffer overflow?
-        //         break;
-        //     }
-        //     // something sent, check remaining data
-        //     sent += cnt;
-        //     rest -= cnt;
-        //     if (rest <= 0) {
-        //         // done!
-        //         break;
-        //     } else {
-        //         // remove sent part
-        //         data = data.subarray(cnt);
-        //     }
-        // }
-        // return sent;
-    };
-
-    //-------- namespace --------
-    ns.socket.ChannelController = ChannelController;
-
-})(StarTrek, MONKEY);
-
-(function (ns, sys) {
-    'use strict';
-
-    var Class = sys.type.Class;
-    var SocketReader      = ns.socket.SocketReader;
-    var SocketWriter      = ns.socket.SocketWriter;
-    var ChannelController = ns.socket.ChannelController;
-
-    /**
-     *  Channel Reader
-     *  ~~~~~~~~~~~~~~
-     *
-     * @param {BaseChannel} channel
-     */
-    var ChannelReader = function (channel) {
-        ChannelController.call(this, channel)
-    };
-    Class(ChannelReader, ChannelController, [SocketReader], {
-
-        // Override
-        read: function (maxLen) {
-            var sock = this.getSocket();
-            if (sock && sock.isOpen()) {
-                return this.receivePackage(sock, maxLen);
-            } else {
-                throw new Error('channel closed');
-            }
-        }
-    });
-
-    /**
-     *  Channel Writer
-     *  ~~~~~~~~~~~~~~
-     *
-     * @param {BaseChannel} channel
-     */
-    var ChannelWriter = function (channel) {
-        ChannelController.call(this, channel)
-    };
-    Class(ChannelWriter, ChannelController, [SocketWriter], {
-
-        // Override
-        write: function (data) {
-            var sock = this.getSocket();
-            if (sock && sock.isOpen()) {
-                return this.sendAll(sock, data)
-            } else {
-                throw new Error('channel closed');
-            }
-        }
-    });
-
-    //-------- namespace --------
-    ns.socket.ChannelReader = ChannelReader;
-    ns.socket.ChannelWriter = ChannelWriter;
-
-})(StarTrek, MONKEY);

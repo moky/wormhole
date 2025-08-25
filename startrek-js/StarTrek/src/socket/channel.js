@@ -31,6 +31,8 @@
 //
 
 //! require 'type/apm.js'
+//! require 'net/channel.js'
+//! require 'net/helper.js'
 //! require 'controller.js'
 
 /**
@@ -60,15 +62,6 @@
  *  }
  */
 
-(function (ns, sys) {
-    'use strict';
-
-    var Class = sys.type.Class;
-    var AddressPairObject = ns.type.AddressPairObject;
-    var Channel           = ns.net.Channel;
-    var ChannelStateOrder = ns.net.ChannelStateOrder;
-    var SocketHelper      = ns.net.SocketHelper;
-
     /**
      *  Base Channel
      *  ~~~~~~~~~~~~
@@ -76,7 +69,7 @@
      * @param {SocketAddress} remote - remote address
      * @param {SocketAddress} local  - local address
      */
-    var BaseChannel = function (remote, local) {
+    st.socket.BaseChannel = function (remote, local) {
         AddressPairObject.call(this, remote, local);
         // SocketReader, SocketWriter
         this.__reader = this.createReader();
@@ -85,6 +78,8 @@
         this.__sock = null;  // WebSocket wrapper
         this.__closed = -1;  // 0: false, 1: true
     };
+    var BaseChannel = st.socket.BaseChannel;
+
     Class(BaseChannel, AddressPairObject, [Channel], {
 
         // Override
@@ -333,8 +328,3 @@
             throw e;
         }
     };
-
-    //-------- namespace --------
-    ns.socket.BaseChannel = BaseChannel;
-
-})(StarTrek, MONKEY);

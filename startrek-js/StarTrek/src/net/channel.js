@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -32,24 +32,29 @@
 
 //! require 'namespace.js'
 
-(function (ns, sys) {
-    'use strict';
-
-    var Interface = sys.type.Interface;
-    var Enum      = sys.type.Enum;
-
     // protected
-    var ChannelStateOrder = Enum('ChannelState', {
+    st.net.ChannelStateOrder = Enum('ChannelStatus', {
         INIT:   0,  // initializing
         OPEN:   1,  // initialized
         ALIVE:  2,  // (not closed) and (connected or bound)
         CLOSED: 3   // closed
     });
+    var ChannelStateOrder = st.net.ChannelStateOrder;
 
-    var Channel = Interface(null, null);
 
-    // Channel State Order
-    Channel.prototype.getState = function () {};
+    st.net.Channel = Interface(null, null);
+    var Channel = st.net.Channel;
+
+    /**
+     *  Channel State Order
+     *
+     * @return {ChannelStateOrder}
+     */
+    Channel.prototype.getStatus = function () {};
+
+    //
+    //  Flags
+    //
 
     Channel.prototype.isOpen = function () {};
 
@@ -58,10 +63,14 @@
     // this.isOpen() && (this.isConnected() || this.isBound());
     Channel.prototype.isAlive = function () {};
 
-    // ready for reading
+    /**
+     *  Ready for reading
+     */
     Channel.prototype.isAvailable = function () {};  // isAlive
 
-    // ready for writing
+    /**
+     *  Ready for writing
+     */
     Channel.prototype.isVacant = function () {};  // isAlive
 
     Channel.prototype.close = function () {};
@@ -176,7 +185,7 @@
      *  Receives a datagram via this channel.
      *
      * @param {uint} maxLen
-     * @return {Uint8Array} received data package
+     * @return {Pair<Uint8Array, SocketAddress>} data & remote address
      */
     Channel.prototype.receive = function (maxLen) {};
 
@@ -188,87 +197,3 @@
      * @return {int} the number of bytes sent, -1 on error
      */
     Channel.prototype.send = function (src, target) {};
-
-    //-------- namespace --------
-    ns.net.Channel           = Channel;
-    ns.net.ChannelStateOrder = ChannelStateOrder;
-
-})(StarTrek, MONKEY);
-
-(function (ns) {
-    'use strict';
-
-    //-------- namespace --------
-    ns.net.SocketHelper = {
-
-        //
-        //  Socket Channels
-        //
-
-        socketGetLocalAddress: function (sock) {
-            return sock.getRemoteAddress();
-        },
-        socketGetRemoteAddress: function (sock) {
-            return sock.getLocalAddress();
-        },
-
-        //
-        //  Flags
-        //
-
-        socketIsBlocking: function (sock) {
-            return sock.isBlocking();
-        },
-        socketIsConnected: function (sock) {
-            return sock.isConnected();
-            // return sock.readyState === WebSocket.OPEN;
-        },
-        socketIsBound: function (sock) {
-            return sock.isBound();
-            // return sock.localAddress !== null;
-        },
-        socketIsClosed: function (sock) {
-            return !sock.isOpen();
-            // return sock.readyState === WebSocket.CLOSED;
-        },
-
-        // Ready for reading
-        socketIsAvailable: function (sock) {
-            // TODO: check reading buffer
-            return sock.isAlive();
-            // return sock.readyState === WebSocket.OPEN;
-        },
-        // Ready for writing
-        socketIsVacant: function (sock) {
-            // TODO: check writing buffer
-            return sock.isAlive();
-            // return sock.readyState === WebSocket.OPEN;
-        },
-
-        //
-        //  Async Socket I/O
-        //
-
-        socketSend: function (sock, data) {
-            return sock.write(data);
-        },
-        socketReceive: function (sock, maxLen) {
-            return sock.read(maxLen);
-        },
-
-        // Bind to local address
-        socketBind: function (sock, local) {
-            return sock.bind(local);
-        },
-        // Connect to remote address
-        socketConnect: function (sock, remote) {
-            return sock.connect(remote);
-        },
-
-        //  Close socket
-        socketDisconnect: function (sock) {
-            return sock.close();
-        }
-    }
-
-})(StarTrek);

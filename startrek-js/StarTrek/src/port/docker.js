@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -31,13 +31,6 @@
 //
 
 //! require <fsm.js>
-//! require 'namespace.js'
-
-(function (ns, fsm, sys) {
-    'use strict';
-
-    var Interface = sys.type.Interface;
-    var Processor = fsm.skywalker.Processor;
 
     /**
      *  Star Docker
@@ -45,7 +38,8 @@
      *
      *  Processor for Star Ships
      */
-    var Porter = Interface(null, [Processor]);
+    st.port.Porter = Interface(null, [Processor]);
+    var Porter = st.port.Porter;
 
     Porter.prototype.isOpen = function () {};     // connection.isOpen()
     Porter.prototype.isAlive = function () {};    // connection.isAlive()
@@ -97,32 +91,23 @@
      */
     Porter.prototype.close = function () {};
 
-    //-------- namespace --------
-    ns.port.Porter = Porter;
-
-})(StarTrek, FiniteStateMachine, MONKEY);
-
-(function (ns, sys) {
-    'use strict';
-
-    var Enum       = sys.type.Enum;
-    var StateOrder = ns.net.ConnectionStateOrder;
 
     /**
      *  Docker Status
      *  ~~~~~~~~~~~~~
      */
-    var PorterStatus = Enum('PorterStatus', {
+    st.port.PorterStatus = Enum('PorterStatus', {
         ERROR:    -1,
         INIT:      0,
         PREPARING: 1,
         READY:     2
     });
+    var PorterStatus = st.port.PorterStatus;
 
     /**
      *  Convert
      *
-     * @param {ConnectionState|BaseState} state
+     * @param {ConnectionState|fsm.BaseState} state
      * @return {PorterStatus}
      */
     PorterStatus.getStatus = function (state) {
@@ -143,21 +128,13 @@
         }
     };
 
-    //-------- namespace --------
-    ns.port.PorterStatus = PorterStatus;
-
-})(StarTrek, MONKEY);
-
-(function (ns, sys) {
-    'use strict';
-
-    var Interface = sys.type.Interface;
 
     /**
      *  Docker Delegate
      *  ~~~~~~~~~~~~~~~
      */
-    var PorterDelegate = Interface(null, null);
+    st.port.PorterDelegate = Interface(null, null);
+    var PorterDelegate = st.port.PorterDelegate;
 
     /**
      *  Callback when new package received
@@ -201,8 +178,3 @@
      * @param {Porter} porter         - connection docker
      */
     PorterDelegate.prototype.onPorterStatusChanged = function (previous, current, porter) {};
-
-    //-------- namespace --------
-    ns.port.PorterDelegate = PorterDelegate;
-
-})(StarTrek, MONKEY);

@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -32,16 +32,29 @@
 
 //! require 'namespace.js'
 
-(function (ns, sys) {
-    'use strict';
+    st.type.Pair = function (a, b) {
+        BaseObject.call(this);
+        this.a = a;
+        this.b = b;
+    };
+    var Pair = st.type.Pair;
 
-    var Interface = sys.type.Interface;
+    Class(Pair, BaseObject, null, null);
+
+    Pair.prototype.equals = function (other) {
+        if (other instanceof Pair) {
+            return object_equals(this.a, other.a) && object_equals(this.b, other.b);
+        }
+        return false;
+    };
+
 
     /**
      *  Key Pair Map
      *  ~~~~~~~~~~~~
      */
-    var PairMap = Interface(null, null);
+    st.type.PairMap = Interface(null, null);
+    var PairMap = st.type.PairMap;
 
     /**
      *  Get all mapped values
@@ -77,8 +90,3 @@
      * @return {*} removed value
      */
     PairMap.prototype.remove = function (remote, local, value) {};
-
-    //-------- namespace --------
-    ns.type.PairMap = PairMap;
-
-})(StarTrek, MONKEY);

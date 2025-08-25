@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -33,32 +33,13 @@
 //! require 'address.js'
 //! require 'hash.js'
 
-(function (ns, sys) {
-    'use strict';
-
-    var Class = sys.type.Class;
-    var InetSocketAddress = ns.type.InetSocketAddress;
-    var HashPairMap       = ns.type.HashPairMap;
-
-    var AnyAddress = new InetSocketAddress('0.0.0.0', 0);
-
-    var AddressPairMap = function () {
+    st.type.AddressPairMap = function () {
         HashPairMap.call(this, AnyAddress);
     };
+    var AddressPairMap = st.type.AddressPairMap;
+
     Class(AddressPairMap, HashPairMap, null, null);
 
-    AddressPairMap.AnyAddress = AnyAddress;
-
-    //-------- namespace --------
-    ns.type.AddressPairMap = AddressPairMap;
-
-})(StarTrek, MONKEY);
-
-(function (ns, sys) {
-    'use strict';
-
-    var Class      = sys.type.Class;
-    var BaseObject = sys.type.BaseObject;
 
     /**
      *  Object with remote & local addresses
@@ -66,12 +47,14 @@
      * @param {SocketAddress} remote
      * @param {SocketAddress} local
      */
-    var AddressPairObject = function (remote, local) {
+    st.type.AddressPairObject = function (remote, local) {
         BaseObject.call(this);
         // protected
         this.remoteAddress = remote;
         this.localAddress = local;
     };
+    var AddressPairObject = st.type.AddressPairObject;
+
     Class(AddressPairObject, BaseObject, null, null);
 
     AddressPairObject.prototype.getRemoteAddress = function () {
@@ -104,12 +87,22 @@
 
     // Override
     AddressPairObject.prototype.valueOf = function () {
-        return desc.call(this);
+        return this.toString();
     };
 
     // Override
     AddressPairObject.prototype.toString = function () {
-        return desc.call(this);
+        var cname = this.getClassName();
+        var remote = this.getRemoteAddress();
+        var local = this.getLocalAddress();
+        if (remote) {
+            remote = remote.toString();
+        }
+        if (local) {
+            local = local.toString();
+        }
+        return '<' + cname + ' remote="' + remote + '" local="' + local + '" />';
+
     };
 
     var address_equals = function (a, b) {
@@ -124,21 +117,3 @@
             return a.equals(b);
         }
     };
-
-    var desc = function () {
-        var cname = this.constructor.name;
-        var remote = this.getRemoteAddress();
-        var local = this.getLocalAddress();
-        if (remote) {
-            remote = remote.toString();
-        }
-        if (local) {
-            local = local.toString();
-        }
-        return '<' + cname + ' remote="' + remote + '" local="' + local + '" />';
-    };
-
-    //-------- namespace --------
-    ns.type.AddressPairObject = AddressPairObject;
-
-})(StarTrek, MONKEY);

@@ -35,17 +35,6 @@
 //! require 'net/state.js'
 //! require 'net/machine.js'
 
-(function (ns, sys) {
-    'use strict';
-
-    var Class = sys.type.Class;
-    var AddressPairObject = ns.type.AddressPairObject;
-    var Connection        = ns.net.Connection;
-    var TimedConnection   = ns.net.TimedConnection;
-    var ConnectionState   = ns.net.ConnectionState;
-    var StateMachine      = ns.net.ConnectionStateMachine;
-    var StateOrder        = ns.net.ConnectionStateOrder;
-
     /**
      *  Base Connection
      *  ~~~~~~~~~~~~~~~
@@ -53,7 +42,7 @@
      * @param {SocketAddress} remote
      * @param {SocketAddress} local
      */
-    var BaseConnection = function (remote, local) {
+    st.socket.BaseConnection = function (remote, local) {
         AddressPairObject.call(this, remote, local);
         this.__channel = -1;     // Channel
         this.__delegate = null;  // ConnectionDelegate
@@ -63,6 +52,8 @@
         // connection state machine
         this.__fsm = null;  // ConnectionStateMachine
     };
+    var BaseConnection = st.socket.BaseConnection;
+
     Class(BaseConnection, AddressPairObject, [Connection, TimedConnection, ConnectionState.Delegate], {
 
         // Override
@@ -75,8 +66,6 @@
                 channel + '\n</' + clazz + '>';
         }
     });
-
-    BaseConnection.EXPIRES = 16 * 1000;  // 16 seconds
 
     // delegate for handling connection events
     BaseConnection.prototype.getDelegate = function () {
@@ -127,7 +116,12 @@
         this.__channel = channel;
         // 2. close old channel
         if (old && old !== -1 && old !== channel) {
-            old.close();
+            try {
+                old.close();
+            } catch (e) {
+                // var delegate = this.getDelegate();
+                // delegate.onConnectionError(e, this);
+            }
         }
     };
 
@@ -184,7 +178,9 @@
         this.setChannel(null);
     };
 
-    // Get channel from hub
+    /**
+     *  Get channel from hub
+     */
     BaseConnection.prototype.start = function (hub) {
         // 1. get channel from hub
         this.openChannel(hub);
@@ -306,23 +302,32 @@
 
     // Override
     BaseConnection.prototype.isSentRecently = function (now) {
-        var last = this.__lastSentTime;
-        last = !last ? 0 : last.getTime();
-        return now.getTime() <= last + BaseConnection.EXPIRES;
+        var lastTime = this.__lastSentTime;
+        if (!lastTime) {
+            return false;
+        }
+        var expired = TimedConnection.EXPIRES.addTo(lastTime);
+        return expired.getTime() > now.getTime();
     };
 
     // Override
     BaseConnection.prototype.isReceivedRecently = function (now) {
-        var last = this.__lastReceivedTime;
-        last = !last ? 0 : last.getTime();
-        return now.getTime() <= last + BaseConnection.EXPIRES;
+        var lastTime = this.__lastReceivedTime;
+        if (!lastTime) {
+            return false;
+        }
+        var expired = TimedConnection.EXPIRES.addTo(lastTime);
+        return expired.getTime() > now.getTime();
     };
 
     // Override
     BaseConnection.prototype.isNotReceivedLongTimeAgo = function (now) {
-        var last = this.__lastReceivedTime;
-        last = !last ? 0 : last.getTime();
-        return now.getTime() > last + (BaseConnection.EXPIRES << 3);
+        var lastTime = this.__lastReceivedTime;
+        if (!lastTime) {
+            return false;
+        }
+        var expired = TimedConnection.EXPIRES.multiplies(8).addTo(lastTime);
+        return expired.getTime() < now.getTime();
     };
 
     //
@@ -345,16 +350,14 @@
             if (StateOrder.PREPARING.equals(previousIndex)) {
                 // connection state changed from 'preparing' to 'ready',
                 // set times to expired soon.
-                var soon = (new Date()).getTime() - (BaseConnection.EXPIRES >> 1);
+                var soon = TimedConnection.EXPIRES.divides(2).subtractFrom(now);
                 var st = this.__lastSentTime;
-                st = !st ? 0 : st.getTime();
-                if (st < soon) {
-                    this.__lastSentTime = new Date(soon);
+                if (!st || st.getTime() < soon.getTime()) {
+                    this.__lastSentTime = soon;
                 }
                 var rt = this.__lastReceivedTime;
-                rt = !rt ? 0 : rt.getTime();
-                if (rt < soon) {
-                    this.__lastReceivedTime = new Date(soon);
+                if (!rt || rt.getTime() < soon.getTime()) {
+                    this.__lastReceivedTime = soon;
                 }
             }
         }
@@ -380,18 +383,6 @@
         // override to process this event
     };
 
-    //-------- namespace --------
-    ns.socket.BaseConnection = BaseConnection;
-
-})(StarTrek, MONKEY);
-
-(function (ns, fsm, sys) {
-    'use strict';
-
-    var Class = sys.type.Class;
-    var Runnable = fsm.skywalker.Runnable;
-    var Thread   = fsm.threading.Thread;
-    var BaseConnection = ns.socket.BaseConnection;
 
     /**
      *  Active Connection
@@ -401,7 +392,7 @@
      * @param {SocketAddress} remote
      * @param {SocketAddress} local
      */
-    var ActiveConnection = function (remote, local) {
+    st.socket.ActiveConnection = function (remote, local) {
         BaseConnection.call(this, remote, local);
         this.__hub = null;
         // background threading
@@ -411,6 +402,8 @@
         this.__bg_last_time = 0;
         this.__bg_interval = 8000;
     };
+    var ActiveConnection = st.socket.ActiveConnection;
+
     Class(ActiveConnection, BaseConnection, [Runnable], {
         
         // Override
@@ -500,8 +493,3 @@
             return true; // continue
         }
     });
-
-    //-------- namespace --------
-    ns.socket.ActiveConnection = ActiveConnection;
-
-})(StarTrek, FiniteStateMachine, MONKEY);

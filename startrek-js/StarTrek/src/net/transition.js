@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -32,24 +32,18 @@
 
 //! require 'state.js'
 
-(function (ns, fsm, sys) {
-    'use strict';
-
-    var Class          = sys.type.Class;
-    var Enum           = sys.type.Enum;
-    var BaseTransition = fsm.BaseTransition;
-    var StateOrder     = ns.net.ConnectionStateOrder;
-
     /**
      *  Connection State Transition
      *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~
      * @param {ConnectionStateOrder} order
      * @param {Function} evaluate
      */
-    var StateTransition = function (order, evaluate) {
+    st.net.ConnectionStateTransition = function (order, evaluate) {
         BaseTransition.call(this, Enum.getInt(order));
         this.__evaluate = evaluate;
     };
+    var StateTransition = st.net.ConnectionStateTransition;
+
     Class(StateTransition, BaseTransition, null, null);
 
     // Override
@@ -57,14 +51,18 @@
         return this.__evaluate.call(this, ctx, now);
     };
 
+
     /**
      *  Transition Builder
      *  ~~~~~~~~~~~~~~~~~~
      */
-    var TransitionBuilder = function () {
-        Object.call(this);
+    st.net.ConnectionStateTransitionBuilder = function () {
+        BaseObject.call(this);
     };
-    Class(TransitionBuilder, Object, null, {
+    var TransitionBuilder = st.net.ConnectionStateTransitionBuilder;
+
+    Class(TransitionBuilder, BaseObject, null, {
+
         // Default -> Preparing
         getDefaultPreparingTransition: function () {
             return new StateTransition(StateOrder.PREPARING, function (ctx, now) {
@@ -73,6 +71,7 @@
                 return conn && conn.isOpen();
             });
         },
+
         // Preparing -> Ready
         getPreparingReadyTransition: function () {
             return new StateTransition(StateOrder.READY, function (ctx, now) {
@@ -81,6 +80,7 @@
                 return conn && conn.isAlive();
             });
         },
+
         // Preparing -> Default
         getPreparingDefaultTransition: function () {
             return new StateTransition(StateOrder.DEFAULT, function (ctx, now) {
@@ -89,6 +89,7 @@
                 return !(conn && conn.isOpen());
             });
         },
+
         // Ready -> Expired
         getReadyExpiredTransition: function () {
             return new StateTransition(StateOrder.EXPIRED, function (ctx, now) {
@@ -101,6 +102,7 @@
                 return !conn.isReceivedRecently(now);
             });
         },
+
         // Ready -> Error
         getReadyErrorTransition: function () {
             return new StateTransition(StateOrder.ERROR, function (ctx, now) {
@@ -109,6 +111,7 @@
                 return !(conn && conn.isAlive());
             });
         },
+
         // Expired -> Maintaining
         getExpiredMaintainingTransition: function () {
             return new StateTransition(StateOrder.MAINTAINING, function (ctx, now) {
@@ -121,6 +124,7 @@
                 return conn.isSentRecently(now);
             });
         },
+
         // Expired -> Error
         getExpiredErrorTransition: function () {
             return new StateTransition(StateOrder.ERROR, function (ctx, now) {
@@ -133,6 +137,7 @@
                 return conn.isNotReceivedLongTimeAgo(now);
             });
         },
+
         // Maintaining -> Ready
         getMaintainingReadyTransition: function () {
             return new StateTransition(StateOrder.READY, function (ctx, now) {
@@ -145,6 +150,7 @@
                 return conn.isReceivedRecently(now);
             });
         },
+
         // Maintaining -> Expired
         getMaintainingExpiredTransition: function () {
             return new StateTransition(StateOrder.EXPIRED, function (ctx, now) {
@@ -157,6 +163,7 @@
                 return !conn.isSentRecently(now);
             });
         },
+
         // Maintaining -> Error
         getMaintainingErrorTransition: function () {
             return new StateTransition(StateOrder.ERROR, function (ctx, now) {
@@ -169,6 +176,7 @@
                 return conn.isNotReceivedLongTimeAgo(now);
             });
         },
+
         // Error -> Default
         getErrorDefaultTransition: function () {
             return new StateTransition(StateOrder.DEFAULT, function (ctx, now) {
@@ -188,9 +196,3 @@
             });
         }
     });
-
-    //-------- namespace --------
-    ns.net.ConnectionStateTransition        = StateTransition;
-    ns.net.ConnectionStateTransitionBuilder = TransitionBuilder;
-
-})(StarTrek, FiniteStateMachine, MONKEY);

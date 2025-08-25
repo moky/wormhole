@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -61,12 +61,6 @@
  *             ||               || ------------------------> ||             ||
  *             \\===============//       (Received)          \\=============//
  */
-(function (ns, fsm, sys) {
-    'use strict';
-
-    var Class       = sys.type.Class;
-    var Context     = fsm.Context;
-    var BaseMachine = fsm.BaseMachine;
 
     /**
      *  Connection State Machine
@@ -74,7 +68,7 @@
      *
      * @param {Connection|*} connection
      */
-    var StateMachine = function (connection) {
+    st.net.ConnectionStateMachine = function (connection) {
         BaseMachine.call(this);
         this.__connection = connection;
         // init states
@@ -86,12 +80,14 @@
         this.addState(builder.getMaintainingState());
         this.addState(builder.getErrorState());
     };
+    var StateMachine = st.net.ConnectionStateMachine;
+
     Class(StateMachine, BaseMachine, [Context], null);
 
     // protected
     StateMachine.prototype.createStateBuilder = function () {
-        var stb = new ns.net.ConnectionStateTransitionBuilder();
-        return new ns.net.ConnectionStateBuilder(stb);
+        var stb = new TransitionBuilder();
+        return new StateBuilder(stb);
     };
 
     // protected
@@ -103,8 +99,3 @@
     StateMachine.prototype.getContext = function () {
         return this;
     };
-
-    //-------- namespace --------
-    ns.net.ConnectionStateMachine = StateMachine;
-
-})(StarTrek, FiniteStateMachine, MONKEY);

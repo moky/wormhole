@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -32,19 +32,12 @@
 
 //! require 'pair.js'
 
-(function (ns, sys) {
-    'use strict';
-
-    var Class = sys.type.Class;
-
-    var PairMap = ns.type.PairMap;
-
     /**
      *  Hash Key Pair Map
      *  ~~~~~~~~~~~~~~~~~
      */
-    var AbstractPairMap = function (any) {
-        Object.call(this);
+    st.type.AbstractPairMap = function (any) {
+        BaseObject.call(this);
         // default key
         this.__default = any;
         // because the remote address will always different to local address, so
@@ -54,11 +47,13 @@
         //    mapping: (local, null) => Connection
         this.__map = {};
     };
-    Class(AbstractPairMap, Object, [PairMap], null);
+    var AbstractPairMap = st.type.AbstractPairMap;
+
+    Class(AbstractPairMap, BaseObject, [PairMap], null);
 
     // Override
     AbstractPairMap.prototype.get = function (remote, local) {
-        var key_pair = get_keys(remote, local, null);
+        var key_pair = get_pair_keys(remote, local, null);
         var key1 = key_pair[0];
         var key2 = key_pair[1];
         var table = this.__map[key1];
@@ -83,20 +78,21 @@
             return value;
         }
         // take any Connection connected to remote / bound to local
-        var addresses = Object.keys(table);
-        for (var i = 0; i < addresses.length; ++i) {
-            value = table[addresses[i]];
-            if (value) {
-                return value;
+        Mapper.forEach(table, function (address, conn) {
+            if (conn) {
+                value = conn;
+                return true;
+            } else {
+                return false;
             }
-        }
-        return null;
+        });
+        return value;
     };
 
     // Override
     AbstractPairMap.prototype.set = function (remote, local, value) {
         // create indexes with key pair (remote, local)
-        var key_pair = get_keys(remote, local, this.__default);
+        var key_pair = get_pair_keys(remote, local, this.__default);
         var key1 = key_pair[0];
         var key2 = key_pair[1];
         var table = this.__map[key1];
@@ -119,7 +115,7 @@
     // Override
     AbstractPairMap.prototype.remove = function (remote, local, value) {
         // remove indexes with key pair (remote, local)
-        var key_pair = get_keys(remote, local, this.__default);
+        var key_pair = get_pair_keys(remote, local, this.__default);
         var key1 = key_pair[0];
         var key2 = key_pair[1];
         var table = this.__map[key1];
@@ -131,7 +127,7 @@
             // old value found,
             // remove key2 from table
             delete table[key2];
-            if (Object.keys(table).length === 0) {
+            if (Mapper.isEmpty(table)) {
                 // table empty,
                 // remove table from map
                 delete this.__map[key1];
@@ -140,7 +136,7 @@
         return old ? old : value;
     };
 
-    var get_keys = function (remote, local, any) {
+    var get_pair_keys = function (remote, local, any) {
         if (!remote) {
             return [local, any]
         } else if (!local) {
@@ -149,8 +145,3 @@
             return [remote, local]
         }
     };
-
-    //-------- namespace --------
-    ns.type.AbstractPairMap = AbstractPairMap;
-
-})(StarTrek, MONKEY);

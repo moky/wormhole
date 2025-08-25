@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -33,15 +33,7 @@
 //! require <fsm.js>
 //! require 'namespace.js'
 
-(function (ns, fsm, sys) {
-    'use strict';
-
-    var Class = sys.type.Class;
-    var Enum  = sys.type.Enum;
-
-    var BaseState = fsm.BaseState;
-
-    var StateOrder = Enum('ConnectionState', {
+    st.net.ConnectionStateOrder = Enum('ConnectionStatus', {
         DEFAULT:     0,  // Init
         PREPARING:   1,
         READY:       2,
@@ -49,6 +41,7 @@
         EXPIRED:     4,
         ERROR:       5
     });
+    var StateOrder = st.net.ConnectionStateOrder;
 
     /**
      *  Connection State
@@ -64,11 +57,13 @@
      *
      * @param {ConnectionStateOrder} order
      */
-    var ConnectionState = function (order) {
+    st.net.ConnectionState = function (order) {
         BaseState.call(this, Enum.getInt(order));
         this.__name = order.getName();
         this.__enterTime = null;  // Date
     };
+    var ConnectionState = st.net.ConnectionState;
+
     Class(ConnectionState, BaseState, null, {
 
         getName: function () {
@@ -134,11 +129,14 @@
      *  State Builder
      *  ~~~~~~~~~~~~~
      */
-    var StateBuilder = function (transitionBuilder) {
-        Object.call(this);
+    st.net.ConnectionStateBuilder = function (transitionBuilder) {
+        BaseObject.call(this);
         this.builder = transitionBuilder;
     };
-    Class(StateBuilder, Object, null, {
+    var StateBuilder = st.net.ConnectionStateBuilder;
+
+    Class(StateBuilder, BaseObject, null, {
+
         // Connection not started yet
         getDefaultState: function () {
             var state = new ConnectionState(StateOrder.DEFAULT);
@@ -146,6 +144,7 @@
             state.addTransition(this.builder.getDefaultPreparingTransition());
             return state;
         },
+
         // Connection started, preparing to connect/bind
         getPreparingState: function () {
             var state = new ConnectionState(StateOrder.PREPARING);
@@ -155,6 +154,7 @@
             state.addTransition(this.builder.getPreparingDefaultTransition());
             return state;
         },
+
         // Normal state of connection
         getReadyState: function () {
             var state = new ConnectionState(StateOrder.READY);
@@ -164,6 +164,7 @@
             state.addTransition(this.builder.getReadyErrorTransition());
             return state;
         },
+
         // Long time no response, need maintaining
         getExpiredState: function () {
             var state = new ConnectionState(StateOrder.EXPIRED);
@@ -173,6 +174,7 @@
             state.addTransition(this.builder.getExpiredErrorTransition());
             return state;
         },
+
         // Heartbeat sent, waiting response
         getMaintainingState: function () {
             var state = new ConnectionState(StateOrder.MAINTAINING);
@@ -184,6 +186,7 @@
             state.addTransition(this.builder.getMaintainingErrorTransition());
             return state;
         },
+
         // Connection lost
         getErrorState: function () {
             var state = new ConnectionState(StateOrder.ERROR);
@@ -192,10 +195,3 @@
             return state;
         }
     });
-
-    //-------- namespace --------
-    ns.net.ConnectionState        = ConnectionState;
-    ns.net.ConnectionStateBuilder = StateBuilder;
-    ns.net.ConnectionStateOrder   = StateOrder;
-
-})(StarTrek, FiniteStateMachine, MONKEY);

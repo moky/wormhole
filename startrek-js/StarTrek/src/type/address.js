@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -32,15 +32,8 @@
 
 //! require 'namespace.js'
 
-(function (ns, sys) {
-    'use strict';
-
-    var Interface      = sys.type.Interface;
-    var Class          = sys.type.Class;
-    var Stringer       = sys.type.Stringer;
-    var ConstantString = sys.type.ConstantString;
-
-    var SocketAddress = Interface(null, [Stringer]);
+    st.type.SocketAddress = Interface(null, [Stringer]);
+    var SocketAddress = st.type.SocketAddress;
 
     SocketAddress.prototype.getHost = function () {};
 
@@ -53,11 +46,13 @@
      * @param {String} host
      * @param {Number} port
      */
-    var InetSocketAddress = function (host, port) {
+    st.type.InetSocketAddress = function (host, port) {
         ConstantString.call(this, '(' + host + ':' + port + ')');
         this.__host = host;
         this.__port = port;
     };
+    var InetSocketAddress = st.type.InetSocketAddress
+
     Class(InetSocketAddress, ConstantString, [SocketAddress], null);
 
     // Override
@@ -70,8 +65,6 @@
         return this.__port;
     };
 
-    //-------- namespace --------
-    ns.type.SocketAddress = SocketAddress;
-    ns.type.InetSocketAddress = InetSocketAddress;
 
-})(StarTrek, MONKEY);
+    st.type.AnyAddress = new InetSocketAddress('0.0.0.0', 0);
+    var AnyAddress = st.type.AnyAddress;

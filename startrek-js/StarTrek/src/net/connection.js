@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -32,35 +32,31 @@
 
 //! require 'namespace.js'
 
-(function (ns, fsm, sys) {
-    'use strict';
-
-    var Interface = sys.type.Interface;
-    var Ticker = fsm.threading.Ticker;
-
-    var Connection = Interface(null, [Ticker]);
+    st.net.Connection = Interface(null, [Ticker]);
+    var Connection = st.net.Connection;
 
     //
     //  Flags
     //
 
     Connection.prototype.isOpen = function () {};
-
     Connection.prototype.isBound = function () {};
-
     Connection.prototype.isConnected = function () {};
 
     // this.isOpen() && (this.isConnected() || this.isBound());
     Connection.prototype.isAlive = function () {};
 
-    // ready for reading
+    /**
+     *  Ready for reading
+     */
     Connection.prototype.isAvailable = function () {};  // isAlive
 
-    // ready for writing
+    /**
+     *  Ready for writing
+     */
     Connection.prototype.isVacant = function () {};  // isAlive
 
     Connection.prototype.getLocalAddress = function () {};
-
     Connection.prototype.getRemoteAddress = function () {};
 
     /**
@@ -90,21 +86,13 @@
      */
     Connection.prototype.close = function () {};
 
-    //-------- namespace --------
-    ns.net.Connection = Connection;
-
-})(StarTrek, FiniteStateMachine, MONKEY);
-
-(function (ns, sys) {
-    'use strict';
-
-    var Interface = sys.type.Interface;
 
     /**
      *  Connection Delegate
      *  ~~~~~~~~~~~~~~~~~~~
      */
-    var ConnectionDelegate = Interface(null, null);
+    st.net.ConnectionDelegate = Interface(null, null);
+    var ConnectionDelegate = st.net.ConnectionDelegate;
 
     /**
      *  Called when connection state is changed
@@ -149,17 +137,14 @@
      */
     ConnectionDelegate.prototype.onConnectionError = function (error, connection) {};
 
-    //-------- namespace --------
-    ns.net.ConnectionDelegate = ConnectionDelegate;
 
-})(StarTrek, MONKEY);
+    /**
+     *  Connection with sent/received time
+     */
+    st.net.TimedConnection = Interface(null, null);
+    var TimedConnection = st.net.TimedConnection;
 
-(function (ns, sys) {
-    'use strict';
-
-    var Interface = sys.type.Interface;
-
-    var TimedConnection = Interface(null, null);
+    TimedConnection.EXPIRES = Duration.ofSeconds(16);
 
     /**
      *  Get last time to send data
@@ -195,8 +180,3 @@
      * @param {Date} now
      */
     TimedConnection.prototype.isNotReceivedLongTimeAgo = function (now) {};
-
-    //-------- namespace --------
-    ns.net.TimedConnection = TimedConnection;
-
-})(StarTrek, MONKEY);
