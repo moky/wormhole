@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -32,15 +32,6 @@
 
 //! require 'port/departure.js'
 
-(function (ns, sys) {
-    'use strict';
-
-    var Class      = sys.type.Class;
-    var Enum       = sys.type.Enum;
-    var BaseObject = sys.type.BaseObject;
-    var Departure  = ns.port.Departure;
-    var ShipStatus = ns.port.ShipStatus;
-
     /**
      *  Departure Ship
      *  ~~~~~~~~~~~~
@@ -48,7 +39,7 @@
      * @param {int|Enum} priority
      * @param {int|null} maxTries
      */
-    var DepartureShip = function (priority, maxTries) {
+    st.DepartureShip = function (priority, maxTries) {
         BaseObject.call(this);
         if (priority === null) {
             priority = 0;
@@ -60,48 +51,17 @@
         }
         this.__priority = priority;  // task priority, smaller is faster
         this.__tries = maxTries;
-        this.__expired = 0;          // timestamp in milliseconds
+        this.__expired = null;       // Date
     };
-    Class(DepartureShip, BaseObject, [Departure], {
+    var DepartureShip = st.DepartureShip;
 
-        // Override
-        getPriority: function () {
-            return this.__priority;
-        },
-
-        // Override
-        touch: function (now) {
-            // update retried time
-            this.__expired = now.getTime() + DepartureShip.EXPIRES;
-            // decrease counter
-            this.__tries -= 1;
-        },
-
-        // Override
-        getStatus: function (now) {
-            var expired = this.__expired;
-            var fragments = this.getFragments();
-            if (!fragments || fragments.length === 0) {
-                return ShipStatus.DONE;
-            } else if (expired === 0) {
-                return ShipStatus.NEW;
-            //} else if (!this.isImportant()) {
-            //    return ShipStatus.DONE;
-            } else if (now.getTime() < expired) {
-                return ShipStatus.WAITING;
-            } else if (this.__tries > 0) {
-                return ShipStatus.TIMEOUT;
-            } else {
-                return ShipStatus.FAILED;
-            }
-        }
-    });
+    Class(DepartureShip, BaseObject, [Departure], null);
 
     /**
      *  Departure task will be expired after 2 minutes
      *  if no response received.
      */
-    DepartureShip.EXPIRES = 120 * 1000;  // milliseconds
+    DepartureShip.EXPIRES = Duration.ofMinutes(2);
 
     /**
      *  Departure task will be retried 2 times
@@ -109,25 +69,45 @@
      */
     DepartureShip.RETRIES = 2;
 
-    //-------- namespace --------
-    ns.DepartureShip = DepartureShip;
+    // Override
+    DepartureShip.prototype.getPriority = function () {
+        return this.__priority;
+    };
 
-})(StarTrek, MONKEY);
+    // Override
+    DepartureShip.prototype.touch = function (now) {
+        // update retried time
+        this.__expired = DepartureShip.EXPIRES.addTo(now);
+        // decrease counter
+        this.__tries -= 1;
+    };
 
-(function (ns, sys) {
-    'use strict';
+    // Override
+    DepartureShip.prototype.getStatus = function (now) {
+        var expired = this.__expired;
+        var fragments = this.getFragments();
+        if (!fragments || fragments.length === 0) {
+            return ShipStatus.DONE;
+        } else if (!expired) {
+            return ShipStatus.NEW;
+        //} else if (!this.isImportant()) {
+        //    return ShipStatus.DONE;
+        } else if (now.getTime() < expired.getTime()) {
+            return ShipStatus.WAITING;
+        } else if (this.__tries > 0) {
+            return ShipStatus.TIMEOUT;
+        } else {
+            return ShipStatus.FAILED;
+        }
+    };
 
-    var Class      = sys.type.Class;
-    var Arrays     = sys.type.Arrays;
-    var HashSet    = sys.type.HashSet;
-    var ShipStatus = ns.port.ShipStatus;
 
     /**
      *  Memory cache for Departures
      *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~
      */
-    var DepartureHall = function () {
-        Object.call(this);
+    st.DepartureHall = function () {
+        BaseObject.call(this);
         // all departure ships
         this.__all_departures = new HashSet();  // WeakSet<Departure>
         // new ships waiting to send out
@@ -140,12 +120,14 @@
         this.__departure_level = {};            // SN => priority
         this.__finished_times = {};             // SN => Date
     };
-    Class(DepartureHall, Object, null, null);
+    var DepartureHall = st.DepartureHall;
+
+    Class(DepartureHall, BaseObject, null, null);
 
     /**
      *  Add outgoing ship to the waiting queue
      *
-     * @param {Departure|Ship} outgo - departure task
+     * @param {st.port.Departure} outgo - departure task
      * @return {boolean} false on duplicated
      */
     DepartureHall.prototype.addDeparture = function (outgo) {
@@ -174,7 +156,7 @@
     /**
      *  Check response from incoming ship
      *
-     * @param {Arrival|Ship} response - incoming ship with SN
+     * @param {Arrival|st.port.Ship} response - incoming ship with SN
      * @return {Departure|Ship} finished task
      */
     DepartureHall.prototype.checkResponse = function (response) {
@@ -189,14 +171,14 @@
         if (ship && ship.checkResponse(response)) {
             // all fragments sent, departure task finished
             // remove it and clear mapping when SN exists
-            removeShip.call(this, ship, sn);
+            removeDeparture.call(this, ship, sn);
             // mark finished time
             this.__finished_times[sn] = new Date();
             return ship;
         }
         return null;
     };
-    var removeShip = function (ship, sn) {
+    var removeDeparture = function (ship, sn) {
         var priority = this.__departure_level[sn];
         if (!priority) {
             priority = 0;
@@ -241,7 +223,7 @@
             // this task needs response
             // choose an array with priority
             var priority = outgo.getPriority();
-            insertShip.call(this, outgo, priority, sn);
+            insertDeparture.call(this, outgo, priority, sn);
             // build index for it
             this.__departure_map[sn] = outgo;
         } else {
@@ -253,7 +235,7 @@
         outgo.touch(now);
         return outgo;
     };
-    var insertShip = function (outgo, priority, sn) {
+    var insertDeparture = function (outgo, priority, sn) {
         var fleet = this.__fleets[priority];
         if (!fleet) {
             // create new array for this priority
@@ -310,7 +292,7 @@
                     // response timeout, needs retry now.
                     // move to next priority
                     fleet.splice(j, 1);
-                    insertShip.call(this, ship, prior + 1, sn);
+                    insertDeparture.call(this, ship, prior + 1, sn);
                     // update expired time
                     ship.touch(now);
                     return ship;
@@ -373,23 +355,17 @@
             }
         }
         // 3. seeking neglected finished times
-        var ago = now.getTime() - 3600 * 1000;
-        var keys = Object.keys(this.__finished_times);
-        var when;  // Date
-        for (j = keys.length - 1; j >= 0; --j) {
-            sn = keys[j];
-            when = this.__finished_times[sn];
+        var finished_times = this.__finished_times;
+        var ago = Duration.ofMinutes(60).subtractFrom(now);
+        ago = ago.getTime();
+        Mapper.forEach(finished_times, function (sn, when) {
             if (!when || when.getTime() < ago) {
                 // long time ago
-                delete this.__finished_times[sn];
+                delete finished_times[sn];
                 // // remove mapping with SN
                 // delete this.__departure_map[sn];
             }
-        }
+            return false;
+        });
         return count;
     };
-
-    //-------- namespace --------
-    ns.DepartureHall = DepartureHall;
-
-})(StarTrek, MONKEY);

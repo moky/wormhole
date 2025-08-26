@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -32,78 +32,63 @@
 
 //! require 'port/arrival.js'
 
-(function (ns, sys) {
-    'use strict';
-
-    var Class      = sys.type.Class;
-    var BaseObject = sys.type.BaseObject;
-    var Arrival    = ns.port.Arrival;
-    var ShipStatus = ns.port.ShipStatus;
-
     /**
      *  Arrival Ship
      *  ~~~~~~~~~~~~
      *
      * @param {Date} now
      */
-    var ArrivalShip = function (now) {
+    st.ArrivalShip = function (now) {
         BaseObject.call(this);
         if (!now) {
             now = new Date();
         }
-        this.__expired = now.getTime() + ArrivalShip.EXPIRED;
+        this.__expired = ArrivalShip.EXPIRED.addTo(now);
     };
+    var ArrivalShip = st.ArrivalShip;
+
     Class(ArrivalShip, BaseObject, [Arrival], null);
 
     /**
      *  Arrival task will be expired after 5 minutes
      *  if still not completed.
      */
-    ArrivalShip.EXPIRES = 300 * 1000;  // milliseconds
+    ArrivalShip.EXPIRES = Duration.ofMinutes(5);
 
     // Override
     ArrivalShip.prototype.touch = function (now) {
         // update expired time
-        this.__expired = now.getTime() + ArrivalShip.EXPIRES;
+        this.__expired = ArrivalShip.EXPIRED.addTo(now);
     };
 
     // Override
     ArrivalShip.prototype.getStatus = function (now) {
-        if (now.getTime() > this.__expired) {
+        if (now.getTime() > this.__expired.getTime()) {
             return ShipStatus.EXPIRED;
         } else {
             return ShipStatus.ASSEMBLING;
         }
     };
 
-    //-------- namespace --------
-    ns.ArrivalShip = ArrivalShip;
-
-})(StarTrek, MONKEY);
-
-(function (ns, sys) {
-    'use strict';
-
-    var Class      = sys.type.Class;
-    var HashSet    = sys.type.HashSet;
-    var ShipStatus = ns.port.ShipStatus;
 
     /**
      *  Memory cache for Arrivals
      *  ~~~~~~~~~~~~~~~~~~~~~~~~~
      */
-    var ArrivalHall = function () {
-        Object.call(this);
+    st.ArrivalHall = function () {
+        BaseObject.call(this);
         this.__arrivals = new HashSet();  // Set<Arrival>
         this.__arrival_map = {};          // SN => Arrival
         this.__finished_times = {};       // SN => Date
     };
-    Class(ArrivalHall, Object, null, null);
+    var ArrivalHall = st.ArrivalHall;
+
+    Class(ArrivalHall, BaseObject, null, null);
 
     /**
      *  Check received ship for completed package
      *
-     * @param {Arrival|Ship} income - received ship carrying data package (fragment)
+     * @param {st.port.Arrival|st.port.Ship} income - received ship carrying data package (fragment)
      * @return {Arrival|Ship} ship carrying completed data package
      */
     ArrivalHall.prototype.assembleArrival = function (income) {
@@ -179,23 +164,17 @@
             }
         }
         // 2. seeking neglected finished times
-        var ago = now.getTime() - 3600 * 1000;
-        var when;  // Date
-        var keys = Object.keys(this.__finished_times);
-        for (var j = keys.length - 1; j >= 0; --j) {
-            sn = keys[j];
-            when = this.__finished_times[sn];
+        var ago = Duration.ofMinutes(60).subtractFrom(now);
+        ago = ago.getTime();
+        var finished_times = this.__finished_times;
+        Mapper.forEach(finished_times, function (sn, when) {
             if (!when || when.getTime() < ago) {
                 // long time ago
-                delete this.__finished_times[sn];
+                delete finished_times[sn];
                 // // remove mapping with SN
                 // delete this.__arrival_map[sn];
             }
-        }
+            return false;
+        });
         return count;
     };
-
-    //-------- namespace --------
-    ns.ArrivalHall = ArrivalHall;
-
-})(StarTrek, MONKEY);

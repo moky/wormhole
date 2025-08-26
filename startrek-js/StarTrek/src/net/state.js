@@ -31,7 +31,6 @@
 //
 
 //! require <fsm.js>
-//! require 'namespace.js'
 
     st.net.ConnectionStateOrder = Enum('ConnectionStatus', {
         DEFAULT:     0,  // Init

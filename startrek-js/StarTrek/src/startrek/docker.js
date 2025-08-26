@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -35,30 +35,25 @@
 //! require 'port/docker.js'
 //! require 'dock.js'
 
-(function (ns, sys) {
-    'use strict';
-
-    var Class             = sys.type.Class;
-    var AddressPairObject = ns.type.AddressPairObject;
-    var ShipStatus        = ns.port.ShipStatus;
-    var Porter            = ns.port.Porter;
-    var PorterStatus      = ns.port.PorterStatus;
-    var Dock              = ns.Dock;
-
     /**
      *  Base Star Docker
      *
      * @param {SocketAddress} remote
      * @param {SocketAddress} local
      */
-    var StarPorter = function (remote, local) {
+    st.StarPorter = function (remote, local) {
         AddressPairObject.call(this, remote, local);
         this.__dock = this.createDock();
+
         this.__conn = -1;           // Connection
+        this.__delegate = null;     // PorterDelegate
+
+        // remaining data to be sent
         this.__lastOutgo = null;    // Departure
         this.__lastFragments = [];  // Uint8Array[]
-        this.__delegate = null;     // PorterDelegate
     };
+    var StarPorter = st.StarPorter;
+
     Class(StarPorter, AddressPairObject, [Porter], {
 
         // Override
@@ -231,7 +226,7 @@
 
     // Override
     StarPorter.prototype.purge = function (now) {
-        this.__dock.purge(now);
+        return this.__dock.purge(now);
     };
 
     // Override
@@ -245,7 +240,9 @@
 
     // Override
     StarPorter.prototype.process = function () {
-        // 1. get connection with is ready for sending dadta
+        //
+        //  1. get connection which is ready for sending data
+        //
         var conn = this.getConnection();
         if (!conn) {
             // waiting for connection
@@ -256,7 +253,9 @@
         }
         var keeper = this.getDelegate();
         var error;  // Error
-        // 2. get data waiting to be sent out
+        //
+        //  2. get data waiting to be sent out
+        //
         var outgo = this.__lastOutgo;
         var fragments = this.__lastFragments;
         if (outgo && fragments.length > 0) {
@@ -288,7 +287,9 @@
                 }
             }
         }
-        // 3. process fragments of outgo task
+        //
+        //  3. process fragments of outgo task
+        //
         var index = 0;
         var sent = 0;
         try {
@@ -322,7 +323,9 @@
             // socket error, callback
             error = e;
         }
-        // 4. remove sent fragments
+        //
+        //  4. remove sent fragments
+        //
         for (; index > 0; --index) {
             fragments.shift();
         }
@@ -332,18 +335,17 @@
             var part = last.subarray(sent);
             fragments.unshift(part);
         }
-        // 5. store remaining data
+        //
+        //  5. store remaining data
+        //
         this.__lastOutgo = outgo;
         this.__lastFragments = fragments;
-        // 6. callback for error
+        //
+        //  6. callback for error
+        //
         if (keeper) {
             // keeper.onPorterFailed(error, outgo, this);
             keeper.onPorterError(error, outgo, this);
         }
         return false;
     };
-
-    //-------- namespace --------
-    ns.StarPorter = StarPorter;
-
-})(StarTrek, MONKEY);

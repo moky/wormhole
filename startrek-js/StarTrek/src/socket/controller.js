@@ -91,7 +91,7 @@
     /**
      *  Get the channel
      *
-     * @return {BaseChannel|st.net.Channel}
+     * @return {st.socket.BaseChannel|st.net.Channel}
      */
     ChannelController.prototype.getChannel = function () {
         return this.__channel;

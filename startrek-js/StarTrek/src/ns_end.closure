@@ -1,0 +1,6 @@
+
+// (function (st, fsm, mk) {
+
+    // ...
+
+})(StarTrek, FiniteStateMachine, MONKEY);

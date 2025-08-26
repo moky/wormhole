@@ -13,45 +13,24 @@
   <script src="../../Crypto/dist/crypto.js"></script>
   <script src="../../FSM/dist/fsm.js"></script>
 
+  <script src="../src/sources.js"></script>
   <script>
     !function (ns) {
       var sources = [
-        'src/namespace.js',
-
-        'src/type/address.js',
-        'src/type/pair.js',
-        'src/type/abstract.js',
-        'src/type/hash.js',
-        'src/type/apm.js',
-
-        'src/net/channel.js',
-        'src/net/state.js',
-        'src/net/transition.js',
-        'src/net/machine.js',
-        'src/net/connection.js',
-        'src/net/hub.js',
-
-        'src/port/ship.js',
-        'src/port/docker.js',
-        'src/port/gate.js',
-
-        'src/socket/channel.js',
-        'src/socket/controller.js',
-        'src/socket/connection.js',
-        'src/socket/hub.js',
-
-        'src/startrek/arrival.js',
-        'src/startrek/departure.js',
-        'src/startrek/dock.js',
-        'src/startrek/docker.js',
-        'src/startrek/gate.js',
-        null
-      ];
+        'src/requires.js'
+      ].concat(st_sources);
       var dist = 'dist/startrek.js';
 
       var tests = [
+        '../../Crypto/tests/format/utf8.js',
+        '../../Crypto/tests/format/json.js',
+        '../../Crypto/tests/format/hex.js',
+        '../../Crypto/tests/format/base58.js',
+        '../../Crypto/tests/format/base64.js',
         '../../Crypto/tests/crypto_tests.js',
+
         '../../FSM/tests/fsm_tests.js',
+
         'tests/startrek_tests.js',
         null
       ];
@@ -59,6 +38,7 @@
       var base = window.location.href;
       base = base.substring(0, base.indexOf('tests/test.html'));
       var loader = new Loader(base);
+      loader.importJS('src/namespace.js');
 
       for (var i = 0; i < sources.length; ++i) {
         loader.importJS(sources[i]);
@@ -105,16 +85,19 @@
 <p class="console">
   <script>
     !(function () {
-      var text = 'cat';
-      var file;
+      var targets = [
+        'src/ns_begin.closure'
+      ];
       for (var i = 0; i < sources.length; ++i) {
-        file = sources[i];
-        if (!file) {
-          continue;
+        var file = sources[i];
+        if (file) {
+          targets.push(file);
         }
-        text += ' ' + file;
       }
-      text += ' >> ' + dist;
+      targets.push('src/ns_end.closure');
+
+      var text = targets.join(' ');
+      text = 'cat ' + text + ' > ' + dist;
       document.writeln(text);
     }());
   </script>

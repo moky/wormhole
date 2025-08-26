@@ -1,4 +1,4 @@
-;
+'use strict';
 // license: https://mit-license.org
 //
 //  Star Trek: Interstellar Transport
@@ -33,19 +33,14 @@
 //! require 'arrival.js'
 //! require 'departure.js'
 
-(function (ns, sys) {
-    'use strict';
-
-    var Class         = sys.type.Class;
-    var ArrivalHall   = ns.ArrivalHall;
-    var DepartureHall = ns.DepartureHall;
-
-    var Dock = function () {
-        Object.call(this);
+    st.Dock = function () {
+        BaseObject.call(this);
         this.__arrivalHall = this.createArrivalHall();
         this.__departureHall = this.createDepartureHall();
     };
-    Class(Dock, Object, null, null);
+    var Dock = st.Dock;
+
+    Class(Dock, BaseObject, null, null);
 
     // protected: override for user-customized hall
     Dock.prototype.createArrivalHall = function () {
@@ -112,8 +107,3 @@
         count += this.__departureHall.purge(now);
         return count;
     };
-
-    //-------- namespace --------
-    ns.Dock = Dock;
-
-})(StarTrek, MONKEY);

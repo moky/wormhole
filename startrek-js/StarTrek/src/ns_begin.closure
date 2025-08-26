@@ -1,0 +1,18 @@
+/**
+ * Star Trek: Interstellar Transport (v2.0.0)
+ *
+ * @author    moKy <albert.moky at gmail.com>
+ * @date      Aug. 27, 2025
+ * @copyright (c) 2020-2025 Albert Moky
+ * @license   {@link https://mit-license.org | MIT License}
+ */;
+
+if (typeof StarTrek !== 'object') {
+    StarTrek = {};
+}
+
+(function (st, fsm, mk) {
+
+    // ...
+
+// })(StarTrek, FiniteStateMachine, MONKEY);
