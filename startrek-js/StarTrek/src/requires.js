@@ -18,7 +18,6 @@ if (typeof st.socket !== 'object') {
 var Interface      = mk.type.Interface;
 var Class          = mk.type.Class;
 var IObject        = mk.type.Object;
-var Converter      = mk.type.Converter;
 var BaseObject     = mk.type.BaseObject;
 var HashSet        = mk.type.HashSet;
 var Enum           = mk.type.Enum;

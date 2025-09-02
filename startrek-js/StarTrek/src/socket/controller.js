@@ -47,7 +47,7 @@
      *  Receive data via socket, and return remote address
      *
      * @param {uint} maxLen - max length of received data
-     * @return {Pair<Uint8Array, SocketAddress>} data & remote address
+     * @return {[Uint8Array, SocketAddress>]} data & remote address
      */
     SocketReader.prototype.receive = function (maxLen) {};
 

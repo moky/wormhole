@@ -36,15 +36,13 @@
      *  Departure Ship
      *  ~~~~~~~~~~~~
      *
-     * @param {int|Enum} priority
-     * @param {int|null} maxTries
+     * @param {int|null} priority
+     * @param {uint|null} maxTries
      */
     st.DepartureShip = function (priority, maxTries) {
         BaseObject.call(this);
         if (priority === null) {
-            priority = 0;
-        } else {
-            priority = Enum.getInt(priority);
+            priority = DeparturePriority.NORMAL;
         }
         if (maxTries === null) {
             maxTries = 1 + DepartureShip.RETRIES;

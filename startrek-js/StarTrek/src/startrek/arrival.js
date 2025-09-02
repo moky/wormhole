@@ -43,7 +43,7 @@
         if (!now) {
             now = new Date();
         }
-        this.__expired = ArrivalShip.EXPIRED.addTo(now);
+        this.__expired = ArrivalShip.EXPIRES.addTo(now);
     };
     var ArrivalShip = st.ArrivalShip;
 
@@ -58,7 +58,7 @@
     // Override
     ArrivalShip.prototype.touch = function (now) {
         // update expired time
-        this.__expired = ArrivalShip.EXPIRED.addTo(now);
+        this.__expired = ArrivalShip.EXPIRES.addTo(now);
     };
 
     // Override

@@ -25,7 +25,6 @@ if (typeof StarTrek !== 'object') {
     var Interface = mk.type.Interface;
     var Class = mk.type.Class;
     var IObject = mk.type.Object;
-    var Converter = mk.type.Converter;
     var BaseObject = mk.type.BaseObject;
     var HashSet = mk.type.HashSet;
     var Enum = mk.type.Enum;
@@ -63,19 +62,6 @@ if (typeof StarTrek !== 'object') {
     };
     st.type.AnyAddress = new InetSocketAddress('0.0.0.0', 0);
     var AnyAddress = st.type.AnyAddress;
-    st.type.Pair = function (a, b) {
-        BaseObject.call(this);
-        this.a = a;
-        this.b = b
-    };
-    var Pair = st.type.Pair;
-    Class(Pair, BaseObject, null, null);
-    Pair.prototype.equals = function (other) {
-        if (other instanceof Pair) {
-            return object_equals(this.a, other.a) && object_equals(this.b, other.b)
-        }
-        return false
-    };
     st.type.PairMap = Interface(null, null);
     var PairMap = st.type.PairMap;
     PairMap.prototype.items = function () {
@@ -1276,9 +1262,9 @@ if (typeof StarTrek !== 'object') {
     };
     BaseHub.prototype.driveChannel = function (channel) {
         var cs = channel.getState();
-        if (StateOrder.INIT.equals(cs)) {
+        if (ChannelStateOrder.INIT.equals(cs)) {
             return false
-        } else if (StateOrder.CLOSED.equals(cs)) {
+        } else if (ChannelStateOrder.CLOSED.equals(cs)) {
             return false
         }
         var conn;
@@ -1287,8 +1273,8 @@ if (typeof StarTrek !== 'object') {
         var data;
         try {
             var pair = channel.receive(BaseHub.MSS);
-            data = pair.a;
-            remote = pair.b
+            data = pair[0];
+            remote = pair[1]
         } catch (e) {
             remote = channel.getRemoteAddress();
             local = channel.getLocalAddress();
@@ -1381,13 +1367,13 @@ if (typeof StarTrek !== 'object') {
         if (!now) {
             now = new Date()
         }
-        this.__expired = ArrivalShip.EXPIRED.addTo(now)
+        this.__expired = ArrivalShip.EXPIRES.addTo(now)
     };
     var ArrivalShip = st.ArrivalShip;
     Class(ArrivalShip, BaseObject, [Arrival], null);
     ArrivalShip.EXPIRES = Duration.ofMinutes(5);
     ArrivalShip.prototype.touch = function (now) {
-        this.__expired = ArrivalShip.EXPIRED.addTo(now)
+        this.__expired = ArrivalShip.EXPIRES.addTo(now)
     };
     ArrivalShip.prototype.getStatus = function (now) {
         if (now.getTime() > this.__expired.getTime()) {
@@ -1466,9 +1452,7 @@ if (typeof StarTrek !== 'object') {
     st.DepartureShip = function (priority, maxTries) {
         BaseObject.call(this);
         if (priority === null) {
-            priority = 0
-        } else {
-            priority = Enum.getInt(priority)
+            priority = DeparturePriority.NORMAL
         }
         if (maxTries === null) {
             maxTries = 1 + DepartureShip.RETRIES

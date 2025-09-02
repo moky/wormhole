@@ -32,21 +32,21 @@
 
 //! require 'namespace.js'
 
-    st.type.Pair = function (a, b) {
-        BaseObject.call(this);
-        this.a = a;
-        this.b = b;
-    };
-    var Pair = st.type.Pair;
-
-    Class(Pair, BaseObject, null, null);
-
-    Pair.prototype.equals = function (other) {
-        if (other instanceof Pair) {
-            return object_equals(this.a, other.a) && object_equals(this.b, other.b);
-        }
-        return false;
-    };
+    // st.type.Pair = function (a, b) {
+    //     BaseObject.call(this);
+    //     this.a = a;
+    //     this.b = b;
+    // };
+    // var Pair = st.type.Pair;
+    //
+    // Class(Pair, BaseObject, null, null);
+    //
+    // Pair.prototype.equals = function (other) {
+    //     if (other instanceof Pair) {
+    //         return object_equals(this.a, other.a) && object_equals(this.b, other.b);
+    //     }
+    //     return false;
+    // };
 
 
     /**

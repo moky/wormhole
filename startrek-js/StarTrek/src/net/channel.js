@@ -185,7 +185,7 @@
      *  Receives a datagram via this channel.
      *
      * @param {uint} maxLen
-     * @return {Pair<Uint8Array, SocketAddress>} data & remote address
+     * @return {[Uint8Array, SocketAddress>]} data & remote address
      */
     Channel.prototype.receive = function (maxLen) {};
 

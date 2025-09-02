@@ -221,10 +221,10 @@
         //  0. check channel state
         //
         var cs = channel.getState();
-        if (StateOrder.INIT.equals(cs)) {
+        if (ChannelStateOrder.INIT.equals(cs)) {
             // preparing
             return false;
-        } else if (StateOrder.CLOSED.equals(cs)) {
+        } else if (ChannelStateOrder.CLOSED.equals(cs)) {
             // finished
             return false;
         }
@@ -239,8 +239,8 @@
         //
         try {
             var pair = channel.receive(BaseHub.MSS);
-            data = pair.a;
-            remote = pair.b;
+            data = pair[0];
+            remote = pair[1];
         } catch (e) {
             remote = channel.getRemoteAddress();
             local = channel.getLocalAddress();

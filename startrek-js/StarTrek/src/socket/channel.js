@@ -57,7 +57,7 @@
  *
  *      read:    function(maxLen)       {return new Uint8Array(maxLen)},
  *      write:   function(data)         {return data.length},
- *      receive: function(maxLen)       {return new Uint8Array(maxLen)},
+ *      receive: function(maxLen)       {return [Uint8Array, SocketAddress]},
  *      send:    function(data, remote) {return data.length}
  *  }
  */
