@@ -80,7 +80,9 @@
     };
     var BaseChannel = st.socket.BaseChannel;
 
-    Class(BaseChannel, AddressPairObject, [Channel], {
+    Class(BaseChannel, AddressPairObject, [Channel]);
+
+    Implementation(BaseChannel, {
 
         // Override
         toString: function () {

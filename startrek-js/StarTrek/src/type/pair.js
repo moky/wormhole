@@ -39,7 +39,7 @@
     // };
     // var Pair = st.type.Pair;
     //
-    // Class(Pair, BaseObject, null, null);
+    // Class(Pair, BaseObject, null);
     //
     // Pair.prototype.equals = function (other) {
     //     if (other instanceof Pair) {
@@ -78,6 +78,7 @@
      * @param {SocketAddress} remote - remote address
      * @param {SocketAddress} local  - local address
      * @param {*} value  - mapping value
+     * @return {*} replaced value
      */
     PairMap.prototype.set = function (remote, local, value) {};
 

@@ -54,7 +54,9 @@
     };
     var BaseConnection = st.socket.BaseConnection;
 
-    Class(BaseConnection, AddressPairObject, [Connection, TimedConnection, ConnectionState.Delegate], {
+    Class(BaseConnection, AddressPairObject, [Connection, TimedConnection, ConnectionState.Delegate]);
+
+    Implementation(BaseConnection, {
 
         // Override
         toString: function () {
@@ -344,10 +346,10 @@
         var current = ctx.getCurrentState();
         var currentIndex = !current ? -1 : current.getIndex();
         // if current === 'ready'
-        if (StateOrder.READY.equals(currentIndex)) {
+        if (ConnectionStateOrder.READY.equals(currentIndex)) {
             var previousIndex = !previous ? -1 : previous.getIndex();
             // if previous === 'preparing
-            if (StateOrder.PREPARING.equals(previousIndex)) {
+            if (ConnectionStateOrder.PREPARING.equals(previousIndex)) {
                 // connection state changed from 'preparing' to 'ready',
                 // set times to expired soon.
                 var soon = TimedConnection.EXPIRES.divides(2).subtractFrom(now);
@@ -367,7 +369,7 @@
             delegate.onConnectionStateChanged(previous, current, this);
         }
         // if current == 'error'
-        if (StateOrder.ERROR.equals(currentIndex)) {
+        if (ConnectionStateOrder.ERROR.equals(currentIndex)) {
             // remove channel when error
             this.setChannel(null);
         }
@@ -404,7 +406,9 @@
     };
     var ActiveConnection = st.socket.ActiveConnection;
 
-    Class(ActiveConnection, BaseConnection, [Runnable], {
+    Class(ActiveConnection, BaseConnection, [Runnable]);
+
+    Implementation(ActiveConnection, {
         
         // Override
         isOpen: function () {

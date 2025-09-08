@@ -86,7 +86,7 @@
     };
     var ChannelController = st.socket.ChannelController
 
-    Class(ChannelController, BaseObject, null, null);
+    Class(ChannelController, BaseObject, null);
 
     /**
      *  Get the channel

@@ -49,7 +49,7 @@
     };
     var AbstractPairMap = st.type.AbstractPairMap;
 
-    Class(AbstractPairMap, BaseObject, [PairMap], null);
+    Class(AbstractPairMap, BaseObject, [PairMap]);
 
     // Override
     AbstractPairMap.prototype.get = function (remote, local) {

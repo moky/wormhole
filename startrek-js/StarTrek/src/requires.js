@@ -17,6 +17,7 @@ if (typeof st.socket !== 'object') {
 //-------- requires --------
 var Interface      = mk.type.Interface;
 var Class          = mk.type.Class;
+var Implementation = mk.type.Implementation;
 var IObject        = mk.type.Object;
 var BaseObject     = mk.type.BaseObject;
 var HashSet        = mk.type.HashSet;

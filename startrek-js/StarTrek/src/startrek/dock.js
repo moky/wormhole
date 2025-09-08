@@ -40,7 +40,7 @@
     };
     var Dock = st.Dock;
 
-    Class(Dock, BaseObject, null, null);
+    Class(Dock, BaseObject, null);
 
     // protected: override for user-customized hall
     Dock.prototype.createArrivalHall = function () {

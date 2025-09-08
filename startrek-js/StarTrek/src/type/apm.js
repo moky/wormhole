@@ -38,7 +38,7 @@
     };
     var AddressPairMap = st.type.AddressPairMap;
 
-    Class(AddressPairMap, HashPairMap, null, null);
+    Class(AddressPairMap, HashPairMap, null);
 
 
     /**
@@ -55,7 +55,7 @@
     };
     var AddressPairObject = st.type.AddressPairObject;
 
-    Class(AddressPairObject, BaseObject, null, null);
+    Class(AddressPairObject, BaseObject, null);
 
     AddressPairObject.prototype.getRemoteAddress = function () {
         return this.remoteAddress;

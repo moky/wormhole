@@ -41,7 +41,9 @@
     };
     var PorterPool = st.PorterPool;
 
-    Class(PorterPool, AddressPairMap, null, {
+    Class(PorterPool, AddressPairMap, null);
+
+    Implementation(PorterPool, {
 
         // Override
         set: function (remote, local, value) {
@@ -81,7 +83,7 @@
     };
     var StarGate = st.StarGate;
 
-    Class(StarGate, BaseObject, [Gate, ConnectionDelegate], null);
+    Class(StarGate, BaseObject, [Gate, ConnectionDelegate]);
 
     // protected
     StarGate.prototype.createPorterPool = function () {
@@ -285,7 +287,7 @@
         //  2. heartbeat when connection expired
         //
         var index = !current ? -1 : current.getIndex();
-        if (StateOrder.EXPIRED.equals(index)) {
+        if (ConnectionStateOrder.EXPIRED.equals(index)) {
             this.heartbeat(connection);
         }
     };

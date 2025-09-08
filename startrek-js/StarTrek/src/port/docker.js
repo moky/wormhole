@@ -115,13 +115,13 @@
             return PorterStatus.ERROR;
         }
         var index = state.getIndex();
-        if (StateOrder.READY.equals(index) ||
-            StateOrder.EXPIRED.equals(index) ||
-            StateOrder.MAINTAINING.equals(index)) {
+        if (ConnectionStateOrder.READY.equals(index) ||
+            ConnectionStateOrder.EXPIRED.equals(index) ||
+            ConnectionStateOrder.MAINTAINING.equals(index)) {
             return PorterStatus.READY;
-        } else if (StateOrder.PREPARING.equals(index)) {
+        } else if (ConnectionStateOrder.PREPARING.equals(index)) {
             return PorterStatus.PREPARING;
-        } else if (StateOrder.ERROR.equals(index)) {
+        } else if (ConnectionStateOrder.ERROR.equals(index)) {
             return PorterStatus.ERROR;
         } else {
             return PorterStatus.INIT;

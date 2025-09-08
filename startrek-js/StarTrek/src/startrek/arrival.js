@@ -47,7 +47,7 @@
     };
     var ArrivalShip = st.ArrivalShip;
 
-    Class(ArrivalShip, BaseObject, [Arrival], null);
+    Class(ArrivalShip, BaseObject, [Arrival]);
 
     /**
      *  Arrival task will be expired after 5 minutes
@@ -83,7 +83,7 @@
     };
     var ArrivalHall = st.ArrivalHall;
 
-    Class(ArrivalHall, BaseObject, null, null);
+    Class(ArrivalHall, BaseObject, null);
 
     /**
      *  Check received ship for completed package

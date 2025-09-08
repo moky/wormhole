@@ -24,6 +24,7 @@ if (typeof StarTrek !== 'object') {
     }
     var Interface = mk.type.Interface;
     var Class = mk.type.Class;
+    var Implementation = mk.type.Implementation;
     var IObject = mk.type.Object;
     var BaseObject = mk.type.BaseObject;
     var HashSet = mk.type.HashSet;
@@ -53,7 +54,7 @@ if (typeof StarTrek !== 'object') {
         this.__port = port
     };
     var InetSocketAddress = st.type.InetSocketAddress
-    Class(InetSocketAddress, ConstantString, [SocketAddress], null);
+    Class(InetSocketAddress, ConstantString, [SocketAddress]);
     InetSocketAddress.prototype.getHost = function () {
         return this.__host
     };
@@ -78,7 +79,7 @@ if (typeof StarTrek !== 'object') {
         this.__map = {}
     };
     var AbstractPairMap = st.type.AbstractPairMap;
-    Class(AbstractPairMap, BaseObject, [PairMap], null);
+    Class(AbstractPairMap, BaseObject, [PairMap]);
     AbstractPairMap.prototype.get = function (remote, local) {
         var key_pair = get_pair_keys(remote, local, null);
         var key1 = key_pair[0];
@@ -160,7 +161,7 @@ if (typeof StarTrek !== 'object') {
         this.__items = new HashSet()
     };
     var HashPairMap = st.type.HashPairMap;
-    Class(HashPairMap, AbstractPairMap, null, null);
+    Class(HashPairMap, AbstractPairMap, null);
     HashPairMap.prototype.items = function () {
         return this.__items.toArray()
     };
@@ -204,14 +205,14 @@ if (typeof StarTrek !== 'object') {
         HashPairMap.call(this, AnyAddress)
     };
     var AddressPairMap = st.type.AddressPairMap;
-    Class(AddressPairMap, HashPairMap, null, null);
+    Class(AddressPairMap, HashPairMap, null);
     st.type.AddressPairObject = function (remote, local) {
         BaseObject.call(this);
         this.remoteAddress = remote;
         this.localAddress = local
     };
     var AddressPairObject = st.type.AddressPairObject;
-    Class(AddressPairObject, BaseObject, null, null);
+    Class(AddressPairObject, BaseObject, null);
     AddressPairObject.prototype.getRemoteAddress = function () {
         return this.remoteAddress
     };
@@ -338,14 +339,15 @@ if (typeof StarTrek !== 'object') {
         EXPIRED: 4,
         ERROR: 5
     });
-    var StateOrder = st.net.ConnectionStateOrder;
+    var ConnectionStateOrder = st.net.ConnectionStateOrder;
     st.net.ConnectionState = function (order) {
         BaseState.call(this, Enum.getInt(order));
         this.__name = order.getName();
         this.__enterTime = null
     };
     var ConnectionState = st.net.ConnectionState;
-    Class(ConnectionState, BaseState, null, {
+    Class(ConnectionState, BaseState, null);
+    Implementation(ConnectionState, {
         getName: function () {
             return this.__name
         }, getEnterTime: function () {
@@ -360,7 +362,7 @@ if (typeof StarTrek !== 'object') {
                     return true
                 }
                 other = other.getIndex()
-            } else if (other instanceof StateOrder) {
+            } else if (other instanceof ConnectionStateOrder) {
                 other = other.getValue()
             }
             return this.getIndex() === other
@@ -382,34 +384,35 @@ if (typeof StarTrek !== 'object') {
         this.builder = transitionBuilder
     };
     var StateBuilder = st.net.ConnectionStateBuilder;
-    Class(StateBuilder, BaseObject, null, {
+    Class(StateBuilder, BaseObject, null);
+    Implementation(StateBuilder, {
         getDefaultState: function () {
-            var state = new ConnectionState(StateOrder.DEFAULT);
+            var state = new ConnectionState(ConnectionStateOrder.DEFAULT);
             state.addTransition(this.builder.getDefaultPreparingTransition());
             return state
         }, getPreparingState: function () {
-            var state = new ConnectionState(StateOrder.PREPARING);
+            var state = new ConnectionState(ConnectionStateOrder.PREPARING);
             state.addTransition(this.builder.getPreparingReadyTransition());
             state.addTransition(this.builder.getPreparingDefaultTransition());
             return state
         }, getReadyState: function () {
-            var state = new ConnectionState(StateOrder.READY);
+            var state = new ConnectionState(ConnectionStateOrder.READY);
             state.addTransition(this.builder.getReadyExpiredTransition());
             state.addTransition(this.builder.getReadyErrorTransition());
             return state
         }, getExpiredState: function () {
-            var state = new ConnectionState(StateOrder.EXPIRED);
+            var state = new ConnectionState(ConnectionStateOrder.EXPIRED);
             state.addTransition(this.builder.getExpiredMaintainingTransition());
             state.addTransition(this.builder.getExpiredErrorTransition());
             return state
         }, getMaintainingState: function () {
-            var state = new ConnectionState(StateOrder.MAINTAINING);
+            var state = new ConnectionState(ConnectionStateOrder.MAINTAINING);
             state.addTransition(this.builder.getMaintainingReadyTransition());
             state.addTransition(this.builder.getMaintainingExpiredTransition());
             state.addTransition(this.builder.getMaintainingErrorTransition());
             return state
         }, getErrorState: function () {
-            var state = new ConnectionState(StateOrder.ERROR);
+            var state = new ConnectionState(ConnectionStateOrder.ERROR);
             state.addTransition(this.builder.getErrorDefaultTransition());
             return state
         }
@@ -419,7 +422,7 @@ if (typeof StarTrek !== 'object') {
         this.__evaluate = evaluate
     };
     var StateTransition = st.net.ConnectionStateTransition;
-    Class(StateTransition, BaseTransition, null, null);
+    Class(StateTransition, BaseTransition, null);
     StateTransition.prototype.evaluate = function (ctx, now) {
         return this.__evaluate.call(this, ctx, now)
     };
@@ -427,24 +430,25 @@ if (typeof StarTrek !== 'object') {
         BaseObject.call(this)
     };
     var TransitionBuilder = st.net.ConnectionStateTransitionBuilder;
-    Class(TransitionBuilder, BaseObject, null, {
+    Class(TransitionBuilder, BaseObject, null);
+    Implementation(TransitionBuilder, {
         getDefaultPreparingTransition: function () {
-            return new StateTransition(StateOrder.PREPARING, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.PREPARING, function (ctx, now) {
                 var conn = ctx.getConnection();
                 return conn && conn.isOpen()
             })
         }, getPreparingReadyTransition: function () {
-            return new StateTransition(StateOrder.READY, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.READY, function (ctx, now) {
                 var conn = ctx.getConnection();
                 return conn && conn.isAlive()
             })
         }, getPreparingDefaultTransition: function () {
-            return new StateTransition(StateOrder.DEFAULT, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.DEFAULT, function (ctx, now) {
                 var conn = ctx.getConnection();
                 return !(conn && conn.isOpen())
             })
         }, getReadyExpiredTransition: function () {
-            return new StateTransition(StateOrder.EXPIRED, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.EXPIRED, function (ctx, now) {
                 var conn = ctx.getConnection();
                 if (!(conn && conn.isAlive())) {
                     return false
@@ -452,12 +456,12 @@ if (typeof StarTrek !== 'object') {
                 return !conn.isReceivedRecently(now)
             })
         }, getReadyErrorTransition: function () {
-            return new StateTransition(StateOrder.ERROR, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.ERROR, function (ctx, now) {
                 var conn = ctx.getConnection();
                 return !(conn && conn.isAlive())
             })
         }, getExpiredMaintainingTransition: function () {
-            return new StateTransition(StateOrder.MAINTAINING, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.MAINTAINING, function (ctx, now) {
                 var conn = ctx.getConnection();
                 if (!(conn && conn.isAlive())) {
                     return false
@@ -465,7 +469,7 @@ if (typeof StarTrek !== 'object') {
                 return conn.isSentRecently(now)
             })
         }, getExpiredErrorTransition: function () {
-            return new StateTransition(StateOrder.ERROR, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.ERROR, function (ctx, now) {
                 var conn = ctx.getConnection();
                 if (!(conn && conn.isAlive())) {
                     return true
@@ -473,7 +477,7 @@ if (typeof StarTrek !== 'object') {
                 return conn.isNotReceivedLongTimeAgo(now)
             })
         }, getMaintainingReadyTransition: function () {
-            return new StateTransition(StateOrder.READY, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.READY, function (ctx, now) {
                 var conn = ctx.getConnection();
                 if (!(conn && conn.isAlive())) {
                     return false
@@ -481,7 +485,7 @@ if (typeof StarTrek !== 'object') {
                 return conn.isReceivedRecently(now)
             })
         }, getMaintainingExpiredTransition: function () {
-            return new StateTransition(StateOrder.EXPIRED, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.EXPIRED, function (ctx, now) {
                 var conn = ctx.getConnection();
                 if (!(conn && conn.isAlive())) {
                     return false
@@ -489,7 +493,7 @@ if (typeof StarTrek !== 'object') {
                 return !conn.isSentRecently(now)
             })
         }, getMaintainingErrorTransition: function () {
-            return new StateTransition(StateOrder.ERROR, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.ERROR, function (ctx, now) {
                 var conn = ctx.getConnection();
                 if (!(conn && conn.isAlive())) {
                     return true
@@ -497,7 +501,7 @@ if (typeof StarTrek !== 'object') {
                 return conn.isNotReceivedLongTimeAgo(now)
             })
         }, getErrorDefaultTransition: function () {
-            return new StateTransition(StateOrder.DEFAULT, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.DEFAULT, function (ctx, now) {
                 var conn = ctx.getConnection();
                 if (!(conn && conn.isAlive())) {
                     return false
@@ -524,7 +528,7 @@ if (typeof StarTrek !== 'object') {
         this.addState(builder.getErrorState())
     };
     var StateMachine = st.net.ConnectionStateMachine;
-    Class(StateMachine, BaseMachine, [Context], null);
+    Class(StateMachine, BaseMachine, [Context]);
     StateMachine.prototype.createStateBuilder = function () {
         var stb = new TransitionBuilder();
         return new StateBuilder(stb)
@@ -614,7 +618,6 @@ if (typeof StarTrek !== 'object') {
     var Arrival = st.port.Arrival;
     Arrival.prototype.assemble = function (income) {
     };
-    var DeparturePriority = {URGENT: -1, NORMAL: 0, SLOWER: 1};
     st.port.Departure = Interface(null, [Ship]);
     var Departure = st.port.Departure;
     Departure.prototype.getPriority = function () {
@@ -625,7 +628,8 @@ if (typeof StarTrek !== 'object') {
     };
     Departure.prototype.isImportant = function () {
     };
-    Departure.Priority = DeparturePriority;
+    Departure.Priority = {URGENT: -1, NORMAL: 0, SLOWER: 1};
+    var DeparturePriority = Departure.Priority;
     st.port.Porter = Interface(null, [Processor]);
     var Porter = st.port.Porter;
     Porter.prototype.isOpen = function () {
@@ -657,11 +661,11 @@ if (typeof StarTrek !== 'object') {
             return PorterStatus.ERROR
         }
         var index = state.getIndex();
-        if (StateOrder.READY.equals(index) || StateOrder.EXPIRED.equals(index) || StateOrder.MAINTAINING.equals(index)) {
+        if (ConnectionStateOrder.READY.equals(index) || ConnectionStateOrder.EXPIRED.equals(index) || ConnectionStateOrder.MAINTAINING.equals(index)) {
             return PorterStatus.READY
-        } else if (StateOrder.PREPARING.equals(index)) {
+        } else if (ConnectionStateOrder.PREPARING.equals(index)) {
             return PorterStatus.PREPARING
-        } else if (StateOrder.ERROR.equals(index)) {
+        } else if (ConnectionStateOrder.ERROR.equals(index)) {
             return PorterStatus.ERROR
         } else {
             return PorterStatus.INIT
@@ -693,7 +697,8 @@ if (typeof StarTrek !== 'object') {
         this.__closed = -1
     };
     var BaseChannel = st.socket.BaseChannel;
-    Class(BaseChannel, AddressPairObject, [Channel], {
+    Class(BaseChannel, AddressPairObject, [Channel]);
+    Implementation(BaseChannel, {
         toString: function () {
             var clazz = this.getClassName();
             var remote = this.getRemoteAddress();
@@ -881,7 +886,7 @@ if (typeof StarTrek !== 'object') {
         this.__channel = channel
     };
     var ChannelController = st.socket.ChannelController
-    Class(ChannelController, BaseObject, null, null);
+    Class(ChannelController, BaseObject, null);
     ChannelController.prototype.getChannel = function () {
         return this.__channel
     };
@@ -906,7 +911,8 @@ if (typeof StarTrek !== 'object') {
         this.__fsm = null
     };
     var BaseConnection = st.socket.BaseConnection;
-    Class(BaseConnection, AddressPairObject, [Connection, TimedConnection, ConnectionState.Delegate], {
+    Class(BaseConnection, AddressPairObject, [Connection, TimedConnection, ConnectionState.Delegate]);
+    Implementation(BaseConnection, {
         toString: function () {
             var clazz = this.getClassName();
             var remote = this.getRemoteAddress();
@@ -1089,9 +1095,9 @@ if (typeof StarTrek !== 'object') {
     BaseConnection.prototype.exitState = function (previous, ctx, now) {
         var current = ctx.getCurrentState();
         var currentIndex = !current ? -1 : current.getIndex();
-        if (StateOrder.READY.equals(currentIndex)) {
+        if (ConnectionStateOrder.READY.equals(currentIndex)) {
             var previousIndex = !previous ? -1 : previous.getIndex();
-            if (StateOrder.PREPARING.equals(previousIndex)) {
+            if (ConnectionStateOrder.PREPARING.equals(previousIndex)) {
                 var soon = TimedConnection.EXPIRES.divides(2).subtractFrom(now);
                 var st = this.__lastSentTime;
                 if (!st || st.getTime() < soon.getTime()) {
@@ -1107,7 +1113,7 @@ if (typeof StarTrek !== 'object') {
         if (delegate) {
             delegate.onConnectionStateChanged(previous, current, this)
         }
-        if (StateOrder.ERROR.equals(currentIndex)) {
+        if (ConnectionStateOrder.ERROR.equals(currentIndex)) {
             this.setChannel(null)
         }
     };
@@ -1125,7 +1131,8 @@ if (typeof StarTrek !== 'object') {
         this.__bg_interval = 8000
     };
     var ActiveConnection = st.socket.ActiveConnection;
-    Class(ActiveConnection, BaseConnection, [Runnable], {
+    Class(ActiveConnection, BaseConnection, [Runnable]);
+    Implementation(ActiveConnection, {
         isOpen: function () {
             return this.getStateMachine() !== null
         }, start: function (hub) {
@@ -1188,7 +1195,8 @@ if (typeof StarTrek !== 'object') {
         AddressPairMap.call(this)
     };
     var ConnectionPool = st.socket.ConnectionPool;
-    Class(ConnectionPool, AddressPairMap, null, {
+    Class(ConnectionPool, AddressPairMap, null);
+    Implementation(ConnectionPool, {
         set: function (remote, local, value) {
             var cached = AddressPairMap.prototype.remove.call(this, remote, local, value);
             AddressPairMap.prototype.set.call(this, remote, local, value);
@@ -1202,7 +1210,7 @@ if (typeof StarTrek !== 'object') {
         this.__last = new Date()
     };
     var BaseHub = st.socket.BaseHub;
-    Class(BaseHub, BaseObject, [Hub], null);
+    Class(BaseHub, BaseObject, [Hub]);
     BaseHub.prototype.createConnectionPool = function () {
         return new ConnectionPool()
     };
@@ -1370,7 +1378,7 @@ if (typeof StarTrek !== 'object') {
         this.__expired = ArrivalShip.EXPIRES.addTo(now)
     };
     var ArrivalShip = st.ArrivalShip;
-    Class(ArrivalShip, BaseObject, [Arrival], null);
+    Class(ArrivalShip, BaseObject, [Arrival]);
     ArrivalShip.EXPIRES = Duration.ofMinutes(5);
     ArrivalShip.prototype.touch = function (now) {
         this.__expired = ArrivalShip.EXPIRES.addTo(now)
@@ -1389,7 +1397,7 @@ if (typeof StarTrek !== 'object') {
         this.__finished_times = {}
     };
     var ArrivalHall = st.ArrivalHall;
-    Class(ArrivalHall, BaseObject, null, null);
+    Class(ArrivalHall, BaseObject, null);
     ArrivalHall.prototype.assembleArrival = function (income) {
         var sn = income.getSN();
         if (!sn) {
@@ -1462,7 +1470,7 @@ if (typeof StarTrek !== 'object') {
         this.__expired = null
     };
     var DepartureShip = st.DepartureShip;
-    Class(DepartureShip, BaseObject, [Departure], null);
+    Class(DepartureShip, BaseObject, [Departure]);
     DepartureShip.EXPIRES = Duration.ofMinutes(2);
     DepartureShip.RETRIES = 2;
     DepartureShip.prototype.getPriority = function () {
@@ -1498,7 +1506,7 @@ if (typeof StarTrek !== 'object') {
         this.__finished_times = {}
     };
     var DepartureHall = st.DepartureHall;
-    Class(DepartureHall, BaseObject, null, null);
+    Class(DepartureHall, BaseObject, null);
     DepartureHall.prototype.addDeparture = function (outgo) {
         if (this.__all_departures.contains(outgo)) {
             return false
@@ -1681,7 +1689,7 @@ if (typeof StarTrek !== 'object') {
         this.__departureHall = this.createDepartureHall()
     };
     var Dock = st.Dock;
-    Class(Dock, BaseObject, null, null);
+    Class(Dock, BaseObject, null);
     Dock.prototype.createArrivalHall = function () {
         return new ArrivalHall()
     };
@@ -1715,7 +1723,8 @@ if (typeof StarTrek !== 'object') {
         this.__lastFragments = []
     };
     var StarPorter = st.StarPorter;
-    Class(StarPorter, AddressPairObject, [Porter], {
+    Class(StarPorter, AddressPairObject, [Porter]);
+    Implementation(StarPorter, {
         toString: function () {
             var clazz = this.getClassName();
             var remote = this.getRemoteAddress();
@@ -1888,7 +1897,8 @@ if (typeof StarTrek !== 'object') {
         AddressPairMap.call(this)
     };
     var PorterPool = st.PorterPool;
-    Class(PorterPool, AddressPairMap, null, {
+    Class(PorterPool, AddressPairMap, null);
+    Implementation(PorterPool, {
         set: function (remote, local, value) {
             var cached = AddressPairMap.prototype.remove.call(this, remote, local, value);
             AddressPairMap.prototype.set.call(this, remote, local, value);
@@ -1901,7 +1911,7 @@ if (typeof StarTrek !== 'object') {
         this.__porterPool = this.createPorterPool()
     };
     var StarGate = st.StarGate;
-    Class(StarGate, BaseObject, [Gate, ConnectionDelegate], null);
+    Class(StarGate, BaseObject, [Gate, ConnectionDelegate]);
     StarGate.prototype.createPorterPool = function () {
         return new PorterPool()
     };
@@ -2019,7 +2029,7 @@ if (typeof StarTrek !== 'object') {
             }
         }
         var index = !current ? -1 : current.getIndex();
-        if (StateOrder.EXPIRED.equals(index)) {
+        if (ConnectionStateOrder.EXPIRED.equals(index)) {
             this.heartbeat(connection)
         }
     };

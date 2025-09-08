@@ -40,7 +40,7 @@
         EXPIRED:     4,
         ERROR:       5
     });
-    var StateOrder = st.net.ConnectionStateOrder;
+    var ConnectionStateOrder = st.net.ConnectionStateOrder;
 
     /**
      *  Connection State
@@ -63,7 +63,9 @@
     };
     var ConnectionState = st.net.ConnectionState;
 
-    Class(ConnectionState, BaseState, null, {
+    Class(ConnectionState, BaseState, null);
+
+    Implementation(ConnectionState, {
 
         getName: function () {
             return this.__name;
@@ -91,7 +93,7 @@
                     return true;
                 }
                 other = other.getIndex();
-            } else if (other instanceof StateOrder) {
+            } else if (other instanceof ConnectionStateOrder) {
                 other = other.getValue();
             }
             return this.getIndex() === other;
@@ -134,11 +136,13 @@
     };
     var StateBuilder = st.net.ConnectionStateBuilder;
 
-    Class(StateBuilder, BaseObject, null, {
+    Class(StateBuilder, BaseObject, null);
+
+    Implementation(StateBuilder, {
 
         // Connection not started yet
         getDefaultState: function () {
-            var state = new ConnectionState(StateOrder.DEFAULT);
+            var state = new ConnectionState(ConnectionStateOrder.DEFAULT);
             // Default -> Preparing
             state.addTransition(this.builder.getDefaultPreparingTransition());
             return state;
@@ -146,7 +150,7 @@
 
         // Connection started, preparing to connect/bind
         getPreparingState: function () {
-            var state = new ConnectionState(StateOrder.PREPARING);
+            var state = new ConnectionState(ConnectionStateOrder.PREPARING);
             // Preparing -> Ready
             state.addTransition(this.builder.getPreparingReadyTransition());
             // Preparing -> Default
@@ -156,7 +160,7 @@
 
         // Normal state of connection
         getReadyState: function () {
-            var state = new ConnectionState(StateOrder.READY);
+            var state = new ConnectionState(ConnectionStateOrder.READY);
             // Ready -> Expired
             state.addTransition(this.builder.getReadyExpiredTransition());
             // Ready -> Error
@@ -166,7 +170,7 @@
 
         // Long time no response, need maintaining
         getExpiredState: function () {
-            var state = new ConnectionState(StateOrder.EXPIRED);
+            var state = new ConnectionState(ConnectionStateOrder.EXPIRED);
             // Expired -> Maintaining
             state.addTransition(this.builder.getExpiredMaintainingTransition());
             // Expired -> Error
@@ -176,7 +180,7 @@
 
         // Heartbeat sent, waiting response
         getMaintainingState: function () {
-            var state = new ConnectionState(StateOrder.MAINTAINING);
+            var state = new ConnectionState(ConnectionStateOrder.MAINTAINING);
             // Maintaining -> Ready
             state.addTransition(this.builder.getMaintainingReadyTransition());
             // Maintaining -> Expired
@@ -188,7 +192,7 @@
 
         // Connection lost
         getErrorState: function () {
-            var state = new ConnectionState(StateOrder.ERROR);
+            var state = new ConnectionState(ConnectionStateOrder.ERROR);
             // Error -> Default
             state.addTransition(this.builder.getErrorDefaultTransition());
             return state;

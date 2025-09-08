@@ -42,7 +42,7 @@
     };
     var HashPairMap = st.type.HashPairMap;
 
-    Class(HashPairMap, AbstractPairMap, null, null);
+    Class(HashPairMap, AbstractPairMap, null);
 
     // Override
     HashPairMap.prototype.items = function () {

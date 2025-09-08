@@ -53,7 +53,7 @@
     };
     var DepartureShip = st.DepartureShip;
 
-    Class(DepartureShip, BaseObject, [Departure], null);
+    Class(DepartureShip, BaseObject, [Departure]);
 
     /**
      *  Departure task will be expired after 2 minutes
@@ -120,7 +120,7 @@
     };
     var DepartureHall = st.DepartureHall;
 
-    Class(DepartureHall, BaseObject, null, null);
+    Class(DepartureHall, BaseObject, null);
 
     /**
      *  Add outgoing ship to the waiting queue

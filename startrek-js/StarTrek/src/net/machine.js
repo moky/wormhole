@@ -82,7 +82,7 @@
     };
     var StateMachine = st.net.ConnectionStateMachine;
 
-    Class(StateMachine, BaseMachine, [Context], null);
+    Class(StateMachine, BaseMachine, [Context]);
 
     // protected
     StateMachine.prototype.createStateBuilder = function () {

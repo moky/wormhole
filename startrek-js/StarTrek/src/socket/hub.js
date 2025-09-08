@@ -38,7 +38,9 @@
     };
     var ConnectionPool = st.socket.ConnectionPool;
 
-    Class(ConnectionPool, AddressPairMap, null, {
+    Class(ConnectionPool, AddressPairMap, null);
+
+    Implementation(ConnectionPool, {
 
         // Override
         set: function (remote, local, value) {
@@ -79,7 +81,7 @@
     };
     var BaseHub = st.socket.BaseHub;
 
-    Class(BaseHub, BaseObject, [Hub], null);
+    Class(BaseHub, BaseObject, [Hub]);
 
     // protected
     BaseHub.prototype.createConnectionPool = function () {

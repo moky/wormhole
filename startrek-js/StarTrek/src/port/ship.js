@@ -101,16 +101,6 @@
 
 
     /**
-     *  Departure Priority
-     *  ~~~~~~~~~~~~~~~~~~
-     */
-    var DeparturePriority = {
-        URGENT: -1,
-        NORMAL:  0,
-        SLOWER:  1
-    };
-
-    /**
      *  Outgoing Ship
      *  ~~~~~~~~~~~~~
      */
@@ -147,4 +137,13 @@
      */
     Departure.prototype.isImportant = function () {};
 
-    Departure.Priority = DeparturePriority;
+    /**
+     *  Departure Priority
+     *  ~~~~~~~~~~~~~~~~~~
+     */
+    Departure.Priority = {
+        URGENT: -1,
+        NORMAL:  0,
+        SLOWER:  1
+    };
+    var DeparturePriority = Departure.Priority;

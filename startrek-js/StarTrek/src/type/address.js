@@ -53,7 +53,7 @@
     };
     var InetSocketAddress = st.type.InetSocketAddress
 
-    Class(InetSocketAddress, ConstantString, [SocketAddress], null);
+    Class(InetSocketAddress, ConstantString, [SocketAddress]);
 
     // Override
     InetSocketAddress.prototype.getHost = function () {

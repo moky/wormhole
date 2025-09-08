@@ -44,7 +44,7 @@
     };
     var StateTransition = st.net.ConnectionStateTransition;
 
-    Class(StateTransition, BaseTransition, null, null);
+    Class(StateTransition, BaseTransition, null);
 
     // Override
     StateTransition.prototype.evaluate = function(ctx, now) {
@@ -61,11 +61,13 @@
     };
     var TransitionBuilder = st.net.ConnectionStateTransitionBuilder;
 
-    Class(TransitionBuilder, BaseObject, null, {
+    Class(TransitionBuilder, BaseObject, null);
+
+    Implementation(TransitionBuilder, {
 
         // Default -> Preparing
         getDefaultPreparingTransition: function () {
-            return new StateTransition(StateOrder.PREPARING, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.PREPARING, function (ctx, now) {
                 var conn = ctx.getConnection();
                 // connection started? change state to 'preparing'
                 return conn && conn.isOpen();
@@ -74,7 +76,7 @@
 
         // Preparing -> Ready
         getPreparingReadyTransition: function () {
-            return new StateTransition(StateOrder.READY, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.READY, function (ctx, now) {
                 var conn = ctx.getConnection();
                 // connected or bound, change state to 'ready'
                 return conn && conn.isAlive();
@@ -83,7 +85,7 @@
 
         // Preparing -> Default
         getPreparingDefaultTransition: function () {
-            return new StateTransition(StateOrder.DEFAULT, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.DEFAULT, function (ctx, now) {
                 var conn = ctx.getConnection();
                 // connection stopped, change state to 'not_connect'
                 return !(conn && conn.isOpen());
@@ -92,7 +94,7 @@
 
         // Ready -> Expired
         getReadyExpiredTransition: function () {
-            return new StateTransition(StateOrder.EXPIRED, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.EXPIRED, function (ctx, now) {
                 var conn = ctx.getConnection();
                 if (!(conn && conn.isAlive())) {
                     return false;
@@ -105,7 +107,7 @@
 
         // Ready -> Error
         getReadyErrorTransition: function () {
-            return new StateTransition(StateOrder.ERROR, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.ERROR, function (ctx, now) {
                 var conn = ctx.getConnection();
                 // connection lost, change state to 'error'
                 return !(conn && conn.isAlive());
@@ -114,7 +116,7 @@
 
         // Expired -> Maintaining
         getExpiredMaintainingTransition: function () {
-            return new StateTransition(StateOrder.MAINTAINING, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.MAINTAINING, function (ctx, now) {
                 var conn = ctx.getConnection();
                 if (!(conn && conn.isAlive())) {
                     return false;
@@ -127,7 +129,7 @@
 
         // Expired -> Error
         getExpiredErrorTransition: function () {
-            return new StateTransition(StateOrder.ERROR, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.ERROR, function (ctx, now) {
                 var conn = ctx.getConnection();
                 if (!(conn && conn.isAlive())) {
                     return true;
@@ -140,7 +142,7 @@
 
         // Maintaining -> Ready
         getMaintainingReadyTransition: function () {
-            return new StateTransition(StateOrder.READY, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.READY, function (ctx, now) {
                 var conn = ctx.getConnection();
                 if (!(conn && conn.isAlive())) {
                     return false;
@@ -153,7 +155,7 @@
 
         // Maintaining -> Expired
         getMaintainingExpiredTransition: function () {
-            return new StateTransition(StateOrder.EXPIRED, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.EXPIRED, function (ctx, now) {
                 var conn = ctx.getConnection();
                 if (!(conn && conn.isAlive())) {
                     return false;
@@ -166,7 +168,7 @@
 
         // Maintaining -> Error
         getMaintainingErrorTransition: function () {
-            return new StateTransition(StateOrder.ERROR, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.ERROR, function (ctx, now) {
                 var conn = ctx.getConnection();
                 if (!(conn && conn.isAlive())) {
                     return true;
@@ -179,7 +181,7 @@
 
         // Error -> Default
         getErrorDefaultTransition: function () {
-            return new StateTransition(StateOrder.DEFAULT, function (ctx, now) {
+            return new StateTransition(ConnectionStateOrder.DEFAULT, function (ctx, now) {
                 var conn = ctx.getConnection();
                 if (!(conn && conn.isAlive())) {
                     return false;

@@ -54,7 +54,9 @@
     };
     var StarPorter = st.StarPorter;
 
-    Class(StarPorter, AddressPairObject, [Porter], {
+    Class(StarPorter, AddressPairObject, [Porter]);
+
+    Implementation(StarPorter, {
 
         // Override
         toString: function () {
