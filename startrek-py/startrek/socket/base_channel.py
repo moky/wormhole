@@ -37,7 +37,6 @@ from ..types import SocketAddress, AddressPairObject
 
 from ..net.socket import is_blocking, is_closed, is_connected, is_bound
 from ..net.socket import is_available, is_vacant
-from ..net.socket import socket_bind, socket_connect, socket_disconnect
 from ..net import Channel, ChannelStatus
 
 
@@ -244,20 +243,17 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         sock.setblocking(blocking)
         return sock
 
-    # noinspection PyMethodMayBeStatic
+    @abstractmethod
     async def _socket_bind(self, sock: socket.socket, local: SocketAddress) -> bool:
-        # TODO: override for async binding
-        return await socket_bind(sock=sock, local=local)
+        raise NotImplemented
 
-    # noinspection PyMethodMayBeStatic
+    @abstractmethod
     async def _socket_connect(self, sock: socket.socket, remote: SocketAddress) -> bool:
-        # TODO: override for async connecting
-        return await socket_connect(sock=sock, remote=remote)
+        raise NotImplemented
 
-    # noinspection PyMethodMayBeStatic
+    @abstractmethod
     async def _socket_disconnect(self, sock: socket.socket) -> bool:
-        # TODO: override for async disconnecting
-        return await socket_disconnect(sock=sock)
+        raise NotImplemented
 
     # Override
     async def bind(self, address: Optional[SocketAddress] = None,
@@ -297,6 +293,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         if sock is not None:
             ok = await self._socket_disconnect(sock=sock)
             assert ok, 'failed to disconnect socket: %s' % sock
+            self.__sock = None
         return sock
 
     # Override
@@ -307,7 +304,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     async def read(self, max_len: int) -> Optional[bytes]:
         try:
             return await self.reader.read(max_len=max_len)
-        except socket.error as error:
+        except OSError as error:
             await self.close()
             raise error
 
@@ -315,7 +312,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     async def write(self, data: bytes) -> int:
         try:
             return await self.writer.write(data=data)
-        except socket.error as error:
+        except OSError as error:
             await self.close()
             raise error
 
@@ -323,7 +320,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     async def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
         try:
             return await self.reader.receive(max_len=max_len)
-        except socket.error as error:
+        except OSError as error:
             await self.close()
             raise error
 
@@ -331,6 +328,6 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     async def send(self, data: bytes, target: SocketAddress) -> int:
         try:
             return await self.writer.send(data=data, target=target)
-        except socket.error as error:
+        except OSError as error:
             await self.close()
             raise error

@@ -30,7 +30,6 @@
 
 import select
 import socket
-import traceback
 from typing import Optional
 
 from ..types import SocketAddress
@@ -39,16 +38,20 @@ from ..types import SocketAddress
 def get_local_address(sock: socket.socket) -> Optional[SocketAddress]:
     try:
         return sock.getsockname()
-    except socket.error:
-        # print('[NET] failed to get local address: %s' % error)
+    except (OSError, socket.error):
+        return None
+    except Exception as error:
+        print('[NET] unexpected error getting local address: %s' % error)
         return None
 
 
 def get_remote_address(sock: socket.socket) -> Optional[SocketAddress]:
     try:
         return sock.getpeername()
-    except socket.error:
-        # print('[NET] failed to get remote address: %s' % error)
+    except (OSError, socket.error):
+        return None
+    except Exception as error:
+        print('[NET] unexpected error getting remote address: %s' % error)
         return None
 
 
@@ -60,8 +63,10 @@ def get_remote_address(sock: socket.socket) -> Optional[SocketAddress]:
 def is_blocking(sock: socket.socket) -> bool:
     try:
         return sock.getblocking()
-    except socket.error:
-        # print('[NET] failed to get blocking: %s' % error)
+    except (OSError, socket.error):
+        return False
+    except Exception as error:
+        print('[NET] unexpected error getting blocking: %s' % error)
         return False
 
 
@@ -74,69 +79,37 @@ def is_connected(sock: socket.socket) -> bool:
 
 
 def is_closed(sock: socket.socket) -> bool:
-    return getattr(sock, '_closed', False)
+    if hasattr(sock, '_closed'):
+        return getattr(sock, '_closed', False)
+    try:
+        sock.fileno()
+        return False
+    except (OSError, socket.error):
+        return True
+    except Exception as error:
+        print('[NET] unexpected error checking socket closed: %s' % error)
+        return True
 
 
 def is_available(sock: socket.socket) -> bool:
     """ Ready for reading """
-    ready, _, _ = select.select([sock], [], [], 0)
-    return sock in ready
+    try:
+        ready, _, _ = select.select([sock], [], [], 0)
+        return sock in ready
+    except (OSError, ValueError):
+        return False
+    except Exception as error:
+        print('[NET] unexpected error checking available: %s' % error)
+        return False
 
 
 def is_vacant(sock: socket.socket) -> bool:
     """ Ready for writing """
-    _, ready, _ = select.select([], [sock], [], 0)
-    return sock in ready
-
-
-"""
-    Async Socket I/O
-    ~~~~~~~~~~~~~~~~
-"""
-
-
-async def socket_send(sock: socket.socket, data: bytes) -> int:
-    """ Send data """
-    return sock.send(data)
-
-
-async def socket_receive(sock: socket.socket, max_len: int) -> Optional[bytes]:
-    """ Receive data """
-    return sock.recv(max_len)
-
-
-async def socket_bind(sock: socket.socket, local: SocketAddress) -> bool:
-    """ Bind to local address """
     try:
-        sock.bind(local)
-        return is_bound(sock=sock)
-    except socket.error as error:
-        print('[Socket] cannot bind to: %s, socket: %s, %s' % (local, sock, error))
-        traceback.print_exc()
+        _, ready, _ = select.select([], [sock], [], 0)
+        return sock in ready
+    except (OSError, ValueError):
         return False
-
-
-async def socket_connect(sock: socket.socket, remote: SocketAddress) -> bool:
-    """ Connect to remote address """
-    try:
-        sock.connect(remote)
-        return is_connected(sock=sock)
-    except socket.error as error:
-        print('[Socket] cannot connect to: %s, socket: %s, %s' % (remote, sock, error))
-        traceback.print_exc()
-        return False
-
-
-async def socket_disconnect(sock: socket.socket) -> bool:
-    """ Close socket """
-    if is_closed(sock=sock) or not is_connected(sock=sock):
-        return True
-    try:
-        # TODO: check for UDP socket
-        # sock.shutdown(socket.SHUT_RDWR)
-        sock.close()
-        return not is_connected(sock=sock)
-    except socket.error as error:
-        print('[Socket] cannot close socket: %s, %s' % (sock, error))
-        traceback.print_exc()
+    except Exception as error:
+        print('[NET] unexpected error checking vacant: %s' % error)
         return False

@@ -28,12 +28,11 @@
 # SOFTWARE.
 # ==============================================================================
 
-import socket
 import threading
 import time
 import weakref
 from abc import ABC, abstractmethod
-from typing import Optional, Iterable, Union
+from typing import Optional, Iterable
 
 from .types import SocketAddress, AddressPairMap
 
@@ -278,11 +277,11 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         pass
 
     # Override
-    async def connection_failed(self, error: Union[IOError, socket.error], data: bytes, connection: Connection):
+    async def connection_failed(self, error: OSError, data: bytes, connection: Connection):
         # ignore event for sending failed
         pass
 
     # Override
-    async def connection_error(self, error: Union[IOError, socket.error], connection: Connection):
+    async def connection_error(self, error: OSError, connection: Connection):
         # ignore event for receiving error
         pass

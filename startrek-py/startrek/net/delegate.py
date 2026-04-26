@@ -28,9 +28,8 @@
 # SOFTWARE.
 # ==============================================================================
 
-import socket
 from abc import ABC, abstractmethod
-from typing import Optional, Union
+from typing import Optional
 
 from .connection import Connection
 from .state import ConnectionState
@@ -73,7 +72,7 @@ class ConnectionDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    async def connection_failed(self, error: Union[IOError, socket.error], data: bytes, connection: Connection):
+    async def connection_failed(self, error: OSError, data: bytes, connection: Connection):
         """
         Called when failed to send data via the connection
 
@@ -84,7 +83,7 @@ class ConnectionDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    async def connection_error(self, error: Union[IOError, socket.error], connection: Connection):
+    async def connection_error(self, error: OSError, connection: Connection):
         """
         Called when connection (receiving) error
 

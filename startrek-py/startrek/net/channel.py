@@ -99,7 +99,7 @@ class Channel(ABC):
         :param max_len: max buffer length
         :return: The number of bytes read, possibly zero,
                  or -1 if the channel has reached end-of-stream
-        :raise: socket.error
+        :raise: OSError
         """
         raise NotImplemented
 
@@ -110,7 +110,7 @@ class Channel(ABC):
 
         :param data: outgo data
         :return: The number of bytes written, possibly zero
-        :raise: socket.error
+        :raise: OSError
         """
         raise NotImplemented
 
@@ -125,7 +125,7 @@ class Channel(ABC):
 
         :param blocking: If True then this channel will be placed in blocking mode;
                          if False then it will be placed non-blocking mode
-        :raise: socket.error
+        :raise: OSError
         """
         raise NotImplemented
 
@@ -149,7 +149,7 @@ class Channel(ABC):
         :param host:    local host
         :param port:    local port
         :return: bound socket
-        :raise: socket.error
+        :raise: OSError
         """
         raise NotImplemented
 
@@ -184,7 +184,7 @@ class Channel(ABC):
         :param host:    remote host
         :param port:    remote port
         :return: connected socket
-        :raise: socket.error
+        :raise: OSError
         """
         raise NotImplemented
 
@@ -208,7 +208,7 @@ class Channel(ABC):
         Disconnects this channel's socket.
 
         :return: inner socket
-        :raise: socket.error
+        :raise: OSError
         """
         raise NotImplemented
 
@@ -219,7 +219,7 @@ class Channel(ABC):
 
         :param max_len: max buffer length
         :return: received data and remote address
-        :raise: socket.error
+        :raise: OSError
         """
         raise NotImplemented
 
@@ -235,6 +235,6 @@ class Channel(ABC):
                  method was invoked or, if this channel is non-blocking, may be
                  zero if there was insufficient room for the datagram in the
                  underlying output buffer
-        :raise: socket.error
+        :raise: OSError
         """
         raise NotImplemented

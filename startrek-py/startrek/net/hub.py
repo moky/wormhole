@@ -78,7 +78,7 @@ class Hub(Processor, ABC):
         if host is not None:
             try:
                 return socket.getaddrinfo(host, None)
-            except socket.error as error:
+            except OSError as error:
                 print('[NET] failed to get address info: %s' % error)
                 # traceback.print_exc()
                 return []

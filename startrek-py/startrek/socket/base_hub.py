@@ -28,7 +28,6 @@
 # SOFTWARE.
 # ==============================================================================
 
-import socket
 import threading
 import time
 import weakref
@@ -228,7 +227,7 @@ class BaseHub(Hub, ABC):
         try:
             # try to receive
             data, remote = await channel.receive(max_len=self.MSS)
-        except socket.error as error:
+        except OSError as error:
             remote = channel.remote_address
             local = channel.local_address
             delegate = self.delegate

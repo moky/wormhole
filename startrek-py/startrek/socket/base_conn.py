@@ -28,7 +28,6 @@
 # SOFTWARE.
 # ==============================================================================
 
-import socket
 import time
 import weakref
 from typing import Optional
@@ -210,7 +209,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
     async def _send(self, data: bytes, target: Optional[SocketAddress]) -> int:
         channel = self.channel
         if channel is None or not channel.alive:
-            # raise socket.error('socket channel lost: %s' % channel)
+            # raise OSError('socket channel lost: %s' % channel)
             return -1
         elif target is None:
             # assert False, 'target address empty'
@@ -229,8 +228,8 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         try:
             sent = await self._send(data=data, target=self.remote_address)
             if sent < 0:  # == -1:
-                raise socket.error('failed to send: %d byte(s) to %s' % (len(data), self.remote_address))
-        except socket.error as e:
+                raise OSError('failed to send: %d byte(s) to %s' % (len(data), self.remote_address))
+        except OSError as e:
             error = e
             # socket error, close current channel
             await self._set_channel(channel=None)
