@@ -38,6 +38,7 @@ from .dock import Dock, LockedDock
 from .stardocker import StarPorter
 from .stargate import StarGate
 
+
 name = "StarTrek"
 
 __author__ = 'Albert Moky'
@@ -51,14 +52,15 @@ __all__ = [
     'Hub',
     'Channel', 'ChannelStatus',
     'Connection', 'ConnectionState', 'ConnectionDelegate',
-    'SocketHelper',
 
     #
     #   Socket Net
     #
 
-    'BaseChannel',
     'SocketReader', 'SocketWriter',
+    'SocketHelper',
+
+    'BaseChannel',
     'BaseHub', 'BaseConnection', 'ActiveConnection',
 
     #

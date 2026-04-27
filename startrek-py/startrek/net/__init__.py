@@ -65,7 +65,6 @@ from .connection import Connection
 from .state import ConnectionState
 from .delegate import ConnectionDelegate
 
-from .socket import SocketHelper
 
 __all__ = [
 
@@ -75,7 +74,5 @@ __all__ = [
 
     'Connection', 'ConnectionState',
     'ConnectionDelegate',
-
-    'SocketHelper',
 
 ]

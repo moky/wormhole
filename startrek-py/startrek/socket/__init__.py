@@ -28,8 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
+from .helpers import SocketReader, SocketWriter
+from .helpers import SocketHelper
+
 from .base_channel import BaseChannel
-from .base_channel import SocketReader, SocketWriter
 
 from .base_conn import BaseConnection
 from .active_conn import ActiveConnection
@@ -38,8 +40,11 @@ from .base_hub import BaseHub
 
 
 __all__ = [
-    'BaseChannel',
+
     'SocketReader', 'SocketWriter',
+    'SocketHelper',
+
+    'BaseChannel',
 
     'BaseConnection', 'ActiveConnection',
     'BaseHub',

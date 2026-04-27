@@ -2,7 +2,7 @@
 #
 #   Star Trek: Interstellar Transport
 #
-#                                Written in 2021 by Moky <albert.moky@gmail.com>
+#                                Written in 2026 by Moky <albert.moky@gmail.com>
 #
 # ==============================================================================
 # MIT License
@@ -32,9 +32,36 @@ import asyncio
 import select
 import socket
 import traceback
-from typing import Optional
+from abc import ABC, abstractmethod
+from typing import Optional, Tuple
 
 from ..types import SocketAddress
+
+
+class SocketReader(ABC):
+
+    @abstractmethod
+    async def read(self, max_len: int) -> Optional[bytes]:
+        """ read data from socket """
+        raise NotImplemented
+
+    @abstractmethod
+    async def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
+        """ receive data via socket, and return it with remote address """
+        raise NotImplemented
+
+
+class SocketWriter(ABC):
+
+    @abstractmethod
+    async def write(self, data: bytes) -> int:
+        """ write data into socket """
+        raise NotImplemented
+
+    @abstractmethod
+    async def send(self, data: bytes, target: SocketAddress) -> int:
+        """ send data via socket with remote address """
+        raise NotImplemented
 
 
 # noinspection PyMethodMayBeStatic
