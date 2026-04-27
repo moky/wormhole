@@ -30,7 +30,6 @@
 
 from .base_channel import BaseChannel
 from .base_channel import SocketReader, SocketWriter
-from .base_channel import Controller
 
 from .base_conn import BaseConnection
 from .active_conn import ActiveConnection
@@ -41,8 +40,6 @@ from .base_hub import BaseHub
 __all__ = [
     'BaseChannel',
     'SocketReader', 'SocketWriter',
-
-    'Controller',
 
     'BaseConnection', 'ActiveConnection',
     'BaseHub',

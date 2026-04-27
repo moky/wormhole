@@ -29,15 +29,13 @@
 # ==============================================================================
 
 import socket
-import weakref
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple
 
 from ..types import SocketAddress, AddressPairObject
 
-from ..net.socket import is_blocking, is_closed, is_connected, is_bound
-from ..net.socket import is_available, is_vacant
 from ..net import Channel, ChannelStatus
+from ..net import SocketHelper
 
 
 class SocketReader(ABC):
@@ -66,36 +64,6 @@ class SocketWriter(ABC):
         raise NotImplemented
 
 
-class Controller:
-    """ Socket Channel Controller """
-
-    def __init__(self, channel):
-        super().__init__()
-        self.__channel = weakref.ref(channel)
-
-    @property
-    def channel(self):  # -> Optional[BaseChannel]:
-        return self.__channel()
-
-    @property
-    def remote_address(self) -> Optional[SocketAddress]:
-        channel = self.channel
-        if isinstance(channel, BaseChannel):
-            return channel.remote_address
-
-    @property
-    def local_address(self) -> Optional[SocketAddress]:
-        channel = self.channel
-        if isinstance(channel, BaseChannel):
-            return channel.local_address
-
-    @property
-    def sock(self) -> Optional[socket.socket]:
-        channel = self.channel
-        if isinstance(channel, BaseChannel):
-            return channel.sock
-
-
 class BaseChannel(AddressPairObject, Channel, ABC):
 
     def __init__(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]):
@@ -108,7 +76,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         self.__writer = self._create_writer()
 
     #
-    #   Channel Controller
+    #   Socket Channel Controllers
     #
 
     @abstractmethod
@@ -128,6 +96,11 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     @property  # protected
     def writer(self) -> SocketWriter:
         return self.__writer
+
+    @property  # protected
+    @abstractmethod
+    def socket_helper(self) -> SocketHelper:
+        raise NotImplemented
 
     #
     #   socket
@@ -150,7 +123,8 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             self.__closed = True
         # 2. close old socket
         if old is not None and old is not sock:
-            await self._socket_disconnect(sock=old)
+            helper = self.socket_helper
+            await helper.disconnect(sock=old)
 
     #
     #   States
@@ -162,10 +136,11 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             # initializing
             return ChannelStatus.INIT
         sock = self.sock
-        if sock is None or is_closed(sock=sock):
+        helper = self.socket_helper
+        if sock is None or helper.is_closed(sock=sock):
             # closed
             return ChannelStatus.CLOSED
-        elif is_connected(sock=sock) or is_bound(sock=sock):
+        elif helper.is_connected(sock=sock) or helper.is_bound(sock=sock):
             # normal
             return ChannelStatus.ALIVE
         else:
@@ -178,17 +153,20 @@ class BaseChannel(AddressPairObject, Channel, ABC):
             # initializing
             return False
         sock = self.sock
-        return sock is None or is_closed(sock=sock)
+        helper = self.socket_helper
+        return sock is None or helper.is_closed(sock=sock)
 
     @property  # Override
     def bound(self) -> bool:
         sock = self.sock
-        return sock is not None and is_bound(sock=sock)
+        helper = self.socket_helper
+        return sock is not None and helper.is_bound(sock=sock)
 
     @property  # Override
     def connected(self) -> bool:
         sock = self.sock
-        return sock is not None and is_connected(sock=sock)
+        helper = self.socket_helper
+        return sock is not None and helper.is_connected(sock=sock)
 
     @property  # Override
     def alive(self) -> bool:
@@ -197,33 +175,30 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     @property
     def available(self) -> bool:
         sock = self.sock
-        if sock is None or is_closed(sock=sock):
+        helper = self.socket_helper
+        if sock is None or helper.is_closed(sock=sock):
             return False
-        elif is_bound(sock=sock) or is_connected(sock=sock):
+        elif helper.is_bound(sock=sock) or helper.is_connected(sock=sock):
             # alive, check reading buffer
-            return self._socket_available(sock=sock)
-
-    # noinspection PyMethodMayBeStatic
-    def _socket_available(self, sock: socket.socket) -> bool:
-        return is_available(sock=sock)
+            return helper.is_available(sock=sock)
 
     @property
     def vacant(self) -> bool:
         sock = self.sock
-        if sock is None or is_closed(sock=sock):
+        helper = self.socket_helper
+        if sock is None or helper.is_closed(sock=sock):
             return False
-        elif is_bound(sock=sock) or is_connected(sock=sock):
+        elif helper.is_bound(sock=sock) or helper.is_connected(sock=sock):
             # alive, check writing buffer
-            return self._socket_vacant(sock=sock)
-
-    # noinspection PyMethodMayBeStatic
-    def _socket_vacant(self, sock: socket.socket) -> bool:
-        return is_vacant(sock=sock)
+            return helper.is_vacant(sock=sock)
 
     @property  # Override
     def blocking(self) -> bool:
         sock = self.sock
-        return sock is not None and is_blocking(sock=sock)
+        if sock is None:
+            return False
+        helper = self.socket_helper
+        return helper.is_blocking(sock=sock)
 
     def __str__(self) -> str:
         mod = self.__module__
@@ -240,24 +215,13 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     # Override
     def configure_blocking(self, blocking: bool):
         sock = self.sock
-        sock.setblocking(blocking)
+        helper = self.socket_helper
+        helper.set_blocking(sock=sock, blocking=blocking)
         return sock
 
-    @abstractmethod
-    async def _socket_bind(self, sock: socket.socket, local: SocketAddress) -> bool:
-        raise NotImplemented
-
-    @abstractmethod
-    async def _socket_connect(self, sock: socket.socket, remote: SocketAddress) -> bool:
-        raise NotImplemented
-
-    @abstractmethod
-    async def _socket_disconnect(self, sock: socket.socket) -> bool:
-        raise NotImplemented
-
     # Override
-    async def bind(self, address: Optional[SocketAddress] = None,
-                   host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
+    def bind(self, address: Optional[SocketAddress] = None,
+             host: Optional[str] = '0.0.0.0', port: Optional[int] = 0):
         if address is None:
             if port > 0:
                 assert host is not None, 'host should not be empty'
@@ -266,7 +230,8 @@ class BaseChannel(AddressPairObject, Channel, ABC):
                 address = self._local
                 assert address is not None, 'local address not set'
         sock = self.sock
-        ok = await self._socket_bind(sock=sock, local=address)
+        helper = self.socket_helper
+        ok = helper.bind(sock=sock, local=address)
         assert ok, 'failed to bind socket: %s' % str(address)
         self._local = address
         return sock
@@ -282,7 +247,8 @@ class BaseChannel(AddressPairObject, Channel, ABC):
                 address = self._remote
                 assert address is not None, 'remote address not set'
         sock = self.sock
-        ok = await self._socket_connect(sock=sock, remote=address)
+        helper = self.socket_helper
+        ok = await helper.connect(sock=sock, remote=address)
         assert ok, 'failed to connect socket: %s' % str(address)
         self._remote = address
         return sock
@@ -291,7 +257,8 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     async def disconnect(self) -> Optional[socket.socket]:
         sock = self.__sock
         if sock is not None:
-            ok = await self._socket_disconnect(sock=sock)
+            helper = self.socket_helper
+            ok = await helper.disconnect(sock=sock)
             assert ok, 'failed to disconnect socket: %s' % sock
             self.__sock = None
         return sock
