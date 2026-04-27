@@ -28,6 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
+from .types import *
 from .net import *
 from .socket import *
 from .port import *
@@ -44,6 +45,12 @@ name = "StarTrek"
 __author__ = 'Albert Moky'
 
 __all__ = [
+
+    'SocketAddress',
+    'AddressPairObject',
+
+    'PairMap', 'AbstractPairMap', 'HashPairMap',
+    'AddressPairMap',
 
     #
     #   Net

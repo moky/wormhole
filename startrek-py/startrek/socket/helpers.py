@@ -173,9 +173,9 @@ class SocketHelper:
         loop = asyncio.get_event_loop()
         try:
             await loop.sock_connect(sock, remote)
-            return True
             # sock.connect(remote)
-            # return is_connected(sock=sock)
+            # return not self.is_connected(sock=sock)
+            return True
         # except (OSError, socket.error):
         #     return False
         except Exception as error:
@@ -196,8 +196,8 @@ class SocketHelper:
             except (OSError, socket.error):
                 pass
             sock.close()
+            # return not self.is_connected(sock=sock)
             return True
-            # return not is_connected(sock=sock)
         # except (OSError, socket.error):
         #     return False
         except Exception as error:
@@ -210,7 +210,8 @@ class SocketHelper:
         # return sock.send(data)
         loop = asyncio.get_event_loop()
         try:
-            return await loop.sock_sendall(sock, data)
+            await loop.sock_sendall(sock, data)
+            return len(data)
         # except BlockingIOError:
         #     await asyncio.sleep(0.01)
         #     raise

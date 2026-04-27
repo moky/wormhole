@@ -75,9 +75,9 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     def writer(self) -> SocketWriter:
         return self.__writer
 
-    @abstractmethod
+    # noinspection PyMethodMayBeStatic
     def _create_helper(self) -> SocketHelper:
-        raise NotImplemented
+        return SocketHelper()
 
     @property  # protected
     def socket_helper(self) -> SocketHelper:

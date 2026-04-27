@@ -34,92 +34,80 @@ import traceback
 from typing import Optional, Tuple
 
 from startrek.types import SocketAddress
-from startrek.net.socket import get_remote_address
-from startrek.net.socket import is_blocking, is_bound, is_closed
+from startrek import SocketHelper
 
 
-def is_connected(sock: socket.socket) -> bool:
-    disconnected = getattr(sock, '_disconnected', False)
-    if disconnected:
-        return False
-    return get_remote_address(sock=sock) is not None
+# noinspection PyMethodMayBeStatic
+class DatagramHelper(SocketHelper):
 
+    # Override
+    def is_connected(self, sock: socket.socket) -> bool:
+        if hasattr(sock, '_disconnected'):
+            return getattr(sock, '_disconnected', False)
+        # new socket?
+        address = self.get_remote_address(sock=sock)
+        return address is not None
 
-"""
-    Async Socket I/O
-    ~~~~~~~~~~~~~~~~
-"""
+    #
+    #   Async
+    #
 
+    # Override
+    async def disconnect(self, sock: socket.socket) -> bool:
+        """ Close socket """
+        try:
+            # TODO: check for UDP socket
+            # try:
+            #     sock.shutdown(socket.SHUT_RDWR)
+            # except (OSError, socket.error):
+            #     pass
+            # TODO: async api
+            setattr(sock, '_disconnected', True)
+            # sock.close()
+            # return not self.is_connected(sock=sock)
+            return True
+        # except (OSError, socket.error):
+        #     return False
+        except Exception as error:
+            print('[Socket] cannot close socket: %s, %s' % (sock, error))
+            traceback.print_exc()
+            return False
 
-async def socket_send(sock: socket.socket, data: bytes) -> int:
-    """ Send data """
-    # return sock.send(data)
-    loop = asyncio.get_event_loop()
-    await loop.sock_sendall(sock=sock, data=data)
-    return len(data)
+    async def send_to(self, sock: socket.socket, data: bytes, target: SocketAddress) -> int:
+        """ Send datagram package """
+        # return sock.sendto(data, target)
+        loop = asyncio.get_event_loop()
+        try:
+            # return await loop.sock_sendto(sock, data, target)
+            return await loop.run_in_executor(
+                None,
+                sock.sendto,
+                data,
+                target,
+            )
+        except BlockingIOError:
+            await asyncio.sleep(0.01)
+            raise
+        except OSError:
+            raise
+        except Exception as error:
+            raise OSError('Failed to send datagram: %s' % error)
 
-
-async def socket_receive(sock: socket.socket, max_len: int) -> Optional[bytes]:
-    """ Receive data """
-    # return sock.recv(max_len)
-    loop = asyncio.get_event_loop()
-    return await loop.sock_recv(sock, max_len)
-
-
-async def socket_send_to(sock: socket.socket, data: bytes, target: SocketAddress) -> int:
-    """ Send datagram package """
-    return sock.sendto(data, target)
-    # loop = asyncio.get_event_loop()
-    # return await loop.sock_sendto(sock, data, target)
-
-
-async def socket_receive_from(sock: socket.socket, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
-    """ Receive datagram package """
-    return sock.recvfrom(max_len)
-    # loop = asyncio.get_event_loop()
-    # return await loop.sock_recvfrom(sock, max_len)
-
-
-async def socket_bind(sock: socket.socket, local: SocketAddress) -> bool:
-    """ Bind to local address """
-    try:
-        # TODO: async api
-        sock.bind(local)
-        return is_bound(sock=sock)
-    except socket.error as error:
-        print('[Socket] cannot bind to: %s, socket: %s, %s' % (local, sock, error))
-        traceback.print_exc()
-        return False
-
-
-async def socket_connect(sock: socket.socket, remote: SocketAddress) -> bool:
-    """ Connect to remote address """
-    try:
-        if is_blocking(sock=sock):
-            sock.connect(remote)
-        else:
-            loop = asyncio.get_event_loop()
-            await loop.sock_connect(sock, remote)
-        return is_connected(sock=sock)
-    except socket.error as error:
-        print('[Socket] cannot connect to: %s, socket: %s, %s' % (remote, sock, error))
-        traceback.print_exc()
-        return False
-
-
-async def socket_disconnect(sock: socket.socket) -> bool:
-    """ Close socket """
-    if is_closed(sock=sock) or not is_connected(sock=sock):
-        return True
-    try:
-        # TODO: check for UDP socket
-        # sock.shutdown(socket.SHUT_RDWR)
-        # TODO: async api
-        setattr(sock, '_disconnected', True)
-        return True
-        # sock.close()
-        # return not is_connected(sock=sock)
-    except socket.error as error:
-        print('[Socket] cannot close socket: %s, %s' % (sock, error))
-        traceback.print_exc()
-        return False
+    async def receive_from(self, sock: socket.socket, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
+        """ Receive datagram package """
+        # return sock.recvfrom(max_len)
+        loop = asyncio.get_event_loop()
+        try:
+            # return await loop.sock_recvfrom(sock, max_len)
+            return await loop.run_in_executor(
+                None,
+                sock.recvfrom,
+                max_len,
+            )
+        except BlockingIOError:
+            await asyncio.sleep(0.01)
+            raise
+        except OSError:
+            raise
+        except Exception as error:
+            raise OSError('Failed to receive datagram: %s' % error)

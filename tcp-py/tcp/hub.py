@@ -36,12 +36,12 @@ from typing import Optional, Iterable
 
 from startrek.types import SocketAddress, AddressPairMap
 from startrek.skywalker import Runnable, Runner, Daemon
+from startrek import SocketHelper
 from startrek import Channel, BaseChannel
 from startrek import Connection, ConnectionDelegate
 from startrek import BaseConnection, ActiveConnection
 from startrek import BaseHub
 
-from .aio import is_blocking
 from .channel import StreamChannel
 
 
@@ -120,6 +120,11 @@ class ServerHub(StreamHub, Runnable):
         self.__master = None  # socket.socket
         self.__daemon = Daemon(target=self)
         self.__running = False
+        self.__helper = SocketHelper()
+
+    @property  # protected
+    def socket_helper(self) -> SocketHelper:
+        return self.__helper
 
     # Override
     def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
@@ -197,7 +202,8 @@ class ServerHub(StreamHub, Runnable):
                     await self._accept(remote=address, local=self.local_address, sock=sock)
             except socket.error as error:
                 if error.errno == socket.EAGAIN:  # error.strerror == 'Resource temporarily unavailable':
-                    if not is_blocking(sock=master):
+                    helper = self.socket_helper
+                    if not helper.is_blocking(sock=master):
                         continue
                 print('[TCP] socket error: %s' % error)
             except Exception as error:

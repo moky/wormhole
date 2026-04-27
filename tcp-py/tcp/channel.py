@@ -29,16 +29,13 @@
 # ==============================================================================
 
 import socket
+import weakref
 from typing import Optional, Tuple
 
 from startrek.types import SocketAddress
-from startrek.net.socket import is_available
-from startrek.socket import Controller, SocketReader, SocketWriter
+from startrek import SocketReader, SocketWriter
+from startrek import SocketHelper
 from startrek import BaseChannel
-
-from .aio import is_blocking, is_closed
-from .aio import socket_send, socket_receive
-from .aio import socket_bind, socket_connect, socket_disconnect
 
 
 class ChannelChecker:
@@ -63,7 +60,8 @@ class ChannelChecker:
         # or buffer overflow while sending too many bytes,
         # here we should ignore this exception.
         if error.errno == socket.EAGAIN:  # error.strerror == 'Resource temporarily unavailable':
-            if not is_blocking(sock=sock):
+            helper = SocketHelper()
+            if not helper.is_blocking(sock=sock):
                 # ignore it
                 return None
         # in blocking mode, the socket wil wait until sent/received data,
@@ -95,19 +93,54 @@ class ChannelChecker:
                 return socket.error('remote peer reset socket %s' % sock)
 
 
+class Controller:
+    """ Socket Channel Controller """
+
+    def __init__(self, channel):
+        super().__init__()
+        self.__channel = weakref.ref(channel)
+        self.__helper = SocketHelper()
+
+    @property
+    def socket_helper(self) -> SocketHelper:
+        return self.__helper
+
+    @property
+    def channel(self):  # -> Optional[BaseChannel]:
+        return self.__channel()
+
+    @property
+    def remote_address(self) -> Optional[SocketAddress]:
+        channel = self.channel
+        if isinstance(channel, BaseChannel):
+            return channel.remote_address
+
+    @property
+    def local_address(self) -> Optional[SocketAddress]:
+        channel = self.channel
+        if isinstance(channel, BaseChannel):
+            return channel.local_address
+
+    @property
+    def sock(self) -> Optional[socket.socket]:
+        channel = self.channel
+        if isinstance(channel, BaseChannel):
+            return channel.sock
+
+
 class StreamChannelReader(Controller, SocketReader):
 
-    # noinspection PyMethodMayBeStatic
     async def _socket_receive(self, sock: socket.socket, max_len: int) -> Optional[bytes]:
-        if is_closed(sock=sock):
+        helper = self.socket_helper
+        if helper.is_closed(sock=sock):
             raise ConnectionError('socket closed')
-        elif not is_available(sock=sock):
+        elif not helper.is_available(sock=sock):
             # TODO: check 'broken pipe'
             return None
-        # elif is_blocking(sock=sock):
+        # elif helper.is_blocking(sock=sock):
         #     return sock.recv(max_len)
         else:
-            return await socket_receive(sock=sock, max_len=max_len)
+            return await helper.receive(sock=sock, max_len=max_len)
 
     async def _try_read(self, max_len: int, sock: socket.socket) -> Optional[bytes]:
         try:
@@ -121,6 +154,8 @@ class StreamChannelReader(Controller, SocketReader):
             else:
                 # connection lost?
                 raise error
+        # except Exception:
+        #     return None
 
     # Override
     async def read(self, max_len: int) -> Optional[bytes]:
@@ -148,17 +183,17 @@ class StreamChannelReader(Controller, SocketReader):
 
 class StreamChannelWriter(Controller, SocketWriter):
 
-    # noinspection PyMethodMayBeStatic
     async def _socket_send(self, sock: socket.socket, data: bytes) -> int:
-        if is_closed(sock=sock):
+        helper = self.socket_helper
+        if helper.is_closed(sock=sock):
             raise ConnectionError('socket closed')
-        # elif not is_vacant(sock=sock):
+        # elif not helper.is_vacant(sock=sock):
         #     # TODO: check 'broken pipe'
         #     return -1
-        # elif is_blocking(sock=sock):
+        # elif helper.is_blocking(sock=sock):
         #     return sock.send(data)
         else:
-            return await socket_send(sock=sock, data=data)
+            return await helper.send(sock=sock, data=data)
 
     async def _try_write(self, data: bytes, sock: socket.socket) -> int:
         try:
@@ -171,6 +206,8 @@ class StreamChannelWriter(Controller, SocketWriter):
                 raise error
             # buffer overflow!
             return 0
+        # except Exception:
+        #     return -1
 
     # Override
     async def write(self, data: bytes) -> int:
@@ -220,21 +257,9 @@ class StreamChannel(BaseChannel):
     """ Stream Channel """
 
     # Override
-    def _create_reader(self):
+    def _create_reader(self) -> SocketReader:
         return StreamChannelReader(channel=self)
 
     # Override
-    def _create_writer(self):
+    def _create_writer(self) -> SocketWriter:
         return StreamChannelWriter(channel=self)
-
-    # Override
-    async def _socket_bind(self, sock: socket.socket, local: SocketAddress) -> bool:
-        return await socket_bind(sock=sock, local=local)
-
-    # Override
-    async def _socket_connect(self, sock: socket.socket, remote: SocketAddress) -> bool:
-        return await socket_connect(sock=sock, remote=remote)
-
-    # Override
-    async def _socket_disconnect(self, sock: socket.socket) -> bool:
-        return await socket_disconnect(sock=sock)
