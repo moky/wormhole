@@ -221,8 +221,11 @@ class StarGate(Gate, ConnectionDelegate, ABC):
             # remove docker when connection closed
             cached = self._remove_porter(porter=docker, remote=docker.remote_address, local=docker.local_address)
             if cached is None or cached is docker:
+                # the cached docker returned here
+                # must be the same object as the closed docker
                 pass
             else:
+                # should not happen
                 await cached.close()
 
     async def _heartbeat(self, connection: Connection):

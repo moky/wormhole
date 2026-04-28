@@ -11,19 +11,19 @@ from typing import Optional
 
 from startrek.types import SocketAddress
 from startrek.skywalker import Runner
+from startrek import SocketHelper
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 
-from tcp.aio import is_closed
 from tcp import Channel, Connection
 from tcp import Porter, PorterDelegate, PorterStatus
-from tcp import Hub, ServerHub
+from tcp import ServerHub
 from tcp import Arrival, PlainArrival, Departure, PlainDeparture
 
 from tests.stargate import TCPGate
-from tests.stargate import Log
+from tests.utils import Log, Inet
 
 
 class StreamServerHub(ServerHub):
@@ -79,7 +79,7 @@ class Server(PorterDelegate):
         return self.gate.hub
 
     async def start(self):
-        await self.hub.bind(address=self.local_address)
+        self.hub.bind(address=self.local_address)
         await self.gate.start()
         # start hub
         loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
@@ -128,11 +128,11 @@ class Server(PorterDelegate):
         Log.info(msg='message sent: %d byte(s) to %s' % (size, porter.remote_address))
 
     # Override
-    async def porter_failed(self, error: IOError, ship: Departure, porter: Porter):
+    async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
         Log.error(msg='failed to sent: %s, %s' % (error, porter))
 
     # Override
-    async def porter_error(self, error: IOError, ship: Departure, porter: Porter):
+    async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
         Log.error(msg='connection error: %s, %s' % (error, porter))
         await porter.close()
 
@@ -142,7 +142,7 @@ def _start_thread_loop(loop: asyncio.AbstractEventLoop, runner: Runner):
     loop.run_until_complete(runner.run())
 
 
-SERVER_HOST = Hub.inet_address()
+SERVER_HOST = Inet.inet_address()
 # SERVER_HOST = '0.0.0.0'
 SERVER_PORT = 9394
 
@@ -153,6 +153,7 @@ async def test_receive(address: SocketAddress):
     master.setblocking(True)
     master.bind(address)
     master.listen(1)
+    helper = SocketHelper()
     while True:
         try:
             sock, address = master.accept()
@@ -161,7 +162,7 @@ async def test_receive(address: SocketAddress):
             size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
             Log.info(msg=' receive buffer size1: %d' % size)
             total = 0
-            while not is_closed(sock=sock):
+            while not helper.is_closed(sock=sock):
                 data = sock.recv(1024)
                 cnt = len(data)
                 if cnt > 0:
@@ -173,7 +174,7 @@ async def test_receive(address: SocketAddress):
             Log.info(msg=' total length: %d' % total)
             size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
             Log.info(msg=' receive buffer size2: %d' % size)
-        except socket.error as error:
+        except (OSError, socket.error) as error:
             Log.info(msg=' socket error: %s' % error)
         except Exception as error:
             Log.info(msg=' accept error: %s' % error)

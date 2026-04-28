@@ -16,11 +16,11 @@ sys.path.append(rootPath)
 
 from tcp import Channel, Connection
 from tcp import Porter, PorterDelegate, PorterStatus
-from tcp import Hub, ClientHub
+from tcp import ClientHub
 from tcp import Arrival, PlainArrival, Departure, PlainDeparture
 
 from tests.stargate import TCPGate
-from tests.stargate import Log
+from tests.utils import Log, Inet
 
 
 class StreamClientHub(ClientHub):
@@ -130,18 +130,18 @@ class Client(Runnable, PorterDelegate):
         Log.info(msg='message sent: %d byte(s) to %s' % (size, porter.remote_address))
 
     # Override
-    async def porter_failed(self, error: IOError, ship: Departure, porter: Porter):
+    async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
         Log.error(msg='failed to sent: %s, %s' % (error, porter))
 
     # Override
-    async def porter_error(self, error: IOError, ship: Departure, porter: Porter):
+    async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
         Log.error(msg='connection error: %s, %s' % (error, porter))
 
 
-SERVER_HOST = Hub.inet_address()
+SERVER_HOST = Inet.inet_address()
 SERVER_PORT = 9394
 
-CLIENT_HOST = Hub.inet_address()
+CLIENT_HOST = Inet.inet_address()
 CLIENT_PORT = random.choice(range(9900, 9999))
 
 
@@ -165,7 +165,7 @@ async def test_send(address: SocketAddress):
     while rest > 0:
         try:
             cnt = sock.send(data)
-        except socket.error:
+        except (OSError, socket.error):
             break
         if cnt > 0:
             Log.info(msg=' sent: %d + %d' % (sent, cnt))

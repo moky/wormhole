@@ -343,9 +343,13 @@ class PacketChannel(BaseChannel):
     async def set_socket(self, sock: Optional[socket.socket]) -> Optional[socket.socket]:
         old = self.sock
         if old is not None and sock is None:
-            # check for master socket
-            if self.remote_address is None:
-                # forbidden to clear master socket channel
+            # the old socket is being removed and no new socket set,
+            # means this channel will be closed because it lost its inner socket,
+            # checking for master channel here.
+            if self.remote_address is None and self.local_address is not None:
+                # this channel has only local address (bound) and no remove address (not connected),
+                # means it's a master channel for master socket,
+                # forbidden to clear the master socket from the master channel.
                 return old
-        # OK
+        # OK, replace the inner socket
         return await super().set_socket(sock=sock)

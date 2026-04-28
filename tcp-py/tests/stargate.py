@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import socket
-import time
 from abc import ABC
-from typing import Generic, TypeVar, Optional, Union
+from typing import Generic, TypeVar, Optional
 
 from startrek.types import SocketAddress
 from startrek.skywalker import Runnable, Runner, Daemon
@@ -16,6 +14,8 @@ from startrek import StarGate
 
 from tcp import PlainArrival
 from tcp import PlainPorter
+
+from .utils import Log
 
 
 H = TypeVar('H')
@@ -184,28 +184,11 @@ class TCPGate(AutoGate, Generic[H]):
         Log.info(msg='connection state changed: %s -> %s, %s' % (previous, current, connection))
 
     # Override
-    async def connection_failed(self, error: Union[IOError, socket.error], data: bytes, connection: Connection):
+    async def connection_failed(self, error: OSError, data: bytes, connection: Connection):
         await super().connection_failed(error=error, data=data, connection=connection)
         Log.error(msg='connection failed: %s, %s' % (error, connection))
 
     # Override
-    async def connection_error(self, error: Union[IOError, socket.error], connection: Connection):
-        # if isinstance(error, IOError) and str(error).startswith('failed to send: '):
+    async def connection_error(self, error: OSError, connection: Connection):
+        # if isinstance(error, OSError) and str(error).startswith('failed to send: '):
         Log.error(msg='connection error: %s, %s' % (error, connection))
-
-
-class Log:
-
-    @classmethod
-    def info(cls, msg: str):
-        now = time.time()
-        prefix = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now))
-        print('[%s]         | %s' % (prefix, msg))
-        pass
-
-    @classmethod
-    def error(cls, msg: str):
-        now = time.time()
-        prefix = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now))
-        print('[%s]  ERROR  | %s' % (prefix, msg))
-        pass

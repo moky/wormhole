@@ -47,12 +47,12 @@ sys.path.append(rootPath)
 
 from tcp import Channel, Connection
 from tcp import Porter, PorterDelegate, PorterStatus
-from tcp import Hub, ClientHub
+from tcp import ClientHub
 from tcp import Arrival, PlainArrival, Departure, PlainDeparture
 
 from tests.runner import Runner as ThreadRunner
 from tests.stargate import TCPGate
-from tests.stargate import Log
+from tests.utils import Log, Inet
 
 
 class StreamClientHub(ClientHub):
@@ -149,11 +149,11 @@ class Soldier(ThreadRunner, PorterDelegate):
         Log.info(msg='message sent: %d byte(s) to %s' % (size, destination))
 
     # Override
-    async def porter_failed(self, error: IOError, ship: Departure, porter: Porter):
+    async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
         Log.error(msg='gate error: %s, %s' % (error, porter))
 
     # Override
-    async def porter_error(self, error: IOError, ship: Departure, porter: Porter):
+    async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
         Log.error(msg='gate error: %s, %s' % (error, porter))
 
     #
@@ -305,7 +305,7 @@ Colonel.TROOPS = 10
 
 # candidates
 all_stations = [
-    (Hub.inet_address(), 9394),
+    (Inet.inet_address(), 9394),
     ('127.0.0.1', 9394),
     ('149.129.234.145', 9394),
     ('', 0),

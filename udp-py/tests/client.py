@@ -8,6 +8,7 @@ from typing import Optional
 
 from startrek.types import SocketAddress
 from startrek.skywalker import Runnable, Runner
+from startrek import BaseChannel
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
@@ -15,11 +16,11 @@ sys.path.append(rootPath)
 
 from udp import Channel, Connection
 from udp import Porter, PorterDelegate, PorterStatus
-from udp import Hub, ClientHub
+from udp import ClientHub
 from udp import Arrival, PackageArrival, Departure, PackageDeparture
 
 from tests.stargate import UDPGate
-from tests.stargate import Log
+from tests.utils import Log, Inet
 
 
 class PacketClientHub(ClientHub):
@@ -83,7 +84,12 @@ class Client(Runnable, PorterDelegate):
         return self.gate.hub
 
     async def start(self):
-        await self.hub.bind(address=self.local_address)
+        channel, sock = self.hub.bind(address=self.local_address)
+        if sock is not None:
+            assert isinstance(channel, BaseChannel), 'channel error: %s' % channel
+            # set socket for this channel
+            await channel.set_socket(sock=sock)
+        # OK
         await self.hub.connect(remote=self.remote_address)
         await self.gate.start()
 
@@ -136,18 +142,18 @@ class Client(Runnable, PorterDelegate):
         Log.info(msg='message sent: %d byte(s) to %s' % (size, porter.remote_address))
 
     # Override
-    async def porter_failed(self, error: IOError, ship: Departure, porter: Porter):
+    async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
         Log.error(msg='failed to sent: %s, %s' % (error, porter))
 
     # Override
-    async def porter_error(self, error: IOError, ship: Departure, porter: Porter):
+    async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
         Log.error(msg='connection error: %s, %s' % (error, porter))
 
 
-SERVER_HOST = Hub.inet_address()
+SERVER_HOST = Inet.inet_address()
 SERVER_PORT = 9394
 
-CLIENT_HOST = Hub.inet_address()
+CLIENT_HOST = Inet.inet_address()
 CLIENT_PORT = random.choice(range(9900, 9999))
 
 

@@ -280,27 +280,37 @@ class BaseHub(Hub, ABC):
 
     async def _cleanup_channels(self, channels: Iterable[Channel]):
         for sock in channels:
-            if sock.closed:
-                # if channel not connected (TCP) and not bound (UDP),
-                # means it's closed, remove it from the hub
-                cached = self._remove_channel(channel=sock, remote=sock.remote_address, local=sock.local_address)
-                if cached is None or cached is sock:
-                    pass
-                else:
-                    await self._close_channel(channel=cached)
+            if not sock.closed:
+                # socket not closed yet
+                continue
+            # if channel not connected (TCP) and not bound (UDP),
+            # means it's closed, remove it from the hub
+            cached = self._remove_channel(channel=sock, remote=sock.remote_address, local=sock.local_address)
+            if cached is None or cached is sock:
+                # the cached channel returned here
+                # must be the same object as the closed channel
+                pass
+            else:
+                # should not happen
+                await self._close_channel(channel=cached)
 
     async def _cleanup_connections(self, connections: Iterable[Connection]):
         # NOTICE: multi connections may share same channel (UDP Hub)
         for conn in connections:
-            if conn.closed:
-                # if connection closed, remove it from the hub; notice that
-                # ActiveConnection can reconnect, it'll be not connected
-                # but still open, don't remove it in this situation.
-                cached = self._remove_connection(connection=conn, remote=conn.remote_address, local=conn.local_address)
-                if cached is None or cached is conn:
-                    pass
-                else:
-                    await cached.close()
+            if not conn.closed:
+                # connection not closed yet
+                continue
+            # if connection closed, remove it from the hub; notice that
+            # ActiveConnection can reconnect, it'll be not connected
+            # but still open, don't remove it in this situation.
+            cached = self._remove_connection(connection=conn, remote=conn.remote_address, local=conn.local_address)
+            if cached is None or cached is conn:
+                # the cached connection returned here
+                # must be the same object as the closed connection
+                pass
+            else:
+                # should not happen
+                await cached.close()
 
     # Override
     async def process(self) -> bool:
