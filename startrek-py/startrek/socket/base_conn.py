@@ -103,7 +103,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
         if ref is not None:
             return ref()
 
-    async def _set_channel(self, channel: Optional[Channel]):
+    async def _set_channel(self, channel: Optional[Channel]) -> Optional[Channel]:
         # 1. replace with new channel
         old = self.channel
         if channel is not None:
@@ -116,6 +116,8 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
                 await old.close()
             except Exception as error:
                 print('[Socket] connection error: %s, %s' % (error, old))
+        # 3. return old channel
+        return old
 
     #
     #   Flags

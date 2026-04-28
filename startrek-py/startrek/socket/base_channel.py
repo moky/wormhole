@@ -92,7 +92,7 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         """ inner socket """
         return self.__sock
 
-    async def set_socket(self, sock: Optional[socket.socket]):
+    async def set_socket(self, sock: Optional[socket.socket]) -> Optional[socket.socket]:
         """ set inner socket for this channel """
         # 1. replace with new socket
         old = self.__sock
@@ -106,6 +106,8 @@ class BaseChannel(AddressPairObject, Channel, ABC):
         if old is not None and old is not sock:
             helper = self.socket_helper
             await helper.disconnect(sock=old)
+        # 3. return old socket
+        return old
 
     #
     #   States
@@ -113,9 +115,13 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     @property  # Override
     def status(self) -> ChannelStatus:
-        if self.__closed is None:
+        is_closed = self.__closed
+        if is_closed is None:
             # initializing
             return ChannelStatus.INIT
+        elif is_closed:
+            # closed
+            return ChannelStatus.CLOSED
         sock = self.sock
         helper = self.socket_helper
         if sock is None or helper.is_closed(sock=sock):
@@ -130,9 +136,13 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     @property  # Override
     def closed(self) -> bool:
-        if self.__closed is None:
+        is_closed = self.__closed
+        if is_closed is None:
             # initializing
             return False
+        elif is_closed:
+            # closed
+            return True
         sock = self.sock
         helper = self.socket_helper
         return sock is None or helper.is_closed(sock=sock)
@@ -236,13 +246,14 @@ class BaseChannel(AddressPairObject, Channel, ABC):
 
     # Override
     async def disconnect(self) -> Optional[socket.socket]:
-        sock = self.__sock
-        if sock is not None:
-            helper = self.socket_helper
-            ok = await helper.disconnect(sock=sock)
-            assert ok, 'failed to disconnect socket: %s' % sock
-            self.__sock = None
-        return sock
+        # sock = self.__sock
+        # if sock is not None:
+        #     helper = self.socket_helper
+        #     ok = await helper.disconnect(sock=sock)
+        #     assert ok, 'failed to disconnect socket: %s' % sock
+        #     self.__sock = None
+        # return sock
+        return await self.set_socket(sock=None)
 
     # Override
     async def close(self):

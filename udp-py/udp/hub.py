@@ -35,10 +35,11 @@ from typing import Optional, Iterable, Tuple
 from startrek import SocketAddress, AddressPairMap
 from startrek import Channel, BaseChannel
 from startrek import Connection, ConnectionDelegate
-from startrek import BaseConnection, ActiveConnection
+from startrek import ActiveConnection
 from startrek import BaseHub
 
 from .channel import PacketChannel
+from .connection import PacketConnection
 
 
 class ChannelPool(AddressPairMap[Channel]):
@@ -180,7 +181,7 @@ class ServerHub(PacketHub):
 
     # Override
     def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
-        conn = BaseConnection(remote=remote, local=local)
+        conn = PacketConnection(remote=remote, local=local)
         conn.delegate = self.delegate  # gate
         return conn
 

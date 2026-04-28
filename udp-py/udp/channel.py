@@ -338,3 +338,14 @@ class PacketChannel(BaseChannel):
     # Override
     def _create_helper(self) -> SocketHelper:
         return DatagramHelper()
+
+    # Override
+    async def set_socket(self, sock: Optional[socket.socket]) -> Optional[socket.socket]:
+        old = self.sock
+        if old is not None and sock is None:
+            # check for master socket
+            if self.remote_address is None:
+                # forbidden to clear master socket channel
+                return old
+        # OK
+        return await super().set_socket(sock=sock)

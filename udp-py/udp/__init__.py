@@ -31,7 +31,9 @@
 from startrek import *
 
 from .startrek import PackageArrival, PackageDeparture, PackagePorter
+# from .aio import DatagramHelper
 from .channel import PacketChannel, PacketChannelReader, PacketChannelWriter
+from .connection import PacketConnection
 from .hub import PacketHub, ServerHub, ClientHub
 
 
@@ -77,6 +79,10 @@ __all__ = [
     ################
 
     'PackageArrival', 'PackageDeparture', 'PackagePorter',
+
+    # 'DatagramHelper',
     'PacketChannel', 'PacketChannelReader', 'PacketChannelWriter',
+    'PacketConnection',
+
     'PacketHub', 'ServerHub', 'ClientHub',
 ]
