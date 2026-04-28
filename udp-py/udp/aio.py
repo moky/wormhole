@@ -33,20 +33,12 @@ import socket
 import traceback
 from typing import Optional, Tuple
 
-from startrek.types import SocketAddress
+from startrek import SocketAddress
 from startrek import SocketHelper
 
 
 # noinspection PyMethodMayBeStatic
 class DatagramHelper(SocketHelper):
-
-    # Override
-    def is_connected(self, sock: socket.socket) -> bool:
-        if hasattr(sock, '_disconnected'):
-            return getattr(sock, '_disconnected', False)
-        # new socket?
-        address = self.get_remote_address(sock=sock)
-        return address is not None
 
     #
     #   Async
@@ -55,15 +47,16 @@ class DatagramHelper(SocketHelper):
     # Override
     async def disconnect(self, sock: socket.socket) -> bool:
         """ Close socket """
+        if self.is_closed(sock=sock):
+            return True
+        # check for master socket
+        remote = self.get_remote_address(sock=sock)
+        if remote is None:
+            # cannot close master socket
+            return True
         try:
-            # TODO: check for UDP socket
-            # try:
-            #     sock.shutdown(socket.SHUT_RDWR)
-            # except (OSError, socket.error):
-            #     pass
-            # TODO: async api
-            setattr(sock, '_disconnected', True)
-            # sock.close()
+            # TODO: async api?
+            sock.close()
             # return not self.is_connected(sock=sock)
             return True
         # except (OSError, socket.error):

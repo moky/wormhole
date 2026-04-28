@@ -189,6 +189,8 @@ class SocketHelper:
 
     async def disconnect(self, sock: socket.socket) -> bool:
         """ Close socket """
+        if self.is_closed(sock=sock):
+            return True
         try:
             # TODO: check for UDP socket
             try:

@@ -132,7 +132,9 @@ class ServerHub(StreamHub, Runnable):
         conn.delegate = self.delegate  # gate
         return conn
 
-    async def bind(self, address: Optional[SocketAddress] = None, host: Optional[str] = None, port: Optional[int] = 0):
+    def bind(self, address: SocketAddress = None,
+             host: str = None, port: int = 0) -> socket.socket:
+        """ Bind to local address (host:port) """
         if address is None:
             if port > 0:
                 assert host is not None, 'host should not be empty'
@@ -140,15 +142,21 @@ class ServerHub(StreamHub, Runnable):
             else:
                 address = self.__local
                 assert address is not None, 'local address not set'
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        sock.setblocking(True)
-        sock.bind(address)
-        sock.listen(1)
-        # sock.setblocking(False)
-        self._set_master(master=sock)
-        self.__local = address
+        sock = self._get_master()
+        if sock is None:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+            sock.setblocking(True)
+            sock.bind(address)
+            sock.listen(1)
+            # sock.setblocking(False)
+            self._set_master(master=sock)
+            self.__local = address
+        elif sock.getsockname() != address:
+            assert False, 'master socket conflict: %s -> %s' % (address, sock)
+        # OK
+        return sock
 
     def _get_master(self) -> Optional[socket.socket]:
         return self.__master
@@ -200,7 +208,7 @@ class ServerHub(StreamHub, Runnable):
                     await Runner.sleep(seconds=Runner.INTERVAL_NORMAL)
                 else:
                     await self._accept(remote=address, local=self.local_address, sock=sock)
-            except socket.error as error:
+            except (OSError, socket.error) as error:
                 if error.errno == socket.EAGAIN:  # error.strerror == 'Resource temporarily unavailable':
                     helper = self.socket_helper
                     if not helper.is_blocking(sock=master):
@@ -280,7 +288,7 @@ async def create_socket(remote: SocketAddress, local: Optional[SocketAddress]) -
         sock.connect(remote)
         sock.setblocking(False)
         return sock
-    except socket.error as error:
+    except (OSError, socket.error) as error:
         print('[TCP] %s > failed to create socket %s -> %s: %s' % (current_time(), local, remote, error))
 
 

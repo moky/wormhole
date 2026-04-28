@@ -32,7 +32,7 @@ import socket
 import weakref
 from typing import Optional, Tuple
 
-from startrek.types import SocketAddress
+from startrek import SocketAddress
 from startrek import SocketReader, SocketWriter
 from startrek import SocketHelper
 from startrek import BaseChannel
@@ -41,7 +41,7 @@ from startrek import BaseChannel
 class ChannelChecker:
 
     @classmethod
-    async def check_error(cls, error: socket.error, sock: socket.socket) -> Optional[socket.error]:
+    async def check_error(cls, error: OSError, sock: socket.socket) -> Optional[OSError]:
         """
             Check socket error
 
@@ -75,7 +75,7 @@ class ChannelChecker:
         return error
 
     @classmethod
-    async def check_data(cls, data: Optional[bytes], sock: socket.socket) -> Optional[socket.error]:
+    async def check_data(cls, data: Optional[bytes], sock: socket.socket) -> Optional[OSError]:
         """
             Check data received from socket
 
@@ -90,7 +90,7 @@ class ChannelChecker:
         if data is None or len(data) == 0:
             if sock.gettimeout() is None:  # and self.blocking:
                 # print('[NET] socket error: remote peer reset socket %s' % sock)
-                return socket.error('remote peer reset socket %s' % sock)
+                return OSError('remote peer reset socket %s' % sock)
 
 
 class Controller:
@@ -140,13 +140,13 @@ class StreamChannelReader(Controller, SocketReader):
         # elif helper.is_blocking(sock=sock):
         #     return sock.recv(max_len)
         else:
-            return await helper.receive(sock=sock, max_len=max_len)
+            return await helper.receive(sock=sock, max_len=max_len)  # raise OSError
 
     async def _try_read(self, max_len: int, sock: socket.socket) -> Optional[bytes]:
         try:
             # return sock.recv(max_len)
-            return await self._socket_receive(sock=sock, max_len=max_len)
-        except socket.error as error:
+            return await self._socket_receive(sock=sock, max_len=max_len)  # raise OSError
+        except OSError as error:
             error = await ChannelChecker.check_error(error=error, sock=sock)
             if error is None:
                 # received nothing
@@ -163,7 +163,7 @@ class StreamChannelReader(Controller, SocketReader):
         if sock is None:
             raise ConnectionError('channel not ready')
         # 1. try to read data
-        data = await self._try_read(max_len=max_len, sock=sock)
+        data = await self._try_read(max_len=max_len, sock=sock)  # raise OSError
         # 2. check data
         error = await ChannelChecker.check_data(data=data, sock=sock)
         if error is not None:
@@ -193,13 +193,13 @@ class StreamChannelWriter(Controller, SocketWriter):
         # elif helper.is_blocking(sock=sock):
         #     return sock.send(data)
         else:
-            return await helper.send(sock=sock, data=data)
+            return await helper.send(sock=sock, data=data)  # raise OSError
 
     async def _try_write(self, data: bytes, sock: socket.socket) -> int:
         try:
             # return sock.send(data)
-            return await self._socket_send(sock=sock, data=data)
-        except socket.error as error:
+            return await self._socket_send(sock=sock, data=data)  # raise OSError
+        except OSError as error:
             error = await ChannelChecker.check_error(error=error, sock=sock)
             if error is not None:
                 # connection lost?
@@ -221,7 +221,7 @@ class StreamChannelWriter(Controller, SocketWriter):
         rest = len(data)
         # assert rest > 0, 'cannot send empty data'
         while True:  # while is_opened(sock=sock):
-            cnt = await self._try_write(data=data, sock=sock)
+            cnt = await self._try_write(data=data, sock=sock)  # raise OSError
             # check send result
             if cnt <= 0:
                 # buffer overflow?

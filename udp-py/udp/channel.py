@@ -32,7 +32,7 @@ import socket
 import weakref
 from typing import Optional, Tuple
 
-from startrek.types import SocketAddress
+from startrek import SocketAddress
 from startrek import SocketReader, SocketWriter
 from startrek import SocketHelper
 from startrek import BaseChannel
@@ -43,7 +43,7 @@ from .aio import DatagramHelper
 class ChannelChecker:
 
     @classmethod
-    async def check_error(cls, error: socket.error, sock: socket.socket) -> Optional[socket.error]:
+    async def check_error(cls, error: OSError, sock: socket.socket) -> Optional[OSError]:
         """
             Check socket error
 
@@ -77,7 +77,7 @@ class ChannelChecker:
         return error
 
     @classmethod
-    async def check_data(cls, data: Optional[bytes], sock: socket.socket) -> Optional[socket.error]:
+    async def check_data(cls, data: Optional[bytes], sock: socket.socket) -> Optional[OSError]:
         """
             Check data received from socket
 
@@ -92,7 +92,7 @@ class ChannelChecker:
         if data is None or len(data) == 0:
             if sock.gettimeout() is None:  # and self.blocking:
                 # print('[NET] socket error: remote peer reset socket %s' % sock)
-                return socket.error('remote peer reset socket %s' % sock)
+                return OSError('remote peer reset socket %s' % sock)
 
 
 class Controller:
@@ -143,7 +143,7 @@ class PacketChannelReader(Controller, SocketReader):
         # elif helper.is_blocking(sock=sock):
         #     return sock.recv(max_len)
         else:
-            return await helper.receive(sock=sock, max_len=max_len)
+            return await helper.receive(sock=sock, max_len=max_len)  # raise OSError
 
     async def _socket_receive_from(self, sock: socket.socket, max_len: int
                                    ) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
@@ -155,13 +155,13 @@ class PacketChannelReader(Controller, SocketReader):
             return None, None
         else:
             # return sock.recvfrom(max_len)
-            return await helper.receive_from(sock=sock, max_len=max_len)
+            return await helper.receive_from(sock=sock, max_len=max_len)  # raise OSError
 
     async def _try_read(self, max_len: int, sock: socket.socket) -> Optional[bytes]:
         try:
             # return sock.recv(max_len)
-            return await self._socket_receive(sock=sock, max_len=max_len)
-        except socket.error as error:
+            return await self._socket_receive(sock=sock, max_len=max_len)  # raise OSError
+        except OSError as error:
             error = await ChannelChecker.check_error(error=error, sock=sock)
             if error is None:
                 # received nothing
@@ -176,7 +176,7 @@ class PacketChannelReader(Controller, SocketReader):
         if sock is None:
             raise ConnectionError('channel not ready')
         # 1. try to read data
-        data = await self._try_read(max_len=max_len, sock=sock)
+        data = await self._try_read(max_len=max_len, sock=sock)  # raise OSError
         # 2. check data
         error = await ChannelChecker.check_data(data=data, sock=sock)
         if error is not None:
@@ -188,8 +188,8 @@ class PacketChannelReader(Controller, SocketReader):
     async def _try_receive(self, max_len: int, sock: socket.socket) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
         try:
             # return sock.recvfrom(max_len)
-            return await self._socket_receive_from(sock=sock, max_len=max_len)
-        except socket.error as error:
+            return await self._socket_receive_from(sock=sock, max_len=max_len)  # raise OSError
+        except OSError as error:
             error = await ChannelChecker.check_error(error=error, sock=sock)
             if error is None:
                 # received nothing
@@ -202,7 +202,7 @@ class PacketChannelReader(Controller, SocketReader):
         sock = self.sock
         if sock is None:
             raise ConnectionError('channel not ready')
-        data, remote = await self._try_receive(max_len=max_len, sock=sock)
+        data, remote = await self._try_receive(max_len=max_len, sock=sock)  # raise OSError
         # check data
         error = await ChannelChecker.check_data(data=data, sock=sock)
         if error is None:
@@ -217,7 +217,7 @@ class PacketChannelReader(Controller, SocketReader):
         remote = self.remote_address
         if remote is None:
             # not connect (UDP)
-            return await self._receive_from(max_len=max_len)
+            return await self._receive_from(max_len=max_len)  # raise OSError
         else:
             # connected (TCP/UDP)
             return await self.read(max_len=max_len), remote
@@ -236,7 +236,7 @@ class PacketChannelWriter(Controller, SocketWriter):
         # elif helper.is_blocking(sock=sock):
         #     return sock.send(data)
         else:
-            return await helper.send(sock=sock, data=data)
+            return await helper.send(sock=sock, data=data)  # raise OSError
 
     async def _socket_send_to(self, sock: socket.socket, data: bytes, target: SocketAddress) -> int:
         helper = self.socket_helper
@@ -247,13 +247,13 @@ class PacketChannelWriter(Controller, SocketWriter):
         #     return -1
         else:
             # return sock.sendto(data, remote)
-            return await helper.send_to(sock=sock, data=data, target=target)
+            return await helper.send_to(sock=sock, data=data, target=target)  # raise OSError
 
     async def _try_write(self, data: bytes, sock: socket.socket) -> int:
         try:
             # return sock.send(data)
-            return await self._socket_send(sock=sock, data=data)
-        except socket.error as error:
+            return await self._socket_send(sock=sock, data=data)  # raise OSError
+        except OSError as error:
             error = await ChannelChecker.check_error(error=error, sock=sock)
             if error is not None:
                 # connection lost?
@@ -273,7 +273,7 @@ class PacketChannelWriter(Controller, SocketWriter):
         rest = len(data)
         # assert rest > 0, 'cannot send empty data'
         while True:  # while is_opened(sock=sock):
-            cnt = await self._try_write(data=data, sock=sock)
+            cnt = await self._try_write(data=data, sock=sock)  # raise OSError
             # check send result
             if cnt <= 0:
                 # buffer overflow?
@@ -299,8 +299,8 @@ class PacketChannelWriter(Controller, SocketWriter):
     async def _try_send(self, data: bytes, target: SocketAddress, sock: socket.socket) -> int:
         try:
             # return sock.sendto(data, target)
-            return await self._socket_send_to(sock=sock, data=data, target=target)
-        except socket.error as error:
+            return await self._socket_send_to(sock=sock, data=data, target=target)  # raise OSError
+        except OSError as error:
             error = await ChannelChecker.check_error(error=error, sock=sock)
             if error is None:
                 # buffer overflow!
@@ -315,13 +315,13 @@ class PacketChannelWriter(Controller, SocketWriter):
         if remote is None:
             # not connect (UDP)
             assert target is not None, 'target missed for unbound channel'
-            return await self._try_send(data=data, target=target, sock=self.sock)
+            return await self._try_send(data=data, target=target, sock=self.sock)  # raise OSError
         else:
             # connected (TCP/UDP)
             remote = self.remote_address
             assert target is None or target == remote, 'target error: %s, remote=%s' % (target, remote)
             # return sock.send(data)
-            return await self._try_write(data=data, sock=self.sock)
+            return await self._try_write(data=data, sock=self.sock)  # raise OSError
 
 
 class PacketChannel(BaseChannel):

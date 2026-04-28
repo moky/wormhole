@@ -30,9 +30,9 @@
 
 import socket
 from abc import ABC
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Tuple
 
-from startrek.types import SocketAddress, AddressPairMap
+from startrek import SocketAddress, AddressPairMap
 from startrek import Channel, BaseChannel
 from startrek import Connection, ConnectionDelegate
 from startrek import BaseConnection, ActiveConnection
@@ -118,11 +118,13 @@ class PacketHub(BaseHub, ABC):
     def _create_channel_pool(self):
         return ChannelPool()
 
-    async def bind(self, address: SocketAddress = None, host: str = None, port: int = 0):
+    def bind(self, address: SocketAddress = None,
+             host: str = None, port: int = 0) -> Tuple[Channel, Optional[socket.socket]]:
+        """ Bind to local address (host:port) """
         if address is None:
             assert host is not None and port > 0, 'address error: (%s:%d)' % (host, port)
             address = (host, port)
-        channel = self.__channel_pool.get(remote=None, local=address)
+        channel = self._get_channel(remote=None, local=address)
         if channel is None:
             channel = self._create_channel(remote=None, local=address)
             assert isinstance(channel, BaseChannel), 'channel error: %s, %s' % (address, channel)
@@ -133,9 +135,15 @@ class PacketHub(BaseHub, ABC):
             sock.setblocking(True)
             sock.bind(address)
             sock.setblocking(False)
-            # set socket for this channel
-            await channel.set_socket(sock=sock)
-            self.__channel_pool.set(item=channel, remote=None, local=address)
+            # # set socket for this channel
+            # await channel.set_socket(sock=sock)
+            self._set_channel(channel=channel, remote=None, local=address)
+        # elif isinstance(channel, BaseChannel):
+        #     sock = channel.sock
+        else:
+            sock = None
+        # OK
+        return channel, sock
 
     #
     #   Channel
