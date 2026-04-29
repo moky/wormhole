@@ -6,9 +6,12 @@ import sys
 import os
 from typing import Optional, Union
 
-from udp import Connection
-from udp import Gate, GateDelegate, GateStatus
-from udp import Hub, ServerHub
+from startrek.skywalker import Runner
+
+from udp import SocketAddress
+from udp import Channel, BaseChannel, Connection
+from udp import Porter, PorterDelegate, PorterStatus
+from udp import ServerHub
 from udp import Arrival, Departure
 
 from tcp import PlainArrival, PlainDeparture
@@ -20,15 +23,50 @@ sys.path.append(rootPath)
 from stun import Server
 
 from tests.srv_cnf import *
+from tests.utils import Inet, Log
 from tests.stargate import UDPGate
 
 
-class StunServer(Server, GateDelegate):
+class PacketServerHub(ServerHub):
+
+    # Override
+    def _get_channel(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        channel = super()._get_channel(remote=remote, local=local)
+        if channel is None and remote is not None and local is not None:
+            channel = super()._get_channel(remote=None, local=local)
+        return channel
+
+    # Override
+    def _set_channel(self, channel: Channel,
+                     remote: Optional[SocketAddress], local: Optional[SocketAddress]):
+        super()._set_channel(channel=channel, remote=remote, local=local)
+
+    # Override
+    def _remove_channel(self, channel: Optional[Channel],
+                        remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        return super()._remove_channel(channel=channel, remote=remote, local=local)
+
+    # Override
+    def _get_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
+        return super()._get_connection(remote=remote, local=None)
+
+    # Override
+    def _set_connection(self, connection: Connection,
+                        remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
+        return super()._set_connection(connection=connection, remote=remote, local=None)
+
+    # Override
+    def _remove_connection(self, connection: Optional[Connection],
+                           remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
+        return super()._remove_connection(connection=connection, remote=remote, local=None)
+
+
+class StunServer(Server, PorterDelegate):
 
     def __init__(self, host: str = '0.0.0.0', port: int = 3478, change_port: int = 3479):
         super().__init__(host=host, port=port, change_port=change_port)
         gate = UDPGate(delegate=self)
-        gate.hub = ServerHub(delegate=gate)
+        gate.hub = PacketServerHub(delegate=gate)
         self.__gate = gate
 
     @property
@@ -39,67 +77,84 @@ class StunServer(Server, GateDelegate):
     def hub(self) -> ServerHub:
         return self.gate.hub
 
-    def start(self):
+    # protected
+    async def bind(self, local: SocketAddress):
+        channel, sock = self.hub.bind(address=local)
+        if sock is not None:
+            assert isinstance(channel, BaseChannel), 'channel error: %s' % channel
+            # set socket for this channel
+            await channel.set_socket(sock=sock)
+
+    async def start(self):
         primary_address = self.source_address
         secondary_address = (self.source_address[0], self.change_port)
-        self.hub.bind(address=primary_address)
-        self.hub.bind(address=secondary_address)
-        self.gate.start()
+        await self.bind(local=primary_address)
+        await self.bind(local=secondary_address)
+        await self.gate.start()
         self.info('STUN server started')
         self.info('source address: %s, another port: %d' % (self.source_address, self.change_port))
         self.info('changed address: %s' % str(self.changed_address))
+        while self.gate.running:
+            await Runner.sleep(seconds=2.0)
 
     #
     #   Gate Delegate
     #
 
     # Override
-    def gate_status_changed(self, previous: GateStatus, current: GateStatus,
-                            remote: tuple, local: Optional[tuple], gate: Gate):
-        UDPGate.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
+    async def porter_status_changed(self, previous: PorterStatus, current: PorterStatus, porter: Porter):
+        remote = porter.remote_address
+        local = porter.local_address
+        Log.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
 
     # Override
-    def gate_received(self, ship: Arrival,
-                      source: tuple, destination: Optional[tuple], connection: Connection):
+    async def porter_received(self, ship: Arrival, porter: Porter):
         assert isinstance(ship, PlainArrival), 'arrival ship error: %s' % ship
-        data = ship.package
+        data = ship.payload
         if not isinstance(data, bytes) or len(data) == 0:
             # should not happen
             return None
-        self.handle(data=data, remote_ip=source[0], remote_port=source[1])
+        source = porter.remote_address
+        await self.handle(data=data, remote_ip=source[0], remote_port=source[1])
 
     # Override
-    def gate_sent(self, ship: Departure,
-                  source: Optional[tuple], destination: tuple, connection: Connection):
+    async def porter_sent(self, ship: Departure, porter: Porter):
         assert isinstance(ship, PlainDeparture), 'departure ship error: %s' % ship
-        data = ship.package
+        data = ship.payload
         size = len(data)
-        UDPGate.info('message sent: %d byte(s) to %s' % (size, destination))
+        destination = porter.remote_address
+        Log.info('message sent: %d byte(s) to %s' % (size, destination))
 
     # Override
-    def gate_error(self, error, ship: Departure,
-                   source: Optional[tuple], destination: tuple, connection: Connection):
-        UDPGate.error('gate error (%s, %s): %s' % (source, destination, error))
+    async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
+        Log.info('failed to send ship: %s' % ship)
 
     # Override
-    def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> bool:
+    async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
+        source = porter.local_address
+        destination = porter.remote_address
+        Log.error('gate error (%s, %s): %s' % (source, destination, error))
+
+    # Override
+    async def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> bool:
         if source is None:
             source = self.source_address
         elif isinstance(source, int):
             source = (self.source_address[0], source)
         try:
-            self.gate.send_data(payload=data, source=source, destination=destination)
+            # await self.hub.connect(remote=destination)
+            await self.gate.send_data(payload=data, source=source, destination=destination)
             return True
         except socket.error:
             return False
 
     # Override
     def info(self, msg: str):
-        UDPGate.info(msg=msg)
+        Log.info(msg=msg)
 
 
 # SERVER_HOST = '0.0.0.0'
-SERVER_HOST = Hub.inet_address()
+SERVER_HOST = Inet.inet_address()
 
 
 if __name__ == '__main__':
@@ -111,4 +166,4 @@ if __name__ == '__main__':
     g_server.changed_address = CHANGED_ADDRESS
     g_server.neighbour = NEIGHBOR_SERVER
 
-    g_server.start()
+    Runner.sync_run(main=g_server.start())

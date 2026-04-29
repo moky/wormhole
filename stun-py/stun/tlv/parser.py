@@ -43,16 +43,19 @@ class Parser(EntryParser, Generic[E, T, L, V]):
     """ TLV Parser """
 
     @property
+    @abstractmethod
     def tag_parser(self) -> TagParser[T]:
         """ get Tag Parser """
         raise NotImplemented
 
     @property
+    @abstractmethod
     def length_parser(self) -> LengthParser[T, L]:
         """ get Length Parser """
         raise NotImplemented
 
     @property
+    @abstractmethod
     def value_parser(self) -> ValueParser[T, L, V]:
         """ get Value Parser """
         raise NotImplemented

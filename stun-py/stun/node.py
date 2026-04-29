@@ -89,7 +89,7 @@ class Node(ABC):
         pass
 
     @abstractmethod
-    def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> bool:
+    async def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> bool:
         """
         Send data to remote address
 

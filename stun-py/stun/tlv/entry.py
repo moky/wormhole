@@ -53,14 +53,17 @@ class Entry(ByteArray, Generic[T, L, V]):
     """ TLV Entry """
 
     @property
+    @abstractmethod
     def tag(self) -> T:
         raise NotImplemented
 
     @property
+    @abstractmethod
     def length(self) -> L:
         raise NotImplemented
 
     @property
+    @abstractmethod
     def value(self) -> V:
         raise NotImplemented
 

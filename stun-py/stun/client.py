@@ -36,9 +36,10 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Tuple
 
 from udp.ba import ByteArray, Data
+from udp import SocketAddress
 
 from .protocol import Package, MessageType
 from .protocol import Attribute, AttributeType, AttributeLength, AttributeValue
@@ -55,7 +56,7 @@ class Client(Node, ABC):
         self.retries = 3
 
     @abstractmethod
-    def receive(self) -> (Optional[bytes], Optional[tuple]):
+    async def receive(self) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
         raise NotImplementedError
 
     # Override
@@ -99,17 +100,18 @@ class Client(Node, ABC):
         self.info('%s:\t%s' % (tag, value))
         return True
 
-    def __bind_request(self, remote_host: str, remote_port: int, body: ByteArray) -> Optional[dict]:
+    async def __bind_request(self, remote_host: str, remote_port: int, body: ByteArray) -> Optional[dict]:
         # 1. create STUN message package
         req = Package.new(msg_type=MessageType.BIND_REQUEST, body=body)
         trans_id = req.head.trans_id
         # 2. send and get response
         count = 0
         while True:
-            if not self.send(data=req.get_bytes(), destination=(remote_host, remote_port)):
+            ok = await self.send(data=req.get_bytes(), destination=(remote_host, remote_port))
+            if not ok:
                 # failed to send data
                 return None
-            data, source = self.receive()
+            data, source = await self.receive()
             if data is None:
                 if count < self.retries:
                     count += 1
@@ -150,24 +152,24 @@ class Client(Node, ABC):
     a Binding Request with only the "change port" flag set.
     """
 
-    def __test_1(self, stun_host: str, stun_port: int) -> Optional[dict]:
+    async def __test_1(self, stun_host: str, stun_port: int) -> Optional[dict]:
         self.info('[Test 1] sending empty request ... (%s:%d)' % (stun_host, stun_port))
         body = Data.ZERO
-        return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
+        return await self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
-    def __test_2(self, stun_host: str, stun_port: int) -> Optional[dict]:
+    async def __test_2(self, stun_host: str, stun_port: int) -> Optional[dict]:
         self.info('[Test 2] sending "ChangeIPAndPort" ... (%s:%d)' % (stun_host, stun_port))
         body = Attribute.new(tag=AttributeType.CHANGE_REQUEST, value=ChangeRequestValue.CHANGE_IP_AND_PORT)
-        return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
+        return await self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
-    def __test_3(self, stun_host: str, stun_port: int) -> Optional[dict]:
+    async def __test_3(self, stun_host: str, stun_port: int) -> Optional[dict]:
         self.info('[Test 3] sending "ChangePort" ... (%s:%d)' % (stun_host, stun_port))
         body = Attribute.new(tag=AttributeType.CHANGE_REQUEST, value=ChangeRequestValue.CHANGE_PORT)
-        return self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
+        return await self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
-    def get_nat_type(self, stun_host: str, stun_port: int = 3478) -> dict:
+    async def get_nat_type(self, stun_host: str, stun_port: int = 3478) -> dict:
         # 1. Test I
-        res1 = self.__test_1(stun_host=stun_host, stun_port=stun_port)
+        res1 = await self.__test_1(stun_host=stun_host, stun_port=stun_port)
         if res1 is None:
             """
             The client begins by initiating test I.  If this test yields no
@@ -184,7 +186,7 @@ class Client(Node, ABC):
         """
         ma1 = res1.get('MAPPED-ADDRESS')
         # 2. Test II
-        res2 = self.__test_2(stun_host=stun_host, stun_port=stun_port)
+        res2 = await self.__test_2(stun_host=stun_host, stun_port=stun_port)
         if ma1 is not None and (ma1.ip, ma1.port) == self.source_address:
             """
             If a response is received, the client knows that it has open access
@@ -220,7 +222,7 @@ class Client(Node, ABC):
         assert isinstance(ca1, ChangedAddressValue), 'CHANGED-ADDRESS error: %s' % ca1
         changed_ip = ca1.ip
         changed_port = ca1.port
-        res11 = self.__test_1(stun_host=changed_ip, stun_port=changed_port)
+        res11 = await self.__test_1(stun_host=changed_ip, stun_port=changed_port)
         if res11 is None:
             # raise AssertionError('network error')
             res1['NAT'] = 'Change address failed'
@@ -242,7 +244,7 @@ class Client(Node, ABC):
         received, its behind a port restricted NAT.
         """
         # 4. Test III
-        res3 = self.__test_3(stun_host=stun_host, stun_port=stun_port)
+        res3 = await self.__test_3(stun_host=stun_host, stun_port=stun_port)
         if res3 is None:
             res11['NAT'] = NatType.PortRestrictedNAT
             return res11

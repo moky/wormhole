@@ -47,6 +47,7 @@ from .protocol import ChangeRequestValue, SoftwareValue
 from .node import Node
 
 
+# noinspection PyAbstractClass
 class Server(Node, ABC):
 
     def __init__(self, host: str = '0.0.0.0', port: int = 3478, change_port: int = 3479):
@@ -99,7 +100,7 @@ class Server(Node, ABC):
         self.info('%s: %s' % (tag, value))
         return True
 
-    def _redirect(self, head: Header, remote_ip: str, remote_port: int) -> bool:
+    async def _redirect(self, head: Header, remote_ip: str, remote_port: int) -> bool:
         """
         Redirect the request to the neighbor server
 
@@ -114,9 +115,9 @@ class Server(Node, ABC):
         # pack
         body = data1
         pack = Package.new(msg_type=head.msg_type, trans_id=head.trans_id, body=body)
-        return self.send(data=pack.get_bytes(), destination=self.neighbour)
+        return await self.send(data=pack.get_bytes(), destination=self.neighbour)
 
-    def _respond(self, head: Header, remote_ip: str, remote_port: int, local_port: int) -> bool:
+    async def _respond(self, head: Header, remote_ip: str, remote_port: int, local_port: int) -> bool:
         # local (server) address
         assert self.source_address is not None, 'source address not set'
         local_ip = self.source_address[0]
@@ -155,9 +156,10 @@ class Server(Node, ABC):
         body.append(data5)
         body.append(data6)
         pack = Package.new(msg_type=MessageType.BIND_RESPONSE, trans_id=head.trans_id, body=body)
-        return self.send(data=pack.get_bytes(), destination=(remote_ip, remote_port), source=(local_ip, local_port))
+        return await self.send(data=pack.get_bytes(),
+                               destination=(remote_ip, remote_port), source=(local_ip, local_port))
 
-    def handle(self, data: bytes, remote_ip: str, remote_port: int) -> bool:
+    async def handle(self, data: bytes, remote_ip: str, remote_port: int) -> bool:
         # parse request
         context = {}
         ok = self.parse_data(data=data, context=context)
@@ -169,18 +171,21 @@ class Server(Node, ABC):
         change_request = context.get('CHANGE-REQUEST')
         if change_request == ChangeRequestValue.CHANGE_IP_AND_PORT:
             # redirect for "change IP" and "change port" flags
-            return self._redirect(head=head, remote_ip=remote_ip, remote_port=remote_port)
+            return await self._redirect(head=head, remote_ip=remote_ip, remote_port=remote_port)
         elif change_request == ChangeRequestValue.CHANGE_PORT:
             # respond with another port for "change port" flag
-            return self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port, local_port=self.change_port)
+            return await self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port,
+                                       local_port=self.change_port)
         mapped_address = context.get('MAPPED-ADDRESS')
         if mapped_address is None:
             # respond origin request
             local_port = self.source_address[1]
-            return self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port, local_port=local_port)
+            return await self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port,
+                                       local_port=local_port)
         else:
             assert isinstance(mapped_address, MappedAddressValue), 'MAPPED-ADDRESS error: %s' % mapped_address
             # respond redirected request
             remote_ip = mapped_address.ip
             remote_port = mapped_address.port
-            return self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port, local_port=self.change_port)
+            return await self._respond(head=head, remote_ip=remote_ip, remote_port=remote_port,
+                                       local_port=self.change_port)
