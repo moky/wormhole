@@ -80,6 +80,7 @@ class Field(Triad[FieldName, FieldLength, FieldValue]):
         set_parser(name=tag.name, parser=parser)
 
 
+# noinspection PyAbstractClass
 class FieldParser(TriadParser[E, FieldName, FieldLength, FieldValue],
                   TagParser[FieldName],
                   LengthParser[FieldName, FieldLength],
@@ -98,7 +99,7 @@ class FieldParser(TriadParser[E, FieldName, FieldLength, FieldValue],
     def value_parser(self) -> ValueParser[FieldName, FieldLength, FieldValue]:
         return self
 
-    # def create_entry(self, data: ByteArray, tag: FieldName, length: FieldLength, value: FieldValue) -> Field:
+    # def create_entry(self, data: ByteArray, tag: FieldName, length: FieldLength, value: FieldValue) -> E:
     #     return Field(data=data, tag=tag, length=length, value=value)
 
     def parse_tag(self, data: ByteArray) -> Optional[FieldName]:
@@ -131,6 +132,7 @@ def set_parser(name: str, parser: Union[TriadParser[Field, FieldName, FieldLengt
 class CommonFieldParser(FieldParser[Field]):
     """ Default FieldParser """
 
+    # Override
     def create_entry(self, data: ByteArray, tag: FieldName, length: FieldLength, value: FieldValue) -> Field:
         return Field(data=data, tag=tag, length=length, value=value)
 

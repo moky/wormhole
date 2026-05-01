@@ -34,6 +34,7 @@ from typing import Optional
 
 from udp.ba import ByteArray
 from udp.mtp import Header
+from udp import SocketAddress
 
 from .tlv import Field
 from .protocol import LocationValue
@@ -61,14 +62,14 @@ class Node(ABC):
             self.__delegate = weakref.ref(value)
 
     @abstractmethod
-    def _connect(self, remote: tuple):
+    async def _connect(self, remote: SocketAddress):
         raise NotImplemented
 
     #
     #   Send
     #
     @abstractmethod
-    def send_command(self, cmd: Command, destination: tuple) -> bool:
+    async def send_command(self, cmd: Command, destination: SocketAddress) -> bool:
         """
         Send command to destination address
 
@@ -79,7 +80,7 @@ class Node(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def send_message(self, msg: Message, destination: tuple) -> bool:
+    async def send_message(self, msg: Message, destination: SocketAddress) -> bool:
         """
         Send message to destination address
 
@@ -89,38 +90,38 @@ class Node(ABC):
         """
         raise NotImplemented
 
-    def say_hello(self, destination: tuple) -> bool:
+    async def say_hello(self, destination: SocketAddress) -> bool:
         assert self.delegate is not None, 'contact delegate not set yet'
         mine = self.delegate.current_location()
         if mine is None:
             # raise LookupError('failed to get my location')
             return False
         cmd = Command.hello_command(location=mine)
-        return self.send_command(cmd=cmd, destination=destination)
+        return await self.send_command(cmd=cmd, destination=destination)
 
     #
     #   Receive
     #
-    def _received(self, head: Header, body: ByteArray, source: tuple):
+    async def _received(self, head: Header, body: ByteArray, source: SocketAddress):
         data_type = head.data_type
         if data_type.is_message:
             # process after received message data
             fields = Field.parse_fields(data=body)
             msg = Message(data=data_type, fields=fields)
-            return self._process_message(msg=msg, source=source)
+            return await self._process_message(msg=msg, source=source)
         elif data_type.is_command:
             # process after received command data
             ok = False
             commands = Command.parse_commands(data=body)
             for cmd in commands:
-                if self._process_command(cmd=cmd, source=source):
+                if await self._process_command(cmd=cmd, source=source):
                     ok = True
             return ok
         else:
             raise TypeError('data type error: %s' % data_type)
 
     @abstractmethod
-    def _process_message(self, msg: Message, source: tuple) -> bool:
+    async def _process_message(self, msg: Message, source: SocketAddress) -> bool:
         """
         Process received message from remote source address
 
@@ -131,7 +132,7 @@ class Node(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def _process_command(self, cmd: Command, source: tuple) -> bool:
+    async def _process_command(self, cmd: Command, source: SocketAddress) -> bool:
         """
         Process received command from remote source address
 
@@ -142,13 +143,13 @@ class Node(ABC):
         cmd_type = cmd.tag
         cmd_value = cmd.value
         if cmd_type == Command.WHO:
-            return self._process_who(source=source)
+            return await self._process_who(source=source)
         elif cmd_type == Command.HELLO:
             assert isinstance(cmd_value, LocationValue), 'login cmd error: %s' % cmd_value
-            return self._process_hello(location=cmd_value, source=source)
+            return await self._process_hello(location=cmd_value, source=source)
         elif cmd_type == Command.BYE:
             assert isinstance(cmd_value, LocationValue), 'logout cmd error: %s' % cmd_value
-            return self._process_bye(location=cmd_value, source=source)
+            return await self._process_bye(location=cmd_value, source=source)
         else:
             clazz = self.__class__.__name__
             print('%s> unknown command: %s' % (clazz, cmd))
@@ -157,18 +158,18 @@ class Node(ABC):
     #
     #   Process
     #
-    def _process_who(self, source: tuple) -> bool:
+    async def _process_who(self, source: SocketAddress) -> bool:
         # say hi when the sender asked 'Who are you?'
-        return self.say_hello(destination=source)
+        return await self.say_hello(destination=source)
 
     # noinspection PyUnusedLocal
-    def _process_hello(self, location: LocationValue, source: tuple) -> bool:
+    async def _process_hello(self, location: LocationValue, source: SocketAddress) -> bool:
         # check signature before accept it
         assert self.delegate is not None, 'contact delegate not set yet'
         return self.delegate.store_location(location=location)
 
     # noinspection PyUnusedLocal
-    def _process_bye(self, location: LocationValue, source: tuple) -> bool:
+    async def _process_bye(self, location: LocationValue, source: SocketAddress) -> bool:
         # check signature before cleaning location
         assert self.delegate is not None, 'contact delegate not set yet'
         return self.delegate.clear_location(location=location)

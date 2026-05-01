@@ -30,26 +30,29 @@
 
 from abc import ABC
 
+from udp import SocketAddress
+
 from .protocol import Command
 from .protocol import CommandValue, LocationValue
 
 from .node import Node
 
 
+# noinspection PyAbstractClass
 class Server(Node, ABC):
 
-    def _process_hello(self, location: LocationValue, source: tuple) -> bool:
+    async def _process_hello(self, location: LocationValue, source: SocketAddress) -> bool:
         # check 'MAPPED-ADDRESS'
         if location.mapped_address == source:
-            if super()._process_hello(location=location, source=source):
+            if await super()._process_hello(location=location, source=source):
                 # location info accepted, create a connection to this source
-                self._connect(remote=source)
+                await self._connect(remote=source)
                 return True
         # response 'SIGN' command with 'ID' and 'ADDR'
         cmd = Command.sign_command(identifier=location.identifier, mapped_address=source)
-        return self.send_command(cmd=cmd, destination=source)
+        return await self.send_command(cmd=cmd, destination=source)
 
-    def _process_call(self, receiver: str, source: tuple) -> bool:
+    async def _process_call(self, receiver: str, source: SocketAddress) -> bool:
         delegate = self.delegate
         assert delegate is not None, 'contact delegate not set yet'
         if receiver is None:
@@ -61,14 +64,14 @@ class Server(Node, ABC):
             # receiver offline
             # respond an empty 'FROM' command to the sender
             cmd = Command.from_command(identifier=receiver)
-            self.send_command(cmd=cmd, destination=source)
+            await self.send_command(cmd=cmd, destination=source)
             return False
         # receiver online
         sender_location = delegate.get_location(address=source)
         if sender_location is None:
             # sender offline, ask sender to login again
             cmd = Command.who_command()
-            self.send_command(cmd=cmd, destination=source)
+            await self.send_command(cmd=cmd, destination=source)
             return False
         # sender online
         # send command for each address
@@ -79,17 +82,17 @@ class Server(Node, ABC):
                 continue
             # send 'FROM' command with sender's location info to the receiver
             cmd = Command.from_command(location=sender_location)
-            self.send_command(cmd=cmd, destination=address)
+            await self.send_command(cmd=cmd, destination=address)
             # respond 'FROM' command with receiver's location info to sender
             cmd = Command.from_command(location=loc)
-            self.send_command(cmd=cmd, destination=source)
+            await self.send_command(cmd=cmd, destination=source)
         return True
 
-    def _process_command(self, cmd: Command, source: tuple) -> bool:
+    async def _process_command(self, cmd: Command, source: SocketAddress) -> bool:
         cmd_type = cmd.tag
         cmd_value = cmd.value
         if cmd_type == Command.CALL:
             assert isinstance(cmd_value, CommandValue), 'call cmd error: %s' % cmd_value
-            return self._process_call(receiver=cmd_value.identifier, source=source)
+            return await self._process_call(receiver=cmd_value.identifier, source=source)
         else:
-            return super()._process_command(cmd=cmd, source=source)
+            return await super()._process_command(cmd=cmd, source=source)

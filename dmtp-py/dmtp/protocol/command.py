@@ -31,6 +31,7 @@
 from typing import Union
 
 from udp.ba import ByteArray
+from udp import SocketAddress
 from stun import SourceAddressValue, MappedAddressValue
 
 from ..tlv import Field, FieldParser
@@ -122,9 +123,9 @@ class Command(Field):
     @classmethod
     def hello_command(cls, location: LocationValue = None,
                       identifier: Union[str, StringValue] = None,
-                      source_address: Union[tuple, SourceAddressValue] = None,
-                      mapped_address: Union[tuple, MappedAddressValue] = None,
-                      relayed_address: Union[tuple, RelayedAddressValue] = None,
+                      source_address: Union[SocketAddress, SourceAddressValue] = None,
+                      mapped_address: Union[SocketAddress, MappedAddressValue] = None,
+                      relayed_address: Union[SocketAddress, RelayedAddressValue] = None,
                       timestamp: Union[int, TimestampValue] = None,
                       signature: Union[bytes, bytearray, ByteArray, BinaryValue] = None,
                       nat: Union[str, StringValue] = None):
@@ -140,9 +141,9 @@ class Command(Field):
 
     @classmethod
     def sign_command(cls, identifier: Union[str, StringValue],
-                     source_address: Union[tuple, SourceAddressValue] = None,
-                     mapped_address: Union[tuple, MappedAddressValue] = None,
-                     relayed_address: Union[tuple, RelayedAddressValue] = None):
+                     source_address: Union[SocketAddress, SourceAddressValue] = None,
+                     mapped_address: Union[SocketAddress, MappedAddressValue] = None,
+                     relayed_address: Union[SocketAddress, RelayedAddressValue] = None):
         # create location
         value = LocationValue.new(identifier=identifier,
                                   source_address=source_address,
@@ -174,6 +175,7 @@ class Command(Field):
 class CommandParser(FieldParser[Command]):
     """ Command Parser """
 
+    # Override
     def create_entry(self, data: ByteArray, tag: FieldName, length: FieldLength, value: FieldValue) -> Command:
         return Command(data=data, tag=tag, length=length, value=value)
 

@@ -30,15 +30,18 @@
 
 from abc import ABC
 
+from udp import SocketAddress
+
 from .protocol import Command
 from .protocol import LocationValue
 from .node import Node
 
 
+# noinspection PyAbstractClass
 class Client(Node, ABC):
 
     # noinspection PyUnusedLocal
-    def _process_sign(self, location: LocationValue, destination: tuple) -> bool:
+    async def _process_sign(self, location: LocationValue, destination: SocketAddress) -> bool:
         # sign your location for login
         assert self.delegate is not None, 'contact delegate not set'
         mine = self.delegate.sign_location(location=location)
@@ -48,9 +51,9 @@ class Client(Node, ABC):
         # update the signed location
         if self.delegate.store_location(location=mine):
             # say hi with new location
-            return self.say_hello(destination=destination)
+            return await self.say_hello(destination=destination)
 
-    def _process_from(self, location: LocationValue) -> bool:
+    async def _process_from(self, location: LocationValue) -> bool:
         # when someone is calling you
         # respond anything (say 'HI') to build the connection.
         assert self.delegate is not None, 'contact delegate not set'
@@ -58,22 +61,22 @@ class Client(Node, ABC):
             ok1 = ok2 = False
             address = location.source_address
             if address is not None:
-                self._connect(remote=address)
-                ok1 = self.say_hello(destination=address)
+                await self._connect(remote=address)
+                ok1 = await self.say_hello(destination=address)
             address = location.mapped_address
             if address is not None:
-                self._connect(remote=address)
-                ok2 = self.say_hello(destination=address)
+                await self._connect(remote=address)
+                ok2 = await self.say_hello(destination=address)
             return ok1 or ok2
 
-    def _process_command(self, cmd: Command, source: tuple) -> bool:
+    async def _process_command(self, cmd: Command, source: SocketAddress) -> bool:
         cmd_type = cmd.tag
         cmd_value = cmd.value
         if cmd_type == Command.SIGN:
             assert isinstance(cmd_value, LocationValue), 'sign cmd error: %s' % cmd_value
-            return self._process_sign(location=cmd_value, destination=source)
+            return await self._process_sign(location=cmd_value, destination=source)
         elif cmd_type == Command.FROM:
             assert isinstance(cmd_value, LocationValue), 'call from error: %s' % cmd_value
-            return self._process_from(location=cmd_value)
+            return await self._process_from(location=cmd_value)
         else:
-            return super()._process_command(cmd=cmd, source=source)
+            return await super()._process_command(cmd=cmd, source=source)

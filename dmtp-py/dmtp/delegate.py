@@ -31,6 +31,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
 
+from udp import SocketAddress
+
 from .protocol import LocationValue
 
 
@@ -66,7 +68,7 @@ class LocationDelegate(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def get_location(self, address: tuple) -> Optional[LocationValue]:
+    def get_location(self, address: SocketAddress) -> Optional[LocationValue]:
         """
         Get location info by address
 

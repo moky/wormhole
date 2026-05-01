@@ -30,10 +30,14 @@
 
 import threading
 import time
+from abc import ABC
 from typing import Optional
 
+from startrek.net.state import StateOrder
+
 from udp.ba import ByteArray
-from udp import Hub, ConnectionState
+from udp import SocketAddress
+from udp import Hub, BaseHub
 
 from dmtp import Field
 from dmtp import TimestampValue, BinaryValue
@@ -66,7 +70,7 @@ class Contact:
                 reversed_locations.append(self.__locations[pos])
         return reversed_locations
 
-    def get_location(self, address: tuple) -> Optional[LocationValue]:
+    def get_location(self, address: SocketAddress) -> Optional[LocationValue]:
         """ Get location by (IP, port) """
         with self.__locations_lock:
             pos = len(self.__locations)
@@ -234,10 +238,18 @@ class Contact:
             return cls.is_address_expired(address=s, hub=hub) and cls.is_address_expired(address=m, hub=hub)
 
     @classmethod
-    def is_address_expired(cls, address: Optional[tuple], hub: Hub) -> bool:
+    def is_address_expired(cls, address: Optional[SocketAddress], hub: Hub) -> bool:
         if address is None:
             return True
-        conn = hub.connect(remote=address, local=None)
+        elif isinstance(hub, ContactHub):
+            return hub.is_connection_closed(address=address)
+
+
+# noinspection PyAbstractClass
+class ContactHub(BaseHub, ABC):
+
+    def is_connection_closed(self, address: Optional[SocketAddress]):
+        conn = self._get_connection(remote=address, local=None)
         if conn is None:
             return True
-        return conn.state not in [ConnectionState.READY, ConnectionState.MAINTAINING, ConnectionState.EXPIRED]
+        return conn.state not in [StateOrder.READY, StateOrder.MAINTAINING, StateOrder.EXPIRED]

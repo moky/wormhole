@@ -31,6 +31,7 @@
 from typing import Optional, Union, List
 
 from udp.ba import ByteArray
+from udp import SocketAddress
 from stun import MappedAddressValue, SourceAddressValue
 
 from ..tlv import Field, FieldName
@@ -71,14 +72,14 @@ class LocationValue(CommandValue):
 
     def __init__(self, data: Union[bytes, bytearray, ByteArray], fields: List[Field]):
         super().__init__(data=data, fields=fields)
-        self.__source_address: Optional[tuple] = None   # local IP and port
-        self.__mapped_address: Optional[tuple] = None   # public IP and port
-        self.__relayed_address: Optional[tuple] = None  # server IP and port
+        self.__source_address: Optional[SocketAddress] = None   # local IP and port
+        self.__mapped_address: Optional[SocketAddress] = None   # public IP and port
+        self.__relayed_address: Optional[SocketAddress] = None  # server IP and port
         self.__timestamp: Optional[int] = None          # time for signature
         self.__signature: Optional[bytes] = None         # sign(addresses + timestamp)
         self.__nat: Optional[str] = None                # NAT type
 
-    def get_address_value(self, tag: FieldName, default: tuple = None) -> Optional[tuple]:
+    def get_address_value(self, tag: FieldName, default: SocketAddress = None) -> Optional[SocketAddress]:
         value = self.get(tag)
         if isinstance(value, MappedAddressValue):
             return value.ip, value.port
@@ -86,19 +87,19 @@ class LocationValue(CommandValue):
             return default
 
     @property
-    def source_address(self) -> Optional[tuple]:
+    def source_address(self) -> Optional[SocketAddress]:
         if self.__source_address is None:
             self.__source_address = self.get_address_value(tag=Field.SOURCE_ADDRESS)
         return self.__source_address
 
     @property
-    def mapped_address(self) -> Optional[tuple]:
+    def mapped_address(self) -> Optional[SocketAddress]:
         if self.__mapped_address is None:
             self.__mapped_address = self.get_address_value(tag=Field.MAPPED_ADDRESS)
         return self.__mapped_address
 
     @property
-    def relayed_address(self) -> Optional[tuple]:
+    def relayed_address(self) -> Optional[SocketAddress]:
         if self.__relayed_address is None:
             self.__relayed_address = self.get_address_value(tag=Field.RELAYED_ADDRESS)
         return self.__relayed_address
@@ -123,9 +124,9 @@ class LocationValue(CommandValue):
 
     @classmethod
     def new(cls, identifier: Union[str, StringValue],
-            source_address: Union[tuple, SourceAddressValue] = None,
-            mapped_address: Union[tuple, MappedAddressValue] = None,
-            relayed_address: Union[tuple, RelayedAddressValue] = None,
+            source_address: Union[SocketAddress, SourceAddressValue] = None,
+            mapped_address: Union[SocketAddress, MappedAddressValue] = None,
+            relayed_address: Union[SocketAddress, RelayedAddressValue] = None,
             timestamp: Union[int, TimestampValue] = None,
             signature: Union[bytes, bytearray, ByteArray] = None,
             nat: Union[str, StringValue] = None):
