@@ -40,8 +40,8 @@ class PacketClientHub(ClientHub):
 
     # Override
     def _set_channel(self, channel: Channel,
-                     remote: Optional[SocketAddress], local: Optional[SocketAddress]):
-        super()._set_channel(channel=channel, remote=remote, local=local)
+                     remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        return super()._set_channel(channel=channel, remote=remote, local=local)
 
     # Override
     def _remove_channel(self, channel: Optional[Channel],
@@ -156,7 +156,7 @@ class StunClient(Client, PorterDelegate):
         return data, remote
 
     # Override
-    async def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> bool:
+    async def send(self, data: bytes, destination: SocketAddress, source: Union[SocketAddress, int] = None) -> bool:
         if source is None:
             source = self.source_address
         elif isinstance(source, int):

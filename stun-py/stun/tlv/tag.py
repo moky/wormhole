@@ -28,7 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import TypeVar, Generic, Union, Optional
 
 from udp.ba import ByteArray, Data
@@ -46,7 +46,8 @@ from udp.ba import IntegerData, UInt8Data, UInt16Data, UInt32Data, VarIntData, C
 """
 
 
-class Tag(ByteArray):
+# noinspection PyAbstractClass
+class Tag(ByteArray, ABC):
     """ TLV Tag/Type """
     pass
 

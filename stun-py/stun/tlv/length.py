@@ -28,7 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import TypeVar, Generic, Union, Optional
 
 from udp.ba import ByteArray
@@ -49,7 +49,8 @@ from .tag import Tag, T
 """
 
 
-class Length(IntegerData):
+# noinspection PyAbstractClass
+class Length(IntegerData, ABC):
     """ TLV Length """
     pass
 

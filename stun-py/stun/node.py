@@ -38,6 +38,8 @@
 from abc import ABC, abstractmethod
 from typing import Union
 
+from udp import SocketAddress
+
 from .protocol import Package, Attribute
 
 
@@ -69,7 +71,7 @@ class Node(ABC):
         self.__local_address = (host, port)
 
     @property
-    def source_address(self) -> tuple:
+    def source_address(self) -> SocketAddress:
         """
         11.2.5 SOURCE-ADDRESS
 
@@ -89,7 +91,7 @@ class Node(ABC):
         pass
 
     @abstractmethod
-    async def send(self, data: bytes, destination: tuple, source: Union[tuple, int] = None) -> bool:
+    async def send(self, data: bytes, destination: SocketAddress, source: Union[SocketAddress, int] = None) -> bool:
         """
         Send data to remote address
 

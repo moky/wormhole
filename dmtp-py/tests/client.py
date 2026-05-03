@@ -54,8 +54,8 @@ class DmtpClientHub(ClientHub, ContactHub):
 
     # Override
     def _set_channel(self, channel: Channel,
-                     remote: Optional[SocketAddress], local: Optional[SocketAddress]):
-        super()._set_channel(channel=channel, remote=remote, local=local)
+                     remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        return super()._set_channel(channel=channel, remote=remote, local=local)
 
     # Override
     def _remove_channel(self, channel: Optional[Channel],

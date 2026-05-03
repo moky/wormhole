@@ -28,7 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import TypeVar, Generic, Union, Optional
 
 from udp.ba import ByteArray, Data
@@ -50,7 +50,8 @@ from .length import Length, L
 """
 
 
-class Value(ByteArray):
+# noinspection PyAbstractClass
+class Value(ByteArray, ABC):
     """ TLV Value """
     pass
 
