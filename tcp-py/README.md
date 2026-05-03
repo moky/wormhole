@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/github/license/moky/wormhole)](https://github.com/moky/wormhole/blob/master/LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/moky/wormhole/pulls)
-[![Platform](https://img.shields.io/badge/Platform-Dart%203-brightgreen.svg)](https://github.com/moky/wormhole/wiki)
+[![Platform](https://img.shields.io/badge/Platform-Python%203.7-brightgreen.svg)](https://github.com/moky/wormhole/wiki)
 [![Issues](https://img.shields.io/github/issues/moky/wormhole)](https://github.com/moky/wormhole/issues)
 [![Repo Size](https://img.shields.io/github/repo-size/moky/wormhole)](https://github.com/moky/wormhole/archive/refs/heads/main.zip)
 [![Tags](https://img.shields.io/github/tag/moky/wormhole)](https://github.com/moky/wormhole/tags)

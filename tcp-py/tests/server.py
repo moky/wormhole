@@ -6,7 +6,6 @@ import socket
 import sys
 import os
 import threading
-import time
 from typing import Optional
 
 from startrek.types import SocketAddress
@@ -157,7 +156,7 @@ async def test_receive(address: SocketAddress):
     while True:
         try:
             sock, address = master.accept()
-            time.sleep(5)
+            await Runner.sleep(seconds=5)
             # check
             size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
             Log.info(msg=' receive buffer size1: %d' % size)

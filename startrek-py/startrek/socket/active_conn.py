@@ -58,10 +58,10 @@ class ActiveConnection(BaseConnection, Runnable):
 
     # Override
     async def start(self, hub: Hub):
+        await super().start(hub=hub)
+        # referring the hub
         self.__hub_ref = weakref.ref(hub)
-        # 1. start state machine
-        await self._start_machine()
-        # 2. start an async task to check channel
+        # start an async task to check channel
         Runner.async_task(coro=self.run())
         # await self.run()
 

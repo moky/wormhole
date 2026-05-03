@@ -36,6 +36,7 @@ from typing import Union
 class ByteArray(ABC):
 
     @property
+    @abstractmethod
     def buffer(self) -> Union[bytes, bytearray]:
         """
         Get inner buffer
@@ -45,6 +46,7 @@ class ByteArray(ABC):
         raise NotImplemented
 
     @property
+    @abstractmethod
     def offset(self) -> int:
         """
         Get view offset
@@ -54,6 +56,7 @@ class ByteArray(ABC):
         raise NotImplemented
 
     @property
+    @abstractmethod
     def size(self) -> int:
         """
         Get view size
@@ -63,6 +66,7 @@ class ByteArray(ABC):
         raise NotImplemented
 
     @property
+    @abstractmethod
     def hex_string(self) -> str:
         """
         Get Hex encoded string
@@ -218,10 +222,12 @@ class Endian(IntEnum):
 class IntegerData(ByteArray, ABC):
 
     @property
+    @abstractmethod
     def endian(self) -> Endian:
         raise NotImplemented
 
     @property
+    @abstractmethod
     def value(self) -> int:
         raise NotImplemented
 

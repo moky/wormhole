@@ -28,12 +28,13 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, Union
+from typing import Optional, Tuple
 
 
 # Addresses can be either tuples of varying lengths (AF_INET, AF_INET6,
 # AF_NETLINK, AF_TIPC) or strings (AF_UNIX).
-SocketAddress = Union[tuple, str]
+SocketAddress = Tuple[str, int]
+# SocketAddress = Union[Tuple[str, int], str]
 # TODO: Most methods allow bytes as address objects
 
 

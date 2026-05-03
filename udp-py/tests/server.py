@@ -77,13 +77,16 @@ class Server(PorterDelegate):
     def hub(self) -> ServerHub:
         return self.gate.hub
 
-    async def start(self):
-        channel, sock = self.hub.bind(address=self.local_address)
+    # protected
+    async def bind(self, local: SocketAddress):
+        channel, sock = self.hub.bind(address=local)
         if sock is not None:
             assert isinstance(channel, BaseChannel), 'channel error: %s' % channel
             # set socket for this channel
             await channel.set_socket(sock=sock)
-        # OK
+
+    async def start(self):
+        await self.bind(local=self.local_address)
         await self.gate.start()
         while self.gate.running:
             await Runner.sleep(seconds=2.0)
