@@ -178,10 +178,10 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
 
     async def start(self, hub: Hub):
         """ Get channel from hub """
-        # 1. get channel from hub
-        await self._open_channel(hub=hub)
-        # 2. start state machine
+        # 1. start state machine
         await self._start_machine()
+        # 2. open channel via the hub
+        await self._open_channel(hub=hub)
 
     async def _start_machine(self):
         fsm = self._create_state_machine()
