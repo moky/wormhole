@@ -57,7 +57,9 @@ class Transition(ABC, Generic[C]):
         :param now:     current time (seconds from Jan 1, 1970 UTC)
         :return True when current state should be changed
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.evaluate()'
+        )
 
 
 class State(ABC, Generic[C, T]):
@@ -72,7 +74,9 @@ class State(ABC, Generic[C, T]):
         :param now:     current time (seconds from Jan 1, 1970 UTC)
         :return success transition, or None to stay the current state
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.evaluate()'
+        )
 
     @abstractmethod
     async def on_enter(self, old, ctx: C, now: Timestamp):
@@ -83,7 +87,9 @@ class State(ABC, Generic[C, T]):
         :param ctx:     context (machine)
         :param now:     current time (seconds from Jan 1, 1970 UTC)
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.on_enter()'
+        )
 
     @abstractmethod
     async def on_exit(self, new, ctx: C, now: Timestamp):
@@ -94,7 +100,9 @@ class State(ABC, Generic[C, T]):
         :param ctx:     context (machine)
         :param now:     current time (seconds from Jan 1, 1970 UTC)
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.on_exit()'
+        )
 
     @abstractmethod
     async def on_pause(self, ctx: C, now: Timestamp):
@@ -104,7 +112,9 @@ class State(ABC, Generic[C, T]):
         :param ctx:     context (machine)
         :param now:     current time (seconds from Jan 1, 1970 UTC)
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.on_pause()'
+        )
 
     @abstractmethod
     async def on_resume(self, ctx: C, now: Timestamp):
@@ -114,7 +124,9 @@ class State(ABC, Generic[C, T]):
         :param ctx:     context (machine)
         :param now:     current time (seconds from Jan 1, 1970 UTC)
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.on_resume()'
+        )
 
 
 class Delegate(ABC, Generic[C, T, S]):
@@ -130,7 +142,9 @@ class Delegate(ABC, Generic[C, T, S]):
         :param ctx:     context (machine)
         :param now:     current time (seconds from Jan 1, 1970 UTC)
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.enter_state()'
+        )
 
     @abstractmethod
     async def exit_state(self, state: Optional[S], ctx: C, now: Timestamp):
@@ -142,7 +156,9 @@ class Delegate(ABC, Generic[C, T, S]):
         :param ctx:     context (machine)
         :param now:     current time (seconds from Jan 1, 1970 UTC)
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.exit_state()'
+        )
 
     @abstractmethod
     async def pause_state(self, state: Optional[S], ctx: C, now: Timestamp):
@@ -153,7 +169,9 @@ class Delegate(ABC, Generic[C, T, S]):
         :param ctx:     context (machine)
         :param now:     current time (seconds from Jan 1, 1970 UTC)
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.pause_state()'
+        )
 
     @abstractmethod
     async def resume_state(self, state: Optional[S], ctx: C, now: Timestamp):
@@ -164,7 +182,9 @@ class Delegate(ABC, Generic[C, T, S]):
         :param ctx:     context (machine)
         :param now:     current time (seconds from Jan 1, 1970 UTC)
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.resume_state()'
+        )
 
 
 class Machine(Ticker, ABC, Generic[C, T, S]):
@@ -173,24 +193,34 @@ class Machine(Ticker, ABC, Generic[C, T, S]):
     @property
     @abstractmethod
     def current_state(self) -> Optional[S]:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.current_state getter'
+        )
 
     @abstractmethod
     async def start(self) -> bool:
         """ Change current state to 'default' """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.start()'
+        )
 
     @abstractmethod
     async def stop(self) -> bool:
         """ Change current state to null """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.stop()'
+        )
 
     @abstractmethod
     async def pause(self) -> bool:
         """ Pause machine, current state not change """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.pause()'
+        )
 
     @abstractmethod
     async def resume(self) -> bool:
         """ Resume machine with current state """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.resume()'
+        )

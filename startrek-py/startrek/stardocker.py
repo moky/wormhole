@@ -170,7 +170,9 @@ class StarPorter(AddressPairObject, Porter, ABC):
         :param data: received data
         :return income ships carrying data package/fragments
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._get_arrivals()'
+        )
 
     @abstractmethod
     async def _check_arrival(self, ship: Arrival) -> Optional[Arrival]:
@@ -180,7 +182,9 @@ class StarPorter(AddressPairObject, Porter, ABC):
         :param ship: income ship carrying data package/fragment/response
         :return income ship carrying completed data package
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._check_arrival()'
+        )
 
     async def _check_response(self, ship: Arrival) -> Optional[Departure]:
         """

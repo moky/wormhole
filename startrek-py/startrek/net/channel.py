@@ -50,42 +50,56 @@ class Channel(ABC):
     @property
     @abstractmethod
     def status(self) -> ChannelStatus:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.status getter'
+        )
 
     @property
     @abstractmethod
     def closed(self) -> bool:
         """ not is_open() """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.closed getter'
+        )
 
     @property
     @abstractmethod
     def bound(self) -> bool:
         """ is_bound() """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.bound getter'
+        )
 
     @property
     @abstractmethod
     def alive(self) -> bool:
         """ is_opened() and (is_connected() or is_bound()) """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.alive getter'
+        )
 
     @property
     @abstractmethod
     def available(self) -> bool:
         """ ready for reading """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.available getter'
+        )
 
     @property
     @abstractmethod
     def vacant(self) -> bool:
         """ ready for writing """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.vacant getter'
+        )
 
     @abstractmethod
     async def close(self):
         """ Close the channel """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.close()'
+        )
 
     #
     #   Byte Channel
@@ -101,7 +115,9 @@ class Channel(ABC):
                  or -1 if the channel has reached end-of-stream
         :raise: OSError
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.read()'
+        )
 
     @abstractmethod
     async def write(self, data: bytes) -> int:
@@ -112,7 +128,9 @@ class Channel(ABC):
         :return: The number of bytes written, possibly zero
         :raise: OSError
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.write()'
+        )
 
     #
     #   Selectable Channel
@@ -127,13 +145,17 @@ class Channel(ABC):
                          if False then it will be placed non-blocking mode
         :raise: OSError
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.configure_blocking()'
+        )
 
     @property
     @abstractmethod
     def blocking(self) -> bool:
         """ is_blocking() """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.blocking getter'
+        )
 
     #
     #   Network Channel
@@ -151,7 +173,9 @@ class Channel(ABC):
         :return: bound socket
         :raise: OSError
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.bind()'
+        )
 
     @property
     @abstractmethod
@@ -162,7 +186,9 @@ class Channel(ABC):
         :return: The socket address that the socket is bound to,
                  or None if the channel's socket is not bound
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.local_address getter'
+        )
 
     #
     #   Socket/Datagram Channel
@@ -172,7 +198,9 @@ class Channel(ABC):
     @abstractmethod
     def connected(self) -> bool:
         """ is_connected() """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.connected getter'
+        )
 
     @abstractmethod
     async def connect(self, address: Optional[SocketAddress] = None,
@@ -186,7 +214,9 @@ class Channel(ABC):
         :return: connected socket
         :raise: OSError
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.connect()'
+        )
 
     @property
     @abstractmethod
@@ -196,7 +226,9 @@ class Channel(ABC):
 
         :return: The remote address; None if the channel's socket is not connected
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.remote_address getter'
+        )
 
     #
     #   Datagram Channel
@@ -210,7 +242,9 @@ class Channel(ABC):
         :return: inner socket
         :raise: OSError
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.disconnect()'
+        )
 
     @abstractmethod
     async def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
@@ -221,7 +255,9 @@ class Channel(ABC):
         :return: received data and remote address
         :raise: OSError
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.receive()'
+        )
 
     @abstractmethod
     async def send(self, data: bytes, target: SocketAddress) -> int:
@@ -237,4 +273,6 @@ class Channel(ABC):
                  underlying output buffer
         :raise: OSError
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.send()'
+        )

@@ -44,7 +44,9 @@ class PorterDelegate(ABC):
         :param ship:    income data package container
         :param porter:  connection docker
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.porter_received()'
+        )
 
     @abstractmethod
     async def porter_sent(self, ship: Departure, porter: Porter):
@@ -54,7 +56,9 @@ class PorterDelegate(ABC):
         :param ship:    outgo data package container
         :param porter:  connection docker
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.porter_sent()'
+        )
 
     @abstractmethod
     async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
@@ -65,7 +69,9 @@ class PorterDelegate(ABC):
         :param ship:    outgo data package container
         :param porter:  connection docker
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.porter_failed()'
+        )
 
     @abstractmethod
     async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
@@ -76,7 +82,9 @@ class PorterDelegate(ABC):
         :param ship:    outgo data package container
         :param porter:  connection docker
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.porter_error()'
+        )
 
     @abstractmethod
     async def porter_status_changed(self, previous: PorterStatus, current: PorterStatus, porter: Porter):
@@ -87,4 +95,6 @@ class PorterDelegate(ABC):
         :param current:  new status
         :param porter:   connection docker
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.porter_status_changed()'
+        )

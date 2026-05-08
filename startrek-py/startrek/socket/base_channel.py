@@ -60,12 +60,16 @@ class BaseChannel(AddressPairObject, Channel, ABC):
     @abstractmethod
     def _create_reader(self) -> SocketReader:
         """ create socket reader """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._create_reader()'
+        )
 
     @abstractmethod
     def _create_writer(self) -> SocketWriter:
         """ create socket writer """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._create_writer()'
+        )
 
     @property  # protected
     def reader(self) -> SocketReader:

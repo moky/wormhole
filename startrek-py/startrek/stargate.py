@@ -128,7 +128,9 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         :param local:   local address
         :return docker
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._create_porter()'
+        )
 
     def _all_porters(self) -> Iterable[Porter]:
         """ get a copy of all dockers """

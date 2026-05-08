@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-#
-#   Finite State Machine
-#
-#                                Written in 2021 by Moky <albert.moky@gmail.com>
-#
 # ==============================================================================
 # MIT License
 #
@@ -45,7 +40,9 @@ class Processor(ABC):
 
         :return: False on nothing to do
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.process()'
+        )
 
 
 class Handler(ABC):
@@ -53,17 +50,23 @@ class Handler(ABC):
     @abstractmethod
     async def setup(self):
         """ Prepare before Handling """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.setup()'
+        )
     
     @abstractmethod
     async def handle(self):
         """ Run loop for handling """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.handle()'
+        )
 
     @abstractmethod
     async def finish(self):
         """ Cleanup after handled """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.finish()'
+        )
 
 
 class Runnable(ABC):
@@ -71,7 +74,9 @@ class Runnable(ABC):
     @abstractmethod
     async def run(self):
         """ Run in an async task """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.run()'
+        )
 
 
 # noinspection PyAbstractClass

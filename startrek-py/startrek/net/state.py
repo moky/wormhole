@@ -117,7 +117,9 @@ class StateTransition(BaseTransition[StateMachine], ABC):
 
     @abstractmethod  # Override
     def evaluate(self, ctx: StateMachine, now: Timestamp) -> bool:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.evaluate()'
+        )
 
 
 class ConnectionState(BaseState[StateMachine, StateTransition]):

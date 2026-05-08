@@ -50,7 +50,9 @@ class Hub(Processor, ABC):
         :param local:  local address to bound
         :return: None on socket error
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.open()'
+        )
 
     @abstractmethod
     async def connect(self, remote: SocketAddress, local: Optional[SocketAddress] = None) -> Optional[Connection]:
@@ -61,4 +63,6 @@ class Hub(Processor, ABC):
         :param local:  local address
         :return: None on channel closed
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.connect()'
+        )

@@ -48,7 +48,9 @@ class ConnectionDelegate(ABC):
         :param current:    new state
         :param connection: current connection
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.connection_state_changed()'
+        )
 
     @abstractmethod
     async def connection_received(self, data: bytes, connection: Connection):
@@ -58,7 +60,9 @@ class ConnectionDelegate(ABC):
         :param data:        received data package
         :param connection:  current connection
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.connection_received()'
+        )
 
     @abstractmethod
     async def connection_sent(self, sent: int, data: bytes, connection: Connection):
@@ -69,7 +73,9 @@ class ConnectionDelegate(ABC):
         :param data:        sent data package
         :param connection:  current connection
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.connection_sent()'
+        )
 
     @abstractmethod
     async def connection_failed(self, error: OSError, data: bytes, connection: Connection):
@@ -80,7 +86,9 @@ class ConnectionDelegate(ABC):
         :param data:        outgoing data package
         :param connection:  current connection
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.connection_failed()'
+        )
 
     @abstractmethod
     async def connection_error(self, error: OSError, connection: Connection):
@@ -90,4 +98,6 @@ class ConnectionDelegate(ABC):
         :param error:       connection error
         :param connection:  current connection
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.connection_error()'
+        )

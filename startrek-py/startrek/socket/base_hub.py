@@ -107,7 +107,9 @@ class BaseHub(Hub, ABC):
 
         :return: copy of channels
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._all_channels()'
+        )
 
     @abstractmethod
     def _remove_channel(self, channel: Optional[Channel],
@@ -119,7 +121,9 @@ class BaseHub(Hub, ABC):
         :param remote:  remote address
         :param local:   local address
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._remove_channel()'
+        )
 
     #
     #   Connection
@@ -134,7 +138,9 @@ class BaseHub(Hub, ABC):
         :param local:   local address
         :return: None on channel not exists
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._create_connection()'
+        )
 
     def _all_connections(self) -> Iterable[Connection]:
         """ get a copy of all connections """
@@ -267,7 +273,6 @@ class BaseHub(Hub, ABC):
                 count += 1
         return count
 
-    # noinspection PyMethodMayBeStatic
     async def _drive_connections(self, connections: Iterable[Connection]):
         now = time.time()
         elapsed = now - self.__last_time_drive_connection

@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-#
-#   Finite State Machine
-#
-#                                Written in 2022 by Moky <albert.moky@gmail.com>
-#
 # ==============================================================================
 # MIT License
 #
@@ -51,7 +46,9 @@ class Ticker(ABC):
         :param now:     current time (seconds from Jan 1, 1970 UTC)
         :param elapsed: seconds from previous tick
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.tick()'
+        )
 
 
 class Metronome(Runner):

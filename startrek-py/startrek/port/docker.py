@@ -82,31 +82,41 @@ class Porter(Processor):
     @abstractmethod
     def closed(self) -> bool:
         """ Connection closed """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.closed getter'
+        )
 
     @property
     @abstractmethod
     def alive(self) -> bool:
         """ Connection alive """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.alive getter'
+        )
 
     @property
     @abstractmethod
     def status(self) -> PorterStatus:
         """ Connection state """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.status getter'
+        )
 
     @property
     @abstractmethod
     def remote_address(self) -> SocketAddress:
         """ Remote address of connection """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.remote_address getter'
+        )
 
     @property
     @abstractmethod
     def local_address(self) -> Optional[SocketAddress]:
         """ Local address of connection """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.local_address getter'
+        )
 
     @abstractmethod
     async def send_data(self, payload: bytes) -> bool:
@@ -117,7 +127,9 @@ class Porter(Processor):
         :param payload: data to be sent
         :return: False on error
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.send_data()'
+        )
 
     @abstractmethod
     async def send_ship(self, ship: Departure) -> bool:
@@ -128,7 +140,9 @@ class Porter(Processor):
         :param ship: outgo ship carrying data package/fragment
         :return: False on duplicated
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.send_ship()'
+        )
 
     @abstractmethod
     async def process_received(self, data: bytes):
@@ -137,21 +151,29 @@ class Porter(Processor):
 
         :param data: received data package
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.process_received()'
+        )
 
     @abstractmethod
     async def heartbeat(self):
         """
         Send 'PING' for keeping connection alive
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.heartbeat()'
+        )
 
     @abstractmethod
     def purge(self, now: Timestamp) -> int:
         """ Clear all expired tasks """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.purge()'
+        )
 
     @abstractmethod
     async def close(self):
         """ Close connection for this docker """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.close()'
+        )

@@ -45,22 +45,30 @@ class PairMap(Generic[K, V], ABC):
     @abstractmethod
     def items(self) -> Iterable[V]:
         """ Get all mapped items """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.items getter'
+        )
 
     @abstractmethod
     def get(self, remote: Optional[K], local: Optional[K]) -> Optional[V]:
         """ Get item by key pair (remote, local) """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.get()'
+        )
 
     @abstractmethod
     def set(self, item: Optional[V], remote: Optional[K], local: Optional[K]) -> Optional[V]:
         """ Set item by key pair (remote, local) """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.set()'
+        )
 
     @abstractmethod
     def remove(self, item: Optional[V], remote: Optional[K], local: Optional[K]) -> Optional[V]:
         """ Remove mapping item by key pair (remote, local) """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.remove()'
+        )
 
 
 # noinspection PyAbstractClass

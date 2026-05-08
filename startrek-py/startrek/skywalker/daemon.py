@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-#
-#   Finite State Machine
-#
-#                                Written in 2024 by Moky <albert.moky@gmail.com>
-#
 # ==============================================================================
 # MIT License
 #

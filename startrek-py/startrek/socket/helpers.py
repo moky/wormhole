@@ -43,12 +43,16 @@ class SocketReader(ABC):
     @abstractmethod
     async def read(self, max_len: int) -> Optional[bytes]:
         """ read data from socket """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.read()'
+        )
 
     @abstractmethod
     async def receive(self, max_len: int) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
         """ receive data via socket, and return it with remote address """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.receive()'
+        )
 
 
 class SocketWriter(ABC):
@@ -56,12 +60,16 @@ class SocketWriter(ABC):
     @abstractmethod
     async def write(self, data: bytes) -> int:
         """ write data into socket """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.write()'
+        )
 
     @abstractmethod
     async def send(self, data: bytes, target: SocketAddress) -> int:
         """ send data via socket with remote address """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.send()'
+        )
 
 
 # noinspection PyMethodMayBeStatic

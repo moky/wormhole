@@ -109,7 +109,9 @@ class BaseMachine(Machine[C, T, S], ABC):
     @abstractmethod
     def context(self) -> C:
         """ machine itself """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.context getter'
+        )
 
     #
     #   States

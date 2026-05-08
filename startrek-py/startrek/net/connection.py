@@ -45,53 +45,71 @@ class Connection(Ticker, ABC):
     @abstractmethod
     def closed(self) -> bool:
         """ not is_open() """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.closed getter'
+        )
 
     @property
     @abstractmethod
     def bound(self) -> bool:
         """ is_bound() """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.bound getter'
+        )
 
     @property
     @abstractmethod
     def connected(self) -> bool:
         """ is_connected() """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.connected getter'
+        )
 
     @property
     @abstractmethod
     def alive(self) -> bool:
         """ is_opened() and (is_connected() or is_bound()) """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.alive getter'
+        )
 
     @property
     @abstractmethod
     def available(self) -> bool:
         """ ready for reading """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.available getter'
+        )
 
     @property
     @abstractmethod
     def vacant(self) -> bool:
         """ ready for writing """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.vacant getter'
+        )
 
     @property
     @abstractmethod
     def local_address(self) -> Optional[SocketAddress]:  # (str, int)
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.local_address getter'
+        )
 
     @property
     @abstractmethod
     def remote_address(self) -> Optional[SocketAddress]:  # (str, int)
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.remote_address getter'
+        )
 
     @property
     @abstractmethod
     def state(self):  # -> Optional[ConnectionState]:
         """ Get connection state """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.state getter'
+        )
 
     @abstractmethod
     async def send_data(self, data: bytes) -> int:
@@ -101,7 +119,9 @@ class Connection(Ticker, ABC):
         :param data: outgo data package
         :return: count of bytes sent, probably zero when it's non-blocking mode
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.send_data()'
+        )
 
     @abstractmethod
     async def received_data(self, data: bytes):
@@ -110,12 +130,16 @@ class Connection(Ticker, ABC):
 
         :param data: received data
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.received_data()'
+        )
 
     @abstractmethod
     async def close(self):
         """ Close the connection """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.close()'
+        )
 
 
 class TimedConnection(ABC):
@@ -125,21 +149,31 @@ class TimedConnection(ABC):
     @property
     @abstractmethod
     def last_sent_time(self) -> Timestamp:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.last_sent_time getter'
+        )
 
     @property
     @abstractmethod
     def last_received_time(self) -> Timestamp:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.last_received_time getter'
+        )
 
     @abstractmethod
     def is_sent_recently(self, now: Timestamp) -> bool:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.is_sent_recently()'
+        )
 
     @abstractmethod
     def is_received_recently(self, now: Timestamp) -> bool:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.is_received_recently()'
+        )
 
     @abstractmethod
     def is_not_received_long_time_ago(self, now: Timestamp) -> bool:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.is_not_received_long_time_ago()'
+        )

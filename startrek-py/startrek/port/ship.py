@@ -78,7 +78,9 @@ class Ship(ABC):
 
         :return: SN
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.sn getter'
+        )
 
     @abstractmethod
     def touch(self, now: Timestamp):
@@ -87,7 +89,9 @@ class Ship(ABC):
 
         :param now: current time
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.touch()'
+        )
 
     @abstractmethod
     def get_status(self, now: Timestamp) -> ShipStatus:
@@ -97,7 +101,9 @@ class Ship(ABC):
         :param now: current time
         :return: current status
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.get_status()'
+        )
 
 
 class Arrival(Ship):
@@ -111,7 +117,9 @@ class Arrival(Ship):
         :param ship: arrival ship carrying with data package/fragment
         :return new ship carrying the whole data package
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.assemble()'
+        )
 
 
 class Departure(Ship):
@@ -121,7 +129,9 @@ class Departure(Ship):
     @abstractmethod
     def priority(self) -> int:
         """ Task priority, default is 0, smaller is faster """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.priority getter'
+        )
 
     @property
     @abstractmethod
@@ -131,7 +141,9 @@ class Departure(Ship):
 
         :return remaining (separated) data package
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.fragments getter'
+        )
 
     @abstractmethod
     def check_response(self, ship: Arrival) -> bool:
@@ -142,7 +154,9 @@ class Departure(Ship):
         :param ship: income ship carrying response
         :return True on task finished
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.check_response()'
+        )
 
     #
     #   task states
@@ -156,4 +170,6 @@ class Departure(Ship):
 
         :return false for disposable
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.is_important getter'
+        )

@@ -55,7 +55,9 @@ class Gate(Processor, ABC):
         :param local:  local address
         :return: False on error
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.send_data()'
+        )
 
     @abstractmethod
     async def send_ship(self, ship: Departure,
@@ -69,4 +71,6 @@ class Gate(Processor, ABC):
         :param local:  local address
         :return: False on error
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.send_ship()'
+        )
