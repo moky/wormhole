@@ -120,7 +120,7 @@ class DmtpServer(Server, PorterDelegate):
         try:
             await self.hub.connect(remote=remote, local=self.__local_address)
         except socket.error as error:
-            Log.error('failed to connect to %s: %s' % (remote, error))
+            Log.error('failed to connect to %s: %s', remote, error)
 
     #
     #   Gate Delegate
@@ -130,7 +130,7 @@ class DmtpServer(Server, PorterDelegate):
     async def porter_status_changed(self, previous: PorterStatus, current: PorterStatus, porter: Porter):
         remote = porter.remote_address
         local = porter.local_address
-        Log.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
+        Log.warning('!!! connection (%s, %s) state changed: %s -> %s', remote, local, previous, current)
 
     # Override
     async def porter_received(self, ship: Arrival, porter: Porter):
@@ -146,43 +146,43 @@ class DmtpServer(Server, PorterDelegate):
         data = pack.body.get_bytes()
         size = len(data)
         destination = porter.remote_address
-        Log.info('message sent: %d byte(s) to %s' % (size, destination))
+        Log.info('message sent: %d byte(s) to %s', size, destination)
 
     # Override
     async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
-        Log.info('failed to send ship: %s' % ship)
+        Log.error('failed to send ship: %s', ship)
 
     # Override
     async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
         source = porter.local_address
         destination = porter.remote_address
-        Log.error('gate error (%s, %s): %s' % (source, destination, error))
+        Log.error('gate error (%s, %s): %s', source, destination, error)
 
     # Override
     async def _process_command(self, cmd: Command, source: SocketAddress) -> bool:
-        Log.info('received cmd from %s:\n\t%s' % (source, cmd))
+        Log.info('received cmd from %s:\n\t%s', source, cmd)
         # noinspection PyBroadException
         try:
             return await super()._process_command(cmd=cmd, source=source)
         except Exception as error:
-            Log.error('failed to process command (%s): %s' % (cmd, error))
+            Log.error('failed to process command (%s): %s', cmd, error)
             traceback.print_exc()
             return False
 
     # Override
     async def _process_message(self, msg: Message, source: SocketAddress) -> bool:
-        Log.info('received msg from %s:\n\t%s' % (source, json.dumps(msg, cls=FieldValueEncoder)))
+        Log.info('received msg from %s:\n\t%s', source, json.dumps(msg, cls=FieldValueEncoder))
         # return super()._process_message(msg=msg, source=source)
         return True
 
     # Override
     async def send_command(self, cmd: Command, destination: SocketAddress) -> bool:
-        Log.info('sending cmd to %s:\n\t%s' % (destination, cmd))
+        Log.info('sending cmd to %s:\n\t%s', destination, cmd)
         return await self.gate.send_command(body=cmd.get_bytes(), source=self.local_address, destination=destination)
 
     # Override
     async def send_message(self, msg: Message, destination: SocketAddress) -> bool:
-        Log.info('sending msg to %s:\n\t%s' % (destination, json.dumps(msg, cls=FieldValueEncoder)))
+        Log.info('sending msg to %s:\n\t%s', destination, json.dumps(msg, cls=FieldValueEncoder))
         return await self.gate.send_message(body=msg.get_bytes(), source=self.local_address, destination=destination)
 
     #

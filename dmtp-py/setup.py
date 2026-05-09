@@ -10,7 +10,7 @@
 
 from setuptools import setup, find_packages
 
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 __author__ = 'Albert Moky'
 __contact__ = 'albert.moky@gmail.com'
 
@@ -34,7 +34,7 @@ setup(
         'Operating System :: OS Independent',
     ],
     install_requires=[
-        'udp>=2.3.0',
-        'stun>=1.0.0',
+        'udp>=2.3.1',
+        'stun>=1.0.1',
     ]
 )

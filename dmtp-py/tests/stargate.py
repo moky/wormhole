@@ -27,7 +27,7 @@ class UDPGate(AutoGate, Generic[H]):
     async def connection_state_changed(self, previous: Optional[ConnectionState], current: Optional[ConnectionState],
                                        connection: Connection):
         await super().connection_state_changed(previous=previous, current=current, connection=connection)
-        Log.info('connection state changed: %s -> %s, %s' % (previous, current, connection))
+        Log.warning('connection state changed: %s -> %s, %s', previous, current, connection)
 
     async def send_package(self, pack: Package, source: Optional[SocketAddress], destination: SocketAddress) -> bool:
         worker = await self.fetch_porter(remote=destination, local=source)

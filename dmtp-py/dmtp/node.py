@@ -32,6 +32,8 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from startrek.types import Log
+
 from udp.ba import ByteArray
 from udp.mtp import Header
 from udp import SocketAddress
@@ -152,7 +154,7 @@ class Node(ABC):
             return await self._process_bye(location=cmd_value, source=source)
         else:
             clazz = self.__class__.__name__
-            print('%s> unknown command: %s' % (clazz, cmd))
+            Log.error('%s> unknown command: %s', clazz, cmd)
             return False
 
     #
