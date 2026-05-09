@@ -34,6 +34,7 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional, Iterable
 
+from ..types import Log
 from ..types import SocketAddress, AddressPairMap
 
 from ..net import Hub
@@ -218,7 +219,7 @@ class BaseHub(Hub, ABC):
             if not channel.closed:
                 await channel.close()
         except Exception as error:
-            print('[Socket] channel error: %s, %s' % (error, channel))
+            Log.error('[Socket] channel error: %s, %s', error, channel)
 
     async def _drive_channel(self, channel: Channel) -> bool:
         cs = channel.status

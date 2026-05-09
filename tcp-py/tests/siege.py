@@ -63,8 +63,8 @@ class StreamClientHub(ClientHub):
 
     # Override
     def _set_channel(self, channel: Channel,
-                     remote: Optional[SocketAddress], local: Optional[SocketAddress]):
-        super()._set_channel(channel=channel, remote=remote, local=None)
+                     remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        return super()._set_channel(channel=channel, remote=remote, local=None)
 
     # Override
     def _remove_channel(self, channel: Optional[Channel],
@@ -126,7 +126,7 @@ class Soldier(ThreadRunner, PorterDelegate):
     async def porter_status_changed(self, previous: PorterStatus, current: PorterStatus, porter: Porter):
         remote = porter.remote_address
         local = porter.local_address
-        Log.info(msg='!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
+        Log.warning('!!! connection (%s, %s) state changed: %s -> %s', remote, local, previous, current)
 
     # Override
     async def porter_received(self, ship: Arrival, porter: Porter):
@@ -135,10 +135,10 @@ class Soldier(ThreadRunner, PorterDelegate):
         try:
             text = data.decode('utf-8')
         except UnicodeDecodeError as error:
-            Log.error(msg='failed to decode data: %s, %s' % (error, data))
+            Log.error('failed to decode data: %s, %s', error, data)
             text = str(data)
         source = porter.remote_address
-        Log.info(msg='<<< received (%d bytes) from %s: %s' % (len(data), source, text))
+        Log.info('<<< received (%d bytes) from %s: %s', len(data), source, text)
 
     # Override
     async def porter_sent(self, ship: Departure, porter: Porter):
@@ -146,15 +146,15 @@ class Soldier(ThreadRunner, PorterDelegate):
         data = ship.payload
         size = len(data)
         destination = porter.remote_address
-        Log.info(msg='message sent: %d byte(s) to %s' % (size, destination))
+        Log.info('message sent: %d byte(s) to %s', size, destination)
 
     # Override
     async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
-        Log.error(msg='gate error: %s, %s' % (error, porter))
+        Log.error('gate error: %s, %s', error, porter)
 
     # Override
     async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
-        Log.error(msg='gate error: %s, %s' % (error, porter))
+        Log.error('gate error: %s, %s', error, porter)
 
     #
     #   Runner
@@ -189,7 +189,7 @@ class Soldier(ThreadRunner, PorterDelegate):
     # Override
     def process(self) -> bool:
         data = b'Hello world!' * 100
-        Log.info(msg='>>> sending to %s: (%d bytes) %s...' % (self.remote_address, len(data), data[:32]))
+        Log.info('>>> sending to %s: (%d bytes) %s...', self.remote_address, len(data), data[:32])
         Runner.async_task(coro=self.send(data=data))
         return False  # return False to have a rest
 

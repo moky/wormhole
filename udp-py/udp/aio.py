@@ -33,6 +33,7 @@ import socket
 import traceback
 from typing import Optional, Tuple
 
+from startrek.types import Log
 from startrek import SocketAddress
 from startrek import SocketHelper
 
@@ -62,7 +63,7 @@ class DatagramHelper(SocketHelper):
         # except (OSError, socket.error):
         #     return False
         except Exception as error:
-            print('[Socket] cannot close socket: %s, %s' % (sock, error))
+            Log.error('[Socket] cannot close socket: %s, error: %s', sock, error)
             traceback.print_exc()
             return False
 

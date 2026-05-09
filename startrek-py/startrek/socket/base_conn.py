@@ -32,6 +32,7 @@ import time
 import weakref
 from typing import Optional
 
+from ..types import Log
 from ..types import Timestamp, Duration
 from ..types import SocketAddress, AddressPairObject
 from ..fsm import Delegate as StateDelegate
@@ -115,7 +116,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             try:
                 await old.close()
             except Exception as error:
-                print('[Socket] connection error: %s, %s' % (error, old))
+                Log.error('[Socket] connection error: %s, %s', error, old)
         # 3. return old channel
         return old
 

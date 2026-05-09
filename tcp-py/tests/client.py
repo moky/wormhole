@@ -31,8 +31,8 @@ class StreamClientHub(ClientHub):
 
     # Override
     def _set_channel(self, channel: Channel,
-                     remote: Optional[SocketAddress], local: Optional[SocketAddress]):
-        super()._set_channel(channel=channel, remote=remote, local=None)
+                     remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        return super()._set_channel(channel=channel, remote=remote, local=None)
 
     # Override
     def _remove_channel(self, channel: Optional[Channel],
@@ -93,10 +93,10 @@ class Client(Runnable, PorterDelegate):
         # test send
         for i in range(16):
             data = b'%d sheep:%s' % (i, text)
-            Log.info(msg='>>> sending (%d bytes): %s' % (len(data), data))
+            Log.info('>>> sending (%d bytes): %s', len(data), data)
             await self.send(data=data)
             await Runner.sleep(seconds=2)
-        Log.info(msg='>>> finished.')
+        Log.warning('>>> finished.')
 
     async def send(self, data: bytes) -> bool:
         return await self.gate.send_message(payload=data, remote=self.remote_address, local=self.local_address)
@@ -109,7 +109,7 @@ class Client(Runnable, PorterDelegate):
     async def porter_status_changed(self, previous: PorterStatus, current: PorterStatus, porter: Porter):
         remote = porter.remote_address
         local = porter.local_address
-        Log.info(msg='!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
+        Log.warning('!!! connection (%s, %s) state changed: %s -> %s', remote, local, previous, current)
 
     # Override
     async def porter_received(self, ship: Arrival, porter: Porter):
@@ -118,24 +118,24 @@ class Client(Runnable, PorterDelegate):
         try:
             text = data.decode('utf-8')
         except UnicodeDecodeError as error:
-            Log.error(msg='failed to decode data: %s, %s' % (error, data))
+            Log.error('failed to decode data: %s, %s', error, data)
             text = str(data)
         source = porter.remote_address
-        Log.info(msg='<<< received (%d bytes) from %s: %s' % (len(data), source, text))
+        Log.info('<<< received (%d bytes) from %s: %s', len(data), source, text)
 
     # Override
     async def porter_sent(self, ship: Departure, porter: Porter):
         assert isinstance(ship, PlainDeparture), 'departure ship error: %s' % ship
         size = len(ship.payload)
-        Log.info(msg='message sent: %d byte(s) to %s' % (size, porter.remote_address))
+        Log.info('message sent: %d byte(s) to %s', size, porter.remote_address)
 
     # Override
     async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
-        Log.error(msg='failed to sent: %s, %s' % (error, porter))
+        Log.error('failed to sent: %s, %s', error, porter)
 
     # Override
     async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
-        Log.error(msg='connection error: %s, %s' % (error, porter))
+        Log.error('connection error: %s, %s', error, porter)
 
 
 SERVER_HOST = Inet.inet_address()
@@ -153,13 +153,13 @@ async def test_send(address: SocketAddress):
     sock.setblocking(False)
     # check
     size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
-    Log.info(msg=' buffer size : %d' % size)
+    Log.info(' buffer size : %d', size)
     # send
     data = b''
     for i in range(65536):
         data += b'% 8d' % i
     total = len(data)
-    Log.info(msg=' total length: %d' % total)
+    Log.info(' total length: %d', total)
     rest = total
     sent = 0
     while rest > 0:
@@ -168,14 +168,14 @@ async def test_send(address: SocketAddress):
         except (OSError, socket.error):
             break
         if cnt > 0:
-            Log.info(msg=' sent: %d + %d' % (sent, cnt))
+            Log.info(' sent: %d + %d', sent, cnt)
             sent += cnt
             rest -= cnt
             data = data[cnt:]
         else:
             break
     # sent = sock.send(data)
-    Log.info(msg=' sent length : %d' % sent)
+    Log.info(' sent length : %d', sent)
     await Runner.sleep(seconds=16)
 
 
@@ -190,12 +190,12 @@ async def test_client(local_address: SocketAddress, remote_address: SocketAddres
 async def main():
     local_address = (CLIENT_HOST, CLIENT_PORT)
     server_address = (SERVER_HOST, SERVER_PORT)
-    Log.info(msg='Connecting TCP server (%s -> %s) ...' % (local_address, server_address))
+    Log.warning('Connecting TCP server (%s -> %s) ...', local_address, server_address)
 
     await test_client(local_address=local_address, remote_address=server_address)
     # await test_send(address=server_address)
 
-    Log.info(msg='Terminated.')
+    Log.warning('Terminated.')
 
 
 if __name__ == '__main__':

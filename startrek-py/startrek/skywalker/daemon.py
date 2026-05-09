@@ -28,6 +28,7 @@ import weakref
 from threading import Thread
 from typing import Optional
 
+from ..types import Log
 from ..types import Duration
 
 from .runner import Runnable, Runner
@@ -96,5 +97,5 @@ class Daemon:
             if thr.is_alive():
                 thr.join(timeout=timeout)
         except RuntimeError as error:
-            print('[Daemon] failed to join thread: %s, timeout: %d' % (error, timeout))
+            Log.error('[Daemon] failed to join thread: %s, timeout: %.3f', error, timeout)
             traceback.print_exc()

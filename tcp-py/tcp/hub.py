@@ -34,6 +34,7 @@ import time
 from abc import ABC
 from typing import Optional, Iterable
 
+from startrek.types import Log
 from startrek.types import SocketAddress, AddressPairMap
 from startrek.skywalker import Runnable, Runner, Daemon
 from startrek import SocketHelper
@@ -213,9 +214,9 @@ class ServerHub(StreamHub, Runnable):
                     helper = self.socket_helper
                     if not helper.is_blocking(sock=master):
                         continue
-                print('[TCP] socket error: %s' % error)
+                Log.error('[TCP] socket error: %s', error)
             except Exception as error:
-                print('[TCP] accept error: %s' % error)
+                Log.error('[TCP] accept error: %s', error)
 
     async def _accept(self, remote: SocketAddress, local: SocketAddress, sock: socket.socket):
         # override for user-customized channel
@@ -265,7 +266,7 @@ class ClientHub(StreamHub):
             # initialize socket
             sock = await create_socket(remote=remote, local=local)
             if sock is None:
-                print('[TCP] failed to prepare socket: %s -> %s' % (local, remote))
+                Log.error('[TCP] failed to prepare socket: %s -> %s', local, remote)
                 self._remove_channel(channel, remote=remote, local=local)
                 channel = None
             else:
@@ -289,7 +290,7 @@ async def create_socket(remote: SocketAddress, local: Optional[SocketAddress]) -
         sock.setblocking(False)
         return sock
     except (OSError, socket.error) as error:
-        print('[TCP] %s > failed to create socket %s -> %s: %s' % (current_time(), local, remote, error))
+        Log.error('[TCP] %s > failed to create socket %s -> %s: %s', current_time(), local, remote, error)
 
 
 def current_time() -> str:

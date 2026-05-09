@@ -32,6 +32,7 @@ import time
 import weakref
 from typing import Optional
 
+from ..types import Log
 from ..types import SocketAddress
 from ..skywalker import Runnable, Runner
 from ..net import Hub
@@ -113,9 +114,9 @@ class ActiveConnection(BaseConnection, Runnable):
                     # connect timeout
                     await sock.close()
             except Exception as error:
-                print('[Socket] active connection error: %s' % error)
+                Log.error('[Socket] active connection error: %s', error)
                 delegate = self.delegate
                 if delegate is not None:
                     await delegate.connection_error(error=OSError(error), connection=self)
         # connection exists
-        print('[Socket] active connection exists: %s' % self.remote_address)
+        Log.warning('[Socket] active connection exists: %s', self.remote_address)

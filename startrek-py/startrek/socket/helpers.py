@@ -35,6 +35,7 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple
 
+from ..types import Log
 from ..types import SocketAddress
 
 
@@ -81,7 +82,7 @@ class SocketHelper:
         except (OSError, socket.error):
             return None
         except Exception as error:
-            print('[NET] unexpected error getting local address: %s' % error)
+            Log.error('[NET] unexpected error getting local address: %s', error)
             return None
 
     def get_remote_address(self, sock: socket.socket) -> Optional[SocketAddress]:
@@ -90,7 +91,7 @@ class SocketHelper:
         except (OSError, socket.error):
             return None
         except Exception as error:
-            print('[NET] unexpected error getting remote address: %s' % error)
+            Log.error('[NET] unexpected error getting remote address: %s', error)
             return None
 
     #
@@ -114,7 +115,7 @@ class SocketHelper:
         except (OSError, socket.error):
             return True
         except Exception as error:
-            print('[NET] unexpected error checking socket closed: %s' % error)
+            Log.error('[NET] unexpected error checking socket closed: %s', error)
             return True
 
     def is_available(self, sock: socket.socket) -> bool:
@@ -125,7 +126,7 @@ class SocketHelper:
         except (OSError, ValueError):
             return False
         except Exception as error:
-            print('[NET] unexpected error checking available: %s' % error)
+            Log.error('[NET] unexpected error checking available: %s', error)
             return False
 
     def is_vacant(self, sock: socket.socket) -> bool:
@@ -136,7 +137,7 @@ class SocketHelper:
         except (OSError, ValueError):
             return False
         except Exception as error:
-            print('[NET] unexpected error checking vacant: %s' % error)
+            Log.error('[NET] unexpected error checking vacant: %s', error)
             return False
 
     def is_blocking(self, sock: socket.socket) -> bool:
@@ -145,7 +146,7 @@ class SocketHelper:
         except (OSError, socket.error):
             return False
         except Exception as error:
-            print('[NET] unexpected error getting blocking: %s' % error)
+            Log.error('[NET] unexpected error getting blocking: %s', error)
             return False
 
     #
@@ -158,7 +159,7 @@ class SocketHelper:
         except (OSError, socket.error):
             pass
         except Exception as error:
-            print('[NET] unexpected error setting blocking: %s' % error)
+            Log.error('[NET] unexpected error setting blocking: %s', error)
 
     def bind(self, sock: socket.socket, local: SocketAddress) -> bool:
         """ Bind to local address """
@@ -169,7 +170,7 @@ class SocketHelper:
         # except (OSError, socket.error):
         #     return False
         except Exception as error:
-            print('[Socket] cannot bind to: %s, socket: %s, %s' % (local, sock, error))
+            Log.error('[Socket] cannot bind to: %s, socket: %s, error: %s', local, sock, error)
             return False
 
     #
@@ -187,7 +188,7 @@ class SocketHelper:
         # except (OSError, socket.error):
         #     return False
         except Exception as error:
-            print('[Socket] cannot connect to: %s, socket: %s, %s' % (remote, sock, error))
+            Log.error('[Socket] cannot connect to: %s, socket: %s, error: %s', remote, sock, error)
             traceback.print_exc()
             try:
                 sock.close()
@@ -211,7 +212,7 @@ class SocketHelper:
         # except (OSError, socket.error):
         #     return False
         except Exception as error:
-            print('[Socket] cannot close socket: %s, %s' % (sock, error))
+            Log.error('[Socket] cannot close socket: %s, error: %s', sock, error)
             traceback.print_exc()
             return False
 

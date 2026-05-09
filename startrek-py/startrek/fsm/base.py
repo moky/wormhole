@@ -163,7 +163,7 @@ class BaseMachine(Machine[C, T, S], ABC):
         """
         old = self.current_state
         if old == state:
-            # print('[FSM] state not change: %s' % state)
+            # Log.info('[FSM] state not change: %s', state)
             return False
         machine = self.context
         delegate = self.delegate

@@ -33,8 +33,8 @@ class PacketServerHub(ServerHub):
 
     # Override
     def _set_channel(self, channel: Channel,
-                     remote: Optional[SocketAddress], local: Optional[SocketAddress]):
-        super()._set_channel(channel=channel, remote=remote, local=local)
+                     remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        return super()._set_channel(channel=channel, remote=remote, local=local)
 
     # Override
     def _remove_channel(self, channel: Optional[Channel],
@@ -102,7 +102,7 @@ class Server(PorterDelegate):
     async def porter_status_changed(self, previous: PorterStatus, current: PorterStatus, porter: Porter):
         remote = porter.remote_address
         local = porter.local_address
-        Log.info(msg='!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
+        Log.warning('!!! connection (%s, %s) state changed: %s -> %s', remote, local, previous, current)
 
     # Override
     async def porter_received(self, ship: Arrival, porter: Porter):
@@ -112,13 +112,13 @@ class Server(PorterDelegate):
         try:
             text = data.decode('utf-8')
         except UnicodeDecodeError as error:
-            Log.error(msg='failed to decode data: %s, %s' % (error, data))
+            Log.error('failed to decode data: %s, %s', error, data)
             text = str(data)
         source = porter.remote_address
-        Log.info(msg='<<< received (%d bytes) from %s: %s' % (len(data), source, text))
+        Log.info('<<< received (%d bytes) from %s: %s', len(data), source, text)
         text = '%d# %d byte(s) received' % (self.counter, len(data))
         self.counter += 1
-        Log.info(msg='>>> responding: %s' % text)
+        Log.info('>>> responding: %s', text)
         data = text.encode('utf-8')
         await self.send(data=data, destination=source)
 
@@ -128,15 +128,15 @@ class Server(PorterDelegate):
     async def porter_sent(self, ship: Departure, porter: Porter):
         assert isinstance(ship, PackageDeparture), 'departure ship error: %s' % ship
         size = ship.package.body.size
-        Log.info(msg='message sent: %d byte(s) to %s' % (size, porter.remote_address))
+        Log.info('message sent: %d byte(s) to %s', size, porter.remote_address)
 
     # Override
     async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
-        Log.error(msg='failed to sent: %s, %s' % (error, porter))
+        Log.error('failed to sent: %s, %s', error, porter)
 
     # Override
     async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
-        Log.error(msg='connection error: %s, %s' % (error, porter))
+        Log.error('connection error: %s, %s', error, porter)
         await porter.close()
 
 
@@ -147,10 +147,10 @@ SERVER_PORT = 9394
 
 if __name__ == '__main__':
 
-    Log.info(msg='UDP server (%s:%d) starting ...' % (SERVER_HOST, SERVER_PORT))
+    Log.warning('UDP server (%s:%d) starting ...', SERVER_HOST, SERVER_PORT)
 
     g_server = Server(host=SERVER_HOST, port=SERVER_PORT)
 
     Runner.sync_run(main=g_server.start())
 
-    Log.info(msg='UDP server (%s:%d) stopped.' % (SERVER_HOST, SERVER_PORT))
+    Log.warning('UDP server (%s:%d) stopped.', SERVER_HOST, SERVER_PORT)

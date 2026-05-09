@@ -138,7 +138,7 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
                 # nothing to do now,
                 # have a rest ^_^
                 await self._idle()
-        Log.info(msg='auto gate stopped: %s' % self)
+        Log.warning('auto gate stopped: %s', self)
 
     # noinspection PyMethodMayBeStatic
     async def _idle(self):
@@ -151,7 +151,7 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
             outgoing = await super().process()
             return incoming or outgoing
         except Exception as error:
-            Log.error(msg='process error: %s' % error)
+            Log.error('process error: %s', error)
 
 
 class TCPGate(AutoGate, Generic[H]):
@@ -181,14 +181,14 @@ class TCPGate(AutoGate, Generic[H]):
     async def connection_state_changed(self, previous: Optional[ConnectionState], current: Optional[ConnectionState],
                                        connection: Connection):
         await super().connection_state_changed(previous=previous, current=current, connection=connection)
-        Log.info(msg='connection state changed: %s -> %s, %s' % (previous, current, connection))
+        Log.warning('connection state changed: %s -> %s, %s', previous, current, connection)
 
     # Override
     async def connection_failed(self, error: OSError, data: bytes, connection: Connection):
         await super().connection_failed(error=error, data=data, connection=connection)
-        Log.error(msg='connection failed: %s, %s' % (error, connection))
+        Log.error('connection failed: %s, %s', error, connection)
 
     # Override
     async def connection_error(self, error: OSError, connection: Connection):
         # if isinstance(error, OSError) and str(error).startswith('failed to send: '):
-        Log.error(msg='connection error: %s, %s' % (error, connection))
+        Log.error('connection error: %s, %s', error, connection)

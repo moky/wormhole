@@ -33,8 +33,8 @@ class StreamServerHub(ServerHub):
 
     # Override
     def _set_channel(self, channel: Channel,
-                     remote: Optional[SocketAddress], local: Optional[SocketAddress]):
-        super()._set_channel(channel=channel, remote=remote, local=None)
+                     remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
+        return super()._set_channel(channel=channel, remote=remote, local=None)
 
     # Override
     def _remove_channel(self, channel: Optional[Channel],
@@ -99,7 +99,7 @@ class Server(PorterDelegate):
     async def porter_status_changed(self, previous: PorterStatus, current: PorterStatus, porter: Porter):
         remote = porter.remote_address
         local = porter.local_address
-        Log.info(msg='!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
+        Log.warning('!!! connection (%s, %s) state changed: %s -> %s', remote, local, previous, current)
 
     # Override
     async def porter_received(self, ship: Arrival, porter: Porter):
@@ -108,13 +108,13 @@ class Server(PorterDelegate):
         try:
             text = data.decode('utf-8')
         except UnicodeDecodeError as error:
-            Log.error(msg='failed to decode data: %s, %s' % (error, data))
+            Log.error('failed to decode data: %s, %s', error, data)
             text = str(data)
         source = porter.remote_address
-        Log.info(msg='<<< received (%d bytes) from %s: %s' % (len(data), source, text))
+        Log.info('<<< received (%d bytes) from %s: %s', len(data), source, text)
         text = '%d# %d byte(s) received' % (self.counter, len(data))
         self.counter += 1
-        Log.info(msg='>>> responding: %s' % text)
+        Log.info('>>> responding: %s', text)
         data = text.encode('utf-8')
         await self.send(data=data, destination=source)
 
@@ -124,15 +124,15 @@ class Server(PorterDelegate):
     async def porter_sent(self, ship: Departure, porter: Porter):
         assert isinstance(ship, PlainDeparture), 'departure ship error: %s' % ship
         size = len(ship.payload)
-        Log.info(msg='message sent: %d byte(s) to %s' % (size, porter.remote_address))
+        Log.info('message sent: %d byte(s) to %s', size, porter.remote_address)
 
     # Override
     async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
-        Log.error(msg='failed to sent: %s, %s' % (error, porter))
+        Log.error('failed to sent: %s, %s', error, porter)
 
     # Override
     async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
-        Log.error(msg='connection error: %s, %s' % (error, porter))
+        Log.error('connection error: %s, %s', error, porter)
         await porter.close()
 
 
@@ -159,29 +159,29 @@ async def test_receive(address: SocketAddress):
             await Runner.sleep(seconds=5)
             # check
             size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
-            Log.info(msg=' receive buffer size1: %d' % size)
+            Log.info(' receive buffer size1: %d', size)
             total = 0
             while not helper.is_closed(sock=sock):
                 data = sock.recv(1024)
                 cnt = len(data)
                 if cnt > 0:
-                    Log.info(msg=' received %d bytes: %s' % (cnt, data))
+                    Log.info(' received %d bytes: %s', cnt, data)
                     total += cnt
                 else:
-                    Log.info(msg=' closed: %s' % str(address))
+                    Log.warning(' closed: %s', str(address))
                     break
-            Log.info(msg=' total length: %d' % total)
+            Log.info(' total length: %d', total)
             size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
-            Log.info(msg=' receive buffer size2: %d' % size)
+            Log.info(' receive buffer size2: %d', size)
         except (OSError, socket.error) as error:
-            Log.info(msg=' socket error: %s' % error)
+            Log.error(' socket error: %s', error)
         except Exception as error:
-            Log.info(msg=' accept error: %s' % error)
+            Log.error(' accept error: %s', error)
 
 
 if __name__ == '__main__':
 
-    Log.info(msg='TCP server (%s:%d) starting ...' % (SERVER_HOST, SERVER_PORT))
+    Log.warning('TCP server (%s:%d) starting ...', SERVER_HOST, SERVER_PORT)
 
     g_server = Server(host=SERVER_HOST, port=SERVER_PORT)
     crt = g_server.start()
@@ -189,4 +189,4 @@ if __name__ == '__main__':
 
     Runner.sync_run(main=crt)
 
-    Log.info(msg='TCP server (%s:%d) stopped.' % (SERVER_HOST, SERVER_PORT))
+    Log.warning('TCP server (%s:%d) stopped.', SERVER_HOST, SERVER_PORT)
