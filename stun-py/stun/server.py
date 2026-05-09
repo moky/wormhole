@@ -95,9 +95,9 @@ class Server(Node, ABC):
             assert isinstance(value, ChangeRequestValue), 'change request value error: %s' % value
             context['CHANGE-REQUEST'] = value
         else:
-            self.info('unknown attribute type: %s' % tag)
+            self.log('unknown attribute type: %s', tag)
             return False
-        self.info('%s: %s' % (tag, value))
+        self.log('%s: %s', tag, value)
         return True
 
     async def _redirect(self, head: Header, remote_ip: str, remote_port: int) -> bool:
@@ -167,7 +167,7 @@ class Server(Node, ABC):
         if not ok or head is None or head.msg_type != MessageType.BIND_REQUEST:
             # received package error
             return False
-        self.info('received message type: %s' % head.msg_type)
+        self.log('received message type: %s', head.msg_type)
         change_request = context.get('CHANGE-REQUEST')
         if change_request == ChangeRequestValue.CHANGE_IP_AND_PORT:
             # redirect for "change IP" and "change port" flags

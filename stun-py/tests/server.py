@@ -24,6 +24,7 @@ from stun import Server
 
 from tests.srv_cnf import *
 from tests.utils import Inet, Log
+from tests.utils import stun_log
 from tests.stargate import UDPGate
 
 
@@ -91,9 +92,9 @@ class StunServer(Server, PorterDelegate):
         await self.bind(local=primary_address)
         await self.bind(local=secondary_address)
         await self.gate.start()
-        self.info('STUN server started')
-        self.info('source address: %s, another port: %d' % (self.source_address, self.change_port))
-        self.info('changed address: %s' % str(self.changed_address))
+        self.log('STUN server started')
+        self.log('source address: %s, another port: %d', self.source_address, self.change_port)
+        self.log('changed address: %s', str(self.changed_address))
         while self.gate.running:
             await Runner.sleep(seconds=2.0)
 
@@ -105,7 +106,7 @@ class StunServer(Server, PorterDelegate):
     async def porter_status_changed(self, previous: PorterStatus, current: PorterStatus, porter: Porter):
         remote = porter.remote_address
         local = porter.local_address
-        Log.info('!!! connection (%s, %s) state changed: %s -> %s' % (remote, local, previous, current))
+        Log.warning('!!! connection (%s, %s) state changed: %s -> %s', remote, local, previous, current)
 
     # Override
     async def porter_received(self, ship: Arrival, porter: Porter):
@@ -123,17 +124,17 @@ class StunServer(Server, PorterDelegate):
         data = ship.payload
         size = len(data)
         destination = porter.remote_address
-        Log.info('message sent: %d byte(s) to %s' % (size, destination))
+        Log.info('message sent: %d byte(s) to %s', size, destination)
 
     # Override
     async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
-        Log.info('failed to send ship: %s' % ship)
+        Log.error('failed to send ship: %s', ship)
 
     # Override
     async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
         source = porter.local_address
         destination = porter.remote_address
-        Log.error('gate error (%s, %s): %s' % (source, destination, error))
+        Log.error('gate error (%s, %s): %s', source, destination, error)
 
     # Override
     async def send(self, data: bytes, destination: SocketAddress, source: Union[SocketAddress, int] = None) -> bool:
@@ -149,8 +150,9 @@ class StunServer(Server, PorterDelegate):
             return False
 
     # Override
-    def info(self, msg: str):
-        Log.info(msg=msg)
+    def log(self, msg: str, *args, **kwargs):
+        # Log.info(msg, *args, **kwargs)
+        stun_log(msg, *args, **kwargs)
 
 
 # SERVER_HOST = '0.0.0.0'

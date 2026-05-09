@@ -67,6 +67,13 @@ class Logger(ABC):
 class Log:
     """ Global static logger facade """
 
+    # log levels
+    DEBUG: int = logging.DEBUG
+    INFO: int = logging.INFO
+    WARNING: int = logging.WARNING
+    ERROR: int = logging.ERROR
+
+    # global logger
     logger: Logger = logging.getLogger('star_trek')
 
     @classmethod

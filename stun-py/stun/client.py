@@ -95,9 +95,9 @@ class Client(Node, ABC):
             assert isinstance(value, SoftwareValue), 'software value error: %s' % value
             context['SOFTWARE'] = value
         else:
-            self.info('unknown attribute type: %s' % tag)
+            self.log('unknown attribute type: %s', tag)
             return False
-        self.info('%s:\t%s' % (tag, value))
+        self.log('%s:\t%s', tag, value)
         return True
 
     async def __bind_request(self, remote_host: str, remote_port: int, body: ByteArray) -> Optional[dict]:
@@ -115,12 +115,12 @@ class Client(Node, ABC):
             if data is None:
                 if count < self.retries:
                     count += 1
-                    self.info('(%d/%d) receive nothing' % (count, self.retries))
+                    self.log('(%d/%d) receive nothing', count, self.retries)
                 else:
                     # failed to receive data
                     return None
             else:
-                self.info('received %d bytes from %s' % (len(data), source))
+                self.log('received %d bytes from %s', len(data), source)
                 break
         # 3. parse response
         context = {
@@ -153,17 +153,17 @@ class Client(Node, ABC):
     """
 
     async def __test_1(self, stun_host: str, stun_port: int) -> Optional[dict]:
-        self.info('[Test 1] sending empty request ... (%s:%d)' % (stun_host, stun_port))
+        self.log('[Test 1] sending empty request ... (%s:%d)', stun_host, stun_port)
         body = Data.ZERO
         return await self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
     async def __test_2(self, stun_host: str, stun_port: int) -> Optional[dict]:
-        self.info('[Test 2] sending "ChangeIPAndPort" ... (%s:%d)' % (stun_host, stun_port))
+        self.log('[Test 2] sending "ChangeIPAndPort" ... (%s:%d)', stun_host, stun_port)
         body = Attribute.new(tag=AttributeType.CHANGE_REQUEST, value=ChangeRequestValue.CHANGE_IP_AND_PORT)
         return await self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
     async def __test_3(self, stun_host: str, stun_port: int) -> Optional[dict]:
-        self.info('[Test 3] sending "ChangePort" ... (%s:%d)' % (stun_host, stun_port))
+        self.log('[Test 3] sending "ChangePort" ... (%s:%d)', stun_host, stun_port)
         body = Attribute.new(tag=AttributeType.CHANGE_REQUEST, value=ChangeRequestValue.CHANGE_PORT)
         return await self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 

@@ -134,7 +134,7 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
                 # nothing to do now,
                 # have a rest ^_^
                 await self._idle()
-        Log.info(msg='auto gate stopped: %s' % self)
+        Log.warning('auto gate stopped: %s', self)
 
     # noinspection PyMethodMayBeStatic
     async def _idle(self):
@@ -147,4 +147,4 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
             outgoing = await super().process()
             return incoming or outgoing
         except Exception as error:
-            Log.error(msg='process error: %s' % error)
+            Log.error('process error: %s', error)
