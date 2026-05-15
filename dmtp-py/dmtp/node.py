@@ -32,8 +32,6 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from startrek.types import Log
-
 from udp.ba import ByteArray
 from udp.mtp import Header
 from udp import SocketAddress
@@ -63,9 +61,16 @@ class Node(ABC):
         else:
             self.__delegate = weakref.ref(value)
 
+    def log(self, msg: str, *args, **kwargs):
+        # override to print logs
+        pass
+
     @abstractmethod
     async def _connect(self, remote: SocketAddress):
-        raise NotImplemented
+        """ Connect to remote address """
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._connect()'
+        )
 
     #
     #   Send
@@ -79,7 +84,9 @@ class Node(ABC):
         :param destination: remote address
         :return: False on error
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.send_command()'
+        )
 
     @abstractmethod
     async def send_message(self, msg: Message, destination: SocketAddress) -> bool:
@@ -90,7 +97,9 @@ class Node(ABC):
         :param destination: remote address
         :return: False on error
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.send_message()'
+        )
 
     async def say_hello(self, destination: SocketAddress) -> bool:
         assert self.delegate is not None, 'contact delegate not set yet'
@@ -131,7 +140,9 @@ class Node(ABC):
         :param source:      remote address
         :return: False on error
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}._process_message()'
+        )
 
     @abstractmethod
     async def _process_command(self, cmd: Command, source: SocketAddress) -> bool:
@@ -154,7 +165,7 @@ class Node(ABC):
             return await self._process_bye(location=cmd_value, source=source)
         else:
             clazz = self.__class__.__name__
-            Log.error('%s> unknown command: %s', clazz, cmd)
+            self.log('%s> unknown command: %s', clazz, cmd)
             return False
 
     #

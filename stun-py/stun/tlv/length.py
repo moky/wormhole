@@ -64,7 +64,9 @@ class LengthParser(Generic[T, L]):
     @abstractmethod
     def parse_length(self, data: ByteArray, tag: T) -> Optional[L]:
         """ Parse Length from data with Tag """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.parse_length()'
+        )
 
 
 """

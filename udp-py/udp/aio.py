@@ -63,7 +63,7 @@ class DatagramHelper(SocketHelper):
         # except (OSError, socket.error):
         #     return False
         except Exception as error:
-            Log.error('[Socket] cannot close socket: %s, error: %s', sock, error)
+            Log.error('[UDP] cannot close socket: %s, error: %s', sock, error)
             traceback.print_exc()
             return False
 

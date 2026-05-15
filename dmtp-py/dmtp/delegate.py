@@ -46,7 +46,9 @@ class LocationDelegate(ABC):
         :param location: location info with ID, addresses, time and signature
         :return: False on error
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.store_location()'
+        )
 
     @abstractmethod
     def clear_location(self, location: LocationValue) -> bool:
@@ -56,7 +58,9 @@ class LocationDelegate(ABC):
         :param location: location info with ID, addresses, time and signature
         :return: False on error
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.clear_location()'
+        )
 
     @abstractmethod
     def current_location(self) -> Optional[LocationValue]:
@@ -65,7 +69,9 @@ class LocationDelegate(ABC):
 
         :return: my current location
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.current_location()'
+        )
 
     @abstractmethod
     def get_location(self, address: SocketAddress) -> Optional[LocationValue]:
@@ -75,7 +81,9 @@ class LocationDelegate(ABC):
         :param address: IP and port
         :return: location info bond to this address
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.get_location()'
+        )
 
     @abstractmethod
     def get_locations(self, identifier: str) -> List[LocationValue]:
@@ -85,7 +93,9 @@ class LocationDelegate(ABC):
         :param identifier: user ID
         :return: all locations of this user, ordered by time
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.get_locations()'
+        )
 
     @abstractmethod
     def sign_location(self, location: LocationValue) -> Optional[LocationValue]:
@@ -95,4 +105,6 @@ class LocationDelegate(ABC):
         :param location: location info with 'MAPPED-ADDRESS' from server
         :return: signed location info
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.sign_location()'
+        )

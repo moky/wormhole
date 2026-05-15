@@ -44,22 +44,30 @@ class ByteArrayHelper(ABC):
     @abstractmethod
     def adjust(self, index: int, size: int) -> int:
         """ Adjust the index with range [0, size) """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.adjust()'
+        )
 
     @abstractmethod
     def adjust_e(self, index: int, size: int) -> int:
         """ Adjust the index with range [0, size), throws when index too small """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.adjust_e()'
+        )
 
     @abstractmethod
     def concat(self, left: ByteArray, right: ByteArray) -> ByteArray:
         """ left + right """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.concat()'
+        )
 
     @abstractmethod
     def find(self, sub: ByteArray, data: ByteArray, start: int, end: int) -> int:
         """ Search sub data """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.find()'
+        )
 
 
 class MutableByteArrayHelper(ABC):
@@ -67,22 +75,30 @@ class MutableByteArrayHelper(ABC):
     @abstractmethod
     def set(self, value: int, index: int, data: MutableByteArray) -> int:
         """ Set value to data at index, return new size """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.set()'
+        )
 
     @abstractmethod
     def update(self, src: ByteArray, index: int, data: MutableByteArray) -> int:
         """ Update src to data at index, return new size """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.update()'
+        )
 
     @abstractmethod
     def insert(self, src: ByteArray, index: int, data: MutableByteArray) -> int:
         """ Insert src to data at index, return new size """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.insert()'
+        )
 
     @abstractmethod
     def remove(self, index: int, data: MutableByteArray) -> Tuple[Optional[int], int, int]:
         """ Remove element at index and return its value, new offset & size """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.remove()'
+        )
 
 
 class IntegerHelper(ABC):
@@ -90,12 +106,16 @@ class IntegerHelper(ABC):
     @abstractmethod
     def get_value(self, buffer: Union[bytes, bytearray], offset: int, size: int, endian: Endian) -> int:
         """ Get integer value from data with range [offset, offset + size) """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.get_value()'
+        )
 
     @abstractmethod
     def set_value(self, value: int, buffer: Union[bytearray], offset: int, size: int, endian: Endian):
         """ Set integer value into data with range [offset, offset + size) """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.set_value()'
+        )
 
 
 #

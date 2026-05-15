@@ -55,17 +55,26 @@ class Entry(ByteArray, Generic[T, L, V]):
     @property
     @abstractmethod
     def tag(self) -> T:
-        raise NotImplemented
+        """ Get entry tag """
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.tag getter'
+        )
 
     @property
     @abstractmethod
     def length(self) -> L:
-        raise NotImplemented
+        """ Get entry length """
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.length getter'
+        )
 
     @property
     @abstractmethod
     def value(self) -> V:
-        raise NotImplemented
+        """ Get entry value """
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.value getter'
+        )
 
 
 E = TypeVar('E')  # Entry
@@ -77,9 +86,13 @@ class EntryParser(Generic[E]):
     @abstractmethod
     def parse_entry(self, data: ByteArray) -> Optional[E]:
         """ Parse Entry from data """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.parse_entry()'
+        )
 
     @abstractmethod
     def parse_entries(self, data: ByteArray) -> List[E]:
         """ Parse all TLV entries """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.parse_entries()'
+        )

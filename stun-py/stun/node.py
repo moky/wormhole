@@ -100,7 +100,9 @@ class Node(ABC):
         :param source:      local address
         :return: False on failed
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.send()'
+        )
 
     @abstractmethod
     def parse_attribute(self, attribute: Attribute, context: dict) -> bool:
@@ -111,7 +113,9 @@ class Node(ABC):
         :param context:
         :return: False on failed
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.parse_attribute()'
+        )
 
     def parse_data(self, data: bytes, context: dict) -> bool:
         """

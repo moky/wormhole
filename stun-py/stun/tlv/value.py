@@ -65,7 +65,9 @@ class ValueParser(Generic[T, L, V]):
     @abstractmethod
     def parse_value(self, data: ByteArray, tag: T, length: L) -> Optional[V]:
         """ Parse Value from data with Tag & Length """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.parse_value()'
+        )
 
 
 """

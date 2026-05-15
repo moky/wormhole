@@ -43,7 +43,9 @@ class ByteArray(ABC):
 
         :return: bytearray when it's mutable, or bytes for immutable
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.buffer getter'
+        )
 
     @property
     @abstractmethod
@@ -53,7 +55,9 @@ class ByteArray(ABC):
 
         :return: 0 ~ (len(buffer) - 1)
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.offset getter'
+        )
 
     @property
     @abstractmethod
@@ -63,7 +67,9 @@ class ByteArray(ABC):
 
         :return: 0 ~ (len(buffer) - offset)
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.size getter'
+        )
 
     @property
     @abstractmethod
@@ -73,7 +79,9 @@ class ByteArray(ABC):
 
         :return: hex string
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.hex_string getter'
+        )
 
     @abstractmethod
     def get_byte(self, index: int) -> int:
@@ -83,7 +91,9 @@ class ByteArray(ABC):
         :param index: position
         :return: item value
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.get_byte()'
+        )
 
     @abstractmethod
     def get_bytes(self, start: int = 0, end: int = None) -> bytes:
@@ -94,15 +104,23 @@ class ByteArray(ABC):
         :param end:   end position relative to offset (exclude)
         :return: data bytes
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.get_bytes()'
+        )
 
     @abstractmethod
     def slice(self, start: int, end: int = None):  # -> ByteArray:
-        raise NotImplemented
+        """ Get slice """
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.slice()'
+        )
 
     @abstractmethod
     def concat(self, other):  # -> ByteArray:
-        raise NotImplemented
+        """ Concat with other byte array """
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.concat()'
+        )
 
     @abstractmethod
     def find(self, sub, start: int = 0, end: int = None) -> int:
@@ -114,7 +132,9 @@ class ByteArray(ABC):
         :param end:   end position relative to self.offset (exclude)
         :return: first position where sub occurred; -1 on not found
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.find()'
+        )
 
 
 class MutableByteArray(ByteArray, ABC):
@@ -127,11 +147,15 @@ class MutableByteArray(ByteArray, ABC):
         :param index: position
         :param value: byte value
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.set_byte()'
+        )
 
     @abstractmethod
     def set_char(self, index: int, value: str):
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.set_char()'
+        )
 
     @abstractmethod
     def update(self, index: int, source: Union[bytes, bytearray, ByteArray], start: int = 0, end: int = None):
@@ -143,7 +167,9 @@ class MutableByteArray(ByteArray, ABC):
         :param start:  source start position (include)
         :param end:    source end position (exclude)
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.update()'
+        )
 
     @abstractmethod
     def append(self, source: Union[bytes, bytearray, ByteArray], start: int = 0, end: int = None):
@@ -154,7 +180,9 @@ class MutableByteArray(ByteArray, ABC):
         :param start:  source start position (include)
         :param end:    source end position (exclude)
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.append()'
+        )
 
     @abstractmethod
     def insert(self, index: int, source: Union[bytes, bytearray, ByteArray], start: int, end: int = None):
@@ -166,7 +194,9 @@ class MutableByteArray(ByteArray, ABC):
         :param start:  source start position (include)
         :param end:    source end position (exclude)
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.insert()'
+        )
 
     @abstractmethod
     def remove(self, index: int) -> int:
@@ -176,7 +206,9 @@ class MutableByteArray(ByteArray, ABC):
         :param index: position
         :return: element value removed
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.remove()'
+        )
 
     @abstractmethod
     def shift(self) -> int:
@@ -185,7 +217,9 @@ class MutableByteArray(ByteArray, ABC):
 
         :return: element value at the first place
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.shift()'
+        )
 
     @abstractmethod
     def pop(self) -> int:
@@ -194,7 +228,9 @@ class MutableByteArray(ByteArray, ABC):
 
         :return: element value at the last place
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.pop()'
+        )
 
     @abstractmethod
     def push(self, element: int):
@@ -203,7 +239,9 @@ class MutableByteArray(ByteArray, ABC):
 
         :param element: value
         """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.push()'
+        )
 
 
 """
@@ -224,12 +262,18 @@ class IntegerData(ByteArray, ABC):
     @property
     @abstractmethod
     def endian(self) -> Endian:
-        raise NotImplemented
+        """ Get endian """
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.endian getter'
+        )
 
     @property
     @abstractmethod
     def value(self) -> int:
-        raise NotImplemented
+        """ Get int value """
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.value getter'
+        )
 
     @classmethod
     def get_value(cls, source: Union[bytes, bytearray, ByteArray],

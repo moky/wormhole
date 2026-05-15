@@ -61,7 +61,9 @@ class TagParser(Generic[T]):
     @abstractmethod
     def parse_tag(self, data: ByteArray) -> Optional[T]:
         """ Parse Tag from data """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.parse_tag()'
+        )
 
 
 """
