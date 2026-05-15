@@ -71,7 +71,7 @@ class ChannelChecker:
             if sock.gettimeout() is not None:  # or not self.blocking:
                 # ignore it
                 return None
-        # print('[NET] socket error: %s' % error)
+        # Log.error('[TCP] socket error: %s', error)
         return error
 
     @classmethod
@@ -89,7 +89,7 @@ class ChannelChecker:
         # otherwise, we know the connection was lost.
         if data is None or len(data) == 0:
             if sock.gettimeout() is None:  # and self.blocking:
-                # print('[NET] socket error: remote peer reset socket %s' % sock)
+                # Log.error('[TCP] socket error: remote peer reset socket %s', sock)
                 return OSError('remote peer reset socket %s' % sock)
 
 

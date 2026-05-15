@@ -5,7 +5,7 @@ import socket
 import sys
 from typing import Optional, Iterable
 
-from startrek.types import Log, Logger
+from startrek.types import Log, Logger, LogLevel
 
 
 class Inet:
@@ -105,7 +105,7 @@ def _fix_record(record: logging.LogRecord):
 
 class StandardLogger(Logger):
 
-    def __init__(self, name: str = None, fmt: str = None, level: int = Log.DEBUG):
+    def __init__(self, name: str = None, fmt: str = None, level: int = LogLevel.DEBUG):
         super().__init__()
         logger = logging.getLogger(name)
         self.__logger = logger

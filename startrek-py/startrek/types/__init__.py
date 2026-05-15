@@ -28,7 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .log import Log, Logger
+from .log import Log, Logger, LogLevel
 
 from .pair import SocketAddress, AddressPairObject
 from .mapping import PairMap, AbstractPairMap, HashPairMap, AddressPairMap
@@ -39,7 +39,7 @@ Duration = float
 
 __all__ = [
 
-    'Log', 'Logger',
+    'Log', 'Logger', 'LogLevel',
 
     'Timestamp', 'Duration',
 

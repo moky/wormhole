@@ -64,14 +64,21 @@ class Logger(ABC):
         )
 
 
-class Log:
-    """ Global static logger facade """
+class LogLevel:
+    """ Logging levels """
 
-    # log levels
     DEBUG: int = logging.DEBUG
     INFO: int = logging.INFO
     WARNING: int = logging.WARNING
     ERROR: int = logging.ERROR
+
+    # DEBUG: int = logging.DEBUG    # 10: debug(), info(), warning(), error()
+    DEVELOP: int = logging.INFO     # 20:          info(), warning(), error()
+    RELEASE: int = logging.WARNING  # 30:                  warning(), error()
+
+
+class Log:
+    """ Global static logger facade """
 
     # global logger
     logger: Logger = logging.getLogger('star_trek')

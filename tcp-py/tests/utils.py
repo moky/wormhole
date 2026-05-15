@@ -5,7 +5,7 @@ import socket
 import sys
 from typing import Optional, Iterable
 
-from startrek.types import Log, Logger
+from startrek.types import Log, Logger, LogLevel
 
 
 class Inet:
@@ -105,7 +105,7 @@ def _fix_record(record: logging.LogRecord):
 
 class StandardLogger(Logger):
 
-    def __init__(self, name: str = None, fmt: str = None):
+    def __init__(self, name: str = None, fmt: str = None, level: int = LogLevel.DEBUG):
         super().__init__()
         logger = logging.getLogger(name)
         self.__logger = logger
@@ -114,10 +114,10 @@ class StandardLogger(Logger):
         elif fmt is None:
             fmt = '%(asctime)s | %(levelname)-8s | %(module)s:%(lineno)d > %(message)s'
         formatter = ColoredFormatter(fmt=fmt)
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(formatter)  # output format
-        handler.setLevel(logging.DEBUG)  # output level
-        logger.setLevel(logging.DEBUG)
+        handler = logging.StreamHandler(stream=sys.stdout)
+        handler.setFormatter(fmt=formatter)  # output format
+        handler.setLevel(level=level)  # output level
+        logger.setLevel(level=level)   # output level
         logger.addHandler(handler)
 
     @property
