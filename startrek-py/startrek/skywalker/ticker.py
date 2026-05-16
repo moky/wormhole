@@ -30,8 +30,8 @@ from weakref import WeakSet
 from abc import ABC, abstractmethod
 from typing import Set
 
-from ..types import Log
 from ..types import Timestamp, Duration
+from ..utils import Logging
 
 from .runner import Runner
 from .daemon import Daemon
@@ -52,7 +52,7 @@ class Ticker(ABC):
         )
 
 
-class Metronome(Runner):
+class Metronome(Runner, Logging):
 
     # at least wait 1/60 of a second
     MIN_INTERVAL = 1.0/60  # ~16ms
@@ -118,7 +118,7 @@ class Metronome(Runner):
             try:
                 await item.tick(now=now, elapsed=elapsed)
             except Exception as error:
-                Log.error('[Metronome] drive ticker error: %s, %s', error, item)
+                self.error('drive ticker error: %s, %s', error, item)
                 traceback.print_exc()
         # 3. update last time
         self.__last_time = now

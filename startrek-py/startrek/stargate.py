@@ -31,11 +31,11 @@
 import threading
 import time
 import weakref
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Optional, Iterable
 
-from .types import Log
 from .types import SocketAddress, AddressPairMap
+from .utils import Logging
 
 from .net import Connection, ConnectionDelegate, ConnectionState
 from .net.state import StateOrder
@@ -70,7 +70,7 @@ class PorterPool(AddressPairMap[Porter]):
     #     return cached
 
 
-class StarGate(Gate, ConnectionDelegate, ABC):
+class StarGate(Gate, ConnectionDelegate, Logging):
     """
         Star Gate
         ~~~~~~~~~
@@ -221,7 +221,7 @@ class StarGate(Gate, ConnectionDelegate, ABC):
                 # clear expired tasks
                 docker.purge(now=now)
                 continue
-            Log.info('[Gate] remove closed docker: %s -> %s', docker.local_address, docker.remote_address)
+            self.info('remove closed docker: %s -> %s', docker.local_address, docker.remote_address)
             # remove docker when connection closed
             cached = self._remove_porter(porter=docker, remote=docker.remote_address, local=docker.local_address)
             if cached is None or cached is docker:
@@ -237,7 +237,7 @@ class StarGate(Gate, ConnectionDelegate, ABC):
         remote = connection.remote_address
         local = connection.local_address
         docker = self._get_porter(remote=remote, local=local)
-        Log.debug('[Gate] heartbeat: %s -> %s, %s', local, remote, docker)
+        self.debug('heartbeat: %s -> %s, %s', local, remote, docker)
         if docker is not None:
             await docker.heartbeat()
 

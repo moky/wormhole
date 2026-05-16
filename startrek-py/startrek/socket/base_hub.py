@@ -31,11 +31,11 @@
 import threading
 import time
 import weakref
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Optional, Iterable
 
-from ..types import Log
 from ..types import SocketAddress, AddressPairMap
+from ..utils import Logging
 
 from ..net import Hub
 from ..net import Channel, ChannelStatus
@@ -68,7 +68,7 @@ class ConnectionPool(AddressPairMap[Connection]):
     #     return cached
 
 
-class BaseHub(Hub, ABC):
+class BaseHub(Hub, Logging):
 
     """
         Maximum Segment Size
@@ -219,7 +219,7 @@ class BaseHub(Hub, ABC):
             if not channel.closed:
                 await channel.close()
         except Exception as error:
-            Log.error('[Hub] channel error: %s, %s', error, channel)
+            self.error('channel error: %s, %s', error, channel)
 
     async def _drive_channel(self, channel: Channel) -> bool:
         cs = channel.status
@@ -289,7 +289,7 @@ class BaseHub(Hub, ABC):
             if not sock.closed:
                 # socket not closed yet
                 continue
-            Log.info('[Hub] remove closed channel: %s -> %s', sock.local_address, sock.remote_address)
+            self.info('remove closed channel: %s -> %s', sock.local_address, sock.remote_address)
             # if channel not connected (TCP) and not bound (UDP),
             # means it's closed, remove it from the hub
             cached = self._remove_channel(channel=sock, remote=sock.remote_address, local=sock.local_address)
@@ -307,7 +307,7 @@ class BaseHub(Hub, ABC):
             if not conn.closed:
                 # connection not closed yet
                 continue
-            Log.info('[Hub] remove closed connection: %s -> %s', conn.local_address, conn.remote_address)
+            self.info('remove closed connection: %s -> %s', conn.local_address, conn.remote_address)
             # if connection closed, remove it from the hub; notice that
             # ActiveConnection can reconnect, it'll be not connected
             # but still open, don't remove it in this situation.

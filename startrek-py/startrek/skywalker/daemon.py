@@ -28,8 +28,8 @@ import weakref
 from threading import Thread
 from typing import Optional
 
-from ..types import Log
 from ..types import Duration
+from ..utils import Log
 
 from .runner import Runnable, Runner
 

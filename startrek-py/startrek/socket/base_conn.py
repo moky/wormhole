@@ -32,9 +32,9 @@ import time
 import weakref
 from typing import Optional
 
-from ..types import Log
 from ..types import Timestamp, Duration
 from ..types import SocketAddress, AddressPairObject
+from ..utils import Logging
 from ..fsm import Delegate as StateDelegate
 
 from ..net import Hub
@@ -45,7 +45,7 @@ from ..net.state import StateMachine, StateOrder
 from ..net.connection import TimedConnection
 
 
-class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelegate):
+class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelegate, Logging):
 
     def __init__(self, remote: SocketAddress, local: Optional[SocketAddress]):
         super().__init__(remote=remote, local=local)
@@ -116,7 +116,7 @@ class BaseConnection(AddressPairObject, Connection, TimedConnection, StateDelega
             try:
                 await old.close()
             except Exception as error:
-                Log.error('[Socket] connection error: %s, %s', error, old)
+                self.error('connection error: %s, %s', error, old)
         # 3. return old channel
         return old
 

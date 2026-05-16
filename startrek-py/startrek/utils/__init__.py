@@ -28,21 +28,16 @@
 # SOFTWARE.
 # ==============================================================================
 
-from .pair import SocketAddress, AddressPairObject
-from .mapping import PairMap, AbstractPairMap, HashPairMap, AddressPairMap
-
-Timestamp = float
-Duration = float
+from .log import Logger
+from .log import LogLevel
+from .log import Log, Logging
 
 
 __all__ = [
 
-    'Timestamp', 'Duration',
+    'Logger',
+    'LogLevel',
 
-    'SocketAddress',
-    'AddressPairObject',
-
-    'PairMap', 'AbstractPairMap', 'HashPairMap',
-    'AddressPairMap',
+    'Log', 'Logging',
 
 ]

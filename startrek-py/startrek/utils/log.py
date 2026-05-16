@@ -37,28 +37,28 @@ class Logger(ABC):
 
     @abstractmethod
     def debug(self, msg: str, *args, **kwargs):
-        """Log 'msg % args' with severity 'DEBUG'."""
+        """ Log 'msg % args' with severity 'DEBUG' """
         raise NotImplementedError(
             f'Not implemented: {type(self).__module__}.{type(self).__name__}.debug()'
         )
 
     @abstractmethod
     def info(self, msg: str, *args, **kwargs):
-        """Log 'msg % args' with severity 'INFO'."""
+        """ Log 'msg % args' with severity 'INFO' """
         raise NotImplementedError(
             f'Not implemented: {type(self).__module__}.{type(self).__name__}.info()'
         )
 
     @abstractmethod
     def warning(self, msg: str, *args, **kwargs):
-        """Log 'msg % args' with severity 'WARNING'."""
+        """ Log 'msg % args' with severity 'WARNING' """
         raise NotImplementedError(
             f'Not implemented: {type(self).__module__}.{type(self).__name__}.warning()'
         )
 
     @abstractmethod
     def error(self, msg: str, *args, **kwargs):
-        """Log 'msg % args' with severity 'ERROR'."""
+        """ Log 'msg % args' with severity 'ERROR' """
         raise NotImplementedError(
             f'Not implemented: {type(self).__module__}.{type(self).__name__}.error()'
         )
@@ -75,6 +75,30 @@ class LogLevel:
     # DEBUG: int = logging.DEBUG    # 10: debug(), info(), warning(), error()
     DEVELOP: int = logging.INFO     # 20:          info(), warning(), error()
     RELEASE: int = logging.WARNING  # 30:                  warning(), error()
+
+
+class Logging:
+    """ Log MixIn """
+
+    def debug(self, msg: str, *args, **kwargs):
+        clazz = self.__class__.__name__
+        msg = '%s >\t%s' % (clazz, msg)
+        Log.logger.debug(msg, *args, **kwargs)
+
+    def info(self, msg: str, *args, **kwargs):
+        clazz = self.__class__.__name__
+        msg = '%s >\t%s' % (clazz, msg)
+        Log.logger.info(msg, *args, **kwargs)
+
+    def warning(self, msg: str, *args, **kwargs):
+        clazz = self.__class__.__name__
+        msg = '%s >\t%s' % (clazz, msg)
+        Log.logger.warning(msg, *args, **kwargs)
+
+    def error(self, msg: str, *args, **kwargs):
+        clazz = self.__class__.__name__
+        msg = '%s >\t%s' % (clazz, msg)
+        Log.logger.error(msg, *args, **kwargs)
 
 
 class Log:
