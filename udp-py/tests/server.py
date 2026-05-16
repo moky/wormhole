@@ -6,6 +6,7 @@ import os
 from typing import Optional
 
 from startrek.types import SocketAddress
+from startrek.utils import Log, Logging
 from startrek.skywalker import Runner
 from startrek import BaseChannel
 
@@ -19,7 +20,8 @@ from udp import ServerHub
 from udp import Arrival, PackageArrival, Departure, PackageDeparture
 
 from tests.stargate import UDPGate
-from tests.utils import Log, Inet
+from tests.utils import Inet
+from tests.log import init_logger
 
 
 class PacketServerHub(ServerHub):
@@ -56,7 +58,7 @@ class PacketServerHub(ServerHub):
         return super()._remove_connection(connection=connection, remote=remote, local=None)
 
 
-class Server(PorterDelegate):
+class Server(PorterDelegate, Logging):
 
     def __init__(self, host: str, port: int):
         super().__init__()
@@ -102,7 +104,7 @@ class Server(PorterDelegate):
     async def porter_status_changed(self, previous: PorterStatus, current: PorterStatus, porter: Porter):
         remote = porter.remote_address
         local = porter.local_address
-        Log.warning('!!! connection (%s, %s) state changed: %s -> %s', remote, local, previous, current)
+        self.warning('!!! connection (%s, %s) state changed: %s -> %s', remote, local, previous, current)
 
     # Override
     async def porter_received(self, ship: Arrival, porter: Porter):
@@ -112,13 +114,13 @@ class Server(PorterDelegate):
         try:
             text = data.decode('utf-8')
         except UnicodeDecodeError as error:
-            Log.error('failed to decode data: %s, %s', error, data)
+            self.error('failed to decode data: %s, %s', error, data)
             text = str(data)
         source = porter.remote_address
-        Log.info('<<< received (%d bytes) from %s: %s', len(data), source, text)
+        self.info('<<< received (%d bytes) from %s: %s', len(data), source, text)
         text = '%d# %d byte(s) received' % (self.counter, len(data))
         self.counter += 1
-        Log.info('>>> responding: %s', text)
+        self.info('>>> responding: %s', text)
         data = text.encode('utf-8')
         await self.send(data=data, destination=source)
 
@@ -128,15 +130,15 @@ class Server(PorterDelegate):
     async def porter_sent(self, ship: Departure, porter: Porter):
         assert isinstance(ship, PackageDeparture), 'departure ship error: %s' % ship
         size = ship.package.body.size
-        Log.info('message sent: %d byte(s) to %s', size, porter.remote_address)
+        self.info('message sent: %d byte(s) to %s', size, porter.remote_address)
 
     # Override
     async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
-        Log.error('failed to sent: %s, %s', error, porter)
+        self.error('failed to sent: %s, %s', error, porter)
 
     # Override
     async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
-        Log.error('connection error: %s, %s', error, porter)
+        self.error('connection error: %s, %s', error, porter)
         await porter.close()
 
 
@@ -146,6 +148,7 @@ SERVER_PORT = 9394
 
 
 if __name__ == '__main__':
+    init_logger(name='UDP')
 
     Log.warning('UDP server (%s:%d) starting ...', SERVER_HOST, SERVER_PORT)
 

@@ -16,8 +16,6 @@ from udp.mtp import Package
 from udp import PackageArrival
 from udp import PackagePorter
 
-from .utils import Log
-
 
 H = TypeVar('H')
 
@@ -139,7 +137,7 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
                 # nothing to do now,
                 # have a rest ^_^
                 await self._idle()
-        Log.warning('auto gate stopped: %s', self)
+        self.warning('auto gate stopped: %s', self)
 
     # noinspection PyMethodMayBeStatic
     async def _idle(self):
@@ -152,7 +150,7 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
             outgoing = await super().process()
             return incoming or outgoing
         except Exception as error:
-            Log.error('process error: %s', error)
+            self.error('process error: %s', error)
 
 
 class UDPGate(AutoGate, Generic[H]):
@@ -194,14 +192,14 @@ class UDPGate(AutoGate, Generic[H]):
     async def connection_state_changed(self, previous: Optional[ConnectionState], current: Optional[ConnectionState],
                                        connection: Connection):
         await super().connection_state_changed(previous=previous, current=current, connection=connection)
-        Log.warning('connection state changed: %s -> %s, %s', previous, current, connection)
+        self.warning('connection state changed: %s -> %s, %s', previous, current, connection)
 
     # Override
     async def connection_failed(self, error: OSError, data: bytes, connection: Connection):
         await super().connection_failed(error=error, data=data, connection=connection)
-        Log.error('connection failed: %s, %s', error, connection)
+        self.error('connection failed: %s, %s', error, connection)
 
     # Override
     async def connection_error(self, error: OSError, connection: Connection):
         # if isinstance(error, OSError) and str(error).startswith('failed to send: '):
-        Log.error('connection error: %s, %s', error, connection)
+        self.error('connection error: %s, %s', error, connection)

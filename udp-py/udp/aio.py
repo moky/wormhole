@@ -33,7 +33,7 @@ import socket
 import traceback
 from typing import Optional, Tuple
 
-from startrek.types import Log
+from startrek.utils import Log
 from startrek import SocketAddress
 from startrek import SocketHelper
 

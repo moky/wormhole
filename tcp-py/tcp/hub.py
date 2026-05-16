@@ -30,11 +30,9 @@
 
 import socket
 import threading
-import time
 from abc import ABC
 from typing import Optional, Iterable
 
-from startrek.types import Log
 from startrek.types import SocketAddress, AddressPairMap
 from startrek.skywalker import Runnable, Runner, Daemon
 from startrek import SocketHelper
@@ -214,9 +212,9 @@ class ServerHub(StreamHub, Runnable):
                     helper = self.socket_helper
                     if not helper.is_blocking(sock=master):
                         continue
-                Log.error('[TCP] socket error: %s', error)
+                self.error('[TCP] socket error: %s', error)
             except Exception as error:
-                Log.error('[TCP] accept error: %s', error)
+                self.error('[TCP] accept error: %s', error)
 
     async def _accept(self, remote: SocketAddress, local: SocketAddress, sock: socket.socket):
         # override for user-customized channel
@@ -264,9 +262,9 @@ class ClientHub(StreamHub):
                 channel = old
         if old is None:
             # initialize socket
-            sock = await create_socket(remote=remote, local=local)
+            sock = await self._create_socket(remote=remote, local=local)
             if sock is None:
-                Log.error('[TCP] failed to prepare socket: %s -> %s', local, remote)
+                self.error('[TCP] failed to prepare socket: %s -> %s', local, remote)
                 self._remove_channel(channel, remote=remote, local=local)
                 channel = None
             else:
@@ -275,25 +273,19 @@ class ClientHub(StreamHub):
                 await channel.set_socket(sock=sock)
         return channel
 
-
-async def create_socket(remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[socket.socket]:
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
-        sock.setblocking(True)
-        # try to bind
-        if local is not None:
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.bind(local)
-        # try to connect
-        sock.connect(remote)
-        sock.setblocking(False)
-        return sock
-    except (OSError, socket.error) as error:
-        Log.error('[TCP] %s > failed to create socket %s -> %s: %s', current_time(), local, remote, error)
-
-
-def current_time() -> str:
-    now = time.time()
-    localtime = time.localtime(now)
-    return time.strftime('%Y-%m-%d %H:%M:%S', localtime)
+    # private
+    async def _create_socket(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[socket.socket]:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 0)
+            sock.setblocking(True)
+            # try to bind
+            if local is not None:
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                sock.bind(local)
+            # try to connect
+            sock.connect(remote)
+            sock.setblocking(False)
+            return sock
+        except (OSError, socket.error) as error:
+            self.error('[TCP] failed to create socket %s -> %s: %s', local, remote, error)

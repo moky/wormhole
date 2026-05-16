@@ -7,6 +7,7 @@ import os
 from typing import Optional
 
 from startrek.types import SocketAddress
+from startrek.utils import Log, Logging
 from startrek.skywalker import Runnable, Runner
 from startrek import BaseChannel
 
@@ -20,7 +21,8 @@ from udp import ClientHub
 from udp import Arrival, PackageArrival, Departure, PackageDeparture
 
 from tests.stargate import UDPGate
-from tests.utils import Log, Inet
+from tests.utils import Inet
+from tests.log import init_logger
 
 
 class PacketClientHub(ClientHub):
@@ -57,7 +59,7 @@ class PacketClientHub(ClientHub):
         return super()._remove_connection(connection=connection, remote=remote, local=None)
 
 
-class Client(Runnable, PorterDelegate):
+class Client(Runnable, PorterDelegate, Logging):
 
     def __init__(self, local: SocketAddress, remote: SocketAddress):
         super().__init__()
@@ -105,10 +107,10 @@ class Client(Runnable, PorterDelegate):
         # test send
         for i in range(16):
             data = b'%d sheep:%s' % (i, text)
-            Log.info('>>> sending (%d bytes): %s', len(data), data)
+            self.info('>>> sending (%d bytes): %s', len(data), data)
             await self.send(data=data)
             await Runner.sleep(seconds=2)
-        Log.warning('>>> finished.')
+        self.warning('>>> finished.')
 
     async def send(self, data: bytes) -> bool:
         ok1 = await self.gate.send_command(body=data, remote=self.remote_address, local=self.local_address)
@@ -123,7 +125,7 @@ class Client(Runnable, PorterDelegate):
     async def porter_status_changed(self, previous: PorterStatus, current: PorterStatus, porter: Porter):
         remote = porter.remote_address
         local = porter.local_address
-        Log.warning('!!! connection (%s, %s) state changed: %s -> %s', remote, local, previous, current)
+        self.warning('!!! connection (%s, %s) state changed: %s -> %s', remote, local, previous, current)
 
     # Override
     async def porter_received(self, ship: Arrival, porter: Porter):
@@ -133,24 +135,24 @@ class Client(Runnable, PorterDelegate):
         try:
             text = data.decode('utf-8')
         except UnicodeDecodeError as error:
-            Log.error('failed to decode data: %s, %s', error, data)
+            self.error('failed to decode data: %s, %s', error, data)
             text = str(data)
         source = porter.remote_address
-        Log.info('<<< received (%d bytes) from %s: %s', len(data), source, text)
+        self.info('<<< received (%d bytes) from %s: %s', len(data), source, text)
 
     # Override
     async def porter_sent(self, ship: Departure, porter: Porter):
         assert isinstance(ship, PackageDeparture), 'departure ship error: %s' % ship
         size = ship.package.body.size
-        Log.info('message sent: %d byte(s) to %s', size, porter.remote_address)
+        self.info('message sent: %d byte(s) to %s', size, porter.remote_address)
 
     # Override
     async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
-        Log.error('failed to sent: %s, %s', error, porter)
+        self.error('failed to sent: %s, %s', error, porter)
 
     # Override
     async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
-        Log.error('connection error: %s, %s', error, porter)
+        self.error('connection error: %s, %s', error, porter)
 
 
 SERVER_HOST = Inet.inet_address()
@@ -179,4 +181,5 @@ async def main():
 
 
 if __name__ == '__main__':
+    init_logger(name='UDP')
     Runner.sync_run(main=main())
