@@ -10,6 +10,7 @@ import time
 import traceback
 from typing import Optional
 
+from startrek.utils import Log, Logging
 from startrek.skywalker import Runner
 from startrek.net.state import StateOrder
 
@@ -26,7 +27,8 @@ sys.path.append(rootPath)
 
 from dmtp import Client, Command, Message, LocationValue
 
-from tests.utils import Log, Inet
+from tests.utils import Inet
+from tests.log import init_logger
 from tests.manager import ContactManager, FieldValueEncoder, Session
 from tests.contact import ContactHub
 from tests.stargate import UDPGate
@@ -77,7 +79,7 @@ class DmtpClientHub(ClientHub, ContactHub):
         return super()._remove_connection(connection=connection, remote=remote, local=None)
 
 
-class DmtpClient(Client, PorterDelegate):
+class DmtpClient(Client, PorterDelegate, Logging):
 
     def __init__(self, local: SocketAddress, remote: SocketAddress):
         super().__init__()
@@ -140,7 +142,7 @@ class DmtpClient(Client, PorterDelegate):
         try:
             await self.hub.connect(remote=remote, local=self.__local_address)
         except socket.error as error:
-            Log.error('failed to connect to %s: %s', remote, error)
+            self.error('failed to connect to %s: %s', remote, error)
 
     #
     #   Gate Delegate
@@ -150,7 +152,7 @@ class DmtpClient(Client, PorterDelegate):
     async def porter_status_changed(self, previous: PorterStatus, current: PorterStatus, porter: Porter):
         remote = porter.remote_address
         local = porter.local_address
-        Log.warning('!!! connection (%s, %s) state changed: %s -> %s', remote, local, previous, current)
+        self.warning('!!! connection (%s, %s) state changed: %s -> %s', remote, local, previous, current)
 
     # Override
     async def porter_received(self, ship: Arrival, porter: Porter):
@@ -166,43 +168,43 @@ class DmtpClient(Client, PorterDelegate):
         data = pack.body.get_bytes()
         size = len(data)
         destination = porter.remote_address
-        Log.info('message sent: %d byte(s) to %s', size, destination)
+        self.info('message sent: %d byte(s) to %s', size, destination)
 
     # Override
     async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
-        Log.error('failed to send ship: %s', ship)
+        self.error('failed to send ship: %s', ship)
 
     # Override
     async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
         source = porter.local_address
         destination = porter.remote_address
-        Log.error('gate error (%s, %s): %s', source, destination, error)
+        self.error('gate error (%s, %s): %s', source, destination, error)
 
     # Override
     async def _process_command(self, cmd: Command, source: SocketAddress) -> bool:
-        Log.info('received cmd from %s:\n\t%s', source, cmd)
+        self.info('received cmd from %s:\n\t%s', source, cmd)
         # noinspection PyBroadException
         try:
             return await super()._process_command(cmd=cmd, source=source)
         except Exception as error:
-            Log.error('failed to process cmd: %s, %s', cmd, error)
+            self.error('failed to process cmd: %s, %s', cmd, error)
             traceback.print_exc()
             return False
 
     # Override
     async def _process_message(self, msg: Message, source: SocketAddress) -> bool:
-        Log.info('received msg from %s:\n\t%s', source, json.dumps(msg, cls=FieldValueEncoder))
+        self.info('received msg from %s:\n\t%s', source, json.dumps(msg, cls=FieldValueEncoder))
         # return super()._process_message(msg=msg, source=source)
         return True
 
     # Override
     async def send_command(self, cmd: Command, destination: SocketAddress) -> bool:
-        Log.info('sending cmd to %s:\n\t%s', destination, cmd)
+        self.info('sending cmd to %s:\n\t%s', destination, cmd)
         return await self.gate.send_command(body=cmd.get_bytes(), source=self.local_address, destination=destination)
 
     # Override
     async def send_message(self, msg: Message, destination: SocketAddress) -> bool:
-        Log.info('sending msg to %s:\n\t%s', destination, json.dumps(msg, cls=FieldValueEncoder))
+        self.info('sending msg to %s:\n\t%s', destination, json.dumps(msg, cls=FieldValueEncoder))
         return await self.gate.send_message(body=msg.get_bytes(), source=self.local_address, destination=destination)
 
     #
@@ -214,12 +216,12 @@ class DmtpClient(Client, PorterDelegate):
         if await super().say_hello(destination=destination):
             return True
         cmd = Command.hello_command(identifier=self.identifier)
-        Log.info('send cmd: %s', cmd)
+        self.info('send cmd: %s', cmd)
         return await self.send_command(cmd=cmd, destination=destination)
 
     async def call(self, identifier: str) -> bool:
         cmd = Command.call_command(identifier=identifier)
-        Log.info('send cmd: %s', cmd)
+        self.info('send cmd: %s', cmd)
         return await self.send_command(cmd=cmd, destination=self.__remote_address)
 
     async def login(self, identifier: str):
@@ -259,7 +261,7 @@ class DmtpClient(Client, PorterDelegate):
     async def send_text(self, receiver: str, msg: str) -> Optional[Message]:
         sessions = await self.get_sessions(identifier=receiver)
         if len(sessions) == 0:
-            Log.info('user (%s) not login ...', receiver)
+            self.info('user (%s) not login ...', receiver)
             # ask the server to help building a connection
             await self.call(identifier=receiver)
             return None
@@ -272,7 +274,7 @@ class DmtpClient(Client, PorterDelegate):
         })
         for item in sessions:
             assert isinstance(item, Session), 'session error: %s' % item
-            Log.info('send msg to %s:\n\t%s', item.address, msg)
+            self.info('send msg to %s:\n\t%s', item.address, msg)
             await self.send_message(msg=msg, destination=item.address)
         return msg
 
@@ -290,6 +292,8 @@ class DmtpClient(Client, PorterDelegate):
 
 
 async def main():
+    init_logger(name='UDP')
+
     user = 'moky-%d' % CLIENT_PORT
     friend = 'moky'
 
@@ -300,7 +304,9 @@ async def main():
     # create client
     local_address = (CLIENT_HOST, CLIENT_PORT)
     remote_address = (SERVER_HOST, SERVER_PORT)
-    print('DMTP client %s -> %s starting ...' % (local_address, remote_address))
+
+    Log.warning('DMTP client %s -> %s starting ...' % (local_address, remote_address))
+
     client = DmtpClient(local=local_address, remote=remote_address)
 
     # database for location of contacts
@@ -311,6 +317,8 @@ async def main():
     await client.start()
     await client.test(user=user, friend=friend)
     await client.stop()
+
+    Log.warning('DMTP client %s -> %s stopped.' % (local_address, remote_address))
 
 
 if __name__ == '__main__':

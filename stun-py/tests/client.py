@@ -8,6 +8,7 @@ import os
 import time
 from typing import Optional, Union, Tuple
 
+from startrek.utils import Log, Logging
 from startrek.skywalker import Runner
 
 from udp import SocketAddress
@@ -25,9 +26,10 @@ sys.path.append(rootPath)
 
 from stun import Client
 
-from tests.utils import Inet, Log
-from tests.utils import stun_log
 from tests.stargate import UDPGate
+from tests.utils import Inet
+from tests.utils import stun_log
+from tests.log import init_logger
 
 
 class PacketClientHub(ClientHub):
@@ -64,7 +66,7 @@ class PacketClientHub(ClientHub):
         return super()._remove_connection(connection=connection, remote=remote, local=None)
 
 
-class StunClient(Client, PorterDelegate):
+class StunClient(Client, PorterDelegate, Logging):
 
     def __init__(self, host: str, port: int):
         super().__init__(host=host, port=port)
@@ -105,7 +107,7 @@ class StunClient(Client, PorterDelegate):
     async def porter_status_changed(self, previous: PorterStatus, current: PorterStatus, porter: Porter):
         remote = porter.remote_address
         local = porter.local_address
-        Log.warning('!!! connection (%s, %s) state changed: %s -> %s', remote, local, previous, current)
+        self.warning('!!! connection (%s, %s) state changed: %s -> %s', remote, local, previous, current)
 
     # Override
     async def porter_received(self, ship: Arrival, porter: Porter):
@@ -123,17 +125,17 @@ class StunClient(Client, PorterDelegate):
         data = ship.payload
         size = len(data)
         destination = porter.remote_address
-        Log.info('message sent: %d byte(s) to %s', size, destination)
+        self.info('message sent: %d byte(s) to %s', size, destination)
 
     # Override
     async def porter_failed(self, error: OSError, ship: Departure, porter: Porter):
-        Log.error('failed to send ship: %s', ship)
+        self.error('failed to send ship: %s', ship)
 
     # Override
     async def porter_error(self, error: OSError, ship: Departure, porter: Porter):
         source = porter.local_address
         destination = porter.remote_address
-        Log.error('gate error (%s, %s): %s', source, destination, error)
+        self.error('gate error (%s, %s): %s', source, destination, error)
 
     # Override
     async def receive(self) -> Tuple[Optional[bytes], Optional[SocketAddress]]:
@@ -171,7 +173,7 @@ class StunClient(Client, PorterDelegate):
 
     # Override
     def log(self, msg: str, *args, **kwargs):
-        # Log.info(msg, *args, **kwargs)
+        # self.info(msg, *args, **kwargs)
         stun_log(msg, *args, **kwargs)
 
     async def detect(self, stun_host: str, stun_port: int):
@@ -212,6 +214,10 @@ LOCAL_PORT = random.choice(range(19900, 19999))
 
 
 async def main():
+    init_logger(name='UDP')
+
+    Log.warning('STUN client (%s:%d) starting ...', LOCAL_IP, LOCAL_PORT)
+
     client = StunClient(host=LOCAL_IP, port=LOCAL_PORT)
 
     await client.start()
@@ -226,6 +232,8 @@ async def main():
     print('================================================================')
 
     await client.stop()
+
+    Log.warning('STUN client (%s:%d) stopped.', LOCAL_IP, LOCAL_PORT)
 
 
 if __name__ == '__main__':

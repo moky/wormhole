@@ -11,8 +11,6 @@ from udp import Hub, Arrival, PackageArrival
 from udp import PorterDelegate, Porter
 from udp import StarGate
 
-from .utils import Log
-
 
 H = TypeVar('H')
 
@@ -134,7 +132,7 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
                 # nothing to do now,
                 # have a rest ^_^
                 await self._idle()
-        Log.warning('auto gate stopped: %s', self)
+        self.warning('auto gate stopped: %s', self)
 
     # noinspection PyMethodMayBeStatic
     async def _idle(self):
@@ -147,4 +145,4 @@ class AutoGate(CommonGate, Runnable, Generic[H], ABC):
             outgoing = await super().process()
             return incoming or outgoing
         except Exception as error:
-            Log.error('process error: %s', error)
+            self.error('process error: %s', error)

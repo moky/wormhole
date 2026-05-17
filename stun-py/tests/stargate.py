@@ -8,7 +8,6 @@ from udp import SocketAddress
 from udp import Connection, ConnectionState
 from udp import Porter
 
-from .utils import Log
 from .auto import AutoGate, H
 
 
@@ -68,7 +67,7 @@ class UDPGate(AutoGate, Generic[H]):
     async def connection_state_changed(self, previous: Optional[ConnectionState], current: Optional[ConnectionState],
                                        connection: Connection):
         await super().connection_state_changed(previous=previous, current=current, connection=connection)
-        Log.warning('connection state changed: %s -> %s, %s', previous, current, connection)
+        self.warning('connection state changed: %s -> %s, %s', previous, current, connection)
 
     # # Override
     # def connection_error(self, error: OSError, connection: Connection):
