@@ -37,6 +37,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple
+from typing import MutableMapping
 
 from udp.ba import ByteArray, Data
 from udp import SocketAddress
@@ -60,7 +61,7 @@ class Client(Node, ABC):
         raise NotImplementedError
 
     # Override
-    def parse_attribute(self, attribute: Attribute, context: dict) -> bool:
+    def parse_attribute(self, attribute: Attribute, context: MutableMapping) -> bool:
         tag = attribute.tag
         value = attribute.value
         assert isinstance(tag, AttributeType), 'attribute type error: %s' % tag
@@ -100,7 +101,7 @@ class Client(Node, ABC):
         self.log('%s:\t%s', tag, value)
         return True
 
-    async def __bind_request(self, remote_host: str, remote_port: int, body: ByteArray) -> Optional[dict]:
+    async def __bind_request(self, remote_host: str, remote_port: int, body: ByteArray) -> Optional[MutableMapping]:
         # 1. create STUN message package
         req = Package.new(msg_type=MessageType.BIND_REQUEST, body=body)
         trans_id = req.head.trans_id
@@ -152,22 +153,22 @@ class Client(Node, ABC):
     a Binding Request with only the "change port" flag set.
     """
 
-    async def __test_1(self, stun_host: str, stun_port: int) -> Optional[dict]:
+    async def __test_1(self, stun_host: str, stun_port: int) -> Optional[MutableMapping]:
         self.log('[Test 1] sending empty request ... (%s:%d)', stun_host, stun_port)
         body = Data.ZERO
         return await self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
-    async def __test_2(self, stun_host: str, stun_port: int) -> Optional[dict]:
+    async def __test_2(self, stun_host: str, stun_port: int) -> Optional[MutableMapping]:
         self.log('[Test 2] sending "ChangeIPAndPort" ... (%s:%d)', stun_host, stun_port)
         body = Attribute.new(tag=AttributeType.CHANGE_REQUEST, value=ChangeRequestValue.CHANGE_IP_AND_PORT)
         return await self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
-    async def __test_3(self, stun_host: str, stun_port: int) -> Optional[dict]:
+    async def __test_3(self, stun_host: str, stun_port: int) -> Optional[MutableMapping]:
         self.log('[Test 3] sending "ChangePort" ... (%s:%d)', stun_host, stun_port)
         body = Attribute.new(tag=AttributeType.CHANGE_REQUEST, value=ChangeRequestValue.CHANGE_PORT)
         return await self.__bind_request(remote_host=stun_host, remote_port=stun_port, body=body)
 
-    async def get_nat_type(self, stun_host: str, stun_port: int = 3478) -> dict:
+    async def get_nat_type(self, stun_host: str, stun_port: int = 3478) -> MutableMapping:
         # 1. Test I
         res1 = await self.__test_1(stun_host=stun_host, stun_port=stun_port)
         if res1 is None:

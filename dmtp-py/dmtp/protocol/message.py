@@ -29,6 +29,7 @@
 # ==============================================================================
 
 from typing import Optional, Union, List
+from typing import Mapping
 
 from udp.ba import ByteArray
 
@@ -166,7 +167,7 @@ class Message(MapValue):
     #     return super().parse(data=data, tag=tag, length=length)
 
     @classmethod
-    def __fetch_msg_field(cls, array: list, info: dict, s: str, name: str, tag: FieldName, clazz):
+    def __fetch_msg_field(cls, array: List, info: Mapping, s: str, name: str, tag: FieldName, clazz):
         value = info.get(name)
         if value is None:
             value = info.get(s)
@@ -179,7 +180,7 @@ class Message(MapValue):
         array.append(field)
 
     @classmethod
-    def new(cls, info: dict):
+    def new(cls, info: Mapping):
         fields = []
         # envelope
         cls.__fetch_msg_field(fields, info, 'F', 'sender', cls.SENDER, StringValue)

@@ -32,7 +32,7 @@ import base64
 import json
 import threading
 import time
-from typing import Optional, Union
+from typing import Optional, Union, List
 from weakref import WeakValueDictionary
 
 from udp.ba import IntegerData
@@ -169,7 +169,7 @@ class ContactManager(LocationDelegate):
             return None
         return location
 
-    def get_locations(self, identifier: str) -> list:
+    def get_locations(self, identifier: str) -> List:
         contact = self.__get_contact(identifier=identifier)
         contact.purge(hub=self.__hub)
         return contact.locations

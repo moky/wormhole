@@ -36,6 +36,7 @@
 """
 
 from abc import ABC
+from typing import MutableMapping
 
 from udp.ba import MutableData
 
@@ -84,7 +85,7 @@ class Server(Node, ABC):
         self.change_port: int = change_port
 
     # Override
-    def parse_attribute(self, attribute: Attribute, context: dict) -> bool:
+    def parse_attribute(self, attribute: Attribute, context: MutableMapping) -> bool:
         tag = attribute.tag
         value = attribute.value
         # check attributes

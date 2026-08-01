@@ -8,7 +8,7 @@ import sys
 import os
 import time
 import traceback
-from typing import Optional
+from typing import Optional, List
 
 from startrek.utils import Log, Logging
 from startrek.skywalker import Runner
@@ -229,7 +229,7 @@ class DmtpClient(Client, PorterDelegate, Logging):
         await self._connect(remote=self.__remote_address)
         await self.say_hello(destination=self.__remote_address)
 
-    async def get_sessions(self, identifier: str) -> list:
+    async def get_sessions(self, identifier: str) -> List:
         """
         Get connected locations for user ID
 

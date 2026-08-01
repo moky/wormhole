@@ -36,7 +36,8 @@
     [RFC] https://www.ietf.org/rfc/rfc3489.txt
 """
 
-from typing import Optional, Union, Dict
+from typing import Optional, Union
+from typing import MutableMapping
 
 from udp.ba import ByteArray
 from udp.ba import Endian, UInt16Data, Convert
@@ -227,7 +228,7 @@ class AttributeParser(TriadParser[Attribute, AttributeType, AttributeLength, Att
         else:
             return parser.parse_value(data=data, tag=tag, length=length)
 
-    __value_parsers: Dict[str, ValueParser] = {}  # type => parser
+    __value_parsers: MutableMapping[str, ValueParser] = {}  # type => parser
 
     @classmethod
     def register(cls, tag: AttributeType, parser: ValueParser):

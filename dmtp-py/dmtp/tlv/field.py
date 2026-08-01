@@ -29,7 +29,9 @@
 # ==============================================================================
 
 from abc import ABC
-from typing import Optional, Union, Dict, Generic
+from typing import Optional, Union
+from typing import MutableMapping
+from typing import Generic
 
 from udp.ba import ByteArray
 from stun.tlv import TagParser
@@ -137,7 +139,7 @@ class CommonFieldParser(FieldParser[Field]):
         return Field(data=data, tag=tag, length=length, value=value)
 
 
-g_parsers: Dict[str, Union[TriadParser[Field, FieldName, FieldLength, FieldValue],
-                           ValueParser[FieldName, FieldLength, FieldValue]]] = {}
+g_parsers: MutableMapping[str, Union[TriadParser[Field, FieldName, FieldLength, FieldValue],
+                                     ValueParser[FieldName, FieldLength, FieldValue]]] = {}
 
 set_parser(name='field_parser', parser=CommonFieldParser())

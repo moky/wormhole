@@ -37,6 +37,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Union
+from typing import MutableMapping
 
 from udp import SocketAddress
 
@@ -105,7 +106,7 @@ class Node(ABC):
         )
 
     @abstractmethod
-    def parse_attribute(self, attribute: Attribute, context: dict) -> bool:
+    def parse_attribute(self, attribute: Attribute, context: MutableMapping) -> bool:
         """
         Parse attribute
 
@@ -117,7 +118,7 @@ class Node(ABC):
             f'Not implemented: {type(self).__module__}.{type(self).__name__}.parse_attribute()'
         )
 
-    def parse_data(self, data: bytes, context: dict) -> bool:
+    def parse_data(self, data: bytes, context: MutableMapping) -> bool:
         """
         Parse package data
 

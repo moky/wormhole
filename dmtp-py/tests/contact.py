@@ -31,7 +31,7 @@
 import threading
 import time
 from abc import ABC
-from typing import Optional
+from typing import Optional, List
 
 from startrek.net.state import StateOrder
 
@@ -60,7 +60,7 @@ class Contact:
         return self.__id
 
     @property
-    def locations(self) -> list:
+    def locations(self) -> List:
         """ Get all locations ordered by time (reversed) """
         reversed_locations = []
         with self.__locations_lock:

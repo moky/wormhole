@@ -29,7 +29,10 @@
 # ==============================================================================
 
 import copy
-from typing import Optional, Union, List, Dict, Iterator, ItemsView, KeysView, ValuesView
+from typing import Optional, Union, List, Tuple
+from typing import AbstractSet
+from typing import MutableMapping
+from typing import Iterator, ValuesView
 
 from udp.ba import ByteArray, Data
 from stun.tlv import VarLength as FieldLength
@@ -40,40 +43,41 @@ from .tag import StringTag as FieldName
 from .field import Field
 
 
-class MapValue(RawValue, Dict[FieldName, FieldValue]):
+class MapValue(RawValue):
 
     def __init__(self, data: Union[bytes, bytearray, ByteArray], fields: List[Field]):
         super().__init__(data=data)
-        self.__dictionary = {}  # FieldName -> FieldValue
+        self.__dictionary: MutableMapping = {}  # FieldName -> FieldValue
         for item in fields:
             self.__dictionary[item.tag] = item.value
 
-    @property
-    def dictionary(self) -> dict:
+    def to_map(self) -> MutableMapping:
         return self.__dictionary
 
-    def copy_dictionary(self, deep_copy: bool = False) -> dict:
+    def copy_map(self, deep_copy: bool = False) -> MutableMapping:
+        # info = self.__dictionary
+        info = self.to_map()
         if deep_copy:
-            copy.deepcopy(self.__dictionary)
+            copy.deepcopy(info)
         else:
-            return self.__dictionary.copy()
+            return dict(info)
 
-    def copy(self):
+    def copy(self):  # -> MapValue:
         """ D.copy() -> a shallow copy of D """
         data = self.get_bytes()
         clone = MapValue(data=data, fields=[])
-        clone.__dictionary = self.__dictionary.copy()
+        clone.__dictionary = dict(self.__dictionary)
         return clone
 
     def get(self, k: FieldName, default: Optional[FieldValue] = None) -> Optional[FieldValue]:
         """ Return the value for key if key is in the dictionary, else default. """
         return self.__dictionary.get(k, default)
 
-    def items(self) -> ItemsView[FieldName, FieldValue]:
+    def items(self) -> AbstractSet[Tuple[FieldName, FieldValue]]:
         """ D.items() -> a set-like object providing a view on D's items """
         return self.__dictionary.items()
 
-    def keys(self) -> KeysView[FieldName]:
+    def keys(self) -> AbstractSet[FieldName]:
         """ D.keys() -> a set-like object providing a view on D's keys """
         return self.__dictionary.keys()
 
@@ -100,7 +104,7 @@ class MapValue(RawValue, Dict[FieldName, FieldValue]):
         if isinstance(o, MapValue):
             if self is o:
                 return True
-            o = o.dictionary
+            o = o.to_map()
         return self.__dictionary.__eq__(o)
 
     def __ne__(self, o) -> bool:
@@ -108,7 +112,7 @@ class MapValue(RawValue, Dict[FieldName, FieldValue]):
         if isinstance(o, MapValue):
             if self is o:
                 return False
-            o = o.dictionary
+            o = o.to_map()
         return self.__dictionary.__ne__(o)
 
     def __ge__(self, other) -> bool:
