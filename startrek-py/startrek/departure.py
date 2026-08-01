@@ -31,7 +31,8 @@
 import time
 import weakref
 from abc import ABC
-from typing import Optional, Any, List, Dict, MutableMapping
+from typing import Optional, Any, List
+from typing import MutableMapping
 
 from .types import Timestamp
 
@@ -98,12 +99,12 @@ class DepartureHall:
         # new ships waiting to send out
         self.__new_departures: List[Departure] = []
         # ships waiting for responses
-        self.__fleets: Dict[int, List[Departure]] = {}  # priority => List[Departure]
+        self.__fleets: MutableMapping[int, List[Departure]] = {}  # priority => List[Departure]
         self.__priorities: List[int] = []
         # index
         self.__map: MutableMapping[Any, Departure] = weakref.WeakValueDictionary()  # SN => ship
-        self.__finished_times: Dict[Any, Timestamp] = {}                            # SN => timestamp
-        self.__departure_level: Dict[Any, int] = {}                                 # SN => priority
+        self.__finished_times: MutableMapping[Any, Timestamp] = {}                            # SN => timestamp
+        self.__departure_level: MutableMapping[Any, int] = {}                                 # SN => priority
 
     def add_departure(self, ship: Departure) -> bool:
         """

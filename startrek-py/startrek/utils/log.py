@@ -32,6 +32,12 @@ import logging
 from abc import ABC, abstractmethod
 
 
+try:
+    from typing import final
+except ImportError:
+    from typing_extensions import final
+
+
 class Logger(ABC):
     """ Abstract logging interface """
 
@@ -101,6 +107,7 @@ class Logging:
         Log.logger.error(msg, *args, **kwargs)
 
 
+@final
 class Log:
     """ Global static logger facade """
 

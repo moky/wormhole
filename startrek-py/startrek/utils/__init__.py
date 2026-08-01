@@ -28,12 +28,16 @@
 # SOFTWARE.
 # ==============================================================================
 
+from .log import final
+
 from .log import Logger
 from .log import LogLevel
 from .log import Log, Logging
 
 
 __all__ = [
+
+    'final',
 
     'Logger',
     'LogLevel',

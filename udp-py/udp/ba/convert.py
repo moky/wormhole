@@ -30,10 +30,13 @@
 
 from typing import Optional, Union
 
+from startrek.utils import final
+
 from .array import ByteArray, IntegerData, Endian
 from .integer import UInt16Data, UInt32Data
 
 
+@final
 class Convert:
     """
         Network Byte Order Converter
