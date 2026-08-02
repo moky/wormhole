@@ -30,13 +30,22 @@
 
 import threading
 import time
-from typing import Optional, AnyStr, Dict
+from typing import Optional, AnyStr
 
 from yarl import URL
 
 from ..mem import CacheManager
 
+from .session import LooseHeaders
 from .session import HttpSession, HttpResponse
+
+
+try:
+    import collections.abc as abc
+    StringPairing = abc.Mapping[str, str]
+except TypeError:
+    import typing
+    StringPairing = typing.Mapping[str, str]
 
 
 class HttpClient:
@@ -55,7 +64,7 @@ class HttpClient:
     #
 
     @property
-    def cookies(self) -> Optional[Dict]:
+    def cookies(self) -> Optional[StringPairing]:
         cookie_jar = self.__session.cookie_jar
         base_url = self.base_url
         if base_url is not None:
@@ -81,19 +90,19 @@ class HttpClient:
     #   Requests
     #
 
-    async def http_head(self, url: str, *, headers: Dict = None, timeout: float = None,
+    async def http_head(self, url: str, *, headers: LooseHeaders = None, timeout: float = None,
                         allow_redirects: bool = False) -> Optional[HttpResponse]:
         session = self.__session
         return await session.http_head(url=url, headers=headers, timeout=timeout, allow_redirects=allow_redirects)
 
-    async def http_get(self, url: str, *, headers: Dict = None, timeout: float = None,
+    async def http_get(self, url: str, *, headers: LooseHeaders = None, timeout: float = None,
                        allow_redirects: bool = True) -> Optional[HttpResponse]:
         url = self._get_url(url=url)
         session = self.__session
         return await session.http_get(url=url, headers=headers, timeout=timeout, allow_redirects=allow_redirects)
 
     async def http_post(self, url: str, *, data: AnyStr,
-                        headers: Dict = None, timeout: float = None) -> Optional[HttpResponse]:
+                        headers: LooseHeaders = None, timeout: float = None) -> Optional[HttpResponse]:
         url = self._get_url(url=url)
         session = self.__session
         return await session.http_post(url=url, data=data, headers=headers, timeout=timeout)
@@ -152,7 +161,7 @@ class CachedClient(HttpClient):
         return self.__refresh
 
     # Override
-    async def http_get(self, url: str, *, headers: Dict = None, timeout: float = None,
+    async def http_get(self, url: str, *, headers: LooseHeaders = None, timeout: float = None,
                        allow_redirects: bool = True) -> Optional[HttpResponse]:
         now = time.time()
         #

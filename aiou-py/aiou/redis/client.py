@@ -29,9 +29,19 @@
 # ==============================================================================
 
 from abc import ABC, abstractmethod
-from typing import Optional, Iterable, Tuple, List, Dict
+from typing import Optional, Tuple, List
+from typing import Mapping, MutableMapping
+from typing import Iterable
 
 from redis import Redis
+
+
+try:
+    import collections.abc as abc
+    BytesPairing = abc.Mapping[bytes, bytes]
+except TypeError:
+    import typing
+    BytesPairing = typing.Mapping[bytes, bytes]
 
 
 class RedisConnector:
@@ -44,7 +54,7 @@ class RedisConnector:
         self.__username = username
         self.__password = password
         # connection pool
-        self.__dbs: Dict[int, Redis] = {}
+        self.__dbs: MutableMapping[int, Redis] = {}
 
     @property
     def host(self) -> str:
@@ -84,7 +94,9 @@ class RedisClient(ABC):
     @abstractmethod
     def connector(self) -> Optional[RedisConnector]:
         """ connection pool """
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.connector getter'
+        )
 
     @property  # protected
     def redis(self) -> Optional[Redis]:
@@ -161,7 +173,7 @@ class RedisClient(ABC):
             return None
         return redis.hget(name=name, key=key)
 
-    async def hgetall(self, name: str) -> Optional[Dict[bytes, bytes]]:
+    async def hgetall(self, name: str) -> Optional[BytesPairing]:
         """ Get all items from the hash table with name """
         redis = self.redis
         if redis is None:
@@ -223,7 +235,7 @@ class RedisClient(ABC):
     #   Ordered Set
     #
 
-    async def zadd(self, name: str, mapping: dict):
+    async def zadd(self, name: str, mapping: Mapping):
         """ Add value with score into an ordered set with name """
         redis = self.redis
         if redis is None:

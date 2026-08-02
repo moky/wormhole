@@ -29,7 +29,9 @@
 # ==============================================================================
 
 import time
-from typing import TypeVar, Generic, Optional, Tuple, Set, Dict
+from typing import Optional, Tuple, Set
+from typing import MutableMapping
+from typing import TypeVar, Generic
 
 
 """
@@ -105,7 +107,7 @@ class CachePool(Generic[K, V]):
     """ Pool for cache holders """
 
     def __init__(self):
-        self.__holders: Dict[K, CacheHolder[V]] = {}  # key -> holder(value)
+        self.__holders: MutableMapping[K, CacheHolder[V]] = {}  # key -> holder(value)
 
     def all_keys(self) -> Set[K]:
         """ get all cache keys """
@@ -165,7 +167,7 @@ class CacheManager:
 
     def __init__(self):
         super().__init__()
-        self.__pools: Dict[str, CachePool] = {}  # name -> pool
+        self.__pools: MutableMapping[str, CachePool] = {}  # name -> pool
 
     def all_names(self) -> Set[K]:
         """ get names of all pools """

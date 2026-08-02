@@ -34,6 +34,13 @@ import sys
 from aiofiles import os as async_os
 
 
+try:
+    from typing import final
+except ImportError:
+    from typing_extensions import final
+
+
+@final
 class Path:
     """
         Paths for main script

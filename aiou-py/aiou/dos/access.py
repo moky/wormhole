@@ -37,19 +37,31 @@ from typing import Optional
 import aiofiles
 
 
+try:
+    from typing import final
+except ImportError:
+    from typing_extensions import final
+
+
 class BinaryAccess(ABC):
 
     @abstractmethod
     async def read(self, path: str) -> Optional[bytes]:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.read()'
+        )
 
     @abstractmethod
     async def write(self, data: bytes, path: str) -> int:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.write()'
+        )
 
     @abstractmethod
     async def append(self, data: bytes, path: str) -> int:
-        raise NotImplemented
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.append()'
+        )
 
 
 class SyncAccess(BinaryAccess):
@@ -188,6 +200,7 @@ class LockFactory:
             return None, False
 
 
+@final
 class FileHelper:
 
     access: Optional[BinaryAccess] = None

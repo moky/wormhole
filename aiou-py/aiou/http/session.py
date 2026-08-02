@@ -28,7 +28,7 @@
 # SOFTWARE.
 # ==============================================================================
 
-from typing import Optional, AnyStr, Dict
+from typing import Optional, AnyStr
 
 from aiohttp.typedefs import StrOrURL, LooseHeaders
 from aiohttp.abc import AbstractCookieJar
@@ -37,7 +37,7 @@ from aiohttp import CookieJar, ClientSession, ClientResponse
 
 class HttpResponse:
 
-    def __init__(self, headers: Dict, status: int, data: Optional[bytes], encoding: Optional[str]):
+    def __init__(self, headers: LooseHeaders, status: int, data: Optional[bytes], encoding: Optional[str]):
         super().__init__()
         self.__headers = headers
         self.__status = status
@@ -45,7 +45,7 @@ class HttpResponse:
         self.__encoding = encoding
 
     @property
-    def headers(self) -> Dict[str, str]:
+    def headers(self) -> LooseHeaders:
         return self.__headers
 
     def get_header(self, key: str) -> Optional[str]:

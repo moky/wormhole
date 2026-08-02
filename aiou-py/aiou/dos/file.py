@@ -29,7 +29,8 @@
 # ==============================================================================
 
 import json
-from typing import Optional, Union, List, Dict
+from typing import Optional, Union, List
+from typing import Mapping
 
 from .path import Path
 from .access import FileHelper
@@ -147,13 +148,13 @@ class JSONFile:
     def __init__(self, path: str):
         super().__init__()
         self.__file = TextFile(path=path)
-        self.__container: Union[Dict, List, None] = None
+        self.__container: Union[Mapping, List, None] = None
 
     @property
     def path(self) -> str:
         return self.__file.path
 
-    async def read(self) -> Union[Dict, List, None]:
+    async def read(self) -> Union[Mapping, List, None]:
         if self.__container is not None:
             # get content from cache
             return self.__container
@@ -170,7 +171,7 @@ class JSONFile:
         self.__container = container
         return container
 
-    async def write(self, container: Union[Dict, List]) -> bool:
+    async def write(self, container: Union[Mapping, List]) -> bool:
         # 1. convert JSON object to text string
         text = json.dumps(container)
         if text is None:
