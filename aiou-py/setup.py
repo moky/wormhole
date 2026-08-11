@@ -48,5 +48,7 @@ setup(
         # 'frozenlist',     # 1.3.3
         'aiohttp',          # 3.8.6
 
+
+        'startrek>=2.3.2'
     ]
 )

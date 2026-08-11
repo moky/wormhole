@@ -34,6 +34,8 @@ from aiohttp.typedefs import StrOrURL, LooseHeaders
 from aiohttp.abc import AbstractCookieJar
 from aiohttp import CookieJar, ClientSession, ClientResponse
 
+from startrek.utils import Logging
+
 
 class HttpResponse:
 
@@ -96,7 +98,7 @@ class HttpResponse:
         return cls(headers=headers, status=status, data=data, encoding=encoding)
 
 
-class HttpSession:
+class HttpSession(Logging):
 
     def __init__(self, cookie_jar: AbstractCookieJar = None):
         super().__init__()
@@ -113,7 +115,7 @@ class HttpSession:
                 async with session.head(url=url, allow_redirects=allow_redirects) as response:
                     return await HttpResponse.extract(response=response)
         except Exception as error:
-            print('[HTTP] failed to HEAD: %s , error: %s' % (url, error))
+            self.error('[HTTP] failed to HEAD: %s , error: %s', url, error)
 
     async def http_get(self, url: StrOrURL, *, headers: LooseHeaders = None, timeout: float = None,
                        allow_redirects: bool = True) -> Optional[HttpResponse]:
@@ -122,7 +124,7 @@ class HttpSession:
                 async with session.get(url=url, allow_redirects=allow_redirects) as response:
                     return await HttpResponse.extract(response=response)
         except Exception as error:
-            print('[HTTP] failed to GET: %s , error: %s' % (url, error))
+            self.error('[HTTP] failed to GET: %s , error: %s', url, error)
 
     async def http_post(self, url: StrOrURL, *, data: AnyStr,
                         headers: LooseHeaders = None, timeout: float = None) -> Optional[HttpResponse]:
@@ -131,4 +133,4 @@ class HttpSession:
                 async with session.post(url=url, data=data) as response:
                     return await HttpResponse.extract(response=response)
         except Exception as error:
-            print('[HTTP] failed to POST (%d bytes): %s , error: %s' % (len(data), url, error))
+            self.error('[HTTP] failed to POST (%d bytes): %s , error: %s', len(data), url, error)

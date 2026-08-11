@@ -32,11 +32,13 @@ import json
 from typing import Optional, Union, List
 from typing import Mapping
 
+from startrek.utils import Logging
+
 from .path import Path
 from .access import FileHelper
 
 
-class File:
+class File(Logging):
     """ Binary File """
 
     def __init__(self, path: str):
@@ -69,7 +71,7 @@ class File:
         # write
         cnt = await FileHelper.write(data=data, path=self.__path)
         if len(data) != cnt:
-            print('[DOS] failed to write file: %d/%d, %s' % (cnt, len(data), self.__path))
+            self.error('[DOS] failed to write file: %d/%d, %s', cnt, len(data), self.__path)
             return False
         # OK, update cache
         self.__data = data
@@ -82,7 +84,7 @@ class File:
         # append
         cnt = await FileHelper.append(data=data, path=self.__path)
         if len(data) != cnt:
-            print('[DOS] failed to append file: %d/%d, %s' % (cnt, len(data), self.__path))
+            self.error('[DOS] failed to append file: %d/%d, %s', cnt, len(data), self.__path)
             return False
         # OK, erase cache for next update
         self.__data = None

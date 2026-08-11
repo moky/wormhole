@@ -36,6 +36,8 @@ from typing import Optional
 
 import aiofiles
 
+from startrek.utils import Logging
+
 
 try:
     from typing import final
@@ -134,7 +136,7 @@ class LockedAccess(BinaryAccess):
             return await self.__dos.append(data=data, path=path)
 
 
-class SafelyAccess(BinaryAccess):
+class SafelyAccess(BinaryAccess, Logging):
 
     def __init__(self, access: BinaryAccess):
         super().__init__()
@@ -145,7 +147,7 @@ class SafelyAccess(BinaryAccess):
         try:
             return await self.__dos.read(path=path)
         except OSError as error:
-            print('[DOS] failed to read: %s, path=%s' % (error, path))
+            self.error('[DOS] failed to read: %s, path=%s', error, path)
             return None
 
     # Override
@@ -153,7 +155,7 @@ class SafelyAccess(BinaryAccess):
         try:
             return await self.__dos.write(data=data, path=path)
         except OSError as error:
-            print('[DOS] failed to write: %s, %d byte(s), path=%s' % (error, len(data), path))
+            self.error('[DOS] failed to write: %s, %d byte(s), path=%s', error, len(data), path)
             return -1
 
     # Override
@@ -161,7 +163,7 @@ class SafelyAccess(BinaryAccess):
         try:
             return await self.__dos.append(data=data, path=path)
         except OSError as error:
-            print('[DOS] failed to append: %s, %d byte(s), path=%s' % (error, len(data), path))
+            self.error('[DOS] failed to append: %s, %d byte(s), path=%s', error, len(data), path)
             return -1
 
 
