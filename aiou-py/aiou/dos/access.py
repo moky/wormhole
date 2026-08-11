@@ -29,8 +29,8 @@
 # ==============================================================================
 
 import asyncio
-import multiprocessing
-import threading
+# import multiprocessing
+# import threading
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -66,20 +66,31 @@ class BinaryAccess(ABC):
 
 class SyncAccess(BinaryAccess):
 
+    # noinspection PyMethodMayBeStatic
+    async def _run_sync(self, func):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, func)
+
     # Override
     async def read(self, path: str) -> Optional[bytes]:
-        with open(path, mode='rb') as file:
-            return file.read()
+        def _read():
+            with open(path, mode='rb') as file:
+                return file.read()
+        return await self._run_sync(_read)
 
     # Override
     async def write(self, data: bytes, path: str) -> int:
-        with open(path, mode='wb') as file:
-            return file.write(data)
+        def _write():
+            with open(path, mode='wb') as file:
+                return file.write(data)
+        return await self._run_sync(_write)
 
     # Override
     async def append(self, data: bytes, path: str) -> int:
-        with open(path, mode='ab') as file:
-            return file.write(data)
+        def _append():
+            with open(path, mode='ab') as file:
+                return file.write(data)
+        return await self._run_sync(_append)
 
 
 class AsyncAccess(BinaryAccess):
@@ -100,30 +111,7 @@ class AsyncAccess(BinaryAccess):
             return await file.write(data)
 
 
-class SyncLockedAccess(BinaryAccess):
-
-    def __init__(self, lock, access: BinaryAccess):
-        super().__init__()
-        self.__lock = lock
-        self.__dos = access
-
-    # Override
-    async def read(self, path: str) -> Optional[bytes]:
-        with self.__lock:
-            return await self.__dos.read(path=path)
-
-    # Override
-    async def write(self, data: bytes, path: str) -> int:
-        with self.__lock:
-            return await self.__dos.write(data=data, path=path)
-
-    # Override
-    async def append(self, data: bytes, path: str) -> int:
-        with self.__lock:
-            return await self.__dos.append(data=data, path=path)
-
-
-class AsyncLockedAccess(BinaryAccess):
+class LockedAccess(BinaryAccess):
 
     def __init__(self, lock, access: BinaryAccess):
         super().__init__()
@@ -156,7 +144,7 @@ class SafelyAccess(BinaryAccess):
     async def read(self, path: str) -> Optional[bytes]:
         try:
             return await self.__dos.read(path=path)
-        except Exception as error:
+        except OSError as error:
             print('[DOS] failed to read: %s, path=%s' % (error, path))
             return None
 
@@ -164,18 +152,16 @@ class SafelyAccess(BinaryAccess):
     async def write(self, data: bytes, path: str) -> int:
         try:
             return await self.__dos.write(data=data, path=path)
-        except Exception as error:
-            size = 0 if data is None else len(data)
-            print('[DOS] failed to write: %s, %d byte(s), path=%s' % (error, size, path))
+        except OSError as error:
+            print('[DOS] failed to write: %s, %d byte(s), path=%s' % (error, len(data), path))
             return -1
 
     # Override
     async def append(self, data: bytes, path: str) -> int:
         try:
             return await self.__dos.append(data=data, path=path)
-        except Exception as error:
-            size = 0 if data is None else len(data)
-            print('[DOS] failed to append: %s, %d byte(s), path=%s' % (error, size, path))
+        except OSError as error:
+            print('[DOS] failed to append: %s, %d byte(s), path=%s' % (error, len(data), path))
             return -1
 
 
@@ -190,14 +176,14 @@ class LockFactory:
     def create_lock(self, name: Optional[str]):
         """ get lock & sync flag """
         if name == 'asyncio':
-            return asyncio.Lock(), False
-        elif name == 'threading':
-            return threading.Lock(), True
-        elif name == 'multiprocessing':
-            return multiprocessing.Lock(), True
+            return asyncio.Lock()
+        # elif name == 'threading':
+        #     return threading.Lock()
+        # elif name == 'multiprocessing':
+        #     return multiprocessing.Lock()
         else:
             assert name is None, 'unknown lock: %s' % name
-            return None, False
+            return None
 
 
 @final
@@ -213,7 +199,7 @@ class FileHelper:
         return factory.create_lock(name=name)
 
     @classmethod
-    def get_access(cls, synchronized: bool = True, lock_name: str = None, safely: bool = True) -> BinaryAccess:
+    def get_access(cls, synchronized: bool = True, lock_name: str = 'asyncio', safely: bool = True) -> BinaryAccess:
         access = cls.access
         if access is not None:
             # already created
@@ -228,14 +214,9 @@ class FileHelper:
         #
         #  locked access
         #
-        lock, sync = cls.get_lock(name=lock_name)
-        if lock is None:
-            # no lock
-            pass
-        elif sync:
-            access = SyncLockedAccess(lock=lock, access=access)
-        else:
-            access = AsyncLockedAccess(lock=lock, access=access)
+        lock = cls.get_lock(name=lock_name)
+        if lock is not None:
+            access = LockedAccess(lock=lock, access=access)
         #
         #  try ... catch
         #

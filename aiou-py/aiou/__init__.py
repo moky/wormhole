@@ -32,7 +32,7 @@ from .dos import Path
 from .dos import File, TextFile, JSONFile
 
 from .dos import BinaryAccess, SyncAccess, AsyncAccess
-from .dos import SyncLockedAccess, AsyncLockedAccess, SafelyAccess
+from .dos import LockedAccess, SafelyAccess
 # from .dos import LockFactory, FileHelper
 
 from .redis import Redis
@@ -56,7 +56,7 @@ __all__ = [
     'File', 'TextFile', 'JSONFile',
 
     'BinaryAccess', 'SyncAccess', 'AsyncAccess',
-    'SyncLockedAccess', 'AsyncLockedAccess', 'SafelyAccess',
+    'LockedAccess', 'SafelyAccess',
     # 'LockFactory', 'FileHelper',
 
     #
