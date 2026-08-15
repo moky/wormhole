@@ -31,8 +31,9 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from small.skywalker import Processor
+
 from ..types import SocketAddress
-from ..skywalker import Processor
 
 from .ship import Departure
 

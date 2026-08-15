@@ -35,7 +35,7 @@ from .access import BinaryAccess
 from .access import SyncAccess, AsyncAccess
 from .access import LockedAccess, SafelyAccess
 
-from .access import LockFactory, FileHelper
+from .access import FileHelper
 
 
 __all__ = [
@@ -48,6 +48,6 @@ __all__ = [
     'SyncAccess', 'AsyncAccess',
     'LockedAccess', 'SafelyAccess',
 
-    'LockFactory', 'FileHelper',
+    'FileHelper',
 
 ]

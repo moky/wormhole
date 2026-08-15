@@ -28,15 +28,15 @@
 # SOFTWARE.
 # ==============================================================================
 
-import threading
 import time
 import weakref
 from abc import abstractmethod
 from typing import Optional, Iterable
 
-from ..types import SocketAddress, AddressPairMap
-from ..utils import Logging
+from small.log import Logging
+from small.lock import AsyncLock
 
+from ..types import SocketAddress, AddressPairMap
 from ..net import Hub
 from ..net import Channel, ChannelStatus
 from ..net import Connection, ConnectionDelegate
@@ -75,19 +75,25 @@ class BaseHub(Hub, Logging):
         ~~~~~~~~~~~~~~~~~~~~
         Buffer size for receiving package
 
-        MTU        : 1500 bytes (excludes 14 bytes ethernet header & 4 bytes FCS)
-        IP header  :   20 bytes
-        TCP header :   20 bytes
-        UDP header :    8 bytes
+        Ethernet MTU      : 1500 bytes (L3 IP packet limit, excludes 14B ethernet header & 4B FCS)
+        IPv4 min header   :   20 bytes
+        IPv6 fixed header :   40 bytes
+        TCP header        :   20 bytes
+        UDP header        :    8 bytes
+
+        RFC2460: IPv6 minimum guaranteed IP packet size = 1280 bytes
     """
-    MSS = 1472  # 1500 - 20 - 8
+    # IPv4 UDP theoretical limit: 1500 - 20 - 8 = 1472
+    # IPv6 UDP theoretical limit under MTU=1500: 1500 - 40 - 8 = 1452
+    # Global dual-stack safe payload (avoid IP fragmentation):
+    MSS = 1232  # 1280 - 40 - 8
 
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__()
         self.__delegate = weakref.ref(delegate)
         self.__connection_pool = self._create_connection_pool()
         self.__last_time_drive_connection = time.time()
-        self.__lock = threading.Lock()
+        self.__lock = AsyncLock.create()
 
     # noinspection PyMethodMayBeStatic
     def _create_connection_pool(self):
@@ -177,7 +183,7 @@ class BaseHub(Hub, Logging):
         #
         #  1. lock to check
         #
-        with self.__lock:
+        async with self.__lock:
             # check again
             conn = self._get_connection(remote=remote, local=local)
             if conn is not None:

@@ -8,9 +8,9 @@ import os
 import threading
 from typing import Optional
 
+from small.log import Log, Logging
+from small.skywalker import Runner
 from startrek.types import SocketAddress
-from startrek.utils import Log, Logging
-from startrek.skywalker import Runner
 from startrek import SocketHelper
 
 curPath = os.path.abspath(os.path.dirname(__file__))

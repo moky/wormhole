@@ -35,9 +35,9 @@ import threading
 import time
 from typing import Optional
 
+from small.log import Logging
+from small.skywalker import Runner
 from startrek.types import SocketAddress
-from startrek.utils import Logging
-from startrek.skywalker import Runner
 
 import sys
 import os

@@ -32,7 +32,7 @@ from abc import ABC, abstractmethod
 from enum import IntEnum
 from typing import Any, List
 
-from ..types import Timestamp
+from small.utils import Timestamp
 
 
 """

@@ -36,13 +36,9 @@ from typing import Optional
 
 import aiofiles
 
-from startrek.utils import Logging
-
-
-try:
-    from typing import final
-except ImportError:
-    from typing_extensions import final
+from small.utils import final
+from small.log import Logging
+from small.lock import AsyncLock
 
 
 class BinaryAccess(ABC):
@@ -167,41 +163,13 @@ class SafelyAccess(BinaryAccess, Logging):
             return -1
 
 
-#
-#   Factory
-#
-
-
-class LockFactory:
-
-    # noinspection PyMethodMayBeStatic
-    def create_lock(self, name: Optional[str]):
-        """ get lock & sync flag """
-        if name == 'asyncio':
-            return asyncio.Lock()
-        # elif name == 'threading':
-        #     return threading.Lock()
-        # elif name == 'multiprocessing':
-        #     return multiprocessing.Lock()
-        else:
-            assert name is None, 'unknown lock: %s' % name
-            return None
-
-
 @final
 class FileHelper:
 
     access: Optional[BinaryAccess] = None
 
-    lock_factory = LockFactory()
-
     @classmethod
-    def get_lock(cls, name: Optional[str]):
-        factory = cls.lock_factory
-        return factory.create_lock(name=name)
-
-    @classmethod
-    def get_access(cls, synchronized: bool = True, lock_name: str = 'asyncio', safely: bool = True) -> BinaryAccess:
+    def get_access(cls, synchronized: bool = True, safely: bool = True) -> BinaryAccess:
         access = cls.access
         if access is not None:
             # already created
@@ -216,7 +184,7 @@ class FileHelper:
         #
         #  locked access
         #
-        lock = cls.get_lock(name=lock_name)
+        lock = AsyncLock.create()
         if lock is not None:
             access = LockedAccess(lock=lock, access=access)
         #

@@ -10,7 +10,7 @@
 
 from setuptools import setup, find_packages
 
-__version__ = '2.3.2'
+__version__ = '2.3.3'
 __author__ = 'Albert Moky'
 __contact__ = 'albert.moky@gmail.com'
 
@@ -34,5 +34,6 @@ setup(
         'Operating System :: OS Independent',
     ],
     install_requires=[
+        'smallib>=1.0.0',
     ]
 )

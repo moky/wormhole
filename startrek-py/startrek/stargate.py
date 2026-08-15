@@ -28,15 +28,15 @@
 # SOFTWARE.
 # ==============================================================================
 
-import threading
 import time
 import weakref
 from abc import abstractmethod
 from typing import Optional, Iterable
 
-from .types import SocketAddress, AddressPairMap
-from .utils import Logging
+from small.log import Logging
+from small.lock import AsyncLock
 
+from .types import SocketAddress, AddressPairMap
 from .net import Connection, ConnectionDelegate, ConnectionState
 from .net.state import StateOrder
 from .port import Departure, Gate
@@ -83,7 +83,7 @@ class StarGate(Gate, ConnectionDelegate, Logging):
         super().__init__()
         self.__delegate_ref = weakref.ref(delegate)
         self.__porter_pool = self._create_porter_pool()
-        self.__lock = threading.Lock()
+        self.__lock = AsyncLock.create()
 
     # noinspection PyMethodMayBeStatic
     def _create_porter_pool(self):
@@ -164,7 +164,7 @@ class StarGate(Gate, ConnectionDelegate, Logging):
         #
         #  1. lock to check
         #
-        with self.__lock:
+        async with self.__lock:
             # check again
             docker = self._get_porter(remote=remote, local=local)
             if docker is not None:

@@ -32,9 +32,10 @@ from abc import abstractmethod
 from enum import IntEnum
 from typing import Optional
 
-from ..types import Timestamp
+from small.utils import Timestamp
+from small.skywalker import Processor
+
 from ..types import SocketAddress
-from ..skywalker import Processor
 from ..net import ConnectionState
 from ..net.state import StateOrder
 

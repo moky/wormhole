@@ -29,12 +29,12 @@
 # ==============================================================================
 
 import socket
-import threading
 from abc import ABC
 from typing import Optional, Iterable
 
+from small.lock import AsyncLock
+from small.skywalker import Runnable, Runner, Daemon
 from startrek.types import SocketAddress, AddressPairMap
-from startrek.skywalker import Runnable, Runner, Daemon
 from startrek import SocketHelper
 from startrek import Channel, BaseChannel
 from startrek import Connection, ConnectionDelegate
@@ -238,7 +238,7 @@ class ClientHub(StreamHub):
 
     def __init__(self, delegate: ConnectionDelegate):
         super().__init__(delegate=delegate)
-        self.__lock = threading.Lock()
+        self.__lock = AsyncLock.create()
 
     # Override
     def _create_connection(self, remote: SocketAddress, local: Optional[SocketAddress]) -> Optional[Connection]:
@@ -250,7 +250,7 @@ class ClientHub(StreamHub):
     async def open(self, remote: Optional[SocketAddress], local: Optional[SocketAddress]) -> Optional[Channel]:
         assert remote is not None, 'remote address empty: %s, %s' % (remote, local)
         # try to get channel
-        with self.__lock:
+        async with self.__lock:
             old = self._get_channel(remote=remote, local=local)
             if old is None:
                 # create channel with socket

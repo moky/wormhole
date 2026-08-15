@@ -35,8 +35,9 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple
 
+from small.log import Log
+
 from ..types import SocketAddress
-from ..utils import Log
 
 
 class SocketReader(ABC):

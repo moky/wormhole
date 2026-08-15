@@ -33,7 +33,8 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Optional, List
 
-from .types import Timestamp
+from small.utils import Timestamp
+
 from .types import SocketAddress, AddressPairObject
 from .net import Connection
 from .port import Arrival, Departure, ShipStatus

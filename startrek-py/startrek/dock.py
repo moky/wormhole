@@ -28,10 +28,10 @@
 # SOFTWARE.
 # ==============================================================================
 
-import threading
 from typing import Optional
 
-from .types import Timestamp
+from small.utils import Timestamp
+from small.lock import SyncLock
 
 from .arrival import Arrival, ArrivalHall
 from .departure import Departure, DepartureHall
@@ -117,7 +117,7 @@ class LockedDock(Dock):
 
     def __init__(self):
         super().__init__()
-        self.__lock = threading.Lock()
+        self.__lock = SyncLock.create()
         # purge
         self.__next_purge_time = 0
 

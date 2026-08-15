@@ -31,8 +31,10 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from ..types import SocketAddress, Timestamp
-from ..skywalker import Ticker
+from small.utils import Timestamp
+from small.skywalker import Ticker
+
+from ..types import SocketAddress
 
 
 class Connection(Ticker, ABC):

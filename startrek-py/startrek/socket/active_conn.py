@@ -32,8 +32,9 @@ import time
 import weakref
 from typing import Optional
 
+from small.skywalker import Runnable, Runner
+
 from ..types import SocketAddress
-from ..skywalker import Runnable, Runner
 from ..net import Hub
 
 from .base_conn import BaseConnection

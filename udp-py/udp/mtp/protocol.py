@@ -35,8 +35,9 @@
     Data format in UDP payload
 """
 
-import threading
 from typing import Union
+
+from small.lock import SyncLock
 
 from ..ba import ByteArray, Data, Convert, UInt8Data
 
@@ -193,7 +194,7 @@ class TransactionID(Data):
                 data = data[:8]
         return cls(data=data)
 
-    __number_lock = threading.Lock()
+    __number_lock = SyncLock.create()
     __number_high = Convert.int32_from_data(data=Data.random(size=4))
     __number_low = Convert.int32_from_data(data=Data.random(size=4))
 

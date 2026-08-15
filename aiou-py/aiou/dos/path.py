@@ -33,11 +33,7 @@ import sys
 
 from aiofiles import os as async_os
 
-
-try:
-    from typing import final
-except ImportError:
-    from typing_extensions import final
+from small.utils import final
 
 
 @final

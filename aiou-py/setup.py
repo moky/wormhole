@@ -49,6 +49,6 @@ setup(
         'aiohttp',          # 3.8.6
 
 
-        'startrek>=2.3.2'
+        'smallib>=1.0.0',
     ]
 )

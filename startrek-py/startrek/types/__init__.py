@@ -31,13 +31,8 @@
 from .pair import SocketAddress, AddressPairObject
 from .mapping import PairMap, AbstractPairMap, HashPairMap, AddressPairMap
 
-Timestamp = float
-Duration = float
-
 
 __all__ = [
-
-    'Timestamp', 'Duration',
 
     'SocketAddress',
     'AddressPairObject',

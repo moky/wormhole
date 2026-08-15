@@ -33,8 +33,8 @@ from abc import ABC, abstractmethod
 from enum import IntEnum
 from typing import Union
 
-from ..types import Timestamp
-from ..fsm import Context, BaseTransition, BaseState, BaseMachine
+from small.utils import Timestamp
+from small.fsm import Context, BaseTransition, BaseState, BaseMachine
 
 from .connection import Connection, TimedConnection
 

@@ -31,7 +31,7 @@
 import logging
 import sys
 
-from startrek.utils import Log, LogLevel
+from small.log import Log, LogLevel
 
 
 MAX_LOG_LEN = 1024

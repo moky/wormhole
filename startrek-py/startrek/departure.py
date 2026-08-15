@@ -34,7 +34,7 @@ from abc import ABC
 from typing import Optional, Any, List
 from typing import MutableMapping
 
-from .types import Timestamp
+from small.utils import Timestamp
 
 from .port import ShipStatus
 from .port import Arrival, Departure

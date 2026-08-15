@@ -34,7 +34,7 @@ from aiohttp.typedefs import StrOrURL, LooseHeaders
 from aiohttp.abc import AbstractCookieJar
 from aiohttp import CookieJar, ClientSession, ClientResponse
 
-from startrek.utils import Logging
+from small.log import Logging
 
 
 class HttpResponse:

@@ -77,14 +77,14 @@ class RedisConnector:
             return None
         redis = self.__dbs.get(db)
         if redis is None:
-            self.__dbs[db] = redis = self._create_redis(db=db)
+            redis = self._create_redis(db=db)
+            self.__dbs[db] = redis
         return redis
 
     def _create_redis(self, db: int) -> Redis:
         return Redis(host=self.host, port=self.port,
                      username=self.username, password=self.password,
-                     db=db,
-                     encoding='utf-8', decode_responses=False)
+                     db=db, encoding='utf-8', decode_responses=False)
 
 
 class RedisClient(ABC):
@@ -92,18 +92,11 @@ class RedisClient(ABC):
 
     @property  # protected
     @abstractmethod
-    def connector(self) -> Optional[RedisConnector]:
-        """ connection pool """
-        raise NotImplementedError(
-            f'Not implemented: {type(self).__module__}.{type(self).__name__}.connector getter'
-        )
-
-    @property  # protected
     def redis(self) -> Optional[Redis]:
         """ override to get redis by db/table name """
-        connector = self.connector
-        if connector is not None:
-            return connector.connect(db=0)
+        raise NotImplementedError(
+            f'Not implemented: {type(self).__module__}.{type(self).__name__}.redis getter'
+        )
 
     #
     #   Key -> Value

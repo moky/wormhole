@@ -28,11 +28,12 @@
 # SOFTWARE.
 # ==============================================================================
 
-import threading
 import time
 from typing import Optional, AnyStr
 
 from yarl import URL
+
+from small.lock import AsyncLock
 
 from ..mem import CacheManager
 
@@ -150,7 +151,7 @@ class CachedClient(HttpClient):
         self.__expires = self.CACHE_EXPIRES if expires is None else expires
         self.__refresh = self.CACHE_REFRESHING
         self.__caches = CacheManager().get_pool(name='aiou_http_caches')  # url => html
-        self.__lock = threading.Lock()
+        self.__lock = AsyncLock.create()
 
     @property
     def expires_duration(self) -> float:
@@ -182,7 +183,7 @@ class CachedClient(HttpClient):
         #
         #  2. lock for querying
         #
-        with self.__lock:
+        async with self.__lock:
             # locked, check again to make sure the cache not exists.
             # (maybe the cache was updated by other threads while waiting the lock)
             value, holder = self.__caches.fetch(key=url, now=now)

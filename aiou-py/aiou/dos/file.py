@@ -32,7 +32,7 @@ import json
 from typing import Optional, Union, List
 from typing import Mapping
 
-from startrek.utils import Logging
+from small.log import Logging
 
 from .path import Path
 from .access import FileHelper

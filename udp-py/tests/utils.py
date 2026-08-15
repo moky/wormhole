@@ -3,7 +3,7 @@
 import socket
 from typing import Optional, Iterable
 
-from startrek.utils import Log
+from small.log import Log
 
 
 class Inet:

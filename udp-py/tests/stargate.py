@@ -3,8 +3,8 @@
 from abc import ABC
 from typing import Generic, TypeVar, Optional, Union
 
+from small.skywalker import Runnable, Runner, Daemon
 from startrek.types import SocketAddress
-from startrek.skywalker import Runnable, Runner, Daemon
 from startrek import Connection, ConnectionState
 from startrek import ActiveConnection
 from startrek import Hub

@@ -33,7 +33,7 @@ from .dos import File, TextFile, JSONFile
 
 from .dos import BinaryAccess, SyncAccess, AsyncAccess
 from .dos import LockedAccess, SafelyAccess
-# from .dos import LockFactory, FileHelper
+# from .dos import FileHelper
 
 from .redis import Redis
 from .redis import RedisConnector, RedisClient
@@ -57,7 +57,7 @@ __all__ = [
 
     'BinaryAccess', 'SyncAccess', 'AsyncAccess',
     'LockedAccess', 'SafelyAccess',
-    # 'LockFactory', 'FileHelper',
+    # 'FileHelper',
 
     #
     #  HTTP

@@ -32,11 +32,11 @@ import time
 import weakref
 from typing import Optional
 
-from ..types import Timestamp, Duration
-from ..types import SocketAddress, AddressPairObject
-from ..utils import Logging
-from ..fsm import Delegate as StateDelegate
+from small.utils import Timestamp, Duration
+from small.log import Logging
+from small.fsm import Delegate as StateDelegate
 
+from ..types import SocketAddress, AddressPairObject
 from ..net import Hub
 from ..net import Channel
 from ..net import Connection, ConnectionState

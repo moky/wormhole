@@ -7,9 +7,9 @@ import sys
 import os
 from typing import Optional
 
+from small.log import Log, Logging
+from small.skywalker import Runnable, Runner
 from startrek.types import SocketAddress
-from startrek.utils import Log, Logging
-from startrek.skywalker import Runnable, Runner
 
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
