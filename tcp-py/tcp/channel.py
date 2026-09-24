@@ -84,13 +84,21 @@ class ChannelChecker:
                 but if timeout was set, it will return nothing too, it's normal;
                 otherwise, we know the connection was lost.
         """
-        # in blocking mode, the socket will wait until received something,
-        # but if timeout was set, it will return None too, it's normal;
-        # otherwise, we know the connection was lost.
-        if data is None or len(data) == 0:
-            if sock.gettimeout() is None:  # and self.blocking:
-                # Log.error('[TCP] socket error: remote peer reset socket %s', sock)
-                return OSError('remote peer reset socket %s' % sock)
+        if data is None:
+            # received nothing yet (EAGAIN / socket not ready) - normal, not an error
+            return None
+        if len(data) == 0:
+            # got EOF (remote peer closed the connection) - connection lost
+            return OSError('remote peer reset socket %s' % sock)
+        # got data
+        return None
+        # # in blocking mode, the socket will wait until received something,
+        # # but if timeout was set, it will return None too, it's normal;
+        # # otherwise, we know the connection was lost.
+        # if data is None or len(data) == 0:
+        #     if sock.gettimeout() is None:  # and self.blocking:
+        #         # Log.error('[TCP] socket error: remote peer reset socket %s', sock)
+        #         return OSError('remote peer reset socket %s' % sock)
 
 
 class Controller:
