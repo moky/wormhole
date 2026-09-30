@@ -29,16 +29,30 @@
 # ==============================================================================
 
 import asyncio
-# import multiprocessing
-# import threading
+import os
+import tempfile
+import threading
 from abc import ABC, abstractmethod
 from typing import Optional
+from weakref import WeakValueDictionary
 
 import aiofiles
 
 from small.utils import final
 from small.log import Logging
 from small.lock import AsyncLock
+
+
+def _fix_permissions(path: str, tmp: str):
+    """ keep the original file mode for the new file, or a sane default """
+    try:
+        mode = os.stat(path).st_mode & 0o7777
+    except OSError:
+        mode = 0o644  # default
+    try:
+        os.chmod(tmp, mode)
+    except OSError:
+        pass
 
 
 class BinaryAccess(ABC):
@@ -78,9 +92,29 @@ class SyncAccess(BinaryAccess):
 
     # Override
     async def write(self, data: bytes, path: str) -> int:
+        # write to a temp file, then atomically replace the target,
+        # so concurrent readers never observe a partial file
         def _write():
-            with open(path, mode='wb') as file:
-                return file.write(data)
+            directory = os.path.dirname(path)
+            if not directory:
+                directory = '.'
+            fd, tmp = tempfile.mkstemp(prefix='.', suffix='.tmp', dir=directory)
+            try:
+                with os.fdopen(fd, 'wb') as file:
+                    file.write(data)
+                _fix_permissions(path=path, tmp=tmp)
+                os.replace(tmp, path)
+            except BaseException:
+                try:
+                    os.close(fd)   # fdopen may have failed before closing it
+                except OSError:
+                    pass
+                try:
+                    os.remove(tmp)
+                except OSError:
+                    pass
+                raise
+            return len(data)
         return await self._run_sync(_write)
 
     # Override
@@ -100,8 +134,27 @@ class AsyncAccess(BinaryAccess):
 
     # Override
     async def write(self, data: bytes, path: str) -> int:
-        async with aiofiles.open(path, mode='wb') as file:
-            return await file.write(data)
+        # write to a temp file, then atomically replace the target,
+        # so concurrent readers never observe a partial file
+        directory = os.path.dirname(path)
+        if not directory:
+            directory = '.'
+        fd, tmp = tempfile.mkstemp(prefix='.', suffix='.tmp', dir=directory)
+        try:
+            # aiofiles has no fdopen; it re-opens by path, so the reserved
+            # fd is only used to create the empty temp file, then closed
+            os.close(fd)
+            async with aiofiles.open(tmp, mode='wb') as file:
+                await file.write(data)
+            _fix_permissions(path=path, tmp=tmp)
+            os.replace(tmp, path)
+        except BaseException:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+            raise
+        return len(data)
 
     # Override
     async def append(self, data: bytes, path: str) -> int:
@@ -110,25 +163,51 @@ class AsyncAccess(BinaryAccess):
 
 
 class LockedAccess(BinaryAccess):
+    """ Lock for writing, by file path (read is lock-free).
 
-    def __init__(self, lock, access: BinaryAccess):
+        Write operations replace the file atomically, so readers always get
+        a complete file without any lock; a per-path lock only serializes
+        writers of the same file, preventing write/append races while
+        different files stay fully parallel.
+    """
+
+    # path => lock (shared by all instances)
+    #
+    # Weak values: a lock is strongly referenced while being held (async with),
+    # and gets garbage-collected right after it is released, so the map shrinks
+    # automatically and never grows with long-lived/dynamic file paths.
+    _locks = WeakValueDictionary()
+    _guard = threading.Lock()   # guards the map only (micro-seconds)
+
+    def __init__(self, access: BinaryAccess):
         super().__init__()
-        self.__lock = lock
         self.__dos = access
+
+    @classmethod
+    def _get_lock(cls, path: str):
+        with cls._guard:
+            lock = cls._locks.get(path)
+            if lock is None:
+                lock = AsyncLock.create()
+                cls._locks[path] = lock
+            return lock
 
     # Override
     async def read(self, path: str) -> Optional[bytes]:
-        async with self.__lock:
-            return await self.__dos.read(path=path)
+        # no lock: the writer replaces the file atomically,
+        # so we always read a complete file
+        return await self.__dos.read(path=path)
 
     # Override
     async def write(self, data: bytes, path: str) -> int:
-        async with self.__lock:
+        lock = self._get_lock(path=path)
+        async with lock:
             return await self.__dos.write(data=data, path=path)
 
     # Override
     async def append(self, data: bytes, path: str) -> int:
-        async with self.__lock:
+        lock = self._get_lock(path=path)
+        async with lock:
             return await self.__dos.append(data=data, path=path)
 
 
@@ -182,11 +261,9 @@ class FileHelper:
         else:
             access = AsyncAccess()
         #
-        #  locked access
+        #  per-file write locks (read is lock-free)
         #
-        lock = AsyncLock.create()
-        if lock is not None:
-            access = LockedAccess(lock=lock, access=access)
+        access = LockedAccess(access=access)
         #
         #  try ... catch
         #

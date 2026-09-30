@@ -78,30 +78,32 @@ class Path:
 
     @classmethod
     async def is_dir(cls, path: str) -> bool:
-        return os.path.isdir(path)
+        return await async_os.path.isdir(path)
 
     @classmethod
     async def is_file(cls, path: str) -> bool:
-        return os.path.isfile(path)
+        return await async_os.path.isfile(path)
 
     @classmethod
     async def exists(cls, path: str) -> bool:
-        return os.path.exists(path)
+        return await async_os.path.exists(path)
 
     @classmethod
     async def remove(cls, path: str) -> bool:
-        if os.path.exists(path):
+        if await async_os.path.exists(path):
             # os.remove(path)
             await async_os.remove(path)
             return True
+        # not exists
+        return False
 
     @classmethod
     async def make_dirs(cls, directory: str) -> bool:
-        if not os.path.exists(directory):
-            os.makedirs(directory, exist_ok=True)
-            # await async_os.makedirs(directory, exist_ok=True)
+        if not await async_os.path.exists(directory):
+            await async_os.makedirs(directory, exist_ok=True)
+            # os.makedirs(directory, exist_ok=True)
             return True
-        elif os.path.isdir(directory):
+        elif await async_os.path.isdir(directory):
             # directory exists
             return True
         else:

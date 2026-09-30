@@ -78,10 +78,9 @@ class File(Logging):
         return True
 
     async def append(self, data: bytes) -> bool:
-        if not await Path.exists(path=self.__path):
-            # new file
-            return await self.write(data)
-        # append
+        # O_APPEND creates the file when it does not exist yet, so there is
+        # no need for an existence check here (which could race with another
+        # concurrent writer and overwrite its data)
         cnt = await FileHelper.append(data=data, path=self.__path)
         if len(data) != cnt:
             self.error('[DOS] failed to append file: %d/%d, %s', cnt, len(data), self.__path)
@@ -136,6 +135,7 @@ class TextFile:
         else:
             # error
             self.__text = None
+            return False
 
     async def append(self, text: str, encoding: str = 'utf-8') -> bool:
         if encoding is None or len(encoding) == 0:
@@ -186,3 +186,4 @@ class JSONFile:
         else:
             # error
             self.__container = None
+            return False
